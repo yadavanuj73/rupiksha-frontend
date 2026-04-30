@@ -1,8 +1,8 @@
-import React, { useRef } from 'react';
-import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import './VerticalCardSlider.css';
 
-const SliderItem = ({ item, index, progress, count }) => {
+const SliderItem = ({ item }) => {
     const [isMobile, setIsMobile] = React.useState(window.innerWidth < 768);
 
     React.useEffect(() => {
@@ -11,35 +11,15 @@ const SliderItem = ({ item, index, progress, count }) => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    // Relative position [- (count-1), (count-1)]
-    const activeFloat = useTransform(progress, [0, 1], [0, count - 1]);
-    const stt = useTransform(activeFloat, f => index - f);
-    
-    // Smooth opacity, scale and transform values based on relative position
-    const opacity = useTransform(stt, [-2.5, -1, 0, 1, 2.5], [0, 1, 1, 1, 0]);
-    const scale = useTransform(stt, [-3, 0, 3], [0.6, 1, 0.6]);
-    
-    // Spread more on desktop, less on mobile (or use Y on mobile)
-    const translateX = useTransform(stt, s => s * (isMobile ? 120 : 250)); 
-    const translateY = useTransform(stt, s => s * (isMobile ? 80 : 0));
-    const rotateY = useTransform(stt, s => s * -12);
-    
-    // Stack ordering
-    const zIndex = useTransform(stt, s => 100 - Math.round(Math.abs(s) * 10));
-
     return (
         <motion.div
             className="item"
+            initial={{ opacity: 0.4 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.35 }}
             style={{
-                opacity,
-                scale,
-                x: translateX,
-                y: translateY,
-                rotateY,
-                zIndex,
                 width: isMobile ? '88vw' : 'min(520px, 92vw)',   
                 height: isMobile ? '45vh' : 'min(540px, 60vh)',  
-                left: isMobile ? '6vw' : 'calc(50% - min(260px, 46vw))',
                 background: item.mediumColor,
                 borderRadius: isMobile ? 24 : 40,
                 border: `2px solid ${item.color}50`,
@@ -115,19 +95,6 @@ const SliderItem = ({ item, index, progress, count }) => {
 };
 
 const VerticalCardSlider = () => {
-    const sectionRef = useRef(null);
-    const { scrollYProgress } = useScroll({
-        target: sectionRef,
-        offset: ["start start", "end end"]
-    });
-
-    // More responsive physics for smoother tracking
-    const smoothProgress = useSpring(scrollYProgress, {
-        stiffness: 250,
-        damping: 40,
-        restDelta: 0.0001
-    });
-
     const items = [
         { title: "Register Now", desc: "Sign up in under 2 minutes with your mobile number. No paperwork needed.", step: "01", color: "#2563eb", mediumColor: "#bfdbfe", icon: "🚀" },
         { title: "Upload KYC", desc: "Submit your Aadhaar and PAN details securely for instant verification.", step: "02", color: "#4f46e5", mediumColor: "#ddd6fe", icon: "🔐" },
@@ -135,14 +102,21 @@ const VerticalCardSlider = () => {
         { title: "Add Wallet Balance", desc: "Add funds via UPI, Bank Transfer or Credit Card to start transacting.", step: "04", color: "#dc2626", mediumColor: "#fecaca", icon: "💳" },
         { title: "Start Earning", desc: "Offer digital payments to customers and earn commissions on every transaction.", step: "05", color: "#ca8a04", mediumColor: "#fef08a", icon: "💰" },
     ];
+    const [currentIndex, setCurrentIndex] = useState(0);
+
+    const nextSlide = () => {
+        setCurrentIndex((prev) => (prev === items.length - 1 ? 0 : prev + 1));
+    };
+
+    const prevSlide = () => {
+        setCurrentIndex((prev) => (prev === 0 ? items.length - 1 : prev - 1));
+    };
 
     return (
-        <section ref={sectionRef} style={{ height: '450vh', background: '#f8fafc', position: 'relative', margin: 0 }}>
+        <section style={{ background: '#f8fafc', position: 'relative', margin: 0, padding: '80px 0' }}>
             <div className="slider-section-wrapper" style={{
-                position: 'sticky',
-                top: 0,
-                height: '100vh',
-                overflow: 'hidden', // Changed clip to hidden for better cross-browser compatibility
+                minHeight: '100vh',
+                overflow: 'hidden',
                 background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
             }}>
                 <div className="section-header-slider">
@@ -151,16 +125,51 @@ const VerticalCardSlider = () => {
                     <p className="slider-main-desc">Follow these 5 simple steps to launch your digital banking point with Rupiksha.</p>
                 </div>
 
-                <div className="slider">
-                    {items.map((item, index) => (
-                        <SliderItem 
-                            key={index} 
-                            item={item} 
-                            index={index} 
-                            progress={smoothProgress} 
-                            count={items.length} 
-                        />
-                    ))}
+                <div className="relative overflow-hidden" style={{ width: '100%', maxWidth: '1000px', margin: '0 auto' }}>
+                    <button
+                        onClick={prevSlide}
+                        style={{
+                            position: 'absolute',
+                            left: '10px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            zIndex: 20,
+                            padding: '8px 14px',
+                            borderRadius: 10,
+                            border: '1px solid #cbd5e1',
+                            background: '#ffffff',
+                            fontWeight: 700
+                        }}
+                    >
+                        Prev
+                    </button>
+                    <button
+                        onClick={nextSlide}
+                        style={{
+                            position: 'absolute',
+                            right: '10px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            zIndex: 20,
+                            padding: '8px 14px',
+                            borderRadius: 10,
+                            border: '1px solid #cbd5e1',
+                            background: '#ffffff',
+                            fontWeight: 700
+                        }}
+                    >
+                        Next
+                    </button>
+                    <div
+                        className="flex transition-transform duration-500 ease-in-out"
+                        style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+                    >
+                        {items.map((item, index) => (
+                            <div key={index} className="w-full flex-shrink-0" style={{ display: 'flex', justifyContent: 'center' }}>
+                                <SliderItem item={item} />
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         </section>

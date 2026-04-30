@@ -4,6 +4,7 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import MobileBottomNav from './MobileBottomNav';
 import { dataService } from '../../services/dataService';
+import { useAuth } from '../../context/AuthContext';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Clock, LogOut } from 'lucide-react';
 import RetailerEKYC from './banking/RetailerEKYC';
@@ -11,9 +12,9 @@ import RetailerEKYC from './banking/RetailerEKYC';
 const RetailerLayout = () => {
     const navigate = useNavigate();
     const location = useLocation();
+    const { user: currentUser, loading: authLoading } = useAuth();
     const [showMobileSidebar, setShowMobileSidebar] = useState(false);
     const [appData, setAppData] = useState(dataService.getData());
-    const currentUser = appData.currentUser;
 
     // Map path to active tab for Sidebar
     const getActiveTab = () => {
@@ -25,7 +26,11 @@ const RetailerLayout = () => {
         if (path.startsWith('/aeps')) return 'aeps_services';
         if (path.startsWith('/cms')) return 'cms';
         if (path.startsWith('/travel')) return 'travel';
+        if (path.startsWith('/travel-hub')) return 'travel';
+        if (path.startsWith('/retailer/travel')) return 'travel';
         if (path.startsWith('/utility')) return 'utility';
+        if (path.startsWith('/bharat-connect')) return 'bharat_connect';
+        if (path.startsWith('/payout-hub')) return 'payout';
         if (path.startsWith('/all-services')) return 'all_services';
         if (path.startsWith('/reports')) {
             return reportType || 'reports';
@@ -50,17 +55,27 @@ const RetailerLayout = () => {
     const activeTab = getActiveTab();
 
     useEffect(() => {
+        // Wait for AuthContext to finish rehydrating from localStorage before
+        // making any routing decisions — otherwise a hard-refresh would bounce
+        // the user to the landing page while auth is still initializing.
+        if (authLoading) return;
         if (!currentUser) {
-            navigate('/');
+            navigate('/login', { replace: true });
             return;
         }
 
-        // If not admin/employee, verify they have RETAILER role
-        const isStaff = ['ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(currentUser.role);
-        if (!isStaff && currentUser.role !== 'RETAILER') {
-            navigate('/');
+        const roles = Array.isArray(currentUser.roles) && currentUser.roles.length
+            ? currentUser.roles.map((r) => String(r || '').toUpperCase())
+            : [String(currentUser.role || '').toUpperCase()];
+        const isStaff = roles.some((r) => ['ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(r));
+        if (!isStaff && !roles.includes('RETAILER')) {
+            // Let ProtectedRoute's role-specific bounce handle this instead of
+            // forcing everyone back to the landing page.
+            if (roles.includes('DISTRIBUTOR')) navigate('/distributor', { replace: true });
+            else if (roles.includes('SUPER_DISTRIBUTOR')) navigate('/super-distributor', { replace: true });
+            else navigate('/login', { replace: true });
         }
-    }, [currentUser, navigate]);
+    }, [currentUser, authLoading, navigate]);
 
     useEffect(() => {
         const updateData = () => setAppData(dataService.getData());
@@ -119,12 +134,22 @@ const RetailerLayout = () => {
             'aeps_services': '/aeps',
             'cms': '/cms',
             'travel': '/travel',
+            'travel_hub': '/travel',
             'utility': '/utility',
+            'quick_mr': '/matm',
+            'ybl_mr': '/travel',
+            'travelhub': '/travel',
+            'pw_money_ekyc': '/aeps-kyc',
+            'bharat_connect': '/bharat-connect',
+            'payout': '/payout-hub',
             'all_services': '/all-services',
             'reports': '/reports',
             'plans': '/plans',
             'matm': '/matm',
             'add_money': '/add-money',
+            'retailer_ekyc': '/aeps-kyc',
+            'icici_ekyc': '/aeps-kyc',
+            'support': '/reports',
             'personal_loan': '/personal_loan',
             'home_loan': '/home_loan',
             'gold_loan': '/gold_loan',
@@ -133,7 +158,7 @@ const RetailerLayout = () => {
             'gst_certification': '/profile?tab=gst_certification',
             'tds_certificate': '/profile?tab=tds_certificate'
         };
-        navigate(routes[tab] || '/dashboard');
+        navigate(routes[tab] || '/all-services');
         setShowMobileSidebar(false);
     };
 
@@ -142,7 +167,20 @@ const RetailerLayout = () => {
     // KYC checks removed as per request to bypass KYC blocking
 
     return (
-        <div className="flex h-screen bg-[#f8fafc] font-['Inter',sans-serif] overflow-hidden relative">
+        <div className="h-screen bg-[#f8fafc] font-['Inter',sans-serif] overflow-hidden relative">
+            <Header
+                onAddMoney={() => navigate('/add-money')}
+                onProfileClick={(type) => {
+                    if (type === 'logout') {
+                        dataService.logoutUser();
+                        navigate('/login', { replace: true });
+                    } else {
+                        navigate(`/profile?tab=${type}`);
+                    }
+                }}
+                onMenuClick={() => setShowMobileSidebar(!showMobileSidebar)}
+            />
+
             <AnimatePresence>
                 {showMobileSidebar && (
                     <motion.div
@@ -161,19 +199,7 @@ const RetailerLayout = () => {
                 showMobileSidebar={showMobileSidebar}
             />
 
-            <div className="flex-1 flex flex-col overflow-hidden relative">
-                <Header
-                    onAddMoney={() => navigate('/add-money')}
-                    onProfileClick={(type) => {
-                        if (type === 'logout') {
-                            dataService.logoutUser();
-                            navigate('/');
-                        } else {
-                            navigate(`/profile?tab=${type}`);
-                        }
-                    }}
-                    onMenuClick={() => setShowMobileSidebar(!showMobileSidebar)}
-                />
+            <div className="h-full flex flex-col overflow-hidden relative pt-[76px] lg:ml-64">
                 {/* pb-16 lg:pb-0 ensures content not hidden behind mobile bottom nav */}
                 <main className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 pb-16 lg:pb-0">
                     <AnimatePresence mode="wait">

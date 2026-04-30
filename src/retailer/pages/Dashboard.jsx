@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logo from '../../assets/rupiksha_logo.png';
 import { dataService } from '../../services/dataService';
+import { useAuth } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Wallet, Filter, Send, Settings, ShieldCheck, 
@@ -120,26 +121,26 @@ const NewsCarousel = ({ banners = [], showDots = true }) => {
 
 const RetailerDashboard = () => {
     const navigate = useNavigate();
+    const { user: currentUser, loading: authLoading } = useAuth();
     const [appData, setAppData] = useState(dataService.getData());
     const [activeWallet, setActiveWallet] = useState(null);
     const [balance, setBalance] = useState("0.00");
     const [transactions, setTransactions] = useState([]);
     const [isServicesExpanded, setIsServicesExpanded] = useState(false);
-    const currentUser = appData.currentUser;
 
     useEffect(() => {
-        if (!currentUser) navigate('/');
-        
+        // Wait for AuthContext to rehydrate; ProtectedRoute already gates this
+        // page, so we only need to load the user-specific data here.
+        if (authLoading || !currentUser) return;
+
         const fetchData = async () => {
-            if (currentUser) {
-                const bal = await dataService.getWalletBalance(currentUser.id);
-                setBalance(bal);
-                const txs = await dataService.getUserTransactions(currentUser.id);
-                setTransactions(txs || []);
-            }
+            const bal = await dataService.getWalletBalance(currentUser.id);
+            setBalance(bal);
+            const txs = await dataService.getUserTransactions(currentUser.id);
+            setTransactions(txs || []);
         };
         fetchData();
-    }, [currentUser, navigate]);
+    }, [currentUser, authLoading]);
 
     const [selectedPeriod, setSelectedPeriod] = useState('Weekly');
     const [stats, setStats] = useState({
@@ -225,11 +226,11 @@ const RetailerDashboard = () => {
 
     const services = [
         { id: 'aeps', label: 'AEPS Hub', emoji: '🏦', color: 'from-blue-50 to-blue-100 border border-blue-200', path: '/aeps' },
-        { id: 'dmt', label: 'Money Transfer', emoji: '💸', color: 'from-emerald-50 to-emerald-100 border border-emerald-200', path: '/dmt' },
+        { id: 'dmt', label: 'Money Transfer', emoji: '💸', color: 'from-emerald-50 to-emerald-100 border border-emerald-200', path: '/all-services' },
         { id: 'matm', label: 'Micro ATM', emoji: '💳', color: 'from-orange-50 to-orange-100 border border-orange-200', path: '/matm' },
         { id: 'utility', label: 'Recharge', emoji: '📱', color: 'from-purple-50 to-purple-100 border border-purple-200', path: '/utility' },
         { id: 'bill', label: 'Bill Pay', emoji: '🧾', color: 'from-rose-50 to-rose-100 border border-rose-200', path: '/utility' },
-        { id: 'payout', label: 'Payout', emoji: '🚀', color: 'from-sky-50 to-sky-100 border border-sky-200', path: '/payout' },
+        { id: 'payout', label: 'Payout', emoji: '🚀', color: 'from-sky-50 to-sky-100 border border-sky-200', path: '/all-services' },
     ];
 
     return (
@@ -276,15 +277,6 @@ const RetailerDashboard = () => {
                         </div>
                     </motion.div>
                 )}
-
-                {/* News Carousel: Integrated between Header and Services */}
-                <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className=""
-                >
-                    <NewsCarousel banners={appData?.promotions?.banners} />
-                </motion.div>
 
                 {/* Core Services: Now expands downwards rather than opening a modal */}
                 <motion.div 
@@ -557,6 +549,14 @@ const RetailerDashboard = () => {
                         </motion.div>
                     </div>
                 </div>
+
+                {/* News Carousel moved to end of page */}
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                >
+                    <NewsCarousel banners={appData?.promotions?.banners} />
+                </motion.div>
             </div>
         </div>
     );

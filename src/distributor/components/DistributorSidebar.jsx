@@ -1,33 +1,16 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { menuItems } from '../data/menuItems';
-import { ChevronDown, ChevronRight, Phone, Smartphone, LayoutDashboard, ArrowLeft, Users, Palette, Settings } from 'lucide-react';
-import logo from '../../assets/rupiksha_new_logo.png';
+import { ChevronDown, ChevronRight, Phone, Smartphone, LayoutDashboard, ArrowLeft, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { sharedDataService } from '../../services/sharedDataService';
 
 const DistributorSidebar = ({ showMobile, onClose }) => {
     const [openMenus, setOpenMenus] = useState({});
-    const [isHovered, setIsHovered] = useState(false);
     const location = useLocation();
-    const [themeColor, setThemeColor] = useState(localStorage.getItem('sidebar-theme') || '#0be9f1');
     const navigate = useNavigate();
 
-    const hexToRgb = (hex) => {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '11, 233, 241';
-    };
-
-    useEffect(() => {
-        document.documentElement.style.setProperty('--brand-color', themeColor);
-        document.documentElement.style.setProperty('--brand-color-rgb', hexToRgb(themeColor));
-        localStorage.setItem('sidebar-theme', themeColor);
-    }, [themeColor]);
-
-    const toggleMenu = (title) => {
-        if (!isHovered) return; // Don't expand submenus when sidebar is collapsed
-        setOpenMenus(prev => ({ ...prev, [title]: !prev[title] }));
-    };
+    const toggleMenu = (title) => setOpenMenus((prev) => ({ ...prev, [title]: !prev[title] }));
 
     const isPathActive = (path) =>
         location.pathname === path || location.pathname.startsWith(path + '/');
@@ -47,53 +30,31 @@ const DistributorSidebar = ({ showMobile, onClose }) => {
                 )}
             </AnimatePresence>
 
-            {/* Sidebar — animated hover expand like retailer sidebar */}
+            {/* Locked Premium Sidebar */}
             <motion.aside
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
                 initial={false}
                 animate={{
-                    width: isHovered ? 240 : 68,
                     x: typeof window !== 'undefined' && window.innerWidth < 1024
                         ? (showMobile ? 0 : -240)
                         : 0
                 }}
                 transition={{ type: 'spring', stiffness: 280, damping: 28 }}
                 className={`
-                    fixed top-0 left-0 h-screen z-50 flex flex-col
-                    bg-[var(--brand-color)]
+                    fixed top-0 left-0 h-screen z-50 w-64 flex flex-col
+                    bg-slate-50 text-slate-700
+                    border-r border-slate-200 shadow-[8px_0_28px_rgba(15,23,42,0.06)]
                     ${showMobile ? 'translate-x-0' : '-translate-x-full'}
-                    lg:relative lg:translate-x-0 lg:flex lg:z-auto shrink-0
+                    lg:top-[76px] lg:h-[calc(100vh-76px)] lg:translate-x-0
                 `}
-                style={{
-                    width: typeof window !== 'undefined' && window.innerWidth < 1024 ? 240 : undefined
-                }}
             >
-                {/* Logo Area */}
-                <div className={`flex flex-col items-center gap-2 px-3 py-5 border-b border-white/10 h-24 justify-center overflow-hidden`}>
-                    <motion.img
-                        animate={{ scale: 0.7 }}
-                        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                        src={logo}
-                        alt="Rupiksha Logo"
-                        className="h-8 object-contain"
-                    />
-                    <AnimatePresence>
-                        {isHovered && (
-                            <motion.span
-                                initial={{ opacity: 0, y: 6 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: 6 }}
-                                className="inline-block bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full whitespace-nowrap"
-                            >
-                                Distributor Portal
-                            </motion.span>
-                        )}
-                    </AnimatePresence>
+                <div className="px-4 py-3 border-b border-slate-200">
+                    <span className="inline-flex items-center rounded-full bg-blue-50 border border-blue-100 text-blue-700 px-3 py-1 text-[10px] font-black uppercase tracking-widest">
+                        Distributor Panel
+                    </span>
                 </div>
 
                 {/* Nav */}
-                <nav className="flex-1 overflow-y-auto py-3 scrollbar-none space-y-0.5 px-2">
+                <nav className="flex-1 overflow-y-auto py-3 scrollbar-none space-y-1 px-2">
                     {/* Dashboard NavLink */}
                     <NavLink
                         to="/distributor"
@@ -102,25 +63,17 @@ const DistributorSidebar = ({ showMobile, onClose }) => {
                         className={({ isActive }) =>
                             `flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200
                             ${isActive
-                                ? 'bg-yellow-400 text-black shadow-lg shadow-black/10'
-                                : 'text-black hover:bg-white/10'
-                            } ${isHovered ? 'justify-start' : 'justify-center'}`
+                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25'
+                                : 'text-slate-700 hover:bg-slate-100'
+                            } justify-start`
                         }
                     >
                         <LayoutDashboard size={16} className="shrink-0" />
-                        {isHovered && (
-                            <motion.span
-                                initial={{ opacity: 0, x: -8 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                className="truncate"
-                            >
-                                Dashboard
-                            </motion.span>
-                        )}
+                        <span className="truncate">Dashboard</span>
                     </NavLink>
 
                     {/* Super Distributor Extra Link */}
-                    {['SUPER_DISTRIBUTOR', 'ADMIN', 'SUPERADMIN'].includes(sharedDataService.getCurrentDistributor()?.role) && (
+                    {['SUPER_DISTRIBUTOR', 'ADMIN', 'SUPER_DISTRIBUTOR'].includes(sharedDataService.getCurrentDistributor()?.role) && (
                         <NavLink
                             to="/distributor/distributors"
                             onClick={onClose}
@@ -128,20 +81,12 @@ const DistributorSidebar = ({ showMobile, onClose }) => {
                                 `flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200
                                 ${isActive
                                     ? 'bg-gradient-to-r from-blue-500 to-blue-400 text-white shadow-lg shadow-blue-500/30'
-                                    : 'text-black hover:bg-white/10'
-                                } ${isHovered ? 'justify-start' : 'justify-center'}`
+                                    : 'text-slate-700 hover:bg-slate-100'
+                                } justify-start`
                             }
                         >
                             <Users size={16} className="shrink-0" />
-                            {isHovered && (
-                                <motion.span
-                                    initial={{ opacity: 0, x: -8 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    className="truncate"
-                                >
-                                    Manage Distributors
-                                </motion.span>
-                            )}
+                            <span className="truncate">Manage Distributors</span>
                         </NavLink>
                     )}
 
@@ -156,24 +101,14 @@ const DistributorSidebar = ({ showMobile, onClose }) => {
                                     <button
                                         onClick={() => toggleMenu(item.title)}
                                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200
-                                            ${isActive ? 'text-black bg-yellow-400' : 'text-black hover:bg-white/10'}
-                                            ${isHovered ? 'justify-start' : 'justify-center'}`}
+                                            ${isActive ? 'text-white bg-blue-600' : 'text-slate-700 hover:bg-slate-100'}
+                                            justify-start`}
                                     >
                                         <item.icon size={16} className="shrink-0" />
-                                        {isHovered && (
-                                            <motion.span
-                                                initial={{ opacity: 0, x: -8 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                className="flex-1 text-left truncate"
-                                            >
-                                                {item.title}
-                                            </motion.span>
-                                        )}
-                                        {isHovered && (
-                                            isOpen
-                                                ? <ChevronDown size={11} className="shrink-0 text-amber-400" />
-                                                : <ChevronRight size={11} className="shrink-0" />
-                                        )}
+                                        <span className="flex-1 text-left truncate">{item.title}</span>
+                                        {isOpen
+                                            ? <ChevronDown size={11} className="shrink-0 text-blue-600" />
+                                            : <ChevronRight size={11} className="shrink-0" />}
                                     </button>
                                 ) : (
                                     <NavLink
@@ -183,33 +118,25 @@ const DistributorSidebar = ({ showMobile, onClose }) => {
                                         className={({ isActive }) =>
                                             `flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200
                                             ${isActive
-                                                ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-white shadow-lg shadow-amber-500/30'
-                                                : 'text-black hover:bg-white/10'
-                                            } ${isHovered ? 'justify-start' : 'justify-center'}`
+                                                ? 'bg-gradient-to-r from-blue-600 to-indigo-500 text-white shadow-lg shadow-blue-600/25'
+                                                : 'text-slate-700 hover:bg-slate-100'
+                                            } justify-start`
                                         }
                                     >
                                         <item.icon size={16} className="shrink-0" />
-                                        {isHovered && (
-                                            <motion.span
-                                                initial={{ opacity: 0, x: -8 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                className="truncate"
-                                            >
-                                                {item.title}
-                                            </motion.span>
-                                        )}
+                                        <span className="truncate">{item.title}</span>
                                     </NavLink>
                                 )}
 
                                 {/* Submenu */}
                                 <AnimatePresence>
-                                    {item.submenu && isOpen && isHovered && (
+                                    {item.submenu && isOpen && (
                                         <motion.div
                                             initial={{ height: 0, opacity: 0 }}
                                             animate={{ height: 'auto', opacity: 1 }}
                                             exit={{ height: 0, opacity: 0 }}
                                             transition={{ duration: 0.25, ease: 'easeInOut' }}
-                                            className="overflow-hidden ml-5 mt-0.5 border-l border-amber-500/20 pl-3 space-y-0.5"
+                                            className="overflow-hidden ml-5 mt-0.5 border-l border-slate-200 pl-3 space-y-0.5"
                                         >
                                             {item.submenu.map((sub) => (
                                                 <NavLink
@@ -218,7 +145,7 @@ const DistributorSidebar = ({ showMobile, onClose }) => {
                                                     onClick={onClose}
                                                     className={({ isActive }) =>
                                                         `flex items-center gap-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all
-                                                        ${isActive ? 'text-black bg-yellow-400/80' : 'text-black hover:text-white hover:bg-white/10'}`
+                                                        ${isActive ? 'text-blue-700 bg-blue-50 border border-blue-100' : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'}`
                                                     }
                                                 >
                                                     <sub.icon size={11} className="shrink-0" />
@@ -234,54 +161,29 @@ const DistributorSidebar = ({ showMobile, onClose }) => {
                 </nav>
 
                 {/* Footer and Theme Picker */}
-                <div className="border-t border-black/10 p-3 space-y-4">
-                    {isHovered && (
-                        <div className="bg-black/5 rounded-xl p-3 space-y-2">
-                            <div className="flex items-center justify-between">
-                                <p className="text-[8px] font-black text-black uppercase tracking-widest flex items-center gap-1">
-                                    <Palette size={10} /> Theme Color
-                                </p>
-                                <input 
-                                    type="color" 
-                                    value={themeColor} 
-                                    onChange={(e) => setThemeColor(e.target.value)}
-                                    className="w-5 h-5 rounded cursor-pointer border-none bg-transparent"
-                                />
-                            </div>
-                        </div>
-                    )}
-                    
+                <div className="border-t border-slate-200 p-3 space-y-4">
                     <button
                         onClick={() => navigate('/dashboard')}
-                        className={`w-full flex items-center gap-2 text-black hover:bg-black/5 text-[9px] font-black uppercase tracking-widest transition-colors py-2 px-2 rounded-lg
-                            ${isHovered ? 'justify-start' : 'justify-center'}`}
+                        className={`w-full flex items-center gap-2 text-slate-700 hover:bg-slate-100 text-[9px] font-black uppercase tracking-widest transition-colors py-2 px-2 rounded-lg
+                            justify-start`}
                     >
                         <ArrowLeft size={14} className="shrink-0" />
-                        {isHovered && (
-                            <motion.span
-                                initial={{ opacity: 0, x: -6 }}
-                                animate={{ opacity: 1, x: 0 }}
-                            >
-                                Back to Retailer Panel
-                            </motion.span>
-                        )}
+                        <span>Back to Retailer Panel</span>
                     </button>
 
-                    {isHovered && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="bg-black/5 rounded-xl p-3 space-y-1"
-                        >
-                            <p className="text-[8px] font-black text-black uppercase tracking-widest">Customer Support</p>
-                            <div className="flex items-center gap-2 text-black text-[9px] font-bold">
-                                <Phone size={10} /> 0621-4008548
-                            </div>
-                            <div className="flex items-center gap-2 text-black text-[9px] font-bold">
-                                <Smartphone size={10} /> 7004128310
-                            </div>
-                        </motion.div>
-                    )}
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="bg-slate-50 rounded-xl p-3 space-y-1 border border-slate-200"
+                    >
+                        <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Customer Support</p>
+                        <div className="flex items-center gap-2 text-slate-700 text-[9px] font-bold">
+                            <Phone size={10} /> 0621-4008548
+                        </div>
+                        <div className="flex items-center gap-2 text-slate-700 text-[9px] font-bold">
+                            <Smartphone size={10} /> 7004128310
+                        </div>
+                    </motion.div>
                 </div>
             </motion.aside>
         </>

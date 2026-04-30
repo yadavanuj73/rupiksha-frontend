@@ -17,7 +17,7 @@ import superDistributorChar from '../assets/super_distributor_magnet_3d.png';
 import { dataService, BACKEND_URL } from '../services/dataService';
 import { otpService } from '../services/apiService';
 import DistributorLogin from '../distributor/components/DistributorLogin';
-import SuperAdminLogin from '../superadmin/components/SuperAdminLogin';
+import SuperDistributorLogin from '../super-distributor/components/SuperDistributorLogin';
 import RetailerLogin from '../retailer/components/RetailerLogin';
 
 const INDIAN_STATES = [
@@ -55,7 +55,7 @@ const TRANSLATIONS = {
         dob_label: "Date of Birth",
         dob_note: "Note: Enter the Date of Birth as per RUPIKSHA record. Format should be DD/MM/YYYY",
         get_app: "GET RUPIKSHA APP",
-        rights: "© RuPiKsha Digital Services Private Limited | All rights reserved.",
+        rights: "Â© RuPiKsha Digital Services Private Limited | All rights reserved.",
         chat_with_us: "CHAT WITH US NOW!",
         english: "English",
         hindi: "Hindi",
@@ -101,7 +101,7 @@ const TRANSLATIONS = {
         dob_label: "???? ????",
         dob_note: "???: ???????? ??????? ?? ?????? ???? ???? ???? ????? ??????? DD/MM/YYYY ???? ?????",
         get_app: "???????? ?? ??????? ????",
-        rights: "© ???????? ?????? ???????? ???????? ??????? | ?????????? ?????????",
+        rights: "Â© ???????? ?????? ???????? ???????? ??????? | ?????????? ?????????",
         chat_with_us: "??? ???? ??? ????!",
         english: "English",
         hindi: "?????",
@@ -148,6 +148,15 @@ const Login = () => {
     // const [lang, setLang] = useState('en'); // Removed local state
     const [showLangMenu, setShowLangMenu] = useState(false);
     const { setUser, setIsLocked } = useAuth();
+
+    // NOTE: we intentionally do NOT auto-forward already-authenticated users
+    // from this page to their dashboard. /login and /portal are explicit
+    // *chooser* URLs — users click "Portal Login" from the landing page or
+    // the nav bar when they want to pick a portal or sign in as a different
+    // account. Auto-forwarding here caused clicks on "Portal Login" to bounce
+    // straight to (e.g.) /distributor because the previous session was still
+    // active. SmartFallback in App.jsx still handles the "unknown URL while
+    // logged in" case, so this is safe.
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [loginStep, setLoginStep] = useState('credentials'); // 'credentials', 'otp'
@@ -212,8 +221,8 @@ const Login = () => {
                         setIsLocked(false);
                         const role = logRes.user?.role;
                         if (role === 'DISTRIBUTOR') navigate('/distributor');
-                        else if (role === 'SUPER_DISTRIBUTOR' || role === 'SUPERADMIN') navigate('/superadmin');
-                        else if (['ADMIN', 'SUPERADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(role)) navigate('/admin');
+                        else if (role === 'SUPER_DISTRIBUTOR') navigate('/super-distributor');
+                        else if (['ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(role)) navigate('/admin');
                         else navigate('/dashboard');
                     } else {
                         alert(logRes.message || t('cred_error'));
@@ -251,8 +260,8 @@ const Login = () => {
 
                         const role = verifiedUser.role;
                         if (role === 'DISTRIBUTOR') navigate('/distributor');
-                        else if (role === 'SUPER_DISTRIBUTOR' || role === 'SUPERADMIN') navigate('/superadmin');
-                        else if (['ADMIN', 'SUPERADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(role)) navigate('/admin');
+                        else if (role === 'SUPER_DISTRIBUTOR') navigate('/super-distributor');
+                        else if (['ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(role)) navigate('/admin');
                         else navigate('/dashboard');
                     } else {
                         alert(data.message || "Verification failed.");
@@ -402,7 +411,7 @@ const Login = () => {
                                 borderColor: 'rgba(251, 191, 36, 0.6)',
                             }}
                             className="bg-amber-600/10 backdrop-blur-[40px] rounded-[2.5rem] overflow-hidden border border-amber-200/50 flex flex-col h-auto min-h-[280px] md:min-h-[320px] shadow-[0_40px_100px_rgba(234,88,12,0.05)] transition-all duration-700 group cursor-pointer relative"
-                            onClick={() => setPortal('distributor')} // Assuming it uses distributor login logic for now
+                            onClick={() => setPortal('SUPER_DISTRIBUTOR')}
                         >
                             <div className="flex-1 p-4 flex items-center justify-center bg-amber-50/30 group-hover:bg-transparent transition-colors duration-700">
                                 <img src={superDistributorChar} alt="Super Distributor" className="h-24 md:h-28 object-contain group-hover:scale-110 transition-transform duration-1000 drop-shadow-xl" />
@@ -425,7 +434,7 @@ const Login = () => {
     // -- Distributor Login Screen ---------------------------------------------
     if (portal === 'distributor') {
         return (
-            <div className="h-screen bg-white flex flex-col font-['Outfit',sans-serif] overflow-hidden">
+            <div className="min-h-screen bg-white flex flex-col font-['Outfit',sans-serif]">
                 <header className="bg-white/80 backdrop-blur-md px-6 md:px-12 py-3 flex items-center justify-between shadow-sm sticky top-0 z-50 border-b border-slate-100">
                     <motion.div
                         initial={{ opacity: 0, x: -20 }}
@@ -456,13 +465,13 @@ const Login = () => {
                     </div>
                 </header>
 
-                <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
+                <main className="flex-1 flex flex-col md:flex-row">
                     {/* Left: Login Form */}
-                    <div className="w-full md:w-1/2 lg:w-[40%] p-6 md:p-12 flex flex-col items-center justify-center bg-amber-100 h-full">
+                    <div className="w-full md:w-1/2 lg:w-[40%] p-6 md:p-12 flex flex-col items-center justify-center bg-amber-100">
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="w-full max-w-[420px] space-y-4 md:space-y-6"
+                            className="w-full max-w-[420px] space-y-4 md:space-y-6 py-6"
                         >
                             <div className="space-y-2">
                                 <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
@@ -527,10 +536,10 @@ const Login = () => {
         );
     }
 
-    // -- SuperAdmin Login Screen ---------------------------------------------
-    if (portal === 'superadmin') {
+    // -- SUPER_DISTRIBUTOR Login Screen ---------------------------------------------
+    if (portal === 'SUPER_DISTRIBUTOR') {
         return (
-            <div className="h-screen bg-white flex flex-col font-['Outfit',sans-serif] overflow-hidden">
+            <div className="min-h-screen bg-white flex flex-col font-['Outfit',sans-serif]">
                 <header className="bg-white/80 backdrop-blur-md px-6 md:px-12 py-3 flex items-center justify-between shadow-sm sticky top-0 z-50 border-b border-slate-100">
                     <motion.div
                         initial={{ opacity: 0, x: -20 }}
@@ -561,13 +570,13 @@ const Login = () => {
                     </div>
                 </header>
 
-                <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
+                <main className="flex-1 flex flex-col md:flex-row">
                     {/* Left: Login Form */}
-                    <div className="w-full md:w-1/2 lg:w-[40%] p-6 md:p-12 flex flex-col items-center justify-center bg-amber-100 h-full">
+                    <div className="w-full md:w-1/2 lg:w-[40%] p-6 md:p-12 flex flex-col items-center justify-center bg-amber-100">
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="w-full max-w-[420px] space-y-4 md:space-y-6"
+                            className="w-full max-w-[420px] space-y-4 md:space-y-6 py-6"
                         >
                             <div className="space-y-2">
                                 <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
@@ -580,7 +589,7 @@ const Login = () => {
                                     <span className="text-white text-[10px] font-black uppercase tracking-[0.2em]">Master Login</span>
                                 </div>
                                 <div className="p-6 md:p-10">
-                                    <SuperAdminLogin />
+                                    <SuperDistributorLogin />
                                 </div>
                             </div>
                         </motion.div>
@@ -635,7 +644,7 @@ const Login = () => {
 
     // -- Retailer Portal (Default / portal === 'retailer') ----------------------
     return (
-        <div className="h-screen bg-white flex flex-col font-['Outfit',sans-serif] overflow-hidden">
+        <div className="min-h-screen bg-white flex flex-col font-['Outfit',sans-serif]">
             <header className="bg-white/80 backdrop-blur-md px-6 md:px-12 py-3 flex items-center justify-between shadow-sm sticky top-0 z-50 border-b border-slate-100">
                 <motion.div
                     initial={{ opacity: 0, x: -20 }}
@@ -666,13 +675,13 @@ const Login = () => {
                 </div>
             </header>
 
-            <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
+            <main className="flex-1 flex flex-col md:flex-row">
                 {/* Left: Login Form */}
-                <div className="w-full md:w-1/2 lg:w-[40%] p-6 md:p-12 flex flex-col items-center justify-center bg-amber-100 h-full">
+                <div className="w-full md:w-1/2 lg:w-[40%] p-6 md:p-12 flex flex-col items-center justify-center bg-amber-100">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="w-full max-w-[420px] space-y-4 md:space-y-6"
+                        className="w-full max-w-[420px] space-y-4 md:space-y-6 py-6"
                     >
                         <div className="space-y-2">
                             <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">

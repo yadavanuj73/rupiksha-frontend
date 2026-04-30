@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Monitor, Plus, Users, Bell, Menu, LogOut, ChevronDown, Wallet, User } from 'lucide-react';
+import { Plus, Bell, Menu, LogOut, ChevronDown, Wallet, User, BadgeCheck, Clock3, OctagonAlert } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { sharedDataService } from '../../services/sharedDataService';
+import logo from '../../assets/rupiksha_new_logo.png';
 
 const DistributorTopBar = ({ onMenuClick }) => {
     const navigate = useNavigate();
@@ -42,6 +43,13 @@ const DistributorTopBar = ({ onMenuClick }) => {
     const initials = (dist?.name || 'D').charAt(0).toUpperCase();
     const walletBal = dist?.wallet?.balance || '0.00';
     const distName = dist?.name || 'Distributor';
+    const rawKyc = String(dist?.kycStatus || dist?.profile_kyc_status || '').toUpperCase();
+    const kycChip = rawKyc === 'APPROVED' || rawKyc === 'DONE'
+        ? { label: 'Approved', className: 'bg-emerald-50 border-emerald-200 text-emerald-700', icon: BadgeCheck }
+        : rawKyc === 'REJECTED'
+            ? { label: 'Rejected', className: 'bg-rose-50 border-rose-200 text-rose-700', icon: OctagonAlert }
+            : { label: 'Pending', className: 'bg-amber-50 border-amber-200 text-amber-700', icon: Clock3 };
+    const KycIcon = kycChip.icon;
 
     const notifications = [
         { msg: 'New retailer registration pending approval', time: '2 min ago', dot: 'bg-amber-400' },
@@ -50,19 +58,32 @@ const DistributorTopBar = ({ onMenuClick }) => {
     ];
 
     return (
-        <header className="h-16 bg-white border-b border-slate-100 shadow-sm flex items-center justify-between px-4 md:px-6 shrink-0 z-40">
+        <header className="fixed top-0 left-0 right-0 h-[76px] bg-white border-b border-slate-200 shadow-sm flex items-center justify-between px-3 md:px-5 shrink-0 z-[60]">
 
             {/* Left */}
             <div className="flex items-center gap-3">
                 <button onClick={onMenuClick}
-                    className="lg:hidden p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors">
+                    className="lg:hidden p-2 rounded-xl hover:bg-slate-100 text-slate-700 transition-colors">
                     <Menu size={20} />
+                </button>
+                <button onClick={() => navigate('/distributor')} className="flex items-center gap-2.5">
+                    <div className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center shadow-sm">
+                        <img src={logo} alt="Rupiksha logo" className="h-8 w-8 object-contain" />
+                    </div>
+                    <div className="hidden sm:block">
+                        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-600">Rupiksha Fintech</p>
+                        <p className="text-slate-800 text-[13px] font-black tracking-wide">Distributor Command Center</p>
+                    </div>
                 </button>
 
             </div>
 
             {/* Right */}
             <div className="flex items-center gap-2">
+                <div className={`hidden sm:flex items-center gap-1.5 border rounded-full px-2.5 py-1 ${kycChip.className}`}>
+                    <KycIcon size={12} />
+                    <span className="text-[9px] font-black uppercase tracking-[0.15em]">KYC {kycChip.label}</span>
+                </div>
 
 
 
@@ -82,7 +103,7 @@ const DistributorTopBar = ({ onMenuClick }) => {
                 {/* Notifications */}
                 <div className="relative" ref={notifRef}>
                     <button onClick={() => setShowNotif(v => !v)}
-                        className="relative p-2 rounded-xl text-slate-500 hover:text-amber-600 hover:bg-amber-50 transition-all">
+                        className="relative p-2 rounded-xl text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-all">
                         <Bell size={18} />
                         <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white" />
                     </button>

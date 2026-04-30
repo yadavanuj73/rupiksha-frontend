@@ -1,6 +1,5 @@
-import { createContext, useContext, useState, useEffect } from "react";
+﻿import { createContext, useContext, useState, useEffect } from "react";
 import { dataService } from "../services/dataService";
-import io from "socket.io-client";
 
 const AuthContext = createContext({
   user: null,
@@ -22,6 +21,39 @@ const AuthContext = createContext({
 const LOCK_TIMEOUT = 15 * 60 * 1000; // 15 mins
 const LOGOUT_TIMEOUT = 120 * 60 * 1000; // 2 hours
 
+const ROLE_PRIORITY = [
+  "ADMIN",
+  "NATIONAL_HEADER",
+  "STATE_HEADER",
+  "REGIONAL_HEADER",
+  "EMPLOYEE",
+  "SUPER_DISTRIBUTOR",
+  "DISTRIBUTOR",
+  "RETAILER",
+];
+
+const normalizeRoleValue = (raw) =>
+  String(typeof raw === "string" ? raw : raw?.name || "")
+    .trim()
+    .replace(/^ROLE_/i, "")
+    .replace(/[\s-]+/g, "_")
+    .toUpperCase();
+
+const normalizeUserSession = (rawUser) => {
+  if (!rawUser || typeof rawUser !== "object") return null;
+  const roles = Array.isArray(rawUser.roles)
+    ? rawUser.roles.map(normalizeRoleValue).filter(Boolean)
+    : [];
+  const role = normalizeRoleValue(rawUser.role);
+  const allRoles = Array.from(new Set([...(roles || []), ...(role ? [role] : [])]));
+  const preferred = ROLE_PRIORITY.find((r) => allRoles.includes(r)) || allRoles[0] || "RETAILER";
+  return {
+    ...rawUser,
+    roles: allRoles.length ? allRoles : [preferred],
+    role: preferred,
+  };
+};
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [permissions, setPermissions] = useState([]);
@@ -29,8 +61,6 @@ export function AuthProvider({ children }) {
   const [isLocked, setIsLocked] = useState(false);
   const [lockTimeLeft, setLockTimeLeft] = useState(LOCK_TIMEOUT);
   const [logoutTimeLeft, setLogoutTimeLeft] = useState(LOGOUT_TIMEOUT);
-  const [socket, setSocket] = useState(null);
-
   // Load user on start
   useEffect(() => {
     const token = localStorage.getItem("rupiksha_token");
@@ -39,7 +69,11 @@ export function AuthProvider({ children }) {
 
     if (token && savedUser) {
       try {
-        const parsedUser = JSON.parse(savedUser);
+        const parsedUser = normalizeUserSession(JSON.parse(savedUser));
+        if (!parsedUser) {
+          logout();
+          return;
+        }
         setUser(parsedUser);
         setPermissions(parsedUser.permissions || []);
 
@@ -51,7 +85,7 @@ export function AuthProvider({ children }) {
             logout();
           } else if (elapsed >= LOCK_TIMEOUT) {
             // No lock for admin/employee roles and Retailers
-            const isExempt = ['ADMIN', 'DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'SUPERADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE', 'RETAILER'].includes(parsedUser.role);
+            const isExempt = ['ADMIN', 'DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE', 'RETAILER'].includes(parsedUser.role);
             if (!isExempt) {
               setIsLocked(true);
             }
@@ -64,30 +98,11 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
-  // Socket setup
-  useEffect(() => {
-    if (user) {
-      const newSocket = io(window.location.origin.includes('localhost') ? 'http://localhost:5008' : window.location.origin);
-      setSocket(newSocket);
-
-      newSocket.on("connect", () => {
-        newSocket.emit("join", user.id);
-        if (['ADMIN', 'SUPERADMIN'].includes(user.role)) {
-            newSocket.emit("join_admin");
-        }
-      });
-
-      newSocket.on("update", (data) => {
-        console.log("Real-time update received:", data);
-        // Refresh local data
-        dataService.refreshData().then(() => {
-            window.dispatchEvent(new CustomEvent('dataUpdated'));
-        });
-      });
-
-      return () => newSocket.close();
-    }
-  }, [user]);
+  // NOTE: socket.io live-updates stub removed. The Java backend does not expose
+  // a socket.io server, so the previous io() connection always failed and printed
+  // repeated connection errors in the browser console. If real-time updates are
+  // needed later, add a /ws endpoint in the Java backend and reintroduce this
+  // client connection.
 
   // Update last activity on interaction
   useEffect(() => {
@@ -119,7 +134,7 @@ export function AuthProvider({ children }) {
         logout();
       } else if (diff >= LOCK_TIMEOUT && !isLocked) {
         // No auto-lock for admin/employee roles and Retailers
-        const isExempt = ['ADMIN', 'DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'SUPERADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE', 'RETAILER'].includes(user.role);
+        const isExempt = ['ADMIN', 'DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE', 'RETAILER'].includes(user.role);
         if (!isExempt) {
           setIsLocked(true);
         }
@@ -134,15 +149,20 @@ export function AuthProvider({ children }) {
     };
   }, [user, isLocked]);
 
-  const login = async (username, password) => {
+  const login = async (username, password, expectedPortalRole = null) => {
     try {
-      const res = await dataService.loginUser(username, password);
+      const res = await dataService.loginUser(username, password, null, expectedPortalRole);
       if (res.success) {
-        setUser(res.user);
-        setPermissions(res.user.permissions || []);
+        const normalized = normalizeUserSession(res.user);
+        if (!normalized) {
+          return { success: false, message: "Session normalization failed." };
+        }
+        localStorage.setItem("rupiksha_user", JSON.stringify(normalized));
+        setUser(normalized);
+        setPermissions(normalized.permissions || []);
 
         // No lock screen for admin/employee roles and Retailers
-        const isExempt = ['ADMIN', 'DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'SUPERADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE', 'RETAILER'].includes(res.user.role);
+        const isExempt = ['ADMIN', 'DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE', 'RETAILER'].includes(normalized.role);
         setIsLocked(!isExempt);
 
         localStorage.setItem("last_activity", Date.now().toString());

@@ -8,9 +8,20 @@ import { initSpeech, speak, announceProcessing, announceGrandSuccess, announceWa
 import { dataService } from '../../services/dataService';
 import { MapPin } from 'lucide-react';
 import { useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const NAVY = '#0f2557';
 const NAVY3 = '#2257a8';
+
+const BANKING_QUICK_LINKS = [
+    { id: 'aeps_services', label: 'AEPS Services', route: '/aeps' },
+    { id: 'cms', label: 'CMS - Loan EMI', route: '/cms' },
+    { id: 'matm', label: 'MATM', route: '/matm' },
+    { id: 'add_money', label: 'Add Money', route: '/add-money' },
+    { id: 'quick_mr', label: 'Quick MR', route: '/matm' },
+    { id: 'ybl_mr', label: 'YBL MR', route: '/travel' },
+    { id: 'pw_money_ekyc', label: 'PW Money QMR eKYC', route: '/aeps-kyc' },
+];
 
 const Icon3D = ({ icon: Icon, color, size = 48, shadow }) => (
     <div className="flex items-center justify-center rounded-2xl" style={{
@@ -31,6 +42,8 @@ const CMS = () => {
     const [showSuccess, setShowSuccess] = useState(false);
     const [user, setUser] = useState(null);
     const [location, setLocation] = useState({ lat: '...', long: '...' });
+    const navigate = useNavigate();
+    const currentPath = useLocation().pathname;
 
     useEffect(() => {
         const currentUser = dataService.getCurrentUser();
@@ -110,6 +123,25 @@ const CMS = () => {
                             <BellRing size={12} /> Voice
                         </button>
                     </div>
+                </div>
+
+                <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                    {BANKING_QUICK_LINKS.map((item) => {
+                        const isCurrent = currentPath === item.route;
+                        return (
+                            <button
+                                key={item.id}
+                                onClick={() => navigate(item.route)}
+                                className={`px-3 py-2 rounded-lg border text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${
+                                    isCurrent
+                                        ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                        : 'bg-white text-slate-500 border-slate-200 hover:border-indigo-300 hover:text-indigo-700'
+                                }`}
+                            >
+                                {item.label}
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 

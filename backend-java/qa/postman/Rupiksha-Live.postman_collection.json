@@ -1,0 +1,112 @@
+{
+  "info": {
+    "name": "Rupiksha Live APIs",
+    "_postman_id": "8bd10ad6-9c8b-4be8-8ed0-41a6a982de22",
+    "description": "Auth, OTP, Wallet, Payment, Recharge, Transfer, Admin APIs for Java backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "request": { "method": "GET", "url": "{{baseUrl}}/health" }
+    },
+    {
+      "name": "Auth - Register",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"retailer_demo\",\n  \"mobile\": \"9999999000\",\n  \"email\": \"retailer_demo@example.com\",\n  \"fullName\": \"Retailer Demo\",\n  \"password\": \"Retailer@123\",\n  \"role\": \"RETAILER\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/register"
+      }
+    },
+    {
+      "name": "Auth - Login",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"Admin@123\"\n}" },
+        "url": "{{baseUrl}}/auth/login"
+      }
+    },
+    {
+      "name": "OTP - Send",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"mobile\": \"9999999000\"\n}" },
+        "url": "{{baseUrl}}/otp/send"
+      }
+    },
+    {
+      "name": "OTP - Verify",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"mobile\": \"9999999000\",\n  \"otp\": \"123456\"\n}" },
+        "url": "{{baseUrl}}/otp/verify"
+      }
+    },
+    {
+      "name": "Payment - Create Order",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"amount\": 100,\n  \"customer_id\": \"admin\",\n  \"purpose\": \"WALLET_TOPUP\"\n}" },
+        "url": "{{baseUrl}}/create-order"
+      }
+    },
+    {
+      "name": "Payment - Verify Signature",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"razorpay_order_id\": \"order_xxx\",\n  \"razorpay_payment_id\": \"pay_xxx\",\n  \"razorpay_signature\": \"signature\"\n}"
+        },
+        "url": "{{baseUrl}}/verify-payment"
+      }
+    },
+    {
+      "name": "Payment - Razorpay Webhook",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "x-razorpay-signature", "value": "replace_with_real_signature" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"event\": \"payment.captured\",\n  \"payload\": {\n    \"payment\": {\n      \"entity\": {\n        \"order_id\": \"order_xxx\",\n        \"status\": \"captured\"\n      }\n    }\n  }\n}" },
+        "url": "{{baseUrl}}/payment/webhook/razorpay"
+      }
+    },
+    {
+      "name": "Recharge - Mobile",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"mobile\": \"9999999000\",\n  \"operator\": \"JIO\",\n  \"amount\": 10\n}" },
+        "url": "{{baseUrl}}/recharge"
+      }
+    },
+    {
+      "name": "Transfer - DMT",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"beneficiaryName\": \"Test Beneficiary\",\n  \"accountNumber\": \"1234567890\",\n  \"ifsc\": \"HDFC0001234\",\n  \"amount\": 50\n}"
+        },
+        "url": "{{baseUrl}}/transfer"
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080/api/v1" },
+    { "key": "userId", "value": "replace-with-valid-uuid" }
+  ]
+}
+

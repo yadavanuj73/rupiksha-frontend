@@ -4,15 +4,13 @@ import {
     LayoutGrid, Plane, Smartphone, HandCoins, FileText,
     Fingerprint, Calculator, Zap, Lightbulb, Landmark, Headset,
     FileChartColumn, CreditCard, ScanFace, ChevronRight, ChevronDown,
-    Building2, Handshake, Home, Coins, Shield
+    Handshake, Home, Coins, Shield
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import mainLogo from '../../assets/rupiksha_logo.png';
 import { dataService } from '../../services/dataService';
 const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
     const { t } = useLanguage();
-    const [expandedItems, setExpandedItems] = useState({ banking: false, travel: false, reports: false });
-    const [isHovered, setIsHovered] = useState(false);
+    const [expandedItems, setExpandedItems] = useState({ travel: false, reports: false });
     const [appData, setAppData] = useState(dataService.getData());
 
     useEffect(() => {
@@ -21,33 +19,13 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
         return () => window.removeEventListener('dataUpdated', updateData);
     }, []);
 
-    const toggleExpand = (id) => {
-        if (!isHovered) return; // Don't expand submenus if sidebar is collapsed
-        setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }));
-    };
+    const toggleExpand = (id) => setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }));
 
     // Professional, clean colors.
 
     const serviceItems = [
-        {
-            id: 'banking',
-            label: 'Banking Hub',
-            icon: Landmark,
-            hasSubmenu: true,
-            subItems: [
-                { id: 'aeps_services', label: 'AEPS Services' },
-                { id: 'cms', label: 'CMS – Loan EMI' },
-                { id: 'matm', label: 'MATM' },
-                { id: 'add_money', label: 'Add Money' },
-                { id: 'quick_mr', label: 'Quick Mr' },
-                { id: 'ybl_mr', label: 'YBL MR' },
-                { id: 'pw_money_ekyc', label: 'PW Money QMR EKYC' },
-            ]
-        },
-
         { id: 'travel', label: 'Travel Hub', icon: Plane },
         { id: 'utility', label: 'Utility Hub', icon: Zap },
-        { id: 'bharat_connect', label: 'Bharat Connect', icon: Building2 },
         { id: 'payout', label: 'Payout Hub', icon: HandCoins },
         {
             id: 'loans',
@@ -109,58 +87,48 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
                             onClick();
                         }
                     }}
-                    className={`flex items-center ${isHovered ? 'justify-between' : 'justify-center'} px-3 py-2.5 my-1.5 cursor-pointer group transition-all duration-300 rounded-xl relative`}
-                    style={{ color: isActive ? 'var(--on-primary-color)' : 'var(--on-primary-color-60)' }}
+                    className="flex items-center justify-between px-3 py-2.5 my-1.5 cursor-pointer group transition-all duration-300 rounded-xl relative"
+                    style={{ color: isActive ? '#ffffff' : '#334155' }}
                 >
-                    {/* Floating Background */}
                     {isActive && (
                         <motion.div
                             layoutId="active-pill"
-                            className="absolute inset-0 bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg rounded-xl z-0"
+                            className="absolute inset-0 bg-blue-600 border border-blue-600 shadow-lg rounded-xl z-0"
                             transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                         />
                     )}
 
                     <div className="flex items-center space-x-3 relative z-10 w-full">
-                        <div className={`transition-all duration-300 ${isActive ? 'scale-110' : ''}`} style={{ color: isActive ? 'var(--on-primary-color)' : 'var(--on-primary-color-60)' }}>
+                        <div className={`transition-all duration-300 ${isActive ? 'scale-110' : ''}`} style={{ color: isActive ? '#ffffff' : '#334155' }}>
                             <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
                         </div>
-                        {isHovered && (
-                            <motion.span
-                                initial={{ opacity: 0, x: -5 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                className="font-bold text-[13.5px] tracking-tight"
-                                style={{ color: isActive ? 'var(--on-primary-color)' : 'var(--on-primary-color-60)' }}
-                            >
-                                {item.label}
-                            </motion.span>
+                        <span className="font-bold text-[13.5px] tracking-tight" style={{ color: isActive ? '#ffffff' : '#334155' }}>
+                            {item.label}
+                        </span>
+                    </div>
+                    <div className="relative z-10">
+                        {item.hasSubmenu ? (
+                            <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : 'rotate-0'}`}>
+                                <ChevronDown size={14} style={{ color: isActive ? '#ffffff' : '#94a3b8' }} />
+                            </div>
+                        ) : isActive && !item.hasSubmenu && (
+                            <motion.div
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.4)]"
+                            />
                         )}
                     </div>
-                    {isHovered && (
-                        <div className="relative z-10">
-                            {item.hasSubmenu ? (
-                                <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : 'rotate-0'}`}>
-                                    <ChevronDown size={14} style={{ color: isActive ? 'var(--on-primary-color)' : 'var(--on-primary-color-40)' }} />
-                                </div>
-                            ) : isActive && !item.hasSubmenu && (
-                                <motion.div 
-                                    initial={{ scale: 0, opacity: 0 }}
-                                    animate={{ scale: 1, opacity: 1 }}
-                                    className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-                                />
-                            )}
-                        </div>
-                    )}
                 </motion.div>
 
                 {/* Submenu */}
                 <AnimatePresence>
-                    {item.hasSubmenu && isExpanded && isHovered && (
+                    {item.hasSubmenu && isExpanded && (
                         <motion.div
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
-                            className="ml-9 border-l border-slate-100 overflow-hidden"
+                            className="ml-9 border-l border-slate-200 overflow-hidden"
                         >
                             {item.subItems.map((sub, idx) => {
                                 const isSubActive = activeTab === sub.id;
@@ -182,17 +150,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
                                         }}
                                         className="block px-4 py-2 text-[11px] font-black uppercase tracking-widest transition-all rounded-lg"
                                         style={{ 
-                                            color: isSubActive ? 'var(--on-primary-color)' : 'var(--on-primary-color-40)',
-                                            backgroundColor: isSubActive ? 'var(--on-primary-color-20)' : undefined
+                                            color: isSubActive ? '#1d4ed8' : '#64748b',
+                                            backgroundColor: isSubActive ? '#eff6ff' : undefined
                                         }}
                                     >
-                                        {isSubActive && (
-                                            <motion.div 
-                                                layoutId="active-sub-pill"
-                                                className="absolute inset-0 bg-blue-50/50 rounded-lg -z-10"
-                                            />
-                                        )}
-                                        {sub.label}
+                                                    {sub.label}
                                     </div>
                                 );
                             })}
@@ -213,25 +175,19 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
 
     return (
         <motion.div
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
             initial={false}
             animate={{
-                width: isHovered ? 260 : 88,
                 x: typeof window !== 'undefined' && window.innerWidth < 1024 ? (showMobileSidebar ? 0 : -260) : 0
             }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className={`fixed lg:relative flex-shrink-0 border-r border-slate-100 flex flex-col h-full font-['Inter',sans-serif] z-50 lg:z-20 transition-colors duration-500
+            className={`fixed top-0 left-0 w-64 flex-shrink-0 border-r border-slate-200 flex flex-col h-screen font-['Inter',sans-serif] z-50 transition-colors duration-500 lg:top-[76px] lg:h-[calc(100vh-76px)]
                 ${showMobileSidebar ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
-            style={{ backgroundColor: 'var(--primary-color)' }}
+            style={{ backgroundColor: '#f8fafc' }}
         >
             {/* Logo Area */}
-            <div className={`p-6 flex items-center ${isHovered ? 'justify-start' : 'justify-center'} h-20`}>
+            <div className="px-5 py-4 flex items-center justify-start h-[76px] border-b border-slate-200 lg:h-[64px] lg:mt-0">
                 <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 flex-shrink-0 flex items-center justify-center overflow-hidden brightness-0 invert opacity-80 hover:opacity-100 transition-all">
-                        <img src={mainLogo} alt="RUPIKSHA" className="h-full w-auto object-contain" />
-                    </div>
-                    {/* Brand Name Removed as per request */}
+                    <span className="text-[11px] font-black tracking-widest uppercase text-blue-700">Navigation</span>
                 </div>
             </div>
 
@@ -278,36 +234,10 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
                     ))}
                 </div>
                 
-                {/* CTA Card at bottom */}
-                {isHovered && (
-                    <div className="px-4 py-2 mt-auto">
-                        <div className="bg-emerald-600 rounded-2xl p-4 text-white relative overflow-hidden group">
-                           {/* BG Decoration */}
-                           <div className="absolute -right-4 -bottom-4 w-20 h-20 bg-emerald-500 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500" />
-                           <div className="absolute -left-4 -top-4 w-16 h-16 bg-emerald-400/20 rounded-full blur-xl" />
-                           
-                           <h4 className="font-bold text-sm mb-1.5 relative z-10">Maximize Profits</h4>
-                           <p className="text-[10px] text-emerald-50 mb-4 leading-relaxed relative z-10">Get real-time commission alerts and payout signals directly.</p>
-                           
-                           <button className="w-full bg-white text-emerald-600 font-bold text-[11px] py-2 rounded-xl shadow-lg shadow-emerald-900/10 hover:bg-emerald-50 transition-colors relative z-10">
-                               Notify Me
-                           </button>
-                           
-                           {/* Coins Illustration via CSS */}
-                           <div className="absolute right-2 bottom-6 opacity-30 pointer-events-none">
-                               <div className="relative w-12 h-12">
-                                   <div className="absolute top-0 right-0 w-8 h-8 rounded-full border-2 border-white/50" />
-                                   <div className="absolute bottom-0 left-0 w-6 h-6 rounded-full border-2 border-white/30" />
-                               </div>
-                           </div>
-                        </div>
-                    </div>
-                )}
             </div>
 
-            {/* Profile area - minimal like Nexus */}
-            <div className="p-4 border-t border-slate-50">
-                <div className={`flex items-center ${isHovered ? 'justify-between px-2' : 'justify-center'} py-1.5`}>
+            <div className="p-4 border-t border-slate-200">
+                <div className="flex items-center justify-between px-2 py-1.5">
                     <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100 overflow-hidden">
                             {currentUser?.profilePhoto ? (
@@ -316,14 +246,12 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
                                 <span className="text-[10px] font-bold text-slate-400">{getInitials()}</span>
                             )}
                         </div>
-                        {isHovered && (
-                            <div className="flex flex-col">
-                                <span className="text-xs font-bold text-slate-800 line-clamp-1">{currentUser?.businessName || 'Merchant'}</span>
-                                <span className="text-[10px] text-slate-400 font-medium">Retailer Account</span>
-                            </div>
-                        )}
+                        <div className="flex flex-col">
+                            <span className="text-xs font-bold text-slate-800 line-clamp-1">{currentUser?.businessName || 'Merchant'}</span>
+                            <span className="text-[10px] text-slate-400 font-medium">Retailer Account</span>
+                        </div>
                     </div>
-                    {isHovered && <ChevronRight size={14} className="text-slate-300" />}
+                    <ChevronRight size={14} className="text-slate-300" />
                 </div>
             </div>
         </motion.div>

@@ -13,7 +13,8 @@
     margin-top: 6vh;
     margin-bottom: 1vh;
     padding: 0 20px;
-    z-index: 200;
+    position: relative;
+    z-index: 1;
 }
 
 .slider-tag {
@@ -57,8 +58,9 @@
 
 /* Base item styles */
 .item {
-    position: absolute;
-    top: 0;
+    position: relative;
+    top: auto;
+    left: auto;
     border-radius: 40px;
     padding: 50px 45px;
     display: flex;
@@ -98,7 +100,6 @@
     .item {
         width: min(340px, 88vw) !important;
         height: min(420px, 48vh) !important;
-        left: calc(50% - min(170px, 44vw)) !important;
         padding: 32px 24px;
     }
 }

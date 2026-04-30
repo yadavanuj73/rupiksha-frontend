@@ -175,7 +175,7 @@ function ActivityFeed({ transactions, localUsers }) {
             {allTxns.map((txn, i) => {
                 const status = (txn.status || 'PENDING').toUpperCase();
                 const statusColor = TXN_STATUS_COLOR[status] || '#64748b';
-                const statusIcon = TXN_STATUS_ICON[status] || '❓';
+                const statusIcon = TXN_STATUS_ICON[status] || 'â“';
                 return (
                     <div key={txn.id || i} style={{
                         minWidth: 190, flexShrink: 0,
@@ -197,7 +197,7 @@ function ActivityFeed({ transactions, localUsers }) {
                             ₹{fmt(txn.amount)}
                         </div>
                         {txn.operator && (
-                            <div style={{ fontSize: 10, color: '#94a3b8' }}>{txn.operator} · {txn.number}</div>
+                            <div style={{ fontSize: 10, color: '#94a3b8' }}>{txn.operator} Â· {txn.number}</div>
                         )}
                         <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 4 }}>
                             {txn.created_at ? new Date(txn.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : ''}
@@ -215,13 +215,13 @@ function MetricChange({ current, previous }) {
     const up = diff > 0;
     return (
         <span style={{ fontSize: 10, fontWeight: 700, color: up ? '#16a34a' : '#ef4444', marginLeft: 4 }}>
-            {up ? '▲' : '▼'}{Math.abs(diff).toLocaleString('en-IN')}
+            {up ? 'â–²' : 'â–¼'}{Math.abs(diff).toLocaleString('en-IN')}
         </span>
     );
 }
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
-const LiveDashboard = ({ data: parentData, distributors: parentDists, superadmins: parentSAs }) => {
+const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistributors: parentSAs }) => {
     const [liveData, setLiveData] = useState(emptyData());
     const [prevData, setPrevData] = useState(null);
     const [connected, setConnected] = useState(false);
@@ -420,7 +420,7 @@ const LiveDashboard = ({ data: parentData, distributors: parentDists, superadmin
                         <div>
                             <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>{label}</div>
                             <div style={{ fontSize: 28, fontWeight: 900, color, letterSpacing: -1 }}>{count}</div>
-                            <div style={{ fontSize: 11, color: '#10b981', fontWeight: 700, marginTop: 2 }}>✓ {approved} Approved</div>
+                            <div style={{ fontSize: 11, color: '#10b981', fontWeight: 700, marginTop: 2 }}>âœ“ {approved} Approved</div>
                         </div>
                         <div style={{
                             fontSize: 36, width: 56, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center',

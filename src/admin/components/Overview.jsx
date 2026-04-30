@@ -126,7 +126,7 @@ const ModuleCard = ({ id, label, icon: Icon, onClick, desc, badge }) => {
 
 
 // ── Overview Component ──────────────────────────────────────────────────────
-const Overview = ({ data = {}, distributors = [], superadmins = [], onNavigate }) => {
+const Overview = ({ data = {}, distributors = [], SuperDistributors = [], onNavigate }) => {
     const [animIn, setAnimIn] = useState(false);
 
     useEffect(() => {
@@ -135,7 +135,7 @@ const Overview = ({ data = {}, distributors = [], superadmins = [], onNavigate }
 
     // ── Data Processing ──────────────────────────────────────────────────────
     const retailers = data.users || [];
-    const allMembers = [...retailers, ...distributors, ...superadmins];
+    const allMembers = [...retailers, ...distributors, ...SuperDistributors];
     
     // Process chart data (last 5 days signups)
     const getSignupData = () => {

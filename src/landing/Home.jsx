@@ -1,8 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'framer-motion';
-import logo from '../assets/rupiksha_logo.png';
-import characterImg from '../assets/character-removebg-preview.png';
+import { motion } from 'framer-motion';
 import Footer from '../components/Footer';
 import Navbar from '../components/Navbar';
 import VerticalCardSlider from '../components/VerticalCardSlider';
@@ -194,13 +192,6 @@ const SERVICES = [
     },
 ];
 
-const STATS = [
-    { num: '100', label: 'Cities Covered', suffix: '+' },
-    { num: '50', label: 'Active Retailers', suffix: 'K+' },
-    { num: '200', label: 'Monthly Volume', prefix: '₹', suffix: 'Cr+' },
-    { num: '99.9', label: 'Uptime SLA', suffix: '%' },
-];
-
 const HOW = [
     { step: '01', color: '#2563eb', title: 'Register Now', desc: 'Sign up in under 2 minutes with your mobile number. No paperwork needed.' },
     { step: '02', color: '#16a34a', title: 'Get Approved', desc: 'Our team verifies your account and activates all financial services.' },
@@ -216,629 +207,177 @@ const ADVANTAGE = [
     { icon: '🏦', title: 'RBI Compliant', desc: 'Fully compliant with all RBI regulations and guidelines for digital payment services.', color: '#334155' },
 ];
 
-const FEATURES = [
-    { icon: '🔒', title: 'Bank-grade Security', desc: '256-bit SSL, RBI compliant & ISO certified.' },
-    { icon: '⚡', title: 'Instant Settlement', desc: 'T+0 settlement for high-volume partners.' },
-    { icon: '📊', title: 'Live Analytics', desc: 'Real-time dashboards & downloadable reports.' },
-    { icon: '🤝', title: 'Dedicated Support', desc: '24×7 helpdesk via call, chat & WhatsApp.' },
-    { icon: '🌐', title: 'Pan-India Network', desc: 'Operate from any state with our GST invoice.' },
-    { icon: '💡', title: 'Training Videos', desc: 'Step-by-step tutorials inside your portal.' },
-];
-
 /* ══════════════════════════════════════════════
    NAVBAR
 ══════════════════════════════════════════════ */
-/* ─────────────────────────────────────────────
-   Animated Counter component
-───────────────────────────────────────────── */
-function Counter({ end, duration = 2000, prefix = "", suffix = "" }) {
-    const [count, setCount] = useState(0);
-    const [ref, visible] = useInView(0.1);
-    const hasAnimated = useRef(false);
-
-    useEffect(() => {
-        if (visible && !hasAnimated.current) {
-            hasAnimated.current = true;
-            let startTime;
-            const endVal = parseFloat(end);
-
-            const animate = (timestamp) => {
-                if (!startTime) startTime = timestamp;
-                const progress = Math.min((timestamp - startTime) / duration, 1);
-
-                // Ease out expo
-                const easedProgress = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
-
-                setCount(easedProgress * endVal);
-
-                if (progress < 1) {
-                    requestAnimationFrame(animate);
-                }
-            };
-            requestAnimationFrame(animate);
-        }
-    }, [visible, end, duration]);
-
-    return (
-        <b ref={ref} className="rp-stat-num">
-            {prefix}{count.toLocaleString(undefined, {
-                minimumFractionDigits: end.includes('.') ? 1 : 0,
-                maximumFractionDigits: end.includes('.') ? 1 : 0,
-            })}{suffix}
-        </b>
-    );
-}
-
 /* ══════════════════════════════════════════════
    NAVBAR
    • Premium glass design
    • Improved mobile menu
 ══════════════════════════════════════════════ */
 
-/* ══════════════════════════════════════════════
-   HERO
-══════════════════════════════════════════════ */
-const HERO_VARIANTS = [
-    {
-        badge: "Easy Payment",
-        h1: <>Pay <span>fast and smarter</span><br />from anywhere</>,
-        sub: "Experience the future of payments: fast, secure, and tailored for the next generation's convenience and trust."
-    },
-    {
-        badge: "Secure Transactions",
-        h1: <>Banking <span>reimagined</span><br />for your life</>,
-        sub: "Your security is our priority. We use world-class encryption to keep your money and data safe at all times."
-    },
-    {
-        badge: "Next-Gen Fintech",
-        h1: <>One app <span>Infinite</span><br />possibilities</>,
-        sub: "Manage your finances, pay bills, and send money instantly. Everything you need is just a tap away."
-    }
-];
-
-const Hero = () => {
-    const navigate = useNavigate();
-    const [cur, setCur] = useState(0);
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
-
-    useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth < 900);
-        window.addEventListener('resize', handleResize);
-        const timer = setInterval(() => {
-            setCur(prev => (prev + 1) % HERO_VARIANTS.length);
-        }, 4000);
-        return () => {
-            window.removeEventListener('resize', handleResize);
-            clearInterval(timer);
-        };
-    }, []);
-
-    const content = HERO_VARIANTS[cur];
-
+function Services() {
     return (
-        <section className="rp-hero" id="hero">
-            <div className="rp-hero-bg">
-                <div className="rp-hero-bg__blob rp-hero-bg__blob--1" />
-                <div className="rp-hero-bg__blob--2 rp-hero-bg__blob" />
+        <section id="services" className="rp-services-section">
+            <SectionHead tag="Our Services" title="What We Offer" sub="Comprehensive financial solutions for your business" />
+            <div className="rp-services-intro">
+                <p>
+                    Launch banking, payments, utility, and document services from one platform.
+                    Each module is optimized for retailers and local operators.
+                </p>
             </div>
-
-            <div className="rp-hero__content">
-                <AnimatePresence mode="wait">
-                    <motion.div
-                        key={cur}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 20 }}
-                        transition={{ duration: 0.6, ease: "easeInOut" }}
+            <div className="rp-services-grid">
+                {SERVICES.map((s, i) => (
+                    <motion.article
+                        key={i}
+                        className="rp-service-showcase"
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true, amount: 0.2 }}
+                        transition={{ duration: 0.35, delay: i * 0.03 }}
+                        style={{
+                            background: s.grad,
+                            boxShadow: `0 20px 40px -10px ${s.glow}`,
+                        }}
                     >
-                        <div className="rp-hero__badge">{content.badge}</div>
-
-                        <h1 className="rp-hero__h1">
-                            {content.h1}
-                        </h1>
-
-                        <p className="rp-hero__sub">
-                            {content.sub}
-                        </p>
-                    </motion.div>
-                </AnimatePresence>
-
-                <div className="rp-hero__actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-                    <button className="rp-btn" style={{
-                        background: '#2563eb', color: '#fff', fontWeight: 800,
-                        padding: isMobile ? '12px 24px' : '16px 40px', borderRadius: '50px', fontSize: isMobile ? '0.9rem' : '1.1rem',
-                        boxShadow: '0 10px 25px rgba(37,99,235,0.2)',
-                    }} onClick={() => navigate('/portal')}>
-                        join now →
-                    </button>
-
-                    <div className="rp-hero__stores" style={{ display: 'flex', alignItems: 'center' }}>
-                        <div className="rp-store-btn" onClick={() => window.open('https://play.google.com/store/apps/details?id=com.rupiksha.services&pcampaignid=web_share', '_blank')} style={{ background: '#000', borderRadius: '12px', padding: isMobile ? '8px 16px' : '10px 20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <svg viewBox="0 0 24 24" fill="white" width="20" height="20"><path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.61 3,21.09 3,20.5M16.81,15.12L18.81,16.27C19.46,16.61 19.81,17.21 19.81,17.81C19.81,18.41 19.46,19.01 18.81,19.35L5.75,26.85C5.25,27.14 4.65,27.14 4.15,26.85L14.89,16.11L16.81,15.12M14.89,7.89L4.15,17.15L5.75,18.15L18.81,10.65C19.46,10.31 19.81,9.71 19.81,9.11C19.81,8.51 19.46,7.91 18.81,7.57L16.81,8.88L14.89,7.89Z" /></svg>
-                            <div className="rp-store-text">
-                                <small style={{ display: 'block', fontSize: '8px', opacity: 0.8 }}>GET IT ON</small>
-                                <b style={{ fontSize: '12px' }}>Google Play</b>
+                        <div className="rp-service-showcase__top">
+                            <span className="rp-service-showcase__tag">{s.tag}</span>
+                            <div className="rp-service-showcase__icon-wrap">
+                                {s.img ? (
+                                    <img src={s.img} alt={s.label} className="rp-service-showcase__image" />
+                                ) : (
+                                    <div className="rp-service-showcase__emoji">{s.emoji || '✦'}</div>
+                                )}
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            {!isMobile && (
-                <div className="rp-hero__visuals">
-                    <img
-                        src={characterImg}
-                        alt="Fintech"
-                        className="rp-hero__char"
-                    />
-                    <div className="rp-float-widget rp-float-widget--payment">
-                        <AnimatePresence mode="wait">
-                            <motion.div
-                                key={cur}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                className="rp-payment-card"
-                            >
-                                <h6>{cur === 0 ? "Retailers" : cur === 1 ? "Monthly Volume" : "Agents"}</h6>
-                                <h4>{cur === 0 ? "1000+" : cur === 1 ? "₹200Cr+" : "15,000+"}</h4>
-                            </motion.div>
-                        </AnimatePresence>
-                    </div>
-
-                    <div className="rp-float-widget rp-float-widget--users" style={{ top: '20%', right: '-19%' }}>
-                        <AnimatePresence mode="wait">
-                            <motion.div
-                                key={cur}
-                                initial={{ opacity: 0, x: 10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -10 }}
-                                className="rp-users-card"
-                            >
-                                <div style={{ background: '#ecfdf5', padding: '10px', borderRadius: '12px' }}>
-                                    <span style={{ fontSize: '1.2rem' }}>
-                                        {cur === 0 ? "⚡" : cur === 1 ? "🛡️" : "🛎️"}
-                                    </span>
+                        <p className="rp-service-showcase__subtitle">{s.subtitle}</p>
+                        <h3 className="rp-service-showcase__title">{s.label}</h3>
+                        <p className="rp-service-showcase__desc">{s.desc}</p>
+                        <div className="rp-service-showcase__features">
+                            {(s.features || []).slice(0, 4).map((f, fi) => (
+                                <div key={fi} className="rp-service-showcase__feature">
+                                    <span className="rp-service-showcase__check">✓</span>
+                                    <span>{f}</span>
                                 </div>
-                                <div>
-                                    <b style={{ fontSize: '14px', display: 'block', color: '#0f172a' }}>
-                                        {cur === 0 ? "99.9% Success" : cur === 1 ? "RBI Compliant" : "24/7 Support"}
-                                    </b>
-                                    <p style={{ fontSize: '10px', color: '#64748b', margin: 0 }}>
-                                        {cur === 0 ? "Reliable & Instant" : cur === 1 ? "Bank-grade Security" : "Dedicated Helpdesk"}
-                                    </p>
-                                </div>
-                            </motion.div>
-                        </AnimatePresence>
-                    </div>
-                </div>
-            )}
-        </section>
-    );
-};
-
-/* ══════════════════════════════════════════════
-   STATS
-══════════════════════════════════════════════ */
-function Stats() {
-    const [ref, visible] = useInView(0.12);
-    return (
-        <section ref={ref} className="rp-stats">
-            <div className="rp-stats__inner">
-                {STATS.map((s, i) => (
-                    <div key={i} className={`rp-stat-card ${visible ? 'stagger-item--visible' : ''}`} style={{ animationDelay: `${i * 150}ms` }}>
-                        <Counter end={s.num} prefix={s.prefix} suffix={s.suffix} />
-                        <p className="rp-stat-label">{s.label}</p>
-                    </div>
+                            ))}
+                        </div>
+                    </motion.article>
                 ))}
             </div>
         </section>
     );
 }
 
-function Services() {
-    const sectionRef = useRef(null);
-    const [activeIdx, setActiveIdx] = useState(0);
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 1100);
-
-    useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth < 1100);
-        window.addEventListener('resize', handleResize);
-
-        let ticking = false;
-        const onScroll = () => {
-            if (!ticking) {
-                requestAnimationFrame(() => {
-                    if (sectionRef.current && !isMobile) {
-                        const rect = sectionRef.current.getBoundingClientRect();
-                        const scrolled = -rect.top;
-                        const scrollable = rect.height - window.innerHeight;
-                        if (scrollable > 0) {
-                            const progress = Math.max(0, Math.min(1, scrolled / scrollable));
-                            const idx = Math.min(SERVICES.length - 1, Math.floor(progress * SERVICES.length));
-                            if (idx !== activeIdx) setActiveIdx(idx);
-                        }
-                    }
-                    ticking = false;
-                });
-                ticking = true;
-            }
-        };
-        window.addEventListener('scroll', onScroll, { passive: true });
-        return () => {
-            window.removeEventListener('scroll', onScroll);
-            window.removeEventListener('resize', handleResize);
-        };
-    }, [activeIdx, isMobile]);
-
-    const activeService = SERVICES[activeIdx] || SERVICES[0];
-
-    if (isMobile) {
-        return (
-            <section id="services" style={{ padding: '80px 5%', background: '#fff' }}>
-                <SectionHead tag="Our Services" title="What We Offer" sub="Comprehensive financial solutions for your business" />
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px', marginTop: '40px' }}>
-                    {SERVICES.map((s, i) => (
-                        <motion.div
-                            key={i}
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ delay: i * 0.05 }}
-                            style={{
-                                background: s.grad, padding: '32px 24px', borderRadius: '32px',
-                                color: '#fff', boxShadow: `0 20px 40px -10px ${s.glow}`,
-                                position: 'relative', overflow: 'hidden'
-                            }}
-                        >
-                            <div style={{ position: 'relative', zIndex: 2 }}>
-                                <span style={{
-                                    fontSize: '10px', fontVariant: 'small-caps', fontWeight: 800,
-                                    textTransform: 'uppercase', letterSpacing: '2px',
-                                    background: 'rgba(255,255,255,0.15)', padding: '6px 14px',
-                                    borderRadius: '50px', border: '1px solid rgba(255,255,255,0.2)'
-                                }}>{s.tag}</span>
-                                <h3 style={{ fontSize: '1.5rem', fontWeight: 900, marginTop: '20px', marginBottom: '12px', letterSpacing: '-0.5px' }}>{s.label}</h3>
-                                <p style={{ fontSize: '0.9rem', opacity: 0.9, lineHeight: 1.6, marginBottom: '16px' }}>{s.desc}</p>
-                            </div>
-
-                            <div style={{ position: 'relative', zIndex: 2, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '24px 0 32px 0' }}>
-                                <motion.div
-                                    style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}
-                                    animate={{ scale: [1, 1.1, 1], y: [0, -8, 0] }}
-                                    transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
-                                >
-                                    {s.img ? (
-                                        <img src={s.img} alt={s.label} style={{ height: '5rem', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 15px 25px rgba(0,0,0,0.3))' }} />
-                                    ) : (
-                                        <div style={{ fontSize: '4.5rem', textShadow: '0 15px 25px rgba(0,0,0,0.3)', lineHeight: 1 }}>{s.emoji || '✦'}</div>
-                                    )}
-                                </motion.div>
-                            </div>
-
-                            <div style={{ position: 'relative', zIndex: 2 }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-                                    {(s.features || []).slice(0, 4).map((f, fi) => (
-                                        <div key={fi} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', fontWeight: 500 }}>
-                                            <span style={{ color: '#4ade80', fontSize: '14px' }}>✓</span> {f}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </motion.div>
-                    ))}
-                </div>
-            </section>
-        );
-    }
-
-    return (
-        <section
-            ref={sectionRef}
-            id="services"
-            style={{
-                height: `${SERVICES.length * 100}vh`,
-                background: '#fff',
-                position: 'relative',
-            }}
-        >
-            <div style={{
-                position: 'sticky', top: 0,
-                height: '100vh', width: '100%',
-                background: '#fff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                zIndex: 10,
-            }}>
-                <div style={{
-                    width: '100%', maxWidth: 1280, height: '100%',
-                    display: 'flex', alignItems: 'center', gap: 'clamp(40px, 6vw, 80px)',
-                    padding: '80px 5% 40px', boxSizing: 'border-box',
-                }}>
-                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left' }}>
-                        <div>
-                            <span style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 6,
-                                background: '#0f172a', color: '#fff',
-                                fontSize: 11, fontWeight: 800,
-                                padding: '7px 16px', borderRadius: 999,
-                                letterSpacing: 1.5, textTransform: 'uppercase',
-                                marginBottom: 20,
-                            }}>✦ {activeService.tag}</span>
-
-                            <p style={{
-                                fontSize: 11, fontWeight: 800, letterSpacing: 3,
-                                textTransform: 'uppercase', color: '#94a3b8',
-                                marginBottom: 12,
-                            }}>{activeService.subtitle}</p>
-
-                            <h3 style={{
-                                fontSize: 'clamp(2.5rem,4vw,3.5rem)',
-                                fontWeight: 900, color: '#0f172a',
-                                lineHeight: 1.1, marginBottom: 16,
-                                letterSpacing: '-1.5px',
-                            }}>{activeService.label}</h3>
-
-                            <p style={{
-                                fontSize: '1.05rem', color: '#64748b',
-                                lineHeight: 1.8, marginBottom: 30,
-                                fontWeight: 400, maxWidth: '90%',
-                            }}>{activeService.desc}</p>
-                        </div>
-
-                        {activeService.features && (
-                            <div style={{ marginBottom: 32 }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 24px' }}>
-                                    {activeService.features.map((f, fi) => (
-                                        <div key={fi} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                            <span style={{
-                                                width: 18, height: 18, borderRadius: '50%',
-                                                background: 'linear-gradient(135deg,#22c55e,#16a34a)',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                fontSize: 10, color: '#fff', fontWeight: 900,
-                                            }}>✓</span>
-                                            <span style={{ fontSize: 13, color: '#334155', fontWeight: 500 }}>{f}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        <div style={{ display: 'flex', gap: 10, marginTop: 40 }}>
-                            {SERVICES.map((_, i) => (
-                                <div key={i} style={{
-                                    width: i === activeIdx ? 32 : 10, height: 10,
-                                    borderRadius: 999,
-                                    background: i === activeIdx ? '#2563eb' : '#e2e8f0',
-                                    transition: 'all 0.4s',
-                                }} />
-                            ))}
-                        </div>
-                    </div>
-
-                    <div style={{
-                        flex: '0 0 auto',
-                        width: 'clamp(380px, 35vw, 480px)',
-                        position: 'relative',
-                        height: 580,
-                    }}>
-                        {SERVICES.map((s, i) => {
-                            const offset = i - activeIdx;
-                            if (offset > 3 || offset < -1) return null;
-                            const isActive = offset === 0;
-                            const isPast = offset < 0;
-
-                            let translateY = offset * 25;
-                            let translateX = 0;
-                            let scale = 1 - Math.abs(offset) * 0.05;
-                            let opacity = 1 - Math.abs(offset) * 0.3;
-                            let rotate = offset * 2;
-
-                            if (isPast) {
-                                translateY = -150;
-                                opacity = 0;
-                                scale = 0.8;
-                            }
-
-                            return (
-                                <motion.div
-                                    key={i}
-                                    style={{
-                                        position: 'absolute', inset: 0,
-                                        background: s.grad,
-                                        borderRadius: 40,
-                                        y: translateY,
-                                        x: translateX,
-                                        scale,
-                                        opacity,
-                                        rotateZ: rotate,
-                                        zIndex: 100 - i,
-                                        boxShadow: `0 40px 100px -20px ${s.glow}`,
-                                    }}
-                                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                                >
-                                    <motion.div
-                                        style={{
-                                            padding: 40,
-                                            color: '#fff',
-                                            display: 'flex', flexDirection: 'column',
-                                            height: '100%',
-                                            borderRadius: 40,
-                                        }}
-                                        whileHover={{ scale: 1.03, y: -8 }}
-                                        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                                    >
-                                        <h4 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: 12 }}>{s.label}</h4>
-                                        <p style={{ opacity: 0.9, lineHeight: 1.6, fontSize: '1rem' }}>{s.desc}</p>
-
-                                        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '30px' }}>
-                                            <motion.div
-                                                style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}
-                                                animate={{ scale: [1, 1.1, 1], y: [0, -10, 0] }}
-                                                transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
-                                            >
-                                                {s.img ? (
-                                                    <img src={s.img} alt={s.label} style={{ height: '7rem', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 15px 30px rgba(0,0,0,0.3))' }} />
-                                                ) : (
-                                                    <div style={{ fontSize: '5.5rem', textShadow: '0 15px 30px rgba(0,0,0,0.3)', lineHeight: 1 }}>{s.emoji || '✦'}</div>
-                                                )}
-                                            </motion.div>
-                                        </div>
-                                    </motion.div>
-                                </motion.div>
-                            );
-                        })}
-                    </div>
-                </div>
-            </div>
-        </section>
-    );
-}
-
-
-
-
-
-/* ══════════════════════════════════════════════
-   THE RUPIKSHA ADVANTAGE
-══════════════════════════════════════════════ */
-/* Advantage section header — animates only when scrolled into view */
-function AdvantageHeader() {
-    const headerRef = useRef(null);
-    const [visible, setVisible] = useState(false);
-
-    useEffect(() => {
-        const obs = new IntersectionObserver(
-            ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
-            { threshold: 0 }
-        );
-        if (headerRef.current) obs.observe(headerRef.current);
-        return () => obs.disconnect();
-    }, []);
-
-    return (
-        <div
-            ref={headerRef}
-            style={{
-                position: 'absolute',
-                top: '4%',
-                width: '100%',
-                textAlign: 'center',
-                pointerEvents: 'none',
-                zIndex: 10
-            }}
-        >
-            <div className={`writing-header ${visible ? 'writing-header--visible' : ''}`}>
-                <span className={`tag-reveal ${visible ? 'tag-reveal--visible' : ''}`}>Why Choose Us</span>
-                <h2 className={`typewriter-title ${visible ? 'typewriter-title--visible' : ''}`}>The Rupiksha Advantage</h2>
-            </div>
-        </div>
-    );
-}
-
-function AdvantageCard({ item, i, progress, count }) {
-    // We use useTransform to calculate style values from motion values
-    // This happens outside of the React render cycle, which is MUCH smoother.
-    const rel = useTransform(progress, p => p * (count - 1) - i);
-
-    const tx = useTransform(rel, r => -r * 800);
-    const ty = useTransform(rel, r => Math.pow(Math.abs(r), 1.5) * 450);
-    const rot = useTransform(rel, r => -r * 25);
-    const opacity = useTransform(rel, r => 1 - Math.pow(Math.min(1, Math.abs(r)), 2));
-    const scale = useTransform(rel, r => 1 - Math.abs(r) * 0.2);
-
-    return (
-        <motion.div
-            style={{
-                x: tx,
-                y: ty,
-                rotate: rot,
-                opacity,
-                scale,
-                position: 'absolute',
-                top: 0,
-                left: '50%',
-                translateX: '-50%',
-                width: 'min(480px, 92vw)', // Responsive width
-                background: '#ffffff',
-                borderRadius: 32,
-                padding: 'min(45px, 6vw)',
-                boxShadow: '0 30px 60px rgba(0,0,0,0.08)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                textAlign: 'center',
-                border: '1.2px solid #f1f5f9',
-                willChange: 'transform, opacity'
-            }}
-        >
-            <div style={{
-                width: 80, height: 80, borderRadius: 24,
-                background: `${item.color}10`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '2.5rem', marginBottom: 24
-            }}>
-                {item.icon}
-            </div>
-            <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', marginBottom: 16 }}>{item.title}</h3>
-            <p style={{ fontSize: '1.1rem', color: '#64748b', lineHeight: 1.6, fontWeight: 500 }}>{item.desc}</p>
-        </motion.div>
-    );
-}
-
 function Advantage() {
-    const sectionRef = useRef(null);
-    const { scrollYProgress } = useScroll({
-        target: sectionRef,
-        offset: ["start start", "end end"]
-    });
-
-    // Inertia/Smooth scroll for the Advantage section
-    const smoothProgress = useSpring(scrollYProgress, {
-        stiffness: 100,
-        damping: 30,
-        restDelta: 0.001
-    });
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const nextSlide = () => setCurrentIndex((prev) => (prev === ADVANTAGE.length - 1 ? 0 : prev + 1));
+    const prevSlide = () => setCurrentIndex((prev) => (prev === 0 ? ADVANTAGE.length - 1 : prev - 1));
 
     return (
         <section
-            ref={sectionRef}
             id="advantage"
             style={{
-                height: `600vh`,
                 background: 'linear-gradient(135deg, #1e3a8a 0%, #18dfe9c7 100%)',
                 position: 'relative',
-                marginTop: 0,
-                marginBottom: 0,
+                padding: '80px 5%',
             }}
         >
-            <div style={{
-                position: 'sticky',
-                top: 0,
-                height: '100svh',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '8% 5% 0'
-            }}>
-                <AdvantageHeader />
+            <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                <div className="writing-header writing-header--visible">
+                    <span className="tag-reveal tag-reveal--visible">Why Choose Us</span>
+                    <h2 className="typewriter-title typewriter-title--visible">The Rupiksha Advantage</h2>
+                </div>
+            </div>
+            <div className="relative" style={{ maxWidth: 1000, margin: '0 auto' }}>
+                <button
+                    onClick={prevSlide}
+                    aria-label="Previous advantage"
+                    style={{
+                        position: 'absolute',
+                        left: 'clamp(2px, 1.2vw, 12px)',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        zIndex: 3,
+                        width: 52,
+                        height: 52,
+                        borderRadius: 999,
+                        border: '1px solid rgba(255,255,255,0.6)',
+                        background: 'linear-gradient(135deg, #ffffff 0%, #dbeafe 100%)',
+                        boxShadow: '0 14px 30px rgba(15,23,42,0.2)',
+                        color: '#1d4ed8',
+                        fontWeight: 900,
+                        fontSize: 24,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }}
+                >
+                    ‹
+                </button>
+                <button
+                    onClick={nextSlide}
+                    aria-label="Next advantage"
+                    style={{
+                        position: 'absolute',
+                        right: 'clamp(2px, 1.2vw, 12px)',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        zIndex: 3,
+                        width: 52,
+                        height: 52,
+                        borderRadius: 999,
+                        border: '1px solid rgba(255,255,255,0.6)',
+                        background: 'linear-gradient(135deg, #ffffff 0%, #ccfbf1 100%)',
+                        boxShadow: '0 14px 30px rgba(15,23,42,0.2)',
+                        color: '#0f766e',
+                        fontWeight: 900,
+                        fontSize: 24,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }}
+                >
+                    ›
+                </button>
 
-                <div style={{
-                    position: 'relative',
-                    width: '100%',
-                    maxWidth: 1000,
-                    height: 'min(500px, 60vh)',
-                    marginTop: 40
-                }}>
-                    {ADVANTAGE.map((item, i) => (
-                        <AdvantageCard
-                            key={i}
-                            item={item}
-                            i={i}
-                            progress={smoothProgress} // Using smooth progress
-                            count={ADVANTAGE.length}
-                        />
-                    ))}
+                <div className="relative overflow-hidden">
+                    <div
+                        className="flex transition-transform duration-500 ease-in-out"
+                        style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+                    >
+                        {ADVANTAGE.map((item, i) => (
+                            <div key={i} className="w-full flex-shrink-0" style={{ display: 'flex', justifyContent: 'center' }}>
+                                <motion.div
+                                    style={{
+                                        width: 'min(480px, 92vw)',
+                                        background: '#ffffff',
+                                        borderRadius: 32,
+                                        padding: 'min(45px, 6vw)',
+                                        boxShadow: '0 30px 60px rgba(0,0,0,0.08)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        textAlign: 'center',
+                                        border: '1.2px solid #f1f5f9',
+                                    }}
+                                    initial={{ opacity: 0.4 }}
+                                    animate={{ opacity: 1 }}
+                                    transition={{ duration: 0.35 }}
+                                >
+                                    <div style={{
+                                        width: 80, height: 80, borderRadius: 24,
+                                        background: `${item.color}10`,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontSize: '2.5rem', marginBottom: 24
+                                    }}>
+                                        {item.icon}
+                                    </div>
+                                    <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', marginBottom: 16 }}>{item.title}</h3>
+                                    <p style={{ fontSize: '1.1rem', color: '#64748b', lineHeight: 1.6, fontWeight: 500 }}>{item.desc}</p>
+                                </motion.div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         </section>
@@ -966,9 +505,6 @@ function Partners() {
     );
 }
 
-
-
-
 /* ══════════════════════════════════════════════
    APP
 ══════════════════════════════════════════════ */
@@ -978,11 +514,9 @@ export default function Home() {
             <style>{CSS}</style>
             <div className="rp-root">
                 <Navbar />
-                <Hero />
-                <Stats />
+                <Advantage />
                 <Services />
                 <VerticalCardSlider />
-                <Advantage />
                 <Partners />
                 <Footer />
             </div>
@@ -1016,7 +550,14 @@ const CSS = `
   --shadow-md: 0 8px 40px rgba(0,0,0,0.12);
 }
 
-.rp-root { font-family: 'Inter', sans-serif; color: var(--body); background: var(--white); display: flex; flex-direction: column; }
+.rp-root {
+  font-family: 'Inter', sans-serif;
+  color: var(--body);
+  background: var(--white);
+  display: flex;
+  flex-direction: column;
+  padding-top: 92px;
+}
 
 /* ── Gradient text ── */
 .rp-gradient-text {
@@ -1088,7 +629,7 @@ const CSS = `
    HERO
 ═══════════════════════════════════════════ */
 .rp-hero { 
-  min-height: 100vh; display: flex; align-items: center; justify-content: space-between; 
+  min-height: 100vh; display: flex; align-items: stretch; justify-content: space-between; 
   padding: 40px 10% 0; position: relative; overflow: hidden; background: #fff; 
 }
 .rp-hero-bg { position: absolute; inset: 0; pointer-events: none; }
@@ -1096,14 +637,15 @@ const CSS = `
   position: absolute; width: 60vw; height: 60vw; 
   filter: blur(100px); opacity: 0.15; border-radius: 50%; 
 }
-.rp-hero-bg__blob--1 { top: -20%; right: -20%; background: #a855f7; }
-.rp-hero-bg__blob--2 { bottom: -20%; left: -10%; background: #fde047; }
-.rp-hero-bg__blob--3 { top: 20%; right: 10%; background: #f97316; opacity: 0.1; }
-.rp-hero-bg__blob--4 { top: 10%; left: 30%; background: #3b82f6; opacity: 0.12; width: 40vw; height: 40vw; }
+.rp-hero-bg__blob--1 { top: -20%; right: -45%; background: #a855f7; }
+.rp-hero-bg__blob--2 { top: 20%; right: -25%; background: #fde047; }
+.rp-hero-bg__blob--3 { top: 40%; right: 0; background: #f97316; opacity: 0.1; }
+.rp-hero-bg__blob--4 { top: 10%; right: 15%; background: #3b82f6; opacity: 0.12; width: 40vw; height: 40vw; }
 
 .rp-hero__content { 
-  flex: 1.2; max-width: 650px; position: relative; z-index: 2; margin-top: -30px; 
+  flex: 1.2; max-width: 650px; position: relative; z-index: 2;
   display: flex; flex-direction: column; align-items: flex-start; text-align: left;
+  margin-top: auto; margin-bottom: auto;
 }
 .rp-hero__badge { 
   color: #a855f7; font-weight: 800; font-size: 13px; text-transform: uppercase; 
@@ -1114,10 +656,7 @@ const CSS = `
   color: #0f172a; letter-spacing: -2px; margin-bottom: 24px; 
 }
 .rp-hero__h1 span { position: relative; display: inline-block; }
-.rp-hero__h1 span::after { 
-  content: ''; position: absolute; bottom: 4px; left: 0; width: 100%; height: 2px; 
-  background: #2563eb; opacity: 0.6;
-}
+/* Blue underline removed as requested */
 .rp-hero__sub { 
   font-size: 1.15rem; color: #475569; line-height: 1.6; max-width: 480px; 
   margin-bottom: 40px; text-align: left;
@@ -1143,11 +682,11 @@ const CSS = `
   min-height: 650px; overflow: visible;
 }
 .rp-hero__char { 
-  width: 130%; height: auto; max-width: 800px; z-index: 1; object-fit: contain; 
+  width: 170%; height: auto; max-width: 1400px; z-index: 1; object-fit: contain; 
   transform-origin: bottom right;
-  margin-right: -8%;
-  margin-bottom: -1px; /* Ensure no gap at bottom */
-  transform: translateY(30px);
+  margin-right: -38%;
+  margin-bottom: -5px; /* Ensure no gap at bottom */
+  transform: translateY(0);
 }
 
 /* Floating Cards for Monks Pay Style */
@@ -1189,7 +728,8 @@ const CSS = `
 .rp-glass-card--1 { top: 15%; right: -60px; transform: rotate(-8deg); border-left: 4px solid #1e3a8a; }
 .rp-glass-card--2 { bottom: 15%; left: -60px; transform: rotate(10deg); border-right: 4px solid #2563eb; }
 
-.rp-hero__actions { display: flex; gap: 15px; margin-top: 40px; }
+.rp-hero__actions { display: flex; gap: 12px; margin-top: 40px; align-items: center; flex-wrap: nowrap; }
+.rp-hero__actions .rp-btn { height: 48px; padding: 0 24px; font-size: 15px; white-space: nowrap; }
 .rp-stat-mini { margin-top: 60px; display: flex; align-items: center; gap: 20px; color: #0f172a; }
 .rp-stat-mini b { font-size: 3rem; color: #1e3a8a; font-weight: 950; }
 .rp-stat-mini p { font-size: 13px; color: #64748b; line-height: 1.4; max-width: 140px; font-weight: 500; }
@@ -1251,7 +791,7 @@ const CSS = `
   }
   .rp-hero__actions { justify-content:center; }
   .rp-hero__pills { justify-content:center; }
-  .rp-hero__visuals { max-width: 320px; min-height: 340px; margin-top: 40px; margin-bottom: 20px; }
+  .rp-hero__visuals { max-width: 520px; min-height: 550px; margin-top: 40px; margin-bottom: 0; }
   .rp-float-card--1 { top:-10px; left:10px; }
   .rp-float-card--2 { right:0; bottom:80px; }
   .rp-float-card--3 { display:none; }
@@ -1277,6 +817,163 @@ const CSS = `
 .rp-grid--3 { grid-template-columns: repeat(3,1fr); }
 @media(max-width:900px){ .rp-grid--3 { grid-template-columns: repeat(2,1fr); } }
 @media(max-width:600px){ .rp-grid--3 { grid-template-columns: 1fr; } }
+
+.rp-services-section {
+  padding: 96px 5%;
+  background: #fff;
+  position: relative;
+  scroll-margin-top: 110px;
+}
+.rp-services-intro {
+  max-width: 760px;
+  margin: -20px auto 40px;
+  text-align: center;
+}
+.rp-services-intro p {
+  font-size: 1rem;
+  line-height: 1.8;
+  color: #64748b;
+}
+.rp-services-grid {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+.rp-service-showcase {
+  color: #fff;
+  border-radius: 30px;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+  min-height: 100%;
+}
+.rp-service-showcase::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.12), transparent 45%);
+  pointer-events: none;
+}
+.rp-service-showcase__top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.rp-service-showcase__tag {
+  display: inline-flex;
+  align-items: center;
+  max-width: fit-content;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  background: rgba(255,255,255,0.15);
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.24);
+}
+.rp-service-showcase__icon-wrap {
+  width: 68px;
+  height: 68px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.14);
+  border: 1px solid rgba(255,255,255,0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.rp-service-showcase__image {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 18px rgba(0,0,0,0.25));
+}
+.rp-service-showcase__emoji {
+  font-size: 2rem;
+  line-height: 1;
+}
+.rp-service-showcase__subtitle,
+.rp-service-showcase__title,
+.rp-service-showcase__desc,
+.rp-service-showcase__features {
+  position: relative;
+  z-index: 1;
+}
+.rp-service-showcase__subtitle {
+  margin-top: 20px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.82);
+}
+.rp-service-showcase__title {
+  margin-top: 10px;
+  font-size: 1.55rem;
+  font-weight: 900;
+  letter-spacing: -0.4px;
+}
+.rp-service-showcase__desc {
+  margin-top: 12px;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: rgba(255,255,255,0.92);
+}
+.rp-service-showcase__features {
+  margin-top: 20px;
+  display: grid;
+  gap: 10px;
+}
+.rp-service-showcase__feature {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: rgba(255,255,255,0.95);
+}
+.rp-service-showcase__check {
+  color: #86efac;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+@media(max-width: 1100px) {
+  .rp-services-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media(max-width: 700px) {
+  .rp-services-section {
+    padding: 84px 5%;
+    scroll-margin-top: 90px;
+  }
+  .rp-services-grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .rp-service-showcase {
+    border-radius: 24px;
+    padding: 20px;
+  }
+  .rp-service-showcase__icon-wrap {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+  }
+  .rp-service-showcase__image {
+    width: 36px;
+    height: 36px;
+  }
+  .rp-service-showcase__title {
+    font-size: 1.35rem;
+  }
+}
 
 /* ═══════════════════════════════════════════
    SERVICE CARDS
@@ -1557,7 +1254,7 @@ const CSS = `
   border-right: 3px solid transparent;
 }
 .typewriter-title--visible {
-  animation: typing 2.2s steps(40, end) 0.5s forwards, blink 0.8s step-end 0.5s infinite;
+  animation: typing 2.2s steps(40, end) 0.5s forwards;
 }
 
 .sub-reveal {

@@ -1,6 +1,8 @@
-import { sendOTPEmail, sendCredentialsEmail } from './emailService';
+﻿import { sendOTPEmail, sendCredentialsEmail } from './emailService';
 import { BACKEND_URL } from './config';
-import { mockApiService } from './mockApiService';
+import { generateUniquePartyCode } from '../database/partyCode';
+import { mockApiService } from '../database/mockApiService';
+import { walletService, transactionService, supportService } from './apiService';
 import mainLogo from '../assets/rupiksha_logo.png';
 export { BACKEND_URL };
 
@@ -16,30 +18,72 @@ async function safeJson(res, fallback = {}) {
     }
 }
 
-// Environment-based toggle: Use real backend on localhost, localstorage in production
-const isLocalhost = typeof window !== 'undefined' && 
-    (window.location.hostname === 'localhost' || 
-     window.location.hostname === '127.0.0.1' || 
+// Live-only mode. The "local only" fallback has been removed to prevent
+// mock data or impersonation tokens from reaching the real backend. The variable
+// is kept here as a constant so the many legacy `if (useLocalOnly)` branches
+// compile without changes, but they will all short-circuit to false and force
+// the code through the real API path.
+const isLocalhost = typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' ||
+     window.location.hostname === '127.0.0.1' ||
      window.location.hostname.startsWith('192.168.'));
-const useLocalOnly = true; // Enabled mock API by default as requested
+const useLocalOnly = false;
+
+const normalizeRoleForBackend = (role) => {
+    const raw = String(role || '').trim().toLowerCase();
+    if (raw === 'retailer' || raw === 'retailers') return 'retailer';
+    if (raw === 'distributor' || raw === 'distributors') return 'distributor';
+    if (raw === 'super distributor' || raw === 'super_distributor' || raw === 'super-distributor' || raw === 'SUPER_DISTRIBUTOR' || raw === 'Super Distributor') return 'super_distributor';
+    // Existing app roles often come in uppercase enum-like values
+    if (raw === 'retailer'.toUpperCase().toLowerCase()) return 'retailer';
+    if (raw === 'distributor'.toUpperCase().toLowerCase()) return 'distributor';
+    if (raw === 'super_distributor'.toUpperCase().toLowerCase()) return 'super_distributor';
+    return raw || 'retailer';
+};
+
+const normalizeRoleForClient = (role) => {
+    const raw = normalizeRoleForBackend(role);
+    if (raw === 'retailer') return 'RETAILER';
+    if (raw === 'distributor') return 'DISTRIBUTOR';
+    if (raw === 'super_distributor') return 'SUPER_DISTRIBUTOR';
+    return String(role || 'RETAILER').trim().toUpperCase();
+};
+
+const ROLE_PRIORITY = [
+    'ADMIN',
+    'NATIONAL_HEADER',
+    'STATE_HEADER',
+    'REGIONAL_HEADER',
+    'EMPLOYEE',
+    'SUPER_DISTRIBUTOR',
+    'DISTRIBUTOR',
+    'RETAILER'
+];
+
+const pickDeterministicRole = (roles = [], preferred = null) => {
+    const unique = Array.from(new Set((roles || []).map((r) => normalizeRoleForClient(r)).filter(Boolean)));
+    const preferredNorm = normalizeRoleForClient(preferred);
+    if (preferredNorm && unique.includes(preferredNorm)) return preferredNorm;
+    return ROLE_PRIORITY.find((r) => unique.includes(r)) || unique[0] || 'RETAILER';
+};
 
 
 export const dataService = {
     // --- AUTH & LOGIN ---
     requestRegistration: async function (data) {
-        const username = data.mobile || data.email;
-        const newUser = {
-            ...data,
-            username: username,
-            status: 'Pending',
-            balance: '0.00',
-            id: 'REQ-' + Math.floor(1000 + Math.random() * 9000),
-            latitude: data.latitude || null,
-            longitude: data.longitude || null
-        };
+        const username = data.username || data.mobile || data.email;
+        const normalizedRole = normalizeRoleForBackend(data.role);
 
         if (useLocalOnly) {
             const localData = this.getData();
+            const newUser = {
+                ...data,
+                username,
+                role: normalizedRole,
+                status: 'pending',
+                balance: '0.00',
+                id: 'REQ-' + Math.floor(1000 + Math.random() * 9000)
+            };
             if (!localData.users.find(u => u.username === username)) {
                 localData.users.push(newUser);
                 this.saveData(localData);
@@ -47,34 +91,66 @@ export const dataService = {
             return { success: true, message: "Registration request submitted successfully.", registrationId: newUser.id };
         }
 
-        const url = `${BACKEND_URL}/register`;
-        console.log("Attempting Registration at:", url, "with payload:", newUser);
+        // Java backend RegisterRequest accepts the core auth fields plus optional
+        // profile attributes (state/city/pincode/address/businessName). Sending
+        // state is important so the admin's approval modal can auto-generate a
+        // state-coded party code (e.g. RPRBR######).
+        const payload = {
+            username,
+            mobile: String(data.mobile || username || '').trim(),
+            email: String(data.email || '').trim(),
+            fullName: String(data.name || data.fullName || data.firstName || username || '').trim(),
+            password: String(data.password || '').trim(),
+            role: normalizedRole.toUpperCase(),
+            state: String(data.state || data.stateName || '').trim() || null,
+            // Backward-compatible alias for older backends that expected stateName.
+            stateName: String(data.stateName || data.state || '').trim() || null,
+            city: String(data.city || '').trim() || null,
+            pincode: String(data.pincode || data.pin || '').trim() || null,
+            address: String(data.address || data.addressLine1 || '').trim() || null,
+            businessName: String(data.businessName || data.shopName || '').trim() || null,
+            addedByUserRef: String(data.addedByUserRef || data.uplineId || '').trim() || null,
+            addedByName: String(data.addedByName || '').trim() || null,
+            addedByRole: String(data.addedByRole || data.uplineRole || '').trim() || null,
+            addedByPartyCode: String(data.addedByPartyCode || '').trim() || null
+        };
+
+        const url = `${BACKEND_URL}/auth/register`;
         try {
             const res = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newUser)
+                body: JSON.stringify(payload)
             });
-            console.log("Registration Response Stats:", res.status, res.statusText);
+            const body = await safeJson(res, null);
             if (!res.ok) {
-                const text = await res.text();
-                console.error("Registration Error Response:", text);
-                return { success: false, message: `Server error (${res.status}): ${text.substring(0, 100)}` };
+                const fieldErrors = body && body.errors && typeof body.errors === 'object'
+                    ? Object.entries(body.errors).map(([f, m]) => `${f}: ${m}`).join(', ')
+                    : '';
+                const baseMsg = body?.message || body?.error || `Server error (${res.status})`;
+                const msg = fieldErrors ? `${baseMsg} — ${fieldErrors}` : baseMsg;
+                return { success: false, message: msg };
             }
-            return await safeJson(res, { success: false, message: "Response was not valid JSON" });
+            // Backend returns UserView directly
+            return {
+                success: true,
+                message: "Registration request submitted successfully. Please wait for admin approval.",
+                registrationId: body?.id,
+                user: body
+            };
         } catch (e) {
-            console.error("Registration Fetch Exception:", e);
             return { success: false, message: "Server connection failed: " + e.message };
         }
     },
     registerUser: async function (data, parentId = null) {
         const username = data.mobile || data.email;
+        const normalizedRole = normalizeRoleForBackend(data.role);
         const newUser = {
             ...data,
             username: username,
-            role: data.role || 'RETAILER',
+            role: normalizedRole,
             parent_id: parentId,
-            status: 'Pending'
+            status: 'pending'
         };
 
         if (useLocalOnly) {
@@ -146,37 +222,68 @@ export const dataService = {
         }
     },
 
-    loginUser: async function (username, password, location = null) {
-        if (useLocalOnly) {
-            const res = await mockApiService.login(username, password);
-            if (res.success) {
-                localStorage.setItem('rupiksha_user', JSON.stringify(res.user));
-                localStorage.setItem('rupiksha_token', res.token);
-                return { success: true, user: res.user };
+    loginUser: async function (username, password, location = null, expectedPortalRole = null) {
+        const expected = normalizeRoleForClient(expectedPortalRole);
+        const isRoleAllowedForPortal = (role) => {
+            if (!expectedPortalRole) return true;
+            const normalized = normalizeRoleForClient(role);
+            if (expected === 'DISTRIBUTOR') {
+                return normalized === 'DISTRIBUTOR';
             }
-            return { success: false, message: res.message || "Invalid credentials. Please check your username and password." };
-        }
+            if (expected === 'RETAILER') {
+                return normalized === 'RETAILER';
+            }
+            if (expected === 'SUPER_DISTRIBUTOR' || expected === 'SUPER_DISTRIBUTOR') {
+                return normalized === 'SUPER_DISTRIBUTOR';
+            }
+            return normalized === expected;
+        };
+
         try {
-            const res = await fetch(`${BACKEND_URL}/login`, {
+            const res = await fetch(`${BACKEND_URL}/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password, location })
+                body: JSON.stringify({ username, password })
             });
-            const text = await res.text();
-            let data;
-            try {
-                data = JSON.parse(text);
-            } catch {
-                return { success: false, message: "Backend server is not responding. Please start the backend server." };
+            const data = await safeJson(res, null);
+
+            if (!res.ok || !data) {
+                const serverMessage = data?.message || data?.error;
+                if (res.status === 401 || res.status === 400) {
+                    return { success: false, message: serverMessage || 'Invalid credentials.' };
+                }
+                return { success: false, message: serverMessage || `Login failed (${res.status}). Ensure backend is running on :8080.` };
             }
-            if (data.success) {
-                localStorage.setItem('rupiksha_user', JSON.stringify(data.user));
-                localStorage.setItem('rupiksha_token', data.token);
-                return { success: true, user: data.user };
+
+            // Java backend AuthResponse shape: { accessToken, refreshToken, user: { id, username, fullName, status, kycStatus, roles[], createdAt } }
+            const backendUser = data.user || {};
+            const rolesArrRaw = Array.isArray(backendUser.roles) ? backendUser.roles.map((r) => normalizeRoleForClient(r)) : [];
+            const fallbackRole = normalizeRoleForClient(backendUser.role);
+            const rolesArr = Array.from(new Set([...(rolesArrRaw || []), ...(fallbackRole ? [fallbackRole] : [])]));
+            const primaryRole = pickDeterministicRole(rolesArr, expectedPortalRole);
+
+            const normalizedUser = {
+                id: backendUser.id,
+                username: backendUser.username,
+                name: backendUser.fullName,
+                fullName: backendUser.fullName,
+                status: backendUser.status,
+                kycStatus: backendUser.kycStatus,
+                roles: rolesArr,
+                role: primaryRole,
+                createdAt: backendUser.createdAt,
+            };
+
+            if (!isRoleAllowedForPortal(normalizedUser.role)) {
+                return { success: false, message: 'Invalid credentials.' };
             }
-            return { success: false, message: data.error || data.message || "Login failed" };
+
+            localStorage.setItem('rupiksha_user', JSON.stringify(normalizedUser));
+            localStorage.setItem('rupiksha_token', data.accessToken);
+            if (data.refreshToken) localStorage.setItem('rupiksha_refresh_token', data.refreshToken);
+            return { success: true, user: normalizedUser, token: data.accessToken };
         } catch (e) {
-            return { success: false, message: "Server connection failed. Please ensure the backend is running." };
+            return { success: false, message: "Server connection failed. Please ensure the Java backend is running on :8080." };
         }
     },
 
@@ -308,21 +415,13 @@ export const dataService = {
            return user ? (user.balance || "0.00") : "0.00";
         }
         try {
-            const token = localStorage.getItem('rupiksha_token');
-            const res = await fetch(`${BACKEND_URL}/get-balance`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-            if (!res.ok) {
-                // Fallback: return cached user balance
-                const user = this.getCurrentUser();
-                return user ? (user.balance || "0.00") : "0.00";
+            const data = await walletService.getBalance(userId);
+            const nextBal = String(data?.balance ?? "0.00");
+            const current = this.getCurrentUser();
+            if (current) {
+                localStorage.setItem('rupiksha_user', JSON.stringify({ ...current, balance: nextBal }));
             }
-            const data = await res.json();
-            return data.success ? String(data.balance) : "0.00";
+            return nextBal;
         } catch (e) {
             // Fallback: return cached user balance on any error
             const user = this.getCurrentUser();
@@ -353,12 +452,7 @@ export const dataService = {
             return true;
         }
         try {
-            const res = await fetch(`${BACKEND_URL}/log-txn`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, service, amount, operator, number, status })
-            });
-            const data = await res.json();
+            const data = await transactionService.logTransaction({ userId, service, amount, operator, number, status });
 
             if (data.success && status === 'SUCCESS') {
                 const user = this.getCurrentUser();
@@ -383,9 +477,8 @@ export const dataService = {
             return (this.getData().transactions || []).filter(t => t.userId === userId);
         }
         try {
-            const res = await fetch(`${BACKEND_URL}/transactions?userId=${userId}`);
-            const data = await res.json();
-            return data.success ? data.transactions : [];
+            const data = await transactionService.getMine(userId);
+            return data?.transactions || [];
         } catch (e) { return []; }
     },
 
@@ -571,114 +664,126 @@ export const dataService = {
     },
 
     async getPendingKycs(type) {
-        if (useLocalOnly) {
-            const data = this.getData();
-            const users = (data.users || []).filter(u => {
-                if (type === 'MAIN') return u.profile_kyc_status === 'PENDING';
-                if (type === 'AEPS') return u.aeps_kyc_status === 'PENDING';
-                return false;
+        try {
+            const token = localStorage.getItem('rupiksha_token');
+            const res = await fetch(`${BACKEND_URL}/admin/kyc/pending`, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             });
-            return {
-                success: true,
-                kycs: users.map(u => ({
+            const raw = await safeJson(res, null);
+            if (!res.ok || !Array.isArray(raw)) {
+                return { success: false, kycs: [], message: raw?.message || `HTTP ${res.status}` };
+            }
+            const extractRole = (u) => {
+                // /admin/kyc/pending returns raw User entities, whose roles Set is
+                // serialized as [{ id, name: "RETAILER" | ... }]. Earlier admin flows
+                // flatten to a string, so accept either shape.
+                if (Array.isArray(u?.roles) && u.roles.length) {
+                    const first = u.roles[0];
+                    if (typeof first === 'string') return first.toUpperCase();
+                    if (first && first.name) return String(first.name).toUpperCase();
+                }
+                if (typeof u?.role === 'string' && u.role) return u.role.toUpperCase();
+                return 'RETAILER';
+            };
+            const kycs = raw.map((u) => {
+                const role = extractRole(u);
+                return {
+                    id: u.id,
+                    _id: u.id,
                     loginId: u.username,
-                    fullName: u.name || u.fullName || u.firstName + ' ' + u.lastName,
+                    username: u.username,
+                    fullName: u.fullName || u.name,
+                    name: u.fullName || u.name,
                     userMobile: u.mobile,
                     userEmail: u.email,
-                    created_at: u.createdAt || new Date().toISOString(),
-                    merchant_id: u.merchantId,
-                    ...(u.aeps_kyc_details || {})
-                }))
-            };
+                    mobile: u.mobile,
+                    email: u.email,
+                    role,
+                    roles: Array.isArray(u?.roles)
+                        ? u.roles.map((r) => (typeof r === 'string' ? r : r?.name)).filter(Boolean)
+                        : [role],
+                    businessName: u.businessName || null,
+                    created_at: u.kycSubmittedAt || u.createdAt,
+                    kycSubmittedAt: u.kycSubmittedAt,
+                    kycStatus: u.kycStatus,
+                    status: u.status,
+                    aadhaarNumber: u.aadhaarNumber,
+                    panNumber: u.panNumber,
+                    photoUrl: u.photoUrl,
+                    aadhaarPhotoUrl: u.aadhaarPhotoUrl,
+                    panPhotoUrl: u.panPhotoUrl,
+                    addressLine1: u.addressLine1,
+                    city: u.city,
+                    stateName: u.stateName,
+                    pincode: u.pincode,
+                    merchant_id: u.merchantId || null
+                };
+            });
+            return { success: true, kycs };
+        } catch (e) {
+            return { success: false, kycs: [], message: e.message };
+        }
+    },
+
+    _resolveUserIdForKyc: async function (identifier) {
+        if (!identifier) return null;
+        const str = String(identifier);
+        // Already a UUID?
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)) {
+            return str;
         }
         try {
-            const endpoint = `/admin/pending-kyc?type=${type}`;
-            const res = await fetch(`${BACKEND_URL}${endpoint}`, {
-                headers: { 
-                    'Authorization': `Bearer ${localStorage.getItem('rupiksha_token')}` 
-                }
+            const token = localStorage.getItem('rupiksha_token');
+            const res = await fetch(`${BACKEND_URL}/admin/users`, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             });
-            return await res.json();
+            const data = await safeJson(res, null);
+            const users = Array.isArray(data?.users) ? data.users : [];
+            const match = users.find((u) =>
+                u?.username === str || u?.mobile === str || u?.email === str
+                || u?.id === str || u?._id === str
+            );
+            return match?.id || match?._id || null;
+        } catch { return null; }
+    },
+
+    approveKyc: async function (identifier /*, type, merchantId*/) {
+        try {
+            const token = localStorage.getItem('rupiksha_token');
+            const userId = await this._resolveUserIdForKyc(identifier);
+            if (!userId) return { success: false, message: 'User not found' };
+            const res = await fetch(`${BACKEND_URL}/admin/kyc/${userId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({ action: 'approve' })
+            });
+            const resData = await safeJson(res, null);
+            if (res.ok) return { success: true, ...resData };
+            return { success: false, message: resData?.message || resData?.error || `HTTP ${res.status}` };
         } catch (e) {
             return { success: false, message: e.message };
         }
     },
 
-    approveKyc: async function (username, type, merchantId = null) {
-        if (useLocalOnly) {
-            const data = this.getData();
-            const userIdx = data.users.findIndex(u => u.username === username || u.mobile === username);
-            if (userIdx !== -1) {
-                if (type === 'MAIN') data.users[userIdx].profile_kyc_status = 'DONE';
-                this.saveData(data);
-            }
-            return { success: true };
-        }
+    rejectKyc: async function (identifier, _type, reason = '') {
         try {
-            const res = await fetch(`${BACKEND_URL}/admin/approve-kyc`, {
+            const token = localStorage.getItem('rupiksha_token');
+            const userId = await this._resolveUserIdForKyc(identifier);
+            if (!userId) return { success: false, message: 'User not found' };
+            const res = await fetch(`${BACKEND_URL}/admin/kyc/${userId}`, {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('rupiksha_token')}`
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                 },
-                body: JSON.stringify({ username, type, merchantId })
+                body: JSON.stringify({ action: 'reject', remarks: reason || 'Rejected by admin' })
             });
-            const resData = await res.json();
-            if (resData.success) {
-                const data = this.getData();
-                const userIdx = data.users.findIndex(u => u.username === username || u.mobile === username);
-                if (userIdx !== -1) {
-                    if (type === 'MAIN') {
-                        data.users[userIdx].profile_kyc_status = 'DONE';
-                    }
-                    if (type === 'AEPS') {
-                        data.users[userIdx].aeps_kyc_status = 'DONE';
-                    }
-                    this.saveData(data);
-                }
-                return { success: true };
-            }
-            return resData;
-        } catch (e) {
-            return { success: false, message: e.message };
-        }
-    },
-
-    rejectKyc: async function (username, type, reason = '') {
-        if (useLocalOnly) {
-            const data = this.getData();
-            const userIdx = data.users.findIndex(u => u.username === username || u.mobile === username);
-            if (userIdx !== -1) {
-                if (type === 'MAIN') data.users[userIdx].profile_kyc_status = 'REJECTED';
-                this.saveData(data);
-            }
-            return { success: true };
-        }
-        try {
-            const res = await fetch(`${BACKEND_URL}/admin/reject-kyc`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('rupiksha_token')}`
-                },
-                body: JSON.stringify({ username, type, reason })
-            });
-            const resData = await res.json();
-            if (resData.success) {
-                const data = this.getData();
-                const userIdx = data.users.findIndex(u => u.username === username || u.mobile === username);
-                if (userIdx !== -1) {
-                    if (type === 'MAIN') {
-                        data.users[userIdx].profile_kyc_status = 'REJECTED';
-                    }
-                    if (type === 'AEPS') {
-                        data.users[userIdx].aeps_kyc_status = 'REJECTED';
-                    }
-                    this.saveData(data);
-                }
-                return { success: true };
-            }
-            return resData;
+            const resData = await safeJson(res, null);
+            if (res.ok) return { success: true, ...resData };
+            return { success: false, message: resData?.message || resData?.error || `HTTP ${res.status}` };
         } catch (e) {
             return { success: false, message: e.message };
         }
@@ -780,20 +885,14 @@ export const dataService = {
     // --- SUPPORT ---
     raiseTicket: async function (ticketData) {
         try {
-            const res = await fetch(`${BACKEND_URL}/raise-ticket`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(ticketData)
-            });
-            return await res.json();
+            return await supportService.raiseTicket(ticketData);
         } catch (e) { return { success: false, message: "Failed to raise ticket" }; }
     },
 
     getMyTickets: async function (userId) {
         try {
-            const res = await fetch(`${BACKEND_URL}/my-tickets?userId=${userId}`);
-            const data = await res.json();
-            return data.success ? data.tickets : [];
+            const data = await supportService.myTickets(userId);
+            return data?.tickets || [];
         } catch (e) { return []; }
     },
 
@@ -868,9 +967,41 @@ export const dataService = {
             const res = await fetch(`${BACKEND_URL}/admin/users`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            const data = await res.json();
-            if (data.success) return data.users;
+            const data = await safeJson(res, null);
+            if (res.ok && data?.success && Array.isArray(data.users)) return data.users;
         } catch (e) { }
+
+        // Backend may not implement /admin/users in lightweight setups.
+        // Fallback to role-wise pending approvals from live APIs so Admin approvals still work.
+        try {
+            const [retailRes, distRes, superDistRes] = await Promise.all([
+                this.getPendingApprovalsByRole('retailer'),
+                this.getPendingApprovalsByRole('distributor'),
+                this.getPendingApprovalsByRole('super_distributor')
+            ]);
+
+            const pendingOnly = [
+                ...(retailRes?.users || []),
+                ...(distRes?.users || []),
+                ...(superDistRes?.users || [])
+            ];
+
+            const uniqueByKey = new Map();
+            // Start from pending API rows, then let local users override stale pending snapshots.
+            for (const user of pendingOnly) {
+                const key = user?._id || user?.id || user?.username || user?.mobile;
+                if (!key) continue;
+                uniqueByKey.set(String(key), user);
+            }
+            const localUsers = (this.getData().users || []);
+            for (const user of localUsers) {
+                const key = user?._id || user?.id || user?.username || user?.mobile;
+                if (!key) continue;
+                uniqueByKey.set(String(key), user);
+            }
+            if (uniqueByKey.size > 0) return Array.from(uniqueByKey.values());
+        } catch (e) { }
+
         return this.getData().users || [];
     },
 
@@ -885,11 +1016,14 @@ export const dataService = {
     },
 
     getTrashUsers: async function () {
-        if (useLocalOnly) return [];
         try {
-            const res = await fetch(`${BACKEND_URL}/trash-users`);
-            const data = await res.json();
-            return data.success ? data.users : [];
+            const token = localStorage.getItem('rupiksha_token');
+            const res = await fetch(`${BACKEND_URL}/admin/trash-users`, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
+            const data = await safeJson(res, null);
+            if (res.ok && data?.success && Array.isArray(data.users)) return data.users;
+            return [];
         } catch (e) { return []; }
     },
 
@@ -1123,7 +1257,7 @@ export const dataService = {
                         debit: { title: "TOTAL DEBIT" }
                     }
                 },
-                wallet: { balance: "1,24,500.00", retailerName: "Super Admin" },
+                wallet: { balance: "1,24,500.00", retailerName: "Super Distributor" },
                 promotions: {
                     banners: [
                         { id: 1, image: mainLogo, title: "Modern Banking Suite", subtitle: "Secure | Fast | Reliable" },
@@ -1171,33 +1305,84 @@ export const dataService = {
         return data.users.find(u => u.username === username || u.mobile === username);
     },
 
-    approveUser: async function (username, password, partyCode, parentId = null, pin = '1122') {
-        if (useLocalOnly) {
-            const data = this.getData();
-            const userIdx = data.users.findIndex(u => u.username === username);
-            if (userIdx !== -1) {
-                data.users[userIdx].status = 'Approved';
-                data.users[userIdx].password = password;
-                data.users[userIdx].partyCode = partyCode;
-                data.users[userIdx].pin = pin;
-                if (parentId) data.users[userIdx].ownerId = parentId;
-                this.saveData(data);
-            }
-            return { success: true };
-        }
+    getPendingApprovalsByRole: async function (role) {
+        const normalizedRole = normalizeRoleForBackend(role);
         try {
-            const res = await fetch(`${BACKEND_URL}/admin/approve-user`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('rupiksha_token')}`
-                },
-                body: JSON.stringify({ username, password, status: 'Approved', partyCode, parent_id: parentId, pin })
+            const token = localStorage.getItem('rupiksha_token');
+            // Java backend returns all pending users; we filter by role on the client.
+            const res = await fetch(`${BACKEND_URL}/admin/approvals`, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             });
-            const data = await res.json();
-            return data;
-        } catch (e) { 
-            console.error("DB Update failed", e); 
+            if (!res.ok) return { success: false, users: [], message: `Approvals fetch failed (${res.status})` };
+            const payload = await safeJson(res, []);
+            const list = Array.isArray(payload) ? payload : (payload.users || payload.data || []);
+
+            // Normalize the raw User entities so downstream admin UI can use the
+            // flat shape it expects (role, state, address, etc.) — the backend
+            // entity uses stateName / addressLine1 / roles[{name}] which the admin
+            // panel doesn't understand natively.
+            const normalized = list.map((u) => {
+                const rolesArr = (u.roles || []).map((r) => {
+                    const name = typeof r === 'string' ? r : (r?.name || '');
+                    return String(name || '').toUpperCase();
+                }).filter(Boolean);
+                const primary = rolesArr[0] || 'RETAILER';
+                return {
+                    ...u,
+                    _id: u.id,
+                    role: primary,
+                    roles: rolesArr,
+                    state: u.stateName || u.state || '',
+                    stateName: u.stateName || u.state || '',
+                    address: u.address || u.addressLine1 || '',
+                    addressLine1: u.addressLine1 || u.address || '',
+                    businessName: u.businessName || '',
+                    name: u.fullName || u.name || u.username,
+                    fullName: u.fullName || u.name || u.username,
+                    status: typeof u.status === 'string' ? u.status : (u.status?.name?.() || '')
+                };
+            });
+
+            const users = normalized.filter((u) => {
+                const rolesArr = (u.roles || []).map((r) => normalizeRoleForBackend(r));
+                return rolesArr.includes(normalizedRole);
+            });
+            return { success: true, users };
+        } catch (e) {
+            return { success: false, users: [], message: e.message };
+        }
+    },
+
+    approveUser: async function (identifier /* backend user UUID */, _password, _partyCode, _parentId, _pin, _state, _role) {
+        try {
+            const token = localStorage.getItem('rupiksha_token');
+            const res = await fetch(`${BACKEND_URL}/admin/approvals/${encodeURIComponent(identifier)}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({ action: 'approve' })
+            });
+            const data = await safeJson(res, {});
+            if (!res.ok) return { success: false, message: data?.message || data?.error || `Approve failed (${res.status})` };
+            return { success: true, user: data };
+        } catch (e) {
+            return { success: false, message: e.message };
+        }
+    },
+
+    issueCredentialsForApproval: async function (identifier) {
+        try {
+            const token = localStorage.getItem('rupiksha_token');
+            const res = await fetch(`${BACKEND_URL}/admin/approvals/${encodeURIComponent(identifier)}/issue-credentials`, {
+                method: 'POST',
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
+            const data = await safeJson(res, {});
+            if (!res.ok) return { success: false, message: data?.message || data?.error || `Issue credentials failed (${res.status})` };
+            return { success: true, ...data };
+        } catch (e) {
             return { success: false, message: e.message };
         }
     },
@@ -1234,24 +1419,23 @@ export const dataService = {
         }
     },
 
-    rejectUser: async function (username) {
-        if (useLocalOnly) {
-            const data = this.getData();
-            const idx = data.users.findIndex(u => u.username === username);
-            if (idx !== -1) {
-                data.users[idx].status = 'Rejected';
-                this.saveData(data);
-            }
-            return { success: true };
-        }
+    rejectUser: async function (identifier) {
         try {
-            await fetch(`${BACKEND_URL}/approve-user`, {
+            const token = localStorage.getItem('rupiksha_token');
+            const res = await fetch(`${BACKEND_URL}/admin/approvals/${encodeURIComponent(identifier)}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, status: 'Rejected' })
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({ action: 'reject' })
             });
-            return { success: true };
-        } catch (e) { return { success: false }; }
+            const data = await safeJson(res, {});
+            if (!res.ok) return { success: false, message: data?.message || data?.error || `Reject failed (${res.status})` };
+            return { success: true, user: data };
+        } catch (e) {
+            return { success: false, message: e.message };
+        }
     },
 
     resetData: function () {
@@ -1292,22 +1476,14 @@ export const dataService = {
         } catch (e) { return { success: false, message: e.message }; }
     },
 
-    deleteUser: async function (username) {
-        if (useLocalOnly) {
-            const data = this.getData();
-            data.users = data.users.filter(u => u.username !== username);
-            this.saveData(data);
-            return { success: true };
-        }
+    deleteUser: async function (identifier) {
         try {
             const token = localStorage.getItem('rupiksha_token');
-            const res = await fetch(`${BACKEND_URL}/admin/delete-user/${username}`, {
+            const res = await fetch(`${BACKEND_URL}/admin/users/${encodeURIComponent(identifier)}`, {
                 method: 'DELETE',
-                headers: { 
-                    'Authorization': `Bearer ${token}` 
-                }
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             });
-            return await res.json();
+            return await safeJson(res, { success: false });
         } catch (e) {
             return { success: false, message: e.message };
         }

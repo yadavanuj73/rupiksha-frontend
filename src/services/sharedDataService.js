@@ -1,4 +1,5 @@
-import { BACKEND_URL } from './config';
+﻿import { BACKEND_URL } from './config';
+import { generateUniquePartyCode } from '../database/partyCode';
 
 // Environment-based toggle: Use real backend on localhost, localstorage in production
 const isLocalhost = typeof window !== 'undefined' && 
@@ -12,7 +13,7 @@ export const sharedDataService = {
     // --- LEGACY STORAGE KEYS ---
     KEYS: {
         DISTRIBUTORS: 'rupiksha_distributors',
-        SUPER_ADMINS: 'rupiksha_superadmins',
+        SUPER_DISTRIBUTORS: 'rupiksha_super_distributors',
         ASSIGNMENTS: 'rupiksha_assignments'
     },
 
@@ -46,14 +47,14 @@ export const sharedDataService = {
         return dists;
     },
 
-    getAllSuperAdmins: function () {
-        const s = localStorage.getItem(this.KEYS.SUPER_ADMINS);
+    getAllSuperDistributors: function () {
+        const s = localStorage.getItem(this.KEYS.SUPER_DISTRIBUTORS);
         let sas = s ? JSON.parse(s) : [];
         if (useLocalOnly && sas.length === 0) {
             sas = [
-                { id: 'SD-1192', name: 'Master SuperAdmin', mobile: '8811002233', email: 'master@rupiksha.in', businessName: 'Rupiksha Prime', city: 'Mumbai', state: 'Maharashtra', status: 'Approved', balance: '500000', createdAt: new Date().toISOString() }
+                { id: 'SD-1192', name: 'Master SUPER_DISTRIBUTOR', mobile: '8811002233', email: 'master@rupiksha.in', businessName: 'Rupiksha Prime', city: 'Mumbai', state: 'Maharashtra', status: 'Approved', balance: '500000', createdAt: new Date().toISOString() }
             ];
-            this.saveSuperAdmins(sas, true);
+            this.saveSuperDistributors(sas, true);
         }
         return sas;
     },
@@ -63,25 +64,25 @@ export const sharedDataService = {
         if (!silent) window.dispatchEvent(new Event('distributorDataUpdated'));
     },
 
-    saveSuperAdmins: function (sas, silent = false) {
-        localStorage.setItem(this.KEYS.SUPER_ADMINS, JSON.stringify(sas));
-        if (!silent) window.dispatchEvent(new Event('superadminDataUpdated'));
+    saveSuperDistributors: function (sas, silent = false) {
+        localStorage.setItem(this.KEYS.SUPER_DISTRIBUTORS, JSON.stringify(sas));
+        if (!silent) window.dispatchEvent(new Event('SuperDistributorDataUpdated'));
     },
 
     getDistributorById: function (id) {
         return this.getAllDistributors().find(d => d.id === id);
     },
 
-    getSuperAdminById: function (id) {
-        return this.getAllSuperAdmins().find(s => s.id === id);
+    getSuperDistributorById: function (id) {
+        return this.getAllSuperDistributors().find(s => s.id === id);
     },
 
-    registerSuperAdmin: async function (data) {
+    registerSuperDistributor: async function (data) {
         const password = data.password || '123456';
         const username = data.mobile || data.email;
 
         if (useLocalOnly) {
-            const sas = this.getAllSuperAdmins();
+            const sas = this.getAllSuperDistributors();
             const newSA = {
                 ...data,
                 id: 'SD-' + Math.floor(1000 + Math.random() * 9000),
@@ -94,8 +95,8 @@ export const sharedDataService = {
                 createdAt: new Date().toISOString()
             };
             sas.push(newSA);
-            this.saveSuperAdmins(sas);
-            return { success: true, message: "SuperAdmin registration successful." };
+            this.saveSuperDistributors(sas);
+            return { success: true, message: "SUPER_DISTRIBUTOR registration successful." };
         }
 
         try {
@@ -118,7 +119,7 @@ export const sharedDataService = {
             const resData = await res.json();
             if (!resData.success) throw new Error(resData.message);
 
-            const sas = this.getAllSuperAdmins();
+            const sas = this.getAllSuperDistributors();
             const newSA = {
                 ...data,
                 id: 'SD-' + Math.floor(1000 + Math.random() * 9000),
@@ -129,7 +130,7 @@ export const sharedDataService = {
                 status: 'Pending'
             };
             sas.push(newSA);
-            this.saveSuperAdmins(sas);
+            this.saveSuperDistributors(sas);
             return resData;
         } catch (e) {
             console.error("DB Register Error:", e);
@@ -203,24 +204,41 @@ export const sharedDataService = {
 
     approveDistributor: async function (id, password, distribId) {
         const dists = this.getAllDistributors();
-        const idx = dists.findIndex(d => d.id === id);
+        const idx = dists.findIndex(d => d.id === id || d._id === id || d.username === id || d.mobile === id);
         if (idx !== -1) {
             const dist = dists[idx];
             if (!useLocalOnly) {
                 try {
-                    await fetch(`${BACKEND_URL}/admin/approve-user`, {
+                    const token = localStorage.getItem('rupiksha_token');
+                    const existingCodes = [...dists.map(d => d.partyCode), ...this.getAllSuperDistributors().map(s => s.partyCode)];
+                    const payload = {
+                        id: dist._id || dist.id,
+                        username: dist.username || dist.mobile,
+                        password: password,
+                        pin: dist.pin || '1122',
+                        partyCode: (distribId || generateUniquePartyCode(dist.state, dist.role || 'DISTRIBUTOR', existingCodes)).toUpperCase(),
+                        status: 'Approved'
+                    };
+                    let res = await fetch(`${BACKEND_URL}/approve-user`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            ...this.getAuthHeader()
+                            ...this.getAuthHeader(),
+                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                         },
-                        body: JSON.stringify({
-                            username: dist.username || dist.mobile,
-                            password: password,
-                            status: 'Approved',
-                            partyCode: distribId || dist.id
-                        })
+                        body: JSON.stringify(payload)
                     });
+                    if (!res.ok) {
+                        await fetch(`${BACKEND_URL}/admin/approve-user`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                ...this.getAuthHeader(),
+                                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                    }
                 } catch (e) { 
                     console.error("Distributor approval failed", e);
                 }
@@ -251,36 +269,54 @@ export const sharedDataService = {
         this.saveDistributors(this.getAllDistributors().filter(d => d.id !== id));
     },
 
-    approveSuperAdmin: async function (id, password) {
-        const sas = this.getAllSuperAdmins();
-        const idx = sas.findIndex(s => s.id === id);
+    approveSuperDistributor: async function (id, password) {
+        const sas = this.getAllSuperDistributors();
+        const idx = sas.findIndex(s => s.id === id || s._id === id || s.username === id || s.mobile === id);
         if (idx !== -1) {
             const sa = sas[idx];
             if (!useLocalOnly) {
                 try {
-                    await fetch(`${BACKEND_URL}/admin/approve-user`, {
+                    const token = localStorage.getItem('rupiksha_token');
+                    const existingCodes = [...sas.map(s => s.partyCode), ...this.getAllDistributors().map(d => d.partyCode)];
+                    const payload = {
+                        id: sa._id || sa.id,
+                        username: sa.username || sa.mobile,
+                        password: password,
+                        pin: sa.pin || '1122',
+                        partyCode: (sa.partyCode || generateUniquePartyCode(sa.state, sa.role || 'SUPER_DISTRIBUTOR', existingCodes)).toUpperCase(),
+                        status: 'Approved'
+                    };
+                    let res = await fetch(`${BACKEND_URL}/approve-user`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            ...this.getAuthHeader()
+                            ...this.getAuthHeader(),
+                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                         },
-                        body: JSON.stringify({
-                            username: sa.username || sa.mobile,
-                            password: password,
-                            status: 'Approved'
-                        })
+                        body: JSON.stringify(payload)
                     });
+                    if (!res.ok) {
+                        await fetch(`${BACKEND_URL}/admin/approve-user`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                ...this.getAuthHeader(),
+                                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                    }
                 } catch (e) { }
             }
 
             sas[idx].status = 'Approved';
             sas[idx].password = password;
-            this.saveSuperAdmins(sas);
+            this.saveSuperDistributors(sas);
         }
     },
 
-    rejectSuperAdmin: async function (id) {
-        const sas = this.getAllSuperAdmins();
+    rejectSuperDistributor: async function (id) {
+        const sas = this.getAllSuperDistributors();
         const sa = sas.find(s => s.id === id);
         if (sa && !useLocalOnly) {
             try {
@@ -294,7 +330,7 @@ export const sharedDataService = {
                 });
             } catch (e) { }
         }
-        this.saveSuperAdmins(this.getAllSuperAdmins().filter(s => s.id !== id));
+        this.saveSuperDistributors(this.getAllSuperDistributors().filter(s => s.id !== id));
     },
 
     assignRetailerToDistributor: function (distId, retailerUsername) {
@@ -325,9 +361,9 @@ export const sharedDataService = {
 
     resetToDefaults: function () {
         localStorage.removeItem(this.KEYS.DISTRIBUTORS);
-        localStorage.removeItem(this.KEYS.SUPER_ADMINS);
+        localStorage.removeItem(this.KEYS.SUPER_DISTRIBUTORS);
         window.dispatchEvent(new Event('distributorDataUpdated'));
-        window.dispatchEvent(new Event('superadminDataUpdated'));
+        window.dispatchEvent(new Event('SuperDistributorDataUpdated'));
         return [];
     },
 
@@ -336,7 +372,7 @@ export const sharedDataService = {
         const saved = localStorage.getItem('rupiksha_user');
         if (!saved) return null;
         const user = JSON.parse(saved);
-        const allowed = ['DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'ADMIN', 'SUPERADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'];
+        const allowed = ['DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'ADMIN', 'SUPER_DISTRIBUTOR', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'];
         return allowed.includes(user.role) ? user : null;
     },
 
@@ -344,15 +380,15 @@ export const sharedDataService = {
         localStorage.setItem('rupiksha_user', JSON.stringify(dist));
     },
 
-    getCurrentSuperAdmin: () => {
+    getCurrentSuperDistributor: () => {
         const saved = localStorage.getItem('rupiksha_user');
         if (!saved) return null;
         const user = JSON.parse(saved);
-        const allowed = ['SUPERADMIN', 'SUPER_DISTRIBUTOR', 'ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'];
+        const allowed = ['SUPER_DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'];
         return allowed.includes(user.role) ? user : null;
     },
 
-    setCurrentSuperAdmin: (sa) => {
+    setCurrentSuperDistributor: (sa) => {
         localStorage.setItem('rupiksha_user', JSON.stringify(sa));
     },
 

@@ -1,12 +1,14 @@
 // Base API URL - apna backend URL yahan set karo
 // Base API URL - Use Vite proxy to talk to backend
-const BASE_URL = import.meta.env.VITE_API_URL || "/api";
+const BASE_URL = (import.meta.env.VITE_API_URL || "/api/v1").replace(/\/$/, "");
 
 // Token helper
 const getToken = () => localStorage.getItem("rupiksha_token");
+const makeIdempotencyKey = () =>
+  (globalThis.crypto?.randomUUID?.() || `idem_${Date.now()}_${Math.random().toString(16).slice(2)}`);
 
 // Common fetch with JWT
-const apiFetch = async (endpoint, options = {}) => {
+export const apiFetch = async (endpoint, options = {}) => {
   const token = getToken();
   const res = await fetch(`${BASE_URL}${endpoint}`, {
     ...options,
@@ -22,8 +24,20 @@ const apiFetch = async (endpoint, options = {}) => {
     window.location.href = "/login";
     return;
   }
-  if (!res.ok) throw new Error(`API Error: ${res.status}`);
-  return res.json();
+  const text = await res.text();
+  let body = null;
+  try { body = text ? JSON.parse(text) : null; } catch { body = null; }
+  if (!res.ok) {
+    let msg = body?.message || body?.error || `API Error: ${res.status}`;
+    if (body?.errors && typeof body.errors === "object") {
+      const fieldErrors = Object.entries(body.errors)
+        .map(([f, m]) => `${f}: ${m}`)
+        .join(", ");
+      if (fieldErrors) msg = `${msg} — ${fieldErrors}`;
+    }
+    throw new Error(msg);
+  }
+  return body || {};
 };
 
 // ─── AUTH ────────────────────────────────────────────────────────────────────
@@ -129,6 +143,7 @@ export const memberService = {
 // ─── WALLET ───────────────────────────────────────────────────────────────────
 export const walletService = {
   getAll: () => apiFetch("/wallet"),
+  getBalance: (userId) => apiFetch(`/wallet/${userId}/balance`),
   creditFund: (userId, amount) =>
     apiFetch("/wallet/credit", {
       method: "POST",
@@ -163,6 +178,8 @@ export const transactionService = {
   getPayout: (territory) => apiFetch(`/transactions/payout?territory=${territory}`),
   getDmt: (territory) => apiFetch(`/transactions/dmt?territory=${territory}`),
   getBbps: (territory) => apiFetch(`/transactions/bbps?territory=${territory}`),
+  getMine: (userId) => apiFetch(`/transactions/mine?userId=${encodeURIComponent(userId)}`),
+  getStatus: (txnId) => apiFetch(`/transactions/${encodeURIComponent(txnId)}`),
 };
 
 // ─── USER PROFILE ─────────────────────────────────────────────────────────────
@@ -194,13 +211,119 @@ export const userService = {
 // ─── OTP SERVICE ──────────────────────────────────────────────────────────────
 export const otpService = {
   sendMobileOtp: (mobile) =>
-    apiFetch("/auth/send-otp", {
+    apiFetch("/otp/send", {
       method: "POST",
       body: JSON.stringify({ mobile }),
     }),
   verifyOtp: (mobile, otp) =>
-    apiFetch("/auth/verify-otp", {
+    apiFetch("/otp/verify", {
       method: "POST",
       body: JSON.stringify({ mobile, otp }),
     }),
+};
+
+// ─── PAYMENT GATEWAY (Java backend compatibility) ─────────────────────────────
+export const paymentGatewayService = {
+  createOrder: ({ amount, customer_id, purpose = "WALLET_TOPUP" }) =>
+    apiFetch("/create-order", {
+      method: "POST",
+      body: JSON.stringify({ amount, customer_id, purpose }),
+    }),
+
+  verifyPayment: (payload) =>
+    apiFetch("/verify-payment", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+};
+
+// ─── LIVE RECHARGE / TRANSFER ADAPTER ─────────────────────────────────────────
+export const providerTxnService = {
+  recharge: ({ userId, mobile, operator, amount }) =>
+    apiFetch("/recharge", {
+      method: "POST",
+      body: JSON.stringify({ userId, mobile, operator, amount, idempotencyKey: makeIdempotencyKey() }),
+    }),
+
+  transfer: ({ userId, beneficiaryName, accountNumber, ifsc, amount }) =>
+    apiFetch("/transfer", {
+      method: "POST",
+      body: JSON.stringify({ userId, beneficiaryName, accountNumber, ifsc, amount, idempotencyKey: makeIdempotencyKey() }),
+    }),
+};
+
+// ─── AEPS ──────────────────────────────────────────────────────────────────────
+export const aepsService = {
+  // Onboarding for new retailers
+  onboard: (payload) =>
+    apiFetch("/api/aeps/onboard", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  // KYC verification with biometric
+  kyc: (payload) =>
+    apiFetch("/api/aeps/aeps-kyc", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  // KYC OTP verification
+  verifyKycOtp: (payload) =>
+    apiFetch("/api/aeps/aeps-kyc-otp-verify", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  // 2FA verification (required every 24 hours)
+  twoFa: (payload) =>
+    apiFetch("/api/aeps/aeps-twofa", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  // Main transaction (withdrawal, balance inquiry, etc.)
+  transact: (payload) =>
+    apiFetch("/api/aeps/transaction", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  // Transaction status check
+  statusCheck: (clientId) =>
+    apiFetch("/api/aeps/transaction-status", {
+      method: "POST",
+      body: JSON.stringify({ clientId }),
+    }),
+  getHistory: (userId) => apiFetch(`/aeps/history?userId=${encodeURIComponent(userId)}`),
+  reconcile: (date) =>
+    apiFetch("/aeps/recon", {
+      method: "POST",
+      body: JSON.stringify({ date }),
+    }),
+  whitelistRequest: (payload) =>
+    apiFetch("/aeps/whitelist-request", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+};
+
+// ─── BBPS / Bharat Connect ─────────────────────────────────────────────────────
+export const bbpsService = {
+  fetchBill: (payload) =>
+    apiFetch("/bbps/fetch", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  payBill: (payload) =>
+    apiFetch("/bbps/pay", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  status: (txnId) => apiFetch(`/bbps/status/${encodeURIComponent(txnId)}`),
+};
+
+// ─── Tickets / Support ─────────────────────────────────────────────────────────
+export const supportService = {
+  raiseTicket: (payload) =>
+    apiFetch("/tickets", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  myTickets: (userId) => apiFetch(`/tickets/mine?userId=${encodeURIComponent(userId)}`),
 };

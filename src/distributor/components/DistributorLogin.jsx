@@ -37,14 +37,18 @@ const DistributorLogin = () => {
 
     // ── Register state ──
     const [registerForm, setRegisterForm] = useState({
-        name: '', mobile: '', email: '', dob: '', businessName: '', state: '', 
+        name: '', mobile: '', email: '', businessName: '', state: '',
         city: '', pincode: '', address: '',
+        password: '', confirmPassword: '',
         role: 'DISTRIBUTOR',
         lang: language === 'en' ? 'English' : 'Hindi', agreement: false
     });
+    const [showRegPassword, setShowRegPassword] = useState(false);
 
     // ── Forgot Password state ──
     const [forgotForm, setForgotForm] = useState({ mobile: '', dob: '' });
+
+    const normalizeRole = (role) => String(role || '').trim().replace(/[\s-]+/g, '_').toUpperCase();
 
 
     // ── Handle Login Actions ──
@@ -77,30 +81,39 @@ const DistributorLogin = () => {
                 });
                 const data = await res.json();
                 if (data.success) {
-                    localStorage.setItem('rupiksha_user', JSON.stringify(data.user));
+                    const rolesArr = Array.isArray(data.user?.roles)
+                        ? data.user.roles.map((r) => normalizeRole(typeof r === 'string' ? r : r?.name))
+                        : [];
+                    const role = normalizeRole(data.user?.role);
+                    const allRoles = Array.from(new Set([...(rolesArr || []), ...(role ? [role] : [])]));
+                    if (!allRoles.includes('DISTRIBUTOR')) {
+                        setLoginError('Invalid credentials.');
+                        setIsLoading(false);
+                        return;
+                    }
+                    const sessionUser = {
+                        ...(data.user || {}),
+                        roles: allRoles,
+                        role: 'DISTRIBUTOR'
+                    };
+                    localStorage.setItem('rupiksha_user', JSON.stringify(sessionUser));
                     localStorage.setItem('rupiksha_token', data.token);
 
-                    const role = data.user.role;
-                    if (role === 'RETAILER') navigate('/dashboard');
-                    else if (role === 'SUPER_DISTRIBUTOR' || role === 'SUPERADMIN') navigate('/superadmin');
-                    else if (['ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(role)) navigate('/admin');
-                    else navigate('/distributor');
+                    navigate('/distributor');
                 } else {
                     setLoginError(data.message || 'Invalid OTP');
                 }
             } else {
                 // Password Login via AuthContext
                 // This triggers the 2-step PIN authentication
-                const result = await login(loginForm.username, loginForm.password);
+                const result = await login(loginForm.username, loginForm.password, 'DISTRIBUTOR');
                 if (result.success) {
                     const userStr = localStorage.getItem('rupiksha_user');
                     if (userStr) {
                         const user = JSON.parse(userStr);
-                        const role = user.role;
-                        if (role === 'RETAILER') navigate('/dashboard');
-                        else if (role === 'SUPER_DISTRIBUTOR' || role === 'SUPERADMIN') navigate('/superadmin');
-                        else if (['ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(role)) navigate('/admin');
-                        else navigate('/distributor');
+                        const role = normalizeRole(user.role);
+                        if (role === 'DISTRIBUTOR') navigate('/distributor');
+                        else setLoginError('Invalid credentials.');
                     }
                 } else {
                     setLoginError(result.message || 'Invalid username or password.');
@@ -118,6 +131,18 @@ const DistributorLogin = () => {
         setLoginError('');
         if (!registerForm.agreement) {
             setLoginError('Please accept the terms');
+            return;
+        }
+        if (!registerForm.password || registerForm.password.length < 8) {
+            setLoginError('Password must be at least 8 characters.');
+            return;
+        }
+        if (registerForm.password !== registerForm.confirmPassword) {
+            setLoginError('Passwords do not match.');
+            return;
+        }
+        if (!/^\d{10}$/.test(registerForm.mobile)) {
+            setLoginError('Mobile number must be 10 digits.');
             return;
         }
         setIsLoading(true);
@@ -239,35 +264,35 @@ const DistributorLogin = () => {
 
                 {loginError && <div className="bg-red-50 border border-red-200 text-red-700 text-[11px] font-bold px-3 py-2 rounded-xl">{loginError}</div>}
 
-                <form onSubmit={handleRegister} className="space-y-3.5">
+                <form onSubmit={handleRegister} className="space-y-3.5" autoComplete="off">
+                    {/* Honeypot fields to absorb browser autofill of admin credentials */}
+                    <input type="text" name="fake_username" autoComplete="username" tabIndex={-1} className="hidden" />
+                    <input type="password" name="fake_password" autoComplete="current-password" tabIndex={-1} className="hidden" />
                     <div className="relative">
                         <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input type="text" placeholder={t('name_label')} value={registerForm.name}
+                            name="reg_fullname_dist" autoComplete="off"
                             onChange={e => setRegisterForm({ ...registerForm, name: e.target.value })} required
                             className="w-full pl-10 pr-4 py-3 bg-white border border-slate-300 rounded-xl focus:border-blue-500 outline-none text-sm font-medium text-slate-900" />
                     </div>
                     <div className="relative">
                         <Smartphone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input type="tel" placeholder={t('mobile_label')} value={registerForm.mobile}
+                            name="reg_mobile_dist" autoComplete="off"
                             onChange={e => setRegisterForm({ ...registerForm, mobile: e.target.value.replace(/\D/g, '').slice(0, 10) })} required
                             className="w-full pl-10 pr-4 py-3 bg-white border border-slate-300 rounded-xl focus:border-blue-500 outline-none text-sm font-medium text-slate-900" />
                     </div>
                     <div className="relative">
                         <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input type="email" placeholder={t('email_label')} value={registerForm.email}
+                            name="reg_email_dist" autoComplete="off"
                             onChange={e => setRegisterForm({ ...registerForm, email: e.target.value })} required
                             className="w-full pl-10 pr-4 py-3 bg-white border border-slate-300 rounded-xl focus:border-blue-500 outline-none text-sm font-medium text-slate-900" />
                     </div>
                     <div className="relative">
-                        <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input type="text" placeholder="Date of Birth (DD/MM/YYYY)" value={registerForm.dob}
-                            onChange={e => setRegisterForm({ ...registerForm, dob: e.target.value })} required
-                            className="w-full pl-10 pr-4 py-3 bg-white border border-slate-300 rounded-xl focus:border-blue-500 outline-none text-sm font-medium text-slate-900" />
-                    </div>
-
-                    <div className="relative">
                         <Building2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input type="text" placeholder="Business / Shop Name" value={registerForm.businessName}
+                            name="reg_business_dist" autoComplete="off"
                             onChange={e => setRegisterForm({ ...registerForm, businessName: e.target.value })} required
                             className="w-full pl-10 pr-4 py-3 bg-white border border-slate-300 rounded-xl focus:border-blue-500 outline-none text-sm font-medium text-slate-900" />
                     </div>
@@ -292,6 +317,43 @@ const DistributorLogin = () => {
                         <textarea placeholder="Full Address" value={registerForm.address}
                             onChange={e => setRegisterForm({ ...registerForm, address: e.target.value })} required
                             className="w-full pl-10 pr-4 py-3 bg-white border border-slate-300 rounded-xl focus:border-blue-500 outline-none text-sm font-medium text-slate-900 min-h-[60px] resize-none"></textarea>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="relative">
+                            <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                                type={showRegPassword ? 'text' : 'password'}
+                                placeholder="Password (min 8 chars)"
+                                value={registerForm.password}
+                                onChange={e => setRegisterForm({ ...registerForm, password: e.target.value })}
+                                required
+                                minLength={8}
+                                maxLength={100}
+                                autoComplete="new-password"
+                                name="reg_password_dist"
+                                className="w-full pl-10 pr-10 py-3 bg-white border border-slate-300 rounded-xl focus:border-blue-500 outline-none text-sm font-medium text-slate-900"
+                            />
+                            <button type="button" onClick={() => setShowRegPassword(v => !v)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                {showRegPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
+                        </div>
+                        <div className="relative">
+                            <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                                type={showRegPassword ? 'text' : 'password'}
+                                placeholder="Confirm Password"
+                                value={registerForm.confirmPassword}
+                                onChange={e => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })}
+                                required
+                                minLength={8}
+                                maxLength={100}
+                                autoComplete="new-password"
+                                name="reg_confirm_dist"
+                                className="w-full pl-10 pr-4 py-3 bg-white border border-slate-300 rounded-xl focus:border-blue-500 outline-none text-sm font-medium text-slate-900"
+                            />
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">

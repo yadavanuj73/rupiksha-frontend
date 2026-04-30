@@ -1,13 +1,35 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Wallet, CreditCard, ShieldCheck, RefreshCw, CheckCircle2, IndianRupee, ArrowRight, Smartphone } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { dataService, BACKEND_URL } from '../../../services/dataService';
+import { dataService } from '../../../services/dataService';
+import { paymentGatewayService } from '../../../services/apiService';
 
-const AddMoney = () => {
+const AddMoney = ({ mode = 'add-money' }) => {
     const [amount, setAmount] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [orderData, setOrderData] = useState(null);
     const currentUser = dataService.getData().currentUser;
+    const isPayoutMode = mode === 'payout-hub';
+
+    const content = useMemo(() => {
+        if (isPayoutMode) {
+            return {
+                title: 'Payout Hub',
+                subtitle: 'Instant Settlement Gateway',
+                buttonLabel: 'Proceed to Payout',
+                loadingLabel: 'Connecting Gateway...',
+                badge: 'Settlement Secure',
+            };
+        }
+
+        return {
+            title: 'Add Money to Wallet',
+            subtitle: 'Instant Wallet Top-up',
+            buttonLabel: 'Recharge Wallet Now',
+            loadingLabel: 'Initiating Gateway...',
+            badge: 'PCI-DSS Secure',
+        };
+    }, [isPayoutMode]);
 
     const handleAddMoney = async () => {
         if (!amount || isNaN(amount) || parseFloat(amount) < 1) {
@@ -18,24 +40,11 @@ const AddMoney = () => {
         setIsLoading(true);
         try {
             // Updated to use Razorpay
-            const response = await fetch(`${BACKEND_URL}/create-order`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    amount: parseFloat(amount),
-                    customer_id: currentUser.username || currentUser.mobile || 'customer_1',
-                    customer_email: currentUser.email || `${currentUser.mobile || 'customer'}@rupiksha.com`,
-                    customer_phone: currentUser.mobile || '9999999999',
-                    customer_name: currentUser.businessName || currentUser.name || 'RUPIKSHA USER'
-                })
+            const result = await paymentGatewayService.createOrder({
+                amount: parseFloat(amount),
+                customer_id: currentUser.username || currentUser.mobile || 'customer_1',
+                purpose: 'WALLET_TOPUP'
             });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(errorText || "Server error initiating payment");
-            }
-
-            const result = await response.json();
             if (result.success) {
                 const options = {
                     key: result.key, // Razorpay Key ID
@@ -47,19 +56,11 @@ const AddMoney = () => {
                     handler: async function (response) {
                         // Payment Verification
                         try {
-                            const verifyRes = await fetch(`${BACKEND_URL}/verify-payment`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    razorpay_order_id: response.razorpay_order_id,
-                                    razorpay_payment_id: response.razorpay_payment_id,
-                                    razorpay_signature: response.razorpay_signature
-                                })
+                            const verifyResult = await paymentGatewayService.verifyPayment({
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_signature: response.razorpay_signature
                             });
-
-                            if (!verifyRes.ok) throw new Error("Verification failed at server");
-
-                            const verifyResult = await verifyRes.json();
                             if (verifyResult.success) {
                                 alert("Payment successful and verified!");
                                 window.location.reload();
@@ -123,13 +124,13 @@ const AddMoney = () => {
                         <Wallet size={20} />
                     </div>
                     <div>
-                        <h1 className="text-xl font-black text-slate-800 uppercase tracking-tighter">Add Money to Wallet</h1>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Instant Wallet Top-up</p>
+                        <h1 className="text-xl font-black text-slate-800 uppercase tracking-tighter">{content.title}</h1>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{content.subtitle}</p>
                     </div>
                 </div>
                 <div className="flex items-center space-x-2 bg-emerald-50 px-4 py-1.5 rounded-full">
                     <ShieldCheck size={14} className="text-emerald-600" />
-                    <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">PCI-DSS Secure</span>
+                    <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">{content.badge}</span>
                 </div>
             </div>
 
@@ -189,11 +190,11 @@ const AddMoney = () => {
                                 {isLoading ? (
                                     <>
                                         <RefreshCw size={20} className="animate-spin" />
-                                        <span>Initiating Gateway...</span>
+                                        <span>{content.loadingLabel}</span>
                                     </>
                                 ) : (
                                     <>
-                                        <span>Recharge Wallet Now</span>
+                                        <span>{content.buttonLabel}</span>
                                         <ArrowRight size={20} />
                                     </>
                                 )}

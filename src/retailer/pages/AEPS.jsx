@@ -8,8 +8,9 @@ import {
 } from 'lucide-react';
 import { BANK_LIST, DEVICE_LIST } from './aepsData';
 import { initSpeech, speak, announceSuccess, announceFailure, announceProcessing, announceError, announceWarning, announceGrandSuccess } from '../../services/speechService';
-import { useNavigate } from 'react-router-dom';
-import { dataService, BACKEND_URL } from '../../services/dataService';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { dataService } from '../../services/dataService';
+import { aepsService } from '../../services/apiService';
 import RetailerEKYC from '../components/banking/RetailerEKYC';
 import logo from '../../assets/rupiksha_logo.png';
 
@@ -26,6 +27,16 @@ const NAV_TABS = [
     { id: 'cash_deposit', label: 'Cash Deposit', icon: Layers, color: '#ec4899' },
     { id: 'tools', label: 'Merchant Tools', icon: ShieldCheck, color: '#ef4444' },
     { id: 'history', label: 'History', icon: History, color: '#6366f1' },
+];
+
+const BANKING_QUICK_LINKS = [
+    { id: 'aeps_services', label: 'AEPS Services', route: '/aeps' },
+    { id: 'cms', label: 'CMS - Loan EMI', route: '/cms' },
+    { id: 'matm', label: 'MATM', route: '/matm' },
+    { id: 'add_money', label: 'Add Money', route: '/add-money' },
+    { id: 'quick_mr', label: 'Quick MR', route: '/matm' },
+    { id: 'ybl_mr', label: 'YBL MR', route: '/travel' },
+    { id: 'pw_money_ekyc', label: 'PW Money QMR eKYC', route: '/aeps-kyc' },
 ];
 
 /* ══════════════════════════════════════════════════════════════════
@@ -169,12 +180,15 @@ const AEPS = () => {
     const [otp, setOtp] = useState('');
     const [otpRefId, setOtpRefId] = useState('');
     const [otpMethod, setOtpMethod] = useState('');
+    const [show2FAModal, setShow2FAModal] = useState(false);
+    const [twoFAData, setTwoFAData] = useState({ pidData: '', status: 'pending' });
     const [whitelistIp, setWhitelistIp] = useState('');
     const [whitelistMerchId, setWhitelistMerchId] = useState('');
     const [whitelistSuperMerchId, setWhitelistSuperMerchId] = useState('');
     const [whitelistResult, setWhitelistResult] = useState(null);
     const [paymentMode, setPaymentMode] = useState('wallet'); // New: wallet | gateway
     const navigate = useNavigate();
+    const routeLocation = useLocation();
     useEffect(() => {
         const currentUser = dataService.getCurrentUser();
         setUser(currentUser);
@@ -192,8 +206,7 @@ const AEPS = () => {
 
     const fetchHistory = async () => {
         try {
-            const res = await fetch(`${BACKEND_URL}/aeps/history?userId=${user?.id}`);
-            const data = await res.json();
+            const data = await aepsService.getHistory(user?.id);
             if (data.success) setHistory(data.transactions);
         } catch (e) { }
     };
@@ -208,19 +221,24 @@ const AEPS = () => {
 
     const handleTransaction = async (overridePid = null) => {
         console.log("Starting AEPS Transaction, userId:", user?.id);
-        if (aadhaar.length < 12) { return; }
-        if (!bank) { return; }
-        if ((tab === 'withdrawal' || tab === 'aadhaar_pay' || tab === 'cash_deposit') && (!amount || amount < 100)) { return; }
+        if (aadhaar.length < 12) {
+            announceWarning("Please enter valid 12-digit Aadhaar number");
+            return;
+        }
+        if (!bank) {
+            announceWarning("Please select a bank");
+            return;
+        }
+        if ((tab === 'withdrawal' || tab === 'aadhaar_pay' || tab === 'cash_deposit') && (!amount || amount < 100)) {
+            announceWarning("Minimum transaction amount is ₹100");
+            return;
+        }
 
-        // Generate Mock Bio/OTP payload for direct submission
-        let captureResponsePayload = null;
-        let twoFACapturePayload = null;
-
-        // For Face/OTP, we already checked/verified above.
-        // For Biometric, we check capturedPid (or overridePid)
-
-        if (deviceMode === 'face' && !capturedPid) {
-            announceWarning("Please complete face authentication first");
+        // Check 2FA status - required every 24 hours
+        const last2FA = localStorage.getItem('aeps_2fa_verified_at');
+        const twentyFourHours = 24 * 60 * 60 * 1000;
+        if (!last2FA || (Date.now() - new Date(last2FA).getTime()) > twentyFourHours) {
+            setShow2FAModal(true);
             return;
         }
 
@@ -228,85 +246,67 @@ const AEPS = () => {
         initSpeech();
         announceProcessing("Authenticating and Processing Transaction...");
 
-
-
-        // Mock a biometric payload if using OTP or Face Mock
-        if (deviceMode === 'otp' || deviceMode === 'face') {
-            captureResponsePayload = {
-                errCode: "0",
-                errInfo: "Success",
-                fType: "0",
-                fCount: "1",
-                nmPoints: "40",
-                qScore: "80",
-                dpId: deviceMode === 'face' ? "MOCK_FACE" : "MOCK_OTP",
-                rdsId: deviceMode === 'face' ? "MOCK_FACE" : "MOCK_OTP",
-                rdsVer: deviceMode === 'face' ? "MOCK_FACE" : "MOCK_OTP",
-                mi: "MOCK_MI",
-                mc: "MOCK_MC",
-                dc: "MOCK_DC",
-                Piddata: `<PidData>MOCK_${deviceMode.toUpperCase()}_DATA</PidData>`,
-                isFacialTan: deviceMode === 'face'
-            };
-            if (tab === 'cash_deposit' && !twoFACapturePayload) {
-                // If we're mocking, we just auto-mock the 2FA as well
-                twoFACapturePayload = { ...captureResponsePayload };
-            }
-        }
-
         try {
-            const endpoint = '/aeps/transaction';
-            const payload = {
-                userId: user.id,
-                mobile: mobile || aadhaar.slice(-10),
-                operator: BANK_LIST.find(b => b.id === bank)?.iin, // Send IIN
-                bankName: BANK_LIST.find(b => b.id === bank)?.name, // Send name for logging
-                amount: (tab === 'withdrawal' || tab === 'aadhaar_pay' || tab === 'cash_deposit') ? amount : 0,
-                serviceType: 'AEPS',
-                tab: tab,
-                paymentMode: tab === 'cash_deposit' ? paymentMode : 'wallet', // Send payment mode
-                aadhaar: aadhaar,
-                lat: location.lat,
-                lng: location.long,
-                deviceIMEI: 'WEB_RETAILER_001',
-                twoFACapture: twoFACapturePayload,
-                captureResponse: captureResponsePayload
+            const selectedBank = BANK_LIST.find(b => b.id === bank);
+
+            // Map transaction type to AEPS method code
+            const methodCodes = {
+                'withdrawal': '151',      // Cash Withdrawal
+                'balance': '152',          // Balance Inquiry
+                'statement': '153',        // Mini Statement
+                'aadhaar_pay': '154',      // Aadhaar Pay
+                'cash_deposit': '188'      // Cash Deposit
             };
 
-            const res = await fetch(`${BACKEND_URL}${endpoint}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const result = await res.json();
+            const payload = {
+                mobileNumber: mobile || aadhaar.slice(-10, -0),
+                adharNumber: aadhaar,
+                pidData: capturedPid || 'BIOMETRIC_DATA_REQUIRED',
+                aepsMethod: methodCodes[tab] || '152',
+                amount: (tab === 'withdrawal' || tab === 'aadhaar_pay' || tab === 'cash_deposit') ? amount : '1',
+                customerMobileNumber: mobile || aadhaar.slice(-10),
+                aepsBankName: selectedBank?.name || '',
+                aepsBankCode: selectedBank?.iin || '',
+                latitude: location.lat || '26.6745',
+                longitude: location.long || '84.9160',
+                biometricType: deviceMode === 'face' ? 'FIR' : 'FMR',
+                name: user?.fullName || '',
+                pinCode: user?.pincode || '',
+                address: user?.address || '',
+                shopName: user?.businessName || '',
+                city: user?.city || '',
+                state: user?.state || ''
+            };
 
-            if (result.success) {
+            const result = await aepsService.transact(payload);
+
+            if (result.statusId === 1) {
                 const txData = {
                     type: currentTab.label,
-                    bank: BANK_LIST.find(b => b.id === bank)?.name,
+                    bank: selectedBank?.name,
                     amount: tab === 'withdrawal' || tab === 'aadhaar_pay' || tab === 'cash_deposit' ? amount : '—',
                     aadhaar: 'XXXX-XXXX-' + aadhaar.slice(-4),
-                    txId: result.txid || ('TXN' + Date.now()),
+                    txId: result.txnid || result.rrn || ('TXN' + Date.now()),
                     date: new Date().toLocaleString()
                 };
                 setLastTx(txData);
-                if (tab === 'balance') setBalanceResult(result.balance);
+                if (tab === 'balance') setBalanceResult(result.availableBalance);
                 if (tab === 'statement') setStatementResult(result.miniStatement || []);
 
                 await dataService.logTransaction(user.id, `AEPS_${tab.toUpperCase()}`, amount || 0, txData.bank, aadhaar, 'SUCCESS');
 
-                // announceGrandSuccess("लेनदेन सफल रहा।", `${txData.bank} से ₹${txData.amount} निकल गए हैं।`);
-
                 const { default: confetti } = await import('canvas-confetti');
                 confetti({ particleCount: 160, spread: 80, origin: { y: 0.5 }, colors: ['#10b981', '#0f2557', '#fbbf24', '#a78bfa', '#38bdf8'] });
                 setShowSuccess(true);
+                announceSuccess(`${currentTab.label} completed successfully`);
             } else {
-                alert("Transaction Failed: " + (result.message || result.responseMessage || 'Unknown Error'));
+                const errorMsg = result.message || result.status || 'Transaction Failed';
+                announceFailure(errorMsg);
                 await dataService.logTransaction(user.id, `AEPS_${tab.toUpperCase()}`, amount || 0, bank, aadhaar, 'FAILED');
             }
         } catch (err) {
             console.error(err);
-            alert("Error: " + (err.message || "Connection Failed"));
+            announceError("Transaction Error: " + (err.message || "Connection Failed"));
         } finally {
             setLoading(false);
         }
@@ -315,19 +315,14 @@ const AEPS = () => {
     // AEPS KYC checks removed to allow direct access
 
     const handleStatusCheck = async () => {
-        if (!statusTxId) { announceWarning('ट्रांजैक्शन आईडी डालें'); return; }
+        if (!statusTxId) { announceWarning('Please enter Client ID'); return; }
         setLoading(true);
         try {
-            const res = await fetch(`${BACKEND_URL}/aeps/status-check`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ merchantTranId: statusTxId, merchantUsername: user?.username, merchantPin: user?.pin })
-            });
-            const data = await res.json();
+            const data = await aepsService.statusCheck(statusTxId);
             setToolResult(data);
-            if (data.success) announceSuccess("स्टेटस चेक सफल");
-            else announceError(data.message || "चेक फेल हो गया");
-        } catch (e) { announceError("सर्वर एरर"); }
+            if (data.statusId === 1) announceSuccess("Status check successful");
+            else announceError(data.message || "Status check failed");
+        } catch (e) { announceError("Server error: " + e.message); }
         finally { setLoading(false); }
     };
 
@@ -335,12 +330,7 @@ const AEPS = () => {
         setLoading(true);
         try {
             const formattedDate = reconDate.split('-').reverse().join('/'); // dd/mm/yyyy
-            const res = await fetch(`${BACKEND_URL}/aeps/recon`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ date: formattedDate, merchantUsername: user?.username, merchantPin: user?.pin })
-            });
-            const data = await res.json();
+            const data = await aepsService.reconcile(formattedDate);
             setToolResult(data);
             if (data.success) announceSuccess("रिकॉन्सिलिएशन रिपोर्ट तैयार है");
             else announceError(data.message || "फेल हो गया");
@@ -352,18 +342,13 @@ const AEPS = () => {
         if (!whitelistIp) { announceWarning('Server IP required'); return; }
         setLoading(true);
         try {
-            const res = await fetch(`${BACKEND_URL}/aeps/whitelist-request`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    merchantId: whitelistMerchId,
-                    superMerchantId: whitelistSuperMerchId,
-                    serverIp: whitelistIp,
-                    contactEmail: user?.email,
-                    contactName: user?.name || 'Rupiksha Admin'
-                })
+            const data = await aepsService.whitelistRequest({
+                merchantId: whitelistMerchId,
+                superMerchantId: whitelistSuperMerchId,
+                serverIp: whitelistIp,
+                contactEmail: user?.email,
+                contactName: user?.name || 'Rupiksha Admin'
             });
-            const data = await res.json();
             setWhitelistResult(data);
             if (data.success) announceSuccess('Whitelist request generated! Check your email.');
             else announceError(data.message || 'Failed');
@@ -462,6 +447,25 @@ const AEPS = () => {
                                 </div>
                                 {t.label}
                             </motion.button>
+                        );
+                    })}
+                </div>
+
+                <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                    {BANKING_QUICK_LINKS.map((item) => {
+                        const isCurrent = routeLocation.pathname === item.route;
+                        return (
+                            <button
+                                key={item.id}
+                                onClick={() => navigate(item.route)}
+                                className={`px-3 py-2 rounded-lg border text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${
+                                    isCurrent
+                                        ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                        : 'bg-white text-slate-500 border-slate-200 hover:border-indigo-300 hover:text-indigo-700'
+                                }`}
+                            >
+                                {item.label}
+                            </button>
                         );
                     })}
                 </div>
@@ -616,7 +620,7 @@ const AEPS = () => {
                                             </h3>
                                             <p className="text-[10px] text-slate-500 font-bold uppercase">Check status of any AEPS transaction</p>
                                             <input type="text" value={statusTxId} onChange={e => setStatusTxId(e.target.value)}
-                                                placeholder="Enter Merchant Tran ID"
+                                                placeholder="Enter Client ID (e.g., RUP0...)"
                                                 className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-white text-sm font-bold outline-none focus:border-blue-500" />
                                             <button onClick={handleStatusCheck} disabled={loading}
                                                 className="w-full py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all">
@@ -873,7 +877,7 @@ FINGPAY_PIN=your_pin`}</pre>
                 </AnimatePresence>
             </div>
             {/* ── Retailer Daily 2FA Overlay — Mandatory NPCI Requirement ── */}
-            {!isRetailerVerified && (
+            {(show2FAModal || !isRetailerVerified) && (
                 <div className="fixed inset-0 z-[1000] bg-white/40 backdrop-blur-3xl flex items-center justify-center p-6 text-slate-900">
                     <motion.div initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
                         className="bg-white w-full max-w-lg rounded-[4rem] shadow-[0_40px_100px_rgba(0,0,0,0.15)] border border-slate-100 overflow-hidden">
@@ -881,55 +885,91 @@ FINGPAY_PIN=your_pin`}</pre>
                             <img src={logo} alt="Rupiksha" className="h-16 md:h-20 object-contain mx-auto mb-3" />
                             <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">RUPIKSHA AEPS</h2>
                             <p className="text-emerald-600 text-[10px] mt-2 uppercase tracking-[0.2em] font-bold flex items-center justify-center gap-1">
-                                <ShieldCheck size={14} /> by 2FA
+                                <ShieldCheck size={14} /> 2FA Required
                             </p>
                         </div>
                         <div className="p-8 space-y-6">
 
                             <div className="text-center space-y-1">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Retailer Authentication</p>
-                                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg border border-slate-200">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Daily Retailer Authentication</p>
+                                <p className="text-[11px] text-slate-600 font-medium">Required every 24 hours for NPCI compliance</p>
+                                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg border border-slate-200 mt-2">
                                     <span className="text-xs font-black text-slate-700 tracking-widest">
-                                        XXXX-XXXX-{user?.aadhaar ? user.aadhaar.slice(-4) : 'XXXX'}
+                                        {user?.aadhaar ? 'XXXX-XXXX-' + user.aadhaar.slice(-4) : 'XXXX-XXXX-XXXX'}
                                     </span>
                                 </div>
                             </div>
 
-                            <MantraDeviceWidget compact={true} buttonText="🖐 Retailer Aadhaar 2FA" onCapture={async (pid) => {
-                                setLoading(true);
-                                announceProcessing("Retailer identity being verified...");
-                                try {
-                                    const res = await fetch(`${BACKEND_URL}/aeps/2fa`, {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({
-                                            userId: user?.id || 0,
-                                            aadhaar: user?.aadhaar || '000000000000',
-                                            captureResponse: pid,
-                                            lat: location.lat,
-                                            lng: location.long,
-                                            deviceIMEI: 'WEB_RETAILER_001'
-                                        })
-                                    });
-                                    const result = await res.json();
-                                    if (result.success) {
-                                        localStorage.setItem('retailer_2fa_verified_at', new Date().toDateString());
-                                        setIsRetailerVerified(true);
-                                        announceGrandSuccess("VERIFIED", "Access granted for the day.");
-                                    } else {
-                                        announceError(result.message || "Identity check failed. Try again.");
-                                    }
-                                } catch (e) {
-                                    announceError("Verification server offline");
-                                } finally {
-                                    setLoading(false);
-                                }
-                            }} />
+                            {/* 2FA Form */}
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Retailer Mobile</label>
+                                    <input
+                                        type="text"
+                                        value={user?.mobile || ''}
+                                        readOnly
+                                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-sm font-bold text-slate-600"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Biometric PID Data</label>
+                                    <textarea
+                                        value={twoFAData.pidData}
+                                        onChange={(e) => setTwoFAData({...twoFAData, pidData: e.target.value})}
+                                        placeholder="Paste biometric capture data from your device..."
+                                        rows={4}
+                                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-white text-xs font-mono outline-none focus:border-blue-500 resize-none"
+                                    />
+                                    <p className="text-[9px] text-slate-400 font-bold">Use your biometric device to capture and paste the PID data</p>
+                                </div>
+
+                                <button
+                                    onClick={async () => {
+                                        if (!twoFAData.pidData) {
+                                            announceWarning("Please provide biometric data");
+                                            return;
+                                        }
+                                        setLoading(true);
+                                        announceProcessing("Verifying retailer identity...");
+                                        try {
+                                            const result = await aepsService.twoFa({
+                                                mobileNumber: user?.mobile || '',
+                                                adharNumber: user?.aadhaar || '',
+                                                pidData: twoFAData.pidData,
+                                                aepsAgentId: user?.aepsAgentId || '',
+                                                merchantId: user?.merchantId || '',
+                                                latitude: location.lat || '26.6745',
+                                                longitude: location.long || '84.9160',
+                                                biometricType: 'FMR,FIR'
+                                            });
+
+                                            if (result.statusId === 1) {
+                                                localStorage.setItem('aeps_2fa_verified_at', new Date().toISOString());
+                                                localStorage.setItem('aeps_mta_id', result.aepsMtaId || '');
+                                                setIsRetailerVerified(true);
+                                                setShow2FAModal(false);
+                                                announceGrandSuccess("2FA Verified", "Access granted for 24 hours.");
+                                            } else {
+                                                announceError(result.message || "2FA verification failed. Try again.");
+                                            }
+                                        } catch (e) {
+                                            announceError("Verification server error: " + e.message);
+                                        } finally {
+                                            setLoading(false);
+                                        }
+                                    }}
+                                    disabled={loading || !twoFAData.pidData}
+                                    className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl text-sm font-black uppercase tracking-widest hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    {loading ? <><RefreshCw className="animate-spin" size={18} /> VERIFYING...</> : <><Fingerprint size={18} /> VERIFY 2FA</>}
+                                </button>
+                            </div>
 
                             <div className="flex items-center justify-center gap-6 opacity-30 brightness-50">
-                                <img src="https://upload.wikimedia.org/wikipedia/en/thumb/c/cf/Aadhaar_Logo.svg/1200px-Aadhaar_Logo.svg.png" className="h-6 grayscale" alt="Adhaar" />
+                                <img src="https://upload.wikimedia.org/wikipedia/en/thumb/c/cf/Aadhaar_Logo.svg/1200px-Aadhaar_Logo.svg.png" className="h-6 grayscale" alt="Aadhaar" />
                                 <div className="w-1 h-3 bg-slate-300 rounded-full" />
-                                <h4 className="text-[10px] font-black text-slate-400 tracking-widest uppercase">AePS Secured</h4>
+                                <h4 className="text-[10px] font-black text-slate-400 tracking-widest uppercase">NPCI AEPS Secured</h4>
                             </div>
                         </div>
                     </motion.div>

@@ -6,7 +6,8 @@ import {
     Tv2, ChevronRight, User, Calendar, Mail,
     Hash, Home, Phone, FileText, MapPin, Landmark, Wallet, ShieldCheck
 } from 'lucide-react';
-import { dataService, BACKEND_URL } from '../../services/dataService';
+import { dataService } from '../../services/dataService';
+import { providerTxnService, bbpsService } from '../../services/apiService';
 import {
     PREFIX_DB, OPERATOR_PLANS, DTH_PROVIDERS, BILL_CATEGORIES,
     PAN_API, RECHARGE_API, BILL_PAY_API, BILL_FETCH_API
@@ -313,21 +314,12 @@ function MobileTab({ location }) {
         setLoading(true); setStatus(null);
         try {
             initSpeech(); announceProcessing("रिचार्ज प्रोसेस हो रहा है।");
-            const res = await fetch(`${BACKEND_URL}/recharge`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    userId: user.id, 
-                    mobile, 
-                    operator: opCode, 
-                    circle, 
-                    amount, 
-                    serviceType: 'MR', 
-                    paymentMethod,
-                    lat: location?.lat,
-                    lng: location?.long || location?.lng
-                })
+            const result = await providerTxnService.recharge({
+                userId: user.id,
+                mobile,
+                operator: opCode,
+                amount: Number(amount)
             });
-            const result = await res.json();
             if (result.success) {
                 // Update local wallet balance
                 if (result.newBalance) {
@@ -579,19 +571,12 @@ function DthTab({ location }) {
         try {
             initSpeech(); announceProcessing("डीटीएच रिचार्ज हो रहा है।");
             const opCode = DTH_PROVIDERS[provider]?.opcode || provider;
-            const res = await fetch(`${BACKEND_URL}/recharge`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    userId: user.id, 
-                    mobile: subscriberId, 
-                    operator: opCode, 
-                    amount: selectedPlan.amount, 
-                    serviceType: 'DTH',
-                    lat: location?.lat,
-                    lng: location?.long || location?.lng
-                })
+            const result = await providerTxnService.recharge({
+                userId: user.id,
+                mobile: subscriberId,
+                operator: opCode,
+                amount: Number(selectedPlan.amount)
             });
-            const result = await res.json();
             if (result.success) {
                 await dataService.logTransaction(user.id, `DTH_${opCode}`, selectedPlan.amount, provider, subscriberId, 'SUCCESS');
                 announceGrandSuccess(
@@ -742,21 +727,13 @@ function BillTab() {
         setFetching(true); setFetchedBill(null); setFetchError(false); setStatus(null);
         try {
             const user = dataService.getCurrentUser();
-            const res = await fetch(`${BACKEND_URL}/bill-fetch`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    biller: biller?.name || biller,
-                    consumerNo,
-                    opcode: opCode,
-                    category: category?.id,
-                    subDiv: '',
-                    dob: dob ? dob.replace(/-/g, '/') : '',
-                    mobile: user?.mobile || '9999999999'
-                })
+            const data = await bbpsService.fetchBill({
+                userId: user?.id,
+                biller: biller?.name || biller,
+                consumerNo,
+                opcode: opCode,
+                category: category?.id
             });
-            if (!res.ok) throw new Error('Backend error');
-            const data = await res.json();
             if (data.success && data.bill) {
                 setFetchedBill(data.bill);
             } else {
@@ -795,20 +772,14 @@ function BillTab() {
         }
         try {
             initSpeech(); announceProcessing("बिल पेमेंट हो रहा है।");
-            const res = await fetch(`${BACKEND_URL}/bill-pay`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: user.id,
-                    biller: billerName,
-                    consumerNo,
-                    amount: fetchedBill.amount,
-                    category: category?.id,
-                    opcode: billerOpcode,
-                    dob: dob ? dob.replace(/-/g, '/') : '',
-                    mobile: user?.mobile || '9999999999'
-                })
+            const result = await bbpsService.payBill({
+                userId: user.id,
+                biller: billerName,
+                consumerNo,
+                amount: Number(fetchedBill.amount),
+                category: category?.id,
+                opcode: billerOpcode
             });
-            const result = await res.json();
             if (result.success) {
                 await dataService.logTransaction(user.id, `BILL_${billerOpcode}`, fetchedBill.amount, billerName, consumerNo, 'SUCCESS');
                 announceGrandSuccess(
@@ -1231,10 +1202,14 @@ function PanTab() {
     );
 }
 
-export default function Utility() {
-    const [tab, setTab] = useState('mobile');
+export default function Utility({ initialTab = 'mobile' }) {
+    const [tab, setTab] = useState(initialTab);
     const [user, setUser] = useState(null);
     const [location, setLocation] = useState({ lat: '...', long: '...' });
+
+    useEffect(() => {
+        setTab(initialTab);
+    }, [initialTab]);
 
     useEffect(() => {
         const currentUser = dataService.getCurrentUser();

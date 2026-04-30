@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from 'react';
+﻿import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 
@@ -23,6 +23,7 @@ const Home = lazy(() => import('./landing/Home'));
 const About = lazy(() => import('./landing/About'));
 const Contact = lazy(() => import('./landing/Contact'));
 const Leadership = lazy(() => import('./landing/Leadership'));
+const CompleteKyc = lazy(() => import('./pages/CompleteKyc'));
 
 // Retailer
 const RetailerLayout = lazy(() => import('./retailer/components/RetailerLayout'));
@@ -30,6 +31,8 @@ const Dashboard = lazy(() => import('./retailer/pages/Dashboard'));
 const Profile = lazy(() => import('./retailer/pages/Profile'));
 const Travel = lazy(() => import('./retailer/pages/Travel'));
 const Utility = lazy(() => import('./retailer/pages/Utility'));
+const BharatConnect = lazy(() => import('./retailer/pages/BharatConnect'));
+const PayoutHub = lazy(() => import('./retailer/pages/PayoutHub'));
 const AEPS = lazy(() => import('./retailer/pages/AEPS'));
 const CMS = lazy(() => import('./retailer/pages/CMS'));
 const AllServices = lazy(() => import('./retailer/pages/AllServices'));
@@ -50,6 +53,7 @@ const RetailerDetails = lazy(() => import('./admin/components/RetailerDetails'))
 const DistributorDetails = lazy(() => import('./admin/components/DistributorDetails'));
 const KYCVerification = lazy(() => import('./retailer/pages/KYCVerification'));
 const AEPSKycForm = lazy(() => import('./retailer/pages/AEPSKycForm'));
+const AepsOnboarding = lazy(() => import('./retailer/pages/AepsOnboarding'));
 
 // Distributor
 const DistributorLayout = lazy(() => import('./distributor/components/DistributorLayout'));
@@ -90,56 +94,85 @@ const EcollectComplaints = lazy(() => import('./distributor/pages/Support').then
 const RetailerComplaints = lazy(() => import('./distributor/pages/Support').then(m => ({ default: m.RetailerComplaints })));
 const TrainingVideos = lazy(() => import('./distributor/pages/Support').then(m => ({ default: m.TrainingVideos })));
 
-// SuperAdmin
-const SuperAdminLayout = lazy(() => import('./superadmin/components/SuperAdminLayout'));
-const SuperAdminDashboard = lazy(() => import('./superadmin/pages/SuperAdminDashboard'));
-const SuperAdminMembers = lazy(() => import('./superadmin/pages/AllMembers'));
-const SuperAdminWalletControl = lazy(() => import('./superadmin/pages/WalletControl'));
-const SuperAdminAddMoney = lazy(() => import('./superadmin/pages/AddMoney'));
-const SuperAdminReceipt = lazy(() => import('./superadmin/pages/Receipts').then(m => ({ default: m.SuperAdminReceipt })));
-const SuperAdminRetailerReceipt = lazy(() => import('./superadmin/pages/Receipts').then(m => ({ default: m.RetailerReceipt })));
-const SuperAdminApprovals = lazy(() => import('./superadmin/pages/Approvals'));
-const SuperAdminLoans = lazy(() => import('./superadmin/pages/LoanApprovals'));
-const SuperAdminDistributors = lazy(() => import('./superadmin/pages/Distributors'));
-const SuperAdminSuperDistributors = lazy(() => import('./superadmin/pages/SuperDistributors'));
-const SuperAdminSettings = lazy(() => import('./superadmin/pages/SuperAdminSettings'));
-const SuperAdminPlaceholder = lazy(() => import('./superadmin/pages/SuperAdminPlaceholder'));
-const SuperAdminPlans = lazy(() => import('./superadmin/pages/SuperAdminPlans'));
-const SuperAdminPlansRates = lazy(() => import('./superadmin/pages/PlansRates'));
-const SuperAdminInvoice = lazy(() => import('./superadmin/pages/Invoice'));
-const SuperAdminOldReports = lazy(() => import('./superadmin/pages/OldReports'));
+// SUPER_DISTRIBUTOR
+const SuperDistributorLayout = lazy(() => import('./super-distributor/components/SuperDistributorLayout'));
+const SuperDistributorDashboard = lazy(() => import('./super-distributor/pages/SuperDistributorDashboard'));
+const SuperDistributorMembers = lazy(() => import('./super-distributor/pages/AllMembers'));
+const SuperDistributorRetailers = lazy(() => import('./super-distributor/pages/Retailers'));
+const SuperDistributorWalletControl = lazy(() => import('./super-distributor/pages/WalletControl'));
+const SuperDistributorAddMoney = lazy(() => import('./super-distributor/pages/AddMoney'));
+const SuperDistributorReceipt = lazy(() => import('./super-distributor/pages/Receipts').then(m => ({ default: m.SuperDistributorReceipt })));
+const SuperDistributorRetailerReceipt = lazy(() => import('./super-distributor/pages/Receipts').then(m => ({ default: m.RetailerReceipt })));
+const SuperDistributorApprovals = lazy(() => import('./super-distributor/pages/Approvals'));
+const SuperDistributorLoans = lazy(() => import('./super-distributor/pages/LoanApprovals'));
+const SuperDistributorDistributors = lazy(() => import('./super-distributor/pages/Distributors'));
+const SuperDistributorsPage = lazy(() => import('./super-distributor/pages/SuperDistributors'));
+const SuperDistributorSettings = lazy(() => import('./super-distributor/pages/SuperDistributorSettings'));
+const SuperDistributorPlaceholder = lazy(() => import('./super-distributor/pages/SuperDistributorPlaceholder'));
+const SuperDistributorPlans = lazy(() => import('./super-distributor/pages/SuperDistributorPlans'));
+const SuperDistributorPlansRates = lazy(() => import('./super-distributor/pages/PlansRates'));
+const SuperDistributorInvoice = lazy(() => import('./super-distributor/pages/Invoice'));
+const SuperDistributorOldReports = lazy(() => import('./super-distributor/pages/OldReports'));
 
-// SuperAdmin Reports
-const SARetailerBalance = lazy(() => import('./superadmin/pages/Reports').then(m => ({ default: m.RetailerBalance })));
-const SAPaymentRequest = lazy(() => import('./superadmin/pages/Reports').then(m => ({ default: m.PaymentRequest })));
-const SAPurchaseReport = lazy(() => import('./superadmin/pages/Reports').then(m => ({ default: m.PurchaseReport })));
-const SAChargeReport = lazy(() => import('./superadmin/pages/Reports').then(m => ({ default: m.ChargeReport })));
-const SACommissionReport = lazy(() => import('./superadmin/pages/Reports').then(m => ({ default: m.CommissionReport })));
-const SAAepsReport = lazy(() => import('./superadmin/pages/Reports').then(m => ({ default: m.AepsReport })));
-const SADmtReport = lazy(() => import('./superadmin/pages/Reports').then(m => ({ default: m.DmtReport })));
-const SABbpsReport = lazy(() => import('./superadmin/pages/Reports').then(m => ({ default: m.BbpsReport })));
-const SACmsReport = lazy(() => import('./superadmin/pages/Reports').then(m => ({ default: m.CmsReport })));
-const SAUserSaleReport = lazy(() => import('./superadmin/pages/Reports').then(m => ({ default: m.DailyLedger })));
-const ReportsAnalyst = lazy(() => import('./superadmin/pages/ReportsAnalyst'));
+// SUPER_DISTRIBUTOR Reports
+const SARetailerBalance = lazy(() => import('./super-distributor/pages/Reports').then(m => ({ default: m.RetailerBalance })));
+const SAPaymentRequest = lazy(() => import('./super-distributor/pages/Reports').then(m => ({ default: m.PaymentRequest })));
+const SAPurchaseReport = lazy(() => import('./super-distributor/pages/Reports').then(m => ({ default: m.PurchaseReport })));
+const SAChargeReport = lazy(() => import('./super-distributor/pages/Reports').then(m => ({ default: m.ChargeReport })));
+const SACommissionReport = lazy(() => import('./super-distributor/pages/Reports').then(m => ({ default: m.CommissionReport })));
+const SAAepsReport = lazy(() => import('./super-distributor/pages/Reports').then(m => ({ default: m.AepsReport })));
+const SADmtReport = lazy(() => import('./super-distributor/pages/Reports').then(m => ({ default: m.DmtReport })));
+const SABbpsReport = lazy(() => import('./super-distributor/pages/Reports').then(m => ({ default: m.BbpsReport })));
+const SACmsReport = lazy(() => import('./super-distributor/pages/Reports').then(m => ({ default: m.CmsReport })));
+const SAUserSaleReport = lazy(() => import('./super-distributor/pages/Reports').then(m => ({ default: m.DailyLedger })));
+const ReportsAnalyst = lazy(() => import('./super-distributor/pages/ReportsAnalyst'));
 
-// SuperAdmin Accounts
-const SAMyLedger = lazy(() => import('./superadmin/pages/Accounts').then(m => ({ default: m.MyLedger })));
-const SARetailerLedger = lazy(() => import('./superadmin/pages/Accounts').then(m => ({ default: m.RetailerLedger })));
-const SAAccountsCommission = lazy(() => import('./superadmin/pages/Accounts').then(m => ({ default: m.AccountsCommission })));
+// SUPER_DISTRIBUTOR Accounts
+const SAMyLedger = lazy(() => import('./super-distributor/pages/Accounts').then(m => ({ default: m.MyLedger })));
+const SARetailerLedger = lazy(() => import('./super-distributor/pages/Accounts').then(m => ({ default: m.RetailerLedger })));
+const SAAccountsCommission = lazy(() => import('./super-distributor/pages/Accounts').then(m => ({ default: m.AccountsCommission })));
 
-// SuperAdmin Promotions
-const SAPromotionsList = lazy(() => import('./superadmin/pages/Promotions').then(m => ({ default: m.PromotionsList })));
-const SAPromotionAssets = lazy(() => import('./superadmin/pages/Promotions').then(m => ({ default: m.PromotionAssets })));
+// SUPER_DISTRIBUTOR Promotions
+const SAPromotionsList = lazy(() => import('./super-distributor/pages/Promotions').then(m => ({ default: m.PromotionsList })));
+const SAPromotionAssets = lazy(() => import('./super-distributor/pages/Promotions').then(m => ({ default: m.PromotionAssets })));
 
-// SuperAdmin Support
-const SASupportLeads = lazy(() => import('./superadmin/pages/Support').then(m => ({ default: m.SupportLeads })));
-const SAEcollectComplaints = lazy(() => import('./superadmin/pages/Support').then(m => ({ default: m.EcollectComplaints })));
-const SARetailerComplaints = lazy(() => import('./superadmin/pages/Support').then(m => ({ default: m.RetailerComplaints })));
-const SATrainingVideos = lazy(() => import('./superadmin/pages/Support').then(m => ({ default: m.TrainingVideos })));
-const SuperAdminOldReports_SA = lazy(() => import('./superadmin/pages/OldReports'));
+// SUPER_DISTRIBUTOR Support
+const SASupportLeads = lazy(() => import('./super-distributor/pages/Support').then(m => ({ default: m.SupportLeads })));
+const SAEcollectComplaints = lazy(() => import('./super-distributor/pages/Support').then(m => ({ default: m.EcollectComplaints })));
+const SARetailerComplaints = lazy(() => import('./super-distributor/pages/Support').then(m => ({ default: m.RetailerComplaints })));
+const SATrainingVideos = lazy(() => import('./super-distributor/pages/Support').then(m => ({ default: m.TrainingVideos })));
+const SuperDistributorOldReports_SA = lazy(() => import('./super-distributor/pages/OldReports'));
 
 import ProtectedRoute from './components/ProtectedRoute';
 import LockScreen from './components/LockScreen';
+import { useAuth } from './context/AuthContext';
+
+// Smart catch-all: route authenticated users to their role's home instead of
+// dumping everyone on /login (which used to cause confusion — e.g. refreshing
+// a deep link or mistyping a URL would silently send admins to the portal
+// selector).
+function SmartFallback() {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#f7f9fc]">
+        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+  if (!user) return <Navigate to="/login" replace />;
+  const roles = (Array.isArray(user?.roles) && user.roles.length ? user.roles : [user?.role])
+    .map((r) => String(typeof r === 'string' ? r : r?.name || ''))
+    .map((r) => r.trim().replace(/^ROLE_/i, '').replace(/[\s-]+/g, '_').toUpperCase())
+    .filter(Boolean);
+  if (roles.some((r) => ['ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(r))) {
+    return <Navigate to="/admin" replace />;
+  }
+  if (roles.includes('SUPER_DISTRIBUTOR')) return <Navigate to="/super-distributor" replace />;
+  if (roles.includes('DISTRIBUTOR')) return <Navigate to="/distributor" replace />;
+  if (roles.includes('RETAILER')) return <Navigate to="/dashboard" replace />;
+  return <Navigate to="/login" replace />;
+}
 
 function App() {
   return (
@@ -162,12 +195,19 @@ function App() {
               <Route path="/adin" element={<Navigate to="/admin" replace />} />
               <Route path="/kyc-verification" element={<ProtectedRoute><KYCVerification /></ProtectedRoute>} />
               <Route path="/aeps-kyc" element={<ProtectedRoute><AEPSKycForm /></ProtectedRoute>} />
+              <Route path="/aeps-onboarding" element={<ProtectedRoute><AepsOnboarding /></ProtectedRoute>} />
+              <Route path="/complete-kyc" element={<ProtectedRoute allowKycPending><CompleteKyc /></ProtectedRoute>} />
 
               {/* Protected Retailer Routes */}
               <Route element={<ProtectedRoute role="RETAILER"><RetailerLayout /></ProtectedRoute>}>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/travel" element={<Travel />} />
+                <Route path="/travel-hub" element={<Navigate to="/travel" replace />} />
+                <Route path="/retailer/travel" element={<Navigate to="/travel" replace />} />
                 <Route path="/utility" element={<Utility />} />
+                <Route path="/bharat-connect" element={<BharatConnect />} />
+                <Route path="/payout-hub" element={<PayoutHub />} />
                 <Route path="/aeps" element={<AEPS />} />
                 <Route path="/cms" element={<CMS />} />
                 <Route path="/all-services" element={<AllServices />} />
@@ -180,6 +220,7 @@ function App() {
                 <Route path="/gold_loan" element={<Loans />} />
                 <Route path="/instant_loan" element={<Loans />} />
                 <Route path="/loan_status" element={<Loans />} />
+                <Route path="/reports" element={<Reports />} />
                 <Route path="/reports/sale-report" element={<SaleReport />} />
                 <Route path="/reports/consolidated-ledger" element={<ConsolidatedLedger />} />
                 <Route path="/reports/daily-ledger" element={<DailyLedger />} />
@@ -190,14 +231,20 @@ function App() {
 
               {/* Protected Admin Routes */}
               <Route path="/admin" element={<ProtectedRoute role="ADMIN_OR_EMPLOYEE"><Admin /></ProtectedRoute>} />
+              <Route path="/admin/dashboard" element={<ProtectedRoute role="ADMIN_OR_EMPLOYEE"><Admin /></ProtectedRoute>} />
               <Route path="/admin/retailer/:username" element={<ProtectedRoute role="ADMIN_OR_EMPLOYEE"><RetailerDetails /></ProtectedRoute>} />
               <Route path="/admin/distributor/:id" element={<ProtectedRoute role="ADMIN_OR_EMPLOYEE"><DistributorDetails /></ProtectedRoute>} />
+              {/* Any other /admin/* sub-path falls back to the main admin dashboard so
+                  refreshes on deep links stay within the admin area instead of being
+                  captured by the global 404 catch-all below. */}
+              <Route path="/admin/*" element={<ProtectedRoute role="ADMIN_OR_EMPLOYEE"><Admin /></ProtectedRoute>} />
 
               {/* Protected Distributor Routes */}
               <Route path="/distributor-plans" element={<ProtectedRoute role="DISTRIBUTOR"><DistributorPlans /></ProtectedRoute>} />
               <Route path="/distributor" element={<ProtectedRoute role="DISTRIBUTOR"><DistributorLayout /></ProtectedRoute>}>
                 <Route index element={<DistributorDashboard />} />
-                <Route path="distributors" element={<SuperAdminDistributors />} />
+                <Route path="all-services" element={<AllServices readOnly />} />
+                <Route path="distributors" element={<SuperDistributorDistributors />} />
                 <Route path="retailers" element={<Retailers />} />
                 <Route path="retailers/details" element={<Retailers />} />
                 <Route path="retailers/share" element={<DistributorPlaceholder title="Share" />} />
@@ -236,31 +283,32 @@ function App() {
                 <Route path="*" element={<DistributorPlaceholder title="Not Found" />} />
               </Route>
 
-              {/* Protected SuperAdmin Routes */}
-              <Route path="/superadmin-plans" element={<ProtectedRoute role="SUPERADMIN"><SuperAdminPlans /></ProtectedRoute>} />
-              <Route path="/superadmin" element={<ProtectedRoute role="SUPERADMIN"><SuperAdminLayout /></ProtectedRoute>}>
-                <Route index element={<SuperAdminDashboard />} />
-                <Route path="members" element={<SuperAdminMembers />} />
-                <Route path="distributors" element={<SuperAdminDistributors />} />
-                <Route path="super-distributors" element={<SuperAdminSuperDistributors />} />
-                <Route path="retailers" element={<SuperAdminMembers />} />
-                <Route path="retailers/details" element={<SuperAdminMembers />} />
-                <Route path="retailers/share" element={<SuperAdminPlaceholder title="Share" />} />
-                <Route path="retailers/workflow" element={<SuperAdminPlaceholder title="Workflow" />} />
-                <Route path="approvals" element={<SuperAdminApprovals />} />
-                <Route path="loans" element={<SuperAdminLoans />} />
-                <Route path="wallet" element={<SuperAdminWalletControl />} />
-                <Route path="wallet/credit" element={<SuperAdminWalletControl initialTab="credit" />} />
-                <Route path="wallet/debit" element={<SuperAdminWalletControl initialTab="debit" />} />
-                <Route path="wallet/requests" element={<SuperAdminWalletControl initialTab="requests" />} />
-                <Route path="wallet/lock" element={<SuperAdminWalletControl initialTab="lock" />} />
-                <Route path="wallet/release" element={<SuperAdminWalletControl initialTab="release-lock" />} />
-                <Route path="transactions" element={<SuperAdminReceipt />} />
-                <Route path="transactions/superadmin-receipt" element={<SuperAdminReceipt />} />
-                <Route path="transactions/retailer-receipt" element={<SuperAdminRetailerReceipt />} />
-                <Route path="transactions/add-money" element={<SuperAdminAddMoney />} />
-                <Route path="transactions/axis-cdm" element={<SuperAdminPlaceholder title="Axis CDM" />} />
-                <Route path="transactions/axis-mapping" element={<SuperAdminPlaceholder title="Axis Mapping" />} />
+              {/* Protected SUPER_DISTRIBUTOR Routes */}
+              <Route path="/super-distributor-plans" element={<ProtectedRoute role="SUPER_DISTRIBUTOR"><SuperDistributorPlans /></ProtectedRoute>} />
+              <Route path="/super-distributor" element={<ProtectedRoute role="SUPER_DISTRIBUTOR"><SuperDistributorLayout /></ProtectedRoute>}>
+                <Route index element={<SuperDistributorDashboard />} />
+                <Route path="all-services" element={<AllServices readOnly />} />
+                <Route path="members" element={<SuperDistributorMembers />} />
+                <Route path="distributors" element={<SuperDistributorDistributors />} />
+                <Route path="super-distributors" element={<SuperDistributorsPage />} />
+                <Route path="retailers" element={<SuperDistributorRetailers />} />
+                <Route path="retailers/details" element={<SuperDistributorRetailers />} />
+                <Route path="retailers/share" element={<SuperDistributorPlaceholder title="Share" />} />
+                <Route path="retailers/workflow" element={<SuperDistributorPlaceholder title="Workflow" />} />
+                <Route path="approvals" element={<SuperDistributorApprovals />} />
+                <Route path="loans" element={<SuperDistributorLoans />} />
+                <Route path="wallet" element={<SuperDistributorWalletControl />} />
+                <Route path="wallet/credit" element={<SuperDistributorWalletControl initialTab="credit" />} />
+                <Route path="wallet/debit" element={<SuperDistributorWalletControl initialTab="debit" />} />
+                <Route path="wallet/requests" element={<SuperDistributorWalletControl initialTab="requests" />} />
+                <Route path="wallet/lock" element={<SuperDistributorWalletControl initialTab="lock" />} />
+                <Route path="wallet/release" element={<SuperDistributorWalletControl initialTab="release-lock" />} />
+                <Route path="transactions" element={<SuperDistributorReceipt />} />
+                <Route path="transactions/super-distributor-receipt" element={<SuperDistributorReceipt />} />
+                <Route path="transactions/retailer-receipt" element={<SuperDistributorRetailerReceipt />} />
+                <Route path="transactions/add-money" element={<SuperDistributorAddMoney />} />
+                <Route path="transactions/axis-cdm" element={<SuperDistributorPlaceholder title="Axis CDM" />} />
+                <Route path="transactions/axis-mapping" element={<SuperDistributorPlaceholder title="Axis Mapping" />} />
                 <Route path="reports" element={<SACommissionReport />} />
                 <Route path="reports/retailer-balance" element={<SARetailerBalance />} />
                 <Route path="reports/payment-request" element={<SAPaymentRequest />} />
@@ -273,8 +321,8 @@ function App() {
                 <Route path="reports/cms" element={<SACmsReport />} />
                 <Route path="reports/user-sales" element={<SAUserSaleReport />} />
                 <Route path="reports/analyst" element={<ReportsAnalyst />} />
-                <Route path="plans" element={<SuperAdminPlansRates />} />
-                <Route path="invoice" element={<SuperAdminInvoice />} />
+                <Route path="plans" element={<SuperDistributorPlansRates />} />
+                <Route path="invoice" element={<SuperDistributorInvoice />} />
                 <Route path="accounts" element={<SAMyLedger />} />
                 <Route path="accounts/my-ledger" element={<SAMyLedger />} />
                 <Route path="accounts/retailer-ledger" element={<SARetailerLedger />} />
@@ -287,12 +335,13 @@ function App() {
                 <Route path="support/complaints-ecollect" element={<SAEcollectComplaints />} />
                 <Route path="support/retailer-complaints" element={<SARetailerComplaints />} />
                 <Route path="support/videos" element={<SATrainingVideos />} />
-                <Route path="old-reports" element={<SuperAdminOldReports />} />
-                <Route path="settings" element={<SuperAdminSettings />} />
-                <Route path="*" element={<SuperAdminPlaceholder title="Not Found" />} />
+                <Route path="old-reports" element={<SuperDistributorOldReports />} />
+                <Route path="settings" element={<SuperDistributorSettings />} />
+                <Route path="*" element={<SuperDistributorPlaceholder title="Not Found" />} />
               </Route>
-              {/* Global Catch-all */}
-              <Route path="*" element={<Navigate to="/login" replace />} />
+              {/* Global Catch-all: smart-route to the user's home when logged in,
+                  otherwise send them to the portal selector (not About/Home). */}
+              <Route path="*" element={<SmartFallback />} />
             </Routes>
           </Suspense>
         </Router>

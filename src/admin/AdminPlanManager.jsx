@@ -187,9 +187,9 @@ const PlanCard = ({ plan, typeId, onEdit, onDelete, onToggle }) => {
     );
 };
 
-/* ══════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    MAIN COMPONENT
-══════════════════════════════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const AdminPlanManager = ({ defaultType = 'retailer', restrictType = false }) => {
     const defaultTypeTab = TYPES.findIndex(t => t.id === defaultType);
     const [tab, setTab] = useState(0);
@@ -208,7 +208,7 @@ const AdminPlanManager = ({ defaultType = 'retailer', restrictType = false }) =>
     // load all users across portals
     const retailers = dataService.getData()?.users || [];
     const distributors = sharedDataService.getAllDistributors();
-    const superAdmins = sharedDataService.getAllSuperAdmins();
+    const SuperDistributors = sharedDataService.getAllSuperDistributors();
 
     const showToast = (msg, type = 'success') => {
         setToast({ msg, type });
@@ -273,7 +273,7 @@ const AdminPlanManager = ({ defaultType = 'retailer', restrictType = false }) =>
     const allUsers = [
         ...retailers.map(u => ({ ...u, _type: 'retailer', _label: 'Retailer' })),
         ...distributors.filter(d => d.status === 'Approved').map(d => ({ ...d, _type: 'distributor', _label: 'Distributor' })),
-        ...superAdmins.filter(s => s.status === 'Approved').map(s => ({ ...s, _type: 'superdistributor', _label: 'SuperAdmin' })),
+        ...SuperDistributors.filter(s => s.status === 'Approved').map(s => ({ ...s, _type: 'superdistributor', _label: 'SUPER_DISTRIBUTOR' })),
     ].filter(u => {
         // Apply type restriction if enabled
         if (restrictType && u._type !== defaultType) return false;
@@ -298,7 +298,7 @@ const AdminPlanManager = ({ defaultType = 'retailer', restrictType = false }) =>
                             {restrictType ? `${TYPES[typeTab].label} Plans` : 'Plan Management'}
                         </h2>
                         <p className="text-[10px] text-white/40 uppercase tracking-widest mt-1">
-                            {restrictType ? `Manage ${TYPES[typeTab].label} Templates & Assignments` : 'Retailers · Distributors · SuperDistributors'}
+                            {restrictType ? `Manage ${TYPES[typeTab].label} Templates & Assignments` : 'Retailers Â· Distributors Â· SuperDistributors'}
                         </p>
                     </div>
                 </div>
@@ -320,7 +320,7 @@ const AdminPlanManager = ({ defaultType = 'retailer', restrictType = false }) =>
 
             <AnimatePresence mode="wait">
 
-                {/* ════════ TAB 0: PLAN TEMPLATES ════════ */}
+                {/* â•â•â•â•â•â•â•â• TAB 0: PLAN TEMPLATES â•â•â•â•â•â•â•â• */}
                 {tab === 0 && (
                     <motion.div key="templates" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
                         {/* Type selector */}
@@ -359,7 +359,7 @@ const AdminPlanManager = ({ defaultType = 'retailer', restrictType = false }) =>
                     </motion.div>
                 )}
 
-                {/* ════════ TAB 1: ASSIGN PLANS ════════ */}
+                {/* â•â•â•â•â•â•â•â• TAB 1: ASSIGN PLANS â•â•â•â•â•â•â•â• */}
                 {tab === 1 && (
                     <motion.div key="assign" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
                         <div className="relative">
@@ -423,7 +423,7 @@ const AdminPlanManager = ({ defaultType = 'retailer', restrictType = false }) =>
                     </motion.div>
                 )}
 
-                {/* ════════ TAB 2: HISTORY ════════ */}
+                {/* â•â•â•â•â•â•â•â• TAB 2: HISTORY â•â•â•â•â•â•â•â• */}
                 {tab === 2 && (
                     <motion.div key="history" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                         <div className="bg-white rounded-[1.5rem] border border-slate-200 shadow-sm overflow-hidden">
@@ -450,7 +450,7 @@ const AdminPlanManager = ({ defaultType = 'retailer', restrictType = false }) =>
                                                     <span className="text-[10px] text-slate-400">
                                                         {oldP ? <span style={{ color: oldP.color }}>{oldP.label}</span> : <span className="text-slate-300">No Plan</span>}
                                                     </span>
-                                                    <span className="text-[10px] text-slate-300">→</span>
+                                                    <span className="text-[10px] text-slate-300">â†’</span>
                                                     <span className="text-[10px] font-black" style={{ color: newP?.color || '#64748b' }}>
                                                         {newP?.label || '—'}
                                                     </span>
@@ -502,7 +502,7 @@ const AdminPlanManager = ({ defaultType = 'retailer', restrictType = false }) =>
                                 <div>
                                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Assign / Upgrade Plan</p>
                                     <h3 className="text-lg font-black text-slate-800">{assignModal.name || assignModal.username}</h3>
-                                    <p className="text-xs text-slate-400 font-bold">{assignModal._label} · {assignModal.mobile || assignModal.id}</p>
+                                    <p className="text-xs text-slate-400 font-bold">{assignModal._label} Â· {assignModal.mobile || assignModal.id}</p>
                                 </div>
                                 <button onClick={() => setAssignModal(null)} className="p-2 hover:bg-slate-100 rounded-xl"><X size={18} /></button>
                             </div>
@@ -524,7 +524,7 @@ const AdminPlanManager = ({ defaultType = 'retailer', restrictType = false }) =>
                                             <div className="flex-1">
                                                 <p className="font-black text-slate-800 text-sm">{plan.label}</p>
                                                 <p className="text-[10px] text-slate-400 font-bold">
-                                                    {plan.price === 0 ? 'Free' : `₹${plan.price.toLocaleString('en-IN')}`} · {plan.commissionRate}% commission
+                                                    {plan.price === 0 ? 'Free' : `₹${plan.price.toLocaleString('en-IN')}`} Â· {plan.commissionRate}% commission
                                                 </p>
                                             </div>
                                             {selectedPlanForAssign === plan.id && <CheckCircle2 size={18} className="text-blue-500 flex-shrink-0" />}

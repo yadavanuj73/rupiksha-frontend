@@ -1,0 +1,65 @@
+# =============================================================================
+# Full stack compose (backend + postgres + redis + prometheus).
+# Secrets MUST come from a `.env` file next to this compose file; do NOT
+# hardcode credentials here. For infra-only dev, use docker-compose.infra.yml.
+#
+# Required env vars for `docker compose up`:
+#   DB_PASSWORD, JWT_SECRET, CORS_ALLOWED_ORIGINS, SPRING_PROFILES_ACTIVE
+# =============================================================================
+
+services:
+  backend:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: 8080
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      DB_URL: jdbc:postgresql://postgres:5432/rupiksha
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set (no default)}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set (no default)}
+      JWT_ACCESS_MINUTES: ${JWT_ACCESS_MINUTES:-30}
+      JWT_REFRESH_DAYS: ${JWT_REFRESH_DAYS:-15}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
+      OTP_PROVIDER: ${OTP_PROVIDER:-mock}
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-mock}
+      RECHARGE_PROVIDER: ${RECHARGE_PROVIDER:-mock}
+      AEPS_PROVIDER: ${AEPS_PROVIDER:-mock}
+      BBPS_PROVIDER: ${BBPS_PROVIDER:-mock}
+      ALLOW_MOCK_PROVIDERS_IN_PRODUCTION: ${ALLOW_MOCK_PROVIDERS_IN_PRODUCTION:-false}
+      ADMIN_SEED_PASSWORD: ${ADMIN_SEED_PASSWORD:-}
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: rupiksha
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set (no default)}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./ops/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - backend
+
+volumes:
+  pg_data:

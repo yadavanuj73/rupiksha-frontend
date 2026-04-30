@@ -186,7 +186,7 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
             setIsSendingOtp(false);
 
             // Show meaningful error to user
-            alert(`Error sending OTP: ${error.message || "Connection refused"}. Please ensure the server is running on port 5001.`);
+            alert(`Error sending OTP: ${error.message || "Connection refused"}. Please ensure the backend API is running on port 8080.`);
         }
     };
 
@@ -255,7 +255,7 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
                 alert(`${errorMsg}${errorCode}`);
             }
         } catch (error) {
-            alert(`Verification Failed: ${error.message}. Please check your connection and ensure the server is running on port 5001.`);
+            alert(`Verification Failed: ${error.message}. Please check your connection and ensure the backend API is running on port 8080.`);
         } finally {
             setIsVerifyingPan(false);
         }

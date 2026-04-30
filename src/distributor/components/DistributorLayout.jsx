@@ -33,34 +33,34 @@ const DistributorLayout = () => {
     }, [navigate]);
 
     return (
-        <div className="flex h-screen bg-[#f0f4ff] overflow-hidden font-['Inter',sans-serif]">
+        <div className="h-screen bg-[#eef3ff] overflow-hidden font-['Inter',sans-serif]">
+            <DistributorTopBar onMenuClick={() => setShowMobileSidebar(v => !v)} />
+
             <DistributorSidebar
                 showMobile={showMobileSidebar}
                 onClose={() => setShowMobileSidebar(false)}
             />
 
-            <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-                <DistributorTopBar onMenuClick={() => setShowMobileSidebar(v => !v)} />
-
+            <div className="h-full flex flex-col overflow-hidden min-w-0 pt-[76px] lg:ml-64">
                 {/* Security Session Monitor */}
-                <div className="bg-[#0f172a] text-white h-9 flex items-center px-6 shrink-0 border-b border-white/5">
+                <div className="bg-blue-50 text-slate-700 h-9 flex items-center px-6 shrink-0 border-b border-blue-100">
                     <div className="flex items-center gap-6 w-full max-w-7xl mx-auto">
                         <div className="flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse shadow-[0_0_10px_rgba(251,191,36,0.3)]"></div>
-                            <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest">Pin Lock Countdown</span>
-                            <span className="text-[11px] font-black text-white font-mono bg-white/10 px-2.5 py-0.5 rounded-lg border border-white/5">{formatTime(lockTimeLeft)}</span>
+                            <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></div>
+                            <span className="text-[9px] font-black text-amber-600 uppercase tracking-widest">Pin Lock Countdown</span>
+                            <span className="text-[11px] font-black text-slate-700 font-mono bg-white px-2.5 py-0.5 rounded-lg border border-blue-100">{formatTime(lockTimeLeft)}</span>
                         </div>
-                        <div className="h-4 w-px bg-white/10"></div>
+                        <div className="h-4 w-px bg-blue-200"></div>
                         <div className="flex items-center gap-2">
-                            <Lock size={12} className="text-slate-400" />
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Auto Logout In</span>
-                            <span className="text-[11px] font-black text-slate-300 font-mono italic">{formatTime(logoutTimeLeft)}</span>
+                            <Lock size={12} className="text-slate-500" />
+                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Auto Logout In</span>
+                            <span className="text-[11px] font-black text-slate-600 font-mono italic">{formatTime(logoutTimeLeft)}</span>
                         </div>
                         <div className="flex-1 flex justify-end items-center gap-4">
-                            <span className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full px-3 py-0.5 text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                            <span className="bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-full px-3 py-0.5 text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5">
                                 <Shield size={10} /> Encryption Active
                             </span>
-                            <span className="text-white/40 text-[9px] font-black uppercase tracking-[0.2em] hidden sm:block">Distributor Node v4.2</span>
+                            <span className="text-slate-400 text-[9px] font-black uppercase tracking-[0.2em] hidden sm:block">Distributor Node v4.2</span>
                         </div>
                     </div>
                 </div>

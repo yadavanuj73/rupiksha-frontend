@@ -1,286 +1,255 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Sparkles, ChevronRight, Zap, ArrowRight, Activity, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import {
+    ArrowRight, Banknote, Bus, Building2, Cable, Car, CreditCard, Droplets,
+    FileText, Fuel, Globe, HeartPulse, Hotel, Landmark, Search, ShieldCheck,
+    Smartphone, Tv, Wallet, Wifi, Zap
+} from 'lucide-react';
+import irctcLogo from '../../assets/service-logos/irctc.svg';
 
-/* ─────────────────────────────────────────────────────────────
-   3D Icon Component – Premium Apple-like 3D feel
-───────────────────────────────────────────────────────────────*/
-const Icon3D = ({ emoji, bg, shadow }) => (
-    <div className="icon-3d relative group-hover:shadow-2xl" style={{
-        width: '76px', height: '76px',
-        background: bg,
-        borderRadius: '24px',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: '36px',
-        boxShadow: shadow || '0 10px 30px -10px rgba(0,0,0,0.3)',
-        transform: 'perspective(200px) rotateX(10deg)',
-        transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-        border: '1px solid rgba(255,255,255,0.6)',
-        zIndex: 10
-    }}>
-        {/* Inner glow */}
-        <div className="absolute inset-0 rounded-[24px] bg-gradient-to-tr from-white/0 to-white/40 pointer-events-none" />
-        <span style={{ filter: 'drop-shadow(0 8px 8px rgba(0,0,0,0.15))' }}>{emoji}</span>
-    </div>
-);
+const routeMap = {
+    aeps_services: '/aeps',
+    cms: '/cms',
+    travel: '/travel',
+    utility: '/utility',
+    quick_mr: '/matm',
+    pw_money_ekyc: '/aeps-kyc',
+    matm: '/matm',
+    matm_cash: '/matm',
+    matm_mp63: '/matm',
+    fino_suvidha: '/cms',
+    smart_pos: '/matm',
+    qpos_mini: '/matm',
+    ybl_mr: '/travel',
+};
 
-/* ─────────────────────────────────────────────────────────────
-   Premium Service Card
-───────────────────────────────────────────────────────────────*/
-const ServiceCard = ({ title, icon3d, actionLabel, actionColor, isLarge, onClick, delay, active }) => (
-    <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: delay * 0.04, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        onClick={onClick}
-        className="group relative bg-[#ffffff]/60 backdrop-blur-xl border border-white/80 rounded-[32px] p-6 flex flex-col items-center gap-4 cursor-pointer
-                   hover:bg-white hover:shadow-[0_24px_48px_-12px_rgba(0,0,0,0.08)] hover:-translate-y-2 transition-all duration-500 overflow-hidden"
-        style={{ minHeight: isLarge ? 220 : 190 }}
-    >
-        {/* Animated background gradient on hover */}
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/0 via-white/0 to-blue-50/0 group-hover:from-indigo-100/40 group-hover:to-blue-100/40 transition-colors duration-500 pointer-events-none" />
+const dedupeServices = (services) => {
+    const seen = new Set();
+    return services.filter((service) => {
+        const key = service.title.trim().toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+};
 
-        {/* 3D icon container */}
-        <div className="group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-500 ease-out z-10 mt-3">
-            {icon3d}
-        </div>
+const SERVICE_SECTIONS = [
+    {
+        key: 'banking',
+        title: 'Banking & Finance',
+        color: 'from-indigo-500 to-blue-500',
+        services: dedupeServices([
+            { id: 'quick_mr', title: 'Quick MR Plus', icon: Wallet },
+            { id: 'pw_money_ekyc', title: 'PW Money eKYC', icon: ShieldCheck },
+            { id: 'aeps_services', title: 'AEPS Services', icon: Landmark },
+            { id: 'matm', title: '2-in-1 mPOS', icon: CreditCard },
+            { id: 'fino_suvidha', title: 'Fino Suvidha', icon: Building2 },
+            { id: 'smart_pos', title: 'Smart POS', icon: Smartphone },
+            { id: 'matm_cash', title: 'm-ATM Cash', icon: Banknote },
+            { id: 'matm_mp63', title: 'mATM MP63', icon: Smartphone },
+            { id: 'qpos_mini', title: '2-in-1 QPOS Mini', icon: CreditCard },
+            { id: 'ybl_mr', title: 'Indo Nepal MR', icon: Globe },
+            { id: 'cms', title: 'CMS Banking', icon: Building2 },
+        ]),
+    },
+    {
+        key: 'travel',
+        title: 'Travel Services',
+        color: 'from-emerald-500 to-cyan-500',
+        services: dedupeServices([
+            { id: 'travel', title: 'Rail E-Ticketing (IRCTC)', logo: irctcLogo },
+            { id: 'travel', title: 'Hotel Booking', icon: Hotel },
+            { id: 'travel', title: 'Bus Ticketing', icon: Bus },
+            { id: 'travel', title: 'Air Ticketing', icon: Globe },
+        ]),
+    },
+    {
+        key: 'bbps',
+        title: 'Bharat Connect (BBPS)',
+        color: 'from-violet-500 to-fuchsia-500',
+        services: dedupeServices([
+            { id: 'utility', title: 'Bill Pay', icon: FileText },
+            { id: 'utility', title: 'Loan Payments', icon: Landmark },
+            { id: 'utility', title: 'Electricity Bill', icon: Zap },
+            { id: 'utility', title: 'Gas Bill', icon: Fuel },
+            { id: 'utility', title: 'Water Bill', icon: Droplets },
+            { id: 'utility', title: 'FASTag Payments', icon: Car },
+            { id: 'utility', title: 'DTH', icon: Tv },
+            { id: 'utility', title: 'Broadband', icon: Wifi },
+            { id: 'utility', title: 'Landline Postpaid', icon: PhoneIcon },
+            { id: 'utility', title: 'Mobile Postpaid', icon: Smartphone },
+            { id: 'utility', title: 'Insurance Premium', icon: ShieldCheck },
+            { id: 'utility', title: 'Credit Card Bill', icon: CreditCard },
+            { id: 'utility', title: 'Municipal Taxes', icon: Building2 },
+            { id: 'utility', title: 'Hospital Bill', icon: HeartPulse },
+            { id: 'utility', title: 'Education Bill', icon: FileText },
+        ]),
+    },
+    {
+        key: 'utility',
+        title: 'Utility & Value Services',
+        color: 'from-orange-500 to-amber-500',
+        services: dedupeServices([
+            { id: 'utility', title: 'Mobile Recharge', icon: Smartphone },
+            { id: 'utility', title: 'DTH Recharge', icon: Tv },
+            { id: 'utility', title: 'Collection', icon: Wallet },
+            { id: 'utility', title: 'PAN Card', icon: FileText },
+            { id: 'utility', title: 'Ayushpay Subscription', icon: HeartPulse },
+            { id: 'utility', title: 'Digital Wallet Top-up', icon: Wallet },
+            { id: 'utility', title: 'Vouchers', icon: Cable },
+            { id: 'utility', title: 'HDFC BF', icon: Building2 },
+            { id: 'utility', title: 'Recharge OTT', icon: Tv },
+            { id: 'utility', title: 'Digi Gold', icon: Banknote },
+            { id: 'utility', title: 'ITR Filing', icon: FileText },
+        ]),
+    },
+];
 
-        {/* Title */}
-        <p className="text-[13px] font-extrabold text-slate-800 text-center tracking-wide leading-snug mt-2 flex-1 flex items-center z-10">
-            {title}
-        </p>
+function PhoneIcon(props) {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.2 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.8.62 2.66a2 2 0 0 1-.45 2.11L8 9.77a16 16 0 0 0 6.23 6.23l1.28-1.28a2 2 0 0 1 2.11-.45c.86.29 1.76.5 2.66.62A2 2 0 0 1 22 16.92z" />
+        </svg>
+    );
+}
 
-        {/* Status indicator */}
-        {active && (
-            <div className="absolute top-5 right-5 flex items-center justify-center w-6 h-6 bg-emerald-50 rounded-full border border-emerald-100 z-10 transition-transform group-hover:scale-110">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)] animate-pulse" />
+const ServiceIcon = ({ service }) => {
+    if (service.logo) {
+        return (
+            <div className="h-14 w-14 rounded-2xl border border-slate-200 bg-white shadow-sm flex items-center justify-center">
+                <img src={service.logo} alt={service.title} className="h-10 w-10 object-contain" />
             </div>
-        )}
+        );
+    }
 
-        {/* Action buttons (Appears on Hover) */}
-        <div className="w-full relative z-10 opacity-0 group-hover:opacity-100 transform translate-y-6 group-hover:translate-y-0 transition-all duration-400">
-            {actionLabel ? (
-                <button className={`w-full ${actionColor || 'bg-blue-600'} text-white text-[11px] font-black py-3 rounded-2xl uppercase tracking-[0.15em] flex items-center justify-center gap-2 shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all`}>
-                    {actionLabel} <ChevronRight size={14} />
-                </button>
-            ) : (
-                <button className="w-full bg-slate-900 group-hover:bg-indigo-600 text-white text-[11px] font-black py-3 rounded-2xl uppercase tracking-[0.15em] flex items-center justify-center gap-2 shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all">
-                    Transact <ArrowRight size={14} />
-                </button>
-            )}
+    const Icon = service.icon || Wallet;
+    return (
+        <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 shadow-sm flex items-center justify-center text-slate-700">
+            <Icon className="h-7 w-7" />
         </div>
-    </motion.div>
-);
+    );
+};
 
-/* ─────────────────────────────────────────────────────────────
-   Section Header
-───────────────────────────────────────────────────────────────*/
-const SectionHeader = ({ label, color, count }) => (
-    <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center">
-            <div className="w-1.5 h-8 rounded-full mr-4 shadow-sm" style={{ background: color }} />
-            <h2 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">{label}</h2>
-        </div>
-        {count && (
-            <span className="bg-slate-100 text-slate-500 text-[11px] font-bold px-3 py-1.5 rounded-full border border-slate-200">
-                {count} Services
+const ServiceCard = ({ service, readOnly, onClick, index }) => (
+    <motion.button
+        type="button"
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: index * 0.02 }}
+        whileHover={!readOnly ? { y: -4 } : undefined}
+        onClick={onClick}
+        className={`group relative text-left rounded-3xl border p-5 bg-white/80 backdrop-blur-sm shadow-[0_10px_24px_rgba(15,23,42,0.06)] transition-all ${readOnly ? 'cursor-default border-slate-200' : 'cursor-pointer hover:border-indigo-200 hover:shadow-[0_16px_34px_rgba(79,70,229,0.14)] border-slate-200'
+            }`}
+    >
+        <div className="flex items-start justify-between gap-3">
+            <ServiceIcon service={service} />
+            <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full ${readOnly ? 'bg-slate-100 text-slate-500' : 'bg-emerald-50 text-emerald-700'}`}>
+                {readOnly ? 'View only' : 'Active'}
             </span>
-        )}
-    </div>
+        </div>
+        <h3 className="mt-4 text-[13px] font-extrabold text-slate-800 leading-snug min-h-[40px]">
+            {service.title}
+        </h3>
+        <div className={`mt-4 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider ${readOnly ? 'text-slate-400' : 'text-indigo-600'}`}>
+            {readOnly ? 'Visible in this panel' : 'Open service'}
+            {!readOnly && <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />}
+        </div>
+    </motion.button>
 );
 
-/* ═══════════════════════════════════════════════════════════════
-   SERVICE DATA
-═══════════════════════════════════════════════════════════════*/
-const bankingServices = [
-    { id: 'quick_mr', title: 'Quick MR Plus', showTransact: true, isLarge: true, icon3d: <Icon3D emoji="💸" bg="linear-gradient(135deg,#dbeafe,#bfdbfe)" shadow="0 10px 30px rgba(37,99,235,0.25)" /> },
-    { id: 'pw_money_ekyc', title: 'PW Money eKYC', showTransact: true, isLarge: true, icon3d: <Icon3D emoji="🪪" bg="linear-gradient(135deg,#ede9fe,#ddd6fe)" shadow="0 10px 30px rgba(124,58,237,0.25)" /> },
-    { id: 'aeps_services', title: 'AEPS Services', showTransact: true, isLarge: true, icon3d: <Icon3D emoji="🏧" bg="linear-gradient(135deg,#d1fae5,#a7f3d0)" shadow="0 10px 30px rgba(16,185,129,0.25)" /> },
-    { id: 'matm', title: '2-in-1 mPOS (New)', actionLabel: 'Purchase', actionColor: 'bg-gradient-to-r from-blue-600 to-indigo-600', icon3d: <Icon3D emoji="💳" bg="linear-gradient(135deg,#dbeafe,#bfdbfe)" shadow="0 10px 30px rgba(37,99,235,0.2)" /> },
-    { id: 'fino_suvidha', title: 'Fino Suvidha', actionLabel: 'Purchase', actionColor: 'bg-gradient-to-r from-blue-600 to-indigo-600', icon3d: <Icon3D emoji="🏦" bg="linear-gradient(135deg,#ecfdf5,#d1fae5)" shadow="0 10px 30px rgba(16,185,129,0.2)" /> },
-    { id: 'smart_pos', title: 'Smart POS', actionLabel: 'Purchase', actionColor: 'bg-gradient-to-r from-blue-600 to-indigo-600', icon3d: <Icon3D emoji="🖥️" bg="linear-gradient(135deg,#dbeafe,#e0f2fe)" shadow="0 10px 30px rgba(14,165,233,0.2)" /> },
-    { id: 'matm_cash', title: 'm-ATM Cash', icon3d: <Icon3D emoji="💰" bg="linear-gradient(135deg,#fef9c3,#fef08a)" shadow="0 10px 30px rgba(202,138,4,0.2)" /> },
-    { id: 'matm_mp63', title: 'mATM – MP63', icon3d: <Icon3D emoji="📱" bg="linear-gradient(135deg,#eff6ff,#dbeafe)" shadow="0 10px 30px rgba(37,99,235,0.15)" /> },
-    { id: 'qpos_mini', title: '2-IN-1 QPOS Mini', actionLabel: 'Purchase', actionColor: 'bg-gradient-to-r from-blue-600 to-indigo-600', icon3d: <Icon3D emoji="🔌" bg="linear-gradient(135deg,#ecfdf5,#d1fae5)" shadow="0 10px 30px rgba(16,185,129,0.2)" /> },
-    { id: 'ybl_mr', title: 'Indo Nepal MR', actionLabel: 'Purchase', actionColor: 'bg-gradient-to-r from-blue-600 to-indigo-600', icon3d: <Icon3D emoji="🌏" bg="linear-gradient(135deg,#e0f2fe,#bae6fd)" shadow="0 10px 30px rgba(14,165,233,0.2)" /> },
-    { id: 'cms', title: 'CMS Banking', icon3d: <Icon3D emoji="🏛️" bg="linear-gradient(135deg,#fdf4ff,#f3e8ff)" shadow="0 10px 30px rgba(168,85,247,0.2)" /> },
-];
-
-const travelServices = [
-    { title: 'Hotel Booking', icon3d: <Icon3D emoji="🏨" bg="linear-gradient(135deg,#dbeafe,#bfdbfe)" shadow="0 8px 24px rgba(37,99,235,0.2)" /> },
-    { title: 'Rail E-Ticketing', icon3d: <Icon3D emoji="🚂" bg="linear-gradient(135deg,#fef3c7,#fde68a)" shadow="0 8px 24px rgba(245,158,11,0.2)" /> },
-    { title: 'Train', icon3d: <Icon3D emoji="🚆" bg="linear-gradient(135deg,#e0f2fe,#bae6fd)" shadow="0 8px 24px rgba(14,165,233,0.2)" /> },
-    { title: 'Bus Ticketing', icon3d: <Icon3D emoji="🚌" bg="linear-gradient(135deg,#d1fae5,#a7f3d0)" shadow="0 8px 24px rgba(16,185,129,0.2)" /> },
-    { title: 'Air Ticketing', icon3d: <Icon3D emoji="✈️" bg="linear-gradient(135deg,#eff6ff,#dbeafe)" shadow="0 8px 24px rgba(37,99,235,0.25)" /> },
-    { title: 'New Air Ticketing', icon3d: <Icon3D emoji="🛫" bg="linear-gradient(135deg,#f0f9ff,#e0f2fe)" shadow="0 8px 24px rgba(14,165,233,0.2)" /> },
-];
-
-const bharatConnectServices = [
-    { title: 'Bill Pay', icon3d: <Icon3D emoji="🧾" bg="linear-gradient(135deg,#fdf4ff,#ede9fe)" shadow="0 8px 24px rgba(124,58,237,0.2)" /> },
-    { title: 'Loan Payments', icon3d: <Icon3D emoji="🏦" bg="linear-gradient(135deg,#dbeafe,#bfdbfe)" shadow="0 8px 24px rgba(37,99,235,0.2)" /> },
-    { title: 'Electricity Bill', icon3d: <Icon3D emoji="⚡" bg="linear-gradient(135deg,#fef9c3,#fef08a)" shadow="0 8px 24px rgba(202,138,4,0.25)" /> },
-    { title: 'Gas Cylinder', icon3d: <Icon3D emoji="🔥" bg="linear-gradient(135deg,#fee2e2,#fecaca)" shadow="0 8px 24px rgba(239,68,68,0.2)" /> },
-    { title: 'Piped Gas Bill', icon3d: <Icon3D emoji="🌡️" bg="linear-gradient(135deg,#fff7ed,#fed7aa)" shadow="0 8px 24px rgba(249,115,22,0.2)" /> },
-    { title: 'Water Bill', icon3d: <Icon3D emoji="💧" bg="linear-gradient(135deg,#e0f2fe,#bae6fd)" shadow="0 8px 24px rgba(14,165,233,0.25)" /> },
-    { title: 'FASTag Payments', icon3d: <Icon3D emoji="🚗" bg="linear-gradient(135deg,#d1fae5,#a7f3d0)" shadow="0 8px 24px rgba(16,185,129,0.2)" /> },
-    { title: 'DTH', icon3d: <Icon3D emoji="📡" bg="linear-gradient(135deg,#ede9fe,#ddd6fe)" shadow="0 8px 24px rgba(124,58,237,0.2)" /> },
-    { title: 'Broadband', icon3d: <Icon3D emoji="🌐" bg="linear-gradient(135deg,#dbeafe,#bfdbfe)" shadow="0 8px 24px rgba(37,99,235,0.2)" /> },
-    { title: 'Landline Postpaid', icon3d: <Icon3D emoji="☎️" bg="linear-gradient(135deg,#e0f2fe,#bae6fd)" shadow="0 8px 24px rgba(14,165,233,0.2)" /> },
-    { title: 'Mobile Postpaid', icon3d: <Icon3D emoji="📲" bg="linear-gradient(135deg,#eff6ff,#dbeafe)" shadow="0 8px 24px rgba(37,99,235,0.2)" /> },
-    { title: 'LIC Premium', icon3d: <Icon3D emoji="🛡️" bg="linear-gradient(135deg,#d1fae5,#a7f3d0)" shadow="0 8px 24px rgba(16,185,129,0.25)" /> },
-    { title: 'Insurance', icon3d: <Icon3D emoji="🔒" bg="linear-gradient(135deg,#ecfdf5,#d1fae5)" shadow="0 8px 24px rgba(16,185,129,0.2)" /> },
-    { title: 'Credit Card Bill', icon3d: <Icon3D emoji="💳" bg="linear-gradient(135deg,#fdf4ff,#f3e8ff)" shadow="0 8px 24px rgba(168,85,247,0.2)" /> },
-    { title: 'Visa/Master CC Bill', icon3d: <Icon3D emoji="🏧" bg="linear-gradient(135deg,#ede9fe,#ddd6fe)" shadow="0 8px 24px rgba(124,58,237,0.2)" /> },
-    { title: 'Municipal Taxes', icon3d: <Icon3D emoji="🏛️" bg="linear-gradient(135deg,#dbeafe,#bfdbfe)" shadow="0 8px 24px rgba(37,99,235,0.2)" /> },
-    { title: 'Housing Societies', icon3d: <Icon3D emoji="🏘️" bg="linear-gradient(135deg,#d1fae5,#a7f3d0)" shadow="0 8px 24px rgba(16,185,129,0.2)" /> },
-    { title: 'Digital Cable TV', icon3d: <Icon3D emoji="📺" bg="linear-gradient(135deg,#e0f2fe,#bae6fd)" shadow="0 8px 24px rgba(14,165,233,0.2)" /> },
-    { title: 'Subscription', icon3d: <Icon3D emoji="🔔" bg="linear-gradient(135deg,#fef9c3,#fef08a)" shadow="0 8px 24px rgba(202,138,4,0.2)" /> },
-    { title: 'Hospital Bill', icon3d: <Icon3D emoji="🏥" bg="linear-gradient(135deg,#fee2e2,#fecaca)" shadow="0 8px 24px rgba(239,68,68,0.15)" /> },
-    { title: 'Clubs & Associations', icon3d: <Icon3D emoji="🤝" bg="linear-gradient(135deg,#dbeafe,#bfdbfe)" shadow="0 8px 24px rgba(37,99,235,0.2)" /> },
-    { title: 'Education Bill', icon3d: <Icon3D emoji="🎓" bg="linear-gradient(135deg,#fdf4ff,#ede9fe)" shadow="0 8px 24px rgba(124,58,237,0.2)" /> },
-];
-
-const utilityServices = [
-    { title: 'Mobile Recharge', icon3d: <Icon3D emoji="📱" bg="linear-gradient(135deg,#dbeafe,#bfdbfe)" shadow="0 8px 24px rgba(37,99,235,0.2)" /> },
-    { title: 'DTH Recharge', icon3d: <Icon3D emoji="📡" bg="linear-gradient(135deg,#ede9fe,#ddd6fe)" shadow="0 8px 24px rgba(124,58,237,0.2)" /> },
-    { title: 'Collection', icon3d: <Icon3D emoji="🪙" bg="linear-gradient(135deg,#fef9c3,#fef08a)" shadow="0 8px 24px rgba(202,138,4,0.25)" /> },
-    { title: 'Instant PAN Card', icon3d: <Icon3D emoji="🪪" bg="linear-gradient(135deg,#d1fae5,#a7f3d0)" shadow="0 8px 24px rgba(16,185,129,0.2)" /> },
-    { title: 'Ayushpay Subscription', icon3d: <Icon3D emoji="🩺" bg="linear-gradient(135deg,#fee2e2,#fecaca)" shadow="0 8px 24px rgba(239,68,68,0.15)" /> },
-    { title: 'Digital Wallet Top-up', icon3d: <Icon3D emoji="👛" bg="linear-gradient(135deg,#eff6ff,#dbeafe)" shadow="0 8px 24px rgba(37,99,235,0.2)" /> },
-    { title: 'Vouchers', icon3d: <Icon3D emoji="🎟️" bg="linear-gradient(135deg,#fff7ed,#fed7aa)" shadow="0 8px 24px rgba(249,115,22,0.2)" /> },
-    { title: 'HDFC BF', icon3d: <Icon3D emoji="🏦" bg="linear-gradient(135deg,#e0f2fe,#bae6fd)" shadow="0 8px 24px rgba(14,165,233,0.2)" /> },
-    { title: 'Recharge OTT', icon3d: <Icon3D emoji="🎬" bg="linear-gradient(135deg,#fdf4ff,#f3e8ff)" shadow="0 8px 24px rgba(168,85,247,0.2)" /> },
-    { title: 'Digi Gold', icon3d: <Icon3D emoji="🥇" bg="linear-gradient(135deg,#fef9c3,#fde68a)" shadow="0 8px 24px rgba(202,138,4,0.3)" /> },
-    { title: 'PAN Card', icon3d: <Icon3D emoji="📋" bg="linear-gradient(135deg,#d1fae5,#a7f3d0)" shadow="0 8px 24px rgba(16,185,129,0.2)" /> },
-    { title: 'ITR Filing', icon3d: <Icon3D emoji="📑" bg="linear-gradient(135deg,#dbeafe,#bfdbfe)" shadow="0 8px 24px rgba(37,99,235,0.2)" /> },
-];
-
-/* ═══════════════════════════════════════════════════════════════
-   MAIN COMPONENT
-═══════════════════════════════════════════════════════════════*/
-const AllServices = () => {
+const AllServices = ({ readOnly = false }) => {
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
 
-    const routeMap = {
-        aeps_services: '/aeps',
-        cms: '/cms',
-        travel: '/travel',
-        utility: '/utility',
-        quick_mr: '/dmt', // Assuming /dmt exists or redirect appropriately
-        matm: '/matm',
-        matm_cash: '/matm',
-        matm_mp63: '/matm',
-    };
+    const filteredSections = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+        return SERVICE_SECTIONS.map((section) => ({
+            ...section,
+            services: section.services.filter((service) => service.title.toLowerCase().includes(query)),
+        })).filter((section) => section.services.length > 0);
+    }, [searchQuery]);
 
-    const go = (id) => {
-        const route = routeMap[id];
-        if (route) {
-            navigate(route);
-        } else {
-            console.log('Service routing not implemented yet for:', id);
-        }
-    };
-
-    // Filter Logic
-    const filterData = (data) => data.filter(s =>
-        s.title.toLowerCase().includes(searchQuery.toLowerCase())
+    const totalServices = useMemo(
+        () => filteredSections.reduce((total, section) => total + section.services.length, 0),
+        [filteredSections]
     );
 
-    const filteredBanking = filterData(bankingServices);
-    const filteredTravel = filterData(travelServices);
-    const filteredBharat = filterData(bharatConnectServices);
-    const filteredUtility = filterData(utilityServices);
-
-    const totalActive = filteredBanking.length + filteredTravel.length + filteredBharat.length + filteredUtility.length;
+    const openService = (id) => {
+        if (readOnly) return;
+        const route = routeMap[id];
+        if (route) navigate(route);
+    };
 
     return (
-        <>
-            <style>{`
-                @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
-                .all-svcs-root * { font-family: 'Outfit', sans-serif; }
-                .icon-3d:hover { transform: perspective(200px) rotateX(0deg) scale(1.05) !important; }
-                .group:hover .icon-3d { transform: perspective(200px) rotateX(0deg) translateY(-6px) scale(1.08); }
-                body { background-color: #f8fafc; }
-            `}</style>
-
-            <div className="all-svcs-root p-4 md:p-8 lg:p-10 max-w-[1600px] mx-auto space-y-12 pb-24 min-h-screen">
-
-                <div className="h-4"></div>
-
-                {/* ── Services Grid Sections ── */}
-                <div className="space-y-16">
-                    {/* ── Banking ── */}
-                    {filteredBanking.length > 0 && (
-                        <section>
-                            <SectionHeader label="Banking & Finance" color="#4f46e5" count={filteredBanking.length} />
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-                                {filteredBanking.map((s, i) => (
-                                    <ServiceCard key={i} delay={i}
-                                        title={s.title} icon3d={s.icon3d} active
-                                        showTransact={s.showTransact} actionLabel={s.actionLabel}
-                                        actionColor={s.actionColor} isLarge={s.isLarge}
-                                        onClick={() => s.id ? go(s.id) : go('banking')}
-                                    />
-                                ))}
-                            </div>
-                        </section>
-                    )}
-
-                    {/* ── Travel ── */}
-                    {filteredTravel.length > 0 && (
-                        <section>
-                            <SectionHeader label="Travel Services" color="#10b981" count={filteredTravel.length} />
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-                                {filteredTravel.map((s, i) => (
-                                    <ServiceCard key={i} delay={i} title={s.title} icon3d={s.icon3d} active onClick={() => go('travel')} />
-                                ))}
-                            </div>
-                        </section>
-                    )}
-
-                    {/* ── Bharat Connect ── */}
-                    {filteredBharat.length > 0 && (
-                        <section>
-                            <SectionHeader label="Bharat Connect (BBPS)" color="#8b5cf6" count={filteredBharat.length} />
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-                                {filteredBharat.map((s, i) => (
-                                    <ServiceCard key={i} delay={i} title={s.title} icon3d={s.icon3d} active onClick={() => go('utility')} />
-                                ))}
-                            </div>
-                        </section>
-                    )}
-
-                    {/* ── Utility ── */}
-                    {filteredUtility.length > 0 && (
-                        <section>
-                            <SectionHeader label="Utility & Other Services" color="#f97316" count={filteredUtility.length} />
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-                                {filteredUtility.map((s, i) => (
-                                    <ServiceCard key={i} delay={i} title={s.title} icon3d={s.icon3d} active onClick={() => go('utility')} />
-                                ))}
-                            </div>
-                        </section>
-                    )}
-
-                    {/* No Results Fallback */}
-                    {totalActive === 0 && (
-                        <div className="py-20 flex flex-col items-center justify-center bg-white/50 backdrop-blur-sm rounded-3xl border border-slate-200">
-                            <span className="text-6xl mb-4">🔍</span>
-                            <h3 className="text-xl font-bold text-slate-800 mb-2">No services found</h3>
-                            <p className="text-sm font-medium text-slate-500">Try adjusting your search query.</p>
-                            <button
-                                onClick={() => setSearchQuery('')}
-                                className="mt-6 px-6 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition-colors"
-                            >
-                                Clear Search
-                            </button>
-                        </div>
-                    )}
+        <div className="p-4 md:p-7 lg:p-10 max-w-[1600px] mx-auto min-h-screen">
+            <div className="rounded-3xl border border-slate-200 bg-gradient-to-r from-slate-900 via-indigo-900 to-slate-900 text-white px-5 md:px-8 py-6 md:py-7 shadow-[0_22px_45px_rgba(15,23,42,0.35)]">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <p className="text-[11px] uppercase tracking-[0.2em] font-bold text-indigo-200">Service Hub</p>
+                        <h1 className="text-2xl md:text-3xl font-black mt-1">All Services</h1>
+                        <p className="text-sm text-indigo-100 mt-1">Unified service catalog with a cleaner and faster experience.</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold uppercase tracking-wider px-3 py-2 rounded-xl bg-white/10 border border-white/20">
+                            {totalServices} listed
+                        </span>
+                        <span className={`text-xs font-bold uppercase tracking-wider px-3 py-2 rounded-xl border ${readOnly ? 'bg-amber-300/20 text-amber-100 border-amber-200/30' : 'bg-emerald-400/20 text-emerald-100 border-emerald-200/30'}`}>
+                            {readOnly ? 'View only access' : 'Action enabled'}
+                        </span>
+                    </div>
+                </div>
+                <div className="mt-5 relative">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-indigo-200" />
+                    <input
+                        value={searchQuery}
+                        onChange={(event) => setSearchQuery(event.target.value)}
+                        placeholder="Search services..."
+                        className="w-full pl-11 pr-4 py-3 rounded-xl border border-white/20 bg-white/10 text-white placeholder:text-indigo-200 outline-none focus:ring-2 focus:ring-indigo-300/60"
+                    />
                 </div>
             </div>
-        </>
+
+            <div className="space-y-10 mt-8">
+                {filteredSections.map((section) => (
+                    <section key={section.key}>
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                                <span className={`h-8 w-1.5 rounded-full bg-gradient-to-b ${section.color}`} />
+                                <h2 className="text-xl md:text-2xl font-black text-slate-800">{section.title}</h2>
+                            </div>
+                            <span className="text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-slate-500">
+                                {section.services.length} services
+                            </span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 md:gap-5">
+                            {section.services.map((service, index) => (
+                                <ServiceCard
+                                    key={`${section.key}-${service.title}`}
+                                    service={service}
+                                    index={index}
+                                    readOnly={readOnly}
+                                    onClick={() => openService(service.id)}
+                                />
+                            ))}
+                        </div>
+                    </section>
+                ))}
+
+                {totalServices === 0 && (
+                    <div className="text-center py-16 rounded-3xl bg-white border border-slate-200">
+                        <p className="text-lg font-extrabold text-slate-700">No matching services found</p>
+                        <button
+                            type="button"
+                            onClick={() => setSearchQuery('')}
+                            className="mt-4 px-5 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition-colors"
+                        >
+                            Clear search
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
     );
 };
 

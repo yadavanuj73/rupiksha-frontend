@@ -1,18 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import logo from '../assets/rupiksha_logo.png';
 
 export default function Navbar() {
     const navigate = useNavigate();
     const location = useLocation();
-    const [scrolled, setScrolled] = useState(false);
     const [menu, setMenu] = useState(false);
-
-    useEffect(() => {
-        const h = () => setScrolled(window.scrollY > 20);
-        window.addEventListener('scroll', h);
-        return () => window.removeEventListener('scroll', h);
-    }, []);
 
     const isHome = location.pathname === '/';
 
@@ -34,7 +27,7 @@ export default function Navbar() {
     };
 
     return (
-        <nav className={`rp-nav ${scrolled ? 'rp-nav--scrolled' : ''}`}>
+        <nav className="rp-nav">
             <style>{NAV_CSS}</style>
             <div className="rp-nav__inner">
                 {/* Logo - Far Left */}
@@ -81,8 +74,7 @@ export default function Navbar() {
 }
 
 const NAV_CSS = `
-.rp-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 200; padding: 20px 0; transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1); }
-.rp-nav--scrolled { background: rgba(255,255,255,0.85); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); box-shadow: 0 4px 30px rgba(0,0,0,0.05); padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.3); }
+.rp-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 200; padding: 12px 0; background: #ffffff; box-shadow: 0 4px 30px rgba(0,0,0,0.05); border-bottom: 1px solid #e2e8f0; }
 
 .rp-nav__inner { 
     max-width: 100%; 

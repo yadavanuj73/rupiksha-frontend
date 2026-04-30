@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { io } from 'socket.io-client';
 import {
     Save, RefreshCcw, Home, LayoutDashboard,
     Settings, Package, Video, CreditCard, Users,
     ArrowLeft, CheckCircle2, AlertTriangle, Plus, Trash2, Edit3, FileText,
     BarChart3, Megaphone, Zap, Upload, X, ImageIcon, Play,
     Camera, Eye, IndianRupee, ChevronRight, Wallet, TrendingUp, History, ArrowRight,
-    Building2, UserPlus, UserMinus, ShieldCheck, Link2, Copy, Crown, ChevronDown, Mail, MapPin, Search, Smartphone, Clock, LayoutGrid, User, Activity
+    Building2, UserPlus, UserMinus, ShieldCheck, Link2, Crown, ChevronDown, Mail, MapPin, Search, Smartphone, Clock, LayoutGrid, User, Activity, Lock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { dataService, BACKEND_URL } from '../services/dataService';
@@ -15,15 +14,16 @@ import { sharedDataService } from '../services/sharedDataService';
 import { sendApprovalEmail } from '../services/emailService';
 import mainLogo from '../assets/rupiksha_logo.png';
 import AdminPlanManager from './AdminPlanManager';
-import OurMap from '../superadmin/pages/OurMap';
+import OurMap from '../super-distributor/pages/OurMap';
 import LiveDashboard from './components/LiveDashboard';
 import EmployeeManager from './components/EmployeeManager';
-import LandingCMS from '../superadmin/pages/LandingCMS';
+import LandingCMS from '../super-distributor/pages/LandingCMS';
 import ReportsAnalyst from './components/ReportsAnalyst';
 import WalletManager from './components/WalletManager';
 import LoanApprovalManager from './components/LoanApprovalManager';
 import Overview from './components/Overview';
 import { useAuth } from '../context/AuthContext';
+import { generateUniquePartyCode, stateCodeMap } from '../database/partyCode';
 
 const Admin = () => {
     const navigate = useNavigate();
@@ -31,34 +31,44 @@ const Admin = () => {
     const { user: currentUser, loading, setUser, setIsLocked } = useAuth();
 
     // ── Auth guard: redirect to AdminLogin if not authenticated ──
+    // Note: Uses the roles from AuthContext as the source of truth so the page
+    // survives a browser refresh cleanly. ProtectedRoute in App.jsx already gates
+    // this route, but we keep a lightweight check here for defense in depth and
+    // to sync admin_auth (used by legacy components).
     useEffect(() => {
-        if (loading) return; // Wait until AuthContext has finished initializing
-        const isAuth = sessionStorage.getItem('admin_auth');
-        // Allow access if admin_auth is set OR if the user has an administrative role
-        const hasAdminRole = currentUser && ['ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(currentUser.role);
-        
-        if (!isAuth && !hasAdminRole) {
+        if (loading) return;
+        const roles = Array.isArray(currentUser?.roles) && currentUser.roles.length
+            ? currentUser.roles.map((r) => String(r || '').toUpperCase())
+            : [String(currentUser?.role || '').toUpperCase()];
+        const hasAdminRole = roles.some((r) =>
+            ['ADMIN', 'SUPER_DISTRIBUTOR', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(r)
+        );
+
+        if (!currentUser || !hasAdminRole) {
+            sessionStorage.removeItem('admin_auth');
             navigate('/admin-login', { replace: true });
-        } else if (hasAdminRole && !isAuth) {
-            // Sync session storage if we have a valid admin role from AuthContext
+            return;
+        }
+
+        if (!sessionStorage.getItem('admin_auth')) {
             sessionStorage.setItem('admin_auth', 'true');
         }
     }, [navigate, currentUser, loading]);
 
     const [data, setData] = useState(dataService.getData());
     const [distributors, setDistributors] = useState([]);
-    const [superadmins, setSuperadmins] = useState([]);
+    const [SuperDistributors, setSuperDistributors] = useState([]);
     const [trashUsers, setTrashUsers] = useState([]);
 
     // Default to Dashboard for Header users since they might not have Approvals access
     const initialSection = (currentUser && ['NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER'].includes(currentUser.role)) ? 'Dashboard' : 'Approvals';
     const [activeSection, setActiveSection] = useState(initialSection);
-    const [expandedSA, setExpandedSA] = useState(null); // ID of expanded SuperAdmin row
+    const [expandedSA, setExpandedSA] = useState(null); // ID of expanded SUPER_DISTRIBUTOR row
     const [expandedNav, setExpandedNav] = useState(null); // which nav group is expanded
     const [status, setStatus] = useState(null);
     const [showMobileSidebar, setShowMobileSidebar] = useState(false);
 
-    // SuperAdmin Addition States
+    // SUPER_DISTRIBUTOR Addition States
     const [showAddSAModal, setShowAddSAModal] = useState(false);
     const [showSAOTPView, setShowSAOTPView] = useState(false);
     const [saOtp, setSaOtp] = useState('');
@@ -83,7 +93,8 @@ const Admin = () => {
         password: '', city: '', state: 'Bihar', ownerId: ''
     });
 
-    const [approvingIds, setApprovingIds] = useState(new Set()); // Usernames or IDs currently being approved (email sending)
+    const [approvingIds, setApprovingIds] = useState(new Set()); // Usernames or IDs currently being approved
+    const [resolvedApprovalIds, setResolvedApprovalIds] = useState(new Set()); // Locally resolved pending rows
 
     const [showSuccessView, setShowSuccessView] = useState(false);
     const [createdCredentials, setCreatedCredentials] = useState(null);
@@ -100,18 +111,10 @@ const Admin = () => {
     const [targetRole, setTargetRole] = useState('');
     const [geofenceAlert, setGeofenceAlert] = useState(null);
 
-    useEffect(() => {
-        const socket = io(BACKEND_URL);
-        socket.on("admin_geofence_violation", (data) => {
-            setGeofenceAlert(data);
-            // Speak alert if possible
-            try {
-                const utterance = new SpeechSynthesisUtterance(`Warning: Geofence violation by ${data.username}`);
-                window.speechSynthesis.speak(utterance);
-            } catch (e) {}
-        });
-        return () => { socket.disconnect(); };
-    }, []);
+    // Geofence violation stream is a backend feature that would arrive over a
+    // websocket / server-sent-events channel. The Java backend does not expose
+    // one yet, so the socket.io listener has been removed. When the stream is
+    // implemented, re-add the subscription here.
 
     const handleRoleChangeClick = (user) => {
         setUserForRoleChange(user);
@@ -160,7 +163,7 @@ const Admin = () => {
 
         setSaVerifying(true);
         try {
-            const newSA = await sharedDataService.registerSuperAdmin({
+            const newSA = await sharedDataService.registerSuperDistributor({
                 ...saForm,
                 status: 'Pending'
             });
@@ -186,7 +189,7 @@ const Admin = () => {
                 setSaForm({ name: '', businessName: '', mobile: '', email: '', password: '', city: '', state: 'Bihar' });
             }
         } catch (err) {
-            alert("Error adding Super Admin");
+            alert("Error adding Super Distributor");
         } finally {
             setSaVerifying(false);
         }
@@ -307,21 +310,48 @@ const Admin = () => {
 
     const refreshData = async () => {
         try {
-            const allUsers = await dataService.getAllUsers();
+            const allUsersRaw = await dataService.getAllUsers();
+            const normalizeRole = (role) =>
+                String(role || '')
+                    .trim()
+                    .replace(/[\s-]+/g, '_')
+                    .toUpperCase();
 
-            // Filter users by role and status (Pending/Approved)
-            const retailers = allUsers.filter(u => u.role === 'RETAILER');
-            const dists = allUsers.filter(u => u.role === 'DISTRIBUTOR');
-            const sas = allUsers.filter(u => u.role === 'SUPER_DISTRIBUTOR');
+            // Flatten server-side field names into the shape the admin UI expects.
+            // Especially important: `state` (backed by User.stateName) drives the
+            // party code generator — if it's missing, the party code falls back
+            // to "XX". Also dedupe roles as array / primary role.
+            const allUsers = (Array.isArray(allUsersRaw) ? allUsersRaw : []).map((u) => {
+                const rolesArr = (u.roles || [])
+                    .map((r) => (typeof r === 'string' ? r : (r?.name || '')))
+                    .filter(Boolean)
+                    .map((r) => normalizeRole(r));
+                const primaryRole = normalizeRole(u.role) || rolesArr[0] || 'RETAILER';
+                return {
+                    ...u,
+                    role: primaryRole,
+                    roles: rolesArr.length ? rolesArr : [primaryRole],
+                    state: u.state || u.stateName || '',
+                    stateName: u.stateName || u.state || '',
+                    address: u.address || u.addressLine1 || '',
+                    addressLine1: u.addressLine1 || u.address || '',
+                    businessName: u.businessName || '',
+                    name: u.name || u.fullName || u.username
+                };
+            });
+
+            const retailers = allUsers.filter(u => normalizeRole(u.role) === 'RETAILER');
+            const dists = allUsers.filter(u => normalizeRole(u.role) === 'DISTRIBUTOR');
+            const sas = allUsers.filter(u => normalizeRole(u.role) === 'SUPER_DISTRIBUTOR');
 
             const currentData = dataService.getData();
             setData({ ...currentData, users: retailers });
             setDistributors(dists);
-            setSuperadmins(sas);
+            setSuperDistributors(sas);
 
             // Sync with sharedDataService for other components
             sharedDataService.saveDistributors(dists, true);
-            sharedDataService.saveSuperAdmins(sas, true);
+            sharedDataService.saveSuperDistributors(sas, true);
 
             const trash = await dataService.getTrashUsers();
             setTrashUsers(trash);
@@ -330,6 +360,106 @@ const Admin = () => {
         } finally {
             setIsLoadingData(false);
         }
+    };
+
+    const matchesIdentifier = (item, identifier) => {
+        if (!item || !identifier) return false;
+        const id = String(identifier);
+        return [
+            item._id,
+            item.id,
+            item.username,
+            item.mobile,
+            item.loginId,
+            item.userMobile
+        ].filter(Boolean).some((value) => String(value) === id);
+    };
+
+    const markApprovalResolved = (identifier) => {
+        if (!identifier) return;
+        setResolvedApprovalIds(prev => new Set(prev).add(String(identifier)));
+    };
+
+    const normalizeRoleKey = (role) => String(role || '').trim().replace(/[\s-]+/g, '_').toUpperCase();
+
+    const persistMemberToLocalStore = (member) => {
+        if (!member) return;
+        const local = dataService.getData();
+        const users = Array.isArray(local.users) ? [...local.users] : [];
+        const key = member?._id || member?.id || member?.username || member?.mobile;
+        const idx = users.findIndex((u) => matchesIdentifier(u, key));
+        if (idx >= 0) users[idx] = { ...users[idx], ...member };
+        else users.push(member);
+        dataService.saveData({ ...local, users });
+    };
+
+    const promoteToApproved = (member, roleHint, extra = {}) => {
+        if (!member) return;
+        const approvedMember = { ...member, ...extra, status: 'Approved' };
+        const key = approvedMember?._id || approvedMember?.id || approvedMember?.username || approvedMember?.mobile;
+        const roleKey = normalizeRoleKey(roleHint || approvedMember.role);
+
+        if (roleKey === 'RETAILER') {
+            setData(prev => {
+                const list = Array.isArray(prev.users) ? [...prev.users] : [];
+                const idx = list.findIndex((u) => matchesIdentifier(u, key));
+                if (idx >= 0) list[idx] = { ...list[idx], ...approvedMember };
+                else list.push(approvedMember);
+                return { ...prev, users: list };
+            });
+        } else if (roleKey === 'DISTRIBUTOR') {
+            setDistributors(prev => {
+                const list = Array.isArray(prev) ? [...prev] : [];
+                const idx = list.findIndex((u) => matchesIdentifier(u, key));
+                if (idx >= 0) list[idx] = { ...list[idx], ...approvedMember };
+                else list.push(approvedMember);
+                sharedDataService.saveDistributors(list, true);
+                return list;
+            });
+        } else {
+            setSuperDistributors(prev => {
+                const list = Array.isArray(prev) ? [...prev] : [];
+                const idx = list.findIndex((u) => matchesIdentifier(u, key));
+                if (idx >= 0) list[idx] = { ...list[idx], ...approvedMember };
+                else list.push(approvedMember);
+                sharedDataService.saveSuperDistributors(list, true);
+                return list;
+            });
+        }
+
+        persistMemberToLocalStore(approvedMember);
+        markApprovalResolved(key);
+    };
+
+    const movePendingToTrashLocal = (identifier) => {
+        let removed = null;
+        setData(prev => {
+            const list = Array.isArray(prev.users) ? prev.users : [];
+            const hit = list.find((u) => matchesIdentifier(u, identifier));
+            if (hit) removed = hit;
+            return { ...prev, users: list.filter((u) => !matchesIdentifier(u, identifier)) };
+        });
+        setDistributors(prev => {
+            const list = Array.isArray(prev) ? prev : [];
+            const hit = list.find((u) => matchesIdentifier(u, identifier));
+            if (hit) removed = hit;
+            const next = list.filter((u) => !matchesIdentifier(u, identifier));
+            sharedDataService.saveDistributors(next, true);
+            return next;
+        });
+        setSuperDistributors(prev => {
+            const list = Array.isArray(prev) ? prev : [];
+            const hit = list.find((u) => matchesIdentifier(u, identifier));
+            if (hit) removed = hit;
+            const next = list.filter((u) => !matchesIdentifier(u, identifier));
+            sharedDataService.saveSuperDistributors(next, true);
+            return next;
+        });
+
+        if (removed) {
+            setTrashUsers(prev => ([{ ...removed, updated_at: new Date().toISOString() }, ...(prev || [])]));
+        }
+        markApprovalResolved(identifier);
     };
 
     const handleResendCredentials = async (user) => {
@@ -355,15 +485,15 @@ const Admin = () => {
         }
     };
 
-    // Listen for distributor and superadmin data changes
+    // Listen for distributor and SUPER_DISTRIBUTOR data changes
     useEffect(() => {
         refreshData();
         const handler = () => refreshData();
         window.addEventListener('distributorDataUpdated', handler);
-        window.addEventListener('superadminDataUpdated', handler);
+        window.addEventListener('SuperDistributorDataUpdated', handler);
         return () => {
             window.removeEventListener('distributorDataUpdated', handler);
-            window.removeEventListener('superadminDataUpdated', handler);
+            window.removeEventListener('SuperDistributorDataUpdated', handler);
         };
     }, []);
 
@@ -384,46 +514,108 @@ const Admin = () => {
         }
     };
 
-    const handleLoginAsRetailer = (user) => {
-        // Ensure a token exists for the session
-        if (!localStorage.getItem('rupiksha_token')) {
-            localStorage.setItem('rupiksha_token', 'MOCK_ADMIN_IMPERSONATION_' + Date.now());
-        }
-        localStorage.setItem('rupiksha_user', JSON.stringify(user));
-        localStorage.setItem('user', JSON.stringify(user));
-
-        // Update context state immediately
-        setUser(user);
-        setIsLocked(false); // Bypass lock screen during impersonation
-
-        navigate('/dashboard');
+    const normalizeSessionRole = (raw) => {
+        if (!raw) return 'RETAILER';
+        return String(raw).trim().replace(/\s+/g, '_').toUpperCase();
     };
 
-    const handleLoginAsDistributor = (dist) => {
-        if (!localStorage.getItem('rupiksha_token')) {
-            localStorage.setItem('rupiksha_token', 'MOCK_ADMIN_IMPERSONATION_' + Date.now());
+    // Server-side impersonation: calls POST /admin/impersonate/{userId}, stores the
+    // returned short-lived token in localStorage (replacing the admin's token) and
+    // navigates to the target role's dashboard. Admin must log in again afterwards.
+    const impersonateUser = async (target, fallbackPath) => {
+        const targetId = target?.id || target?._id || target?.userId;
+        if (!targetId) {
+            setStatus({ type: 'error', message: 'Cannot impersonate: user id missing from record.' });
+            setTimeout(() => setStatus(null), 4000);
+            return;
         }
-        localStorage.setItem('rupiksha_user', JSON.stringify(dist));
-        localStorage.setItem('user', JSON.stringify(dist));
 
-        setUser(dist);
-        setIsLocked(false);
+        const adminToken = localStorage.getItem('rupiksha_token');
+        if (!adminToken) {
+            setStatus({ type: 'error', message: 'Admin session expired. Please sign in again.' });
+            setTimeout(() => {
+                sessionStorage.removeItem('admin_auth');
+                window.location.href = '/admin-login';
+            }, 1200);
+            return;
+        }
 
-        navigate('/distributor');
+        setStatus({ type: 'info', message: 'Impersonating ' + (target.fullName || target.name || target.username || 'user') + '...' });
+
+        try {
+            const res = await fetch(`${BACKEND_URL}/admin/impersonate/${encodeURIComponent(targetId)}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${adminToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            let data = {};
+            const ct = res.headers.get('content-type') || '';
+            if (ct.includes('application/json')) {
+                data = await res.json().catch(() => ({}));
+            } else {
+                const txt = await res.text().catch(() => '');
+                if (txt) data = { error: txt.slice(0, 200) };
+            }
+
+            if (res.status === 401 || res.status === 403) {
+                setStatus({ type: 'error', message: 'Admin session expired or not authorized. Please sign in again.' });
+                setTimeout(() => {
+                    localStorage.removeItem('rupiksha_token');
+                    localStorage.removeItem('rupiksha_user');
+                    sessionStorage.removeItem('admin_auth');
+                    window.location.href = '/admin-login';
+                }, 1500);
+                return;
+            }
+
+            if (!res.ok || !data.accessToken) {
+                const detail = data.error || data.message || data.detail || `HTTP ${res.status}`;
+                setStatus({ type: 'error', message: 'Impersonation failed: ' + detail });
+                setTimeout(() => setStatus(null), 5000);
+                return;
+            }
+
+            const roles = Array.isArray(data.roles) ? data.roles : [data.role].filter(Boolean);
+            const primaryRole = String(roles[0] || '').toUpperCase();
+
+            const impersonatedUser = {
+                id: data.userId,
+                username: data.username,
+                name: data.fullName,
+                fullName: data.fullName,
+                roles,
+                role: primaryRole,
+                status: data.status,
+                kycStatus: data.kycStatus,
+                impersonated: true
+            };
+
+            localStorage.setItem('rupiksha_admin_prev_token', adminToken);
+            localStorage.setItem('rupiksha_token', data.accessToken);
+            localStorage.setItem('rupiksha_user', JSON.stringify(impersonatedUser));
+            localStorage.setItem('last_activity', Date.now().toString());
+
+            sessionStorage.removeItem('admin_auth');
+
+            const redirect = primaryRole === 'DISTRIBUTOR' ? '/distributor'
+                : primaryRole === 'SUPER_DISTRIBUTOR' ? '/super-distributor'
+                : primaryRole === 'ADMIN' ? '/admin'
+                : primaryRole === 'RETAILER' ? '/dashboard'
+                : (fallbackPath || '/dashboard');
+
+            window.location.replace(redirect);
+        } catch (err) {
+            setStatus({ type: 'error', message: 'Impersonation failed: ' + (err?.message || 'network error') });
+            setTimeout(() => setStatus(null), 5000);
+        }
     };
 
-    const handleLoginAdminSA = (sa) => {
-        if (!localStorage.getItem('rupiksha_token')) {
-            localStorage.setItem('rupiksha_token', 'MOCK_ADMIN_IMPERSONATION_' + Date.now());
-        }
-        localStorage.setItem('rupiksha_user', JSON.stringify(sa));
-        localStorage.setItem('user', JSON.stringify(sa));
-
-        setUser(sa);
-        setIsLocked(false);
-
-        navigate('/superadmin');
-    };
+    const handleLoginAsRetailer = (u) => impersonateUser(u, '/dashboard');
+    const handleLoginAsDistributor = (u) => impersonateUser(u, '/distributor');
+    const handleLoginAdminSA = (u) => impersonateUser(u, '/super-distributor');
 
     // Components to render different edit forms
     const ImageUpload = ({ value, onChange, label }) => {
@@ -798,196 +990,328 @@ const Admin = () => {
         </div>
     );
 
+    // Snapshot of already-used party codes used by unique generator.
+    const collectExistingPartyCodes = () => [
+        ...(data.users || []).map(u => u.partyCode),
+        ...(distributors || []).map(d => d.partyCode),
+        ...(SuperDistributors || []).map(s => s.partyCode)
+    ].filter(Boolean);
+
+    // Resolve applicant state automatically from registration fields.
+    // Priority: explicit state/stateName -> address text match -> empty.
+    const resolveApplicantState = (entity) => {
+        const direct = String(entity?.state || entity?.stateName || '').trim();
+        if (direct) return direct;
+        const searchable = [
+            entity?.address,
+            entity?.addressLine1,
+            entity?.city
+        ].filter(Boolean).join(' ').toUpperCase();
+        if (!searchable) return '';
+        const matched = Object.keys(stateCodeMap).find((state) => searchable.includes(state));
+        return matched || '';
+    };
+
+    // Some list rows can be stale or partially-shaped depending on which approval
+    // source populated them. Before generating party code, re-hydrate from the
+    // latest /admin/users snapshot so registration state is reliably picked.
+    const resolveApplicantStateLive = async (entity) => {
+        const localState = resolveApplicantState(entity);
+        if (localState) return localState;
+        try {
+            const allUsers = await dataService.getAllUsers();
+            const byKey = (u) => [
+                String(u?.id || ''),
+                String(u?._id || ''),
+                String(u?.mobile || ''),
+                String(u?.username || ''),
+                String(u?.email || '')
+            ].filter(Boolean);
+            const targetKeys = new Set(byKey(entity));
+            const latest = (Array.isArray(allUsers) ? allUsers : []).find((u) =>
+                byKey(u).some((k) => targetKeys.has(k))
+            );
+            return resolveApplicantState(latest || entity);
+        } catch {
+            return localState;
+        }
+    };
+
     const [showApprovalModal, setShowApprovalModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
     const [approvalForm, setApprovalForm] = useState({ password: '', pin: '', partyCode: '', distributorId: '' });
 
     const [showSAApprovalModal, setShowSAApprovalModal] = useState(false);
     const [selectedSA, setSelectedSA] = useState(null);
-    const [saApprovalForm, setSAApprovalForm] = useState({ password: '', pin: '' });
+    const [saApprovalForm, setSAApprovalForm] = useState({ password: '', pin: '', partyCode: '' });
 
     const [showCredentialCard, setShowCredentialCard] = useState(false);
     const [credentialData, setCredentialData] = useState(null);
+    const [approvalLoading, setApprovalLoading] = useState(false);
 
-    const handleApproveClick = (user) => {
+    const handleApproveClick = async (user) => {
         setSelectedUser(user);
         const approvedDists = sharedDataService.getAllDistributors().filter(d => d.status === 'Approved');
+        const existingCodes = [
+            ...(data.users || []).map(u => u.partyCode),
+            ...(distributors || []).map(d => d.partyCode),
+            ...(SuperDistributors || []).map(s => s.partyCode)
+        ];
+        // Password is NO LONGER generated here — the user already set their own
+        // during registration and that's what they'll use to log in. The admin
+        // just reviews identity + party code + optional distributor assignment.
+        // State falls back through state → stateName → address so the party code
+        // reflects the real state (RPR + BR for Bihar, etc.) instead of XX.
+        const applicantState = await resolveApplicantStateLive(user);
+        const applicantRole = user.role || (user.roles && user.roles[0]) || 'RETAILER';
         setApprovalForm({
-            password: 'Ru@' + Math.floor(1000 + Math.random() * 9000),
+            password: '',
             pin: Math.floor(1000 + Math.random() * 9000).toString(),
-            partyCode: 'RU' + Math.floor(100000 + Math.random() * 900000),
+            partyCode: generateUniquePartyCode(applicantState, applicantRole, existingCodes),
             distributorId: approvedDists[0]?.id || ''
         });
         setShowApprovalModal(true);
     };
 
     const submitApproval = async () => {
-        if (!approvalForm.password || !approvalForm.partyCode) {
-            alert('Please provide both Password and Party Code.');
+        if (approvalLoading) return;
+        if (!approvalForm.partyCode) {
+            alert('Party Code is required.');
+            return;
+        }
+        if (/XX/.test(approvalForm.partyCode)) {
+            alert('Applicant state is missing in registration data. Please verify registration state or edit party code manually before approving.');
             return;
         }
 
         const targetUser = selectedUser;
-        const targetUsername = targetUser.username;
+        const targetIdentifier =
+            targetUser?._id ||
+            targetUser?.id ||
+            targetUser?.username ||
+            targetUser?.mobile ||
+            targetUser?.loginId;
+        if (!targetUser || !targetIdentifier) {
+            alert('Unable to approve: missing user identifier.');
+            return;
+        }
 
-        // 1. Mark as currently being processed
-        setApprovingIds(prev => new Set(prev).add(targetUsername));
+        setApprovalLoading(true);
+        setApprovingIds(prev => new Set(prev).add(targetIdentifier));
+        promoteToApproved(targetUser, 'RETAILER', {
+            password: approvalForm.password,
+            pin: approvalForm.pin || targetUser.pin || '1122',
+            partyCode: approvalForm.partyCode,
+            ownerId: approvalForm.distributorId || targetUser.ownerId || null
+        });
         setShowApprovalModal(false);
+        setShowCredentialCard(true);
 
         const shareData = {
             name: targetUser.name || targetUser.mobile,
             mobile: targetUser.mobile,
+            email: targetUser.email,
             password: approvalForm.password,
             pin: approvalForm.pin,
             idLabel: 'Party Code',
             idValue: approvalForm.partyCode,
             portalType: 'Retailer',
             url: window.location.origin,
-            emailStatus: 'sending'
+            emailStatus: 'idle',
+            notificationPayload: {
+                to: targetUser.email,
+                name: targetUser.name || targetUser.mobile,
+                loginId: targetUser.mobile,
+                password: approvalForm.password,
+                pin: approvalForm.pin,
+                idLabel: 'Party Code',
+                idValue: approvalForm.partyCode,
+                portalType: 'Retailer'
+            }
         };
 
         setCredentialData(shareData);
-        setShowCredentialCard(true);
 
         try {
-            // 2. Call the real backend email service FIRST
-            const result = await sendApprovalEmail({
-                to: targetUser.email,
-                name: shareData.name,
-                loginId: shareData.mobile,
-                password: shareData.password,
-                pin: shareData.pin,
-                idLabel: shareData.idLabel,
-                idValue: shareData.idValue,
-                portalType: shareData.portalType
-            });
-
-            if (result.success) {
-                // 3. Update DB status to Approved with result check
-                const dbResult = await dataService.approveUser(targetUsername, approvalForm.password, approvalForm.partyCode, approvalForm.distributorId, approvalForm.pin);
-                
-                if (dbResult.success) {
-                    setCredentialData(prev => ({
-                        ...prev,
-                        emailStatus: 'sent'
-                    }));
-                    // Refresh UI to move from Pending to Active
-                    refreshData();
-                } else {
-                    setCredentialData(prev => ({
-                        ...prev,
-                        emailStatus: 'failed',
-                        error: dbResult.message || 'Database update failed'
-                    }));
-                }
-            } else {
-                setCredentialData(prev => ({
-                    ...prev,
-                    emailStatus: 'failed',
-                    error: result.message || 'Email delivery failed'
-                }));
+            // Persist approval first so pending card is cleared instantly.
+            const dbResult = await dataService.approveUser(
+                targetIdentifier,
+                approvalForm.password,
+                approvalForm.partyCode,
+                approvalForm.distributorId || null,
+                approvalForm.pin || targetUser.pin || '1122',
+                targetUser.state || '',
+                targetUser.role || 'RETAILER'
+            );
+            if (!dbResult?.success) {
+                throw new Error(dbResult?.message || 'Approval update failed');
             }
+            setApprovingIds(prev => {
+                const next = new Set(prev);
+                next.delete(targetIdentifier);
+                return next;
+            });
+            refreshData();
         } catch (err) {
+            console.error(err);
             setCredentialData(prev => ({
                 ...prev,
                 emailStatus: 'failed',
-                error: 'Network error during email dispatch'
+                error: 'Approved (Email Failed)'
             }));
+            setStatus({ type: 'error', message: err?.message || 'Approval sync failed, kept locally approved.' });
+            setTimeout(() => setStatus(null), 3000);
+            refreshData();
         } finally {
-            // 4. Finished processing
             setApprovingIds(prev => {
                 const next = new Set(prev);
-                next.delete(targetUsername);
+                next.delete(targetIdentifier);
                 return next;
             });
+            setApprovalLoading(false);
         }
     };
 
 
-    const handleReject = async (username) => {
-        if (window.confirm(`Are you sure you want to move user ${username} to trash?`)) {
-            await dataService.deleteUser(username);
-            refreshData();
-            setStatus({ type: 'error', message: `User ${username} moved to trash.` });
+    const handleReject = async (userOrIdentifier) => {
+        const identifier =
+            (typeof userOrIdentifier === 'string' ? userOrIdentifier : null) ||
+            userOrIdentifier?._id ||
+            userOrIdentifier?.id ||
+            userOrIdentifier?.username ||
+            userOrIdentifier?.mobile ||
+            userOrIdentifier?.loginId;
+        const displayName =
+            (typeof userOrIdentifier === 'string' ? userOrIdentifier : null) ||
+            userOrIdentifier?.username ||
+            userOrIdentifier?.name ||
+            userOrIdentifier?.mobile ||
+            identifier;
+
+        if (!identifier) {
+            setStatus({ type: 'error', message: 'Unable to delete: missing user id.' });
             setTimeout(() => setStatus(null), 3000);
+            return;
+        }
+
+        if (window.confirm(`Are you sure you want to move user ${displayName} to trash?`)) {
+            movePendingToTrashLocal(identifier);
+            const res = await dataService.deleteUser(identifier);
+            if (res?.success) {
+                refreshData();
+                setStatus({ type: 'error', message: `User ${displayName} moved to trash.` });
+                setTimeout(() => setStatus(null), 3000);
+            } else {
+                setStatus({ type: 'error', message: res?.message || 'Failed to move user to trash.' });
+                setTimeout(() => setStatus(null), 3000);
+            }
         }
     };
 
-    const handleSAApproveClick = (sa) => {
+    const handleSAApproveClick = async (sa) => {
         setSelectedSA(sa);
+        const existingCodes = [
+            ...(data.users || []).map(u => u.partyCode),
+            ...(distributors || []).map(d => d.partyCode),
+            ...(SuperDistributors || []).map(s => s.partyCode)
+        ];
+        const applicantState = await resolveApplicantStateLive(sa);
+        const applicantRole = sa.role || (sa.roles && sa.roles[0]) || 'SUPER_DISTRIBUTOR';
         setSAApprovalForm({
-            password: 'SA@' + Math.floor(1000 + Math.random() * 9000)
+            password: '',
+            pin: Math.floor(1000 + Math.random() * 9000).toString(),
+            partyCode: (sa.partyCode || generateUniquePartyCode(applicantState, applicantRole, existingCodes)).toUpperCase()
         });
         setShowSAApprovalModal(true);
     };
 
     const submitSAApproval = async () => {
-        if (!saApprovalForm.password) {
-            alert('Please set a password.');
+        if (approvalLoading) return;
+        if (!saApprovalForm.partyCode) {
+            alert('Party Code is required.');
             return;
         }
+        if (/XX/.test(saApprovalForm.partyCode)) {
+            alert('Applicant state is missing in registration data. Please verify registration state or edit party code manually before approving.');
+            return;
+        }
+        setApprovalLoading(true);
 
         const targetSA = selectedSA;
-        const targetId = targetSA.id;
+        const targetId = targetSA?._id || targetSA?.id || targetSA?.username || targetSA?.mobile;
 
         // 1. Mark as processing
         setApprovingIds(prev => new Set(prev).add(targetId));
+        promoteToApproved(targetSA, 'SUPER_DISTRIBUTOR', {
+            password: saApprovalForm.password,
+            pin: saApprovalForm.pin || targetSA.pin || '1122',
+            partyCode: saApprovalForm.partyCode
+        });
         setShowSAApprovalModal(false);
 
         const shareData = {
             name: targetSA.name,
             mobile: targetSA.mobile,
+            email: targetSA.email,
             password: saApprovalForm.password,
-            idLabel: 'SuperAdmin ID',
+            pin: saApprovalForm.pin,
+            idLabel: 'SUPER_DISTRIBUTOR ID',
             idValue: targetId,
-            portalType: 'SuperAdmin',
+            portalType: 'SUPER_DISTRIBUTOR',
             url: window.location.origin,
-            emailStatus: 'sending'
+            emailStatus: 'idle',
+            notificationPayload: {
+                to: targetSA.email,
+                name: targetSA.name,
+                loginId: targetSA.mobile,
+                password: saApprovalForm.password,
+                pin: saApprovalForm.pin,
+                idLabel: 'SUPER_DISTRIBUTOR ID',
+                idValue: targetId,
+                portalType: 'SUPER_DISTRIBUTOR'
+            }
         };
         setCredentialData(shareData);
         setShowCredentialCard(true);
 
         try {
-            // 2. Email First
-            const result = await sendApprovalEmail({
-                to: targetSA.email,
-                name: shareData.name,
-                loginId: shareData.mobile,
-                password: shareData.password,
-                idLabel: shareData.idLabel,
-                idValue: shareData.idValue,
-                portalType: shareData.portalType
-            });
-
-            if (result.success) {
-                // 3. Status Change
-                sharedDataService.approveSuperAdmin(targetId, saApprovalForm.password);
-
-                setCredentialData(prev => ({
-                    ...prev,
-                    emailStatus: 'sent'
-                }));
+            // 2. Approve first so processing clears immediately
+            const dbResult = await dataService.approveUser(
+                targetSA._id || targetSA.id || targetSA.username || targetSA.mobile,
+                saApprovalForm.password,
+                saApprovalForm.partyCode,
+                targetSA.parent_id || targetSA.ownerId || null,
+                saApprovalForm.pin || targetSA.pin || '1122',
+                targetSA.state || '',
+                targetSA.role || 'SUPER_DISTRIBUTOR'
+            );
+            if (dbResult.success) {
+                setApprovingIds(prev => {
+                    const next = new Set(prev);
+                    next.delete(targetId);
+                    return next;
+                });
                 refreshData();
             } else {
                 setCredentialData(prev => ({
                     ...prev,
                     emailStatus: 'failed',
-                    error: result.message || 'Email delivery failed'
+                    error: dbResult.message || 'Database update failed'
                 }));
             }
         } catch (err) {
             setCredentialData(prev => ({
                 ...prev,
                 emailStatus: 'failed',
-                error: 'Connection error'
+                error: err?.message || 'Connection error'
             }));
         } finally {
-            // 4. Cleanup
             setApprovingIds(prev => {
                 const next = new Set(prev);
                 next.delete(targetId);
                 return next;
             });
+            setApprovalLoading(false);
         }
     };
 
@@ -996,20 +1320,42 @@ const Admin = () => {
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md border border-slate-200">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                        <ShieldCheck size={20} className="text-indigo-500" /> Approve SuperAdmin
+                        <ShieldCheck size={20} className="text-indigo-500" /> Approve Super Distributor
                     </h3>
                     <button onClick={() => setShowSAApprovalModal(false)} className="text-slate-400 hover:text-slate-600"><X size={24} /></button>
                 </div>
+
+                <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-2 mb-5">
+                    <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Mail recipient:</span>
+                    <span className="text-xs font-black text-indigo-700 ml-auto">{selectedSA?.email || 'No email on record'}</span>
+                </div>
+
                 <div className="space-y-4">
-                    <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">User</label>
-                        <p className="p-3 bg-slate-50 rounded-lg font-bold text-slate-700 text-sm">{selectedSA?.name || selectedSA?.mobile}</p>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Super Distributor Name</label>
+                            <p className="p-3 bg-slate-50 rounded-lg font-bold text-slate-700 text-sm">{selectedSA?.name || selectedSA?.mobile}</p>
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Login ID (Mobile)</label>
+                            <p className="p-3 bg-slate-50 rounded-lg font-mono font-bold text-slate-700 text-sm">{selectedSA?.mobile}</p>
+                        </div>
+                    </div>
+                    <div className="rounded-lg border border-indigo-200 bg-indigo-50/60 p-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider leading-relaxed">
+                        Login password = the one applicant entered at registration.
+                        Admin does not need to set or share a new password.
                     </div>
                     <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Set Password</label>
-                        <input type="text" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 font-mono" value={saApprovalForm.password} onChange={(e) => setSAApprovalForm({ ...saApprovalForm, password: e.target.value })} />
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Security PIN <span className="text-indigo-500">(editable)</span></label>
+                        <input type="text" maxLength="4" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 font-mono" value={saApprovalForm.pin} onChange={(e) => setSAApprovalForm({ ...saApprovalForm, pin: e.target.value.replace(/\D/g, '') })} />
                     </div>
-                    <button onClick={submitSAApproval} className="w-full bg-indigo-500 text-white font-black py-4 rounded-xl shadow-lg uppercase tracking-widest text-xs">Confirm & Send Login</button>
+                    <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Party Code <span className="text-indigo-500">(auto / editable)</span></label>
+                        <input type="text" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 font-mono" value={saApprovalForm.partyCode} onChange={(e) => setSAApprovalForm({ ...saApprovalForm, partyCode: e.target.value })} />
+                    </div>
+                    <button disabled={approvalLoading} onClick={submitSAApproval} className="w-full bg-indigo-500 text-white font-black py-4 rounded-xl shadow-lg shadow-indigo-500/30 hover:bg-indigo-400 transition-all active:scale-95 uppercase tracking-widest text-xs flex items-center justify-center gap-2 disabled:opacity-60">
+                        <ShieldCheck size={16} /> {approvalLoading ? 'Processing...' : 'Approve'}
+                    </button>
                 </div>
             </motion.div>
         </div>
@@ -1028,7 +1374,7 @@ const Admin = () => {
                 </div>
 
                 <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2 mb-5">
-                    <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">📧 Auto-email to:</span>
+                    <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Mail recipient:</span>
                     <span className="text-xs font-black text-emerald-700 ml-auto">{selectedUser?.email || 'No email on record'}</span>
                 </div>
 
@@ -1043,26 +1389,22 @@ const Admin = () => {
                             <p className="p-3 bg-slate-50 rounded-lg font-mono font-bold text-slate-700 text-sm">{selectedUser?.mobile}</p>
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Password <span className="text-emerald-500">(editable)</span></label>
-                            <input type="text"
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-sm"
-                                value={approvalForm.password}
-                                onChange={(e) => setApprovalForm({ ...approvalForm, password: e.target.value })}
-                            />
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Security PIN <span className="text-emerald-500">(editable)</span></label>
-                            <input type="text" maxLength="4"
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-sm"
-                                value={approvalForm.pin}
-                                onChange={(e) => setApprovalForm({ ...approvalForm, pin: e.target.value })}
-                            />
-                        </div>
+
+                    <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 text-[10px] font-bold text-emerald-700 uppercase tracking-wider leading-relaxed">
+                        Login password = the one applicant entered at registration.
+                        Admin does not need to set or share a new password.
+                    </div>
+
+                    <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Security PIN <span className="text-emerald-500">(editable)</span></label>
+                        <input type="text" maxLength="4"
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-sm"
+                            value={approvalForm.pin}
+                            onChange={(e) => setApprovalForm({ ...approvalForm, pin: e.target.value.replace(/\D/g, '') })}
+                        />
                     </div>
                     <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Party Code <span className="text-emerald-500">(editable)</span></label>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Party Code <span className="text-emerald-500">(auto / editable)</span></label>
                         <input type="text"
                             className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
                             value={approvalForm.partyCode}
@@ -1082,10 +1424,10 @@ const Admin = () => {
                             ))}
                         </select>
                     </div>
-                    <button onClick={submitApproval}
-                        className="w-full bg-emerald-500 text-white font-black py-4 rounded-xl shadow-lg shadow-emerald-500/30 hover:bg-emerald-400 transition-all active:scale-95 uppercase tracking-widest text-xs flex items-center justify-center gap-2"
+                    <button disabled={approvalLoading} onClick={submitApproval}
+                        className="w-full bg-emerald-500 text-white font-black py-4 rounded-xl shadow-lg shadow-emerald-500/30 hover:bg-emerald-400 transition-all active:scale-95 uppercase tracking-widest text-xs flex items-center justify-center gap-2 disabled:opacity-60"
                     >
-                        <CheckCircle2 size={16} /> Approve — Email Sends Automatically
+                        <CheckCircle2 size={16} /> {approvalLoading ? 'Processing...' : 'Approve'}
                     </button>
                 </div>
             </motion.div>
@@ -1148,7 +1490,12 @@ const Admin = () => {
                                     </span>
                                 </td>
                                 <td className="px-8 py-4">
-                                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-tight">{user.distributorName || 'SYSTEM_DIRECT'}</p>
+                                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-tight">
+                                        {user.addedByName || user.distributorName || 'SYSTEM_DIRECT'}
+                                    </p>
+                                    {user.addedByPartyCode && (
+                                        <p className="text-[9px] font-bold text-slate-400 mt-1">{user.addedByPartyCode}</p>
+                                    )}
                                 </td>
                                 <td className="px-8 py-4 text-right">
                                     <p className="text-sm font-black text-slate-800 tabular-nums leading-none">₹{Number(user.wallet?.balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
@@ -1299,7 +1646,7 @@ const Admin = () => {
         </div>
     );
 
-    const AddSuperAdminModal = () => (
+    const AddSuperDistributorModal = () => (
         <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-[2px] flex items-center justify-center p-4">
             <motion.div
                 initial={{ scale: 0.9, opacity: 0, y: 40 }}
@@ -1309,7 +1656,7 @@ const Admin = () => {
                 <div className="px-10 py-8 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
                     <div>
                         <h3 className="text-xl font-black text-slate-800 uppercase italic tracking-tight">
-                            {showSAOTPView ? 'Confirm Identity' : 'Provision SuperAdmin'}
+                            {showSAOTPView ? 'Confirm Identity' : 'Provision SUPER_DISTRIBUTOR'}
                         </h3>
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">
                             {showSAOTPView ? `Enter OTP sent to ${saForm.email}` : 'Direct registration of high-level distributors'}
@@ -1499,83 +1846,112 @@ const Admin = () => {
     // ── Distributors Panel ────────────────────────────────────────────────
     const [showDistApprovalModal, setShowDistApprovalModal] = useState(false);
     const [selectedDist, setSelectedDist] = useState(null);
-    const [distApprovalForm, setDistApprovalForm] = useState({ password: '', distribId: '' });
+    const [distApprovalForm, setDistApprovalForm] = useState({ password: '', pin: '', distribId: '', partyCode: '' });
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [assignTargetDist, setAssignTargetDist] = useState(null);
     const [assignSearch, setAssignSearch] = useState('');
 
-    const handleDistApproveClick = (dist) => {
+    const handleDistApproveClick = async (dist) => {
         setSelectedDist(dist);
-        // Auto-generate distributor ID and password for admin to review before approving
+        const existingCodes = [
+            ...(data.users || []).map(u => u.partyCode),
+            ...(distributors || []).map(d => d.partyCode),
+            ...(SuperDistributors || []).map(s => s.partyCode)
+        ];
+        // Password stays empty — user set it during registration and that is
+        // the password they will log in with. We only auto-generate the party
+        // code (RPD + state code + random) for the admin to review.
+        const applicantState = await resolveApplicantStateLive(dist);
+        const applicantRole = dist.role || (dist.roles && dist.roles[0]) || 'DISTRIBUTOR';
         setDistApprovalForm({
-            password: 'Dist@' + Math.floor(1000 + Math.random() * 9000),
-            distribId: dist.id   // already auto-generated on registration
+            password: '',
+            pin: Math.floor(1000 + Math.random() * 9000).toString(),
+            distribId: dist.id,
+            partyCode: (dist.partyCode || generateUniquePartyCode(applicantState, applicantRole, existingCodes)).toUpperCase()
         });
         setShowDistApprovalModal(true);
     };
 
     const submitDistApproval = async () => {
-        if (!distApprovalForm.password) { alert('Please set a login password.'); return; }
+        if (!distApprovalForm.partyCode) { alert('Party Code is required.'); return; }
+        if (/XX/.test(distApprovalForm.partyCode)) {
+            alert('Applicant state is missing in registration data. Please verify registration state or edit party code manually before approving.');
+            return;
+        }
 
         const targetDist = selectedDist;
-        const targetId = targetDist.id;
+        const targetId = targetDist?._id || targetDist?.id || targetDist?.username || targetDist?.mobile;
 
         // 1. Mark as processing
         setApprovingIds(prev => new Set(prev).add(targetId));
+        promoteToApproved(targetDist, 'DISTRIBUTOR', {
+            password: distApprovalForm.password,
+            pin: distApprovalForm.pin || targetDist.pin || '1122',
+            partyCode: distApprovalForm.partyCode,
+            id: distApprovalForm.distribId || targetDist.id
+        });
         setShowDistApprovalModal(false);
 
         const shareData = {
             name: targetDist.name,
             mobile: targetDist.mobile,
+            email: targetDist.email,
             password: distApprovalForm.password,
+            pin: distApprovalForm.pin,
             idLabel: 'Distributor ID',
             idValue: distApprovalForm.distribId,
             portalType: 'Distributor',
             url: window.location.origin,
-            emailStatus: 'sending'
+            emailStatus: 'idle',
+            notificationPayload: {
+                to: targetDist.email,
+                name: targetDist.name,
+                loginId: targetDist.mobile,
+                password: distApprovalForm.password,
+                pin: distApprovalForm.pin,
+                idLabel: 'Distributor ID',
+                idValue: distApprovalForm.distribId,
+                portalType: 'Distributor'
+            }
         };
 
         setCredentialData(shareData);
         setShowCredentialCard(true);
 
         try {
-            // 2. Email First
-            const result = await sendApprovalEmail({
-                to: targetDist.email,
-                name: shareData.name,
-                loginId: shareData.mobile,
-                password: shareData.password,
-                idLabel: shareData.idLabel,
-                idValue: shareData.idValue,
-                portalType: shareData.portalType
-            });
-
-            if (result.success) {
-                // 3. Update DB
-                sharedDataService.approveDistributor(targetId, distApprovalForm.password, distApprovalForm.distribId);
-
-                setCredentialData(prev => ({
-                    ...prev,
-                    emailStatus: 'sent'
-                }));
-                // Need to refresh both distributors and the main data
-                refreshDists();
-                refreshData();
-            } else {
+            // 2. Approve first so processing clears immediately
+            const dbResult = await dataService.approveUser(
+                targetDist._id || targetDist.id || targetDist.username || targetDist.mobile,
+                distApprovalForm.password,
+                distApprovalForm.partyCode,
+                targetDist.parent_id || targetDist.ownerId || null,
+                distApprovalForm.pin || targetDist.pin || '1122',
+                targetDist.state || '',
+                targetDist.role || 'DISTRIBUTOR'
+            );
+            if (!dbResult?.success) {
                 setCredentialData(prev => ({
                     ...prev,
                     emailStatus: 'failed',
-                    error: result.message || 'Email delivery failed'
+                    error: dbResult?.message || 'Database update failed'
                 }));
+                return;
             }
+            setApprovingIds(prev => {
+                const next = new Set(prev);
+                next.delete(targetId);
+                return next;
+            });
+            // Need to refresh both distributors and the main data
+            refreshDists();
+            refreshData();
         } catch (err) {
             setCredentialData(prev => ({
                 ...prev,
                 emailStatus: 'failed',
-                error: 'Connection error'
+                error: err?.message || 'Connection error'
             }));
         } finally {
-            // 4. Cleanup
             setApprovingIds(prev => {
                 const next = new Set(prev);
                 next.delete(targetId);
@@ -1587,24 +1963,46 @@ const Admin = () => {
     const renderCredentialSharerModal = () => {
         if (!credentialData) return null;
 
-        const shareText = `*RUPIKSHA FINTECH APPROVAL* 🚀\n\n` +
+        const shareText = `*RUPIKSHA FINTECH APPROVAL*\n\n` +
             `Hello *${credentialData.name}*,\n` +
             `Aapka *${credentialData.portalType}* account approve ho gaya hai.\n\n` +
             `*Login Details:*\n` +
             `• ID: ${credentialData.mobile}\n` +
-            `• Password: ${credentialData.password}\n` +
+            `• Password: (the one you set during registration)\n` +
             `• ${credentialData.idLabel}: ${credentialData.idValue}\n\n` +
             `Login here: ${credentialData.url}\n\n` +
             `_Team RUPIKSHA_`;
 
-        const copyAll = () => {
-            navigator.clipboard.writeText(shareText);
-            alert('Credentials Copied! Ab aap paste kar sakte hain.');
-        };
-
         const shareWA = () => {
             const url = `https://wa.me/91${credentialData.mobile}?text=${encodeURIComponent(shareText)}`;
             window.open(url, '_blank');
+        };
+
+        const sendMail = async () => {
+            if (!credentialData?.notificationPayload?.to) {
+                setCredentialData(prev => ({
+                    ...prev,
+                    emailStatus: 'failed',
+                    error: 'Email not available for this user.'
+                }));
+                return;
+            }
+
+            setCredentialData(prev => ({ ...prev, emailStatus: 'sending', error: '' }));
+            try {
+                const result = await sendApprovalEmail(credentialData.notificationPayload);
+                setCredentialData(prev => ({
+                    ...prev,
+                    emailStatus: result?.success ? 'sent' : 'failed',
+                    error: result?.success ? '' : (result?.message || 'Email send failed')
+                }));
+            } catch (err) {
+                setCredentialData(prev => ({
+                    ...prev,
+                    emailStatus: 'failed',
+                    error: err?.message || 'Email send failed'
+                }));
+            }
         };
 
         return (
@@ -1618,6 +2016,8 @@ const Admin = () => {
                                 <RefreshCcw size={40} className="animate-spin text-amber-500" />
                             ) : credentialData.emailStatus === 'sent' ? (
                                 <CheckCircle2 size={48} className="drop-shadow-sm" />
+                            ) : credentialData.emailStatus === 'idle' ? (
+                                <Mail size={40} className="text-indigo-500" />
                             ) : (
                                 <AlertTriangle size={48} className="text-rose-500" />
                             )}
@@ -1630,19 +2030,24 @@ const Admin = () => {
                     <div className="space-y-2">
                         <h3 className="text-2xl font-black text-slate-800 uppercase tracking-tight italic">
                             {credentialData.emailStatus === 'sending' ? 'Provisioning...' :
-                                credentialData.emailStatus === 'sent' ? 'Transmission_Success' : 'Relay_Failed'}
+                                credentialData.emailStatus === 'sent' ? 'Transmission_Success' :
+                                credentialData.emailStatus === 'failed' ? 'Relay_Failed' : 'Credentials_Ready'}
                         </h3>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] leading-relaxed px-10">
-                            {credentialData.emailStatus === 'failed' ? credentialData.error : 'Agent Credentials generated and validated'}
+                            {credentialData.emailStatus === 'failed'
+                                ? credentialData.error
+                                : credentialData.emailStatus === 'idle'
+                                    ? 'Choose delivery method'
+                                    : 'Agent Credentials generated and validated'}
                         </p>
                     </div>
 
                     <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] p-8 text-left space-y-4 relative overflow-hidden">
                         <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none italic font-black text-6xl">DATA</div>
                         <div className="grid grid-cols-3 gap-3">
-                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col items-center">
-                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 leading-none">Password</span>
-                                <span className="text-sm font-black text-slate-800 font-mono">{credentialData.password}</span>
+                            <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 flex flex-col items-center">
+                                <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-1.5 leading-none">Password</span>
+                                <span className="text-[10px] font-black text-emerald-700 uppercase tracking-wider text-center leading-tight">Set by user at registration</span>
                             </div>
                             <div className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100 flex flex-col items-center">
                                 <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1.5 leading-none">Account PIN</span>
@@ -1662,25 +2067,23 @@ const Admin = () => {
                                 <span className="font-bold text-slate-400 uppercase tracking-tight">Mobile ID :</span>
                                 <span className="font-black text-slate-700 tracking-wider font-mono">{credentialData.mobile}</span>
                             </div>
-                            <div className="flex justify-between items-center text-xs">
-                                <span className="font-bold text-slate-400 uppercase tracking-tight">Access Key :</span>
-                                <span className="font-black text-slate-700 tracking-wider font-mono bg-amber-100 px-2 py-0.5 rounded-md">{credentialData.password}</span>
-                            </div>
                         </div>
                     </div>
 
                     <div className="flex flex-col gap-3 pt-2">
-                        <button onClick={shareWA} className="w-full bg-[#128C7E] text-white font-black py-5 rounded-2xl shadow-xl shadow-emerald-500/20 hover:bg-[#075E54] active:scale-95 transition-all flex items-center justify-center gap-3 uppercase tracking-[0.2em] text-[11px]">
-                            <Megaphone size={18} /> Direct WhatsApp Push
+                        <button
+                            onClick={sendMail}
+                            disabled={credentialData.emailStatus === 'sending'}
+                            className="w-full bg-indigo-600 text-white font-black py-5 rounded-2xl shadow-xl shadow-indigo-500/20 hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-3 uppercase tracking-[0.2em] text-[11px] disabled:opacity-60"
+                        >
+                            <Mail size={18} /> Send Mail
                         </button>
-                        <div className="grid grid-cols-2 gap-3">
-                            <button onClick={copyAll} className="w-full bg-slate-900 text-white font-black py-4 rounded-xl shadow-lg hover:bg-black active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-[10px]">
-                                <Copy size={16} /> Clip_Data
-                            </button>
-                            <button onClick={() => setShowCredentialCard(false)} className="w-full bg-slate-100 text-slate-500 font-black py-4 rounded-xl hover:bg-slate-200 active:scale-95 transition-all uppercase tracking-widest text-[10px]">
-                                Dismiss
-                            </button>
-                        </div>
+                        <button onClick={shareWA} className="w-full bg-[#128C7E] text-white font-black py-5 rounded-2xl shadow-xl shadow-emerald-500/20 hover:bg-[#075E54] active:scale-95 transition-all flex items-center justify-center gap-3 uppercase tracking-[0.2em] text-[11px]">
+                            <Megaphone size={18} /> Send WhatsApp
+                        </button>
+                        <button onClick={() => setShowCredentialCard(false)} className="w-full bg-slate-100 text-slate-500 font-black py-4 rounded-xl hover:bg-slate-200 active:scale-95 transition-all uppercase tracking-widest text-[10px]">
+                            Dismiss
+                        </button>
                     </div>
                 </motion.div>
             </div>
@@ -1691,62 +2094,63 @@ const Admin = () => {
     const renderDistApprovalModal = () => (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                className="bg-white rounded-[2.5rem] shadow-2xl p-10 w-full max-w-md border border-slate-200"
+                className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md border border-slate-200"
             >
-                <div className="flex justify-between items-center mb-8">
-                    <div>
-                        <h3 className="text-2xl font-black text-slate-800 uppercase tracking-tight flex items-center gap-3 italic">
-                            <Building2 size={24} className="text-amber-500" /> Distributor_Auth
-                        </h3>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Authorization Protocol Layer-2</p>
-                    </div>
-                    <button onClick={() => setShowDistApprovalModal(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all"><X size={24} /></button>
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                        <Building2 size={20} className="text-amber-500" /> Approve Distributor
+                    </h3>
+                    <button onClick={() => setShowDistApprovalModal(false)} className="text-slate-400 hover:text-slate-600"><X size={24} /></button>
                 </div>
 
-                <div className="p-6 bg-amber-50 rounded-3xl border border-amber-100 flex items-center gap-4 mb-8">
-                    <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-amber-500 shadow-sm">
-                        <Mail size={24} />
-                    </div>
-                    <div>
-                        <p className="text-[9px] font-black text-amber-600 uppercase tracking-[0.2em] mb-0.5">Automated Relay Active</p>
-                        <p className="text-xs font-black text-slate-700 tracking-tight">{selectedDist?.email || 'OFF_GRID'}</p>
-                    </div>
+                <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 mb-5">
+                    <span className="text-[9px] font-black text-amber-600 uppercase tracking-widest">Mail recipient:</span>
+                    <span className="text-xs font-black text-amber-700 ml-auto">{selectedDist?.email || 'No email on record'}</span>
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Entity Name</label>
-                            <p className="font-black text-slate-800 text-sm tracking-tight">{selectedDist?.businessName}</p>
+                        <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Distributor Name</label>
+                            <p className="p-3 bg-slate-50 rounded-lg font-bold text-slate-700 text-sm">{selectedDist?.name || selectedDist?.businessName || selectedDist?.mobile}</p>
                         </div>
-                        <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Root Login</label>
-                            <p className="font-black text-slate-800 text-sm font-mono tracking-tight">{selectedDist?.mobile}</p>
+                        <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Login ID (Mobile)</label>
+                            <p className="p-3 bg-slate-50 rounded-lg font-mono font-bold text-slate-700 text-sm">{selectedDist?.mobile}</p>
                         </div>
                     </div>
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Assign Global ID</label>
-                        <input type="text" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-mono font-black text-slate-700 outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 transition-all"
+                    <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Distributor ID <span className="text-amber-500">(editable)</span></label>
+                        <input type="text" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg font-mono font-bold text-slate-700 outline-none focus:ring-2 focus:ring-amber-500"
                             value={distApprovalForm.distribId}
                             onChange={e => setDistApprovalForm({ ...distApprovalForm, distribId: e.target.value })}
-                            placeholder="DISTR_ID_001"
                         />
                     </div>
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">System Access Key</label>
-                        <input type="text" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-mono font-black text-slate-700 outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 transition-all font-mono"
-                            value={distApprovalForm.password}
-                            onChange={e => setDistApprovalForm({ ...distApprovalForm, password: e.target.value })}
+                    <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-[10px] font-bold text-amber-700 uppercase tracking-wider leading-relaxed">
+                        Login password = the one applicant entered at registration.
+                        Admin does not need to set or share a new password.
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Security PIN <span className="text-amber-500">(editable)</span></label>
+                        <input type="text" maxLength="4" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg font-mono font-bold text-slate-700 outline-none focus:ring-2 focus:ring-amber-500"
+                            value={distApprovalForm.pin}
+                            onChange={e => setDistApprovalForm({ ...distApprovalForm, pin: e.target.value.replace(/\D/g, '') })}
+                        />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Party Code <span className="text-amber-500">(auto / editable)</span></label>
+                        <input type="text" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg font-mono font-bold text-slate-700 outline-none focus:ring-2 focus:ring-amber-500"
+                            value={distApprovalForm.partyCode}
+                            onChange={e => setDistApprovalForm({ ...distApprovalForm, partyCode: e.target.value })}
                         />
                     </div>
 
-                    <div className="pt-4">
+                    <div>
                         <button onClick={submitDistApproval}
-                            className="w-full bg-amber-500 text-white font-black py-5 rounded-[1.5rem] shadow-2xl shadow-amber-500/20 hover:bg-amber-600 transition-all active:scale-95 uppercase tracking-[0.25em] text-[11px] flex items-center justify-center gap-3"
+                            className="w-full bg-amber-500 text-white font-black py-4 rounded-xl shadow-lg shadow-amber-500/30 hover:bg-amber-400 transition-all active:scale-95 uppercase tracking-widest text-xs flex items-center justify-center gap-2"
                         >
-                            <ShieldCheck size={20} /> Deploy Credentials
+                            <ShieldCheck size={16} /> Approve
                         </button>
-                        <p className="text-[9px] text-center text-slate-400 font-bold uppercase tracking-widest mt-6 italic opacity-60">Manual review confirmed - Encryption active</p>
                     </div>
                 </div>
             </motion.div>
@@ -1804,7 +2208,7 @@ const Admin = () => {
                                         </div>
                                         <div>
                                             <p className="text-sm font-black text-slate-800 tracking-tight leading-none">{r.name || r.username}</p>
-                                            <p className="text-[10px] text-slate-400 font-black uppercase mt-1 tracking-tighter">{r.mobile} · {r.state}</p>
+                                            <p className="text-[10px] text-slate-400 font-black uppercase mt-1 tracking-tighter">{r.mobile} Â· {r.state}</p>
                                             {otherDist && (
                                                 <div className="mt-1 flex items-center gap-1">
                                                     <div className="w-1 h-1 rounded-full bg-rose-500 animate-pulse" />
@@ -1897,10 +2301,10 @@ const Admin = () => {
                         </div>
 
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Assign SuperAdmin (Owner)</label>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Assign SUPER_DISTRIBUTOR (Owner)</label>
                             <select value={distForm.ownerId} onChange={e => setDistForm({ ...distForm, ownerId: e.target.value })} className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm font-black text-slate-900 focus:border-[#4f46e5] focus:bg-white transition-all outline-none appearance-none">
                                 <option value="">Direct (Admin Controlled)</option>
-                                {superadmins.map(sa => <option key={sa.id} value={sa.id}>{sa.name} ({sa.businessName})</option>)}
+                                {SuperDistributors.map(sa => <option key={sa.id} value={sa.id}>{sa.name} ({sa.businessName})</option>)}
                             </select>
                         </div>
 
@@ -2006,7 +2410,7 @@ const Admin = () => {
                                                         <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-white text-lg font-black shadow-lg shadow-amber-500/20 group-hover/row:scale-110 transition-transform">{d.name.charAt(0)}</div>
                                                         <div>
                                                             <p className="font-black text-slate-800 text-base tracking-tight">{d.name}</p>
-                                                            <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5 tracking-tight">{d.mobile} · {d.email}</p>
+                                                            <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5 tracking-tight">{d.mobile} Â· {d.email}</p>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -2095,7 +2499,7 @@ const Admin = () => {
                                                 </div>
                                                 <div>
                                                     <p className="font-black text-slate-800 text-lg tracking-tighter leading-none">{d.name}</p>
-                                                    <p className="text-[10px] text-slate-400 font-bold uppercase mt-2 tracking-tight group-hover/row:text-indigo-500 transition-colors">{d.mobile} · {d.email}</p>
+                                                    <p className="text-[10px] text-slate-400 font-bold uppercase mt-2 tracking-tight group-hover/row:text-indigo-500 transition-colors">{d.mobile} Â· {d.email}</p>
                                                     <div className="mt-2 flex items-center gap-1.5">
                                                         <MapPin size={10} className="text-slate-300" />
                                                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{d.city}, {d.state}</span>
@@ -2114,7 +2518,7 @@ const Admin = () => {
                                                     <Users size={14} />
                                                     {(d.assignedRetailers || []).length} ACTIVE_AGENTS
                                                 </span>
-                                                <button onClick={() => { setAssignTargetDist(d); setShowAssignModal(true); }} className="mt-2 text-[9px] font-black text-indigo-500 uppercase tracking-[0.2em] hover:underline text-left pl-1">Modify_Hierarchy →</button>
+                                                <button onClick={() => { setAssignTargetDist(d); setShowAssignModal(true); }} className="mt-2 text-[9px] font-black text-indigo-500 uppercase tracking-[0.2em] hover:underline text-left pl-1">Modify_Hierarchy â†’</button>
                                             </div>
                                         </td>
                                         <td className="px-10 py-8">
@@ -2478,8 +2882,8 @@ const Admin = () => {
                 <h2 className="text-3xl font-black text-slate-800 uppercase tracking-tight mb-2">
                     Unauthorized Access
                 </h2>
-                <p className="text-slate-400 font-bold text-sm uppercase tracking-[0.2em] mb-1">
-                    🔒 {sectionName || 'This Section'}
+                <p className="text-slate-400 font-bold text-sm uppercase tracking-[0.2em] mb-1 flex items-center justify-center gap-2">
+                    <Lock size={14} /> {sectionName || 'This Section'}
                 </p>
                 <div className="w-16 h-1 bg-gradient-to-r from-rose-500 to-amber-500 rounded-full mx-auto my-6" />
 
@@ -2515,7 +2919,7 @@ const Admin = () => {
                         onClick={() => setActiveSection('Dashboard')}
                         className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/30 hover:shadow-2xl hover:scale-[1.03] active:scale-95 transition-all"
                     >
-                        ← Return to Dashboard
+                        â† Return to Dashboard
                     </button>
                 </div>
             </motion.div>
@@ -2603,11 +3007,11 @@ const Admin = () => {
     return (
         <div className="h-screen flex relative overflow-hidden bg-[#fcfcf7]" style={{ fontFamily: "'Inter',sans-serif" }}>
             {/* Modals */}
-            {showApprovalModal && <ApprovalModal />}
+            {showApprovalModal && ApprovalModal()}
             {showDistApprovalModal && renderDistApprovalModal()}
-            {showSAApprovalModal && <SAApprovalModal />}
+            {showSAApprovalModal && SAApprovalModal()}
             {showRoleModal && <ChangeRoleModal />}
-            {showAddSAModal && AddSuperAdminModal()}
+            {showAddSAModal && AddSuperDistributorModal()}
             {showAddMemberModal && AddMemberModal()}
             {showAssignModal && assignTargetDist && renderAssignRetailersModal()}
             {showCredentialCard && renderCredentialSharerModal()}
@@ -2621,7 +3025,7 @@ const Admin = () => {
                 )}
             </AnimatePresence>
 
-            {/* ══════════════ SIDEBAR ══════════════ */}
+            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â• SIDEBAR â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
             <aside className={`fixed lg:relative !w-72 bg-white border-r border-[#f1f5f9] flex flex-col h-screen z-50 transition-all duration-300 ${showMobileSidebar ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} shrink-0`}>
 
                 {/* Logo area */}
@@ -2723,7 +3127,7 @@ const Admin = () => {
                 </div>
             </aside>
 
-            {/* ══════════════ MAIN ══════════════ */}
+            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â• MAIN â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
             <div className={`flex-1 flex flex-col min-w-0 overflow-hidden bg-[#fcfcf7]`}>
 
                 {/* Top Header Removal (it's inside Overview now) */}
@@ -2780,11 +3184,11 @@ const Admin = () => {
                             <UnauthorizedAccess sectionName={activeLabel} />
                         ) : (
                             <>
-                                {activeSection === 'Overview' && <Overview data={data} distributors={distributors} superadmins={superadmins} onNavigate={setActiveSection} />}
+                                {activeSection === 'Overview' && <Overview data={data} distributors={distributors} SuperDistributors={SuperDistributors} onNavigate={setActiveSection} />}
                                 {activeSection === 'Approvals' && <ApprovalsTable 
                                     data={data} 
                                     distributors={distributors} 
-                                    superadmins={superadmins} 
+                                    SuperDistributors={SuperDistributors} 
                                     refreshData={refreshData} 
                                     refreshDists={refreshDists}
                                     handleApproveClick={handleApproveClick}
@@ -2792,8 +3196,9 @@ const Admin = () => {
                                     handleDistApproveClick={handleDistApproveClick}
                                     handleSAApproveClick={handleSAApproveClick}
                                     approvingIds={approvingIds}
+                                    resolvedApprovalIds={resolvedApprovalIds}
                                 />}
-                                {activeSection === 'Dashboard' && <LiveDashboard data={data} distributors={distributors} superadmins={superadmins} />}
+                                {activeSection === 'Dashboard' && <LiveDashboard data={data} distributors={distributors} SuperDistributors={SuperDistributors} />}
                                 {activeSection === 'EmployeeManager' && <EmployeeManager currentUserForEmployee={isEmployee ? currentUser : null} />}
                                 {activeSection === 'Landing Content' && <LandingCMS />}
                                 {activeSection === 'Trash' && <TrashTable />}
@@ -2821,13 +3226,14 @@ const Admin = () => {
                                     <AllMembersTable 
                                         data={data}
                                         distributors={distributors}
-                                        superadmins={superadmins}
+                                        SuperDistributors={SuperDistributors}
                                         refreshData={refreshData}
                                         setShowAddMemberModal={setShowAddMemberModal}
                                         setMemberFormData={setMemberFormData}
                                         memberFormData={memberFormData}
                                         handleLoginAsRetailer={handleLoginAsRetailer}
                                         handleLoginAsDistributor={handleLoginAsDistributor}
+                                        handleLoginAsSuperDistributor={handleLoginAdminSA}
                                     />
                                 )}
 
@@ -2839,10 +3245,10 @@ const Admin = () => {
                             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     {[
-                                        { label: 'Network Reach', val: superadmins.length, sub: 'Super Dists', color: '#6366f1', bg: '#eef2ff' },
+                                        { label: 'Network Reach', val: SuperDistributors.length, sub: 'Super Dists', color: '#6366f1', bg: '#eef2ff' },
                                         { label: 'Distributors', val: distributors.length, sub: 'Linked', color: '#f59e0b', bg: '#fffbeb' },
                                         { label: 'Retailers', val: (data.users || []).length, sub: 'Endpoints', color: '#10b981', bg: '#ecfdf5' },
-                                        { label: 'System Float', val: `₹${[...superadmins, ...distributors, ...(data.users || [])].reduce((a, c) => a + parseFloat((c.wallet?.balance || '0').replace(/,/g, '')), 0).toLocaleString('en-IN')}`, sub: 'Capital', color: '#334155', bg: '#f8fafc' },
+                                        { label: 'System Float', val: `₹${[...SuperDistributors, ...distributors, ...(data.users || [])].reduce((a, c) => a + parseFloat((c.wallet?.balance || '0').replace(/,/g, '')), 0).toLocaleString('en-IN')}`, sub: 'Capital', color: '#334155', bg: '#f8fafc' },
                                     ].map((s, i) => (
                                         <div key={i} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
                                             <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-3" style={{ background: s.bg }}>
@@ -2883,7 +3289,7 @@ const Admin = () => {
                                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                                     <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                                         <h3 className="font-black text-slate-800 text-sm uppercase tracking-wide">Super Distributor Network</h3>
-                                        <span className="bg-slate-100 text-slate-500 text-[10px] font-black px-3 py-1 rounded-full">{superadmins.length} accounts</span>
+                                        <span className="bg-slate-100 text-slate-500 text-[10px] font-black px-3 py-1 rounded-full">{SuperDistributors.length} accounts</span>
                                     </div>
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-sm">
@@ -2893,7 +3299,7 @@ const Admin = () => {
                                                 ))}
                                             </tr></thead>
                                             <tbody>
-                                                {superadmins.map((sa, i) => (
+                                                {SuperDistributors.map((sa, i) => (
                                                     <tr key={i} className="border-b border-slate-50 hover:bg-indigo-50/30 transition-colors">
                                                         <td className="px-5 py-3.5">
                                                             <div className="flex items-center gap-2.5">
@@ -2908,7 +3314,7 @@ const Admin = () => {
                                                         <td className="px-5 py-3.5"><button onClick={() => handleLoginAdminSA(sa)} className="text-[9px] font-black text-indigo-600 border border-indigo-200 px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 transition-all">Login As</button></td>
                                                     </tr>
                                                 ))}
-                                                {superadmins.length === 0 && <tr><td colSpan={6} className="py-12 text-center text-slate-400 text-xs font-bold">No Super Distributors yet</td></tr>}
+                                                {SuperDistributors.length === 0 && <tr><td colSpan={6} className="py-12 text-center text-slate-400 text-xs font-bold">No Super Distributors yet</td></tr>}
                                             </tbody>
                                         </table>
                                     </div>
@@ -3012,7 +3418,7 @@ const Admin = () => {
 };
 
 // ─── Approval Components (Moved Outside to prevent re-remounting loops) ──────
-const ApprovalSection = ({ title, icon: Icon, count, data: items, color, onApprove, onReject, processingIds, typeLabel, isAeps }) => (
+const ApprovalSection = ({ title, icon: Icon, count, data: items, color, onApprove, onReject, processingIds, typeLabel, isAeps, onViewDocs }) => (
     <div className="bg-white rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100/80 overflow-hidden mb-12 transition-all hover:shadow-[0_20px_50px_rgba(0,0,0,0.08)]">
         {/* Modern Header with Glass effect tint */}
         <div className="px-10 py-8 flex justify-between items-center border-b border-slate-50 relative overflow-hidden">
@@ -3067,10 +3473,17 @@ const ApprovalSection = ({ title, icon: Icon, count, data: items, color, onAppro
                                         <p className="text-[15px] font-black text-[#1e1b4b] tracking-tight leading-tight mb-0.5">{item.name || 'Unnamed Applicant'}</p>
                                         <div className="flex items-center gap-2">
                                             <span className="px-2 py-0.5 bg-indigo-50 text-indigo-500 rounded text-[9px] font-black uppercase tracking-tighter border border-indigo-100/50">
-                                                {item.businessName || typeLabel}
+                                                {item.businessName
+                                                    || (item.role ? String(item.role).replace(/_/g, ' ') : typeLabel)}
                                             </span>
                                             <span className="text-[10px] text-slate-400 font-medium">#{item.id?.toString().slice(-4) || 'QUE-92'}</span>
                                         </div>
+                                        {(item.addedByName || item.addedByPartyCode) && (
+                                            <p className="text-[10px] font-bold text-slate-400 mt-1">
+                                                Added by: <span className="text-slate-600">{item.addedByName || 'Unknown'}</span>
+                                                {item.addedByPartyCode ? ` (${item.addedByPartyCode})` : ''}
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
                             </td>
@@ -3098,9 +3511,16 @@ const ApprovalSection = ({ title, icon: Icon, count, data: items, color, onAppro
                                 <div className="flex justify-end gap-3 opacity-80 group-hover:opacity-100 transition-opacity">
                                     {isAeps ? (
                                         <>
+                                            {onViewDocs && (
+                                                <button onClick={() => onViewDocs(item)}
+                                                    title="View submitted documents before approving"
+                                                    className="h-11 px-5 bg-white border border-indigo-200 text-indigo-600 rounded-[1rem] hover:bg-indigo-50 transition-all text-[11px] font-black uppercase tracking-widest shadow-sm active:scale-95 flex items-center gap-2">
+                                                    <Eye size={16} strokeWidth={2.5} /> View Docs
+                                                </button>
+                                            )}
                                             <button onClick={() => onApprove(item)}
                                                 className="h-11 px-6 bg-emerald-500 text-white rounded-[1rem] hover:bg-emerald-600 transition-all text-[11px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center gap-2">
-                                                <CheckCircle2 size={16} strokeWidth={3} /> Approve AEPS
+                                                <CheckCircle2 size={16} strokeWidth={3} /> Approve KYC
                                             </button>
                                             <button onClick={() => onReject(item)}
                                                 className="h-11 w-11 bg-rose-50 text-rose-500 rounded-[1rem] hover:bg-rose-500 hover:text-white transition-all shadow-sm hover:shadow-rose-500/20 active:scale-95 flex items-center justify-center">
@@ -3148,21 +3568,31 @@ const ApprovalSection = ({ title, icon: Icon, count, data: items, color, onAppro
 const ApprovalsTable = ({ 
     data, 
     distributors, 
-    superadmins, 
+    SuperDistributors, 
     refreshData, 
     refreshDists, 
     handleApproveClick, 
     handleReject, 
     handleDistApproveClick, 
     handleSAApproveClick, 
-    approvingIds 
+    approvingIds,
+    resolvedApprovalIds
 }) => {
-    const [view, setView] = useState('main'); // 'main', 'members', 'retailers', 'distributors', 'superadmins', 'ekyc'
+    const [view, setView] = useState('main'); // 'main', 'members', 'retailers', 'distributors', 'SuperDistributors', 'ekyc'
     const [pendingAepsKycs, setPendingAepsKycs] = useState([]);
+    const [kycViewer, setKycViewer] = useState(null); // Currently-inspected KYC submission
     
-    const pendingUsers = (data.users || []).filter(u => u?.status?.toLowerCase() === 'pending');
-    const pendingDists = (distributors || []).filter(d => d?.status?.toLowerCase() === 'pending');
-    const pendingSAs = (superadmins || []).filter(s => s?.status?.toLowerCase() === 'pending');
+    const isLocallyResolved = (item) => {
+        const keys = [item?._id, item?.id, item?.username, item?.mobile, item?.loginId]
+            .filter(Boolean)
+            .map((v) => String(v));
+        return keys.some((k) => resolvedApprovalIds?.has(k));
+    };
+
+    const pendingUsers = (data.users || []).filter(u => u?.status?.toLowerCase() === 'pending' && !isLocallyResolved(u));
+    const pendingDists = (distributors || []).filter(d => d?.status?.toLowerCase() === 'pending' && !isLocallyResolved(d));
+    const pendingSAs = (SuperDistributors || []).filter(s => s?.status?.toLowerCase() === 'pending' && !isLocallyResolved(s));
+    const totalPendingMembers = pendingUsers.length + pendingDists.length + pendingSAs.length;
 
     useEffect(() => {
         const fetchAepsKycs = async () => {
@@ -3172,31 +3602,33 @@ const ApprovalsTable = ({
         fetchAepsKycs();
     }, []);
 
-    const handleApproveAeps = async (kyc) => {
-        const mId = prompt("Enter Merchant ID for AEPS Approval:", kyc.merchant_id || "");
-        if (mId === null) return;
-        const res = await dataService.approveKyc(kyc.loginId, 'AEPS', mId);
+    // Partner KYC approval — any retailer / distributor / super-distributor who
+    // has submitted their KYC lands here. No merchant-ID prompt; this is the
+    // profile-level KYC, not AEPS merchant onboarding.
+    const handleApprovePartnerKyc = async (kyc) => {
+        if (!window.confirm(`Approve KYC for ${kyc.name || kyc.username || 'this applicant'}?`)) return;
+        const res = await dataService.approveKyc(kyc.id || kyc.loginId);
         if (res.success) {
-            alert("AEPS KYC Approved");
             const res2 = await dataService.getPendingKycs('AEPS');
             if (res2.success) setPendingAepsKycs(res2.kycs);
+            setKycViewer(null);
             refreshData();
         } else {
-            alert("Failed to approve: " + res.message);
+            alert('Failed to approve: ' + (res.message || 'Unknown error'));
         }
     };
 
-    const handleRejectAeps = async (kyc) => {
-        const reason = prompt("Enter rejection reason:");
+    const handleRejectPartnerKyc = async (kyc) => {
+        const reason = window.prompt('Enter rejection reason:');
         if (reason === null) return;
-        const res = await dataService.rejectKyc(kyc.loginId, 'AEPS', reason);
+        const res = await dataService.rejectKyc(kyc.id || kyc.loginId, 'KYC', reason);
         if (res.success) {
-            alert("AEPS KYC Rejected");
             const res2 = await dataService.getPendingKycs('AEPS');
             if (res2.success) setPendingAepsKycs(res2.kycs);
+            setKycViewer(null);
             refreshData();
         } else {
-            alert("Failed to reject: " + res.message);
+            alert('Failed to reject: ' + (res.message || 'Unknown error'));
         }
     };
 
@@ -3236,7 +3668,7 @@ const ApprovalsTable = ({
 
     const BackButton = () => (
         <button 
-            onClick={() => setView(view === 'members' ? 'main' : (['retailers', 'distributors', 'superadmins'].includes(view) ? 'members' : 'main'))}
+            onClick={() => setView(view === 'members' ? 'main' : (['retailers', 'distributors', 'SuperDistributors'].includes(view) ? 'members' : 'main'))}
             className="flex items-center gap-3 px-8 py-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-indigo-100 transition-all text-[11px] font-black uppercase tracking-widest text-slate-500 hover:text-indigo-600 mb-14 active:scale-95 mx-auto"
         >
             <ArrowLeft size={16} strokeWidth={2.5} /> Back to {view === 'members' ? 'Selection' : 'Category Menu'}
@@ -3245,6 +3677,24 @@ const ApprovalsTable = ({
 
     return (
         <div className="animate-in fade-in slide-in-from-bottom-10 duration-1000 flex flex-col items-center justify-center min-h-[60vh] py-10 px-4">
+            <div className="w-full max-w-5xl mb-8">
+                <div className="mx-auto w-fit flex flex-wrap items-center justify-center gap-2 px-4 py-2 rounded-xl bg-slate-100 border border-slate-200">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Live Pending</span>
+                    <span className="px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-wider">
+                        R: {pendingUsers.length}
+                    </span>
+                    <span className="px-2 py-1 rounded-md bg-amber-50 text-amber-700 text-[10px] font-black uppercase tracking-wider">
+                        D: {pendingDists.length}
+                    </span>
+                    <span className="px-2 py-1 rounded-md bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-wider">
+                        SD: {pendingSAs.length}
+                    </span>
+                    <span className="px-2 py-1 rounded-md bg-slate-900 text-white text-[10px] font-black uppercase tracking-wider">
+                        Total: {totalPendingMembers}
+                    </span>
+                </div>
+            </div>
+
             {view === 'main' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12 w-full max-w-5xl justify-items-center">
                     <NavCard 
@@ -3257,7 +3707,7 @@ const ApprovalsTable = ({
                     />
                     <NavCard 
                         title="Pending E-KYC"
-                        desc="Digital authentication & AEPS onboarding"
+                        desc="Partner E-KYC verification queue"
                         count={pendingAepsKycs.length}
                         icon={Smartphone}
                         color="linear-gradient(135deg, #ec4899, #be185d)"
@@ -3287,12 +3737,12 @@ const ApprovalsTable = ({
                             onClick={() => setView('distributors')}
                         />
                         <NavCard 
-                            title="Super Admins"
+                            title="Super Distributors"
                             desc="Master Level Authorization"
                             count={pendingSAs.length}
                             icon={ShieldCheck}
                             color="#6366f1"
-                            onClick={() => setView('superadmins')}
+                            onClick={() => setView('SuperDistributors')}
                         />
                     </div>
                 </div>
@@ -3313,18 +3763,18 @@ const ApprovalsTable = ({
                     <BackButton />
                     <ApprovalSection
                         title="Pending Distributors" icon={Building2} count={pendingDists.length} data={pendingDists}
-                        color="#f59e0b" onApprove={handleDistApproveClick} onReject={(id) => { if (window.confirm('Reject?')) { sharedDataService.rejectDistributor(id); refreshDists(); } }}
+                        color="#f59e0b" onApprove={handleDistApproveClick} onReject={handleReject}
                         processingIds={approvingIds} typeLabel="Distributor" />
                 </div>
             )}
 
-            {view === 'superadmins' && (
+            {view === 'SuperDistributors' && (
                 <div className="w-full">
                     <BackButton />
                     <ApprovalSection
-                        title="Pending SuperAdmins" icon={ShieldCheck} count={pendingSAs.length} data={pendingSAs}
-                        color="#6366f1" onApprove={handleSAApproveClick} onReject={(id) => { if (window.confirm('Delete?')) { sharedDataService.rejectSuperAdmin(id); refreshData(); } }}
-                        processingIds={approvingIds} typeLabel="SuperAdmin" />
+                        title="Pending SuperDistributors" icon={ShieldCheck} count={pendingSAs.length} data={pendingSAs}
+                        color="#6366f1" onApprove={handleSAApproveClick} onReject={handleReject}
+                        processingIds={approvingIds} typeLabel="SUPER_DISTRIBUTOR" />
                 </div>
             )}
 
@@ -3332,12 +3782,164 @@ const ApprovalsTable = ({
                 <div className="w-full">
                     <BackButton />
                     <ApprovalSection
-                        title="Pending AEPS KYC" icon={Smartphone} count={pendingAepsKycs.length} data={pendingAepsKycs}
-                        color="#ec4899" onApprove={handleApproveAeps} onReject={handleRejectAeps}
-                        processingIds={new Set()} typeLabel="AEPS Merchant" isAeps={true} />
+                        title="Pending Partner KYC" icon={Smartphone} count={pendingAepsKycs.length} data={pendingAepsKycs}
+                        color="#ec4899" onApprove={handleApprovePartnerKyc} onReject={handleRejectPartnerKyc}
+                        processingIds={new Set()} typeLabel="Partner" isAeps={true}
+                        onViewDocs={(kyc) => setKycViewer(kyc)} />
                 </div>
             )}
+
+            <KycDocumentsModal
+                kyc={kycViewer}
+                onClose={() => setKycViewer(null)}
+                onApprove={handleApprovePartnerKyc}
+                onReject={handleRejectPartnerKyc}
+            />
         </div>
+    );
+};
+
+/**
+ * Modal that lets an admin review every document and detail a retailer /
+ * distributor / super-distributor has submitted for partner E-KYC before
+ * accepting or rejecting the request.
+ */
+const KycDocumentsModal = ({ kyc, onClose, onApprove, onReject }) => {
+    if (!kyc) return null;
+
+    const roleLabel = kyc.role
+        ? String(kyc.role).replace(/_/g, ' ')
+        : 'Partner';
+    const submittedAt = kyc.kycSubmittedAt || kyc.created_at;
+    const submittedLabel = submittedAt
+        ? new Date(submittedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+        : 'Not recorded';
+    const fullAddress = [kyc.addressLine1, kyc.city, kyc.stateName, kyc.pincode].filter(Boolean).join(', ');
+
+    const DocCard = ({ label, src, fallback = 'Not uploaded' }) => (
+        <div className="bg-slate-50 border border-slate-100 rounded-2xl overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-slate-100 bg-white flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</span>
+                {src && (
+                    <a href={src} target="_blank" rel="noopener noreferrer"
+                       className="text-[10px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-700">
+                        Open ↗
+                    </a>
+                )}
+            </div>
+            <div className="aspect-[4/3] bg-slate-100 flex items-center justify-center">
+                {src ? (
+                    <img src={src} alt={label} className="w-full h-full object-contain bg-white" />
+                ) : (
+                    <div className="flex flex-col items-center gap-2 text-slate-400">
+                        <ImageIcon size={28} />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">{fallback}</span>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+
+    const InfoRow = ({ label, value }) => (
+        <div className="flex items-start justify-between gap-6 py-2.5 border-b border-slate-100 last:border-b-0">
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</span>
+            <span className="text-sm font-bold text-slate-800 text-right break-all">{value || '—'}</span>
+        </div>
+    );
+
+    return (
+        <AnimatePresence>
+            <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+                onClick={onClose}
+            >
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.96, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.96, y: 20 }}
+                    transition={{ type: 'spring', stiffness: 260, damping: 26 }}
+                    className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="px-8 py-6 border-b border-slate-100 flex items-start justify-between gap-6">
+                        <div>
+                            <div className="flex items-center gap-2 mb-1">
+                                <span className="px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded-md text-[9px] font-black uppercase tracking-widest border border-indigo-100">
+                                    {roleLabel}
+                                </span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                    KYC Submission
+                                </span>
+                            </div>
+                            <h2 className="text-2xl font-black text-[#1e1b4b] tracking-tight">
+                                {kyc.name || kyc.fullName || 'Unnamed Applicant'}
+                            </h2>
+                            <p className="text-[11px] font-bold text-slate-400 mt-0.5">
+                                Submitted {submittedLabel}
+                            </p>
+                        </div>
+                        <button onClick={onClose}
+                                className="w-10 h-10 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 transition-all flex items-center justify-center">
+                            <X size={18} />
+                        </button>
+                    </div>
+
+                    <div className="px-8 py-6 overflow-y-auto flex-1 space-y-8">
+                        <section>
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-3 flex items-center gap-2">
+                                <User size={14} /> Applicant Details
+                            </h3>
+                            <div className="bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3">
+                                <InfoRow label="Login ID" value={kyc.username || kyc.loginId} />
+                                <InfoRow label="Mobile" value={kyc.mobile || kyc.userMobile} />
+                                <InfoRow label="Email" value={kyc.email || kyc.userEmail} />
+                                <InfoRow label="Role" value={roleLabel} />
+                                <InfoRow label="Account Status" value={kyc.status} />
+                                <InfoRow label="KYC Status" value={kyc.kycStatus} />
+                            </div>
+                        </section>
+
+                        <section>
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-3 flex items-center gap-2">
+                                <FileText size={14} /> Identity & Address
+                            </h3>
+                            <div className="bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3">
+                                <InfoRow label="Aadhaar Number" value={kyc.aadhaarNumber} />
+                                <InfoRow label="PAN Number" value={kyc.panNumber} />
+                                <InfoRow label="Address" value={fullAddress} />
+                            </div>
+                        </section>
+
+                        <section>
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-3 flex items-center gap-2">
+                                <ImageIcon size={14} /> Uploaded Documents
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <DocCard label="Selfie / Photo" src={kyc.photoUrl} />
+                                <DocCard label="Aadhaar" src={kyc.aadhaarPhotoUrl} />
+                                <DocCard label="PAN" src={kyc.panPhotoUrl} />
+                            </div>
+                        </section>
+                    </div>
+
+                    <div className="px-8 py-5 border-t border-slate-100 flex items-center justify-end gap-3 bg-slate-50/80">
+                        <button onClick={onClose}
+                                className="h-11 px-5 rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 transition-all text-[11px] font-black uppercase tracking-widest">
+                            Close
+                        </button>
+                        <button onClick={() => onReject(kyc)}
+                                className="h-11 px-5 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-500 hover:text-white hover:border-rose-500 transition-all text-[11px] font-black uppercase tracking-widest flex items-center gap-2">
+                            <X size={16} /> Reject
+                        </button>
+                        <button onClick={() => onApprove(kyc)}
+                                className="h-11 px-6 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 transition-all text-[11px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-emerald-500/20">
+                            <CheckCircle2 size={16} strokeWidth={2.8} /> Approve KYC
+                        </button>
+                    </div>
+                </motion.div>
+            </motion.div>
+        </AnimatePresence>
     );
 };
 
@@ -3346,13 +3948,14 @@ const ApprovalsTable = ({
 const AllMembersTable = ({ 
     data, 
     distributors, 
-    superadmins, 
+    SuperDistributors, 
     refreshData, 
     setShowAddMemberModal, 
     setMemberFormData, 
     memberFormData, 
     handleLoginAsRetailer, 
-    handleLoginAsDistributor 
+    handleLoginAsDistributor,
+    handleLoginAsSuperDistributor
 }) => {
     const [memberSearch, setMemberSearch] = useState('');
     const [memberRoleFilter, setMemberRoleFilter] = useState('ALL');
@@ -3360,7 +3963,7 @@ const AllMembersTable = ({
     const allMembers = [
         ...(data.users || []).map(u => ({ ...u, memberType: 'Retailer', typeColor: '#10b981', typeBg: '#ecfdf5' })),
         ...(distributors || []).map(d => ({ ...d, memberType: 'Distributor', typeColor: '#f59e0b', typeBg: '#fffbeb' })),
-        ...(superadmins || []).map(s => ({ ...s, memberType: 'Super Dist.', typeColor: '#6366f1', typeBg: '#eef2ff' })),
+        ...(SuperDistributors || []).map(s => ({ ...s, memberType: 'Super Dist.', typeColor: '#6366f1', typeBg: '#eef2ff' })),
     ];
 
     const filtered = allMembers.filter(m => {
@@ -3393,9 +3996,10 @@ const AllMembersTable = ({
     };
 
     const handleDelete = async (m) => {
+        const identifier = m?._id || m?.id || m?.username || m?.mobile;
         if (window.confirm(`Are you sure you want to delete ${m.name || m.username}? This action is irreversible.`)) {
             try {
-                const res = await dataService.deleteUser(m.username);
+                const res = await dataService.deleteUser(identifier);
                 if (res.success) {
                     alert("User deleted successfully!");
                     refreshData();
@@ -3550,12 +4154,19 @@ const AllMembersTable = ({
                                 <button onClick={() => handleOpenMap(m)} className="w-10 h-10 flex items-center justify-center bg-slate-50 hover:bg-amber-50 text-slate-400 hover:text-amber-600 rounded-xl transition-all" title="View Map">
                                     <MapPin size={18} />
                                 </button>
-                                {m.memberType !== 'Super Dist.' && (
-                                    <button onClick={() => (m.memberType === 'Retailer' ? handleLoginAsRetailer(m) : handleLoginAsDistributor(m))} 
-                                        className="w-10 h-10 flex items-center justify-center bg-slate-50 hover:bg-indigo-600 text-slate-400 hover:text-white rounded-xl transition-all" title="Login as Member">
-                                        <Zap size={18} />
-                                    </button>
-                                )}
+                                <button
+                                    onClick={() => (
+                                        m.memberType === 'Retailer'
+                                            ? handleLoginAsRetailer(m)
+                                            : m.memberType === 'Distributor'
+                                                ? handleLoginAsDistributor(m)
+                                                : handleLoginAsSuperDistributor(m)
+                                    )}
+                                    className="w-10 h-10 flex items-center justify-center bg-slate-50 hover:bg-indigo-600 text-slate-400 hover:text-white rounded-xl transition-all"
+                                    title="Login as Member"
+                                >
+                                    <Zap size={18} />
+                                </button>
                                 <button onClick={() => handleDelete(m)} className="w-10 h-10 flex items-center justify-center bg-slate-50 hover:bg-rose-500 text-slate-400 hover:text-white rounded-xl transition-all" title="Delete">
                                     <Trash2 size={18} />
                                 </button>

@@ -1,8 +1,35 @@
-import React from 'react';
+﻿import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const ProtectedRoute = ({ children, role }) => {
+const KYC_REQUIRED_ROLES = ['RETAILER', 'DISTRIBUTOR', 'SUPER_DISTRIBUTOR'];
+const normalizeRole = (raw) =>
+    String(typeof raw === 'string' ? raw : raw?.name || '')
+        .trim()
+        .replace(/^ROLE_/i, '')
+        .replace(/[\s-]+/g, '_')
+        .toUpperCase();
+
+const getUserRoles = (user) => {
+    const arr = Array.isArray(user?.roles) ? user.roles : [];
+    const normalized = arr.map(normalizeRole).filter(Boolean);
+    const primary = normalizeRole(user?.role);
+    const merged = Array.from(new Set([...(normalized || []), ...(primary ? [primary] : [])]));
+    return merged.length ? merged : ['RETAILER'];
+};
+
+const isKycApproved = (user) => {
+    const apiKyc = String(user?.kycStatus || '').toUpperCase();
+    const legacyKyc = String(user?.profile_kyc_status || '').toUpperCase();
+    return apiKyc === 'APPROVED' || legacyKyc === 'DONE' || legacyKyc === 'APPROVED';
+};
+
+const shouldRequireKyc = (user) => {
+    const userRoles = getUserRoles(user);
+    return userRoles.some((r) => KYC_REQUIRED_ROLES.includes(r));
+};
+
+const ProtectedRoute = ({ children, role, allowKycPending = false }) => {
     const { user, loading } = useAuth();
     const location = useLocation();
 
@@ -23,37 +50,36 @@ const ProtectedRoute = ({ children, role }) => {
         return <Navigate to={targetLogin} state={{ from: location }} replace />;
     }
 
-    if (role) {
-        const userRoles = user.roles || [user.role];
-        const isEmployee = ['NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].some(r => userRoles.includes(r));
+    if (
+        !allowKycPending &&
+        shouldRequireKyc(user) &&
+        !isKycApproved(user) &&
+        location.pathname !== '/complete-kyc'
+    ) {
+        return <Navigate to="/complete-kyc" state={{ from: location }} replace />;
+    }
 
-        // ADMIN & SUPERADMIN have root access to all portals
-        if (userRoles.includes('ADMIN') || userRoles.includes('SUPERADMIN')) {
-            return children;
-        }
+    if (role) {
+        const userRoles = getUserRoles(user);
+        const isEmployee = ['NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].some(r => userRoles.includes(r));
 
         // Handle pseudoroles
         if (role === 'ADMIN_OR_EMPLOYEE') {
-            if (isEmployee) return children;
+            if (isEmployee || userRoles.includes('ADMIN') || userRoles.includes('SUPER_DISTRIBUTOR')) return children;
         }
         
         if (role === 'DISTRIBUTOR') {
             if (userRoles.includes('DISTRIBUTOR') || userRoles.includes('SUPER_DISTRIBUTOR')) return children;
         }
 
-        // Handle role mapping for Super Administrator / Distributor
-        let hasAccess = userRoles.includes(role);
-        if (!hasAccess && role === 'SUPERADMIN' && userRoles.includes('SUPER_DISTRIBUTOR')) {
-            hasAccess = true;
-        }
+        // Role mapping for Super Distributor / Distributor
+        const hasAccess = userRoles.includes(role);
 
         if (!hasAccess) {
-            // If user doesn't have the required role, redirect to their main dashboard
             const primaryRole = userRoles[0];
             if (primaryRole === 'RETAILER') return <Navigate to="/dashboard" replace />;
             if (primaryRole === 'DISTRIBUTOR') return <Navigate to="/distributor" replace />;
-            if (primaryRole === 'SUPER_DISTRIBUTOR') return <Navigate to="/distributor" replace />;
-            if (primaryRole === 'SUPERADMIN') return <Navigate to="/superadmin" replace />;
+            if (primaryRole === 'SUPER_DISTRIBUTOR') return <Navigate to="/super-distributor" replace />;
             if (['ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(primaryRole)) {
                 return <Navigate to="/admin" replace />;
             }

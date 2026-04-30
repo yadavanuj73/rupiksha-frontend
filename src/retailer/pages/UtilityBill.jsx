@@ -6,7 +6,8 @@ import {
     ArrowRight, Receipt, Download, X, ChevronRight, Clock,
     Hash, User as UserIcon, Calendar, Banknote, Star, TrendingUp, Activity, Mail
 } from 'lucide-react';
-import { dataService, BACKEND_URL } from '../../services/dataService';
+import { dataService } from '../../services/dataService';
+import { bbpsService } from '../../services/apiService';
 import { BILL_CATEGORIES as BILL_CATEGORIES_DATA } from './utilityData';
 import { initSpeech, announceSuccess, announceFailure, announceProcessing, speak, announceError, announceWarning, announceGrandSuccess } from '../../services/speechService';
 
@@ -282,16 +283,11 @@ export default function UtilityBill({ location }) {
     const [insuranceEmail, setInsuranceEmail] = useState(''); // Optional email for Insurance
     const [txId, setTxId] = useState('');
     const [showReceipt, setShowReceipt] = useState(false);
-    const [backendStatus, setBackendStatus] = useState('unknown'); // 'online' | 'offline' | 'unknown'
+    const [backendStatus, setBackendStatus] = useState('online');
     const autoTimer = useRef(null);
 
-    /* ── Check backend health ── */
+    /* ── Init ── */
     useEffect(() => {
-        fetch(`${BACKEND_URL}/health`)
-            .then(r => r.ok ? setBackendStatus('online') : setBackendStatus('offline'))
-            .catch(() => setBackendStatus('offline'));
-
-        // Force clear mobile on mount to stop any persistent pre-fill
         setBillMobile('');
     }, []);
 
@@ -349,21 +345,14 @@ export default function UtilityBill({ location }) {
         try {
             initSpeech();
             announceProcessing(`आपका ${biller.name || 'बिल'} फेच हो रहा है, कृपया प्रतीक्षा करें।`);
-            const res = await fetch(`${BACKEND_URL}/bill-fetch`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    biller: biller.name || biller,
-                    consumerNo,
-                    opcode: opCode,
-                    category: selectedCat, // ensure category is passed to backend
-                    subDiv: subDiv || '',
-                    dob: dob || '',
-                    mobile: userMobile,
-                    email: insuranceEmail || ''
-                })
+            const user = dataService.getCurrentUser();
+            const data = await bbpsService.fetchBill({
+                userId: user?.id,
+                biller: biller.name || biller,
+                consumerNo,
+                opcode: opCode,
+                category: selectedCat
             });
-            const data = await res.json();
 
             if (data.success && data.bill) {
                 setFetchedBill(data.bill);
@@ -401,27 +390,14 @@ export default function UtilityBill({ location }) {
         try {
             initSpeech();
             announceProcessing("आपका पेमेंट प्रोसेस हो रहा है। कृपया पेज रिफ्रेश न करें।");
-            const response = await fetch(`${BACKEND_URL}/bill-pay`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: user.id || user.username,
-                    biller: biller.name || biller,
-                    consumerNo,
-                    amount: fetchedBill.amount,
-                    category: selectedCat,
-                    opcode: biller.opcode || 'UBE',
-                    subDiv,
-                    dob: dob || '',
-                    mobile: billMobile,
-                    email: insuranceEmail || '',
-                    orderId: fetchedBill.orderId,
-                    lat: location?.lat,
-                    lng: location?.long || location?.lng
-                })
+            const data = await bbpsService.payBill({
+                userId: user.id || user.username,
+                biller: biller.name || biller,
+                consumerNo,
+                amount: Number(fetchedBill.amount),
+                category: selectedCat,
+                opcode: biller.opcode || 'UBE'
             });
-
-            const data = await response.json();
 
             if (data.success) {
                 // Confetti for success

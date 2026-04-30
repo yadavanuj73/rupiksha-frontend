@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 
 export const menuItems = [
+    { title: "ALL SERVICES", icon: Monitor, path: "/distributor/all-services" },
     {
         title: "RETAILERS", icon: Users, path: "/distributor/retailers",
         submenu: [

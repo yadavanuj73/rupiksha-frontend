@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Users, Search, MoreHorizontal,
-    Plus, Download, UserPlus, Shield,
+    Plus, Download, UserPlus,
     CheckCircle2, AlertCircle, Clock, X,
     Eye, Wallet, Smartphone, Mail, MapPin
 } from 'lucide-react';
 import { dataService } from '../../services/dataService';
 import { sharedDataService } from '../../services/sharedDataService';
+import NetworkRegistrationForm from '../../components/shared/NetworkRegistrationForm';
 
 const Retailers = () => {
     const [retailers, setRetailers] = useState([]);
@@ -16,34 +17,67 @@ const Retailers = () => {
     const [selectedRetailer, setSelectedRetailer] = useState(null);
     const [dist, setDist] = useState(null);
     const [showAddModal, setShowAddModal] = useState(false);
-    const [formData, setFormData] = useState({ name: '', businessName: '', mobile: '', email: '', password: '123456', state: 'Bihar', city: '', pin: '' });
-    const [loading, setLoading] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
-
-    const generatePassword = () => {
-        return 'RT@' + Math.floor(1000 + Math.random() * 9000);
-    };
+    const [kycPingLoadingId, setKycPingLoadingId] = useState(null);
+    const normalizeKyc = (value) => String(value || '').trim().toUpperCase();
 
     const handleOpenAddModal = () => {
-        setFormData({ ...formData, password: '123456', pin: '' });
         setShowAddModal(true);
     };
 
-    const loadData = () => {
+    const normalizeStatus = (status) => {
+        const s = String(status || '').trim().toUpperCase();
+        if (s === 'APPROVED' || s === 'ACTIVE') return 'Approved';
+        if (s === 'PENDING') return 'Pending';
+        if (s === 'REJECTED') return 'Rejected';
+        return status || 'Pending';
+    };
+
+    const loadData = async () => {
         const session = sharedDataService.getCurrentDistributor();
         if (!session) return;
         const freshDist = sharedDataService.getDistributorById(session.id) || session;
         setDist(freshDist);
 
-        const all = dataService.getData().users || [];
-        // Show retailers that were either assigned to them manually or created by them (ownerId)
-        const assigned = all.filter(r => (freshDist.assignedRetailers || []).includes(r.username) || r.ownerId === freshDist.id);
+        // Pull latest users from backend so distributor list updates immediately
+        // after admin approvals (local cache can be stale).
+        let allRetailers = [];
+        try {
+            const allUsers = await dataService.getAllUsers();
+            allRetailers = (Array.isArray(allUsers) ? allUsers : [])
+                .filter((u) => String(u?.role || '').toUpperCase() === 'RETAILER')
+                .map((u) => ({
+                    ...u,
+                    username: u.username || u.mobile || u.id,
+                    name: u.name || u.fullName || u.username || u.mobile,
+                    state: u.state || u.stateName || '',
+                    city: u.city || '',
+                    status: normalizeStatus(u.status),
+                    kycStatus: normalizeKyc(u.kycStatus),
+                    addedByUserRef: String(u.addedByUserRef || '').trim(),
+                    displayStatus: (normalizeStatus(u.status) === 'Approved' && normalizeKyc(u.kycStatus) !== 'APPROVED')
+                        ? 'Pending KYC'
+                        : normalizeStatus(u.status)
+                }));
+        } catch {
+            const fallback = dataService.getData().users || [];
+            allRetailers = fallback.map((u) => ({ ...u, status: normalizeStatus(u.status) }));
+        }
+
+        // Show retailers that were assigned to this distributor from local linkage.
+        const assignedSet = new Set((freshDist.assignedRetailers || []).map((x) => String(x || '')));
+        const assigned = allRetailers.filter((r) =>
+            assignedSet.has(String(r.username || '')) ||
+            assignedSet.has(String(r.mobile || '')) ||
+            String(r.ownerId || '') === String(freshDist.id || '') ||
+            String(r.addedByUserRef || '') === String(freshDist.id || '')
+        );
         setRetailers(assigned);
     };
 
     useEffect(() => {
         loadData();
-        const handleUpdate = () => loadData();
+        const handleUpdate = () => { loadData(); };
         window.addEventListener('distributorDataUpdated', handleUpdate);
         window.addEventListener('dataUpdated', handleUpdate);
         return () => {
@@ -52,50 +86,28 @@ const Retailers = () => {
         };
     }, []);
 
-    const [showOTPView, setShowOTPView] = useState(false);
-    const [otp, setOtp] = useState('');
-    const [generatedOtp, setGeneratedOtp] = useState('');
-    const [verifying, setVerifying] = useState(false);
-
-    const handleInvite = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
-        setGeneratedOtp(code);
-
-        const emailModule = await import('../../services/emailService');
-        const res = await emailModule.sendOTPEmail(formData.email, code, formData.name);
-
-        setLoading(false);
-        if (res.success) {
-            setShowOTPView(true);
-        } else {
-            alert("Failed to send OTP. Please check email address.");
-        }
+    const handleRegistrationSuccess = () => {
+        setShowAddModal(false);
+        setShowSuccess(true);
+        // Refresh the list so the new pending retailer appears immediately.
+        loadData();
     };
 
-    const handleVerifyAndAdd = async () => {
-        if (otp !== generatedOtp) {
-            alert("Invalid OTP! Access Denied.");
-            return;
-        }
-
-        setVerifying(true);
+    const handleSendKycRequest = async (member) => {
+        const id = String(member?.id || member?.username || '');
+        if (!id) return;
+        setKycPingLoadingId(id);
         try {
-            const newUser = await dataService.registerUser(formData, dist.id);
-            sharedDataService.assignRetailerToDistributor(dist.id, newUser.username);
-
-            // Credentials email will now only be sent once Admin approves.
-            // Removing immediate sendCredentialsEmail from here.
-
-            setShowAddModal(false);
-            setShowOTPView(false);
-            setFormData({ name: '', businessName: '', mobile: '', email: '', password: '123456', state: 'Bihar', city: '', pin: '' });
-            setShowSuccess(true);
-        } catch (err) {
-            alert("Error adding retailer");
+            await dataService.resendCredentials({
+                ...member,
+                name: member?.name || member?.fullName || member?.username,
+                role: 'RETAILER'
+            });
+            alert('KYC reminder sent to member. Ask them to complete KYC for admin approval.');
+        } catch {
+            alert('Unable to send KYC reminder right now.');
         } finally {
-            setVerifying(false);
+            setKycPingLoadingId(null);
         }
     };
 
@@ -146,11 +158,14 @@ const Retailers = () => {
     const filtered = retailers.filter(r => {
         const matchesSearch = (r.name || r.username || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             (r.mobile || '').includes(searchTerm);
-        const matchesStatus = statusFilter === 'All' || r.status === statusFilter;
+        const matchesStatus = statusFilter === 'All'
+            || r.status === statusFilter
+            || (statusFilter === 'Pending KYC' && r.status === 'Approved' && r.kycStatus !== 'APPROVED')
+            || (statusFilter === 'KYC Approved' && r.status === 'Approved' && r.kycStatus === 'APPROVED');
         return matchesSearch && matchesStatus;
     });
 
-    const active = retailers.filter(r => r.status === 'Approved');
+    const active = retailers.filter(r => r.displayStatus === 'Approved');
 
     return (
         <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 lg:space-y-8 font-['Montserrat',sans-serif]">
@@ -188,7 +203,7 @@ const Retailers = () => {
                     />
                 </div>
                 <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
-                    {['All', 'Approved', 'Pending', 'Rejected'].map(status => (
+                    {['All', 'Pending', 'Pending KYC', 'KYC Approved', 'Rejected'].map(status => (
                         <button
                             key={status}
                             onClick={() => setStatusFilter(status)}
@@ -252,21 +267,33 @@ const Retailers = () => {
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider border
-                                            ${r.status === 'Approved' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                                r.status === 'Pending' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                                            ${r.displayStatus === 'Approved' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                                r.displayStatus === 'Pending' || r.displayStatus === 'Pending KYC' ? 'bg-amber-50 text-amber-600 border-amber-100' :
                                                     'bg-red-50 text-red-600 border-red-100'}`}>
-                                            {r.status === 'Approved' ? <CheckCircle2 size={10} /> :
-                                                r.status === 'Pending' ? <Clock size={10} /> : <AlertCircle size={10} />}
-                                            {r.status || 'Unknown'}
+                                            {r.displayStatus === 'Approved' ? <CheckCircle2 size={10} /> :
+                                                r.displayStatus === 'Pending' || r.displayStatus === 'Pending KYC' ? <Clock size={10} /> : <AlertCircle size={10} />}
+                                            {r.displayStatus || 'Unknown'}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <button
-                                            onClick={() => setSelectedRetailer(r)}
-                                            className="p-2.5 hover:bg-amber-50 text-slate-400 hover:text-amber-600 rounded-xl transition-all border border-transparent hover:border-amber-100"
-                                        >
-                                            <Eye size={18} />
-                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            {r.displayStatus === 'Pending KYC' && (
+                                                <button
+                                                    onClick={() => handleSendKycRequest(r)}
+                                                    disabled={kycPingLoadingId === String(r.id || r.username || '')}
+                                                    className="px-2.5 py-1 bg-blue-50 text-blue-600 border border-blue-100 rounded-lg text-[9px] font-black uppercase tracking-wider disabled:opacity-60"
+                                                    title="Send KYC completion reminder"
+                                                >
+                                                    {kycPingLoadingId === String(r.id || r.username || '') ? 'Sending...' : 'Send KYC Request'}
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => setSelectedRetailer(r)}
+                                                className="p-2.5 hover:bg-amber-50 text-slate-400 hover:text-amber-600 rounded-xl transition-all border border-transparent hover:border-amber-100"
+                                            >
+                                                <Eye size={18} />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             )) : (
@@ -318,140 +345,30 @@ const Retailers = () => {
                             exit={{ scale: 0.9, opacity: 0, y: 40 }}
                             className="bg-white w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl relative"
                         >
-                            <div className="px-10 py-8 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                            <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
                                 <div>
                                     <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">
-                                        {showOTPView ? 'Confirm Verification' : 'Register Partner'}
+                                        Register Partner
                                     </h3>
                                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">
-                                        {showOTPView ? `Enter 6-digit code sent to ${formData.email}` : 'Onboard a new retailer to your network'}
+                                        Same form as portal sign-up · Admin approval required
                                     </p>
                                 </div>
-                                <button onClick={() => { setShowAddModal(false); setShowOTPView(false); }} className="p-3 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-2xl transition-all">
+                                <button onClick={() => setShowAddModal(false)} className="p-3 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-2xl transition-all">
                                     <X size={24} />
                                 </button>
                             </div>
 
-                            {!showOTPView ? (
-                                <form onSubmit={handleInvite} className="p-10 space-y-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
-                                    <div className="grid grid-cols-2 gap-5">
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Full Name</label>
-                                            <input required type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-black focus:ring-2 focus:ring-[var(--brand-color)] focus:bg-white transition-all outline-none" placeholder="Enter name" />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Shop Name</label>
-                                            <input required type="text" value={formData.businessName} onChange={e => setFormData({ ...formData, businessName: e.target.value })} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-black focus:border-amber-500 focus:bg-white transition-all outline-none" placeholder="Enter business" />
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-5">
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Mobile No</label>
-                                            <input required type="tel" maxLength="10" value={formData.mobile} onChange={e => setFormData({ ...formData, mobile: e.target.value })} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-black focus:border-amber-500 focus:bg-white transition-all outline-none" placeholder="10 Digit No" />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Email ID</label>
-                                            <input required type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-black focus:border-amber-500 focus:bg-white transition-all outline-none" placeholder="partner@email.com" />
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-5">
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">State</label>
-                                            <select value={formData.state} onChange={e => setFormData({ ...formData, state: e.target.value })} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-black focus:border-amber-500 focus:bg-white transition-all outline-none appearance-none">
-                                                {['Bihar', 'UP', 'MP', 'Delhi', 'West Bengal', 'Haryana'].map(s => <option key={s}>{s}</option>)}
-                                            </select>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">City</label>
-                                            <input required type="text" value={formData.city} onChange={e => setFormData({ ...formData, city: e.target.value })} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-black focus:border-amber-500 focus:bg-white transition-all outline-none" placeholder="City name" />
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-5">
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">System Password (Numeric)</label>
-                                            <div className="relative">
-                                                <input required type="text" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value.replace(/\D/g, '') })} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-black focus:border-amber-500 focus:bg-white transition-all outline-none" />
-                                                <Shield size={16} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300" />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Security PIN (4 Digits)</label>
-                                            <div className="relative">
-                                                <input required type="text" maxLength="4" value={formData.pin} onChange={e => setFormData({ ...formData, pin: e.target.value.replace(/\D/g, '').slice(0, 4) })} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-black focus:border-emerald-500 focus:bg-white transition-all outline-none" placeholder="4-Digit PIN" />
-                                                <Shield size={16} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300" />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="pt-6 sticky bottom-0 bg-white">
-                                        <button disabled={loading} type="submit" style={{ background: 'var(--brand-color)', color: 'black' }} className="w-full font-black py-5 rounded-2xl text-[11px] uppercase tracking-[0.25em] shadow-2xl shadow-black/10 active:scale-95 transition-all disabled:opacity-50">
-                                            {loading ? 'Sending OTP...' : 'Send Verification OTP'}
-                                        </button>
-                                    </div>
-                                </form>
-                            ) : (
-                                <div className="p-10 space-y-8">
-                                    <div className="flex justify-center gap-3">
-                                        {[...Array(6)].map((_, i) => (
-                                            <input
-                                                key={i}
-                                                id={`otp-${i}`}
-                                                type="text"
-                                                maxLength="1"
-                                                value={otp[i] || ''}
-                                                onChange={e => {
-                                                    const val = e.target.value;
-                                                    if (!/^\d*$/.test(val)) return; // Only allow digits
-
-                                                    const newOtp = otp.split('');
-                                                    newOtp[i] = val.slice(-1); // Take last char if pasted
-                                                    setOtp(newOtp.join(''));
-
-                                                    // Move forward
-                                                    if (val && i < 5) {
-                                                        const nextInput = document.getElementById(`otp-${i + 1}`);
-                                                        if (nextInput) nextInput.focus();
-                                                    }
-                                                }}
-                                                onKeyDown={e => {
-                                                    if (e.key === 'Backspace') {
-                                                        if (!otp[i] && i > 0) {
-                                                            const prevInput = document.getElementById(`otp-${i - 1}`);
-                                                            if (prevInput) {
-                                                                prevInput.focus();
-                                                                const newOtp = otp.split('');
-                                                                newOtp[i - 1] = '';
-                                                                setOtp(newOtp.join(''));
-                                                            }
-                                                        } else {
-                                                            const newOtp = otp.split('');
-                                                            newOtp[i] = '';
-                                                            setOtp(newOtp.join(''));
-                                                        }
-                                                    }
-                                                }}
-                                                className="w-12 h-16 text-center text-2xl font-black bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 focus:bg-white transition-all outline-none"
-                                            />
-                                        ))}
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <button
-                                            onClick={handleVerifyAndAdd}
-                                            disabled={verifying || otp.length < 6}
-                                            className="w-full bg-emerald-500 text-white font-black py-5 rounded-2xl text-[11px] uppercase tracking-[0.25em] shadow-2xl shadow-emerald-500/20 active:scale-95 transition-all disabled:opacity-50"
-                                        >
-                                            {verifying ? 'Verifying...' : 'Verify & Approve Partner'}
-                                        </button>
-                                        <button
-                                            onClick={() => setShowOTPView(false)}
-                                            className="w-full text-slate-400 font-black text-[9px] uppercase tracking-widest hover:text-slate-600 transition-colors"
-                                        >
-                                            Back to details
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
+                            <div className="p-8">
+                                <NetworkRegistrationForm
+                                    roleLock="RETAILER"
+                                    uplineId={dist?.id}
+                                    uplineRole="DISTRIBUTOR"
+                                    onCancel={() => setShowAddModal(false)}
+                                    onSuccess={handleRegistrationSuccess}
+                                    submitLabel="Submit for Admin Approval"
+                                />
+                            </div>
                         </motion.div>
                     </motion.div>
                 )}
@@ -617,8 +534,16 @@ const Retailers = () => {
                                         <button className="w-full bg-slate-900 text-white font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10">
                                             Enter Panel
                                         </button>
-                                        <button className="w-full border border-slate-200 text-slate-600 font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all">
-                                            Modify Profile
+                                    <button
+                                        onClick={() => {
+                                            if ((selectedRetailer.displayStatus || selectedRetailer.status) === 'Pending KYC') {
+                                                handleSendKycRequest(selectedRetailer);
+                                            }
+                                        }}
+                                        disabled={(selectedRetailer.displayStatus || selectedRetailer.status) !== 'Pending KYC'}
+                                        className="w-full border border-blue-200 text-blue-600 font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest hover:bg-blue-50 transition-all disabled:opacity-50"
+                                    >
+                                        Send KYC Request
                                         </button>
                                     </div>
                                 </div>
