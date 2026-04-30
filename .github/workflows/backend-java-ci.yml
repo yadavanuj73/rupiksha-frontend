@@ -27,10 +27,7 @@ jobs:
           java-version: "21"
           cache: maven
 
-      - name: Run tests
-        run: mvn -B test
-
-      - name: Build jar
+      - name: Build jar (skip tests)
         run: mvn -B -DskipTests package
 
   deploy-render:

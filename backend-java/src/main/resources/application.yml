@@ -98,10 +98,10 @@ app:
 
 levin:
   aeps:
-    base-url: https://api.levinfintech.com/api/levin
-    api-token: your_api_token_here
-    user-id: your_user_id_here
-    encryption-key: your_encryption_key_here
+    base-url: ${LEVIN_AEPS_BASE_URL:https://api.levinfintech.com/api/levin}
+    api-token: ${LEVIN_AEPS_API_TOKEN:your_api_token_here}
+    user-id: ${LEVIN_AEPS_USER_ID:your_user_id_here}
+    encryption-key: ${LEVIN_AEPS_ENCRYPTION_KEY:your_encryption_key_here}
   environment:
     allow-mock-providers-in-production: ${ALLOW_MOCK_PROVIDERS_IN_PRODUCTION:false}
   public-base-url: ${PUBLIC_BASE_URL:http://localhost:8080}
