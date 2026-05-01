@@ -277,7 +277,7 @@ function Advantage() {
         <section
             id="advantage"
             style={{
-                background: 'linear-gradient(135deg, #1e3a8a 0%, #18dfe9c7 100%)',
+                background: 'linear-gradient(180deg, #eef2ff 0%, #ffffff 50%, #f0f9ff 100%)',
                 position: 'relative',
                 padding: '80px 5%',
             }}
@@ -301,10 +301,10 @@ function Advantage() {
                         width: 52,
                         height: 52,
                         borderRadius: 999,
-                        border: '1px solid rgba(255,255,255,0.6)',
-                        background: 'linear-gradient(135deg, #ffffff 0%, #dbeafe 100%)',
-                        boxShadow: '0 14px 30px rgba(15,23,42,0.2)',
-                        color: '#1d4ed8',
+                        border: '2px solid #3b82f6',
+                        background: '#ffffff',
+                        boxShadow: '0 4px 15px rgba(59,130,246,0.15)',
+                        color: '#2563eb',
                         fontWeight: 900,
                         fontSize: 24,
                         display: 'flex',
@@ -326,10 +326,10 @@ function Advantage() {
                         width: 52,
                         height: 52,
                         borderRadius: 999,
-                        border: '1px solid rgba(255,255,255,0.6)',
-                        background: 'linear-gradient(135deg, #ffffff 0%, #ccfbf1 100%)',
-                        boxShadow: '0 14px 30px rgba(15,23,42,0.2)',
-                        color: '#0f766e',
+                        border: '2px solid #3b82f6',
+                        background: '#ffffff',
+                        boxShadow: '0 4px 15px rgba(59,130,246,0.15)',
+                        color: '#2563eb',
                         fontWeight: 900,
                         fontSize: 24,
                         display: 'flex',
