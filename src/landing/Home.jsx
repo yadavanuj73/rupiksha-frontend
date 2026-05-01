@@ -686,18 +686,18 @@ const CSS = `
 /* ── Hero Section ── */
 .rp-hero-section {
   background: linear-gradient(135deg, #fefce8 0%, #faf5ff 40%, #eff6ff 70%, #ffffff 100%);
-  padding: 30px 5% 0;
+  padding: 0 5% 0;
   position: relative;
   overflow: hidden;
   min-height: calc(100vh - 92px);
   display: flex;
-  align-items: center;
+  align-items: stretch;
 }
 .rp-hero-inner {
   max-width: 1200px;
   margin: 0 auto;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 40px;
   width: 100%;
 }
@@ -707,6 +707,8 @@ const CSS = `
   flex-direction: column;
   align-items: flex-start;
   text-align: left;
+  justify-content: center;
+  padding: 40px 0;
 }
 .rp-hero-tag {
   display: inline-block;
@@ -780,7 +782,6 @@ const CSS = `
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  min-height: 520px;
 }
 .rp-hero-right::before {
   content: '';
@@ -797,9 +798,11 @@ const CSS = `
 }
 .rp-hero-character {
   width: 100%;
-  max-width: 500px;
+  max-width: 560px;
+  max-height: calc(100vh - 120px);
   height: auto;
   object-fit: contain;
+  object-position: bottom;
   position: relative;
   z-index: 1;
   mix-blend-mode: multiply;
