@@ -447,7 +447,7 @@ function Services() {
     const [activeIndex, setActiveIndex] = useState(0);
     const s = SERVICES[activeIndex];
     const sectionRef = useRef(null);
-    useScrollLock(sectionRef, SERVICES.length, setActiveIndex, 1200);
+    useScrollLock(sectionRef, SERVICES.length, setActiveIndex, 1500);
 
     return (
         <section id="services" ref={sectionRef} style={{ background: '#ffffff', padding: '80px 5%', position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center' }}>
@@ -529,7 +529,7 @@ function Services() {
 function Advantage() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const sectionRef = useRef(null);
-    useScrollLock(sectionRef, ADVANTAGE.length, setCurrentIndex, 1200);
+    useScrollLock(sectionRef, ADVANTAGE.length, setCurrentIndex, 1500);
 
     const nextSlide = () => setCurrentIndex((prev) => (prev === ADVANTAGE.length - 1 ? 0 : prev + 1));
     const prevSlide = () => setCurrentIndex((prev) => (prev === 0 ? ADVANTAGE.length - 1 : prev - 1));

@@ -64,7 +64,7 @@ const VerticalCardSlider = () => {
                 indexRef.current++;
                 setCurrentIndex(indexRef.current);
             } else { setLocked(false); setCompleted(true); }
-        }, 1200);
+        }, 1500);
         return () => clearInterval(timer);
     }, [locked, completed]);
 
