@@ -699,7 +699,7 @@ const About = () => {
                                             camera={{ position: [0, 0, 10], fov: 35 }}
                                             gl={{ antialias: true, powerPreference: 'high-performance' }}
                                         >
-                                            <Suspense fallback={<Html center><div style={{ color: '#2563eb', fontWeight: 'bold' }}>Loading...</div></Html>}>
+                                            <Suspense fallback={null}>
                                                 <Stage environment="city" intensity={0.6} contactShadow={false} adjustCamera={1.2}>
                                                     <PresentationControls 
                                                         speed={1.5} 
