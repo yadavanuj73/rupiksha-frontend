@@ -729,16 +729,17 @@ const About = () => {
                                                 <Suspense fallback={
                                                 <Html center>
                                                     <div style={{
-                                                        width: '200px',
-                                                        height: '200px',
-                                                        borderRadius: '50%',
-                                                        background: 'linear-gradient(135deg, #2563eb, #1e40af)',
+                                                        width: '250px',
+                                                        height: '250px',
+                                                        borderRadius: '20px',
+                                                        background: '#f8fafc',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
                                                         animation: 'spin 3s linear infinite',
-                                                        padding: '10px',
-                                                        boxShadow: '0 10px 30px rgba(37, 99, 235, 0.3)'
+                                                        padding: '20px',
+                                                        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
+                                                        border: '1px solid #e2e8f0'
                                                     }}>
                                                         <img 
                                                             src={logo} 
@@ -746,9 +747,7 @@ const About = () => {
                                                             style={{
                                                                 width: '100%',
                                                                 height: '100%',
-                                                                borderRadius: '50%',
-                                                                objectFit: 'contain',
-                                                                filter: 'brightness(0) invert(1)'
+                                                                objectFit: 'contain'
                                                             }}
                                                         />
                                                     </div>
