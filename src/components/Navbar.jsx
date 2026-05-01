@@ -13,7 +13,10 @@ export default function Navbar() {
         if (isHome) {
             document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
         } else {
-            navigate('/#' + id);
+            navigate('/');
+            setTimeout(() => {
+                document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+            }, 300);
         }
         setMenu(false);
     };
