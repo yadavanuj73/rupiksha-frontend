@@ -729,32 +729,33 @@ const About = () => {
                                                 <Suspense fallback={
                                                 <Html center>
                                                     <div style={{
-                                                        width: '250px',
-                                                        height: '250px',
+                                                        width: '280px',
+                                                        height: '280px',
                                                         borderRadius: '50%',
-                                                        background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)',
+                                                        background: 'linear-gradient(145deg, #fbbf24, #f59e0b)',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
-                                                        animation: 'spin 3s linear infinite',
-                                                        boxShadow: '0 20px 40px rgba(245, 158, 11, 0.4)',
+                                                        animation: 'spin 4s linear infinite',
+                                                        boxShadow: '0 25px 50px rgba(245, 158, 11, 0.5), inset 0 -5px 10px rgba(0,0,0,0.2)',
                                                         position: 'relative',
-                                                        border: '4px solid #f59e0b',
+                                                        border: '5px solid #d97706',
                                                         zIndex: 10
                                                     }}>
                                                         <div style={{
-                                                            width: '210px',
-                                                            height: '210px',
+                                                            width: '240px',
+                                                            height: '240px',
                                                             borderRadius: '50%',
-                                                            background: '#fbbf24',
+                                                            background: 'radial-gradient(circle at 30% 30%, #fcd34d, #f59e0b)',
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             justifyContent: 'center',
-                                                            border: '3px solid #f59e0b',
-                                                            fontSize: '80px',
+                                                            border: '4px solid #d97706',
+                                                            fontSize: '100px',
                                                             fontWeight: '900',
                                                             color: '#92400e',
-                                                            textShadow: '2px 2px 4px rgba(0,0,0,0.3)'
+                                                            textShadow: '3px 3px 6px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.3)',
+                                                            boxShadow: 'inset 0 -3px 8px rgba(0,0,0,0.3)'
                                                         }}>
                                                             ₹
                                                         </div>
