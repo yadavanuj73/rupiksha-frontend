@@ -729,36 +729,30 @@ const About = () => {
                                                 <Suspense fallback={
                                                 <Html center>
                                                     <div style={{
-                                                        width: '280px',
-                                                        height: '280px',
-                                                        borderRadius: '50%',
-                                                        background: 'linear-gradient(145deg, #fbbf24, #f59e0b)',
+                                                        width: '300px',
+                                                        height: '300px',
+                                                        borderRadius: '20px',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
                                                         animation: 'spin 4s linear infinite',
-                                                        boxShadow: '0 25px 50px rgba(245, 158, 11, 0.5), inset 0 -5px 10px rgba(0,0,0,0.2)',
+                                                        boxShadow: '0 25px 50px rgba(0, 0, 0, 0.3)',
                                                         position: 'relative',
-                                                        border: '5px solid #d97706',
-                                                        zIndex: 10
+                                                        border: '3px solid #e2e8f0',
+                                                        zIndex: 10,
+                                                        background: '#ffffff',
+                                                        padding: '10px'
                                                     }}>
-                                                        <div style={{
-                                                            width: '240px',
-                                                            height: '240px',
-                                                            borderRadius: '50%',
-                                                            background: 'radial-gradient(circle at 30% 30%, #fcd34d, #f59e0b)',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            border: '4px solid #d97706',
-                                                            fontSize: '100px',
-                                                            fontWeight: '900',
-                                                            color: '#92400e',
-                                                            textShadow: '3px 3px 6px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.3)',
-                                                            boxShadow: 'inset 0 -3px 8px rgba(0,0,0,0.3)'
-                                                        }}>
-                                                            ₹
-                                                        </div>
+                                                        <img 
+                                                            src="https://i.ibb.co/6P6Y4qG/coin-image.png" 
+                                                            alt="Coin" 
+                                                            style={{
+                                                                width: '100%',
+                                                                height: '100%',
+                                                                borderRadius: '15px',
+                                                                objectFit: 'cover'
+                                                            }}
+                                                        />
                                                     </div>
                                                 </Html>
                                             }>
