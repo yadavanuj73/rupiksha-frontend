@@ -285,7 +285,7 @@ function Hero() {
                 </motion.div>
 
                 <div className="rp-hero-right">
-                    <img src="/character.png" alt="Rupiksha" className="rp-hero-character" />
+                    <img src="/character without bg.png" alt="Rupiksha" className="rp-hero-character" />
                     <motion.div
                         className="rp-hero-float-badge"
                         key={slideIndex + '-badge'}
@@ -805,7 +805,7 @@ const CSS = `
   object-position: bottom;
   position: relative;
   z-index: 1;
-  mix-blend-mode: multiply;
+  /* transparent bg image - no blend needed */
 }
 .rp-hero-float-badge {
   position: absolute;
