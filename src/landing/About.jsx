@@ -14,21 +14,17 @@ import Navbar from '../components/Navbar';
 // useGLTF.preload(coinModelPath); // Temporarily disabled to show placeholder
 
 function CoinModel() {
-    // Temporarily disabled to show fallback
-    return null;
-    
-    // Original code:
-    // const { scene } = useGLTF(coinModelPath);
-    // const coinRef = useRef();
+    const { scene } = useGLTF(coinModelPath);
+    const coinRef = useRef();
 
-    // // Slowly rotate the coin 360 degrees
-    // useFrame((state, delta) => {
-    //     if (coinRef.current) {
-    //         coinRef.current.rotation.y += delta * 0.4; // Controlled slow rotation
-    //     }
-    // });
+    // Slowly rotate the coin 360 degrees
+    useFrame((state, delta) => {
+        if (coinRef.current) {
+            coinRef.current.rotation.y += delta * 0.4; // Controlled slow rotation
+        }
+    });
 
-    // return <primitive ref={coinRef} object={scene} />;
+    return <primitive ref={coinRef} object={scene} />;
 }
 
 function FlipCard({ card }) {
@@ -722,36 +718,55 @@ const About = () => {
                                         <div style={{ 
                                             width: '100%', 
                                             height: '600px',
-                                            position: 'relative',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center'
+                                            position: 'relative'
                                         }}>
-                                            <div style={{
-                                                width: '300px',
-                                                height: '300px',
-                                                borderRadius: '20px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                animation: 'spin 4s linear infinite',
-                                                boxShadow: '0 25px 50px rgba(0, 0, 0, 0.3)',
-                                                position: 'relative',
-                                                border: '3px solid #e2e8f0',
-                                                background: '#ffffff',
-                                                padding: '10px'
-                                            }}>
-                                                <img 
-                                                    src="/cropped_circle_image.png" 
-                                                    alt="Coin" 
-                                                    style={{
-                                                        width: '100%',
-                                                        height: '100%',
-                                                        borderRadius: '15px',
-                                                        objectFit: 'cover'
-                                                    }}
-                                                />
-                                            </div>
+                                            <Canvas 
+                                                dpr={1} 
+                                                camera={{ position: [0, 0, 10], fov: 35 }}
+                                                gl={{ antialias: true, powerPreference: 'high-performance' }}
+                                                shadows={false}
+                                            >
+                                                <Suspense fallback={
+                                                <Html center>
+                                                    <div style={{
+                                                        width: '300px',
+                                                        height: '300px',
+                                                        borderRadius: '20px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        animation: 'spin 4s linear infinite',
+                                                        boxShadow: '0 25px 50px rgba(0, 0, 0, 0.3)',
+                                                        position: 'relative',
+                                                        border: '3px solid #e2e8f0',
+                                                        background: '#ffffff',
+                                                        padding: '10px'
+                                                    }}>
+                                                        <img 
+                                                            src="/cropped_circle_image.png" 
+                                                            alt="Coin" 
+                                                            style={{
+                                                                width: '100%',
+                                                                height: '100%',
+                                                                borderRadius: '15px',
+                                                                objectFit: 'cover'
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </Html>
+                                            }>
+                                                    <Stage environment="city" intensity={0.6} contactShadow={false} adjustCamera={1.2}>
+                                                        <PresentationControls 
+                                                            speed={1.5} 
+                                                            global 
+                                                            zoom={0.75} 
+                                                            polar={[-0.2, Math.PI / 4]}
+                                                        >
+                                                            <CoinModel />
+                                                        </PresentationControls>
+                                                    </Stage>
+                                                </Suspense>
+                                            </Canvas>
                                         </div>
                                     </div>
 
