@@ -1529,8 +1529,8 @@ const CSS = `
 .rp-footer__links a:hover, .rp-footer-link-btn:hover { color: #fff; }
 .rp-footer__contact p { font-size: 0.88rem; margin-bottom: 10px; line-height: 1.6; }
 .rp-footer__bottom { border-top: 1px solid rgba(255,255,255,0.07); padding: 24px 5%; max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; flex-wrap: wrap; gap: 8px; }
-@media(max-width:900px){ .rp-footer__top { grid-template-columns: 1fr 1fr; } }
-@media(max-width:600px){ .rp-footer__top { grid-template-columns: 1fr; } }
+@media(max-width:900px){ .rp-footer__top { grid-template-columns: 1fr 1fr; } .rp-footer-grid { grid-template-columns: repeat(2, 1fr) !important; } }
+@media(max-width:600px){ .rp-footer__top { grid-template-columns: 1fr; } .rp-footer-grid { grid-template-columns: 1fr !important; } }
 
 /* ─────────────────────────────────────────────
    WRITING ANIMATION (ADVANTAGE HEADER)

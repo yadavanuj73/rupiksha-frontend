@@ -1,65 +1,127 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
+const SOCIAL_ICONS = [
+    { label: '📘', color: '#3b82f6', href: '#!' },
+    { label: '📞', color: '#ef4444', href: '#!' },
+    { label: '🏪', color: '#a16207', href: '#!' },
+    { label: '▶️', color: '#16a34a', href: '#!' },
+    { label: '✉️', color: '#8b5cf6', href: '#!' },
+];
+
 export default function Footer() {
     const navigate = useNavigate();
 
+    const scrollToServices = () => {
+        const el = document.getElementById('services');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+    };
+
     return (
-        <footer className="bg-slate-950 text-slate-300" id="contact">
-            <div className="mx-auto max-w-7xl px-5 py-14 md:px-8">
-                <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
+        <footer style={{ background: '#0f172a', color: '#94a3b8' }} id="contact">
+            <div style={{ maxWidth: 1200, margin: '0 auto', padding: '60px 5% 0' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 40 }} className="rp-footer-grid">
+                    {/* Brand */}
                     <div>
-                        <h3 className="text-2xl font-extrabold text-white">Rupiksha</h3>
-                        <p className="mt-4 max-w-xs text-sm leading-relaxed text-slate-400">
-                            Modern fintech tools to help retailers scale payments, banking, and customer services from one platform.
+                        <h3 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#fff', fontFamily: "'DM Serif Display', serif", marginBottom: 16 }}>Rupiksha</h3>
+                        <p style={{ fontSize: 14, lineHeight: 1.7, color: '#94a3b8', maxWidth: 280 }}>
+                            Transforming digital payments across India with innovative financial solutions for businesses and individuals.
                         </p>
-                        <div className="mt-5 flex gap-3">
-                            {['FB', 'X', 'IN', 'YT'].map((s, i) => (
-                                <a key={i} href="#!" className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:scale-105 hover:border-blue-400">
-                                    {s}
-                                </a>
+                        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                            {SOCIAL_ICONS.map((s, i) => (
+                                <a key={i} href={s.href}
+                                    style={{
+                                        width: 38, height: 38, borderRadius: '50%',
+                                        background: s.color, display: 'flex', alignItems: 'center',
+                                        justifyContent: 'center', fontSize: 16, textDecoration: 'none',
+                                        transition: 'transform 0.2s',
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.15)'}
+                                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                                >{s.label}</a>
                             ))}
                         </div>
                     </div>
 
+                    {/* Quick Links */}
                     <div>
-                        <h5 className="text-sm font-semibold uppercase tracking-wider text-white">Quick Links</h5>
-                        <div className="mt-4 space-y-2 text-sm">
-                            <button className="block transition hover:text-white" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>Home</button>
-                            <button className="block transition hover:text-white" onClick={() => navigate('/about')}>About Us</button>
-                            <button className="block transition hover:text-white" onClick={() => navigate('/leadership')}>Leadership</button>
-                            <button className="block transition hover:text-white" onClick={() => navigate('/contact')}>Contact</button>
+                        <h5 style={{ fontSize: 14, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase', color: '#fff', marginBottom: 20 }}>Quick Links</h5>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} style={linkStyle}>Home</button>
+                            <button onClick={() => navigate('/about')} style={linkStyle}>About Us</button>
+                            <button onClick={() => navigate('/leadership')} style={linkStyle}>Our Leadership</button>
+                            <button onClick={() => navigate('/contact')} style={linkStyle}>Contact Us</button>
+                            <button onClick={() => navigate('/careers')} style={linkStyle}>Careers</button>
+                            <button onClick={() => navigate('/blog')} style={linkStyle}>Blog</button>
                         </div>
                     </div>
 
+                    {/* Our Services */}
                     <div>
-                        <h5 className="text-sm font-semibold uppercase tracking-wider text-white">Solutions</h5>
-                        <div className="mt-4 space-y-2 text-sm">
-                            {['Money Transfer', 'Bill Payment', 'AEPS', 'Insurance', 'Travel'].map((l) => (
-                                <a key={l} href="#services" className="block transition hover:text-white">{l}</a>
-                            ))}
+                        <h5 style={{ fontSize: 14, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase', color: '#fff', marginBottom: 20 }}>Our Services</h5>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <button onClick={scrollToServices} style={linkStyle}>Money Transfer</button>
+                            <button onClick={scrollToServices} style={linkStyle}>Bill Payment</button>
+                            <button onClick={scrollToServices} style={linkStyle}>Banking Services</button>
+                            <button onClick={scrollToServices} style={linkStyle}>Insurance</button>
+                            <button onClick={scrollToServices} style={linkStyle}>Aadhaar Enabled Payment</button>
+                            <button onClick={scrollToServices} style={linkStyle}>Mobile Recharge</button>
                         </div>
                     </div>
 
+                    {/* Contact Us */}
                     <div>
-                        <h5 className="text-sm font-semibold uppercase tracking-wider text-white">Contact</h5>
-                        <div className="mt-4 space-y-2 text-sm leading-relaxed text-slate-400">
-                            <p>Muzaffarpur, Bihar, India</p>
-                            <p>+91 7004128310</p>
-                            <p>support@rupiksha.com</p>
+                        <h5 style={{ fontSize: 14, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase', color: '#fff', marginBottom: 20 }}>Contact Us</h5>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                                <span style={{ fontSize: 16, marginTop: 2 }}>📍</span>
+                                <p style={{ fontSize: 14, lineHeight: 1.6, color: '#94a3b8', margin: 0 }}>
+                                    Rupiksha Service Pvt Ltd, C/O Anand Enterprises, Prakash path, New zeromile, Muzaffarpur, Bihar, 842001
+                                </p>
+                            </div>
+                            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                                <span style={{ fontSize: 16 }}>📞</span>
+                                <a href="tel:+917004128310" style={{ fontSize: 14, color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s' }}
+                                    onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+                                    onMouseLeave={e => e.currentTarget.style.color = '#94a3b8'}
+                                >+91 7004128310</a>
+                            </div>
+                            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                                <span style={{ fontSize: 16 }}>✉️</span>
+                                <a href="mailto:support@rupiksha.com" style={{ fontSize: 14, color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s' }}
+                                    onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+                                    onMouseLeave={e => e.currentTarget.style.color = '#94a3b8'}
+                                >support@rupiksha.com</a>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 pt-6 text-xs text-slate-500">
+                {/* Bottom bar */}
+                <div style={{
+                    marginTop: 40, paddingTop: 20, paddingBottom: 20,
+                    borderTop: '1px solid #1e293b',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    flexWrap: 'wrap', gap: 12, fontSize: 13, color: '#64748b',
+                }}>
                     <span>© 2026 Rupiksha. All rights reserved.</span>
-                    <div className="flex gap-4">
-                        <a href="#!" className="transition hover:text-slate-200">Terms</a>
-                        <a href="#!" className="transition hover:text-slate-200">Privacy</a>
-                        <a href="#!" className="transition hover:text-slate-200">Refunds</a>
+                    <div style={{ display: 'flex', gap: 24 }}>
+                        <a href="#!" style={bottomLinkStyle}>Terms of Service</a>
+                        <a href="#!" style={bottomLinkStyle}>Privacy Policy</a>
+                        <a href="#!" style={bottomLinkStyle}>Refund Policy</a>
                     </div>
                 </div>
             </div>
         </footer>
     );
 }
+
+const linkStyle = {
+    background: 'none', border: 'none', color: '#94a3b8',
+    fontSize: 14, textAlign: 'left', cursor: 'pointer',
+    padding: 0, fontFamily: 'inherit', transition: 'color 0.2s',
+};
+
+const bottomLinkStyle = {
+    color: '#64748b', textDecoration: 'none', transition: 'color 0.2s',
+};
