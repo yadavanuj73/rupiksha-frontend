@@ -315,6 +315,28 @@ function Hero() {
     );
 }
 
+const STATS = [
+    { value: '100+', label: 'Cities Covered' },
+    { value: '50K+', label: 'Active Retailers' },
+    { value: '₹200Cr+', label: 'Monthly Volume' },
+    { value: '99.9%', label: 'Uptime SLA' },
+];
+
+function StatsCounter() {
+    return (
+        <section className="rp-stats-bar">
+            <div className="rp-stats-inner">
+                {STATS.map((s, i) => (
+                    <div key={i} className="rp-stat-item">
+                        <div className="rp-stat-value">{s.value}</div>
+                        <div className="rp-stat-label">{s.label}</div>
+                    </div>
+                ))}
+            </div>
+        </section>
+    );
+}
+
 function Services() {
     const [activeIndex, setActiveIndex] = useState(0);
     const s = SERVICES[activeIndex];
@@ -650,6 +672,7 @@ export default function Home() {
             <div className="rp-root">
                 <Navbar />
                 <Hero />
+                <StatsCounter />
                 <Services />
                 <Advantage />
                 <VerticalCardSlider />
@@ -855,6 +878,42 @@ const CSS = `
   .rp-hero-float-badge { top: 0; right: 0; }
   .rp-hero-stat-card { bottom: 40px; left: 0; }
   .rp-hero-buttons { justify-content: center; }
+}
+
+/* ── Stats Counter Bar ── */
+.rp-stats-bar {
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  padding: 48px 5%;
+}
+.rp-stats-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 32px;
+}
+.rp-stat-item {
+  text-align: center;
+}
+.rp-stat-value {
+  font-family: 'DM Serif Display', serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 400;
+  color: #fff;
+  line-height: 1.1;
+  margin-bottom: 6px;
+}
+.rp-stat-label {
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.7);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+@media(max-width: 600px) {
+  .rp-stats-inner { gap: 24px; }
+  .rp-stat-item { flex: 1 1 40%; }
 }
 
 /* ── Gradient text ── */
