@@ -689,59 +689,75 @@ const About = () => {
                                     transition={{ duration: 0.6 }}
                                     style={{ 
                                         display: 'flex', 
-                                        alignItems: 'center', 
-                                        gap: '20px',
                                         width: '100%',
-                                        flexWrap: 'wrap'
+                                        height: '100vh',
+                                        minHeight: '600px',
+                                        flexDirection: 'row'
                                     }}
+                                    className="hero-two-column"
                                 >
-                                    <div className="hero-3d-side" style={{ 
-                                        flex: '1.4', 
-                                        height: '600px', 
-                                        minWidth: '450px',
-                                        position: 'relative',
-                                        marginLeft: '-80px' // Moving it significantly left
+                                    {/* Left side - Coin/3D Animation */}
+                                    <div style={{ 
+                                        width: '50%', 
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        position: 'relative'
                                     }}>
-                                        <Canvas 
-                                            dpr={1} 
-                                            camera={{ position: [0, 0, 10], fov: 35 }}
-                                            gl={{ antialias: true, powerPreference: 'high-performance' }}
-                                            shadows={false}
-                                        >
-                                            <Suspense fallback={
-                                            <Html center>
-                                                <div style={{
-                                                    width: '200px',
-                                                    height: '200px',
-                                                    borderRadius: '50%',
-                                                    background: 'linear-gradient(135deg, #2563eb, #1e40af)',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    color: 'white',
-                                                    fontSize: '48px',
-                                                    fontWeight: 'bold',
-                                                    animation: 'spin 3s linear infinite'
-                                                }}>
-                                                    ₹
-                                                </div>
-                                            </Html>
-                                        }>
-                                                <Stage environment="city" intensity={0.6} contactShadow={false} adjustCamera={1.2}>
-                                                    <PresentationControls 
-                                                        speed={1.5} 
-                                                        global 
-                                                        zoom={0.75} 
-                                                        polar={[-0.2, Math.PI / 4]}
-                                                    >
-                                                        <CoinModel />
-                                                    </PresentationControls>
-                                                </Stage>
-                                            </Suspense>
-                                        </Canvas>
+                                        <div style={{ 
+                                            width: '100%', 
+                                            height: '600px',
+                                            position: 'relative'
+                                        }}>
+                                            <Canvas 
+                                                dpr={1} 
+                                                camera={{ position: [0, 0, 10], fov: 35 }}
+                                                gl={{ antialias: true, powerPreference: 'high-performance' }}
+                                                shadows={false}
+                                            >
+                                                <Suspense fallback={
+                                                <Html center>
+                                                    <div style={{
+                                                        width: '200px',
+                                                        height: '200px',
+                                                        borderRadius: '50%',
+                                                        background: 'linear-gradient(135deg, #2563eb, #1e40af)',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        color: 'white',
+                                                        fontSize: '48px',
+                                                        fontWeight: 'bold',
+                                                        animation: 'spin 3s linear infinite'
+                                                    }}>
+                                                        ₹
+                                                    </div>
+                                                </Html>
+                                            }>
+                                                    <Stage environment="city" intensity={0.6} contactShadow={false} adjustCamera={1.2}>
+                                                        <PresentationControls 
+                                                            speed={1.5} 
+                                                            global 
+                                                            zoom={0.75} 
+                                                            polar={[-0.2, Math.PI / 4]}
+                                                        >
+                                                            <CoinModel />
+                                                        </PresentationControls>
+                                                    </Stage>
+                                                </Suspense>
+                                            </Canvas>
+                                        </div>
                                     </div>
 
-                                    <div className="hero-text-side" style={{ flex: '1', minWidth: '350px', paddingLeft: '20px' }}>
+                                    {/* Right side - Text Content */}
+                                    <div style={{ 
+                                        width: '50%', 
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        justifyContent: 'center',
+                                        paddingLeft: '60px',
+                                        paddingRight: '40px'
+                                    }}>
                                         <span className="about-tag">Founded 2025</span>
                                         <h1 className="about-h1 partners-title-glow" style={{ textAlign: 'left', fontSize: 'clamp(2.5rem, 4vw, 3.8rem)' }}>
                                             Empowering Bharat's<br />
@@ -992,6 +1008,44 @@ const ABOUT_CSS = `
 }
 @keyframes shimmerText { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* Responsive two-column layout */
+.hero-two-column {
+    flex-direction: row !important;
+}
+@media (max-width: 768px) {
+    .hero-two-column {
+        flex-direction: column !important;
+        height: auto !important;
+        min-height: 100vh !important;
+    }
+    .hero-two-column > div:first-child {
+        width: 100% !important;
+        height: 400px !important;
+        margin-bottom: 40px;
+    }
+    .hero-two-column > div:last-child {
+        width: 100% !important;
+        padding-left: 20px !important;
+        padding-right: 20px !important;
+        text-align: center !important;
+    }
+    .hero-two-column .about-tag {
+        display: inline-block;
+        margin-bottom: 16px;
+    }
+    .hero-two-column .about-h1 {
+        font-size: clamp(2rem, 5vw, 2.8rem) !important;
+        text-align: center !important;
+    }
+    .hero-two-column .about-sub {
+        text-align: center !important;
+        margin: 0 auto 30px;
+    }
+    .hero-two-column .hero-cta-wrap {
+        justify-content: center !important;
+    }
+}
 
 .about-section { padding: 110px 0; }
 .mv-section-tight { padding: 150px 0 20px; }
