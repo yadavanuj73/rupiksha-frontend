@@ -351,15 +351,27 @@ function Services() {
                                 </div>
                             ))}
                         </div>
-                        <div className="svc-slider__dots">
-                            {SERVICES.map((_, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => setActiveIndex(i)}
-                                    className={`svc-slider__dot ${i === activeIndex ? 'svc-slider__dot--active' : ''}`}
-                                    aria-label={`Slide ${i + 1}`}
-                                />
-                            ))}
+                        <div className="svc-slider__nav">
+                            <button
+                                className="svc-slider__arrow"
+                                onClick={() => setActiveIndex((prev) => (prev === 0 ? SERVICES.length - 1 : prev - 1))}
+                                aria-label="Previous"
+                            >←</button>
+                            <div className="svc-slider__dots">
+                                {SERVICES.map((_, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => setActiveIndex(i)}
+                                        className={`svc-slider__dot ${i === activeIndex ? 'svc-slider__dot--active' : ''}`}
+                                        aria-label={`Slide ${i + 1}`}
+                                    />
+                                ))}
+                            </div>
+                            <button
+                                className="svc-slider__arrow"
+                                onClick={() => setActiveIndex((prev) => (prev + 1) % SERVICES.length)}
+                                aria-label="Next"
+                            >→</button>
                         </div>
                     </motion.div>
 
@@ -1167,6 +1179,33 @@ const CSS = `
   font-size: 0.92rem;
   color: #334155;
   line-height: 1.5;
+}
+.svc-slider__nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.svc-slider__arrow {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1.5px solid #e2e8f0;
+  background: #fff;
+  color: #334155;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+.svc-slider__arrow:hover {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+  transform: scale(1.08);
 }
 .svc-slider__dots {
   display: flex;
