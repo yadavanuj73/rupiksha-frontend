@@ -685,8 +685,8 @@ const CSS = `
 
 /* ── Hero Section ── */
 .rp-hero-section {
-  background: #ffffff;
-  padding: 60px 5% 0;
+  background: #f8fafc;
+  padding: 40px 5% 0;
   position: relative;
   overflow: hidden;
   min-height: calc(100vh - 92px);
@@ -719,12 +719,12 @@ const CSS = `
 }
 .rp-hero-heading {
   font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
-  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-size: clamp(3rem, 5.5vw, 4.5rem);
   font-weight: 900;
   color: #0f172a;
-  line-height: 1.1;
-  letter-spacing: -2px;
-  margin-bottom: 24px;
+  line-height: 1.08;
+  letter-spacing: -2.5px;
+  margin-bottom: 28px;
 }
 .rp-hero-desc {
   font-size: 1.05rem;
@@ -779,11 +779,11 @@ const CSS = `
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  min-height: 480px;
+  min-height: 520px;
 }
 .rp-hero-character {
   width: 100%;
-  max-width: 420px;
+  max-width: 500px;
   height: auto;
   object-fit: contain;
   position: relative;
