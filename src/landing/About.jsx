@@ -736,12 +736,21 @@ const About = () => {
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
-                                                        color: 'white',
-                                                        fontSize: '48px',
-                                                        fontWeight: 'bold',
-                                                        animation: 'spin 3s linear infinite'
+                                                        animation: 'spin 3s linear infinite',
+                                                        padding: '10px',
+                                                        boxShadow: '0 10px 30px rgba(37, 99, 235, 0.3)'
                                                     }}>
-                                                        ₹
+                                                        <img 
+                                                            src={logo} 
+                                                            alt="Rupiksha" 
+                                                            style={{
+                                                                width: '100%',
+                                                                height: '100%',
+                                                                borderRadius: '50%',
+                                                                objectFit: 'contain',
+                                                                filter: 'brightness(0) invert(1)'
+                                                            }}
+                                                        />
                                                     </div>
                                                 </Html>
                                             }>
