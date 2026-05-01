@@ -37,9 +37,10 @@ export default function Navbar() {
 
                 {/* Desktop Links - Far Right */}
                 <div className="rp-nav__desktop">
+                    <button className={`rp-nav__link ${location.pathname === '/' ? 'active' : ''}`} onClick={handleLogoClick}>Home</button>
                     <button className={`rp-nav__link ${location.pathname === '/about' ? 'active' : ''}`} onClick={() => navigate('/about')}>About Us</button>
-                    <button className={`rp-nav__link ${location.pathname === '/leadership' ? 'active' : ''}`} onClick={() => navigate('/leadership')}>Our Leadership</button>
                     <button className="rp-nav__link" onClick={() => scroll('services')}>Services</button>
+                    <button className={`rp-nav__link ${location.pathname === '/leadership' ? 'active' : ''}`} onClick={() => navigate('/leadership')}>Our Leadership</button>
                     <button className={`rp-nav__link ${location.pathname === '/contact' ? 'active' : ''}`} onClick={() => navigate('/contact')}>Contact</button>
                     <button className="rp-btn rp-btn--sm rp-btn--primary" onClick={() => navigate('/portal')}>
                         Portal Login
@@ -57,10 +58,10 @@ export default function Navbar() {
             {/* Mobile Menu */}
             <div className={`rp-nav__mobile ${menu ? 'rp-nav__mobile--open' : ''}`}>
                 <div className="rp-nav__mobile-inner">
-                    <button className="rp-nav__mobile-link" onClick={() => { navigate('/'); setMenu(false); }}>Home</button>
+                    <button className="rp-nav__mobile-link" onClick={() => { navigate('/'); setMenu(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Home</button>
                     <button className="rp-nav__mobile-link" onClick={() => { navigate('/about'); setMenu(false); }}>About Us</button>
-                    <button className="rp-nav__mobile-link" onClick={() => { navigate('/leadership'); setMenu(false); }}>Our Leadership</button>
                     <button className="rp-nav__mobile-link" onClick={() => scroll('services')}>Services</button>
+                    <button className="rp-nav__mobile-link" onClick={() => { navigate('/leadership'); setMenu(false); }}>Our Leadership</button>
                     <button className="rp-nav__mobile-link" onClick={() => { navigate('/contact'); setMenu(false); }}>Contact</button>
                     <div style={{ padding: '20px 0' }}>
                         <button className="rp-btn rp-btn--primary" style={{ width: '100%' }} onClick={() => navigate('/portal')}>
