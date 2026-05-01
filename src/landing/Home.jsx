@@ -846,13 +846,16 @@ const CSS = `
 .svc-slider {
   display: flex;
   align-items: stretch;
-  gap: 48px;
+  gap: 60px;
+  min-height: 520px;
 }
 .svc-slider__left {
   flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  text-align: left;
+  align-items: flex-start;
 }
 .svc-slider__badge {
   display: inline-flex;
@@ -876,18 +879,18 @@ const CSS = `
   margin-bottom: 8px;
 }
 .svc-slider__title {
-  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-size: clamp(2.2rem, 4.5vw, 3.5rem);
   font-weight: 900;
   color: #0f172a;
-  letter-spacing: -1px;
-  margin-bottom: 16px;
+  letter-spacing: -1.5px;
+  margin-bottom: 20px;
 }
 .svc-slider__desc {
   font-size: 1.05rem;
   color: #475569;
-  line-height: 1.7;
-  max-width: 500px;
-  margin-bottom: 24px;
+  line-height: 1.8;
+  max-width: 480px;
+  margin-bottom: 32px;
 }
 .svc-slider__features {
   display: grid;
@@ -926,7 +929,7 @@ const CSS = `
   flex: 1;
   display: flex;
   align-items: stretch;
-  justify-content: center;
+  justify-content: flex-end;
 }
 .svc-slider__card {
   width: 100%;
@@ -937,7 +940,7 @@ const CSS = `
   flex-direction: column;
   align-items: center;
   text-align: center;
-  min-height: 480px;
+  min-height: 100%;
   position: relative;
   overflow: hidden;
 }
