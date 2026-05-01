@@ -722,56 +722,36 @@ const About = () => {
                                         <div style={{ 
                                             width: '100%', 
                                             height: '600px',
-                                            position: 'relative'
+                                            position: 'relative',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
                                         }}>
-                                            <Canvas 
-                                                dpr={1} 
-                                                camera={{ position: [0, 0, 10], fov: 35 }}
-                                                gl={{ antialias: true, powerPreference: 'high-performance' }}
-                                                shadows={false}
-                                            >
-                                                <Suspense fallback={
-                                                <Html center>
-                                                    <div style={{
-                                                        width: '300px',
-                                                        height: '300px',
-                                                        borderRadius: '20px',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        animation: 'spin 4s linear infinite',
-                                                        boxShadow: '0 25px 50px rgba(0, 0, 0, 0.3)',
-                                                        position: 'relative',
-                                                        border: '3px solid #e2e8f0',
-                                                        zIndex: 10,
-                                                        background: '#ffffff',
-                                                        padding: '10px'
-                                                    }}>
-                                                        <img 
-                                                            src="/cropped_circle_image.png" 
-                                                            alt="Coin" 
-                                                            style={{
-                                                                width: '100%',
-                                                                height: '100%',
-                                                                borderRadius: '15px',
-                                                                objectFit: 'cover'
-                                                            }}
-                                                        />
-                                                    </div>
-                                                </Html>
-                                            }>
-                                                    <Stage environment="city" intensity={0.6} contactShadow={false} adjustCamera={1.2}>
-                                                        <PresentationControls 
-                                                            speed={1.5} 
-                                                            global 
-                                                            zoom={0.75} 
-                                                            polar={[-0.2, Math.PI / 4]}
-                                                        >
-                                                            <CoinModel />
-                                                        </PresentationControls>
-                                                    </Stage>
-                                                </Suspense>
-                                            </Canvas>
+                                            <div style={{
+                                                width: '300px',
+                                                height: '300px',
+                                                borderRadius: '20px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                animation: 'spin 4s linear infinite',
+                                                boxShadow: '0 25px 50px rgba(0, 0, 0, 0.3)',
+                                                position: 'relative',
+                                                border: '3px solid #e2e8f0',
+                                                background: '#ffffff',
+                                                padding: '10px'
+                                            }}>
+                                                <img 
+                                                    src="/cropped_circle_image.png" 
+                                                    alt="Coin" 
+                                                    style={{
+                                                        width: '100%',
+                                                        height: '100%',
+                                                        borderRadius: '15px',
+                                                        objectFit: 'cover'
+                                                    }}
+                                                />
+                                            </div>
                                         </div>
                                     </div>
 
