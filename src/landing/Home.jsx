@@ -799,13 +799,13 @@ const CSS = `
 .rp-hero-character {
   width: 100%;
   max-width: 560px;
-  max-height: calc(100vh - 120px);
+  max-height: calc(100vh - 80px);
   height: auto;
   object-fit: contain;
   object-position: bottom;
   position: relative;
   z-index: 1;
-  /* transparent bg image - no blend needed */
+  margin-top: -40px;
 }
 .rp-hero-float-badge {
   position: absolute;
