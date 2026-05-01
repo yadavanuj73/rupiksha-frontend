@@ -629,7 +629,11 @@ const About = () => {
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
-        setMounted(true);
+        // Prevent initial animation jitter
+        const timer = setTimeout(() => {
+            setMounted(true);
+        }, 100);
+        return () => clearTimeout(timer);
     }, []);
 
     const mvContainerRef = useRef(null);
@@ -654,6 +658,13 @@ const About = () => {
     const visionOpacity = useTransform(smoothProgress, [0.15, 0.45], [0, 1]);
     const visionBlur = useTransform(smoothProgress, [0.15, 0.5], ["blur(15px)", "blur(0px)"]);
 
+    // Prevent scroll animations from running on initial load
+    const [animationsReady, setAnimationsReady] = useState(false);
+    useEffect(() => {
+        const timer = setTimeout(() => setAnimationsReady(true), 200);
+        return () => clearTimeout(timer);
+    }, []);
+
     useEffect(() => {
         window.scrollTo(0, 0);
         const h = () => setScrolled(window.scrollY > 40);
@@ -662,7 +673,7 @@ const About = () => {
     }, []);
 
     return (
-        <div className="about-root">
+        <div className={`about-root ${mounted ? 'ready' : ''}`}>
             <style>{ABOUT_CSS}</style>
 
             <Navbar />
@@ -976,6 +987,16 @@ const ABOUT_CSS = `
     font-family: 'Inter', sans-serif;
     overflow-x: hidden;
     scroll-behavior: smooth;
+}
+
+/* Prevent initial layout jitter */
+.about-root * {
+    animation-play-state: paused !important;
+    transition: none !important;
+}
+.about-root.ready * {
+    animation-play-state: running !important;
+    transition: all 0.3s ease !important;
 }
 
 
