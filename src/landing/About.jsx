@@ -10,7 +10,7 @@ import { useGLTF, Stage, PresentationControls, Float, Html } from '@react-three/
 import Footer from '../components/Footer';
 import Navbar from '../components/Navbar';
 
-// Preload the model
+// Preload the 3D model
 useGLTF.preload(coinModelPath);
 
 function CoinModel() {
@@ -626,7 +626,11 @@ const About = () => {
     const navigate = useNavigate();
     const [scrolled, setScrolled] = useState(false);
     const [view, setView] = useState('hero');
-    const [canvasReady, setCanvasReady] = useState(true); // Always ready for immediate render
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const mvContainerRef = useRef(null);
     const { scrollYProgress } = useScroll({
@@ -699,21 +703,42 @@ const About = () => {
                                         marginLeft: '-80px' // Moving it significantly left
                                     }}>
                                         <Canvas 
-                                            dpr={[1, 2]} 
+                                            dpr={1} 
                                             camera={{ position: [0, 0, 10], fov: 35 }}
                                             gl={{ antialias: true, powerPreference: 'high-performance' }}
-                                            style={{ background: 'transparent' }}
+                                            shadows={false}
+                                            frameloop="demand"
                                         >
-                                            <Stage environment="city" intensity={0.6} contactShadow={false} adjustCamera={1.2}>
-                                                <PresentationControls 
-                                                    speed={1.5} 
-                                                    global 
-                                                    zoom={0.75} 
-                                                    polar={[-0.2, Math.PI / 4]}
-                                                >
-                                                    <CoinModel />
-                                                </PresentationControls>
-                                            </Stage>
+                                            <Suspense fallback={
+                                            <Html center>
+                                                <div style={{
+                                                    width: '200px',
+                                                    height: '200px',
+                                                    borderRadius: '50%',
+                                                    background: 'linear-gradient(135deg, #2563eb, #1e40af)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    color: 'white',
+                                                    fontSize: '48px',
+                                                    fontWeight: 'bold',
+                                                    animation: 'spin 3s linear infinite'
+                                                }}>
+                                                    ₹
+                                                </div>
+                                            </Html>
+                                        }>
+                                                <Stage environment="city" intensity={0.6} contactShadow={false} adjustCamera={1.2}>
+                                                    <PresentationControls 
+                                                        speed={1.5} 
+                                                        global 
+                                                        zoom={0.75} 
+                                                        polar={[-0.2, Math.PI / 4]}
+                                                    >
+                                                        <CoinModel />
+                                                    </PresentationControls>
+                                                </Stage>
+                                            </Suspense>
                                         </Canvas>
                                     </div>
 
@@ -967,6 +992,7 @@ const ABOUT_CSS = `
     animation: shimmerText 4s linear infinite;
 }
 @keyframes shimmerText { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
 .about-section { padding: 110px 0; }
 .mv-section-tight { padding: 150px 0 20px; }
