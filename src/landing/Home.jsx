@@ -685,7 +685,7 @@ const CSS = `
 
 /* ── Hero Section ── */
 .rp-hero-section {
-  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+  background: linear-gradient(135deg, #fefce8 0%, #faf5ff 40%, #eff6ff 70%, #ffffff 100%);
   padding: 30px 5% 0;
   position: relative;
   overflow: hidden;
@@ -782,6 +782,19 @@ const CSS = `
   justify-content: center;
   min-height: 520px;
 }
+.rp-hero-right::before {
+  content: '';
+  position: absolute;
+  width: 90%;
+  height: 80%;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, rgba(253,230,138,0.25) 0%, rgba(196,181,253,0.2) 40%, transparent 70%);
+  border-radius: 50%;
+  z-index: 0;
+  filter: blur(30px);
+}
 .rp-hero-character {
   width: 100%;
   max-width: 500px;
@@ -789,6 +802,7 @@ const CSS = `
   object-fit: contain;
   position: relative;
   z-index: 1;
+  mix-blend-mode: multiply;
 }
 .rp-hero-float-badge {
   position: absolute;
