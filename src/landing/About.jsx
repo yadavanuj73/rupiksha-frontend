@@ -10,6 +10,9 @@ import { useGLTF, Stage, PresentationControls, Float, Html } from '@react-three/
 import Footer from '../components/Footer';
 import Navbar from '../components/Navbar';
 
+// Preload the model
+useGLTF.preload(coinModelPath);
+
 function CoinModel() {
     const { scene } = useGLTF(coinModelPath);
     const coinRef = useRef();
@@ -623,6 +626,7 @@ const About = () => {
     const navigate = useNavigate();
     const [scrolled, setScrolled] = useState(false);
     const [view, setView] = useState('hero');
+    const [canvasReady, setCanvasReady] = useState(true); // Always ready for immediate render
 
     const mvContainerRef = useRef(null);
     const { scrollYProgress } = useScroll({
@@ -698,19 +702,18 @@ const About = () => {
                                             dpr={[1, 2]} 
                                             camera={{ position: [0, 0, 10], fov: 35 }}
                                             gl={{ antialias: true, powerPreference: 'high-performance' }}
+                                            style={{ background: 'transparent' }}
                                         >
-                                            <Suspense fallback={null}>
-                                                <Stage environment="city" intensity={0.6} contactShadow={false} adjustCamera={1.2}>
-                                                    <PresentationControls 
-                                                        speed={1.5} 
-                                                        global 
-                                                        zoom={0.75} 
-                                                        polar={[-0.2, Math.PI / 4]}
-                                                    >
-                                                        <CoinModel />
-                                                    </PresentationControls>
-                                                </Stage>
-                                            </Suspense>
+                                            <Stage environment="city" intensity={0.6} contactShadow={false} adjustCamera={1.2}>
+                                                <PresentationControls 
+                                                    speed={1.5} 
+                                                    global 
+                                                    zoom={0.75} 
+                                                    polar={[-0.2, Math.PI / 4]}
+                                                >
+                                                    <CoinModel />
+                                                </PresentationControls>
+                                            </Stage>
                                         </Canvas>
                                     </div>
 
