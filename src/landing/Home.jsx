@@ -217,52 +217,76 @@ const ADVANTAGE = [
 ══════════════════════════════════════════════ */
 
 function Services() {
+    const [activeIndex, setActiveIndex] = useState(0);
+    const s = SERVICES[activeIndex];
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setActiveIndex((prev) => (prev + 1) % SERVICES.length);
+        }, 5000);
+        return () => clearInterval(timer);
+    }, [activeIndex]);
+
     return (
-        <section id="services" className="rp-services-section">
-            <SectionHead tag="Our Services" title="What We Offer" sub="Comprehensive financial solutions for your business" />
-            <div className="rp-services-intro">
-                <p>
-                    Launch banking, payments, utility, and document services from one platform.
-                    Each module is optimized for retailers and local operators.
-                </p>
-            </div>
-            <div className="rp-services-grid">
-                {SERVICES.map((s, i) => (
-                    <motion.article
-                        key={i}
-                        className="rp-service-showcase"
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true, amount: 0.2 }}
-                        transition={{ duration: 0.35, delay: i * 0.03 }}
-                        style={{
-                            background: s.grad,
-                            boxShadow: `0 20px 40px -10px ${s.glow}`,
-                        }}
+        <section id="services" style={{ background: '#ffffff', padding: '80px 5%', position: 'relative' }}>
+            <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+                <div className="svc-slider">
+                    <motion.div
+                        className="svc-slider__left"
+                        key={activeIndex + '-left'}
+                        initial={{ opacity: 0, x: -30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.45 }}
                     >
-                        <div className="rp-service-showcase__top">
-                            <span className="rp-service-showcase__tag">{s.tag}</span>
-                            <div className="rp-service-showcase__icon-wrap">
-                                {s.img ? (
-                                    <img src={s.img} alt={s.label} className="rp-service-showcase__image" />
-                                ) : (
-                                    <div className="rp-service-showcase__emoji">{s.emoji || '✦'}</div>
-                                )}
-                            </div>
-                        </div>
-                        <p className="rp-service-showcase__subtitle">{s.subtitle}</p>
-                        <h3 className="rp-service-showcase__title">{s.label}</h3>
-                        <p className="rp-service-showcase__desc">{s.desc}</p>
-                        <div className="rp-service-showcase__features">
-                            {(s.features || []).slice(0, 4).map((f, fi) => (
-                                <div key={fi} className="rp-service-showcase__feature">
-                                    <span className="rp-service-showcase__check">✓</span>
+                        <span className="svc-slider__badge" style={{ background: '#1e3a8a', color: '#fff' }}>
+                            ✦ {s.tag}
+                        </span>
+                        <p className="svc-slider__subtitle">{s.subtitle}</p>
+                        <h2 className="svc-slider__title">{s.label}</h2>
+                        <p className="svc-slider__desc">{s.desc}</p>
+                        <div className="svc-slider__features">
+                            {(s.features || []).map((f, fi) => (
+                                <div key={fi} className="svc-slider__feat-item">
+                                    <span style={{ color: '#16a34a', fontWeight: 900, fontSize: 18 }}>✓</span>
                                     <span>{f}</span>
                                 </div>
                             ))}
                         </div>
-                    </motion.article>
-                ))}
+                        <div className="svc-slider__dots">
+                            {SERVICES.map((_, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => setActiveIndex(i)}
+                                    className={`svc-slider__dot ${i === activeIndex ? 'svc-slider__dot--active' : ''}`}
+                                    aria-label={`Slide ${i + 1}`}
+                                />
+                            ))}
+                        </div>
+                    </motion.div>
+
+                    <motion.div
+                        className="svc-slider__right"
+                        key={activeIndex + '-right'}
+                        initial={{ opacity: 0, x: 30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.45 }}
+                    >
+                        <div
+                            className="svc-slider__card"
+                            style={{ background: s.grad, boxShadow: `0 30px 60px -15px ${s.glow}` }}
+                        >
+                            <h3 className="svc-slider__card-title">{s.label}</h3>
+                            <p className="svc-slider__card-desc">{s.desc}</p>
+                            <div className="svc-slider__card-icon">
+                                {s.img ? (
+                                    <img src={s.img} alt={s.label} style={{ width: 80, height: 80, objectFit: 'contain' }} />
+                                ) : (
+                                    <span style={{ fontSize: '3.5rem' }}>{s.emoji || '✦'}</span>
+                                )}
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>
             </div>
         </section>
     );
@@ -514,8 +538,8 @@ export default function Home() {
             <style>{CSS}</style>
             <div className="rp-root">
                 <Navbar />
-                <Advantage />
                 <Services />
+                <Advantage />
                 <VerticalCardSlider />
                 <Partners />
                 <Footer />
@@ -818,160 +842,141 @@ const CSS = `
 @media(max-width:900px){ .rp-grid--3 { grid-template-columns: repeat(2,1fr); } }
 @media(max-width:600px){ .rp-grid--3 { grid-template-columns: 1fr; } }
 
-.rp-services-section {
-  padding: 96px 5%;
-  background: #fff;
-  position: relative;
-  scroll-margin-top: 110px;
-}
-.rp-services-intro {
-  max-width: 760px;
-  margin: -20px auto 40px;
-  text-align: center;
-}
-.rp-services-intro p {
-  font-size: 1rem;
-  line-height: 1.8;
-  color: #64748b;
-}
-.rp-services-grid {
-  max-width: 1200px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px;
-}
-.rp-service-showcase {
-  color: #fff;
-  border-radius: 30px;
-  padding: 24px;
-  position: relative;
-  overflow: hidden;
-  min-height: 100%;
-}
-.rp-service-showcase::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(255,255,255,0.12), transparent 45%);
-  pointer-events: none;
-}
-.rp-service-showcase__top {
-  position: relative;
-  z-index: 1;
+/* ── Services Slider ── */
+.svc-slider {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
+  align-items: stretch;
+  gap: 48px;
 }
-.rp-service-showcase__tag {
+.svc-slider__left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.svc-slider__badge {
   display: inline-flex;
   align-items: center;
-  max-width: fit-content;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  background: rgba(255,255,255,0.15);
-  padding: 7px 12px;
+  gap: 6px;
+  padding: 8px 18px;
   border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.24);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  width: fit-content;
+  margin-bottom: 18px;
 }
-.rp-service-showcase__icon-wrap {
-  width: 68px;
-  height: 68px;
-  border-radius: 20px;
-  background: rgba(255,255,255,0.14);
-  border: 1px solid rgba(255,255,255,0.18);
+.svc-slider__subtitle {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+.svc-slider__title {
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: -1px;
+  margin-bottom: 16px;
+}
+.svc-slider__desc {
+  font-size: 1.05rem;
+  color: #475569;
+  line-height: 1.7;
+  max-width: 500px;
+  margin-bottom: 24px;
+}
+.svc-slider__features {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 24px;
+  margin-bottom: 32px;
+}
+.svc-slider__feat-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.92rem;
+  color: #334155;
+  line-height: 1.5;
+}
+.svc-slider__dots {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.svc-slider__dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  border: none;
+  background: #cbd5e1;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.3s;
+}
+.svc-slider__dot--active {
+  width: 32px;
+  background: #2563eb;
+}
+.svc-slider__right {
+  flex: 0.9;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
 }
-.rp-service-showcase__image {
-  width: 44px;
-  height: 44px;
-  object-fit: contain;
-  filter: drop-shadow(0 8px 18px rgba(0,0,0,0.25));
-}
-.rp-service-showcase__emoji {
-  font-size: 2rem;
-  line-height: 1;
-}
-.rp-service-showcase__subtitle,
-.rp-service-showcase__title,
-.rp-service-showcase__desc,
-.rp-service-showcase__features {
+.svc-slider__card {
+  width: 100%;
+  max-width: 420px;
+  border-radius: 32px;
+  padding: 48px 36px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  min-height: 380px;
   position: relative;
-  z-index: 1;
+  overflow: hidden;
 }
-.rp-service-showcase__subtitle {
-  margin-top: 20px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: rgba(255,255,255,0.82);
+.svc-slider__card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.1), transparent 50%);
+  pointer-events: none;
 }
-.rp-service-showcase__title {
-  margin-top: 10px;
-  font-size: 1.55rem;
+.svc-slider__card-title {
+  font-size: 1.8rem;
   font-weight: 900;
-  letter-spacing: -0.4px;
+  margin-bottom: 16px;
+  position: relative;
 }
-.rp-service-showcase__desc {
-  margin-top: 12px;
+.svc-slider__card-desc {
   font-size: 0.95rem;
   line-height: 1.7;
-  color: rgba(255,255,255,0.92);
+  color: rgba(255,255,255,0.88);
+  margin-bottom: 32px;
+  position: relative;
 }
-.rp-service-showcase__features {
-  margin-top: 20px;
-  display: grid;
-  gap: 10px;
+.svc-slider__card-icon {
+  margin-top: auto;
+  position: relative;
 }
-.rp-service-showcase__feature {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  font-size: 0.88rem;
-  line-height: 1.5;
-  color: rgba(255,255,255,0.95);
-}
-.rp-service-showcase__check {
-  color: #86efac;
-  font-weight: 900;
-  flex-shrink: 0;
-}
-@media(max-width: 1100px) {
-  .rp-services-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@media(max-width: 900px) {
+  .svc-slider {
+    flex-direction: column;
+    gap: 32px;
   }
-}
-@media(max-width: 700px) {
-  .rp-services-section {
-    padding: 84px 5%;
-    scroll-margin-top: 90px;
-  }
-  .rp-services-grid {
+  .svc-slider__features {
     grid-template-columns: 1fr;
-    gap: 18px;
   }
-  .rp-service-showcase {
-    border-radius: 24px;
-    padding: 20px;
-  }
-  .rp-service-showcase__icon-wrap {
-    width: 56px;
-    height: 56px;
-    border-radius: 16px;
-  }
-  .rp-service-showcase__image {
-    width: 36px;
-    height: 36px;
-  }
-  .rp-service-showcase__title {
-    font-size: 1.35rem;
+  .svc-slider__card {
+    max-width: 100%;
+    min-height: 280px;
   }
 }
 
