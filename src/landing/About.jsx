@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import logo from '../assets/rupiksha_logo.png';
 import genesisImg from '../assets/genesis_img.png';
 import coinModelPath from '../assets/indian_10_rupee_coin.glb';
+import croppedCircleImage from '../public/cropped_circle_image.png';
 import { Zap, ShieldCheck, Users, Target, Eye, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'framer-motion';
 import { Canvas, useFrame } from '@react-three/fiber';
@@ -744,7 +745,7 @@ const About = () => {
                                                         padding: '10px'
                                                     }}>
                                                         <img 
-                                                            src="https://i.ibb.co/6P6Y4qG/coin-image.png" 
+                                                            src={croppedCircleImage} 
                                                             alt="Coin" 
                                                             style={{
                                                                 width: '100%',
