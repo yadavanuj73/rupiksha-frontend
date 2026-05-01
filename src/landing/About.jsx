@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import logo from '../assets/rupiksha_logo.png';
 import genesisImg from '../assets/genesis_img.png';
 import coinModelPath from '../assets/indian_10_rupee_coin.glb';
-import croppedCircleImage from '../public/cropped_circle_image.png';
 import { Zap, ShieldCheck, Users, Target, Eye, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'framer-motion';
 import { Canvas, useFrame } from '@react-three/fiber';
@@ -15,17 +14,21 @@ import Navbar from '../components/Navbar';
 // useGLTF.preload(coinModelPath); // Temporarily disabled to show placeholder
 
 function CoinModel() {
-    const { scene } = useGLTF(coinModelPath);
-    const coinRef = useRef();
+    // Temporarily disabled to show fallback
+    return null;
+    
+    // Original code:
+    // const { scene } = useGLTF(coinModelPath);
+    // const coinRef = useRef();
 
-    // Slowly rotate the coin 360 degrees
-    useFrame((state, delta) => {
-        if (coinRef.current) {
-            coinRef.current.rotation.y += delta * 0.4; // Controlled slow rotation
-        }
-    });
+    // // Slowly rotate the coin 360 degrees
+    // useFrame((state, delta) => {
+    //     if (coinRef.current) {
+    //         coinRef.current.rotation.y += delta * 0.4; // Controlled slow rotation
+    //     }
+    // });
 
-    return <primitive ref={coinRef} object={scene} />;
+    // return <primitive ref={coinRef} object={scene} />;
 }
 
 function FlipCard({ card }) {
@@ -745,7 +748,7 @@ const About = () => {
                                                         padding: '10px'
                                                     }}>
                                                         <img 
-                                                            src={croppedCircleImage} 
+                                                            src="/cropped_circle_image.png" 
                                                             alt="Coin" 
                                                             style={{
                                                                 width: '100%',
