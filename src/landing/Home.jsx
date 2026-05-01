@@ -277,7 +277,7 @@ function Advantage() {
         <section
             id="advantage"
             style={{
-                background: 'linear-gradient(180deg, #eef2ff 0%, #ffffff 50%, #f0f9ff 100%)',
+                background: '#ffffff',
                 position: 'relative',
                 padding: '80px 5%',
             }}
