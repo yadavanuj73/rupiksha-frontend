@@ -11,7 +11,7 @@ import Footer from '../components/Footer';
 import Navbar from '../components/Navbar';
 
 // Preload the 3D model
-useGLTF.preload(coinModelPath);
+// useGLTF.preload(coinModelPath); // Temporarily disabled to show placeholder
 
 function CoinModel() {
     const { scene } = useGLTF(coinModelPath);
@@ -729,30 +729,32 @@ const About = () => {
                                                 <Suspense fallback={
                                                 <Html center>
                                                     <div style={{
-                                                        width: '220px',
-                                                        height: '220px',
+                                                        width: '250px',
+                                                        height: '250px',
                                                         borderRadius: '50%',
                                                         background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
                                                         animation: 'spin 3s linear infinite',
-                                                        boxShadow: '0 15px 35px rgba(245, 158, 11, 0.3)',
+                                                        boxShadow: '0 20px 40px rgba(245, 158, 11, 0.4)',
                                                         position: 'relative',
-                                                        border: '3px solid #f59e0b'
+                                                        border: '4px solid #f59e0b',
+                                                        zIndex: 10
                                                     }}>
                                                         <div style={{
-                                                            width: '190px',
-                                                            height: '190px',
+                                                            width: '210px',
+                                                            height: '210px',
                                                             borderRadius: '50%',
                                                             background: '#fbbf24',
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             justifyContent: 'center',
-                                                            border: '2px solid #f59e0b',
-                                                            fontSize: '72px',
+                                                            border: '3px solid #f59e0b',
+                                                            fontSize: '80px',
                                                             fontWeight: '900',
-                                                            color: '#92400e'
+                                                            color: '#92400e',
+                                                            textShadow: '2px 2px 4px rgba(0,0,0,0.3)'
                                                         }}>
                                                             ₹
                                                         </div>
