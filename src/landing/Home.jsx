@@ -809,8 +809,8 @@ const CSS = `
 }
 .rp-hero-float-badge {
   position: absolute;
-  top: 20px;
-  right: -20px;
+  top: 60px;
+  right: 0;
   background: #fff;
   border-radius: 16px;
   padding: 14px 20px;
@@ -823,8 +823,8 @@ const CSS = `
 }
 .rp-hero-stat-card {
   position: absolute;
-  bottom: 80px;
-  left: 10px;
+  bottom: 100px;
+  left: 30px;
   background: #fff;
   border-radius: 16px;
   padding: 18px 28px;
