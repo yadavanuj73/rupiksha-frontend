@@ -10,18 +10,17 @@ export default function Navbar() {
     const isHome = location.pathname === '/';
 
     const scroll = (id) => {
-        const scrollToEl = () => {
+        const scrollToEl = (smooth) => {
             const el = document.getElementById(id);
             if (el) {
                 const top = el.getBoundingClientRect().top + window.scrollY - 100;
-                window.scrollTo({ top, behavior: 'smooth' });
+                window.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' });
             }
         };
         if (isHome) {
-            scrollToEl();
+            scrollToEl(true);
         } else {
-            navigate('/');
-            setTimeout(scrollToEl, 400);
+            navigate('/?scrollTo=' + id);
         }
         setMenu(false);
     };

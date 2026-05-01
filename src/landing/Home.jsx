@@ -698,6 +698,23 @@ function Partners() {
    APP
 ══════════════════════════════════════════════ */
 export default function Home() {
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const scrollTo = params.get('scrollTo');
+        if (scrollTo) {
+            // Remove the query param from URL
+            window.history.replaceState({}, '', '/');
+            // Wait for DOM to render then scroll instantly (no animation = no flash)
+            requestAnimationFrame(() => {
+                const el = document.getElementById(scrollTo);
+                if (el) {
+                    const top = el.getBoundingClientRect().top + window.scrollY - 100;
+                    window.scrollTo({ top, behavior: 'auto' });
+                }
+            });
+        }
+    }, []);
+
     return (
         <>
             <style>{CSS}</style>
