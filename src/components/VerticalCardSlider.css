@@ -1,17 +1,8 @@
 /* src/components/VerticalCardSlider.css */
-.slider-section-wrapper {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    font-family: 'Inter', sans-serif;
-}
 
 .section-header-slider {
     text-align: center;
-    margin-top: 6vh;
-    margin-bottom: 1vh;
+    margin-bottom: 40px;
     padding: 0 20px;
     position: relative;
     z-index: 1;
@@ -48,58 +39,65 @@
     font-weight: 500;
 }
 
-.slider {
+/* Carousel */
+.hiw-carousel-wrap {
     position: relative;
     width: 100%;
-    flex: 1;
-    min-height: 0;
-    margin-top: 16px;
-}
-
-/* Base item styles */
-.item {
-    position: relative;
-    top: auto;
-    left: auto;
-    border-radius: 40px;
-    padding: 50px 45px;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
+    max-width: 1200px;
+    margin: 0 auto;
     overflow: hidden;
+    padding: 40px 0;
 }
 
-.item-step {
+.hiw-carousel-track {
+    position: relative;
+    height: 480px;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.hiw-card {
+    width: 380px;
+    height: 440px;
+    border-radius: 32px;
+    padding: 40px 36px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.08);
+}
+
+.hiw-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 20;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid #e2e8f0;
+    background: #fff;
+    color: #334155;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s;
+    font-family: inherit;
+}
+.hiw-arrow:hover {
+    background: #2563eb;
     color: #fff;
+    border-color: #2563eb;
 }
-
-/* Hover light effect for the 3D icons */
-.hover-light-icon {
-    opacity: 0.15;
-    transform: scale(0.9) translate3d(0, 0, 0);
-}
-
-.item:hover .hover-light-icon {
-    opacity: 1;
-    transform: scale(1.1) translate3d(0, -10px, 0);
-    filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.3)) !important;
-}
+.hiw-arrow--left { left: 20px; }
+.hiw-arrow--right { right: 20px; }
 
 @media (max-width: 768px) {
-    .slider-main-title {
-        font-size: 2.5rem;
-    }
-
-    .slider-main-desc {
-        font-size: 1.05rem;
-    }
-
-    .item {
-        width: min(340px, 88vw) !important;
-        height: min(420px, 48vh) !important;
-        padding: 32px 24px;
-    }
+    .slider-main-title { font-size: 2.5rem; }
+    .slider-main-desc { font-size: 1.05rem; }
+    .hiw-card { width: 280px; height: 360px; padding: 28px 24px; }
+    .hiw-carousel-track { height: 380px; }
 }

@@ -369,19 +369,88 @@ function StatsCounter() {
     );
 }
 
+function useScrollLock(ref, totalSlides, setIndex, autoTime = 1200) {
+    const [locked, setLocked] = useState(false);
+    const [completed, setCompleted] = useState(false);
+    const indexRef = useRef(0);
+    const wheelCooldown = useRef(false);
+
+    useEffect(() => {
+        if (!ref.current || completed) return;
+        const el = ref.current;
+        const observer = new IntersectionObserver(([entry]) => {
+            if (entry.isIntersecting && entry.intersectionRatio > 0.5 && !completed) {
+                setLocked(true);
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, { threshold: 0.5 });
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [ref, completed]);
+
+    useEffect(() => {
+        if (!locked || completed) return;
+        const handleWheel = (e) => {
+            if (wheelCooldown.current) { e.preventDefault(); return; }
+            if (e.deltaY > 0) {
+                e.preventDefault();
+                wheelCooldown.current = true;
+                if (indexRef.current < totalSlides - 1) {
+                    indexRef.current++;
+                    setIndex(indexRef.current);
+                } else {
+                    setLocked(false);
+                    setCompleted(true);
+                }
+                setTimeout(() => { wheelCooldown.current = false; }, 600);
+            } else if (e.deltaY < 0) {
+                e.preventDefault();
+                wheelCooldown.current = true;
+                if (indexRef.current > 0) {
+                    indexRef.current--;
+                    setIndex(indexRef.current);
+                }
+                setTimeout(() => { wheelCooldown.current = false; }, 600);
+            }
+        };
+        window.addEventListener('wheel', handleWheel, { passive: false });
+        return () => window.removeEventListener('wheel', handleWheel);
+    }, [locked, completed, totalSlides, setIndex]);
+
+    useEffect(() => {
+        if (!locked || completed) return;
+        const timer = setInterval(() => {
+            if (indexRef.current < totalSlides - 1) {
+                indexRef.current++;
+                setIndex(indexRef.current);
+            } else {
+                setLocked(false);
+                setCompleted(true);
+            }
+        }, autoTime);
+        return () => clearInterval(timer);
+    }, [locked, completed, totalSlides, setIndex, autoTime]);
+
+    useEffect(() => {
+        if (locked && !completed) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => { document.body.style.overflow = ''; };
+    }, [locked, completed]);
+
+    return { locked, completed };
+}
+
 function Services() {
     const [activeIndex, setActiveIndex] = useState(0);
     const s = SERVICES[activeIndex];
-
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setActiveIndex((prev) => (prev + 1) % SERVICES.length);
-        }, 5000);
-        return () => clearInterval(timer);
-    }, [activeIndex]);
+    const sectionRef = useRef(null);
+    useScrollLock(sectionRef, SERVICES.length, setActiveIndex, 1200);
 
     return (
-        <section id="services" style={{ background: '#ffffff', padding: '80px 5%', position: 'relative' }}>
+        <section id="services" ref={sectionRef} style={{ background: '#ffffff', padding: '80px 5%', position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center' }}>
             <div style={{ maxWidth: 1200, margin: '0 auto' }}>
                 <div className="svc-slider">
                     <motion.div
@@ -459,114 +528,67 @@ function Services() {
 
 function Advantage() {
     const [currentIndex, setCurrentIndex] = useState(0);
+    const sectionRef = useRef(null);
+    useScrollLock(sectionRef, ADVANTAGE.length, setCurrentIndex, 1200);
+
     const nextSlide = () => setCurrentIndex((prev) => (prev === ADVANTAGE.length - 1 ? 0 : prev + 1));
     const prevSlide = () => setCurrentIndex((prev) => (prev === 0 ? ADVANTAGE.length - 1 : prev - 1));
 
     return (
         <section
             id="advantage"
-            style={{
-                background: '#ffffff',
-                position: 'relative',
-                padding: '80px 5%',
-            }}
+            ref={sectionRef}
+            className="rp-adv-section"
         >
-            <div style={{ textAlign: 'center', marginBottom: 24 }}>
+            <div style={{ textAlign: 'center', marginBottom: 40 }}>
                 <div className="writing-header writing-header--visible">
-                    <span className="tag-reveal tag-reveal--visible">Why Choose Us</span>
-                    <h2 className="typewriter-title typewriter-title--visible">The Rupiksha Advantage</h2>
+                    <span className="tag-reveal tag-reveal--visible" style={{ color: '#fff', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)' }}>Why Choose Us</span>
+                    <h2 className="typewriter-title typewriter-title--visible" style={{ color: '#fff' }}>The Rupiksha Advantage</h2>
                 </div>
             </div>
-            <div className="relative" style={{ maxWidth: 1000, margin: '0 auto' }}>
-                <button
-                    onClick={prevSlide}
-                    aria-label="Previous advantage"
-                    style={{
-                        position: 'absolute',
-                        left: 'clamp(2px, 1.2vw, 12px)',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        zIndex: 3,
-                        width: 52,
-                        height: 52,
-                        borderRadius: 999,
-                        border: '2px solid #3b82f6',
-                        background: '#ffffff',
-                        boxShadow: '0 4px 15px rgba(59,130,246,0.15)',
-                        color: '#2563eb',
-                        fontWeight: 900,
-                        fontSize: 24,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                    }}
-                >
-                    ‹
-                </button>
-                <button
-                    onClick={nextSlide}
-                    aria-label="Next advantage"
-                    style={{
-                        position: 'absolute',
-                        right: 'clamp(2px, 1.2vw, 12px)',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        zIndex: 3,
-                        width: 52,
-                        height: 52,
-                        borderRadius: 999,
-                        border: '2px solid #3b82f6',
-                        background: '#ffffff',
-                        boxShadow: '0 4px 15px rgba(59,130,246,0.15)',
-                        color: '#2563eb',
-                        fontWeight: 900,
-                        fontSize: 24,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                    }}
-                >
-                    ›
-                </button>
-
-                <div className="relative overflow-hidden">
-                    <div
-                        className="flex transition-transform duration-500 ease-in-out"
-                        style={{ transform: `translateX(-${currentIndex * 100}%)` }}
-                    >
-                        {ADVANTAGE.map((item, i) => (
-                            <div key={i} className="w-full flex-shrink-0" style={{ display: 'flex', justifyContent: 'center' }}>
-                                <motion.div
-                                    style={{
-                                        width: 'min(480px, 92vw)',
-                                        background: item.grad,
-                                        borderRadius: 32,
-                                        padding: 'min(45px, 6vw)',
-                                        boxShadow: `0 30px 60px ${item.color}30`,
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        textAlign: 'center',
-                                        border: 'none',
-                                    }}
-                                    initial={{ opacity: 0.4 }}
-                                    animate={{ opacity: 1 }}
-                                    transition={{ duration: 0.35 }}
-                                >
-                                    <div style={{
-                                        width: 80, height: 80, borderRadius: 24,
-                                        background: 'rgba(255,255,255,0.2)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        fontSize: '2.5rem', marginBottom: 24
-                                    }}>
-                                        {item.icon}
-                                    </div>
-                                    <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#ffffff', marginBottom: 16 }}>{item.title}</h3>
-                                    <p style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.6, fontWeight: 500 }}>{item.desc}</p>
-                                </motion.div>
-                            </div>
-                        ))}
-                    </div>
+            <div className="rp-adv-carousel">
+                <button onClick={prevSlide} className="rp-adv-arrow rp-adv-arrow--left">‹</button>
+                <button onClick={nextSlide} className="rp-adv-arrow rp-adv-arrow--right">›</button>
+                <div className="rp-adv-track">
+                    {ADVANTAGE.map((item, i) => {
+                        const offset = i - currentIndex;
+                        const isActive = offset === 0;
+                        const scale = isActive ? 1 : 0.75;
+                        const opacity = Math.abs(offset) > 2 ? 0 : isActive ? 1 : 0.5;
+                        const translateX = offset * 340;
+                        const translateY = Math.abs(offset) * 60;
+                        const rotate = offset * -5;
+                        return (
+                            <motion.div
+                                key={i}
+                                className="rp-adv-card"
+                                animate={{
+                                    x: translateX,
+                                    y: translateY,
+                                    scale,
+                                    opacity,
+                                    rotateZ: rotate,
+                                    zIndex: isActive ? 10 : 5 - Math.abs(offset),
+                                }}
+                                transition={{ duration: 0.5, ease: 'easeInOut' }}
+                                style={{
+                                    background: isActive ? '#fff' : item.grad,
+                                    position: 'absolute',
+                                }}
+                            >
+                                <div style={{
+                                    width: 60, height: 60, borderRadius: 18,
+                                    background: isActive ? `${item.color}15` : 'rgba(255,255,255,0.2)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontSize: '2rem', marginBottom: 20
+                                }}>
+                                    {item.icon}
+                                </div>
+                                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: isActive ? '#0f172a' : '#fff', marginBottom: 12 }}>{item.title}</h3>
+                                <p style={{ fontSize: '0.95rem', color: isActive ? '#475569' : 'rgba(255,255,255,0.8)', lineHeight: 1.6, fontWeight: 500 }}>{item.desc}</p>
+                            </motion.div>
+                        );
+                    })}
                 </div>
             </div>
         </section>
@@ -963,6 +985,73 @@ const CSS = `
 @media(max-width: 600px) {
   .rp-stats-inner { gap: 24px; }
   .rp-stat-item { flex: 1 1 40%; }
+}
+
+/* ── Advantage Section ── */
+.rp-adv-section {
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%);
+  position: relative;
+  padding: 80px 5%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.rp-adv-carousel {
+  position: relative;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  overflow: visible;
+}
+.rp-adv-track {
+  position: relative;
+  height: 380px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rp-adv-card {
+  width: 320px;
+  height: 340px;
+  border-radius: 24px;
+  padding: 36px 32px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}
+.rp-adv-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  font-size: 24px;
+  font-weight: 900;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s;
+  backdrop-filter: blur(8px);
+}
+.rp-adv-arrow:hover {
+  background: rgba(255,255,255,0.25);
+  border-color: rgba(255,255,255,0.5);
+  transform: translateY(-50%) scale(1.1);
+}
+.rp-adv-arrow--left { left: 10px; }
+.rp-adv-arrow--right { right: 10px; }
+@media(max-width: 768px) {
+  .rp-adv-card { width: 260px; height: 280px; padding: 28px 24px; }
+  .rp-adv-track { height: 320px; }
 }
 
 /* ── Gradient text ── */
