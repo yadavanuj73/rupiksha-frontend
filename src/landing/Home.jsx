@@ -652,7 +652,7 @@ export default function Home() {
    STYLES (injected – no separate CSS file needed)
 ══════════════════════════════════════════════ */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@700;800&family=DM+Serif+Display:ital@0;1&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -685,8 +685,8 @@ const CSS = `
 
 /* ── Hero Section ── */
 .rp-hero-section {
-  background: #f8fafc;
-  padding: 40px 5% 0;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+  padding: 30px 5% 0;
   position: relative;
   overflow: hidden;
   min-height: calc(100vh - 92px);
@@ -718,20 +718,21 @@ const CSS = `
   margin-bottom: 20px;
 }
 .rp-hero-heading {
-  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
-  font-size: clamp(3rem, 5.5vw, 4.5rem);
-  font-weight: 900;
+  font-family: 'DM Serif Display', serif;
+  font-size: clamp(3rem, 6vw, 5rem);
+  font-weight: 400;
   color: #0f172a;
-  line-height: 1.08;
-  letter-spacing: -2.5px;
+  line-height: 1.05;
+  letter-spacing: -1px;
   margin-bottom: 28px;
 }
 .rp-hero-desc {
-  font-size: 1.05rem;
-  color: #475569;
-  line-height: 1.8;
+  font-size: 1.08rem;
+  color: #334155;
+  line-height: 1.75;
   max-width: 440px;
-  margin-bottom: 36px;
+  margin-bottom: 40px;
+  font-weight: 500;
 }
 .rp-hero-buttons {
   display: flex;
