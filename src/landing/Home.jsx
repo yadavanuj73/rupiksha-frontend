@@ -216,6 +216,105 @@ const ADVANTAGE = [
    • Improved mobile menu
 ══════════════════════════════════════════════ */
 
+const HERO_SLIDES = [
+    {
+        tag: 'EASY PAYMENT',
+        title: 'Pay\nfast and smarter\nfrom anywhere',
+        desc: "Experience the future of payments: fast, secure, and tailored for the next generation's convenience and trust.",
+        badge: { icon: '⚡', label: '99.9% Success', sub: 'Reliable & Instant' },
+        stat: { label: 'Retailers', value: '1000+' },
+    },
+    {
+        tag: 'SECURE TRANSACTIONS',
+        title: 'Banking\nreimagined\nfor your life',
+        desc: 'Your security is our priority. We use world-class encryption to keep your money and data safe at all times.',
+        badge: { icon: '🛡️', label: 'RBI Compliant', sub: 'Bank-grade Security' },
+        stat: { label: 'Monthly Volume', value: '₹200Cr+' },
+    },
+    {
+        tag: 'NEXT-GEN FINTECH',
+        title: 'One app Infinite\npossibilities',
+        desc: 'Manage your finances, pay bills, and send money instantly. Everything you need is just a tap away.',
+        badge: { icon: '🔔', label: '24/7 Support', sub: 'Dedicated Helpdesk' },
+        stat: { label: 'Agents', value: '15,000+' },
+    },
+];
+
+function Hero() {
+    const [slideIndex, setSlideIndex] = useState(0);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setSlideIndex((prev) => (prev + 1) % HERO_SLIDES.length);
+        }, 4000);
+        return () => clearInterval(timer);
+    }, [slideIndex]);
+
+    const slide = HERO_SLIDES[slideIndex];
+
+    return (
+        <section className="rp-hero-section">
+            <div className="rp-hero-inner">
+                <motion.div
+                    className="rp-hero-left"
+                    key={slideIndex}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                >
+                    <span className="rp-hero-tag">{slide.tag}</span>
+                    <h1 className="rp-hero-heading">
+                        {slide.title.split('\n').map((line, i) => (
+                            <span key={i}>{line}<br /></span>
+                        ))}
+                    </h1>
+                    <p className="rp-hero-desc">{slide.desc}</p>
+                    <div className="rp-hero-buttons">
+                        <button className="rp-hero-btn-primary" onClick={() => navigate('/portal')}>
+                            join now →
+                        </button>
+                        <button className="rp-hero-btn-store">
+                            <span style={{ fontSize: 20 }}>▶</span>
+                            <div>
+                                <small style={{ fontSize: 9, letterSpacing: 1, textTransform: 'uppercase' }}>GET IT ON</small>
+                                <div style={{ fontWeight: 800, fontSize: 14 }}>Google Play</div>
+                            </div>
+                        </button>
+                    </div>
+                </motion.div>
+
+                <div className="rp-hero-right">
+                    <img src="/character.png" alt="Rupiksha" className="rp-hero-character" />
+                    <motion.div
+                        className="rp-hero-float-badge"
+                        key={slideIndex + '-badge'}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.4, delay: 0.2 }}
+                    >
+                        <span style={{ fontSize: 24 }}>{slide.badge.icon}</span>
+                        <div>
+                            <div style={{ fontWeight: 800, fontSize: 14, color: '#0f172a' }}>{slide.badge.label}</div>
+                            <div style={{ fontSize: 11, color: '#64748b' }}>{slide.badge.sub}</div>
+                        </div>
+                    </motion.div>
+                    <motion.div
+                        className="rp-hero-stat-card"
+                        key={slideIndex + '-stat'}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.3 }}
+                    >
+                        <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>{slide.stat.label}</div>
+                        <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a' }}>{slide.stat.value}</div>
+                    </motion.div>
+                </div>
+            </div>
+        </section>
+    );
+}
+
 function Services() {
     const [activeIndex, setActiveIndex] = useState(0);
     const s = SERVICES[activeIndex];
@@ -538,6 +637,7 @@ export default function Home() {
             <style>{CSS}</style>
             <div className="rp-root">
                 <Navbar />
+                <Hero />
                 <Services />
                 <Advantage />
                 <VerticalCardSlider />
@@ -581,6 +681,150 @@ const CSS = `
   display: flex;
   flex-direction: column;
   padding-top: 92px;
+}
+
+/* ── Hero Section ── */
+.rp-hero-section {
+  background: #ffffff;
+  padding: 60px 5% 0;
+  position: relative;
+  overflow: hidden;
+  min-height: calc(100vh - 92px);
+  display: flex;
+  align-items: center;
+}
+.rp-hero-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  width: 100%;
+}
+.rp-hero-left {
+  flex: 1.2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+.rp-hero-tag {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #2563eb;
+  margin-bottom: 20px;
+}
+.rp-hero-heading {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 900;
+  color: #0f172a;
+  line-height: 1.1;
+  letter-spacing: -2px;
+  margin-bottom: 24px;
+}
+.rp-hero-desc {
+  font-size: 1.05rem;
+  color: #475569;
+  line-height: 1.8;
+  max-width: 440px;
+  margin-bottom: 36px;
+}
+.rp-hero-buttons {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.rp-hero-btn-primary {
+  padding: 16px 36px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.25s;
+  font-family: inherit;
+}
+.rp-hero-btn-primary:hover {
+  background: #1d4ed8;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(37,99,235,0.35);
+}
+.rp-hero-btn-store {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  background: #0f172a;
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.25s;
+}
+.rp-hero-btn-store:hover {
+  background: #1e293b;
+  transform: translateY(-2px);
+}
+.rp-hero-right {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 480px;
+}
+.rp-hero-character {
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+  object-fit: contain;
+  position: relative;
+  z-index: 1;
+}
+.rp-hero-float-badge {
+  position: absolute;
+  top: 20px;
+  right: -20px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+  border: 1px solid #f1f5f9;
+  z-index: 2;
+}
+.rp-hero-stat-card {
+  position: absolute;
+  bottom: 80px;
+  left: 10px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 18px 28px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+  border: 1px solid #f1f5f9;
+  z-index: 2;
+  text-align: center;
+}
+@media(max-width: 900px) {
+  .rp-hero-inner { flex-direction: column; text-align: center; }
+  .rp-hero-left { align-items: center; text-align: center; }
+  .rp-hero-heading { font-size: clamp(2rem, 8vw, 3rem); }
+  .rp-hero-desc { max-width: 100%; }
+  .rp-hero-right { min-height: 350px; }
+  .rp-hero-character { max-width: 280px; }
+  .rp-hero-float-badge { top: 0; right: 0; }
+  .rp-hero-stat-card { bottom: 40px; left: 0; }
+  .rp-hero-buttons { justify-content: center; }
 }
 
 /* ── Gradient text ── */
