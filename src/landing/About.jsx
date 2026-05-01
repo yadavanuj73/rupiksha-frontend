@@ -729,27 +729,33 @@ const About = () => {
                                                 <Suspense fallback={
                                                 <Html center>
                                                     <div style={{
-                                                        width: '250px',
-                                                        height: '250px',
-                                                        borderRadius: '20px',
-                                                        background: '#f8fafc',
+                                                        width: '220px',
+                                                        height: '220px',
+                                                        borderRadius: '50%',
+                                                        background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
                                                         animation: 'spin 3s linear infinite',
-                                                        padding: '20px',
-                                                        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
-                                                        border: '1px solid #e2e8f0'
+                                                        boxShadow: '0 15px 35px rgba(245, 158, 11, 0.3)',
+                                                        position: 'relative',
+                                                        border: '3px solid #f59e0b'
                                                     }}>
-                                                        <img 
-                                                            src={logo} 
-                                                            alt="Rupiksha" 
-                                                            style={{
-                                                                width: '100%',
-                                                                height: '100%',
-                                                                objectFit: 'contain'
-                                                            }}
-                                                        />
+                                                        <div style={{
+                                                            width: '190px',
+                                                            height: '190px',
+                                                            borderRadius: '50%',
+                                                            background: '#fbbf24',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            border: '2px solid #f59e0b',
+                                                            fontSize: '72px',
+                                                            fontWeight: '900',
+                                                            color: '#92400e'
+                                                        }}>
+                                                            ₹
+                                                        </div>
                                                     </div>
                                                 </Html>
                                             }>
