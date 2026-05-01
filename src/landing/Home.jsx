@@ -1238,8 +1238,8 @@ const CSS = `
 @keyframes headerHeroScale { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
 
 .tag-reveal { 
-  display: inline-block; padding: 4px 14px; background: rgba(255,255,255,0.1); 
-  border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 11px; font-weight: 800; border-radius: 99px; 
+  display: inline-block; padding: 4px 14px; background: #eef2ff; 
+  border: 1px solid #c7d2fe; color: #2563eb; font-size: 11px; font-weight: 800; border-radius: 99px; 
   text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; 
   opacity: 0; transform: translateY(-20px);
 }
@@ -1248,7 +1248,7 @@ const CSS = `
 }
 
 .typewriter-title {
-  font-size: clamp(2rem, 4.5vw, 3rem); font-weight: 900; color: #fff; 
+  font-size: clamp(2rem, 4.5vw, 3rem); font-weight: 900; color: #0f172a; 
   margin-bottom: 24px; white-space: nowrap; overflow: hidden;
   width: 0; display: inline-block; letter-spacing: -1px;
   border-right: 3px solid transparent;
