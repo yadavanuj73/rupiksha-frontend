@@ -316,11 +316,41 @@ function Hero() {
 }
 
 const STATS = [
-    { value: '100+', label: 'Cities Covered' },
-    { value: '50K+', label: 'Active Retailers' },
-    { value: '₹200Cr+', label: 'Monthly Volume' },
-    { value: '99.9%', label: 'Uptime SLA' },
+    { end: 100, suffix: '+', label: 'Cities Covered' },
+    { end: 50, suffix: 'K+', label: 'Active Retailers' },
+    { prefix: '₹', end: 200, suffix: 'Cr+', label: 'Monthly Volume' },
+    { end: 99.9, suffix: '%', label: 'Uptime SLA', decimals: 1 },
 ];
+
+function AnimatedNumber({ end, decimals = 0, duration = 2000 }) {
+    const [count, setCount] = useState(0);
+    const [started, setStarted] = useState(false);
+    const ref = useRef(null);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => { if (entry.isIntersecting && !started) setStarted(true); },
+            { threshold: 0.3 }
+        );
+        if (ref.current) observer.observe(ref.current);
+        return () => observer.disconnect();
+    }, [started]);
+
+    useEffect(() => {
+        if (!started) return;
+        let startTime = null;
+        const step = (timestamp) => {
+            if (!startTime) startTime = timestamp;
+            const progress = Math.min((timestamp - startTime) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            setCount(parseFloat((eased * end).toFixed(decimals)));
+            if (progress < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+    }, [started, end, duration, decimals]);
+
+    return <span ref={ref}>{decimals > 0 ? count.toFixed(decimals) : Math.floor(count)}</span>;
+}
 
 function StatsCounter() {
     return (
@@ -328,7 +358,9 @@ function StatsCounter() {
             <div className="rp-stats-inner">
                 {STATS.map((s, i) => (
                     <div key={i} className="rp-stat-item">
-                        <div className="rp-stat-value">{s.value}</div>
+                        <div className="rp-stat-value">
+                            {s.prefix || ''}<AnimatedNumber end={s.end} decimals={s.decimals || 0} />{s.suffix}
+                        </div>
                         <div className="rp-stat-label">{s.label}</div>
                     </div>
                 ))}
