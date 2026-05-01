@@ -729,18 +729,18 @@ const About = () => {
                                                 <Suspense fallback={
                                                 <Html center>
                                                     <div style={{
-                                                        width: '300px',
-                                                        height: '300px',
-                                                        borderRadius: '20px',
+                                                        width: '280px',
+                                                        height: '280px',
+                                                        borderRadius: '50%',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
                                                         animation: 'spin 4s linear infinite',
                                                         boxShadow: '0 25px 50px rgba(0, 0, 0, 0.3)',
                                                         position: 'relative',
-                                                        border: '3px solid #e2e8f0',
+                                                        border: '4px solid #e2e8f0',
                                                         background: '#ffffff',
-                                                        padding: '10px'
+                                                        padding: '5px'
                                                     }}>
                                                         <img 
                                                             src="/cropped_circle_image.png" 
@@ -748,7 +748,7 @@ const About = () => {
                                                             style={{
                                                                 width: '100%',
                                                                 height: '100%',
-                                                                borderRadius: '15px',
+                                                                borderRadius: '50%',
                                                                 objectFit: 'cover'
                                                             }}
                                                         />
