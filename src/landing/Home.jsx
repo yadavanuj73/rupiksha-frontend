@@ -850,7 +850,7 @@ const CSS = `
   min-height: 520px;
 }
 .svc-slider__left {
-  flex: 1;
+  flex: 1.3;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -926,7 +926,7 @@ const CSS = `
   background: #2563eb;
 }
 .svc-slider__right {
-  flex: 1;
+  flex: 0.7;
   display: flex;
   align-items: stretch;
   justify-content: flex-end;
