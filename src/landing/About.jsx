@@ -707,7 +707,6 @@ const About = () => {
                                             camera={{ position: [0, 0, 10], fov: 35 }}
                                             gl={{ antialias: true, powerPreference: 'high-performance' }}
                                             shadows={false}
-                                            frameloop="demand"
                                         >
                                             <Suspense fallback={
                                             <Html center>
