@@ -199,12 +199,12 @@ const HOW = [
 ];
 
 const ADVANTAGE = [
-    { icon: '🔐', title: 'Secure Transactions', desc: 'Bank-grade security with end-to-end encryption and multi-factor authentication for all transactions.', color: '#4f46e5' },
-    { icon: '⚡', title: 'Real-time Processing', desc: 'Instant transaction processing with immediate confirmations and minimal wait times.', color: '#10b981' },
-    { icon: '💰', title: 'High Commission', desc: 'Earn attractive commissions on every transaction with timely settlements to your account.', color: '#f59e0b' },
-    { icon: '📊', title: 'Live Analytics', desc: 'Comprehensive reporting and analytics to track your transactions and business growth.', color: '#8b5cf6' },
-    { icon: '🛎️', title: '24/7 Support', desc: 'Dedicated customer support available round-the-clock to assist with any queries or issues.', color: '#f43f5e' },
-    { icon: '🏦', title: 'RBI Compliant', desc: 'Fully compliant with all RBI regulations and guidelines for digital payment services.', color: '#334155' },
+    { icon: '🔐', title: 'Secure Transactions', desc: 'Bank-grade security with end-to-end encryption and multi-factor authentication for all transactions.', color: '#4f46e5', grad: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)' },
+    { icon: '⚡', title: 'Real-time Processing', desc: 'Instant transaction processing with immediate confirmations and minimal wait times.', color: '#10b981', grad: 'linear-gradient(135deg, #059669 0%, #10b981 100%)' },
+    { icon: '💰', title: 'High Commission', desc: 'Earn attractive commissions on every transaction with timely settlements to your account.', color: '#f59e0b', grad: 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)' },
+    { icon: '📊', title: 'Live Analytics', desc: 'Comprehensive reporting and analytics to track your transactions and business growth.', color: '#8b5cf6', grad: 'linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%)' },
+    { icon: '🛎️', title: '24/7 Support', desc: 'Dedicated customer support available round-the-clock to assist with any queries or issues.', color: '#f43f5e', grad: 'linear-gradient(135deg, #e11d48 0%, #f43f5e 100%)' },
+    { icon: '🏦', title: 'RBI Compliant', desc: 'Fully compliant with all RBI regulations and guidelines for digital payment services.', color: '#334155', grad: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)' },
 ];
 
 /* ══════════════════════════════════════════════
@@ -350,15 +350,15 @@ function Advantage() {
                                 <motion.div
                                     style={{
                                         width: 'min(480px, 92vw)',
-                                        background: '#ffffff',
+                                        background: item.grad,
                                         borderRadius: 32,
                                         padding: 'min(45px, 6vw)',
-                                        boxShadow: '0 30px 60px rgba(0,0,0,0.08)',
+                                        boxShadow: `0 30px 60px ${item.color}30`,
                                         display: 'flex',
                                         flexDirection: 'column',
                                         alignItems: 'center',
                                         textAlign: 'center',
-                                        border: '1.2px solid #f1f5f9',
+                                        border: 'none',
                                     }}
                                     initial={{ opacity: 0.4 }}
                                     animate={{ opacity: 1 }}
@@ -366,14 +366,14 @@ function Advantage() {
                                 >
                                     <div style={{
                                         width: 80, height: 80, borderRadius: 24,
-                                        background: `${item.color}10`,
+                                        background: 'rgba(255,255,255,0.2)',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         fontSize: '2.5rem', marginBottom: 24
                                     }}>
                                         {item.icon}
                                     </div>
-                                    <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', marginBottom: 16 }}>{item.title}</h3>
-                                    <p style={{ fontSize: '1.1rem', color: '#64748b', lineHeight: 1.6, fontWeight: 500 }}>{item.desc}</p>
+                                    <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#ffffff', marginBottom: 16 }}>{item.title}</h3>
+                                    <p style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.6, fontWeight: 500 }}>{item.desc}</p>
                                 </motion.div>
                             </div>
                         ))}
