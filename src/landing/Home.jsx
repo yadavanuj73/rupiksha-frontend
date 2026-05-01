@@ -923,22 +923,21 @@ const CSS = `
   background: #2563eb;
 }
 .svc-slider__right {
-  flex: 0.9;
+  flex: 1;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
 }
 .svc-slider__card {
   width: 100%;
-  max-width: 420px;
   border-radius: 32px;
-  padding: 48px 36px;
+  padding: 56px 40px;
   color: #fff;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  min-height: 380px;
+  min-height: 480px;
   position: relative;
   overflow: hidden;
 }
