@@ -6,7 +6,7 @@ import {
     ArrowLeft, CheckCircle2, AlertTriangle, Plus, Trash2, Edit3, FileText,
     BarChart3, Megaphone, Zap, Upload, X, ImageIcon, Play,
     Camera, Eye, IndianRupee, ChevronRight, Wallet, TrendingUp, History, ArrowRight,
-    Building2, UserPlus, UserMinus, ShieldCheck, Link2, Crown, ChevronDown, Mail, MapPin, Search, Smartphone, Clock, LayoutGrid, User, Activity, Lock
+    Building2, UserPlus, UserMinus, ShieldCheck, Link2, Crown, ChevronDown, Mail, MapPin, Search, Smartphone, Clock, LayoutGrid, User, Activity, Lock, LogOut
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { dataService, BACKEND_URL } from '../services/dataService';
@@ -22,13 +22,15 @@ import ReportsAnalyst from './components/ReportsAnalyst';
 import WalletManager from './components/WalletManager';
 import LoanApprovalManager from './components/LoanApprovalManager';
 import Overview from './components/Overview';
+import EnhancedMembersTable from './components/EnhancedMembersTable';
 import { useAuth } from '../context/AuthContext';
 import { generateUniquePartyCode, stateCodeMap } from '../database/partyCode';
 
 const Admin = () => {
     const navigate = useNavigate();
 
-    const { user: currentUser, loading, setUser, setIsLocked } = useAuth();
+    const { user: currentUser, loading, setUser, setIsLocked, logout } = useAuth();
+    const [showAdminMenu, setShowAdminMenu] = useState(false);
 
     // ── Auth guard: redirect to AdminLogin if not authenticated ──
     // Note: Uses the roles from AuthContext as the source of truth so the page
@@ -311,6 +313,7 @@ const Admin = () => {
     const refreshData = async () => {
         try {
             const allUsersRaw = await dataService.getAllUsers();
+            console.log('[refreshData] raw users from backend:', allUsersRaw?.length, allUsersRaw?.map(u=>({u:u.username,s:u.status,r:u.role})));
             const normalizeRole = (role) =>
                 String(role || '')
                     .trim()
@@ -487,6 +490,11 @@ const Admin = () => {
 
     // Listen for distributor and SUPER_DISTRIBUTOR data changes
     useEffect(() => {
+        // Clear stale local user cache so fresh backend data always wins
+        try {
+            const stale = dataService.getData();
+            dataService.saveData({ ...stale, users: [] });
+        } catch (_) {}
         refreshData();
         const handler = () => refreshData();
         window.addEventListener('distributorDataUpdated', handler);
@@ -496,6 +504,15 @@ const Admin = () => {
             window.removeEventListener('SuperDistributorDataUpdated', handler);
         };
     }, []);
+
+    // Auto-refresh live data every 30s and whenever Approvals section is opened
+    useEffect(() => {
+        if (activeSection === 'Approvals') {
+            refreshData();
+            const interval = setInterval(refreshData, 30000);
+            return () => clearInterval(interval);
+        }
+    }, [activeSection]);
 
     const handleSave = () => {
         dataService.saveData(data);
@@ -1141,7 +1158,13 @@ const Admin = () => {
                 approvalForm.distributorId || null,
                 approvalForm.pin || targetUser.pin || '1122',
                 targetUser.state || '',
-                targetUser.role || 'RETAILER'
+                targetUser.role || 'RETAILER',
+                {
+                    addedByName: currentUser?.fullName || currentUser?.name || currentUser?.username || 'Admin',
+                    addedByRole: (currentUser?.roles?.[0] || currentUser?.role || 'ADMIN').toUpperCase(),
+                    addedByPartyCode: currentUser?.partyCode || '',
+                    addedByUserRef: currentUser?.id || currentUser?._id || ''
+                }
             );
             if (!dbResult?.success) {
                 throw new Error(dbResult?.message || 'Approval update failed');
@@ -1151,6 +1174,7 @@ const Admin = () => {
                 next.delete(targetIdentifier);
                 return next;
             });
+            window.dispatchEvent(new Event('membersUpdated'));
             refreshData();
         } catch (err) {
             console.error(err);
@@ -1161,6 +1185,7 @@ const Admin = () => {
             }));
             setStatus({ type: 'error', message: err?.message || 'Approval sync failed, kept locally approved.' });
             setTimeout(() => setStatus(null), 3000);
+            window.dispatchEvent(new Event('membersUpdated'));
             refreshData();
         } finally {
             setApprovingIds(prev => {
@@ -1283,7 +1308,13 @@ const Admin = () => {
                 targetSA.parent_id || targetSA.ownerId || null,
                 saApprovalForm.pin || targetSA.pin || '1122',
                 targetSA.state || '',
-                targetSA.role || 'SUPER_DISTRIBUTOR'
+                targetSA.role || 'SUPER_DISTRIBUTOR',
+                {
+                    addedByName: currentUser?.fullName || currentUser?.name || currentUser?.username || 'Admin',
+                    addedByRole: (currentUser?.roles?.[0] || currentUser?.role || 'ADMIN').toUpperCase(),
+                    addedByPartyCode: currentUser?.partyCode || '',
+                    addedByUserRef: currentUser?.id || currentUser?._id || ''
+                }
             );
             if (dbResult.success) {
                 setApprovingIds(prev => {
@@ -1291,6 +1322,7 @@ const Admin = () => {
                     next.delete(targetId);
                     return next;
                 });
+                window.dispatchEvent(new Event('membersUpdated'));
                 refreshData();
             } else {
                 setCredentialData(prev => ({
@@ -1927,7 +1959,13 @@ const Admin = () => {
                 targetDist.parent_id || targetDist.ownerId || null,
                 distApprovalForm.pin || targetDist.pin || '1122',
                 targetDist.state || '',
-                targetDist.role || 'DISTRIBUTOR'
+                targetDist.role || 'DISTRIBUTOR',
+                {
+                    addedByName: currentUser?.fullName || currentUser?.name || currentUser?.username || 'Admin',
+                    addedByRole: (currentUser?.roles?.[0] || currentUser?.role || 'ADMIN').toUpperCase(),
+                    addedByPartyCode: currentUser?.partyCode || '',
+                    addedByUserRef: currentUser?.id || currentUser?._id || ''
+                }
             );
             if (!dbResult?.success) {
                 setCredentialData(prev => ({
@@ -1942,6 +1980,7 @@ const Admin = () => {
                 next.delete(targetId);
                 return next;
             });
+            window.dispatchEvent(new Event('membersUpdated'));
             // Need to refresh both distributors and the main data
             refreshDists();
             refreshData();
@@ -2939,7 +2978,7 @@ const Admin = () => {
     ];
 
     const MANAGEMENT_NAV = [
-        { id: 'AllMembers', icon: Users, label: 'Members/Plans' },
+        { id: 'AllMembers', icon: Users, label: 'Members' },
         { id: 'EmployeeManager', icon: ShieldCheck, label: 'Employee Mgr' },
         { id: 'Landing Content', icon: FileText, label: 'Landing CMS' },
         { id: 'Services', icon: Package, label: 'Services' },
@@ -3159,7 +3198,34 @@ const Admin = () => {
                                 <Zap size={14} />
                                 <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full border-2 border-white" />
                             </button>
-                            <div className="w-10 h-10 rounded-xl bg-[#6366f1] flex items-center justify-center text-white text-xs font-black shadow-md">A</div>
+                            <div className="relative">
+                                <button
+                                    onClick={() => setShowAdminMenu(v => !v)}
+                                    className="w-10 h-10 rounded-xl bg-[#6366f1] flex items-center justify-center text-white text-xs font-black shadow-md hover:bg-indigo-700 transition-colors">
+                                    {(currentUser?.fullName || currentUser?.username || 'A').charAt(0).toUpperCase()}
+                                </button>
+                                {showAdminMenu && (
+                                    <>
+                                        <div className="fixed inset-0 z-40" onClick={() => setShowAdminMenu(false)} />
+                                        <div className="absolute right-0 top-12 z-50 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden">
+                                            <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
+                                                <p className="text-xs font-black text-slate-800 truncate">{currentUser?.fullName || currentUser?.username || 'Admin'}</p>
+                                                <p className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mt-0.5">Administrator</p>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    setShowAdminMenu(false);
+                                                    logout();
+                                                    navigate('/admin-login');
+                                                }}
+                                                className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-rose-600 hover:bg-rose-50 transition-colors">
+                                                <LogOut size={15} />
+                                                Logout
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
 
                         </div>
                     </header>
@@ -3223,18 +3289,7 @@ const Admin = () => {
 
                                 {/* All Members — merged Retailers + Distributors + SuperDistributors */}
                                 {activeSection === 'AllMembers' && (
-                                    <AllMembersTable 
-                                        data={data}
-                                        distributors={distributors}
-                                        SuperDistributors={SuperDistributors}
-                                        refreshData={refreshData}
-                                        setShowAddMemberModal={setShowAddMemberModal}
-                                        setMemberFormData={setMemberFormData}
-                                        memberFormData={memberFormData}
-                                        handleLoginAsRetailer={handleLoginAsRetailer}
-                                        handleLoginAsDistributor={handleLoginAsDistributor}
-                                        handleLoginAsSuperDistributor={handleLoginAdminSA}
-                                    />
+                                    <EnhancedMembersTable />
                                 )}
 
                                 {/* KYC Management */}

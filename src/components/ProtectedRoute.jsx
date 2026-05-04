@@ -52,6 +52,7 @@ const ProtectedRoute = ({ children, role, allowKycPending = false }) => {
 
     if (
         !allowKycPending &&
+        !user?.impersonated &&
         shouldRequireKyc(user) &&
         !isKycApproved(user) &&
         location.pathname !== '/complete-kyc'

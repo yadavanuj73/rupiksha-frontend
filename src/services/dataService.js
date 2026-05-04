@@ -18,6 +18,23 @@ async function safeJson(res, fallback = {}) {
     }
 }
 
+// ── Auth-aware fetch: clears stale token and redirects to login on 401 ──────
+async function authFetch(url, options = {}) {
+    const token = localStorage.getItem('rupiksha_token');
+    const headers = {
+        ...(options.headers || {}),
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    };
+    const res = await fetch(url, { ...options, headers });
+    if (res.status === 401) {
+        console.warn('[authFetch] 401 on', url, '— token expired, clearing session');
+        localStorage.removeItem('rupiksha_token');
+        localStorage.removeItem('rupiksha_user');
+        window.location.href = '/login';
+    }
+    return res;
+}
+
 // Live-only mode. The "local only" fallback has been removed to prevent
 // mock data or impersonation tokens from reaching the real backend. The variable
 // is kept here as a constant so the many legacy `if (useLocalOnly)` branches
@@ -963,13 +980,11 @@ export const dataService = {
     // --- ADMIN OVERSIGHT ---
     getAllUsers: async function () {
         try {
-            const token = localStorage.getItem('rupiksha_token');
-            const res = await fetch(`${BACKEND_URL}/admin/users`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const res = await authFetch(`${BACKEND_URL}/admin/users`);
             const data = await safeJson(res, null);
             if (res.ok && data?.success && Array.isArray(data.users)) return data.users;
-        } catch (e) { }
+            console.warn('[getAllUsers] /admin/users failed:', res.status, data);
+        } catch (e) { console.error('[getAllUsers] fetch error:', e); }
 
         // Backend may not implement /admin/users in lightweight setups.
         // Fallback to role-wise pending approvals from live APIs so Admin approvals still work.
@@ -987,14 +1002,8 @@ export const dataService = {
             ];
 
             const uniqueByKey = new Map();
-            // Start from pending API rows, then let local users override stale pending snapshots.
+            // Backend pending rows always win — never let stale local data hide real pending users.
             for (const user of pendingOnly) {
-                const key = user?._id || user?.id || user?.username || user?.mobile;
-                if (!key) continue;
-                uniqueByKey.set(String(key), user);
-            }
-            const localUsers = (this.getData().users || []);
-            for (const user of localUsers) {
                 const key = user?._id || user?.id || user?.username || user?.mobile;
                 if (!key) continue;
                 uniqueByKey.set(String(key), user);
@@ -1308,11 +1317,7 @@ export const dataService = {
     getPendingApprovalsByRole: async function (role) {
         const normalizedRole = normalizeRoleForBackend(role);
         try {
-            const token = localStorage.getItem('rupiksha_token');
-            // Java backend returns all pending users; we filter by role on the client.
-            const res = await fetch(`${BACKEND_URL}/admin/approvals`, {
-                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-            });
+            const res = await authFetch(`${BACKEND_URL}/admin/approvals`);
             if (!res.ok) return { success: false, users: [], message: `Approvals fetch failed (${res.status})` };
             const payload = await safeJson(res, []);
             const list = Array.isArray(payload) ? payload : (payload.users || payload.data || []);
@@ -1353,16 +1358,20 @@ export const dataService = {
         }
     },
 
-    approveUser: async function (identifier /* backend user UUID */, _password, _partyCode, _parentId, _pin, _state, _role) {
+    approveUser: async function (identifier, _password, partyCode, _parentId, _pin, _state, _role, ownerMeta = {}) {
         try {
-            const token = localStorage.getItem('rupiksha_token');
-            const res = await fetch(`${BACKEND_URL}/admin/approvals/${encodeURIComponent(identifier)}`, {
+            const body = {
+                action: 'approve',
+                ...(partyCode ? { partyCode: String(partyCode).toUpperCase() } : {}),
+                ...(ownerMeta.addedByName ? { addedByName: ownerMeta.addedByName } : {}),
+                ...(ownerMeta.addedByRole ? { addedByRole: ownerMeta.addedByRole } : {}),
+                ...(ownerMeta.addedByPartyCode ? { addedByPartyCode: ownerMeta.addedByPartyCode } : {}),
+                ...(ownerMeta.addedByUserRef ? { addedByUserRef: ownerMeta.addedByUserRef } : {}),
+            };
+            const res = await authFetch(`${BACKEND_URL}/admin/approvals/${encodeURIComponent(identifier)}`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                },
-                body: JSON.stringify({ action: 'approve' })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
             });
             const data = await safeJson(res, {});
             if (!res.ok) return { success: false, message: data?.message || data?.error || `Approve failed (${res.status})` };

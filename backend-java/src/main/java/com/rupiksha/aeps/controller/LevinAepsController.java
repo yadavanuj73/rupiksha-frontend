@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/aeps")
 @RequiredArgsConstructor
 @CrossOrigin(origins = {"http://localhost:5173", "https://your-frontend.vercel.app"})
-public class AepsController {
+public class LevinAepsController {
 
     private final AepsService aepsService;
 

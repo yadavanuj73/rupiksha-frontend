@@ -61,8 +61,27 @@ export function AuthProvider({ children }) {
   const [isLocked, setIsLocked] = useState(false);
   const [lockTimeLeft, setLockTimeLeft] = useState(LOCK_TIMEOUT);
   const [logoutTimeLeft, setLogoutTimeLeft] = useState(LOGOUT_TIMEOUT);
-  // Load user on start
+  // Load user on start — also handle ?_imp= impersonation handoff from admin tab
   useEffect(() => {
+    // Check for impersonation token passed via URL query param from admin panel
+    const params = new URLSearchParams(window.location.search);
+    const impKey = params.get('_imp');
+    if (impKey) {
+      try {
+        const raw = sessionStorage.getItem(impKey);
+        if (raw) {
+          const { token: impToken, user: impUserStr } = JSON.parse(raw);
+          sessionStorage.removeItem(impKey);
+          localStorage.setItem('rupiksha_token', impToken);
+          localStorage.setItem('rupiksha_user', impUserStr);
+          // Clean ?_imp= from URL without reload
+          params.delete('_imp');
+          const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+          window.history.replaceState({}, '', newUrl);
+        }
+      } catch (_) {}
+    }
+
     const token = localStorage.getItem("rupiksha_token");
     const savedUser = localStorage.getItem("rupiksha_user");
     const lastActivity = localStorage.getItem("last_activity");

@@ -55,7 +55,7 @@ app:
   jwt:
     issuer: rupiksha
     secret: ${JWT_SECRET:change_this_to_a_long_random_secret_32_chars_min}
-    access-token-minutes: ${JWT_ACCESS_MINUTES:30}
+    access-token-minutes: ${JWT_ACCESS_MINUTES:480}
     refresh-token-days: ${JWT_REFRESH_DAYS:15}
   otp:
     ttl-seconds: ${OTP_TTL_SECONDS:300}
