@@ -16,7 +16,7 @@ services:
       - key: DB_URL
         fromDatabase:
           name: rupiksha-postgres
-          property: connectionString
+          property: jdbcConnectionString
       - key: DB_USERNAME
         fromDatabase:
           name: rupiksha-postgres

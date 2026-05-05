@@ -14,6 +14,7 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/rupiksha}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: ${DB_POOL_MAX:4}
       minimum-idle: ${DB_POOL_MIN:1}
