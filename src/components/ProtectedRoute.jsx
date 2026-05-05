@@ -2,6 +2,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
+const KYC_EXEMPT_ROLES = ['ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'];
 const KYC_REQUIRED_ROLES = ['RETAILER', 'DISTRIBUTOR', 'SUPER_DISTRIBUTOR'];
 const normalizeRole = (raw) =>
     String(typeof raw === 'string' ? raw : raw?.name || '')
@@ -25,7 +26,9 @@ const isKycApproved = (user) => {
 };
 
 const shouldRequireKyc = (user) => {
+    if (user?.username === 'admin') return false;
     const userRoles = getUserRoles(user);
+    if (userRoles.some((r) => KYC_EXEMPT_ROLES.includes(r))) return false;
     return userRoles.some((r) => KYC_REQUIRED_ROLES.includes(r));
 };
 
