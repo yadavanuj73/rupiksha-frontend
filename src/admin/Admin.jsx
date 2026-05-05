@@ -63,8 +63,14 @@ const Admin = () => {
     const [trashUsers, setTrashUsers] = useState([]);
 
     // Default to Dashboard for Header users since they might not have Approvals access
-    const initialSection = (currentUser && ['NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER'].includes(currentUser.role)) ? 'Dashboard' : 'Approvals';
+    const initialSection = sessionStorage.getItem('admin_active_section') ||
+        ((currentUser && ['NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER'].includes(currentUser.role)) ? 'Dashboard' : 'Approvals');
     const [activeSection, setActiveSection] = useState(initialSection);
+
+    const setActiveSectionPersisted = (section) => {
+        sessionStorage.setItem('admin_active_section', section);
+        setActiveSection(section);
+    };
     const [expandedSA, setExpandedSA] = useState(null); // ID of expanded SUPER_DISTRIBUTOR row
     const [expandedNav, setExpandedNav] = useState(null); // which nav group is expanded
     const [status, setStatus] = useState(null);
@@ -2613,7 +2619,7 @@ const Admin = () => {
                                                 </div>
                                                 <div className="space-y-2">
                                                     <p className="text-slate-800 font-black uppercase tracking-[0.3em] text-sm">NO_NETWORK_NODES</p>
-                                                    <p className="text-[10px] text-slate-400 font-bold uppercase leading-relaxed tracking-widest px-8">The distribution grid is currently offline. Check the <span className="text-amber-500 font-black italic underline cursor-pointer hover:text-amber-600 transition-colors" onClick={() => setActiveSection('Approvals')}>Approvals</span> gateway for inbound requests.</p>
+                                                    <p className="text-[10px] text-slate-400 font-bold uppercase leading-relaxed tracking-widest px-8">The distribution grid is currently offline. Check the <span className="text-amber-500 font-black italic underline cursor-pointer hover:text-amber-600 transition-colors" onClick={() => setActiveSectionPersisted('Approvals')}>Approvals</span> gateway for inbound requests.</p>
                                                 </div>
                                                 <button
                                                     onClick={() => { sharedDataService.resetToDefaults(); refreshDists(); }}
@@ -2955,7 +2961,7 @@ const Admin = () => {
                 {/* Go back */}
                 <div className="mt-6">
                     <button
-                        onClick={() => setActiveSection('Dashboard')}
+                        onClick={() => setActiveSectionPersisted('Dashboard')}
                         className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/30 hover:shadow-2xl hover:scale-[1.03] active:scale-95 transition-all"
                     >
                         â† Return to Dashboard
@@ -3082,7 +3088,7 @@ const Admin = () => {
                             const isActive = activeSection === item.id;
                             return (
                                 <button key={item.id}
-                                    onClick={() => { setActiveSection(item.id); setShowMobileSidebar(false); }}
+                                    onClick={() => { setActiveSectionPersisted(item.id); setShowMobileSidebar(false); }}
                                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl transition-all duration-200 ${isActive ? 'bg-[#fcfcf7] border shadow-sm border-[#f1f5f9]' : 'hover:bg-slate-50'}`}>
                                     <div className="flex items-center gap-4">
                                          <item.icon size={18} className={isActive ? 'text-[#18181b]' : 'text-[#94a3b8]'} />
@@ -3100,7 +3106,7 @@ const Admin = () => {
                             const isActive = activeSection === item.id;
                             return (
                                 <button key={item.id}
-                                    onClick={() => { setActiveSection(item.id); setShowMobileSidebar(false); }}
+                                    onClick={() => { setActiveSectionPersisted(item.id); setShowMobileSidebar(false); }}
                                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl transition-all duration-200 ${isActive ? 'bg-[#fcfcf7] border shadow-sm border-[#f1f5f9]' : 'hover:bg-slate-50'}`}>
                                     <div className="flex items-center gap-4">
                                          <item.icon size={18} className={isActive ? 'text-[#18181b]' : 'text-[#94a3b8]'} />
@@ -3121,7 +3127,7 @@ const Admin = () => {
                             const isActive = activeSection === item.id;
                             return (
                                 <button key={item.id}
-                                    onClick={() => { setActiveSection(item.id); setShowMobileSidebar(false); }}
+                                    onClick={() => { setActiveSectionPersisted(item.id); setShowMobileSidebar(false); }}
                                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl transition-all duration-200 ${isActive ? 'bg-[#fcfcf7] border shadow-sm border-[#f1f5f9]' : 'hover:bg-slate-50'}`}>
                                     <div className="flex items-center gap-4">
                                          <item.icon size={18} className={isActive ? 'text-[#18181b]' : 'text-[#94a3b8]'} />
@@ -3139,7 +3145,7 @@ const Admin = () => {
                             const isActive = activeSection === item.id;
                             return (
                                 <button key={item.id}
-                                    onClick={() => { setActiveSection(item.id); setShowMobileSidebar(false); }}
+                                    onClick={() => { setActiveSectionPersisted(item.id); setShowMobileSidebar(false); }}
                                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl transition-all duration-200 ${isActive ? 'bg-[#fcfcf7] border shadow-sm border-[#f1f5f9]' : 'hover:bg-slate-50'}`}>
                                     <div className="flex items-center gap-4">
                                          <item.icon size={18} className={isActive ? 'text-[#18181b]' : 'text-[#94a3b8]'} />
@@ -3250,7 +3256,7 @@ const Admin = () => {
                             <UnauthorizedAccess sectionName={activeLabel} />
                         ) : (
                             <>
-                                {activeSection === 'Overview' && <Overview data={data} distributors={distributors} SuperDistributors={SuperDistributors} onNavigate={setActiveSection} />}
+                                {activeSection === 'Overview' && <Overview data={data} distributors={distributors} SuperDistributors={SuperDistributors} onNavigate={setActiveSectionPersisted} />}
                                 {activeSection === 'Approvals' && <ApprovalsTable 
                                     data={data} 
                                     distributors={distributors} 
@@ -3429,7 +3435,7 @@ const Admin = () => {
                                     <p className="text-white/70 text-[10px]">Allowed: {geofenceAlert.allowedRange} km</p>
                                 </div>
                             </div>
-                            <button onClick={() => { setActiveSection('Retailers'); setGeofenceAlert(null); }} className="w-full mt-4 bg-white text-rose-600 font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest hover:bg-rose-50 transition-all">
+                            <button onClick={() => { setActiveSectionPersisted('Retailers'); setGeofenceAlert(null); }} className="w-full mt-4 bg-white text-rose-600 font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest hover:bg-rose-50 transition-all">
                                 View Retailer & Edit Range
                             </button>
                         </div>
