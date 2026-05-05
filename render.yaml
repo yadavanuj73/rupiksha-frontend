@@ -42,7 +42,7 @@ services:
       - key: PUBLIC_BASE_URL
         value: https://rupiksha-backend-java.onrender.com
       - key: CORS_ALLOWED_ORIGINS
-        sync: false
+        value: https://rupiksha-frontend.vercel.app
       - key: DB_POOL_MAX
         value: 4
       - key: OTP_PROVIDER
