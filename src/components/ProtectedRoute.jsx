@@ -15,7 +15,7 @@ const getUserRoles = (user) => {
     const normalized = arr.map(normalizeRole).filter(Boolean);
     const primary = normalizeRole(user?.role);
     const merged = Array.from(new Set([...(normalized || []), ...(primary ? [primary] : [])]));
-    return merged.length ? merged : ['RETAILER'];
+    return merged.length ? merged : [];
 };
 
 const isKycApproved = (user) => {

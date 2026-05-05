@@ -59,11 +59,13 @@ const normalizeRoleForBackend = (role) => {
 };
 
 const normalizeRoleForClient = (role) => {
-    const raw = normalizeRoleForBackend(role);
+    // Handle role objects like {name: "ADMIN"} from Java backend
+    const roleStr = (typeof role === 'object' && role !== null) ? (role.name || '') : role;
+    const raw = normalizeRoleForBackend(roleStr);
     if (raw === 'retailer') return 'RETAILER';
     if (raw === 'distributor') return 'DISTRIBUTOR';
     if (raw === 'super_distributor') return 'SUPER_DISTRIBUTOR';
-    return String(role || 'RETAILER').trim().toUpperCase();
+    return String(roleStr || 'RETAILER').trim().replace(/^ROLE_/i, '').toUpperCase();
 };
 
 const ROLE_PRIORITY = [
