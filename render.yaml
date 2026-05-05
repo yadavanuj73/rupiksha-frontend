@@ -13,10 +13,18 @@ services:
         value: 8080
       - key: SPRING_PROFILES_ACTIVE
         value: prod
-      - key: DB_URL
+      - key: DB_HOST
         fromDatabase:
           name: rupiksha-postgres
-          property: jdbcConnectionString
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: rupiksha-postgres
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: rupiksha-postgres
+          property: database
       - key: DB_USERNAME
         fromDatabase:
           name: rupiksha-postgres
