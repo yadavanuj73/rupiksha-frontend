@@ -35,11 +35,6 @@ services:
           name: rupiksha-redis
           type: redis
           property: port
-      - key: REDIS_PASSWORD
-        fromService:
-          name: rupiksha-redis
-          type: redis
-          property: password
       - key: JWT_SECRET
         generateValue: true
       - key: ADMIN_SEED_PASSWORD
@@ -92,6 +87,7 @@ services:
     plan: starter
     region: singapore
     maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
 
 databases:
   - name: rupiksha-postgres
