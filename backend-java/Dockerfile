@@ -15,8 +15,11 @@ ENTRYPOINT ["java", \
   "-XX:+UseContainerSupport", \
   "-XX:MaxRAMPercentage=70.0", \
   "-XX:InitialRAMPercentage=40.0", \
-  "-XX:+UseG1GC", \
+  "-XX:TieredStopAtLevel=1", \
+  "-XX:+UseSerialGC", \
   "-XX:+ExitOnOutOfMemoryError", \
   "-Djava.security.egd=file:/dev/./urandom", \
+  "-Dspring.jmx.enabled=false", \
+  "-Dspring.backgroundpreinitializer.ignore=true", \
   "-jar", "app.jar"]
 
