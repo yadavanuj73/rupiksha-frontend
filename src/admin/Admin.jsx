@@ -616,20 +616,30 @@ const Admin = () => {
                 impersonated: true
             };
 
-            localStorage.setItem('rupiksha_admin_prev_token', adminToken);
-            localStorage.setItem('rupiksha_token', data.accessToken);
-            localStorage.setItem('rupiksha_user', JSON.stringify(impersonatedUser));
-            localStorage.setItem('last_activity', Date.now().toString());
-
-            sessionStorage.removeItem('admin_auth');
-
             const redirect = primaryRole === 'DISTRIBUTOR' ? '/distributor'
                 : primaryRole === 'SUPER_DISTRIBUTOR' ? '/super-distributor'
                 : primaryRole === 'ADMIN' ? '/admin'
                 : primaryRole === 'RETAILER' ? '/dashboard'
                 : (fallbackPath || '/dashboard');
 
-            window.location.replace(redirect);
+            // Open impersonated session in a NEW tab via localStorage handoff key.
+            // The new tab reads and immediately deletes the key, then sets its own
+            // session. This preserves the admin's localStorage completely — refreshing
+            // this tab will still show the admin dashboard.
+            const impKey = '_imp_' + Date.now();
+            localStorage.setItem(impKey, JSON.stringify({
+                token: data.accessToken,
+                user: JSON.stringify(impersonatedUser)
+            }));
+            const newTab = window.open(`${redirect}?_imp=${impKey}`, '_blank');
+            if (!newTab) {
+                // Popup blocked fallback — still use old behaviour but warn
+                setStatus({ type: 'error', message: 'Popup blocked. Please allow popups for this site and try again.' });
+                setTimeout(() => setStatus(null), 5000);
+            } else {
+                setStatus({ type: 'success', message: 'Opened ' + (target.fullName || target.username || 'user') + ' in a new tab.' });
+                setTimeout(() => setStatus(null), 3000);
+            }
         } catch (err) {
             setStatus({ type: 'error', message: 'Impersonation failed: ' + (err?.message || 'network error') });
             setTimeout(() => setStatus(null), 5000);

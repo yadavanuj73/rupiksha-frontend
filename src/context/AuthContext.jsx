@@ -69,10 +69,10 @@ export function AuthProvider({ children }) {
     const impKey = params.get('_imp');
     if (impKey) {
       try {
-        const raw = sessionStorage.getItem(impKey);
+        const raw = localStorage.getItem(impKey);
         if (raw) {
           const { token: impToken, user: impUserStr } = JSON.parse(raw);
-          sessionStorage.removeItem(impKey);
+          localStorage.removeItem(impKey); // clean up handoff key immediately
           localStorage.setItem('rupiksha_token', impToken);
           localStorage.setItem('rupiksha_user', impUserStr);
           // Clean ?_imp= from URL without reload
