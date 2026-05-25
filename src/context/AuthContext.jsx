@@ -280,12 +280,18 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    // Clear both normal and impersonation session keys
-    localStorage.removeItem("rupiksha_token");
-    localStorage.removeItem("rupiksha_user");
-    localStorage.removeItem("rupiksha_imp_token");
-    localStorage.removeItem("rupiksha_imp_user");
-    localStorage.removeItem("last_activity");
+    const isImpSession = !!localStorage.getItem("rupiksha_imp_token");
+    if (isImpSession) {
+      // In an impersonation tab — only clear imp keys, not admin's real token
+      localStorage.removeItem("rupiksha_imp_token");
+      localStorage.removeItem("rupiksha_imp_user");
+    } else {
+      localStorage.removeItem("rupiksha_token");
+      localStorage.removeItem("rupiksha_user");
+      localStorage.removeItem("rupiksha_imp_token");
+      localStorage.removeItem("rupiksha_imp_user");
+      localStorage.removeItem("last_activity");
+    }
     setUser(null);
     setPermissions([]);
     setIsLocked(false);
@@ -298,8 +304,13 @@ export function AuthProvider({ children }) {
     );
   };
 
-  // Prefer imp token in impersonation tabs so API calls use the right identity
-  const getToken = () => localStorage.getItem("rupiksha_imp_token") || localStorage.getItem("rupiksha_token");
+  // Prefer imp token only in impersonation tabs (non-admin paths).
+  // Admin tab should NEVER use rupiksha_imp_token — it would send member token to admin endpoints.
+  const getToken = () => {
+    const isAdminTab = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+    if (isAdminTab) return localStorage.getItem("rupiksha_token");
+    return localStorage.getItem("rupiksha_imp_token") || localStorage.getItem("rupiksha_token");
+  };
 
   return (
     <AuthContext.Provider value={{ user, setUser, permissions, loading, login, logout, verifyPin, isLocked, setIsLocked, hasPermission, getToken, lockTimeLeft, logoutTimeLeft }}>

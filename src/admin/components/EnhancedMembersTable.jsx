@@ -17,11 +17,7 @@ async function authFetch(url, options = {}) {
     const token = getToken();
     const headers = { ...(options.headers || {}), ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
     const res = await fetch(url, { ...options, headers });
-    if (res.status === 401) {
-        localStorage.removeItem('rupiksha_token');
-        localStorage.removeItem('rupiksha_user');
-        window.location.href = '/login';
-    }
+    // Admin tab: NEVER redirect on 401 — caller handles errors via res.status check
     return res;
 }
 

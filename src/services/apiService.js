@@ -6,8 +6,12 @@ const BASE_URL = _isLocalhost
   ? ((import.meta.env.VITE_API_URL || '/api/v1').replace(/\/$/, ''))
   : RENDER_BACKEND;
 
-// Token helper
-const getToken = () => localStorage.getItem("rupiksha_imp_token") || localStorage.getItem("rupiksha_token");
+// Token helper — admin path always uses admin token, member imp-tab uses imp token
+const getToken = () => {
+  const isAdminTab = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+  if (isAdminTab) return localStorage.getItem('rupiksha_token');
+  return localStorage.getItem('rupiksha_imp_token') || localStorage.getItem('rupiksha_token');
+};
 const makeIdempotencyKey = () =>
   (globalThis.crypto?.randomUUID?.() || `idem_${Date.now()}_${Math.random().toString(16).slice(2)}`);
 
@@ -23,15 +27,22 @@ export const apiFetch = async (endpoint, options = {}) => {
     },
   });
   if (res.status === 401) {
-    if (localStorage.getItem("rupiksha_imp_token")) {
-      localStorage.removeItem("rupiksha_imp_token");
-      localStorage.removeItem("rupiksha_imp_user");
-    } else {
-      localStorage.removeItem("rupiksha_token");
-      localStorage.removeItem("rupiksha_user");
+    const isAdminTab = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+    const isImp = !!localStorage.getItem("rupiksha_imp_token");
+    if (!isAdminTab) {
+      // Member tab: clear only relevant session keys and redirect
+      if (isImp) {
+        localStorage.removeItem("rupiksha_imp_token");
+        localStorage.removeItem("rupiksha_imp_user");
+      } else {
+        localStorage.removeItem("rupiksha_token");
+        localStorage.removeItem("rupiksha_user");
+      }
+      window.location.href = "/login";
+      return;
     }
-    window.location.href = "/login";
-    return;
+    // Admin tab: do NOT redirect or clear admin token — throw so caller can handle
+    throw new Error("Session expired");
   }
   const text = await res.text();
   let body = null;
