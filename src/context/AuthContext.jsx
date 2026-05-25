@@ -67,20 +67,40 @@ export function AuthProvider({ children }) {
     // Check for impersonation token passed via URL query param from admin panel
     const params = new URLSearchParams(window.location.search);
     const impKey = params.get('_imp');
+    let impersonationSuccess = false;
     if (impKey) {
       try {
         const raw = localStorage.getItem(impKey);
         if (raw) {
-          const { token: impToken, user: impUserObj } = JSON.parse(raw);
-          localStorage.removeItem(impKey); // clean up handoff key immediately
-          localStorage.setItem('rupiksha_token', impToken);
-          localStorage.setItem('rupiksha_user', JSON.stringify(impUserObj));
-          // Clean ?_imp= from URL without reload
-          params.delete('_imp');
-          const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
-          window.history.replaceState({}, '', newUrl);
+          const parsed = JSON.parse(raw);
+          const impToken = parsed.token;
+          const impUserObj = parsed.user;
+          if (impToken && impUserObj) {
+            localStorage.removeItem(impKey); // clean up handoff key immediately
+            localStorage.setItem('rupiksha_token', impToken);
+            localStorage.setItem('rupiksha_user', JSON.stringify(impUserObj));
+            // Immediately set user state so UI reflects impersonated user
+            const normalizedUser = normalizeUserSession(impUserObj);
+            if (normalizedUser) {
+              setUser(normalizedUser);
+              setPermissions(normalizedUser.permissions || []);
+              impersonationSuccess = true;
+            }
+            // Clean ?_imp= from URL without reload
+            params.delete('_imp');
+            const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+            window.history.replaceState({}, '', newUrl);
+          }
         }
-      } catch (_) {}
+      } catch (e) {
+        console.error('Impersonation handoff failed:', e);
+      }
+    }
+
+    // Skip loading from localStorage if impersonation already set the user
+    if (impersonationSuccess) {
+      setLoading(false);
+      return;
     }
 
     const token = localStorage.getItem("rupiksha_token");
