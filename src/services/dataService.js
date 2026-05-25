@@ -27,10 +27,13 @@ async function authFetch(url, options = {}) {
     };
     const res = await fetch(url, { ...options, headers });
     if (res.status === 401) {
-        console.warn('[authFetch] 401 on', url, '— token expired, clearing session');
-        localStorage.removeItem('rupiksha_token');
-        localStorage.removeItem('rupiksha_user');
-        window.location.href = '/login';
+        const isAdminTab = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+        if (!isAdminTab) {
+            console.warn('[authFetch] 401 on', url, '— token expired, clearing session');
+            localStorage.removeItem('rupiksha_token');
+            localStorage.removeItem('rupiksha_user');
+            window.location.href = '/login';
+        }
     }
     return res;
 }
@@ -271,7 +274,7 @@ export const dataService = {
                 if (res.status === 401 || res.status === 400) {
                     return { success: false, message: serverMessage || 'Invalid credentials.' };
                 }
-                return { success: false, message: serverMessage || `Login failed (${res.status}). Ensure backend is running on :8080.` };
+                return { success: false, message: serverMessage || `Login failed (${res.status}). Please try again.` };
             }
 
             // Java backend AuthResponse shape: { accessToken, refreshToken, user: { id, username, fullName, status, kycStatus, roles[], createdAt } }
@@ -302,7 +305,7 @@ export const dataService = {
             if (data.refreshToken) localStorage.setItem('rupiksha_refresh_token', data.refreshToken);
             return { success: true, user: normalizedUser, token: data.accessToken };
         } catch (e) {
-            return { success: false, message: "Server connection failed. Please ensure the Java backend is running on :8080." };
+            return { success: false, message: "Server connection failed. Please check your internet connection or try again in a moment. (" + (e?.message || 'network error') + ")" };
         }
     },
 

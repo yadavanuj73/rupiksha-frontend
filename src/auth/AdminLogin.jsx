@@ -129,7 +129,7 @@ const AdminLogin = () => {
             setInfo('Credentials verified. Enter any 6-digit code to continue (dev 2FA).');
             setTimeout(() => otpRefs.current[0]?.focus(), 120);
         } catch (err) {
-            setError(err?.message || 'Unable to reach backend. Ensure the Java API is running on :8080.');
+            setError(err?.message || 'Unable to reach server. Please check your connection and try again.');
         } finally {
             setLoadingLogin(false);
         }
