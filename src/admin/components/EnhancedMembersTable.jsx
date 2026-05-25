@@ -150,15 +150,15 @@ const EnhancedMembersTable = () => {
             const role = normalizedRoles[0] || 'RETAILER';
             console.log('[EnhancedMembersTable] Impersonation roles:', rawRoles, '->', normalizedRoles, 'primaryRole:', role);
             const portalPath = role === 'DISTRIBUTOR' ? '/distributor' : role === 'SUPER_DISTRIBUTOR' ? '/super-distributor' : '/dashboard';
-            // Build impersonated user with kycStatus=APPROVED so ProtectedRoute KYC gate is bypassed
             const impersonatedUser = {
                 id: data.userId,
                 username: data.username,
                 fullName: data.fullName,
+                name: data.fullName,
                 roles: normalizedRoles,
                 role: role,
-                kycStatus: 'APPROVED',
-                status: data.status || 'APPROVED',
+                kycStatus: data.kycStatus || 'NOT_SUBMITTED',
+                status: data.status || 'ACTIVE',
                 impersonated: true
             };
             // Pass token + user via localStorage key so new tab can read it (sessionStorage is NOT shared between tabs)
