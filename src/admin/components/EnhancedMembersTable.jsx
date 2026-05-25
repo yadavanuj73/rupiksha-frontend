@@ -7,7 +7,10 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL || '/api/v1').replace(/\/$/, '');
+const _bDefault = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
+  ? 'https://rupiksha-backend-java.onrender.com/api/v1'
+  : '/api/v1';
+const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL || _bDefault).replace(/\/$/, '');
 const getToken = () => localStorage.getItem('rupiksha_token');
 
 async function authFetch(url, options = {}) {
