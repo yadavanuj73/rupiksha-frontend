@@ -85,8 +85,9 @@ export function AuthProvider({ children }) {
             console.log('[AuthContext] impToken exists:', !!impToken, 'impUserObj exists:', !!impUserObj);
             if (impToken && impUserObj) {
               localStorage.removeItem(impKey); // clean up handoff key immediately
-              localStorage.setItem('rupiksha_token', impToken);
-              localStorage.setItem('rupiksha_user', JSON.stringify(impUserObj));
+              // Use a separate key so we do NOT overwrite the admin's rupiksha_token
+              localStorage.setItem('rupiksha_imp_token', impToken);
+              localStorage.setItem('rupiksha_imp_user', JSON.stringify(impUserObj));
               // Immediately set user state so UI reflects impersonated user
               const normalizedUser = normalizeUserSession(impUserObj);
               console.log('[AuthContext] Normalized user:', normalizedUser);
@@ -121,6 +122,21 @@ export function AuthProvider({ children }) {
     if (impersonationSuccess) {
       setLoading(false);
       return;
+    }
+
+    // If this tab has an imp session (e.g. page refresh in impersonation tab), restore it
+    const impToken = localStorage.getItem("rupiksha_imp_token");
+    const impUser = localStorage.getItem("rupiksha_imp_user");
+    if (impToken && impUser) {
+      try {
+        const parsedImp = normalizeUserSession(JSON.parse(impUser));
+        if (parsedImp) {
+          setUser(parsedImp);
+          setPermissions(parsedImp.permissions || []);
+          setLoading(false);
+          return;
+        }
+      } catch { /* fall through to normal session */ }
     }
 
     const token = localStorage.getItem("rupiksha_token");
@@ -256,8 +272,11 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
+    // Clear both normal and impersonation session keys
     localStorage.removeItem("rupiksha_token");
     localStorage.removeItem("rupiksha_user");
+    localStorage.removeItem("rupiksha_imp_token");
+    localStorage.removeItem("rupiksha_imp_user");
     localStorage.removeItem("last_activity");
     setUser(null);
     setPermissions([]);
@@ -271,7 +290,8 @@ export function AuthProvider({ children }) {
     );
   };
 
-  const getToken = () => localStorage.getItem("rupiksha_token");
+  // Prefer imp token in impersonation tabs so API calls use the right identity
+  const getToken = () => localStorage.getItem("rupiksha_imp_token") || localStorage.getItem("rupiksha_token");
 
   return (
     <AuthContext.Provider value={{ user, setUser, permissions, loading, login, logout, verifyPin, isLocked, setIsLocked, hasPermission, getToken, lockTimeLeft, logoutTimeLeft }}>

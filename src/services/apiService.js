@@ -3,7 +3,7 @@
 const BASE_URL = (import.meta.env.VITE_API_URL || "/api/v1").replace(/\/$/, "");
 
 // Token helper
-const getToken = () => localStorage.getItem("rupiksha_token");
+const getToken = () => localStorage.getItem("rupiksha_imp_token") || localStorage.getItem("rupiksha_token");
 const makeIdempotencyKey = () =>
   (globalThis.crypto?.randomUUID?.() || `idem_${Date.now()}_${Math.random().toString(16).slice(2)}`);
 
