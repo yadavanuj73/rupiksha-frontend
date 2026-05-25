@@ -124,10 +124,14 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    // If this tab has an imp session (e.g. page refresh in impersonation tab), restore it
+    // If this tab has an imp session (e.g. page refresh in impersonation tab), restore it.
+    // BUT: only if the URL path looks like a member portal (not /admin*).
+    // A stale rupiksha_imp_token can get left behind in the same browser when an admin
+    // opens "Login as Member" and then hard-refreshes their own /admin tab.
     const impToken = localStorage.getItem("rupiksha_imp_token");
     const impUser = localStorage.getItem("rupiksha_imp_user");
-    if (impToken && impUser) {
+    const isAdminPath = window.location.pathname.startsWith('/admin');
+    if (impToken && impUser && !isAdminPath) {
       try {
         const parsedImp = normalizeUserSession(JSON.parse(impUser));
         if (parsedImp) {
@@ -137,6 +141,10 @@ export function AuthProvider({ children }) {
           return;
         }
       } catch { /* fall through to normal session */ }
+    } else if (impToken && isAdminPath) {
+      // Stale imp keys on admin tab — clear them so admin session loads cleanly
+      localStorage.removeItem("rupiksha_imp_token");
+      localStorage.removeItem("rupiksha_imp_user");
     }
 
     const token = localStorage.getItem("rupiksha_token");

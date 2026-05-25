@@ -30,7 +30,9 @@ const isKycApproved = (user) => {
 
 const shouldRequireKyc = (user) => {
     if (user?.username === 'admin') return false;
+    if (user?.impersonated) return true; // impersonated users always go through KYC gate
     const userRoles = getUserRoles(user);
+    // Any exempt role (ADMIN, EMPLOYEE, HEADER) skips KYC entirely
     if (userRoles.some((r) => KYC_EXEMPT_ROLES.includes(r))) return false;
     return userRoles.some((r) => KYC_REQUIRED_ROLES.includes(r));
 };
