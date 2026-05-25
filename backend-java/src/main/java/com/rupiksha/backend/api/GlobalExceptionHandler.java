@@ -8,12 +8,16 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<?> handleValidation(MethodArgumentNotValidException ex) {
         Map<String, Object> body = base(HttpStatus.BAD_REQUEST, "Validation failed");
@@ -39,8 +43,16 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleGeneric(Exception ex) {
+        // Log full stack trace so Render logs show the real cause
+        log.error("Unhandled exception: {}", ex.getMessage(), ex);
+        // Surface root cause message to client (helps during dev/staging)
+        String cause = ex.getMessage();
+        Throwable root = ex;
+        while (root.getCause() != null) root = root.getCause();
+        if (root != ex && root.getMessage() != null) cause = root.getMessage();
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(base(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error"));
+                .body(base(HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Internal server error: " + (cause != null ? cause : ex.getClass().getSimpleName())));
     }
 
     @SuppressWarnings("unchecked")

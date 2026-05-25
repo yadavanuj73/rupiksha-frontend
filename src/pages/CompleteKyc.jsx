@@ -38,14 +38,14 @@ const toCompressedDataUrl = async (file) => {
       image.onerror = () => reject(new Error('Invalid image file'));
       image.src = raw;
     });
-    const MAX_EDGE = 1280;
+    const MAX_EDGE = 900;
     const scale = Math.min(1, MAX_EDGE / Math.max(img.width, img.height));
     const w = Math.max(1, Math.round(img.width * scale));
     const h = Math.max(1, Math.round(img.height * scale));
     const canvas = document.createElement('canvas');
     canvas.width = w; canvas.height = h;
     canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-    return canvas.toDataURL('image/jpeg', 0.8);
+    return canvas.toDataURL('image/jpeg', 0.65);
   } catch { return raw; }
 };
 
