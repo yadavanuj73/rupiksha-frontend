@@ -138,8 +138,17 @@ const EnhancedMembersTable = () => {
                 headers: { 'Content-Type': 'application/json' }
             });
             if (res.status === 401) { showToast('Session expired — please log in again', 'error'); return; }
-            const data = await res.json();
-            if (!res.ok || !data.accessToken) { showToast(data.error || 'Impersonation failed', 'error'); return; }
+            const text = await res.text();
+            let data = {};
+            try { data = text ? JSON.parse(text) : {}; } catch { data = {}; }
+            console.log('[Impersonate] status:', res.status, 'body:', text.slice(0, 300));
+            if (!res.ok) {
+                const msg = data.message || data.error || `Server error ${res.status}`;
+                showToast(`Impersonation failed: ${msg}`, 'error');
+                return;
+            }
+            const token = data.accessToken || data.token;
+            if (!token) { showToast(`Impersonation failed: no token in response (keys: ${Object.keys(data).join(', ')})`, 'error'); return; }
             const normalizeRole = (r) => {
                 if (typeof r === 'string') return r.trim().replace(/^ROLE_/i, '').toUpperCase();
                 if (typeof r === 'object' && r?.name) return String(r.name).trim().replace(/^ROLE_/i, '').toUpperCase();
@@ -163,7 +172,7 @@ const EnhancedMembersTable = () => {
             };
             // Pass token + user via localStorage key so new tab can read it (sessionStorage is NOT shared between tabs)
             const key = `_imp_${Date.now()}`;
-            localStorage.setItem(key, JSON.stringify({ token: data.accessToken, user: impersonatedUser }));
+            localStorage.setItem(key, JSON.stringify({ token: token, user: impersonatedUser }));
             console.log('[EnhancedMembersTable] Set localStorage key:', key, 'opening:', portalPath);
             // Wait to ensure localStorage is committed before opening tab
             await new Promise(r => setTimeout(r, 500));
