@@ -635,7 +635,7 @@ const Admin = () => {
             const impKey = '_imp_' + Date.now();
             localStorage.setItem(impKey, JSON.stringify({
                 token: data.accessToken,
-                user: JSON.stringify(impersonatedUser)
+                user: impersonatedUser  // Store as object, not string - AuthContext will stringify when saving to rupiksha_user
             }));
             // Use full absolute URL to ensure popup works correctly across all browsers
             const origin = window.location.origin;

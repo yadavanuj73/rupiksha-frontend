@@ -71,10 +71,10 @@ export function AuthProvider({ children }) {
       try {
         const raw = localStorage.getItem(impKey);
         if (raw) {
-          const { token: impToken, user: impUserStr } = JSON.parse(raw);
+          const { token: impToken, user: impUserObj } = JSON.parse(raw);
           localStorage.removeItem(impKey); // clean up handoff key immediately
           localStorage.setItem('rupiksha_token', impToken);
-          localStorage.setItem('rupiksha_user', impUserStr);
+          localStorage.setItem('rupiksha_user', JSON.stringify(impUserObj));
           // Clean ?_imp= from URL without reload
           params.delete('_imp');
           const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
