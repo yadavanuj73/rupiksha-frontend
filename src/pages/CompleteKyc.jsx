@@ -154,28 +154,22 @@ const CompleteKyc = () => {
         toCompressedDataUrl(files.shopPhoto),
         toCompressedDataUrl(files.bankPassbook),
       ]);
+      // Backend SubmitKycRequest record only accepts these exact 9 fields
       const payload = {
-        firstName: form.firstName.trim(),
-        lastName: form.lastName.trim(),
-        dob: form.dob,
-        mobile: form.mobile.trim(),
         aadhaarNumber: form.aadhaarNumber.trim(),
         panNumber: form.panNumber.trim().toUpperCase(),
-        shopAddress: form.shopAddress.trim(),
-        permanentAddress: form.permanentAddress.trim(),
+        photoUrl: selfieUrl,
+        aadhaarPhotoUrl,
+        panPhotoUrl,
+        addressLine1: form.shopAddress.trim(),
         city: form.city.trim(),
         state: form.state,
         pincode: form.pincode.trim(),
-        aadhaarPhotoUrl,
-        panPhotoUrl,
-        photoUrl: selfieUrl,
-        shopPhotoUrl,
-        bankPassbookUrl,
-        addressLine1: form.shopAddress.trim(),
       };
       const res = await userService.submitKyc(payload);
       const nextUser = { ...(user || {}), kycStatus: res?.kycStatus || 'PENDING' };
-      localStorage.setItem('rupiksha_user', JSON.stringify(nextUser));
+      const userKey = localStorage.getItem('rupiksha_imp_token') ? 'rupiksha_imp_user' : 'rupiksha_user';
+      localStorage.setItem(userKey, JSON.stringify(nextUser));
       setUser(nextUser);
       setSubmitted(true);
     } catch (err) {

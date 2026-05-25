@@ -19,8 +19,13 @@ export const apiFetch = async (endpoint, options = {}) => {
     },
   });
   if (res.status === 401) {
-    localStorage.removeItem("rupiksha_token");
-    localStorage.removeItem("rupiksha_user");
+    if (localStorage.getItem("rupiksha_imp_token")) {
+      localStorage.removeItem("rupiksha_imp_token");
+      localStorage.removeItem("rupiksha_imp_user");
+    } else {
+      localStorage.removeItem("rupiksha_token");
+      localStorage.removeItem("rupiksha_user");
+    }
     window.location.href = "/login";
     return;
   }
