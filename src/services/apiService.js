@@ -1,9 +1,10 @@
-// Base API URL - apna backend URL yahan set karo
-// Base API URL - Use Vite proxy to talk to backend
-const _apiDefault = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
-  ? 'https://rupiksha-backend-java.onrender.com/api/v1'
-  : '/api/v1';
-const BASE_URL = (import.meta.env.VITE_API_URL || _apiDefault).replace(/\/$/, "");
+// Base API URL
+const _isLocalhost = typeof window !== 'undefined'
+  && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+const RENDER_BACKEND = 'https://rupiksha-backend-java.onrender.com/api/v1';
+const BASE_URL = _isLocalhost
+  ? ((import.meta.env.VITE_API_URL || '/api/v1').replace(/\/$/, ''))
+  : RENDER_BACKEND;
 
 // Token helper
 const getToken = () => localStorage.getItem("rupiksha_imp_token") || localStorage.getItem("rupiksha_token");
