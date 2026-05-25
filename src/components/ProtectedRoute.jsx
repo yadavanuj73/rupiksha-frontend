@@ -20,8 +20,11 @@ const getUserRoles = (user) => {
 };
 
 const isKycApproved = (user) => {
-    const apiKyc = String(user?.kycStatus || '').toUpperCase();
-    const legacyKyc = String(user?.profile_kyc_status || '').toUpperCase();
+    const apiKyc = String(user?.kycStatus || '').toUpperCase().trim();
+    const legacyKyc = String(user?.profile_kyc_status || '').toUpperCase().trim();
+    // Explicitly NOT approved statuses — block dashboard access
+    const blockedStatuses = ['NOT_SUBMITTED', 'PENDING', 'UNDER_REVIEW', 'REJECTED', ''];
+    if (blockedStatuses.includes(apiKyc)) return false;
     return apiKyc === 'APPROVED' || legacyKyc === 'DONE' || legacyKyc === 'APPROVED';
 };
 
