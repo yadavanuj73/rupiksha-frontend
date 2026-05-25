@@ -601,8 +601,14 @@ const Admin = () => {
                 return;
             }
 
+            const normalizeRole = (r) => {
+                if (typeof r === 'string') return r.trim().replace(/^ROLE_/i, '').toUpperCase();
+                if (typeof r === 'object' && r?.name) return String(r.name).trim().replace(/^ROLE_/i, '').toUpperCase();
+                return '';
+            };
             const roles = Array.isArray(data.roles) ? data.roles : [data.role].filter(Boolean);
-            const primaryRole = String(roles[0] || '').toUpperCase();
+            const normalizedRoles = roles.map(normalizeRole).filter(Boolean);
+            const primaryRole = normalizedRoles[0] || '';
 
             const impersonatedUser = {
                 id: data.userId,
