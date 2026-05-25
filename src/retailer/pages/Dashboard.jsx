@@ -248,7 +248,7 @@ const RetailerDashboard = () => {
                         {/* LEFT GREETING */}
                         <div className="space-y-0.5">
                         <h1 className="text-3xl md:text-4xl font-black tracking-tighter text-slate-900 leading-tight">
-                            Hi {currentUser?.name?.split(' ')[0] || currentUser?.businessName?.split(' ')[0] || 'User'}, <span className="text-slate-400">Have a great day!</span>
+                            Hi {currentUser?.name?.split(' ')[0] || currentUser?.fullName?.split(' ')[0] || currentUser?.username?.split(' ')[0] || currentUser?.businessName?.split(' ')[0] || 'User'}, <span className="text-slate-400">Have a great day!</span>
                         </h1>
                     </div>
 

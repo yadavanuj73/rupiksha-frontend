@@ -92,14 +92,16 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
                 >
                     {isActive && (
                         <motion.div
-                            layoutId="active-pill"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.15 }}
                             className="absolute inset-0 bg-blue-600 border border-blue-600 shadow-lg rounded-xl z-0"
-                            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                         />
                     )}
 
                     <div className="flex items-center space-x-3 relative z-10 w-full">
-                        <div className={`transition-all duration-300 ${isActive ? 'scale-110' : ''}`} style={{ color: isActive ? '#ffffff' : '#334155' }}>
+                        <div className="transition-all duration-300" style={{ color: isActive ? '#ffffff' : '#334155' }}>
                             <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
                         </div>
                         <span className="font-bold text-[13.5px] tracking-tight" style={{ color: isActive ? '#ffffff' : '#334155' }}>
