@@ -64,45 +64,59 @@ export function AuthProvider({ children }) {
   const [logoutTimeLeft, setLogoutTimeLeft] = useState(LOGOUT_TIMEOUT);
   // Load user on start — also handle ?_imp= impersonation handoff from admin tab
   useEffect(() => {
+    const initAuth = async () => {
     // Check for impersonation token passed via URL query param from admin panel
     const params = new URLSearchParams(window.location.search);
     const impKey = params.get('_imp');
     let impersonationSuccess = false;
-    if (impKey) {
+    const attemptImpersonation = async () => {
+      if (!impKey) return false;
       console.log('[AuthContext] Found impKey:', impKey);
-      try {
-        const raw = localStorage.getItem(impKey);
-        console.log('[AuthContext] Raw localStorage data:', raw);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          console.log('[AuthContext] Parsed data:', parsed);
-          const impToken = parsed.token;
-          const impUserObj = parsed.user;
-          console.log('[AuthContext] impToken exists:', !!impToken, 'impUserObj exists:', !!impUserObj);
-          if (impToken && impUserObj) {
-            localStorage.removeItem(impKey); // clean up handoff key immediately
-            localStorage.setItem('rupiksha_token', impToken);
-            localStorage.setItem('rupiksha_user', JSON.stringify(impUserObj));
-            // Immediately set user state so UI reflects impersonated user
-            const normalizedUser = normalizeUserSession(impUserObj);
-            console.log('[AuthContext] Normalized user:', normalizedUser);
-            if (normalizedUser) {
-              setUser(normalizedUser);
-              setPermissions(normalizedUser.permissions || []);
-              impersonationSuccess = true;
-              console.log('[AuthContext] Impersonation success, user set');
+      // Retry mechanism: localStorage may not be immediately available in new tab
+      for (let attempts = 1; attempts <= 10; attempts++) {
+        try {
+          const raw = localStorage.getItem(impKey);
+          console.log('[AuthContext] Attempt', attempts, 'Raw localStorage data:', raw ? 'found' : 'null');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            console.log('[AuthContext] Parsed data:', parsed);
+            const impToken = parsed.token;
+            const impUserObj = parsed.user;
+            console.log('[AuthContext] impToken exists:', !!impToken, 'impUserObj exists:', !!impUserObj);
+            if (impToken && impUserObj) {
+              localStorage.removeItem(impKey); // clean up handoff key immediately
+              localStorage.setItem('rupiksha_token', impToken);
+              localStorage.setItem('rupiksha_user', JSON.stringify(impUserObj));
+              // Immediately set user state so UI reflects impersonated user
+              const normalizedUser = normalizeUserSession(impUserObj);
+              console.log('[AuthContext] Normalized user:', normalizedUser);
+              if (normalizedUser) {
+                setUser(normalizedUser);
+                setPermissions(normalizedUser.permissions || []);
+                console.log('[AuthContext] Impersonation success, user set');
+              }
+              // Clean ?_imp= from URL without reload
+              params.delete('_imp');
+              const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+              window.history.replaceState({}, '', newUrl);
+              return true; // success
             }
-            // Clean ?_imp= from URL without reload
-            params.delete('_imp');
-            const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
-            window.history.replaceState({}, '', newUrl);
           }
+        } catch (e) {
+          console.error('[AuthContext] Impersonation handoff error:', e);
         }
-      } catch (e) {
-        console.error('[AuthContext] Impersonation handoff failed:', e);
+        // Wait 100ms before retry
+        if (attempts < 10) {
+          await new Promise(r => setTimeout(r, 100));
+        }
       }
-    }
-
+      console.error('[AuthContext] Max impersonation retries exceeded');
+      return false;
+    };
+    
+    // Run impersonation attempt
+    impersonationSuccess = await attemptImpersonation();
+    
     // Skip loading from localStorage if impersonation already set the user
     if (impersonationSuccess) {
       setLoading(false);
@@ -142,6 +156,8 @@ export function AuthProvider({ children }) {
       }
     }
     setLoading(false);
+    }; // end initAuth
+    initAuth();
   }, []);
 
   // Keep-alive ping: hits backend every 25s to prevent Render free tier cold starts

@@ -140,24 +140,35 @@ const EnhancedMembersTable = () => {
             if (res.status === 401) { showToast('Session expired — please log in again', 'error'); return; }
             const data = await res.json();
             if (!res.ok || !data.accessToken) { showToast(data.error || 'Impersonation failed', 'error'); return; }
-            const role = (data.roles?.[0] || 'RETAILER').toUpperCase();
+            const normalizeRole = (r) => {
+                if (typeof r === 'string') return r.trim().replace(/^ROLE_/i, '').toUpperCase();
+                if (typeof r === 'object' && r?.name) return String(r.name).trim().replace(/^ROLE_/i, '').toUpperCase();
+                return '';
+            };
+            const rawRoles = Array.isArray(data.roles) ? data.roles : [data.role].filter(Boolean);
+            const normalizedRoles = rawRoles.map(normalizeRole).filter(Boolean);
+            const role = normalizedRoles[0] || 'RETAILER';
+            console.log('[EnhancedMembersTable] Impersonation roles:', rawRoles, '->', normalizedRoles, 'primaryRole:', role);
             const portalPath = role === 'DISTRIBUTOR' ? '/distributor' : role === 'SUPER_DISTRIBUTOR' ? '/super-distributor' : '/dashboard';
             // Build impersonated user with kycStatus=APPROVED so ProtectedRoute KYC gate is bypassed
-            const impersonatedUser = JSON.stringify({
+            const impersonatedUser = {
                 id: data.userId,
                 username: data.username,
                 fullName: data.fullName,
-                role,
-                roles: data.roles,
+                roles: normalizedRoles,
+                role: role,
                 kycStatus: 'APPROVED',
                 status: data.status || 'APPROVED',
                 impersonated: true
-            });
-            // Pass token + user via sessionStorage key so admin's localStorage is NOT touched
-            const key = `rupiksha_impersonate_${Date.now()}`;
-            sessionStorage.setItem(key, JSON.stringify({ token: data.accessToken, user: impersonatedUser }));
-            // Open new tab with special query param; the portal reads it on load
-            const url = `${portalPath}?_imp=${encodeURIComponent(key)}`;
+            };
+            // Pass token + user via localStorage key so new tab can read it (sessionStorage is NOT shared between tabs)
+            const key = `_imp_${Date.now()}`;
+            localStorage.setItem(key, JSON.stringify({ token: data.accessToken, user: impersonatedUser }));
+            console.log('[EnhancedMembersTable] Set localStorage key:', key, 'opening:', portalPath);
+            // Wait to ensure localStorage is committed before opening tab
+            await new Promise(r => setTimeout(r, 500));
+            // Use absolute URL to avoid popup blocking
+            const url = `${window.location.origin}${portalPath}?_imp=${encodeURIComponent(key)}`;
             window.open(url, '_blank');
             showToast(`Opened portal as ${data.fullName || data.username}`);
         } catch (e) { showToast(e.message, 'error'); }

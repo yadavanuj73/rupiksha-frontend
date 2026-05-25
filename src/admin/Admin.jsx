@@ -643,8 +643,9 @@ const Admin = () => {
             localStorage.setItem(impKey, handoffData);
             console.log('[Impersonation] Set localStorage key:', impKey, 'data length:', handoffData.length);
             
-            // Small delay to ensure localStorage is committed before opening new tab
-            await new Promise(r => setTimeout(r, 100));
+            // Delay to ensure localStorage is committed before opening new tab
+            // Some browsers need more time for localStorage to be persisted
+            await new Promise(r => setTimeout(r, 500));
             
             // Use full absolute URL to ensure popup works correctly across all browsers
             const origin = window.location.origin;
