@@ -631,7 +631,10 @@ const Admin = () => {
                 token: data.accessToken,
                 user: JSON.stringify(impersonatedUser)
             }));
-            const newTab = window.open(`${redirect}?_imp=${impKey}`, '_blank');
+            // Use full absolute URL to ensure popup works correctly across all browsers
+            const origin = window.location.origin;
+            const fullUrl = `${origin}${redirect}?_imp=${impKey}`;
+            const newTab = window.open(fullUrl, '_blank');
             if (!newTab) {
                 // Popup blocked fallback — still use old behaviour but warn
                 setStatus({ type: 'error', message: 'Popup blocked. Please allow popups for this site and try again.' });
