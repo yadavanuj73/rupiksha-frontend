@@ -636,13 +636,20 @@ const Admin = () => {
             // session. This preserves the admin's localStorage completely — refreshing
             // this tab will still show the admin dashboard.
             const impKey = '_imp_' + Date.now();
-            localStorage.setItem(impKey, JSON.stringify({
+            const handoffData = JSON.stringify({
                 token: data.accessToken,
-                user: impersonatedUser  // Store as object, not string - AuthContext will stringify when saving to rupiksha_user
-            }));
+                user: impersonatedUser
+            });
+            localStorage.setItem(impKey, handoffData);
+            console.log('[Impersonation] Set localStorage key:', impKey, 'data length:', handoffData.length);
+            
+            // Small delay to ensure localStorage is committed before opening new tab
+            await new Promise(r => setTimeout(r, 100));
+            
             // Use full absolute URL to ensure popup works correctly across all browsers
             const origin = window.location.origin;
             const fullUrl = `${origin}${redirect}?_imp=${impKey}`;
+            console.log('[Impersonation] Opening URL:', fullUrl);
             const newTab = window.open(fullUrl, '_blank');
             if (!newTab) {
                 // Popup blocked fallback — still use old behaviour but warn
