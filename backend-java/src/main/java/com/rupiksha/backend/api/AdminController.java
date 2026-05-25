@@ -300,8 +300,25 @@ public class AdminController {
 
     @GetMapping("/kyc/pending")
     @PreAuthorize("hasRole('ADMIN')")
-    public List<User> pendingKyc() {
-        return userRepository.findByKycStatus(KycStatus.PENDING);
+    public List<Map<String, Object>> pendingKyc() {
+        return userRepository.findByKycStatus(KycStatus.PENDING)
+                .stream().map(this::toAdminDto).toList();
+    }
+
+    @GetMapping("/kyc/all")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<Map<String, Object>> allKyc() {
+        return userRepository.findAll().stream()
+                .filter(u -> u.getKycStatus() != null && u.getKycStatus() != KycStatus.NOT_SUBMITTED)
+                .map(this::toAdminDto).toList();
+    }
+
+    @GetMapping("/kyc/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Map<String, Object> kycDetail(@PathVariable String id) {
+        User u = userRepository.findById(UUID.fromString(id))
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        return toAdminDto(u);
     }
 
     @PostMapping("/kyc/{id}")
@@ -392,6 +409,19 @@ public class AdminController {
         dto.put("pincode", u.getPincode());
         dto.put("aadhaarNumber", u.getAadhaarNumber());
         dto.put("panNumber", u.getPanNumber());
+        dto.put("firstName", u.getFirstName());
+        dto.put("lastName", u.getLastName());
+        dto.put("dob", u.getDob());
+        dto.put("shopAddress", u.getShopAddress());
+        dto.put("permanentAddress", u.getPermanentAddress());
+        dto.put("photoUrl", u.getPhotoUrl());
+        dto.put("aadhaarPhotoUrl", u.getAadhaarPhotoUrl());
+        dto.put("panPhotoUrl", u.getPanPhotoUrl());
+        dto.put("shopPhotoUrl", u.getShopPhotoUrl());
+        dto.put("bankPassbookUrl", u.getBankPassbookUrl());
+        dto.put("kycSubmittedAt", u.getKycSubmittedAt());
+        dto.put("kycApprovedAt", u.getKycApprovedAt());
+        dto.put("kycRejectionReason", u.getKycRejectionReason());
         dto.put("businessName", u.getBusinessName());
         dto.put("partyCode", u.getPartyCode());
         dto.put("state", u.getStateName());

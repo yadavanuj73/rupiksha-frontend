@@ -154,7 +154,6 @@ const CompleteKyc = () => {
         toCompressedDataUrl(files.shopPhoto),
         toCompressedDataUrl(files.bankPassbook),
       ]);
-      // Backend SubmitKycRequest record only accepts these exact 9 fields
       const payload = {
         aadhaarNumber: form.aadhaarNumber.trim(),
         panNumber: form.panNumber.trim().toUpperCase(),
@@ -165,6 +164,14 @@ const CompleteKyc = () => {
         city: form.city.trim(),
         state: form.state,
         pincode: form.pincode.trim(),
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        dob: form.dob,
+        mobile: form.mobile.trim(),
+        shopAddress: form.shopAddress.trim(),
+        permanentAddress: form.permanentAddress.trim(),
+        shopPhotoUrl,
+        bankPassbookUrl,
       };
       const res = await userService.submitKyc(payload);
       const nextUser = { ...(user || {}), kycStatus: res?.kycStatus || 'PENDING' };

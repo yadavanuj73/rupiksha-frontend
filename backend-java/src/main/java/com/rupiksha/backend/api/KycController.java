@@ -37,6 +37,14 @@ public class KycController {
         user.setCity(request.city());
         user.setStateName(request.state());
         user.setPincode(request.pincode());
+        // Save extended onboarding fields if provided
+        if (request.firstName() != null) user.setFirstName(request.firstName());
+        if (request.lastName() != null) user.setLastName(request.lastName());
+        if (request.dob() != null) user.setDob(request.dob());
+        if (request.shopAddress() != null) user.setShopAddress(request.shopAddress());
+        if (request.permanentAddress() != null) user.setPermanentAddress(request.permanentAddress());
+        if (request.shopPhotoUrl() != null && !request.shopPhotoUrl().isBlank()) user.setShopPhotoUrl(request.shopPhotoUrl());
+        if (request.bankPassbookUrl() != null && !request.bankPassbookUrl().isBlank()) user.setBankPassbookUrl(request.bankPassbookUrl());
         user.setKycStatus(KycStatus.PENDING);
         user.setKycRejectionReason(null);
         user.setKycSubmittedAt(Instant.now());

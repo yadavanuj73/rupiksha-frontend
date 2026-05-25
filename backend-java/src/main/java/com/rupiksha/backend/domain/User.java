@@ -88,6 +88,27 @@ public class User {
     @Column(name = "added_by_party_code", length = 80)
     private String addedByPartyCode;
 
+    @Column(name = "first_name", length = 60)
+    private String firstName;
+
+    @Column(name = "last_name", length = 60)
+    private String lastName;
+
+    @Column(name = "dob", length = 20)
+    private String dob;
+
+    @Column(name = "shop_address", length = 300)
+    private String shopAddress;
+
+    @Column(name = "permanent_address", length = 300)
+    private String permanentAddress;
+
+    @Column(name = "shop_photo_url", columnDefinition = "text")
+    private String shopPhotoUrl;
+
+    @Column(name = "bank_passbook_url", columnDefinition = "text")
+    private String bankPassbookUrl;
+
     @Column(name = "kyc_rejection_reason", length = 300)
     private String kycRejectionReason;
 

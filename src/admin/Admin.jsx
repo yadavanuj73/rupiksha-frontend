@@ -3669,8 +3669,9 @@ const ApprovalsTable = ({
     approvingIds,
     resolvedApprovalIds
 }) => {
-    const [view, setView] = useState('main'); // 'main', 'members', 'retailers', 'distributors', 'SuperDistributors', 'ekyc'
+    const [view, setView] = useState('main'); // 'main', 'members', 'retailers', 'distributors', 'SuperDistributors', 'ekyc', 'onboarding-kyc'
     const [pendingAepsKycs, setPendingAepsKycs] = useState([]);
+    const [pendingOnboardingKycs, setPendingOnboardingKycs] = useState([]);
     const [kycViewer, setKycViewer] = useState(null); // Currently-inspected KYC submission
     
     const isLocallyResolved = (item) => {
@@ -3685,12 +3686,26 @@ const ApprovalsTable = ({
     const pendingSAs = (SuperDistributors || []).filter(s => s?.status?.toLowerCase() === 'pending' && !isLocallyResolved(s));
     const totalPendingMembers = pendingUsers.length + pendingDists.length + pendingSAs.length;
 
+    const fetchOnboardingKycs = async () => {
+        try {
+            const token = localStorage.getItem('rupiksha_token');
+            const res = await fetch(`${BACKEND_URL}/admin/kyc/pending`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setPendingOnboardingKycs(Array.isArray(data) ? data : []);
+            }
+        } catch (e) { console.error('Failed to fetch onboarding KYCs:', e); }
+    };
+
     useEffect(() => {
         const fetchAepsKycs = async () => {
             const res = await dataService.getPendingKycs('AEPS');
             if (res.success) setPendingAepsKycs(res.kycs);
         };
         fetchAepsKycs();
+        fetchOnboardingKycs();
     }, []);
 
     // Partner KYC approval — any retailer / distributor / super-distributor who
@@ -3804,6 +3819,14 @@ const ApprovalsTable = ({
                         color="linear-gradient(135deg, #ec4899, #be185d)"
                         onClick={() => setView('ekyc')}
                     />
+                    <NavCard 
+                        title="Onboarding KYC"
+                        desc="New member identity & document review"
+                        count={pendingOnboardingKycs.length}
+                        icon={ShieldCheck}
+                        color="linear-gradient(135deg, #0ea5e9, #0369a1)"
+                        onClick={() => setView('onboarding-kyc')}
+                    />
                 </div>
             )}
 
@@ -3880,6 +3903,43 @@ const ApprovalsTable = ({
                 </div>
             )}
 
+            {view === 'onboarding-kyc' && (
+                <div className="w-full">
+                    <BackButton />
+                    <OnboardingKycTable
+                        kycs={pendingOnboardingKycs}
+                        onView={(kyc) => setKycViewer(kyc)}
+                        onApprove={async (kyc) => {
+                            if (!window.confirm(`Approve KYC for ${kyc.fullName || kyc.username}?`)) return;
+                            try {
+                                const token = localStorage.getItem('rupiksha_token');
+                                const res = await fetch(`${BACKEND_URL}/admin/kyc/${kyc.id}`, {
+                                    method: 'POST',
+                                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ action: 'approve' })
+                                });
+                                if (res.ok) { await fetchOnboardingKycs(); setKycViewer(null); refreshData(); }
+                                else { const d = await res.json(); alert(d.message || 'Approval failed'); }
+                            } catch(e) { alert('Error: ' + e.message); }
+                        }}
+                        onReject={async (kyc) => {
+                            const reason = window.prompt('Enter rejection reason:');
+                            if (reason === null) return;
+                            try {
+                                const token = localStorage.getItem('rupiksha_token');
+                                const res = await fetch(`${BACKEND_URL}/admin/kyc/${kyc.id}`, {
+                                    method: 'POST',
+                                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ action: 'reject', remarks: reason })
+                                });
+                                if (res.ok) { await fetchOnboardingKycs(); setKycViewer(null); }
+                                else { const d = await res.json(); alert(d.message || 'Rejection failed'); }
+                            } catch(e) { alert('Error: ' + e.message); }
+                        }}
+                    />
+                </div>
+            )}
+
             <KycDocumentsModal
                 kyc={kycViewer}
                 onClose={() => setKycViewer(null)}
@@ -3889,6 +3949,75 @@ const ApprovalsTable = ({
         </div>
     );
 };
+
+/**
+ * Table listing all pending onboarding KYC submissions with View/Approve/Reject actions.
+ */
+const OnboardingKycTable = ({ kycs, onView, onApprove, onReject }) => (
+    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between">
+            <div>
+                <h2 className="text-xl font-black text-[#1e1b4b] tracking-tight">Pending Onboarding KYC</h2>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{kycs.length} submission{kycs.length !== 1 ? 's' : ''} awaiting review</p>
+            </div>
+        </div>
+        {kycs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 opacity-30">
+                <ShieldCheck size={40} className="mb-4 text-slate-400" />
+                <p className="font-black text-slate-400 uppercase tracking-[0.4em] text-[11px]">No Pending KYC Submissions</p>
+            </div>
+        ) : (
+            <table className="w-full">
+                <thead>
+                    <tr className="border-b border-slate-100">
+                        {['Member', 'Role', 'Mobile / Email', 'Address', 'Submitted', 'Actions'].map(h => (
+                            <th key={h} className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">{h}</th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {kycs.map(kyc => (
+                        <tr key={kyc.id} className="border-b border-slate-50 hover:bg-slate-50/80 transition-colors group">
+                            <td className="px-6 py-5">
+                                <p className="font-bold text-slate-800 text-sm">{kyc.fullName || kyc.name}</p>
+                                <p className="text-[11px] text-slate-400 font-medium">{kyc.username}</p>
+                            </td>
+                            <td className="px-6 py-5">
+                                <span className="px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest bg-indigo-50 text-indigo-600">{kyc.role}</span>
+                            </td>
+                            <td className="px-6 py-5">
+                                <p className="text-sm font-bold text-slate-700">{kyc.mobile}</p>
+                                <p className="text-[11px] text-slate-400">{kyc.email}</p>
+                            </td>
+                            <td className="px-6 py-5">
+                                <p className="text-xs text-slate-600 font-medium max-w-[180px] truncate">{[kyc.city, kyc.stateName].filter(Boolean).join(', ')}</p>
+                            </td>
+                            <td className="px-6 py-5">
+                                <p className="text-xs font-bold text-slate-500">{kyc.kycSubmittedAt ? new Date(kyc.kycSubmittedAt).toLocaleDateString('en-IN') : '—'}</p>
+                            </td>
+                            <td className="px-6 py-5">
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => onView(kyc)}
+                                        className="h-9 px-4 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-500 hover:text-white transition-all flex items-center gap-1.5">
+                                        <Eye size={14} /> View
+                                    </button>
+                                    <button onClick={() => onApprove(kyc)}
+                                        className="h-9 px-4 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all flex items-center gap-1.5">
+                                        <CheckCircle2 size={14} /> Approve
+                                    </button>
+                                    <button onClick={() => onReject(kyc)}
+                                        className="h-9 w-9 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center">
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        )}
+    </div>
+);
 
 /**
  * Modal that lets an admin review every document and detail a retailer /
@@ -4004,12 +4133,27 @@ const KycDocumentsModal = ({ kyc, onClose, onApprove, onReject }) => {
 
                         <section>
                             <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-3 flex items-center gap-2">
+                                <FileText size={14} /> Extended Details
+                            </h3>
+                            <div className="bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3">
+                                <InfoRow label="First Name" value={kyc.firstName} />
+                                <InfoRow label="Last Name" value={kyc.lastName} />
+                                <InfoRow label="Date of Birth" value={kyc.dob} />
+                                <InfoRow label="Shop Address" value={kyc.shopAddress} />
+                                <InfoRow label="Permanent Address" value={kyc.permanentAddress} />
+                            </div>
+                        </section>
+
+                        <section>
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-3 flex items-center gap-2">
                                 <ImageIcon size={14} /> Uploaded Documents
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <DocCard label="Selfie / Photo" src={kyc.photoUrl} />
-                                <DocCard label="Aadhaar" src={kyc.aadhaarPhotoUrl} />
-                                <DocCard label="PAN" src={kyc.panPhotoUrl} />
+                                <DocCard label="Aadhaar Card" src={kyc.aadhaarPhotoUrl} />
+                                <DocCard label="PAN Card" src={kyc.panPhotoUrl} />
+                                <DocCard label="Shop / Outlet Photo" src={kyc.shopPhotoUrl} />
+                                <DocCard label="Bank Passbook / Cheque" src={kyc.bankPassbookUrl} />
                             </div>
                         </section>
                     </div>
