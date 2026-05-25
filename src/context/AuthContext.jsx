@@ -69,22 +69,28 @@ export function AuthProvider({ children }) {
     const impKey = params.get('_imp');
     let impersonationSuccess = false;
     if (impKey) {
+      console.log('[AuthContext] Found impKey:', impKey);
       try {
         const raw = localStorage.getItem(impKey);
+        console.log('[AuthContext] Raw localStorage data:', raw);
         if (raw) {
           const parsed = JSON.parse(raw);
+          console.log('[AuthContext] Parsed data:', parsed);
           const impToken = parsed.token;
           const impUserObj = parsed.user;
+          console.log('[AuthContext] impToken exists:', !!impToken, 'impUserObj exists:', !!impUserObj);
           if (impToken && impUserObj) {
             localStorage.removeItem(impKey); // clean up handoff key immediately
             localStorage.setItem('rupiksha_token', impToken);
             localStorage.setItem('rupiksha_user', JSON.stringify(impUserObj));
             // Immediately set user state so UI reflects impersonated user
             const normalizedUser = normalizeUserSession(impUserObj);
+            console.log('[AuthContext] Normalized user:', normalizedUser);
             if (normalizedUser) {
               setUser(normalizedUser);
               setPermissions(normalizedUser.permissions || []);
               impersonationSuccess = true;
+              console.log('[AuthContext] Impersonation success, user set');
             }
             // Clean ?_imp= from URL without reload
             params.delete('_imp');
@@ -93,7 +99,7 @@ export function AuthProvider({ children }) {
           }
         }
       } catch (e) {
-        console.error('Impersonation handoff failed:', e);
+        console.error('[AuthContext] Impersonation handoff failed:', e);
       }
     }
 

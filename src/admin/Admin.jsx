@@ -607,8 +607,11 @@ const Admin = () => {
                 return '';
             };
             const roles = Array.isArray(data.roles) ? data.roles : [data.role].filter(Boolean);
+            console.log('[Impersonation] Raw roles from API:', roles);
             const normalizedRoles = roles.map(normalizeRole).filter(Boolean);
+            console.log('[Impersonation] Normalized roles:', normalizedRoles);
             const primaryRole = normalizedRoles[0] || '';
+            console.log('[Impersonation] Primary role:', primaryRole);
 
             const impersonatedUser = {
                 id: data.userId,
