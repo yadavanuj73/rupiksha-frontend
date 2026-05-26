@@ -1,6 +1,7 @@
 const _isLocal = typeof window !== 'undefined'
   && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 const _RENDER = 'https://rupiksha-backend-java.onrender.com/api/v1';
+// Always use Render backend in production (never relative URLs which break CORS)
 export const BACKEND_URL = _isLocal
   ? ((import.meta.env.VITE_BACKEND_URL || '/api/v1').replace(/\/$/, ''))
   : _RENDER;
