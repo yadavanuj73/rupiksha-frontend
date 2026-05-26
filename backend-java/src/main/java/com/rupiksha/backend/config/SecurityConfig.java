@@ -19,6 +19,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 @Configuration
@@ -69,8 +70,20 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        String allowed = env.getProperty("app.cors.allowed-origins", "http://localhost:5173");
-        configuration.setAllowedOrigins(Arrays.stream(allowed.split(",")).map(String::trim).toList());
+        // Always-allowed origins (hardcoded so they work even if env var is missing/stale)
+        LinkedHashSet<String> origins = new LinkedHashSet<>(Arrays.asList(
+                "http://localhost:5173",
+                "http://localhost:3000",
+                "https://rupiksha-frontend.vercel.app",
+                "https://rupiksha.in",
+                "https://www.rupiksha.in"
+        ));
+        // Merge any extra origins from env var
+        String envAllowed = env.getProperty("app.cors.allowed-origins", "");
+        if (!envAllowed.isBlank()) {
+            Arrays.stream(envAllowed.split(",")).map(String::trim).filter(s -> !s.isBlank()).forEach(origins::add);
+        }
+        configuration.setAllowedOrigins(new ArrayList<>(origins));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
