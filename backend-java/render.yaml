@@ -60,8 +60,7 @@ services:
         value: mock
       - key: RECHARGE_PROVIDER
         value: mock
-      - key: AEPS_PROVIDER
-        value: mock
+      # Note: Legacy AEPS_PROVIDER removed. Using Levin AEPS (LEVIN_AEPS_* vars).
       - key: ALLOW_MOCK_PROVIDERS_IN_PRODUCTION
         value: true
       - key: PAYMENT_KEY_ID

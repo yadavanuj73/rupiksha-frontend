@@ -9,7 +9,6 @@ public record AppProperties(
         Cors cors,
         Providers providers,
         Recharge recharge,
-        Aeps aeps,
         Bbps bbps,
         Services services,
         Environment environment,
@@ -22,7 +21,6 @@ public record AppProperties(
     public record OtpProvider(String name, String baseUrl, String apiKey, String senderId) {}
     public record PaymentProvider(String name, String baseUrl, String keyId, String keySecret, String webhookSecret) {}
     public record Recharge(String provider, String baseUrl, String apiKey, String apiSecret) {}
-    public record Aeps(String provider, String baseUrl, String apiKey, String apiSecret) {}
     public record Bbps(String provider, String baseUrl, String apiKey, String apiSecret) {}
     public record Services(boolean aepsEnabled, boolean bbpsEnabled, boolean ticketsEnabled, boolean rechargeEnabled, boolean payoutEnabled) {}
     public record Environment(boolean allowMockProvidersInProduction) {}

@@ -97,17 +97,13 @@ app:
     base-url: ${RECHARGE_BASE_URL:}
     api-key: ${RECHARGE_API_KEY:}
     api-secret: ${RECHARGE_API_SECRET:}
-  aeps:
-    provider: ${AEPS_PROVIDER:mock}
-    base-url: ${AEPS_BASE_URL:}
-    api-key: ${AEPS_API_KEY:}
-    api-secret: ${AEPS_API_SECRET:}
   bbps:
     provider: ${BBPS_PROVIDER:mock}
     base-url: ${BBPS_BASE_URL:}
     api-key: ${BBPS_API_KEY:}
     api-secret: ${BBPS_API_SECRET:}
   services:
+    # Note: Legacy AEPS provider config removed. Using Levin AEPS only.
     aeps-enabled: ${SERVICE_AEPS_ENABLED:true}
     bbps-enabled: ${SERVICE_BBPS_ENABLED:true}
     tickets-enabled: ${SERVICE_TICKETS_ENABLED:true}
