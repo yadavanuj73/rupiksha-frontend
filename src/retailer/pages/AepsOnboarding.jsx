@@ -8,6 +8,18 @@ import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { aepsService } from '../../services/apiService';
 
+const STATE_CODES = {
+    "Jammu and Kashmir":"JK","Himachal Pradesh":"HP","Punjab":"PB","Chandigarh":"CH",
+    "Uttarakhand":"UA","Haryana":"HR","Delhi":"DL","Rajasthan":"RJ","Uttar Pradesh":"UP",
+    "Bihar":"BR","Sikkim":"SK","Arunachal Pradesh":"AR","Nagaland":"NL","Manipur":"MN",
+    "Mizoram":"MZ","Tripura":"TR","Meghalaya":"ML","Assam":"AS","West Bengal":"WB",
+    "Jharkhand":"JH","Odisha":"OR","Chhattisgarh":"CG","Madhya Pradesh":"MP",
+    "Gujarat":"GJ","Daman and Diu":"DD","Dadra and Nagar Haveli":"DN","Maharashtra":"MH",
+    "Andhra Pradesh":"AP","Karnataka":"KA","Goa":"GA","Lakshadweep":"LD","Kerala":"KL",
+    "Tamil Nadu":"TN","Puducherry":"PY","Andaman and Nicobar Islands":"AN",
+    "Telangana":"TS"
+};
+
 const INDIAN_STATES = [
     "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh",
     "Goa","Gujarat","Haryana","Himachal Pradesh","Jammu and Kashmir",
@@ -117,7 +129,7 @@ const AepsOnboarding = () => {
                 pinCode: formData.pinCode.trim(),
                 address: formData.address.trim(),
                 aeps_mobile: formData.aeps_mobile.trim(),
-                state: formData.state.trim(),
+                state: STATE_CODES[formData.state.trim()] || formData.state.trim(),
                 shop_name: formData.shop_name.trim(),
                 city: formData.city.trim(),
                 latitude: formData.latitude || location?.lat || '26.8467',

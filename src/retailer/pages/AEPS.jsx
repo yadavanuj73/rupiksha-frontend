@@ -15,6 +15,17 @@ import RetailerEKYC from '../components/banking/RetailerEKYC';
 import logo from '../../assets/rupiksha_logo.png';
 
 /* ── Constants ── */
+const STATE_CODES = {
+    "Jammu and Kashmir":"JK","Himachal Pradesh":"HP","Punjab":"PB","Chandigarh":"CH",
+    "Uttarakhand":"UA","Haryana":"HR","Delhi":"DL","Rajasthan":"RJ","Uttar Pradesh":"UP",
+    "Bihar":"BR","Sikkim":"SK","Arunachal Pradesh":"AR","Nagaland":"NL","Manipur":"MN",
+    "Mizoram":"MZ","Tripura":"TR","Meghalaya":"ML","Assam":"AS","West Bengal":"WB",
+    "Jharkhand":"JH","Odisha":"OR","Chhattisgarh":"CG","Madhya Pradesh":"MP",
+    "Gujarat":"GJ","Daman and Diu":"DD","Dadra and Nagar Haveli":"DN","Maharashtra":"MH",
+    "Andhra Pradesh":"AP","Karnataka":"KA","Goa":"GA","Lakshadweep":"LD","Kerala":"KL",
+    "Tamil Nadu":"TN","Puducherry":"PY","Andaman and Nicobar Islands":"AN","Telangana":"TS"
+};
+
 const NAVY = '#0f2557';
 const NAVY2 = '#1a3a6b';
 const NAVY3 = '#2257a8';
@@ -249,13 +260,13 @@ const AEPS = () => {
         try {
             const selectedBank = BANK_LIST.find(b => b.id === bank);
 
-            // Map transaction type to AEPS method code
+            // Map transaction type to AEPS method code (per Levin AEPS-9 doc)
             const methodCodes = {
-                'withdrawal': '151',      // Cash Withdrawal
+                'withdrawal': '188',       // Cash Withdrawal
                 'balance': '152',          // Balance Inquiry
-                'statement': '153',        // Mini Statement
-                'aadhaar_pay': '154',      // Aadhaar Pay
-                'cash_deposit': '188'      // Cash Deposit
+                'statement': '177',        // Mini Statement
+                'aadhaar_pay': '152',      // Aadhaar Pay (uses balance flow)
+                'cash_deposit': '188'      // Cash Deposit (uses withdrawal flow)
             };
 
             const payload = {
@@ -275,7 +286,7 @@ const AEPS = () => {
                 address: user?.address || '',
                 shopName: user?.businessName || '',
                 city: user?.city || '',
-                state: user?.state || ''
+                state: STATE_CODES[user?.state] || user?.state || ''
             };
 
             const result = await aepsService.transact(payload);
