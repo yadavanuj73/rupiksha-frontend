@@ -52,7 +52,6 @@ const Admin = lazy(() => import('./admin/Admin'));
 const RetailerDetails = lazy(() => import('./admin/components/RetailerDetails'));
 const DistributorDetails = lazy(() => import('./admin/components/DistributorDetails'));
 const KYCVerification = lazy(() => import('./retailer/pages/KYCVerification'));
-const AEPSKycForm = lazy(() => import('./retailer/pages/AEPSKycForm'));
 const AepsOnboarding = lazy(() => import('./retailer/pages/AepsOnboarding'));
 
 // Distributor

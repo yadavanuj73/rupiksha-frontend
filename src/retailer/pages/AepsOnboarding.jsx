@@ -207,18 +207,18 @@ const AepsOnboarding = () => {
     return (
         <div className="min-h-screen bg-slate-50 font-sans">
             {/* Header */}
-            <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-4">
+            <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between h-14">
+                <div className="flex items-center gap-3">
                     <button onClick={() => step > 1 ? setStep(s => s - 1) : navigate('/dashboard')}
-                        className="w-10 h-10 bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center justify-center text-slate-600 transition-all">
-                        <ArrowLeft size={18} />
+                        className="w-8 h-8 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center text-slate-600 transition-all flex-shrink-0">
+                        <ArrowLeft size={16} />
                     </button>
                     <div>
-                        <h1 className="text-base font-black text-slate-900 uppercase tracking-tight">AEPS Retailer Onboarding</h1>
-                        <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Powered by Levin Fintech API</p>
+                        <h1 className="text-sm font-black text-slate-900 uppercase tracking-tight leading-tight">AEPS Retailer Onboarding</h1>
+                        <p className="text-[9px] font-bold text-blue-600 uppercase tracking-widest leading-tight">Powered by Levin Fintech API</p>
                     </div>
                 </div>
-                <img src={logo} alt="Rupiksha" className="h-9 object-contain" />
+                <img src={logo} alt="Rupiksha" className="h-7 w-auto object-contain flex-shrink-0" />
             </div>
 
             {/* Step Indicator */}
