@@ -276,37 +276,37 @@ export const providerTxnService = {
 export const aepsService = {
   // Onboarding for new retailers
   onboard: (payload) =>
-    apiFetch("/api/aeps/onboard", {
+    apiFetch("/aeps/onboard", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
   // KYC verification with biometric
   kyc: (payload) =>
-    apiFetch("/api/aeps/aeps-kyc", {
+    apiFetch("/aeps/aeps-kyc", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
   // KYC OTP verification
   verifyKycOtp: (payload) =>
-    apiFetch("/api/aeps/aeps-kyc-otp-verify", {
+    apiFetch("/aeps/aeps-kyc-otp-verify", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
   // 2FA verification (required every 24 hours)
   twoFa: (payload) =>
-    apiFetch("/api/aeps/aeps-twofa", {
+    apiFetch("/aeps/aeps-twofa", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
   // Main transaction (withdrawal, balance inquiry, etc.)
   transact: (payload) =>
-    apiFetch("/api/aeps/transaction", {
+    apiFetch("/aeps/transaction", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
   // Transaction status check
   statusCheck: (clientId) =>
-    apiFetch("/api/aeps/transaction-status", {
+    apiFetch("/aeps/transaction-status", {
       method: "POST",
       body: JSON.stringify({ clientId }),
     }),

@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/aeps")
+@RequestMapping("/api/v1/aeps")
 @RequiredArgsConstructor
 @CrossOrigin(origins = {"http://localhost:5173", "https://rupiksha-frontend.vercel.app", "https://rupiksha.in", "https://www.rupiksha.in"})
 public class LevinAepsController {
