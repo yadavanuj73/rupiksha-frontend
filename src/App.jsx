@@ -194,7 +194,7 @@ function App() {
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/adin" element={<Navigate to="/admin" replace />} />
               <Route path="/kyc-verification" element={<ProtectedRoute><KYCVerification /></ProtectedRoute>} />
-              <Route path="/aeps-kyc" element={<ProtectedRoute><AEPSKycForm /></ProtectedRoute>} />
+              <Route path="/aeps-kyc" element={<ProtectedRoute><AepsOnboarding /></ProtectedRoute>} />
               <Route path="/aeps-onboarding" element={<ProtectedRoute><AepsOnboarding /></ProtectedRoute>} />
               <Route path="/complete-kyc" element={<ProtectedRoute allowKycPending><CompleteKyc /></ProtectedRoute>} />
 
