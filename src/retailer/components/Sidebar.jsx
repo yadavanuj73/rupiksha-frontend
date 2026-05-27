@@ -91,13 +91,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
                     style={{ color: isActive ? '#ffffff' : '#334155' }}
                 >
                     {isActive && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.15 }}
-                            className="absolute inset-0 bg-blue-600 border border-blue-600 shadow-lg rounded-xl z-0"
-                        />
+                        <div className="absolute inset-0 bg-blue-600 border border-blue-600 shadow-sm rounded-xl z-0" />
                     )}
 
                     <div className="flex items-center space-x-3 relative z-10 w-full">
@@ -113,13 +107,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
                             <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : 'rotate-0'}`}>
                                 <ChevronDown size={14} style={{ color: isActive ? '#ffffff' : '#94a3b8' }} />
                             </div>
-                        ) : isActive && !item.hasSubmenu && (
-                            <motion.div
-                                initial={{ scale: 0, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.4)]"
-                            />
-                        )}
+                        ) : null}
                     </div>
                 </motion.div>
 
