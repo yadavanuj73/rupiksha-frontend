@@ -9,7 +9,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { dataService } from '../../services/dataService';
 import { aepsService } from '../../services/apiService';
-import logo from '../../assets/rupiksha_logo.png';
 
 const INDIAN_STATES = [
     "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh",
@@ -39,9 +38,9 @@ const AepsOnboarding = () => {
 
     const [formData, setFormData] = useState({
         // Step 1 — Personal
-        fname: user?.fullName?.split(' ')[0] || '',
+        fname: '',
         middlename: '',
-        lname: user?.fullName?.split(' ').slice(1).join(' ') || '',
+        lname: '',
         aeps_mobile: user?.mobile || '',
         email: user?.email || '',
         pan_card: user?.panNumber || '',
@@ -218,7 +217,6 @@ const AepsOnboarding = () => {
                         <p className="text-[9px] font-bold text-blue-600 uppercase tracking-widest leading-tight">Powered by Levin Fintech API</p>
                     </div>
                 </div>
-                <img src={logo} alt="Rupiksha" className="h-7 w-auto object-contain flex-shrink-0" />
             </div>
 
             {/* Step Indicator */}
