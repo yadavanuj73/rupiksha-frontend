@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/aeps")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost:5173", "https://your-frontend.vercel.app"})
+@CrossOrigin(origins = {"http://localhost:5173", "https://rupiksha-frontend.vercel.app", "https://rupiksha.in", "https://www.rupiksha.in"})
 public class LevinAepsController {
 
     private final AepsService aepsService;
