@@ -2,12 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     User, MapPin, Building2, CheckCircle2, ArrowLeft,
-    ShieldCheck, RefreshCw, ChevronRight, Camera,
-    CreditCard, Landmark, FileText, Upload
+    ShieldCheck, RefreshCw, ChevronRight, FileText
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { dataService } from '../../services/dataService';
 import { aepsService } from '../../services/apiService';
 
 const INDIAN_STATES = [
@@ -46,23 +44,14 @@ const AepsOnboarding = () => {
         pan_card: user?.panNumber || '',
         aadhar_number: user?.aadhaarNumber || '',
         // Step 2 — Shop & Address
-        address: user?.address || '',       // permanent address (ad1)
-        ad2: '',                            // area/landmark
+        address: user?.address || '',
         city: user?.city || '',
         state: user?.state || 'Uttar Pradesh',
         pinCode: user?.pincode || '',
         shop_name: user?.businessName || '',
-        ad3: '',                            // shop address line
-        ad4: '',                            // shop city/area
-        // geo
+        // geo (auto-detected)
         latitude: '',
         longitude: '',
-    });
-
-    const [files, setFiles] = useState({
-        panImage: null,
-        shopImage: null,
-        chequeImage: null,
     });
 
     useEffect(() => {
@@ -84,15 +73,6 @@ const AepsOnboarding = () => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
         setErrors(prev => ({ ...prev, [name]: '' }));
-    };
-
-    const handleFileChange = (e) => {
-        const { name, files: f } = e.target;
-        if (f && f[0]) {
-            const reader = new FileReader();
-            reader.onloadend = () => setFiles(prev => ({ ...prev, [name]: reader.result }));
-            reader.readAsDataURL(f[0]);
-        }
     };
 
     const validateStep1 = () => {
@@ -144,9 +124,9 @@ const AepsOnboarding = () => {
                 longitude: formData.longitude || location?.long || '80.9462',
                 email: formData.email.trim(),
                 ad1: formData.address.trim(),
-                ad2: formData.ad2.trim(),
-                ad3: formData.ad3.trim() || formData.shop_name.trim(),
-                ad4: formData.ad4.trim() || formData.city.trim(),
+                ad2: '',
+                ad3: '',
+                ad4: '',
             };
 
             const result = await aepsService.onboard(payload);
@@ -214,7 +194,6 @@ const AepsOnboarding = () => {
                     </button>
                     <div>
                         <h1 className="text-sm font-black text-slate-900 uppercase tracking-tight leading-tight">AEPS Retailer Onboarding</h1>
-                        <p className="text-[9px] font-bold text-blue-600 uppercase tracking-widest leading-tight">Powered by Levin Fintech API</p>
                     </div>
                 </div>
             </div>
@@ -275,10 +254,9 @@ const AepsOnboarding = () => {
                         {/* ── STEP 2: Shop & Address ── */}
                         {step === 2 && (
                             <div className="p-6 space-y-5">
-                                <SectionHeader icon={<Building2 size={16} />} title="Shop & Address Details" sub="Permanent address + shop location" />
+                                <SectionHeader icon={<Building2 size={16} />} title="Shop & Address Details" sub="As per business registration" />
                                 <Field label="Shop / Business Name *" name="shop_name" value={formData.shop_name} onChange={handleChange} error={errors.shop_name} placeholder="Your shop name" />
-                                <Field label="Permanent Address (Street / Premise) *" name="address" value={formData.address} onChange={handleChange} error={errors.address} placeholder="House No, Street, Area" />
-                                <Field label="Area / Landmark" name="ad2" value={formData.ad2} onChange={handleChange} placeholder="Nearby landmark (optional)" />
+                                <Field label="Address *" name="address" value={formData.address} onChange={handleChange} error={errors.address} placeholder="House No, Street, Area" />
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <Field label="City *" name="city" value={formData.city} onChange={handleChange} error={errors.city} placeholder="City name" />
                                     <div className="space-y-1.5">
@@ -291,57 +269,48 @@ const AepsOnboarding = () => {
                                     </div>
                                     <Field label="Pincode *" name="pinCode" value={formData.pinCode} onChange={handleChange} error={errors.pinCode} placeholder="6-digit PIN" maxLength={6} />
                                 </div>
-                                <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
-                                    <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">Shop Location (if different from above)</p>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
-                                        <Field label="Shop Address Line" name="ad3" value={formData.ad3} onChange={handleChange} placeholder="Same as above if blank" />
-                                        <Field label="Shop City / Area" name="ad4" value={formData.ad4} onChange={handleChange} placeholder="Same as above if blank" />
-                                    </div>
-                                </div>
                                 {location && (
-                                    <div className="flex items-center gap-2 text-emerald-600 text-[10px] font-bold">
-                                        <MapPin size={12} /> GPS location acquired: {parseFloat(formData.latitude).toFixed(4)}, {parseFloat(formData.longitude).toFixed(4)}
+                                    <div className="flex items-center gap-2 text-emerald-600 text-[10px] font-bold bg-emerald-50 rounded-lg px-3 py-2 border border-emerald-100">
+                                        <MapPin size={12} /> GPS acquired: {parseFloat(formData.latitude).toFixed(4)}, {parseFloat(formData.longitude).toFixed(4)}
                                     </div>
                                 )}
                             </div>
                         )}
 
-                        {/* ── STEP 3: Documents & Submit ── */}
+                        {/* ── STEP 3: Review & Submit ── */}
                         {step === 3 && (
                             <form onSubmit={handleSubmit}>
                                 <div className="p-6 space-y-5">
-                                    <SectionHeader icon={<FileText size={16} />} title="Upload Documents" sub="Required for AEPS onboarding verification" />
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                                        <DocUpload label="PAN Card Photo *" name="panImage" icon={<CreditCard size={22} className="text-blue-500" />} value={files.panImage} onChange={handleFileChange} />
-                                        <DocUpload label="Shop Photo *" name="shopImage" icon={<Building2 size={22} className="text-indigo-500" />} value={files.shopImage} onChange={handleFileChange} />
-                                        <DocUpload label="Cancelled Cheque *" name="chequeImage" icon={<Landmark size={22} className="text-emerald-500" />} value={files.chequeImage} onChange={handleFileChange} />
-                                    </div>
+                                    <SectionHeader icon={<FileText size={16} />} title="Review & Submit" sub="Confirm your details before submitting" />
 
-                                    {/* Summary */}
-                                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-2 text-[11px]">
-                                        <p className="font-black text-slate-700 uppercase tracking-widest text-[10px] mb-3">Review Details</p>
-                                        <Row label="Name" value={`${formData.fname} ${formData.middlename} ${formData.lname}`.trim()} />
+                                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3 text-[12px]">
+                                        <p className="font-black text-slate-500 uppercase tracking-widest text-[9px] mb-2">Personal Details</p>
+                                        <Row label="Full Name" value={`${formData.fname} ${formData.middlename} ${formData.lname}`.replace(/\s+/g,' ').trim()} />
                                         <Row label="Mobile" value={formData.aeps_mobile} />
+                                        <Row label="Email" value={formData.email} />
                                         <Row label="PAN" value={formData.pan_card.toUpperCase()} />
-                                        <Row label="Aadhaar" value={`XXXX XXXX ${formData.aadhar_number.slice(-4)}`} />
-                                        <Row label="Shop" value={formData.shop_name} />
-                                        <Row label="City / State" value={`${formData.city}, ${formData.state} - ${formData.pinCode}`} />
+                                        <Row label="Aadhaar" value={`XXXX XXXX XXXX ${formData.aadhar_number.slice(-4)}`} />
+                                        <hr className="border-slate-200 my-1" />
+                                        <p className="font-black text-slate-500 uppercase tracking-widest text-[9px] mb-2">Shop & Address</p>
+                                        <Row label="Shop Name" value={formData.shop_name} />
+                                        <Row label="Address" value={formData.address} />
+                                        <Row label="City" value={formData.city} />
+                                        <Row label="State" value={formData.state} />
+                                        <Row label="Pincode" value={formData.pinCode} />
+                                        {location && <Row label="GPS" value={`${parseFloat(formData.latitude).toFixed(4)}, ${parseFloat(formData.longitude).toFixed(4)}`} />}
                                     </div>
 
                                     <label className="flex items-start gap-3 cursor-pointer group">
                                         <input type="checkbox" required className="mt-0.5 w-4 h-4 rounded text-blue-600 border-slate-300" />
                                         <span className="text-[11px] font-semibold text-slate-500 group-hover:text-slate-700 transition-colors leading-relaxed">
-                                            I confirm that all provided details are accurate and authentic. I agree to the AEPS compliance framework as defined by Levin Fintech - Rupiksha.
+                                            I confirm that all details are accurate and I consent to AEPS registration under NPCI guidelines.
                                         </span>
                                     </label>
 
                                     <button type="submit" disabled={submitting}
                                         className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-sm uppercase tracking-widest transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-blue-200">
-                                        {submitting ? <><RefreshCw size={16} className="animate-spin" /> Processing...</> : <><ShieldCheck size={16} /> Initiate AEPS Onboarding</>}
+                                        {submitting ? <><RefreshCw size={16} className="animate-spin" /> Processing...</> : <><ShieldCheck size={16} /> Submit Onboarding Request</>}
                                     </button>
-                                    <p className="text-[10px] text-slate-400 font-semibold text-center">
-                                        Data processed securely via Levin Fintech AEPS API. NPCI compliant.
-                                    </p>
                                 </div>
                             </form>
                         )}
@@ -385,29 +354,6 @@ const Row = ({ label, value, green }) => (
     <div className="flex justify-between items-center">
         <span className="text-slate-400 font-semibold">{label}</span>
         <span className={`font-black ${green ? 'text-emerald-600' : 'text-slate-700'}`}>{value || '—'}</span>
-    </div>
-);
-
-const DocUpload = ({ label, name, icon, value, onChange }) => (
-    <div className="flex flex-col items-center gap-2">
-        <div className={`relative w-full h-32 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 transition-all overflow-hidden cursor-pointer
-            ${value ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 hover:border-blue-400 hover:bg-blue-50 bg-slate-50'}`}>
-            <input type="file" name={name} accept="image/*" onChange={onChange} className="absolute inset-0 opacity-0 cursor-pointer z-10 w-full h-full" />
-            {value ? (
-                <>
-                    <img src={value} alt="preview" className="absolute inset-0 w-full h-full object-cover opacity-30 pointer-events-none" />
-                    <CheckCircle2 size={28} className="text-emerald-500 relative z-10" />
-                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest relative z-10">Uploaded</p>
-                </>
-            ) : (
-                <>
-                    {icon}
-                    <Upload size={14} className="text-slate-400" />
-                    <p className="text-[9px] font-bold text-slate-400 text-center px-2">{label}</p>
-                </>
-            )}
-        </div>
-        <p className="text-[10px] font-bold text-slate-500 text-center">{label}</p>
     </div>
 );
 
