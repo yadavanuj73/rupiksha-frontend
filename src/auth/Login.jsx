@@ -130,6 +130,7 @@ import { useLanguage } from '../context/LanguageContext';
 
 const Login = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { language: lang, setLanguage: setLang, t: translate } = useLanguage();
     // Helper to map global translations to local legacy TRANSLATIONS object if needed, 
     // OR just use local t function that uses global lang.
@@ -142,8 +143,19 @@ const Login = () => {
         return TRANSLATIONS[lang][key] || key;
     };
 
-    // portal: 'select' ? show portal chooser, 'retailer' ? retailer login, 'distributor' ? distributor login
-    const [portal, setPortal] = useState('select');
+    // portal: derive initial value from URL path
+    const getPortalFromPath = (path) => {
+        if (path === '/portal/retailer') return 'retailer';
+        if (path === '/portal/distributor') return 'distributor';
+        if (path === '/portal/super-distributor') return 'SUPER_DISTRIBUTOR';
+        return 'select';
+    };
+    const [portal, setPortal] = useState(() => getPortalFromPath(location.pathname));
+
+    // Sync portal state when URL changes
+    useEffect(() => {
+        setPortal(getPortalFromPath(location.pathname));
+    }, [location.pathname]);
     const [view, setView] = useState('login'); // 'login', 'register', 'forgot'
     // const [lang, setLang] = useState('en'); // Removed local state
     const [showLangMenu, setShowLangMenu] = useState(false);
@@ -359,7 +371,7 @@ const Login = () => {
                                 borderColor: 'rgba(147, 197, 253, 0.5)',
                             }}
                             className="bg-blue-600/10 backdrop-blur-[40px] rounded-[2.5rem] overflow-hidden border border-blue-200/50 flex flex-col h-auto min-h-[280px] md:min-h-[320px] shadow-[0_40px_100px_rgba(30,58,138,0.06)] transition-all duration-700 group cursor-pointer relative"
-                            onClick={() => setPortal('retailer')}
+                            onClick={() => navigate('/portal/retailer')}
                         >
                             <div className="flex-1 p-4 flex items-center justify-center bg-blue-50/30 group-hover:bg-transparent transition-colors duration-700">
                                 <img src={characterShop} alt="Retailer" className="h-24 md:h-28 object-contain group-hover:scale-110 transition-transform duration-1000 drop-shadow-xl" />
@@ -385,7 +397,7 @@ const Login = () => {
                                 borderColor: 'rgba(99, 102, 241, 0.4)',
                             }}
                             className="bg-slate-900/10 backdrop-blur-[40px] rounded-[2.5rem] overflow-hidden border border-slate-200 flex flex-col h-auto min-h-[280px] md:min-h-[320px] shadow-[0_40px_100px_rgba(0,0,0,0.03)] transition-all duration-700 group cursor-pointer relative"
-                            onClick={() => setPortal('distributor')}
+                            onClick={() => navigate('/portal/distributor')}
                         >
                             <div className="flex-1 p-4 flex items-center justify-center bg-slate-50/50 group-hover:bg-transparent transition-colors duration-700">
                                 <img src={distributorChar} alt="Distributor" className="h-24 md:h-28 object-contain group-hover:scale-110 transition-transform duration-1000 drop-shadow-xl" />
@@ -411,7 +423,7 @@ const Login = () => {
                                 borderColor: 'rgba(251, 191, 36, 0.6)',
                             }}
                             className="bg-amber-600/10 backdrop-blur-[40px] rounded-[2.5rem] overflow-hidden border border-amber-200/50 flex flex-col h-auto min-h-[280px] md:min-h-[320px] shadow-[0_40px_100px_rgba(234,88,12,0.05)] transition-all duration-700 group cursor-pointer relative"
-                            onClick={() => setPortal('SUPER_DISTRIBUTOR')}
+                            onClick={() => navigate('/portal/super-distributor')}
                         >
                             <div className="flex-1 p-4 flex items-center justify-center bg-amber-50/30 group-hover:bg-transparent transition-colors duration-700">
                                 <img src={superDistributorChar} alt="Super Distributor" className="h-24 md:h-28 object-contain group-hover:scale-110 transition-transform duration-1000 drop-shadow-xl" />
@@ -421,7 +433,7 @@ const Login = () => {
                                     Super <br /> Distributor
                                 </h3>
                                 <motion.button className="w-full bg-amber-600 text-white group-hover:bg-white group-hover:text-orange-600 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2">
-                                    Access Elite <ArrowRight size={14} className="group-hover:text-orange-600" />
+                                    Login <ArrowRight size={14} className="group-hover:text-orange-600" />
                                 </motion.button>
                             </div>
                         </motion.div>
@@ -440,7 +452,7 @@ const Login = () => {
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         className="flex items-center gap-3 cursor-pointer"
-                        onClick={() => setPortal('select')}
+                        onClick={() => navigate('/portal')}
                     >
                         <img src={logo} alt="RUPIKSHA" style={{ height: '44px', width: 'auto' }} className="object-contain" />
                     </motion.div>
@@ -452,7 +464,7 @@ const Login = () => {
                         <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            onClick={(e) => { e.stopPropagation(); setPortal('select'); }}
+                            onClick={(e) => { e.stopPropagation(); navigate('/portal'); }}
                             className="bg-amber-50 text-amber-600 text-[8px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-amber-100 flex items-center gap-1.5 transition-all"
                         >
                             <ChevronLeft size={12} />
@@ -545,7 +557,7 @@ const Login = () => {
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         className="flex items-center gap-3 cursor-pointer"
-                        onClick={() => setPortal('select')}
+                        onClick={() => navigate('/portal')}
                     >
                         <img src={logo} alt="RUPIKSHA" style={{ height: '44px', width: 'auto' }} className="object-contain" />
                     </motion.div>
@@ -557,7 +569,7 @@ const Login = () => {
                         <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            onClick={(e) => { e.stopPropagation(); setPortal('select'); }}
+                            onClick={(e) => { e.stopPropagation(); navigate('/portal'); }}
                             className="bg-indigo-50 text-indigo-600 text-[8px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-indigo-100 flex items-center gap-1.5 transition-all"
                         >
                             <ChevronLeft size={12} />
@@ -650,7 +662,7 @@ const Login = () => {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     className="flex items-center gap-3 cursor-pointer"
-                    onClick={() => setPortal('select')}
+                    onClick={() => navigate('/portal')}
                 >
                     <img src={logo} alt="RUPIKSHA" style={{ height: '44px', width: 'auto' }} className="object-contain" />
                 </motion.div>
@@ -662,7 +674,7 @@ const Login = () => {
                     <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        onClick={(e) => { e.stopPropagation(); setPortal('select'); }}
+                        onClick={(e) => { e.stopPropagation(); navigate('/portal'); }}
                         className="bg-blue-50 text-blue-600 text-[8px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-blue-100 flex items-center gap-1.5 transition-all"
                     >
                         <ChevronLeft size={12} />

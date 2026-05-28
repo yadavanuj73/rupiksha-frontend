@@ -188,6 +188,9 @@ function App() {
               <Route path="/leadership" element={<Leadership />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/portal" element={<Login />} />
+              <Route path="/portal/retailer" element={<Login />} />
+              <Route path="/portal/distributor" element={<Login />} />
+              <Route path="/portal/super-distributor" element={<Login />} />
               <Route path="/login" element={<Login />} />
               <Route path="/admin-login" element={<AdminLogin />} />
               <Route path="/admin/login" element={<AdminLogin />} />
