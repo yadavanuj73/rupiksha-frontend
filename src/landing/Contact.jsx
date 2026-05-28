@@ -19,8 +19,8 @@ const Contact = () => {
             id: 'muzaffarpur',
             name: 'Muzaffarpur (HQ)',
             city: 'Muzaffarpur',
-            address: 'New Zeromile, C/O Anand Enterprises, Prakash path road, Ahiyapur, Muzaffarpur, Bihar 842001',
-            query: 'Anand Enterprises, New Zeromile, Ahiyapur, Muzaffarpur, Bihar 842001'
+            address: 'Rupiksha Service Pvt Ltd, Muzaffarpur, Bihar, 842001',
+            query: 'Rupiksha Service Pvt Ltd, Muzaffarpur, Bihar 842001'
         },
         {
             id: 'ranchi',
