@@ -20,9 +20,9 @@ export default function Footer() {
     return (
         <footer style={{ background: '#0f172a', color: '#94a3b8' }} id="contact">
             <div style={{ maxWidth: 1200, margin: '0 auto', padding: '60px 5% 0' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 40 }} className="rp-footer-grid">
+                <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1.2fr 1.3fr', gap: 48, alignItems: 'start' }} className="rp-footer-grid">
                     {/* Brand */}
-                    <div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                         <h3 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#fff', fontFamily: "'DM Serif Display', serif", marginBottom: 16 }}>Rupiksha</h3>
                         <p style={{ fontSize: 14, lineHeight: 1.7, color: '#94a3b8', maxWidth: 280 }}>
                             Transforming digital payments across India with innovative financial solutions for businesses and individuals.
@@ -44,9 +44,9 @@ export default function Footer() {
                     </div>
 
                     {/* Quick Links */}
-                    <div>
-                        <h5 style={{ fontSize: 14, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase', color: '#fff', marginBottom: 20 }}>Quick Links</h5>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                        <h5 style={{ fontSize: 14, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase', color: '#fff', marginBottom: 20, textAlign: 'left' }}>Quick Links</h5>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
                             <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} style={linkStyle}>Home</button>
                             <button onClick={() => navigate('/about')} style={linkStyle}>About Us</button>
                             <button onClick={() => navigate('/leadership')} style={linkStyle}>Our Leadership</button>
@@ -57,9 +57,9 @@ export default function Footer() {
                     </div>
 
                     {/* Our Services */}
-                    <div>
-                        <h5 style={{ fontSize: 14, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase', color: '#fff', marginBottom: 20 }}>Our Services</h5>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                        <h5 style={{ fontSize: 14, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase', color: '#fff', marginBottom: 20, textAlign: 'left' }}>Our Services</h5>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
                             <button onClick={scrollToServices} style={linkStyle}>Money Transfer</button>
                             <button onClick={scrollToServices} style={linkStyle}>Bill Payment</button>
                             <button onClick={scrollToServices} style={linkStyle}>Banking Services</button>
@@ -70,8 +70,8 @@ export default function Footer() {
                     </div>
 
                     {/* Contact Us */}
-                    <div>
-                        <h5 style={{ fontSize: 14, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase', color: '#fff', marginBottom: 20 }}>Contact Us</h5>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                        <h5 style={{ fontSize: 14, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase', color: '#fff', marginBottom: 20, textAlign: 'left' }}>Contact Us</h5>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                             <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                                 <span style={{ fontSize: 16, marginTop: 2 }}>📍</span>
@@ -120,6 +120,7 @@ const linkStyle = {
     background: 'none', border: 'none', color: '#94a3b8',
     fontSize: 14, textAlign: 'left', cursor: 'pointer',
     padding: 0, fontFamily: 'inherit', transition: 'color 0.2s',
+    width: '100%', display: 'block',
 };
 
 const bottomLinkStyle = {
