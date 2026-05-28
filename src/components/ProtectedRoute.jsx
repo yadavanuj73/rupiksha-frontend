@@ -54,7 +54,8 @@ const ProtectedRoute = ({ children, role, allowKycPending = false }) => {
 
     if (!user) {
         // Redirect to appropriate login based on required role
-        const targetLogin = role === 'ADMIN' ? '/admin-login' : '/login';
+        const adminRoles = ['ADMIN', 'ADMIN_OR_EMPLOYEE'];
+        const targetLogin = adminRoles.includes(role) ? '/admin-login' : '/login';
         return <Navigate to={targetLogin} state={{ from: location }} replace />;
     }
 
