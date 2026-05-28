@@ -74,10 +74,10 @@ export default function Footer() {
                     {/* Brand */}
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                         <h3 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#fff', fontFamily: "'DM Serif Display', serif", marginBottom: 16 }}>Rupiksha</h3>
-                        <p style={{ fontSize: 14, lineHeight: 1.7, color: '#94a3b8', margin: '0 0 20px 0' }}>
+                        <p style={{ fontSize: 14, lineHeight: 1.7, color: '#94a3b8', margin: '0 0 20px 0', textAlign: 'justify', width: '100%' }}>
                             Transforming digital payments across India with innovative financial solutions for businesses and individuals.
                         </p>
-                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: 10, flexWrap: 'nowrap' }}>
                             {SOCIAL_LINKS.map((s, i) => (
                                 <a key={i} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label}
                                     style={{
