@@ -383,7 +383,7 @@ const SuperDistributorLogin = () => {
 
                     <button type="submit" disabled={isLoading}
                         className="w-full bg-gradient-to-r from-indigo-600 to-purple-800 text-white font-black py-3 rounded-xl text-[11px] uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-60">
-                        {isLoading ? 'Verifying Node...' : 'Request Master Node'}
+                        {isLoading ? 'Registering...' : 'Register'}
                     </button>
                     <button type="button" onClick={() => setMode('login')} className="w-full text-center text-[10px] font-black text-slate-500 uppercase tracking-wider">
                         â† Return to Authentication
