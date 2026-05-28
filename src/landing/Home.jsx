@@ -418,20 +418,6 @@ function useScrollLock(ref, totalSlides, setIndex, autoTime = 1200) {
     }, [locked, completed, totalSlides, setIndex]);
 
     useEffect(() => {
-        if (!locked || completed) return;
-        const timer = setInterval(() => {
-            if (indexRef.current < totalSlides - 1) {
-                indexRef.current++;
-                setIndex(indexRef.current);
-            } else {
-                setLocked(false);
-                setCompleted(true);
-            }
-        }, autoTime);
-        return () => clearInterval(timer);
-    }, [locked, completed, totalSlides, setIndex, autoTime]);
-
-    useEffect(() => {
         if (locked && !completed) {
             document.body.style.overflow = 'hidden';
         } else {
@@ -556,8 +542,8 @@ function Advantage() {
                         const scale = isActive ? 1 : 0.75;
                         const opacity = Math.abs(offset) > 2 ? 0 : isActive ? 1 : 0.5;
                         const translateX = offset * 340;
-                        const translateY = Math.abs(offset) * 60;
-                        const rotate = offset * -5;
+                        const translateY = 0;
+                        const rotate = 0;
                         return (
                             <motion.div
                                 key={i}
@@ -567,7 +553,7 @@ function Advantage() {
                                     y: translateY,
                                     scale,
                                     opacity,
-                                    rotateZ: rotate,
+                                    rotateZ: 0,
                                     zIndex: isActive ? 10 : 5 - Math.abs(offset),
                                 }}
                                 transition={{ duration: 0.5, ease: 'easeInOut' }}

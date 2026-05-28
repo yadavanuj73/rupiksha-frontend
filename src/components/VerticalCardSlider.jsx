@@ -58,17 +58,6 @@ const VerticalCardSlider = () => {
     }, [locked, completed]);
 
     useEffect(() => {
-        if (!locked || completed) return;
-        const timer = setInterval(() => {
-            if (indexRef.current < ITEMS.length - 1) {
-                indexRef.current++;
-                setCurrentIndex(indexRef.current);
-            } else { setLocked(false); setCompleted(true); }
-        }, 1500);
-        return () => clearInterval(timer);
-    }, [locked, completed]);
-
-    useEffect(() => {
         if (locked && !completed) {
             document.body.style.overflow = 'hidden';
         } else {

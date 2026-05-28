@@ -16,15 +16,6 @@ const images = [
 
 const PhotoSlider = () => {
     const [index, setIndex] = useState(0);
-    const [isHovered, setIsHovered] = useState(false);
-
-    useEffect(() => {
-        if (isHovered) return;
-        const timer = setInterval(() => {
-            setIndex((prev) => (prev + 1) % images.length);
-        }, 5000);
-        return () => clearInterval(timer);
-    }, [isHovered]);
 
     const handlePrev = () => {
         setIndex((prev) => (prev - 1 + images.length) % images.length);
@@ -37,8 +28,6 @@ const PhotoSlider = () => {
     return (
         <div 
             className="photo-slider-container" 
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
             style={{
                 width: '100%',
                 height: '100%',

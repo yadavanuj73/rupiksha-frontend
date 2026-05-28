@@ -51,8 +51,8 @@ export default function Footer() {
                             <button onClick={() => navigate('/about')} style={linkStyle}>About Us</button>
                             <button onClick={() => navigate('/leadership')} style={linkStyle}>Our Leadership</button>
                             <button onClick={() => navigate('/contact')} style={linkStyle}>Contact Us</button>
-                            <button onClick={() => navigate('/careers')} style={linkStyle}>Careers</button>
-                            <button onClick={() => navigate('/blog')} style={linkStyle}>Blog</button>
+                            <button onClick={() => {}} style={{ ...linkStyle, cursor: 'default', opacity: 0.5 }}>Careers</button>
+                            <button onClick={() => {}} style={{ ...linkStyle, cursor: 'default', opacity: 0.5 }}>Blog</button>
                         </div>
                     </div>
 
@@ -76,7 +76,7 @@ export default function Footer() {
                             <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                                 <span style={{ fontSize: 16, marginTop: 2 }}>📍</span>
                                 <p style={{ fontSize: 14, lineHeight: 1.6, color: '#94a3b8', margin: 0 }}>
-                                    Rupiksha Service Pvt Ltd, C/O Anand Enterprises, Prakash path, New zeromile, Muzaffarpur, Bihar, 842001
+                                    Rupiksha Service Pvt Ltd, Muzaffarpur, Bihar, 842001
                                 </p>
                             </div>
                             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -104,8 +104,8 @@ export default function Footer() {
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     flexWrap: 'wrap', gap: 12, fontSize: 13, color: '#64748b',
                 }}>
-                    <span>© 2026 Rupiksha. All rights reserved.</span>
-                    <div style={{ display: 'flex', gap: 24 }}>
+                    <span style={{ color: '#64748b' }}>© 2026 Rupiksha. All rights reserved.</span>
+                    <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
                         <a href="#!" style={bottomLinkStyle}>Terms of Service</a>
                         <a href="#!" style={bottomLinkStyle}>Privacy Policy</a>
                         <a href="#!" style={bottomLinkStyle}>Refund Policy</a>
