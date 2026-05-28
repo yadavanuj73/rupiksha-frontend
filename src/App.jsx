@@ -192,6 +192,7 @@ function App() {
               <Route path="/portal/distributor" element={<Login />} />
               <Route path="/portal/super-distributor" element={<Login />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/admin" element={<AdminLogin />} />
               <Route path="/admin-login" element={<AdminLogin />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/adin" element={<Navigate to="/admin" replace />} />
@@ -232,7 +233,6 @@ function App() {
               </Route>
 
               {/* Protected Admin Routes */}
-              <Route path="/admin" element={<ProtectedRoute role="ADMIN_OR_EMPLOYEE"><Admin /></ProtectedRoute>} />
               <Route path="/admin/dashboard" element={<ProtectedRoute role="ADMIN_OR_EMPLOYEE"><Admin /></ProtectedRoute>} />
               <Route path="/admin/retailer/:username" element={<ProtectedRoute role="ADMIN_OR_EMPLOYEE"><RetailerDetails /></ProtectedRoute>} />
               <Route path="/admin/distributor/:id" element={<ProtectedRoute role="ADMIN_OR_EMPLOYEE"><DistributorDetails /></ProtectedRoute>} />

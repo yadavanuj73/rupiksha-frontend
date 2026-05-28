@@ -35,7 +35,7 @@ const AdminLogin = () => {
             if (!sessionStorage.getItem('admin_auth')) {
                 sessionStorage.setItem('admin_auth', 'true');
             }
-            navigate('/admin', { replace: true });
+            navigate('/admin/dashboard', { replace: true });
         }
     }, [currentUser, authLoading, navigate]);
 
@@ -179,7 +179,7 @@ const AdminLogin = () => {
             sessionStorage.setItem('admin_auth', 'true');
             setUser(adminUser);
             setIsLocked(false);
-            navigate('/admin');
+            navigate('/admin/dashboard');
         } catch (err) {
             setError(err?.message || 'Could not complete login.');
         } finally {
