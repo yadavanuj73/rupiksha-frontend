@@ -274,13 +274,13 @@ function Hero() {
                         <button className="rp-hero-btn-primary" onClick={() => navigate('/portal')}>
                             join now →
                         </button>
-                        <button className="rp-hero-btn-store">
+                        <a href="https://play.google.com/store/apps/details?id=com.rupiksha.services" target="_blank" rel="noopener noreferrer" className="rp-hero-btn-store">
                             <span style={{ fontSize: 20 }}>▶</span>
                             <div>
                                 <small style={{ fontSize: 9, letterSpacing: 1, textTransform: 'uppercase' }}>GET IT ON</small>
                                 <div style={{ fontWeight: 800, fontSize: 14 }}>Google Play</div>
                             </div>
-                        </button>
+                        </a>
                     </div>
                 </motion.div>
 
