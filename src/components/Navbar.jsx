@@ -49,7 +49,7 @@ export default function Navbar() {
                     <button className="rp-nav__link" onClick={() => scroll('services')}>Services</button>
                     <button className={`rp-nav__link ${location.pathname === '/leadership' ? 'active' : ''}`} onClick={() => navigate('/leadership')}>Our Leadership</button>
                     <button className={`rp-nav__link ${location.pathname === '/contact' ? 'active' : ''}`} onClick={() => navigate('/contact')}>Contact</button>
-                    <button className="rp-btn rp-btn--sm rp-btn--primary" onClick={() => navigate('/portal')}>
+                    <button className="rp-btn rp-btn--sm rp-btn--primary" onClick={() => window.open('/portal', '_blank')}>
                         Portal Login
                     </button>
                 </div>
