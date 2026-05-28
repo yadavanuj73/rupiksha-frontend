@@ -1,12 +1,62 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const SOCIAL_ICONS = [
-    { label: '📘', color: '#3b82f6', href: '#!' },
-    { label: '📞', color: '#ef4444', href: '#!' },
-    { label: '🏪', color: '#a16207', href: '#!' },
-    { label: '▶️', color: '#16a34a', href: '#!' },
-    { label: '✉️', color: '#8b5cf6', href: '#!' },
+const SOCIAL_LINKS = [
+    {
+        href: 'https://www.facebook.com/share/18tBhkEve5/?mibextid=wwXIfr',
+        label: 'Facebook',
+        color: '#1877f2',
+        icon: (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+                <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+            </svg>
+        ),
+    },
+    {
+        href: 'https://www.instagram.com/rupiksha_?igsh=MTJ5NnEyc25vODVycw%3D%3D&utm_source=qr',
+        label: 'Instagram',
+        color: '#e1306c',
+        icon: (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+                <circle cx="12" cy="12" r="4"/>
+                <circle cx="17.5" cy="6.5" r="1" fill="white" stroke="none"/>
+            </svg>
+        ),
+    },
+    {
+        href: 'https://www.youtube.com/@Rupiksha_Official',
+        label: 'YouTube',
+        color: '#ff0000',
+        icon: (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+                <path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/>
+                <polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="#ff0000"/>
+            </svg>
+        ),
+    },
+    {
+        href: 'https://www.linkedin.com/company/rupiksha-services-private-limited/?viewAsMember=true',
+        label: 'LinkedIn',
+        color: '#0a66c2',
+        icon: (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+                <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
+                <rect x="2" y="9" width="4" height="12"/>
+                <circle cx="4" cy="4" r="2"/>
+            </svg>
+        ),
+    },
+    {
+        href: 'https://play.google.com/store/apps/details?id=com.rupiksha.services',
+        label: 'Play Store',
+        color: '#01875f',
+        icon: (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+                <path d="M3 20.5v-17c0-.83 1-.83 1.5-.5l14 8.5-14 8.5c-.5.33-1.5.33-1.5-.5z"/>
+            </svg>
+        ),
+    },
 ];
 
 export default function Footer() {
@@ -20,25 +70,25 @@ export default function Footer() {
     return (
         <footer style={{ background: '#0f172a', color: '#94a3b8' }} id="contact">
             <div style={{ maxWidth: 1200, margin: '0 auto', padding: '60px 5% 0' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1.2fr 1.3fr', gap: 48, alignItems: 'start' }} className="rp-footer-grid">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 48, alignItems: 'start' }} className="rp-footer-grid">
                     {/* Brand */}
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                         <h3 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#fff', fontFamily: "'DM Serif Display', serif", marginBottom: 16 }}>Rupiksha</h3>
-                        <p style={{ fontSize: 14, lineHeight: 1.7, color: '#94a3b8', maxWidth: 280 }}>
+                        <p style={{ fontSize: 14, lineHeight: 1.7, color: '#94a3b8', margin: '0 0 20px 0' }}>
                             Transforming digital payments across India with innovative financial solutions for businesses and individuals.
                         </p>
-                        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-                            {SOCIAL_ICONS.map((s, i) => (
-                                <a key={i} href={s.href}
+                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                            {SOCIAL_LINKS.map((s, i) => (
+                                <a key={i} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label}
                                     style={{
                                         width: 38, height: 38, borderRadius: '50%',
                                         background: s.color, display: 'flex', alignItems: 'center',
-                                        justifyContent: 'center', fontSize: 16, textDecoration: 'none',
-                                        transition: 'transform 0.2s',
+                                        justifyContent: 'center', textDecoration: 'none',
+                                        transition: 'transform 0.2s, opacity 0.2s', flexShrink: 0,
                                     }}
                                     onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.15)'}
                                     onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                                >{s.label}</a>
+                                >{s.icon}</a>
                             ))}
                         </div>
                     </div>
