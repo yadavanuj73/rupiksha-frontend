@@ -470,7 +470,7 @@ const SuperDistributorLogin = () => {
 
                 <button type="submit" disabled={isLoading}
                     className="w-full bg-gradient-to-r from-[#312e81] to-[#4338ca] hover:shadow-indigo-500/25 text-white font-black py-4 rounded-2xl text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-indigo-500/20 flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-60">
-                    {isLoading ? <><span className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full" /> Authenticating...</> : <>Enter Master Portal <ArrowRight size={16} /></>}
+                    {isLoading ? <><span className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full" /> Authenticating...</> : <>Login <ArrowRight size={16} /></>}
                 </button>
 
                 <div className="flex items-center gap-4 py-2">
@@ -482,7 +482,7 @@ const SuperDistributorLogin = () => {
                 <div className="grid grid-cols-2 gap-3">
                     <button type="button" onClick={() => setMode('register')}
                         className="border-2 border-indigo-100 hover:bg-indigo-50 text-indigo-600 font-black py-3 rounded-xl text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2">
-                        <Users size={14} /> Request Access
+                        <Users size={14} /> Register
                     </button>
                     <button type="button" onClick={() => setMode('forgot')}
                         className="bg-slate-50 text-slate-500 font-black py-3 rounded-xl text-[10px] uppercase tracking-widest transition-all hover:bg-slate-100">
