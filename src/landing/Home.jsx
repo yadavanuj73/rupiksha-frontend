@@ -615,13 +615,13 @@ function Partners() {
             color: '#10b981',
             image: "/photo/distributor_main.jpg"
         },
-        individual: {
+        superDistributor: {
             title: t('PARTNER_INDIVIDUAL'),
             desc: t('PARTNER_INDIVIDUAL_DESC'),
             highlights: [
-                { icon: '🏠', text: t('PARTNER_INDIVIDUAL_H1') },
-                { icon: '💸', text: t('PARTNER_INDIVIDUAL_H2') },
-                { icon: '👩‍🏫', text: t('PARTNER_INDIVIDUAL_H3') }
+                { icon: '🌐', text: t('PARTNER_INDIVIDUAL_H1') },
+                { icon: '💰', text: t('PARTNER_INDIVIDUAL_H2') },
+                { icon: '🛡️', text: t('PARTNER_INDIVIDUAL_H3') }
             ],
             categories: t('PARTNER_INDIVIDUAL_CATS').split(','),
             color: '#f59e0b',
@@ -644,7 +644,7 @@ function Partners() {
                     {[
                         { id: 'retailer', label: t('PARTNER_RETAILER'), emoji: '🏪' },
                         { id: 'distributor', label: t('PARTNER_DISTRIBUTOR'), emoji: '🏗️' },
-                        { id: 'individual', label: t('PARTNER_INDIVIDUAL'), emoji: '🚀' }
+                        { id: 'superDistributor', label: t('PARTNER_INDIVIDUAL'), emoji: '🚀' }
                     ].map(tab => (
                         <button
                             key={tab.id}

@@ -213,6 +213,30 @@ const Login = () => {
         return () => clearInterval(timer);
     }, [slides.length]);
 
+    // Portal login pages should fit the viewport — no document scroll
+    useEffect(() => {
+        if (portal === 'select') return undefined;
+        const prevHtml = document.documentElement.style.overflow;
+        const prevBody = document.body.style.overflow;
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.documentElement.style.overflow = prevHtml;
+            document.body.style.overflow = prevBody;
+        };
+    }, [portal]);
+
+    const portalShellClass =
+        "h-screen max-h-[100dvh] overflow-hidden bg-white flex flex-col font-['Outfit',sans-serif]";
+    const portalHeaderClass =
+        'shrink-0 bg-white/80 backdrop-blur-md px-6 md:px-12 py-2.5 flex items-center justify-between shadow-sm z-50 border-b border-slate-100';
+    const portalMainClass = 'flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden';
+    const portalLeftClass =
+        'w-full md:w-1/2 lg:w-[40%] p-4 md:p-6 flex flex-col items-center justify-center bg-amber-100 min-h-0 overflow-hidden';
+    const portalLeftInnerClass = 'w-full max-w-[420px] space-y-3 md:space-y-4';
+    const portalWelcomeClass = 'text-2xl md:text-3xl font-black text-slate-900 tracking-tight';
+    const portalCardBodyClass = 'p-6 md:p-8';
+
     const handleAction = async (e) => {
         e.preventDefault();
         setIsLoading(true);
@@ -447,8 +471,8 @@ const Login = () => {
     // -- Distributor Login Screen ---------------------------------------------
     if (portal === 'distributor') {
         return (
-            <div className="min-h-screen bg-white flex flex-col font-['Outfit',sans-serif]">
-                <header className="bg-white/80 backdrop-blur-md px-6 md:px-12 py-3 flex items-center justify-between shadow-sm sticky top-0 z-50 border-b border-slate-100">
+            <div className={portalShellClass}>
+                <header className={portalHeaderClass}>
                     <motion.div
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -478,16 +502,16 @@ const Login = () => {
                     </div>
                 </header>
 
-                <main className="flex-1 flex flex-col md:flex-row">
+                <main className={portalMainClass}>
                     {/* Left: Login Form */}
-                    <div className="w-full md:w-1/2 lg:w-[40%] p-6 md:p-12 flex flex-col items-center justify-center bg-amber-100">
+                    <div className={portalLeftClass}>
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="w-full max-w-[420px] space-y-4 md:space-y-6 py-6"
+                            className={portalLeftInnerClass}
                         >
-                            <div className="space-y-2">
-                                <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
+                            <div className="space-y-1">
+                                <h2 className={portalWelcomeClass}>
                                     Welcome to <span className="text-amber-500">Rupiksha</span>
                                 </h2>
                             </div>
@@ -496,7 +520,7 @@ const Login = () => {
                                 <div className="bg-blue-600 py-3 flex items-center justify-center">
                                     <span className="text-white text-[10px] font-black uppercase tracking-[0.2em]">Distributor Login</span>
                                 </div>
-                                <div className="p-6 md:p-10">
+                                <div className={portalCardBodyClass}>
                                     <DistributorLogin />
                                 </div>
                             </div>
@@ -504,7 +528,7 @@ const Login = () => {
                     </div>
 
                     {/* Right: Premium Creative Banner */}
-                    <div className="hidden md:flex flex-1 bg-slate-50 relative overflow-hidden items-center justify-center p-12">
+                    <div className="hidden md:flex flex-1 min-h-0 bg-slate-50 relative overflow-hidden items-center justify-center p-8 md:p-10">
                         <div className="absolute inset-0">
                             <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-amber-500/5 rounded-full blur-[100px] -mr-40 -mt-40" />
                             <div className="absolute bottom-0 left-0 w-[30rem] h-[30rem] bg-orange-500/5 rounded-full blur-[100px] -ml-20 -mb-20" />
@@ -552,8 +576,8 @@ const Login = () => {
     // -- SUPER_DISTRIBUTOR Login Screen ---------------------------------------------
     if (portal === 'SUPER_DISTRIBUTOR') {
         return (
-            <div className="min-h-screen bg-white flex flex-col font-['Outfit',sans-serif]">
-                <header className="bg-white/80 backdrop-blur-md px-6 md:px-12 py-3 flex items-center justify-between shadow-sm sticky top-0 z-50 border-b border-slate-100">
+            <div className={portalShellClass}>
+                <header className={portalHeaderClass}>
                     <motion.div
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -574,7 +598,7 @@ const Login = () => {
                             className="bg-indigo-50 text-indigo-600 text-[8px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-indigo-100 flex items-center gap-1.5 transition-all"
                         >
                             <ChevronLeft size={12} />
-                            Master
+                            Super Distributor
                         </motion.button>
                         <div className="hidden sm:flex flex-col text-[12px] font-bold text-slate-600 tracking-wide border-l border-slate-200 pl-4 space-y-0.5">
                             <span className="flex items-center gap-2 uppercase"><Phone size={14} className="text-blue-600 fill-blue-50" strokeWidth={2.5} /> 0621-4008548 | 7004128310</span>
@@ -583,25 +607,25 @@ const Login = () => {
                     </div>
                 </header>
 
-                <main className="flex-1 flex flex-col md:flex-row">
+                <main className={portalMainClass}>
                     {/* Left: Login Form */}
-                    <div className="w-full md:w-1/2 lg:w-[40%] p-6 md:p-12 flex flex-col items-center justify-center bg-amber-100">
+                    <div className={portalLeftClass}>
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="w-full max-w-[420px] space-y-4 md:space-y-6 py-6"
+                            className={portalLeftInnerClass}
                         >
-                            <div className="space-y-2">
-                                <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
+                            <div className="space-y-1">
+                                <h2 className={portalWelcomeClass}>
                                     Welcome to <span className="text-indigo-600">Rupiksha</span>
                                 </h2>
                             </div>
 
                             <div className="bg-white rounded-3xl shadow-2xl shadow-indigo-100/50 border border-indigo-50 overflow-hidden">
                                 <div className="bg-blue-600 py-3 flex items-center justify-center">
-                                    <span className="text-white text-[10px] font-black uppercase tracking-[0.2em]">Master Login</span>
+                                    <span className="text-white text-[10px] font-black uppercase tracking-[0.2em]">Super Distributor Login</span>
                                 </div>
-                                <div className="p-6 md:p-10">
+                                <div className={portalCardBodyClass}>
                                     <SuperDistributorLogin />
                                 </div>
                             </div>
@@ -609,7 +633,7 @@ const Login = () => {
                     </div>
 
                     {/* Right: Creative Banner */}
-                    <div className="hidden md:flex flex-1 bg-indigo-900 relative overflow-hidden items-center justify-center p-12">
+                    <div className="hidden md:flex flex-1 min-h-0 bg-indigo-900 relative overflow-hidden items-center justify-center p-8 md:p-10">
                         <div className="absolute inset-0">
                             <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-indigo-500/20 rounded-full blur-[100px] -mr-40 -mt-40" />
                             <div className="absolute bottom-0 left-0 w-[30rem] h-[30rem] bg-purple-500/20 rounded-full blur-[100px] -ml-20 -mb-20" />
@@ -657,8 +681,8 @@ const Login = () => {
 
     // -- Retailer Portal (Default / portal === 'retailer') ----------------------
     return (
-        <div className="min-h-screen bg-white flex flex-col font-['Outfit',sans-serif]">
-            <header className="bg-white/80 backdrop-blur-md px-6 md:px-12 py-3 flex items-center justify-between shadow-sm sticky top-0 z-50 border-b border-slate-100">
+        <div className={portalShellClass}>
+            <header className={portalHeaderClass}>
                 <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -688,16 +712,16 @@ const Login = () => {
                 </div>
             </header>
 
-            <main className="flex-1 flex flex-col md:flex-row">
+            <main className={portalMainClass}>
                 {/* Left: Login Form */}
-                <div className="w-full md:w-1/2 lg:w-[40%] p-6 md:p-12 flex flex-col items-center justify-center bg-amber-100">
+                <div className={portalLeftClass}>
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="w-full max-w-[420px] space-y-4 md:space-y-6 py-6"
+                        className={portalLeftInnerClass}
                     >
-                        <div className="space-y-2">
-                            <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
+                        <div className="space-y-1">
+                            <h2 className={portalWelcomeClass}>
                                 Welcome to <span className="text-blue-600">Rupiksha</span>
                             </h2>
                         </div>
@@ -706,7 +730,7 @@ const Login = () => {
                             <div className="bg-blue-600 py-3 flex items-center justify-center">
                                 <span className="text-white text-[10px] font-black uppercase tracking-[0.2em]">Retailer Login</span>
                             </div>
-                            <div className="p-8 md:p-10">
+                            <div className={portalCardBodyClass}>
                                 <RetailerLogin />
                             </div>
                         </div>
@@ -714,7 +738,7 @@ const Login = () => {
                 </div>
 
                 {/* Right: Creative Banner */}
-                <div className="hidden md:flex flex-1 bg-blue-50 relative overflow-hidden items-center justify-center p-12">
+                <div className="hidden md:flex flex-1 min-h-0 bg-blue-50 relative overflow-hidden items-center justify-center p-8 md:p-10">
                     <div className="absolute inset-0">
                         <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-blue-500/5 rounded-full blur-[100px] -mr-40 -mt-40" />
                         <div className="absolute bottom-0 left-0 w-[30rem] h-[30rem] bg-blue-400/5 rounded-full blur-[100px] -ml-20 -mb-20" />
