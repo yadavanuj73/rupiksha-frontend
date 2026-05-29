@@ -182,3 +182,30 @@ export const FOOTER_SERVICES = [
 export function getServiceBySlug(slug) {
   return SERVICE_PAGES[slug] || null;
 }
+
+const _preloaded = new Set();
+
+/** Warm browser cache for all service hero images (footer / service pages). */
+export function preloadServiceImages() {
+  Object.values(SERVICE_PAGES).forEach((page) => {
+    if (_preloaded.has(page.image)) return;
+    _preloaded.add(page.image);
+    const img = new Image();
+    img.src = page.image;
+  });
+}
+
+export function preloadServiceImage(src) {
+  if (!src) return Promise.resolve();
+  return new Promise((resolve) => {
+    const img = new Image();
+    const done = () => {
+      _preloaded.add(src);
+      resolve();
+    };
+    img.onload = done;
+    img.onerror = done;
+    img.src = src;
+    if (img.complete) done();
+  });
+}

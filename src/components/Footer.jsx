@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FOOTER_SERVICES } from '../data/servicePages';
+import { FOOTER_SERVICES, preloadServiceImages } from '../data/servicePages';
 
 const SOCIAL_LINKS = [
     {
@@ -63,6 +63,10 @@ const SOCIAL_LINKS = [
 export default function Footer() {
     const navigate = useNavigate();
 
+    useEffect(() => {
+        preloadServiceImages();
+    }, []);
+
     return (
         <footer style={{ background: '#0f172a', color: '#94a3b8' }} id="contact">
             <div style={{ maxWidth: 1200, margin: '0 auto', padding: '60px 5% 0' }}>
@@ -109,6 +113,8 @@ export default function Footer() {
                             {FOOTER_SERVICES.map((s) => (
                                 <button
                                     key={s.slug}
+                                    onMouseEnter={() => preloadServiceImages()}
+                                    onFocus={() => preloadServiceImages()}
                                     onClick={() => navigate(`/services/${s.slug}`)}
                                     style={linkStyle}
                                     onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; }}

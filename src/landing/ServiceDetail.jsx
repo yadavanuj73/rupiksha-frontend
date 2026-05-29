@@ -1,14 +1,66 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams, Navigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { getServiceBySlug } from '../data/servicePages';
+import { getServiceBySlug, preloadServiceImages, preloadServiceImage } from '../data/servicePages';
+
+function ServiceHeroImage({ slug, src, alt }) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setVisible(false);
+
+    preloadServiceImage(src).then(() => {
+      if (!cancelled) setVisible(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, src]);
+
+  return (
+    <div className="relative flex justify-center lg:justify-end min-h-[240px] md:min-h-[320px]">
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-200/40 to-transparent rounded-[2.5rem] blur-3xl scale-90" />
+      <div
+        className={`relative w-full max-w-md lg:max-w-lg rounded-2xl transition-opacity duration-150 ${
+          visible ? 'opacity-100' : 'opacity-0'
+        }`}
+        aria-hidden={!visible}
+      >
+        {visible && (
+          <img
+            key={slug}
+            src={src}
+            alt={alt}
+            decoding="sync"
+            fetchPriority="high"
+            className="w-full rounded-2xl shadow-2xl shadow-blue-900/10 object-contain"
+          />
+        )}
+      </div>
+      {!visible && (
+        <div
+          className="absolute inset-0 flex items-center justify-center"
+          aria-label="Loading service image"
+        >
+          <div className="w-full max-w-md lg:max-w-lg aspect-[4/3] rounded-2xl bg-slate-100/80 animate-pulse" />
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ServiceDetail() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const service = getServiceBySlug(slug);
+
+  useEffect(() => {
+    preloadServiceImages();
+  }, []);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -26,7 +78,7 @@ export default function ServiceDetail() {
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-blue-50/30 to-white font-['Outfit',sans-serif]">
       <Navbar />
 
-      <main className="pt-24 pb-0">
+      <main className="pt-24 pb-0" key={slug}>
         {/* Hero */}
         <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14">
           <button
@@ -71,14 +123,7 @@ export default function ServiceDetail() {
               </div>
             </div>
 
-            <div className="relative flex justify-center lg:justify-end">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-200/40 to-transparent rounded-[2.5rem] blur-3xl scale-90" />
-              <img
-                src={service.image}
-                alt={service.title}
-                className="relative w-full max-w-md lg:max-w-lg rounded-2xl shadow-2xl shadow-blue-900/10 object-contain"
-              />
-            </div>
+            <ServiceHeroImage slug={slug} src={service.image} alt={service.title} />
           </div>
         </section>
 
