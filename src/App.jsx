@@ -22,6 +22,7 @@ const AdminLogin = lazy(() => import('./auth/AdminLogin'));
 const Home = lazy(() => import('./landing/Home'));
 const About = lazy(() => import('./landing/About'));
 const Contact = lazy(() => import('./landing/Contact'));
+const ServiceDetail = lazy(() => import('./landing/ServiceDetail'));
 const Leadership = lazy(() => import('./landing/Leadership'));
 const CompleteKyc = lazy(() => import('./pages/CompleteKyc'));
 
@@ -187,6 +188,7 @@ function App() {
               <Route path="/about" element={<About />} />
               <Route path="/leadership" element={<Leadership />} />
               <Route path="/contact" element={<Contact />} />
+              <Route path="/services/:slug" element={<ServiceDetail />} />
               <Route path="/portal" element={<Login />} />
               <Route path="/portal/retailer" element={<Login />} />
               <Route path="/portal/distributor" element={<Login />} />

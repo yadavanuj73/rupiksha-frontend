@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FOOTER_SERVICES } from '../data/servicePages';
 
 const SOCIAL_LINKS = [
     {
@@ -62,11 +63,6 @@ const SOCIAL_LINKS = [
 export default function Footer() {
     const navigate = useNavigate();
 
-    const scrollToServices = () => {
-        const el = document.getElementById('services');
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
-    };
-
     return (
         <footer style={{ background: '#0f172a', color: '#94a3b8' }} id="contact">
             <div style={{ maxWidth: 1200, margin: '0 auto', padding: '60px 5% 0' }}>
@@ -110,12 +106,17 @@ export default function Footer() {
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                         <h5 style={{ fontSize: 14, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase', color: '#fff', marginBottom: 20, textAlign: 'left' }}>Our Services</h5>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
-                            <button onClick={scrollToServices} style={linkStyle}>Money Transfer</button>
-                            <button onClick={scrollToServices} style={linkStyle}>Bill Payment</button>
-                            <button onClick={scrollToServices} style={linkStyle}>Banking Services</button>
-                            <button onClick={scrollToServices} style={linkStyle}>Insurance</button>
-                            <button onClick={scrollToServices} style={linkStyle}>Aadhaar Enabled Payment</button>
-                            <button onClick={scrollToServices} style={linkStyle}>Mobile Recharge</button>
+                            {FOOTER_SERVICES.map((s) => (
+                                <button
+                                    key={s.slug}
+                                    onClick={() => navigate(`/services/${s.slug}`)}
+                                    style={linkStyle}
+                                    onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; }}
+                                >
+                                    {s.label}
+                                </button>
+                            ))}
                         </div>
                     </div>
 
