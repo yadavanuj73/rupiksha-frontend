@@ -34,6 +34,13 @@ public class AepsService {
     public AepsOnboardingResponse onboard(AepsOnboardingRequest request) {
         try {
             String url = baseUrl + "/aeps-onboarding";
+            
+            log.info("========== AEPS ONBOARDING START ==========");
+            log.info("Base URL: {}", baseUrl);
+            log.info("Full URL: {}", url);
+            log.info("API Token: {}...", apiToken != null && apiToken.length() > 10 ? apiToken.substring(0, 10) : "MISSING");
+            log.info("User ID: {}", userId);
+            
             LevinAepsRequest levinRequest = new LevinAepsRequest();
 
             levinRequest.setApiToken(apiToken);
@@ -63,18 +70,36 @@ public class AepsService {
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
 
             HttpEntity<LevinAepsRequest> entity = new HttpEntity<>(levinRequest, headers);
 
             log.info("AEPS Request: {}", objectMapper.writeValueAsString(levinRequest));
+            log.info("Sending request to Levin API...");
 
             ResponseEntity<AepsOnboardingResponse> response = aepsRestTemplate.exchange(
                     url, HttpMethod.POST, entity, AepsOnboardingResponse.class);
 
+            log.info("AEPS Response Status: {}", response.getStatusCode());
             log.info("AEPS Response: {}", response.getBody());
+            log.info("========== AEPS ONBOARDING END ==========");
 
             return response.getBody();
 
+        } catch (org.springframework.web.client.ResourceAccessException e) {
+            log.error("========== NETWORK/CONNECTION ERROR ==========");
+            log.error("Cannot connect to Levin API. This could be:");
+            log.error("1. Wrong base URL (current: {})", baseUrl);
+            log.error("2. Levin API is down");
+            log.error("3. Network/firewall blocking the connection");
+            log.error("4. SSL certificate issue");
+            log.error("Error details: {}", e.getMessage());
+            log.error("========================================");
+            
+            AepsOnboardingResponse error = new AepsOnboardingResponse();
+            error.setStatusId(2);
+            error.setMessage("AEPS Onboarding Failed : Cannot connect to Levin API. Please check base URL and network connectivity.");
+            return error;
         } catch (Exception e) {
             log.error("AEPS Onboarding Error", e);
             AepsOnboardingResponse error = new AepsOnboardingResponse();
