@@ -5,7 +5,7 @@ import Footer from '../components/Footer';
 import Navbar from '../components/Navbar';
 import VerticalCardSlider from '../components/VerticalCardSlider';
 import PhotoSlider from '../components/PhotoSlider';
-import { useCarouselScrollLock } from '../hooks/useCarouselScrollLock';
+import PinnedCarouselSection from '../components/PinnedCarouselSection';
 const aadhaar_3d_logo = "https://upload.wikimedia.org/wikipedia/en/thumb/c/cf/Aadhaar_Logo.svg/1200px-Aadhaar_Logo.svg.png";
 import { useLanguage } from '../context/LanguageContext';
 import { Phone, Mail, RefreshCcw } from 'lucide-react';
@@ -373,12 +373,16 @@ function StatsCounter() {
 function Services() {
     const [activeIndex, setActiveIndex] = useState(0);
     const s = SERVICES[activeIndex];
-    const sectionRef = useRef(null);
-    useCarouselScrollLock(sectionRef, SERVICES.length, activeIndex, setActiveIndex);
 
     return (
-        <section id="services" ref={sectionRef} style={{ background: '#ffffff', padding: '80px 5%', position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center' }}>
-            <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+        <PinnedCarouselSection
+            id="services"
+            totalSlides={SERVICES.length}
+            index={activeIndex}
+            setIndex={setActiveIndex}
+            stickyClassName="svc-scroll-pin"
+        >
+            <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%', padding: '0 5%' }}>
                 <div className="svc-slider">
                     <motion.div
                         className="svc-slider__left"
@@ -450,23 +454,23 @@ function Services() {
                     </motion.div>
                 </div>
             </div>
-        </section>
+        </PinnedCarouselSection>
     );
 }
 
 function Advantage() {
     const [currentIndex, setCurrentIndex] = useState(0);
-    const sectionRef = useRef(null);
-    useCarouselScrollLock(sectionRef, ADVANTAGE.length, currentIndex, setCurrentIndex);
 
     const nextSlide = () => setCurrentIndex((prev) => Math.min(prev + 1, ADVANTAGE.length - 1));
     const prevSlide = () => setCurrentIndex((prev) => Math.max(prev - 1, 0));
 
     return (
-        <section
+        <PinnedCarouselSection
             id="advantage"
-            ref={sectionRef}
-            className="rp-adv-section"
+            totalSlides={ADVANTAGE.length}
+            index={currentIndex}
+            setIndex={setCurrentIndex}
+            stickyClassName="rp-adv-section rp-adv-section--pinned"
         >
             <div style={{ textAlign: 'center', marginBottom: 40 }}>
                 <div className="writing-header writing-header--visible">
@@ -519,7 +523,7 @@ function Advantage() {
                     })}
                 </div>
             </div>
-        </section>
+        </PinnedCarouselSection>
     );
 }
 
@@ -915,17 +919,27 @@ const CSS = `
   .rp-stat-item { flex: 1 1 40%; }
 }
 
-/* ── Advantage Section ── */
-.rp-adv-section {
+/* ── Pinned scroll carousels (Services, Advantage, How It Works) ── */
+.svc-scroll-pin {
+  background: #ffffff;
+  padding: 40px 0;
+  width: 100%;
+}
+
+.rp-adv-section--pinned {
   background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%);
-  position: relative;
-  padding: 80px 5%;
-  min-height: 100vh;
+  padding: 40px 5%;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+}
+
+/* ── Advantage Section ── */
+.rp-adv-section {
+  position: relative;
+  width: 100%;
 }
 .rp-adv-carousel {
   position: relative;

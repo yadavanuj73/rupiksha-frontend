@@ -1,0 +1,14 @@
+.carousel-scroll-pin {
+  position: relative;
+  width: 100%;
+}
+
+.carousel-scroll-pin__sticky {
+  position: sticky;
+  height: calc(100vh - 92px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  box-sizing: border-box;
+}

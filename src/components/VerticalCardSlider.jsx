@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useCarouselScrollLock } from '../hooks/useCarouselScrollLock';
+import PinnedCarouselSection from './PinnedCarouselSection';
 import './VerticalCardSlider.css';
 
 const ITEMS = [
@@ -13,14 +13,17 @@ const ITEMS = [
 
 const VerticalCardSlider = () => {
     const [currentIndex, setCurrentIndex] = useState(0);
-    const sectionRef = useRef(null);
-    useCarouselScrollLock(sectionRef, ITEMS.length, currentIndex, setCurrentIndex);
 
     const nextSlide = () => setCurrentIndex((prev) => Math.min(prev + 1, ITEMS.length - 1));
     const prevSlide = () => setCurrentIndex((prev) => Math.max(prev - 1, 0));
 
     return (
-        <section ref={sectionRef} style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', position: 'relative', margin: 0, padding: '80px 0', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <PinnedCarouselSection
+            totalSlides={ITEMS.length}
+            index={currentIndex}
+            setIndex={setCurrentIndex}
+            stickyClassName="hiw-scroll-pin"
+        >
             <div className="section-header-slider">
                 <span className="slider-tag">Simple Process</span>
                 <h2 className="slider-main-title">How It Works</h2>
@@ -49,6 +52,8 @@ const VerticalCardSlider = () => {
                                     background: item.mediumColor,
                                     border: `2px solid ${item.color}40`,
                                     position: 'absolute',
+                                    left: '50%',
+                                    marginLeft: -190,
                                 }}
                             >
                                 <div style={{
@@ -73,7 +78,7 @@ const VerticalCardSlider = () => {
                     })}
                 </div>
             </div>
-        </section>
+        </PinnedCarouselSection>
     );
 };
 

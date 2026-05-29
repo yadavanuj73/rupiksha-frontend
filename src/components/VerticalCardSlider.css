@@ -1,5 +1,11 @@
 /* src/components/VerticalCardSlider.css */
 
+.hiw-scroll-pin {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  padding: 24px 0 40px;
+  width: 100%;
+}
+
 .section-header-slider {
     text-align: center;
     margin-bottom: 40px;
@@ -52,9 +58,9 @@
 .hiw-carousel-track {
     position: relative;
     height: 480px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
 .hiw-card {
