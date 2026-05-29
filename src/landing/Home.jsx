@@ -5,6 +5,7 @@ import Footer from '../components/Footer';
 import Navbar from '../components/Navbar';
 import VerticalCardSlider from '../components/VerticalCardSlider';
 import PhotoSlider from '../components/PhotoSlider';
+import { useCarouselScrollLock } from '../hooks/useCarouselScrollLock';
 const aadhaar_3d_logo = "https://upload.wikimedia.org/wikipedia/en/thumb/c/cf/Aadhaar_Logo.svg/1200px-Aadhaar_Logo.svg.png";
 import { useLanguage } from '../context/LanguageContext';
 import { Phone, Mail, RefreshCcw } from 'lucide-react';
@@ -369,81 +370,11 @@ function StatsCounter() {
     );
 }
 
-function useScrollLock(ref, totalSlides, index, setIndex) {
-    const [locked, setLocked] = useState(false);
-    const [completed, setCompleted] = useState(false);
-    const indexRef = useRef(index);
-    const wheelCooldown = useRef(false);
-
-    useEffect(() => {
-        indexRef.current = index;
-    }, [index]);
-
-    useEffect(() => {
-        if (!ref.current) return;
-        const el = ref.current;
-        const observer = new IntersectionObserver(([entry]) => {
-            if (!entry.isIntersecting) {
-                setLocked(false);
-                return;
-            }
-            if (entry.intersectionRatio >= 0.35 && !completed) {
-                setLocked(true);
-            }
-        }, { threshold: [0, 0.35, 0.5, 0.75] });
-        observer.observe(el);
-        return () => observer.disconnect();
-    }, [ref, completed]);
-
-    useEffect(() => {
-        if (!locked || completed) return;
-        const handleWheel = (e) => {
-            if (wheelCooldown.current) {
-                e.preventDefault();
-                return;
-            }
-
-            const down = e.deltaY > 0;
-            const up = e.deltaY < 0;
-            if (!down && !up) return;
-
-            if (down) {
-                if (indexRef.current < totalSlides - 1) {
-                    e.preventDefault();
-                    wheelCooldown.current = true;
-                    indexRef.current += 1;
-                    setIndex(indexRef.current);
-                    setTimeout(() => { wheelCooldown.current = false; }, 500);
-                } else {
-                    setLocked(false);
-                    setCompleted(true);
-                    // Last card: release wheel so the page can scroll down
-                }
-            } else if (up) {
-                if (indexRef.current > 0) {
-                    e.preventDefault();
-                    wheelCooldown.current = true;
-                    indexRef.current -= 1;
-                    setIndex(indexRef.current);
-                    setTimeout(() => { wheelCooldown.current = false; }, 500);
-                } else {
-                    setLocked(false);
-                    // First card: release wheel so the page can scroll up
-                }
-            }
-        };
-        window.addEventListener('wheel', handleWheel, { passive: false });
-        return () => window.removeEventListener('wheel', handleWheel);
-    }, [locked, completed, totalSlides, setIndex]);
-
-    return { locked, completed };
-}
-
 function Services() {
     const [activeIndex, setActiveIndex] = useState(0);
     const s = SERVICES[activeIndex];
     const sectionRef = useRef(null);
-    useScrollLock(sectionRef, SERVICES.length, activeIndex, setActiveIndex);
+    useCarouselScrollLock(sectionRef, SERVICES.length, activeIndex, setActiveIndex);
 
     return (
         <section id="services" ref={sectionRef} style={{ background: '#ffffff', padding: '80px 5%', position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center' }}>
@@ -473,13 +404,14 @@ function Services() {
                         <div className="svc-slider__nav">
                             <button
                                 className="svc-slider__arrow"
-                                onClick={() => setActiveIndex((prev) => (prev === 0 ? SERVICES.length - 1 : prev - 1))}
+                                onClick={() => setActiveIndex((prev) => Math.max(prev - 1, 0))}
                                 aria-label="Previous"
                             >←</button>
                             <div className="svc-slider__dots">
                                 {SERVICES.map((_, i) => (
                                     <button
                                         key={i}
+                                        type="button"
                                         onClick={() => setActiveIndex(i)}
                                         className={`svc-slider__dot ${i === activeIndex ? 'svc-slider__dot--active' : ''}`}
                                         aria-label={`Slide ${i + 1}`}
@@ -488,7 +420,7 @@ function Services() {
                             </div>
                             <button
                                 className="svc-slider__arrow"
-                                onClick={() => setActiveIndex((prev) => (prev + 1) % SERVICES.length)}
+                                onClick={() => setActiveIndex((prev) => Math.min(prev + 1, SERVICES.length - 1))}
                                 aria-label="Next"
                             >→</button>
                         </div>
@@ -525,10 +457,10 @@ function Services() {
 function Advantage() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const sectionRef = useRef(null);
-    useScrollLock(sectionRef, ADVANTAGE.length, setCurrentIndex, 1500);
+    useCarouselScrollLock(sectionRef, ADVANTAGE.length, currentIndex, setCurrentIndex);
 
-    const nextSlide = () => setCurrentIndex((prev) => (prev === ADVANTAGE.length - 1 ? 0 : prev + 1));
-    const prevSlide = () => setCurrentIndex((prev) => (prev === 0 ? ADVANTAGE.length - 1 : prev - 1));
+    const nextSlide = () => setCurrentIndex((prev) => Math.min(prev + 1, ADVANTAGE.length - 1));
+    const prevSlide = () => setCurrentIndex((prev) => Math.max(prev - 1, 0));
 
     return (
         <section

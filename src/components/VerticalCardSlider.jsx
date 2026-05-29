@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { useCarouselScrollLock } from '../hooks/useCarouselScrollLock';
 import './VerticalCardSlider.css';
 
 const ITEMS = [
@@ -13,71 +14,10 @@ const ITEMS = [
 const VerticalCardSlider = () => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const sectionRef = useRef(null);
-    const [locked, setLocked] = useState(false);
-    const [completed, setCompleted] = useState(false);
-    const indexRef = useRef(0);
-    const wheelCooldown = useRef(false);
+    useCarouselScrollLock(sectionRef, ITEMS.length, currentIndex, setCurrentIndex);
 
-    useEffect(() => {
-        indexRef.current = currentIndex;
-    }, [currentIndex]);
-
-    useEffect(() => {
-        if (!sectionRef.current) return;
-        const el = sectionRef.current;
-        const observer = new IntersectionObserver(([entry]) => {
-            if (!entry.isIntersecting) {
-                setLocked(false);
-                return;
-            }
-            if (entry.intersectionRatio >= 0.35 && !completed) {
-                setLocked(true);
-            }
-        }, { threshold: [0, 0.35, 0.5, 0.75] });
-        observer.observe(el);
-        return () => observer.disconnect();
-    }, [completed]);
-
-    useEffect(() => {
-        if (!locked || completed) return;
-        const handleWheel = (e) => {
-            if (wheelCooldown.current) {
-                e.preventDefault();
-                return;
-            }
-            const down = e.deltaY > 0;
-            const up = e.deltaY < 0;
-            if (!down && !up) return;
-
-            if (down) {
-                if (indexRef.current < ITEMS.length - 1) {
-                    e.preventDefault();
-                    wheelCooldown.current = true;
-                    indexRef.current += 1;
-                    setCurrentIndex(indexRef.current);
-                    setTimeout(() => { wheelCooldown.current = false; }, 500);
-                } else {
-                    setLocked(false);
-                    setCompleted(true);
-                }
-            } else if (up) {
-                if (indexRef.current > 0) {
-                    e.preventDefault();
-                    wheelCooldown.current = true;
-                    indexRef.current -= 1;
-                    setCurrentIndex(indexRef.current);
-                    setTimeout(() => { wheelCooldown.current = false; }, 500);
-                } else {
-                    setLocked(false);
-                }
-            }
-        };
-        window.addEventListener('wheel', handleWheel, { passive: false });
-        return () => window.removeEventListener('wheel', handleWheel);
-    }, [locked, completed]);
-
-    const nextSlide = () => setCurrentIndex((prev) => { const n = Math.min(prev + 1, ITEMS.length - 1); indexRef.current = n; return n; });
-    const prevSlide = () => setCurrentIndex((prev) => { const n = Math.max(prev - 1, 0); indexRef.current = n; return n; });
+    const nextSlide = () => setCurrentIndex((prev) => Math.min(prev + 1, ITEMS.length - 1));
+    const prevSlide = () => setCurrentIndex((prev) => Math.max(prev - 1, 0));
 
     return (
         <section ref={sectionRef} style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', position: 'relative', margin: 0, padding: '80px 0', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
@@ -88,8 +28,8 @@ const VerticalCardSlider = () => {
             </div>
 
             <div className="hiw-carousel-wrap">
-                <button onClick={prevSlide} className="hiw-arrow hiw-arrow--left">←</button>
-                <button onClick={nextSlide} className="hiw-arrow hiw-arrow--right">→</button>
+                <button type="button" onClick={prevSlide} className="hiw-arrow hiw-arrow--left" aria-label="Previous step">←</button>
+                <button type="button" onClick={nextSlide} className="hiw-arrow hiw-arrow--right" aria-label="Next step">→</button>
                 <div className="hiw-carousel-track">
                     {ITEMS.map((item, i) => {
                         const offset = i - currentIndex;
