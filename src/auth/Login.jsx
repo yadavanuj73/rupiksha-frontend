@@ -10,7 +10,8 @@ import {
     Calendar, Smartphone, Check, HelpCircle,
     Building2, Users, ArrowRight, Shield
 } from 'lucide-react';
-import logo from '../assets/rupiksha_logo.png';
+// Using logo from public folder
+const logo = '/rupiksha logo.jpeg';
 import characterShop from '../assets/character_shop_3d.png';
 import distributorChar from '../assets/distributor_character_3d.png';
 import superDistributorChar from '../assets/super_distributor_magnet_3d.png';

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
-import logo from '../assets/rupiksha_logo.png';
+// Using logo from public folder
+const logo = '/rupiksha logo.jpeg';
 import genesisImg from '../assets/genesis_img.png';
 import coinModelPath from '../assets/indian_10_rupee_coin.glb';
 import { Zap, ShieldCheck, Users, Target, Eye, ArrowLeft } from 'lucide-react';

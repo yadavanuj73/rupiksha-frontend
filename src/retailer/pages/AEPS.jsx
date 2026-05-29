@@ -12,7 +12,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { dataService } from '../../services/dataService';
 import { aepsService } from '../../services/apiService';
 import RetailerEKYC from '../components/banking/RetailerEKYC';
-import logo from '../../assets/rupiksha_logo.png';
+// Using logo from public folder
+const logo = '/rupiksha logo.jpeg';
 
 /* ── Constants ── */
 const STATE_CODES = {

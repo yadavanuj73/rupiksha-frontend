@@ -5,7 +5,8 @@ import {
     Eye, EyeOff, RefreshCcw, ArrowRight, ShieldCheck,
     Lock, User, KeyRound, CheckCircle2, AlertCircle, Loader2, ChevronLeft, Check, Palette
 } from 'lucide-react';
-import logo from '../assets/rupiksha_logo.png';
+// Using logo from public folder
+const logo = '/rupiksha logo.jpeg';
 import { dataService } from '../services/dataService';
 import { useAuth } from '../context/AuthContext';
 

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Bell, Menu, LogOut, ChevronDown, Wallet, User, BadgeCheck, Clock3, OctagonAlert } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { sharedDataService } from '../../services/sharedDataService';
-import logo from '../../assets/rupiksha_new_logo.png';
+// Using logo from public folder
+const logo = '/rupiksha logo.jpeg';
 
 const DistributorTopBar = ({ onMenuClick }) => {
     const navigate = useNavigate();

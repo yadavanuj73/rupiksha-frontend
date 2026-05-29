@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Wallet, Bell, ChevronDown, Menu, User, CreditCard, Settings, MoreVertical, Plus, BadgeCheck, Clock3, OctagonAlert } from 'lucide-react';
 import { dataService } from '../../services/dataService';
-import mainLogo from '../../assets/rupiksha_logo.png';
+// Using logo from public folder
+const mainLogo = '/rupiksha logo.jpeg';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 

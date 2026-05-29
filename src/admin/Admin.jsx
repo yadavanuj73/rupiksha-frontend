@@ -12,7 +12,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { dataService, BACKEND_URL } from '../services/dataService';
 import { sharedDataService } from '../services/sharedDataService';
 import { sendApprovalEmail } from '../services/emailService';
-import mainLogo from '../assets/rupiksha_logo.png';
+// Using logo from public folder
+const mainLogo = '/rupiksha logo.jpeg';
 import AdminPlanManager from './AdminPlanManager';
 import OurMap from '../super-distributor/pages/OurMap';
 import LiveDashboard from './components/LiveDashboard';

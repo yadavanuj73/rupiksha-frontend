@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import logo from '../assets/rupiksha_logo.png';
+// Using logo from public folder
+const logo = '/rupiksha logo.jpeg';
 import Footer from '../components/Footer';
 import Navbar from '../components/Navbar';
 

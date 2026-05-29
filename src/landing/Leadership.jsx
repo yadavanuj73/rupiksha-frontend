@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import logo from '../assets/rupiksha_logo.png';
+// Using logo from public folder
+const logo = '/rupiksha logo.jpeg';
 import genesisImg from '../assets/genesis_img.png';
 import jagdeoImg from '../assets/jagdeo_prasad_sah.jpeg';
 import Footer from '../components/Footer';

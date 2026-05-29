@@ -9,7 +9,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { dataService, BACKEND_URL as IMPORTED_BACKEND_URL } from '../../services/dataService';
-import mainLogo from '../../assets/rupiksha_logo.png';
+// Using logo from public folder
+const mainLogo = '/rupiksha logo.jpeg';
 
 // Fallback if import system has issues with named exports in some environments
 const BACKEND_URL = IMPORTED_BACKEND_URL || `/api`;

@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldCheck, CheckCircle2, Zap, ArrowRight, X, Info, Sparkles } from 'lucide-react';
 import { planService } from '../../services/planService';
-import logo from '../../assets/rupiksha_logo.png';
+// Using logo from public folder
+const logo = '/rupiksha logo.jpeg';
 import { useNavigate } from 'react-router-dom';
 
 const DistributorPlans = () => {

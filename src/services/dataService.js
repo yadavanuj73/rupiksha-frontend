@@ -3,7 +3,8 @@ import { BACKEND_URL } from './config';
 import { generateUniquePartyCode } from '../database/partyCode';
 import { mockApiService } from '../database/mockApiService';
 import { walletService, transactionService, supportService } from './apiService';
-import mainLogo from '../assets/rupiksha_logo.png';
+// Using logo from public folder - referenced directly in code
+const mainLogo = '/rupiksha logo.jpeg';
 export { BACKEND_URL };
 
 // ── Safe JSON parser: prevents "Unexpected end of JSON input" crashes ──────

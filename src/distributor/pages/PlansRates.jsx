@@ -4,7 +4,8 @@ import {
     ShieldCheck, Zap, Crown, Check, ArrowRight, X,
     Info, Users, Building2, HelpCircle, Sparkles
 } from 'lucide-react';
-import logo from '../../assets/rupiksha_logo.png';
+// Using logo from public folder
+const logo = '/rupiksha logo.jpeg';
 import { sharedDataService } from '../../services/sharedDataService';
 import { getDistributorPlan, PLAN_CONFIG } from '../config/planConfig';
 import { planService } from '../../services/planService';
