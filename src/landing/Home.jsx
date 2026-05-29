@@ -369,21 +369,28 @@ function StatsCounter() {
     );
 }
 
-function useScrollLock(ref, totalSlides, setIndex, autoTime = 1200) {
+function useScrollLock(ref, totalSlides, index, setIndex) {
     const [locked, setLocked] = useState(false);
     const [completed, setCompleted] = useState(false);
-    const indexRef = useRef(0);
+    const indexRef = useRef(index);
     const wheelCooldown = useRef(false);
 
     useEffect(() => {
-        if (!ref.current || completed) return;
+        indexRef.current = index;
+    }, [index]);
+
+    useEffect(() => {
+        if (!ref.current) return;
         const el = ref.current;
         const observer = new IntersectionObserver(([entry]) => {
-            if (entry.isIntersecting && entry.intersectionRatio > 0.5 && !completed) {
-                setLocked(true);
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (!entry.isIntersecting) {
+                setLocked(false);
+                return;
             }
-        }, { threshold: 0.5 });
+            if (entry.intersectionRatio >= 0.35 && !completed) {
+                setLocked(true);
+            }
+        }, { threshold: [0, 0.35, 0.5, 0.75] });
         observer.observe(el);
         return () => observer.disconnect();
     }, [ref, completed]);
@@ -391,40 +398,43 @@ function useScrollLock(ref, totalSlides, setIndex, autoTime = 1200) {
     useEffect(() => {
         if (!locked || completed) return;
         const handleWheel = (e) => {
-            if (wheelCooldown.current) { e.preventDefault(); return; }
-            if (e.deltaY > 0) {
+            if (wheelCooldown.current) {
                 e.preventDefault();
-                wheelCooldown.current = true;
+                return;
+            }
+
+            const down = e.deltaY > 0;
+            const up = e.deltaY < 0;
+            if (!down && !up) return;
+
+            if (down) {
                 if (indexRef.current < totalSlides - 1) {
-                    indexRef.current++;
+                    e.preventDefault();
+                    wheelCooldown.current = true;
+                    indexRef.current += 1;
                     setIndex(indexRef.current);
+                    setTimeout(() => { wheelCooldown.current = false; }, 500);
                 } else {
                     setLocked(false);
                     setCompleted(true);
+                    // Last card: release wheel so the page can scroll down
                 }
-                setTimeout(() => { wheelCooldown.current = false; }, 600);
-            } else if (e.deltaY < 0) {
-                e.preventDefault();
-                wheelCooldown.current = true;
+            } else if (up) {
                 if (indexRef.current > 0) {
-                    indexRef.current--;
+                    e.preventDefault();
+                    wheelCooldown.current = true;
+                    indexRef.current -= 1;
                     setIndex(indexRef.current);
+                    setTimeout(() => { wheelCooldown.current = false; }, 500);
+                } else {
+                    setLocked(false);
+                    // First card: release wheel so the page can scroll up
                 }
-                setTimeout(() => { wheelCooldown.current = false; }, 600);
             }
         };
         window.addEventListener('wheel', handleWheel, { passive: false });
         return () => window.removeEventListener('wheel', handleWheel);
     }, [locked, completed, totalSlides, setIndex]);
-
-    useEffect(() => {
-        if (locked && !completed) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = '';
-        }
-        return () => { document.body.style.overflow = ''; };
-    }, [locked, completed]);
 
     return { locked, completed };
 }
@@ -433,7 +443,7 @@ function Services() {
     const [activeIndex, setActiveIndex] = useState(0);
     const s = SERVICES[activeIndex];
     const sectionRef = useRef(null);
-    useScrollLock(sectionRef, SERVICES.length, setActiveIndex, 1500);
+    useScrollLock(sectionRef, SERVICES.length, activeIndex, setActiveIndex);
 
     return (
         <section id="services" ref={sectionRef} style={{ background: '#ffffff', padding: '80px 5%', position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center' }}>

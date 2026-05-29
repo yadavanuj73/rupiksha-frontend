@@ -19,14 +19,21 @@ const VerticalCardSlider = () => {
     const wheelCooldown = useRef(false);
 
     useEffect(() => {
-        if (!sectionRef.current || completed) return;
+        indexRef.current = currentIndex;
+    }, [currentIndex]);
+
+    useEffect(() => {
+        if (!sectionRef.current) return;
         const el = sectionRef.current;
         const observer = new IntersectionObserver(([entry]) => {
-            if (entry.isIntersecting && entry.intersectionRatio > 0.5 && !completed) {
-                setLocked(true);
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (!entry.isIntersecting) {
+                setLocked(false);
+                return;
             }
-        }, { threshold: 0.5 });
+            if (entry.intersectionRatio >= 0.35 && !completed) {
+                setLocked(true);
+            }
+        }, { threshold: [0, 0.35, 0.5, 0.75] });
         observer.observe(el);
         return () => observer.disconnect();
     }, [completed]);
@@ -34,36 +41,39 @@ const VerticalCardSlider = () => {
     useEffect(() => {
         if (!locked || completed) return;
         const handleWheel = (e) => {
-            if (wheelCooldown.current) { e.preventDefault(); return; }
-            if (e.deltaY > 0) {
+            if (wheelCooldown.current) {
                 e.preventDefault();
-                wheelCooldown.current = true;
+                return;
+            }
+            const down = e.deltaY > 0;
+            const up = e.deltaY < 0;
+            if (!down && !up) return;
+
+            if (down) {
                 if (indexRef.current < ITEMS.length - 1) {
-                    indexRef.current++;
+                    e.preventDefault();
+                    wheelCooldown.current = true;
+                    indexRef.current += 1;
                     setCurrentIndex(indexRef.current);
-                } else { setLocked(false); setCompleted(true); }
-                setTimeout(() => { wheelCooldown.current = false; }, 600);
-            } else if (e.deltaY < 0) {
-                e.preventDefault();
-                wheelCooldown.current = true;
-                if (indexRef.current > 0) {
-                    indexRef.current--;
-                    setCurrentIndex(indexRef.current);
+                    setTimeout(() => { wheelCooldown.current = false; }, 500);
+                } else {
+                    setLocked(false);
+                    setCompleted(true);
                 }
-                setTimeout(() => { wheelCooldown.current = false; }, 600);
+            } else if (up) {
+                if (indexRef.current > 0) {
+                    e.preventDefault();
+                    wheelCooldown.current = true;
+                    indexRef.current -= 1;
+                    setCurrentIndex(indexRef.current);
+                    setTimeout(() => { wheelCooldown.current = false; }, 500);
+                } else {
+                    setLocked(false);
+                }
             }
         };
         window.addEventListener('wheel', handleWheel, { passive: false });
         return () => window.removeEventListener('wheel', handleWheel);
-    }, [locked, completed]);
-
-    useEffect(() => {
-        if (locked && !completed) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = '';
-        }
-        return () => { document.body.style.overflow = ''; };
     }, [locked, completed]);
 
     const nextSlide = () => setCurrentIndex((prev) => { const n = Math.min(prev + 1, ITEMS.length - 1); indexRef.current = n; return n; });
