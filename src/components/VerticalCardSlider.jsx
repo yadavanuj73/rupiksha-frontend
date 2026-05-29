@@ -42,18 +42,18 @@ const VerticalCardSlider = () => {
                                 key={i}
                                 className="hiw-card"
                                 animate={{
-                                    x: offset * 420,
-                                    scale: isActive ? 1 : 0.82,
-                                    opacity: Math.abs(offset) > 2 ? 0 : isActive ? 1 : 0.55,
+                                    x: offset * 380,
+                                    scale: isActive ? 1 : 0.85,
+                                    opacity: Math.abs(offset) > 2 ? 0 : isActive ? 1 : 0.6,
                                     zIndex: isActive ? 10 : 5 - Math.abs(offset),
                                 }}
-                                transition={{ duration: 0.45, ease: 'easeInOut' }}
+                                transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
                                 style={{
                                     background: item.mediumColor,
                                     border: `2px solid ${item.color}40`,
                                     position: 'absolute',
                                     left: '50%',
-                                    marginLeft: -190,
+                                    marginLeft: -180,
                                 }}
                             >
                                 <div style={{
