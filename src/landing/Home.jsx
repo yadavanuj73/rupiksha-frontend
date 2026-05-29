@@ -467,7 +467,7 @@ function Advantage() {
     return (
         <PinnedCarouselSection
             id="advantage"
-            totalSlides={3}
+            totalSlides={1}
             index={currentIndex}
             setIndex={setCurrentIndex}
             stickyClassName="rp-adv-section rp-adv-section--pinned"
