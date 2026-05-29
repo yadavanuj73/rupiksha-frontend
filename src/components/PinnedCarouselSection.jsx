@@ -13,6 +13,7 @@ export default function PinnedCarouselSection({
     setIndex,
     className = '',
     stickyClassName = '',
+    outerStyle = {},
     children,
 }) {
     const pinRef = useRef(null);
@@ -25,7 +26,7 @@ export default function PinnedCarouselSection({
             id={id}
             ref={pinRef}
             className={`carousel-scroll-pin ${className}`.trim()}
-            style={{ height: `${slides * 100}vh` }}
+            style={{ height: `${slides * 100}vh`, ...outerStyle }}
             aria-label="Scroll through slides"
         >
             <div

@@ -5,10 +5,10 @@
 
 .carousel-scroll-pin__sticky {
   position: sticky;
-  height: calc(100vh - 92px);
+  min-height: calc(100vh - 92px);
   display: flex;
   flex-direction: column;
   justify-content: center;
-  overflow: hidden;
+  overflow: visible;
   box-sizing: border-box;
 }

@@ -471,6 +471,7 @@ function Advantage() {
             index={currentIndex}
             setIndex={setCurrentIndex}
             stickyClassName="rp-adv-section rp-adv-section--pinned"
+            outerStyle={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%)' }}
         >
             <div style={{ textAlign: 'center', marginBottom: 40 }}>
                 <div className="writing-header writing-header--visible">
