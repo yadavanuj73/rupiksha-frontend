@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { User, Mail, Phone, MessageSquare, Send, CheckCircle, Loader2 } from 'lucide-react';
 // Using logo from public folder
 const logo = '/rupiksha logo.jpeg';
 import Footer from '../components/Footer';
@@ -112,59 +113,155 @@ const Contact = () => {
                         {/* Right: Contact Form */}
                         <div className="contact-form-panel">
                             <div className="form-card">
-                                <h3>Send Feedback or Suggestion</h3>
+                                <div className="form-header">
+                                    <div className="form-icon">
+                                        <MessageSquare size={28} />
+                                    </div>
+                                    <h3>Get in Touch</h3>
+                                    <p className="form-subtitle">We'd love to hear from you. Send us a message and we'll respond as soon as possible.</p>
+                                </div>
+                                
                                 <AnimatePresence mode="wait">
                                     {submitted ? (
                                         <motion.div
                                             key="success"
-                                            initial={{ opacity: 0, y: 20 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, y: -20 }}
+                                            initial={{ opacity: 0, scale: 0.9 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            exit={{ opacity: 0, scale: 0.9 }}
                                             className="success-message"
                                         >
-                                            <div className="success-icon">✅</div>
-                                            <h4>Message Sent!</h4>
-                                            <p>Your {formData.subject.toLowerCase()} has been sent securely to the Admin Dashboard and admin's email.</p>
+                                            <div className="success-icon-wrap">
+                                                <CheckCircle size={64} />
+                                            </div>
+                                            <h4>Message Sent Successfully!</h4>
+                                            <p>Thank you for reaching out. Your {formData.subject.toLowerCase()} has been received and our team will get back to you shortly.</p>
+                                            <button 
+                                                className="rp-btn rp-btn--secondary"
+                                                onClick={() => setSubmitted(false)}
+                                            >
+                                                Send Another Message
+                                            </button>
                                         </motion.div>
                                     ) : (
                                         <motion.form
                                             key="form"
-                                            initial={{ opacity: 0 }}
-                                            animate={{ opacity: 1 }}
-                                            exit={{ opacity: 0 }}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -10 }}
                                             onSubmit={handleSubmit}
-                                            className="rp-form-grid"
+                                            className="contact-form"
                                         >
-                                            <div className="form-group">
-                                                <label>Full Name*</label>
-                                                <input required type="text" name="name" value={formData.name} onChange={handleChange} />
+                                            {/* Name & Email Row */}
+                                            <div className="form-row">
+                                                <div className="form-field">
+                                                    <label className="field-label">
+                                                        <User size={14} />
+                                                        Full Name <span className="required">*</span>
+                                                    </label>
+                                                    <input 
+                                                        required 
+                                                        type="text" 
+                                                        name="name" 
+                                                        value={formData.name} 
+                                                        onChange={handleChange}
+                                                        placeholder="Enter your full name"
+                                                        className="field-input"
+                                                    />
+                                                </div>
+                                                <div className="form-field">
+                                                    <label className="field-label">
+                                                        <Mail size={14} />
+                                                        Email Address <span className="required">*</span>
+                                                    </label>
+                                                    <input 
+                                                        required 
+                                                        type="email" 
+                                                        name="email" 
+                                                        value={formData.email} 
+                                                        onChange={handleChange}
+                                                        placeholder="your@email.com"
+                                                        className="field-input"
+                                                    />
+                                                </div>
                                             </div>
-                                            <div className="form-group">
-                                                <label>Email Address*</label>
-                                                <input required type="email" name="email" value={formData.email} onChange={handleChange} />
+
+                                            {/* Phone & Subject Row */}
+                                            <div className="form-row">
+                                                <div className="form-field">
+                                                    <label className="field-label">
+                                                        <Phone size={14} />
+                                                        Phone Number
+                                                    </label>
+                                                    <input 
+                                                        type="tel" 
+                                                        name="phone" 
+                                                        value={formData.phone} 
+                                                        onChange={handleChange}
+                                                        placeholder="+91 98765 43210"
+                                                        className="field-input"
+                                                    />
+                                                </div>
+                                                <div className="form-field">
+                                                    <label className="field-label">
+                                                        <MessageSquare size={14} />
+                                                        Subject <span className="required">*</span>
+                                                    </label>
+                                                    <select 
+                                                        required 
+                                                        name="subject" 
+                                                        value={formData.subject} 
+                                                        onChange={handleChange}
+                                                        className="field-input field-select"
+                                                    >
+                                                        <option value="">Select a subject</option>
+                                                        <option value="Feedback">Give Feedback</option>
+                                                        <option value="Suggestion">Give Suggestion</option>
+                                                        <option value="Partnership">Partnership Inquiry</option>
+                                                        <option value="Support">Technical Support</option>
+                                                        <option value="Other">Other</option>
+                                                    </select>
+                                                </div>
                                             </div>
-                                            <div className="form-group">
-                                                <label>Phone Number</label>
-                                                <input type="tel" name="phone" value={formData.phone} onChange={handleChange} />
+
+                                            {/* Message Field */}
+                                            <div className="form-field full-width">
+                                                <label className="field-label">
+                                                    <MessageSquare size={14} />
+                                                    Your Message <span className="required">*</span>
+                                                </label>
+                                                <textarea 
+                                                    required 
+                                                    name="message" 
+                                                    value={formData.message} 
+                                                    onChange={handleChange}
+                                                    placeholder="Tell us how we can help you..."
+                                                    rows="5"
+                                                    className="field-input field-textarea"
+                                                ></textarea>
                                             </div>
-                                            <div className="form-group">
-                                                <label>Subject*</label>
-                                                <select required name="subject" value={formData.subject} onChange={handleChange}>
-                                                    <option>Give Feedback</option>
-                                                    <option>Give Suggestion</option>
-                                                    <option>Partnership Inquiry</option>
-                                                    <option>Technical Support</option>
-                                                    <option>Other</option>
-                                                </select>
-                                            </div>
-                                            <div className="form-group full">
-                                                <label>Message*</label>
-                                                <textarea required name="message" value={formData.message} onChange={handleChange} rows="5"></textarea>
-                                            </div>
-                                            <div className="form-group full submit-wrap">
-                                                <button type="submit" disabled={isSubmitting} className="rp-btn rp-btn--primary submit-btn">
-                                                    {isSubmitting ? 'Processing...' : 'Send Message'}
+
+                                            {/* Submit Button */}
+                                            <div className="form-submit">
+                                                <button 
+                                                    type="submit" 
+                                                    disabled={isSubmitting} 
+                                                    className="submit-button"
+                                                >
+                                                    {isSubmitting ? (
+                                                        <>
+                                                            <Loader2 size={20} className="spin" />
+                                                            Sending...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Send size={20} />
+                                                            Send Message
+                                                        </>
+                                                    )}
                                                 </button>
+                                                <p className="form-note">
+                                                    By submitting this form, you agree to our privacy policy and terms of service.
+                                                </p>
                                             </div>
                                         </motion.form>
                                     )}
@@ -310,21 +407,21 @@ const CONTACT_CSS = `
     100% { transform: translate(50px, 50px) scale(1.1); }
 }
 
+/* Enhanced Form Card */
 .form-card { 
-    background: rgba(255, 255, 255, 0.4); 
+    background: rgba(255, 255, 255, 0.6); 
     backdrop-filter: blur(40px) saturate(180%); 
     -webkit-backdrop-filter: blur(40px) saturate(180%);
-    padding: clamp(20px, 3vw, 40px); 
-    border-radius: clamp(20px, 3vw, 40px); 
-    border: 1px solid rgba(255, 255, 255, 0.6); 
+    padding: clamp(30px, 4vw, 50px); 
+    border-radius: clamp(24px, 4vw, 40px); 
+    border: 1px solid rgba(255, 255, 255, 0.7); 
     box-shadow: 
         0 4px 6px -1px rgba(0,0,0,0.01),
-        0 50px 100px -20px rgba(0,0,0,0.06),
-        0 30px 60px -30px rgba(0,0,0,0.1),
-        inset 0 0 0 1px rgba(255,255,255,0.4); 
+        0 60px 120px -20px rgba(0,0,0,0.08),
+        0 40px 80px -30px rgba(0,0,0,0.12),
+        inset 0 0 0 1px rgba(255,255,255,0.5); 
     position: relative; 
-    text-align: center;
-    max-width: 650px;
+    max-width: 700px;
     margin: 0 auto;
     width: 100%;
 }
@@ -332,77 +429,245 @@ const CONTACT_CSS = `
     content: '';
     position: absolute;
     inset: 0;
-    border-radius: 50px;
+    border-radius: inherit;
     padding: 2px;
-    background: linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.1), rgba(255,255,255,0.5));
+    background: linear-gradient(135deg, rgba(37,99,235,0.15), rgba(255,255,255,0.1), rgba(37,99,235,0.1));
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     pointer-events: none;
 }
-.form-card h3 { 
-    font-size: 2.2rem; 
-    font-weight: 950; 
-    margin-bottom: 25px; 
-    letter-spacing: -1.5px; 
-    line-height: 1.2;
-    padding-bottom: 5px;
-    background: linear-gradient(to bottom, #0f172a 30%, #475569);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-.rp-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; text-align: left; }
-.form-group label { 
-    font-size: 0.65rem; 
-    font-weight: 900; 
-    color: #1e293b; 
-    text-transform: uppercase; 
-    letter-spacing: 1.5px; 
-    margin-bottom: 10px;
-    padding-left: 5px;
-}
-.form-group input, .form-group select, .form-group textarea { 
-    padding: 12px 18px; 
-    border-radius: 12px; 
-    border: 1px solid rgba(15, 23, 42, 0.08); 
-    background: rgba(255, 255, 255, 0.6); 
-    font-family: inherit; 
-    transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1); 
-    outline: none; 
-    font-weight: 600; 
-    color: #0f172a;
-    font-size: 0.9rem;
-    box-shadow: 
-        inset 0 2px 4px rgba(15, 23, 42, 0.02),
-        0 4px 6px rgba(15, 23, 42, 0.01);
-}
-.form-group input:focus, .form-group select:focus, .form-group textarea:focus { 
-    border-color: #2563eb; 
-    background: #fff; 
-    box-shadow: 
-        0 0 0 8px rgba(37,99,235,0.05),
-        0 20px 40px rgba(0,0,0,0.04);
-    transform: translateY(-4px) scale(1.01);
-}
-.form-group.full { grid-column: 1 / -1; }
 
-.submit-wrap { display: flex; justify-content: center; margin-top: 30px; }
-.submit-btn.rp-btn--primary {
-    background: #0f172a;
-    color: #fff;
-    padding: 24px 60px;
-    border-radius: 24px;
-    font-size: 1rem;
-    font-weight: 900;
-    letter-spacing: 1px;
-    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.3);
-    border: 1px solid rgba(255,255,255,0.1);
+/* Form Header */
+.form-header {
+    text-align: center;
+    margin-bottom: 35px;
 }
-.submit-btn.rp-btn--primary:hover {
-    background: #1e293b;
-    transform: translateY(-5px) scale(1.05);
-    box-shadow: 0 40px 80px -15px rgba(15, 23, 42, 0.4);
+.form-icon {
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    color: #fff;
+    box-shadow: 0 10px 30px rgba(37,99,235,0.3);
+}
+.form-header h3 { 
+    font-size: 2rem; 
+    font-weight: 900; 
+    margin-bottom: 10px; 
+    letter-spacing: -1px; 
+    line-height: 1.2;
+    color: #0f172a;
+}
+.form-subtitle {
+    font-size: 0.95rem;
+    color: #64748b;
+    line-height: 1.6;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+/* Form Structure */
+.contact-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.form-field.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Field Labels */
+.field-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.field-label svg {
+    color: #2563eb;
+}
+.field-label .required {
+    color: #ef4444;
+    font-weight: 700;
+}
+
+/* Field Inputs */
+.field-input {
+    padding: 14px 16px;
+    border-radius: 14px;
+    border: 1.5px solid rgba(15, 23, 42, 0.1);
+    background: #fff;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #0f172a;
+    transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+    outline: none;
+    width: 100%;
+    box-shadow: 
+        0 2px 4px rgba(15, 23, 42, 0.02),
+        inset 0 1px 2px rgba(255,255,255,0.8);
+}
+.field-input::placeholder {
+    color: #94a3b8;
+    font-weight: 400;
+}
+.field-input:hover {
+    border-color: rgba(37, 99, 235, 0.3);
+}
+.field-input:focus {
+    border-color: #2563eb;
+    background: #fff;
+    box-shadow: 
+        0 0 0 4px rgba(37,99,235,0.08),
+        0 8px 16px rgba(0,0,0,0.04);
+    transform: translateY(-2px);
+}
+.field-select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 40px;
+}
+.field-select option {
+    font-size: 0.95rem;
+    padding: 10px;
+}
+.field-textarea {
+    resize: vertical;
+    min-height: 120px;
+    line-height: 1.6;
+}
+
+/* Submit Section */
+.form-submit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    margin-top: 10px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(15, 23, 42, 0.06);
+}
+.submit-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+    color: #fff;
+    padding: 16px 40px;
+    border-radius: 14px;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
+    width: 100%;
+    max-width: 300px;
+}
+.submit-button:hover:not(:disabled) {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 15px 40px rgba(15, 23, 42, 0.35);
+}
+.submit-button:active:not(:disabled) {
+    transform: translateY(-1px) scale(0.98);
+}
+.submit-button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+.submit-button .spin {
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.form-note {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    text-align: center;
+    margin: 0;
+}
+
+/* Success Message */
+.success-message {
+    text-align: center;
+    padding: 40px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+.success-icon-wrap {
+    width: 100px;
+    height: 100px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    margin-bottom: 10px;
+    box-shadow: 0 15px 40px rgba(16, 185, 129, 0.3);
+}
+.success-message h4 {
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: #0f172a;
+    margin: 0;
+}
+.success-message p {
+    font-size: 0.95rem;
+    color: #64748b;
+    line-height: 1.6;
+    max-width: 350px;
+    margin: 0 0 15px;
+}
+
+/* Secondary Button */
+.rp-btn--secondary {
+    background: transparent;
+    border: 2px solid #e2e8f0;
+    color: #475569;
+    padding: 12px 28px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 10px;
+}
+.rp-btn--secondary:hover {
+    border-color: #2563eb;
+    color: #2563eb;
+    background: rgba(37,99,235,0.05);
 }
 
 /* FAQ Atmos */
@@ -471,10 +736,23 @@ const CONTACT_CSS = `
     .section-center-head h2 { font-size: 2.2rem; }
 }
 
-@media(max-width: 600px) {
+@media(max-width: 768px) {
     .form-card { padding: 30px 20px; }
-    .rp-form-grid { grid-template-columns: 1fr; gap: 24px; }
-    .submit-btn.rp-btn--primary { width: 100%; padding: 18px 30px; }
+    .form-header h3 { font-size: 1.6rem; }
+    .form-subtitle { font-size: 0.9rem; }
+    .form-icon { width: 56px; height: 56px; }
+    .form-row { grid-template-columns: 1fr; gap: 18px; }
+    .field-input { padding: 12px 14px; font-size: 0.9rem; }
+    .submit-button { max-width: 100%; padding: 14px 30px; }
+    .success-icon-wrap { width: 80px; height: 80px; }
+    .success-message h4 { font-size: 1.4rem; }
+}
+
+@media(max-width: 600px) {
+    .form-card { padding: 25px 18px; }
+    .form-header { margin-bottom: 25px; }
+    .form-header h3 { font-size: 1.4rem; }
+    .field-label { font-size: 0.7rem; }
     .location-tabs { overflow-x: auto; padding: 4px; gap: 4px; justify-content: flex-start; scrollbar-width: none; }
     .location-tabs::-webkit-scrollbar { display: none; }
     .loc-tab { padding: 8px 16px; font-size: 0.65rem; }
