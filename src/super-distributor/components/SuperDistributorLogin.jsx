@@ -20,11 +20,15 @@ const INDIAN_STATES = [
     "Andaman and Nicobar Islands", "Lakshadweep", "Puducherry"
 ];
 
-const SuperDistributorLogin = () => {
+const SuperDistributorLogin = ({ onFormModeChange }) => {
     const { login, setUser, setIsLocked } = useAuth();
     const { t, language } = useLanguage();
     const navigate = useNavigate();
     const [mode, setMode] = useState('login'); // 'login' | 'register' | 'forgot' | 'success' | 'otp'
+
+    useEffect(() => {
+        onFormModeChange?.(mode);
+    }, [mode, onFormModeChange]);
 
     // ── Login state ──
     const [loginForm, setLoginForm] = useState({ username: '', password: '' });
