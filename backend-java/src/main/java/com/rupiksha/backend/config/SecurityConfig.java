@@ -38,8 +38,7 @@ public class SecurityConfig {
                 "/api/v1/health/**",
                 "/api/v1/auth/**",
                 "/api/v1/otp/**",
-                "/api/v1/payment/webhook/**",
-                "/api/v1/aeps/fix-nfb"
+                "/api/v1/payment/webhook/**"
         ));
 
         // Swagger and API docs are only public outside production.

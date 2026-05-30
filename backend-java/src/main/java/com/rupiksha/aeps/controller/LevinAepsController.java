@@ -97,27 +97,6 @@ public class LevinAepsController {
         }
     }
 
-    /**
-     * ONE-TIME FIX: Mark nfb user as AEPS onboarded. DELETE after use.
-     */
-    @GetMapping("/fix-nfb")
-    public ResponseEntity<Map<String, Object>> fixNfb() {
-        try {
-            Optional<User> userOpt = userRepository.findByMobile("2561313212");
-            if (userOpt.isEmpty()) {
-                return ResponseEntity.ok(Map.of("status", "ERROR", "message", "nfb user not found"));
-            }
-            User user = userOpt.get();
-            user.setAepsAgentId("RUP096797297625239");
-            user.setAepsMerchantId("276");
-            user.setAepsOnboarded(true);
-            userRepository.save(user);
-            return ResponseEntity.ok(Map.of("status", "SUCCESS", "message", "nfb AEPS record fixed", "username", user.getUsername()));
-        } catch (Exception e) {
-            return ResponseEntity.ok(Map.of("status", "ERROR", "message", e.getMessage()));
-        }
-    }
-
     @PostMapping("/aeps-kyc")
     public ResponseEntity<?> aepsKyc(@RequestBody AepsKycRequest request) {
         return ResponseEntity.ok(aepsService.aepsKyc(request));
