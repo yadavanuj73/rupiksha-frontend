@@ -54,7 +54,7 @@ public class AepsService {
             levinRequest.setLname(request.getLname());
             levinRequest.setPan_card(request.getPan_card());
             levinRequest.setAadhar_number(request.getAadhar_number());
-            levinRequest.setPinCode(request.getPinCode());
+            levinRequest.setPin_code(request.getPinCode());
             levinRequest.setAddress(request.getAddress());
             levinRequest.setAeps_mobile(request.getAeps_mobile());
             levinRequest.setState(request.getState());
@@ -67,6 +67,16 @@ public class AepsService {
             levinRequest.setAd2(request.getAd2());
             levinRequest.setAd3(request.getAd3());
             levinRequest.setAd4(request.getAd4());
+
+            // Also set camelCase variants — Levin v9 validation uses these field names
+            levinRequest.setShopName(request.getShop_name());
+            levinRequest.setShopAddress(request.getAddress());
+            levinRequest.setShopCity(request.getCity());
+            levinRequest.setPermanentCity(request.getCity());
+            levinRequest.setShopState(request.getState());
+            levinRequest.setShopPinCode(request.getPinCode());
+            levinRequest.setShopLatitude(request.getLatitude());
+            levinRequest.setShopLongitude(request.getLongitude());
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
