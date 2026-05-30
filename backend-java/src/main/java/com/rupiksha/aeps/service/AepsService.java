@@ -34,78 +34,76 @@ public class AepsService {
     public AepsOnboardingResponse onboard(AepsOnboardingRequest request) {
         try {
             String url = baseUrl + "/aeps-onboarding";
-            
+
             log.info("========== AEPS ONBOARDING START ==========");
             log.info("Base URL: {}", baseUrl);
             log.info("Full URL: {}", url);
-            log.info("API Token: {}...", apiToken != null && apiToken.length() > 10 ? apiToken.substring(0, 10) : "MISSING");
+            log.info("API Token present: {}", apiToken != null && !apiToken.isEmpty());
             log.info("User ID: {}", userId);
-            
-            LevinAepsRequest levinRequest = new LevinAepsRequest();
-
-            levinRequest.setApiToken(apiToken);
-            levinRequest.setUserId(userId);
 
             String agentId = generateAgentId(request.getAeps_mobile());
-            levinRequest.setAeps_agent_id(agentId);
+            String stateVal = request.getState();
+            String cityVal  = request.getCity();
+            String addrVal  = request.getAddress();
+            String shopVal  = request.getShop_name();
+            String pinVal   = request.getPinCode();
+            String latVal   = request.getLatitude();
+            String lonVal   = request.getLongitude();
 
-            levinRequest.setFname(request.getFname());
-            levinRequest.setMiddlename(request.getMiddlename());
-            levinRequest.setLname(request.getLname());
-            levinRequest.setPan_card(request.getPan_card());
-            levinRequest.setAadhar_number(request.getAadhar_number());
-            levinRequest.setPin_code(request.getPinCode());
-            levinRequest.setAddress(request.getAddress());
-            levinRequest.setAeps_mobile(request.getAeps_mobile());
-            levinRequest.setState(request.getState());
-            levinRequest.setShop_name(request.getShop_name());
-            levinRequest.setCity(request.getCity());
-            levinRequest.setLatitude(request.getLatitude());
-            levinRequest.setLongitude(request.getLongitude());
-            levinRequest.setEmail(request.getEmail());
-            levinRequest.setAd1(request.getAd1());
-            levinRequest.setAd2(request.getAd2());
-            levinRequest.setAd3(request.getAd3());
-            levinRequest.setAd4(request.getAd4());
-
-            // Also set camelCase variants — Levin v9 validation uses these field names
-            levinRequest.setShopName(request.getShop_name());
-            levinRequest.setShopAddress(request.getAddress());
-            levinRequest.setShopCity(request.getCity());
-            levinRequest.setPermanentCity(request.getCity());
-            levinRequest.setShopState(request.getState());
-            levinRequest.setShopPinCode(request.getPinCode());
-            levinRequest.setShopLatitude(request.getLatitude());
-            levinRequest.setShopLongitude(request.getLongitude());
+            // Build request as raw Map so every field is guaranteed in the JSON
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("api_token",      apiToken);
+            payload.put("user_id",        userId);
+            payload.put("fname",          request.getFname());
+            payload.put("middlename",     request.getMiddlename() != null ? request.getMiddlename() : "");
+            payload.put("lname",          request.getLname());
+            payload.put("pan_card",       request.getPan_card());
+            payload.put("aadhar_number",  request.getAadhar_number());
+            payload.put("aeps_mobile",    request.getAeps_mobile());
+            payload.put("email",          request.getEmail());
+            payload.put("aeps_agent_id",  agentId);
+            payload.put("shop_name",      shopVal);
+            payload.put("pin_code",       pinVal);
+            payload.put("address",        addrVal);
+            payload.put("city",           cityVal);
+            payload.put("state",          stateVal);
+            payload.put("latitude",       latVal);
+            payload.put("longitude",      lonVal);
+            // camelCase variants that Levin v9 actually validates
+            payload.put("shopName",       shopVal);
+            payload.put("shopAddress",    addrVal);
+            payload.put("shopCity",       cityVal);
+            payload.put("permanentCity",  cityVal);
+            payload.put("shopState",      stateVal);
+            payload.put("shopPinCode",    pinVal);
+            payload.put("shopLatitude",   latVal);
+            payload.put("shopLongitude",  lonVal);
+            payload.put("ad1",            addrVal);
+            payload.put("ad2",            "");
+            payload.put("ad3",            "");
+            payload.put("ad4",            "");
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
 
-            HttpEntity<LevinAepsRequest> entity = new HttpEntity<>(levinRequest, headers);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
 
-            log.info("AEPS Request: {}", objectMapper.writeValueAsString(levinRequest));
+            log.info("AEPS Onboarding Payload: {}", objectMapper.writeValueAsString(payload));
             log.info("Sending request to Levin API...");
 
-            ResponseEntity<AepsOnboardingResponse> response = aepsRestTemplate.exchange(
-                    url, HttpMethod.POST, entity, AepsOnboardingResponse.class);
+            ResponseEntity<String> rawResponse = aepsRestTemplate.exchange(
+                    url, HttpMethod.POST, entity, String.class);
 
-            log.info("AEPS Response Status: {}", response.getStatusCode());
-            log.info("AEPS Response: {}", response.getBody());
+            log.info("AEPS Response Status: {}", rawResponse.getStatusCode());
+            log.info("AEPS Raw Response: {}", rawResponse.getBody());
+
+            AepsOnboardingResponse response = objectMapper.readValue(rawResponse.getBody(), AepsOnboardingResponse.class);
             log.info("========== AEPS ONBOARDING END ==========");
-
-            return response.getBody();
+            return response;
 
         } catch (org.springframework.web.client.ResourceAccessException e) {
-            log.error("========== NETWORK/CONNECTION ERROR ==========");
-            log.error("Cannot connect to Levin API. This could be:");
-            log.error("1. Wrong base URL (current: {})", baseUrl);
-            log.error("2. Levin API is down");
-            log.error("3. Network/firewall blocking the connection");
-            log.error("4. SSL certificate issue");
-            log.error("Error details: {}", e.getMessage());
-            log.error("========================================");
-            
+            log.error("NETWORK ERROR - Cannot connect to Levin API: {}", e.getMessage());
             AepsOnboardingResponse error = new AepsOnboardingResponse();
             error.setStatusId(2);
             error.setMessage("AEPS Onboarding Failed : Cannot connect to Levin API. Please check base URL and network connectivity.");
