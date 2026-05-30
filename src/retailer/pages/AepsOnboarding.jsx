@@ -71,6 +71,12 @@ const AepsOnboarding = () => {
     useEffect(() => {
         const checkOnboardingStatus = async () => {
             try {
+                // Fast path: check localStorage first
+                if (user?.aepsOnboarded === true && user?.aepsAgentId) {
+                    navigate('/aeps');
+                    return;
+                }
+
                 const mobile = user?.mobile;
                 if (!mobile) { setChecking(false); return; }
 
@@ -150,6 +156,35 @@ const AepsOnboarding = () => {
         e.preventDefault();
         setSubmitting(true);
         try {
+            // Use GPS if available, otherwise use a default coordinate for the state
+            // Levin validates lat/long — use registered address location not live GPS
+            const STATE_COORDS = {
+                'BR': { lat: '25.0961', lon: '85.3131' }, // Bihar
+                'UP': { lat: '26.8467', lon: '80.9462' }, // Uttar Pradesh
+                'DL': { lat: '28.6139', lon: '77.2090' }, // Delhi
+                'MH': { lat: '19.7515', lon: '75.7139' }, // Maharashtra
+                'RJ': { lat: '27.0238', lon: '74.2179' }, // Rajasthan
+                'GJ': { lat: '22.2587', lon: '71.1924' }, // Gujarat
+                'MP': { lat: '22.9734', lon: '78.6569' }, // Madhya Pradesh
+                'WB': { lat: '22.9868', lon: '87.8550' }, // West Bengal
+                'TN': { lat: '11.1271', lon: '78.6569' }, // Tamil Nadu
+                'KA': { lat: '15.3173', lon: '75.7139' }, // Karnataka
+                'AP': { lat: '15.9129', lon: '79.7400' }, // Andhra Pradesh
+                'TS': { lat: '18.1124', lon: '79.0193' }, // Telangana
+                'KL': { lat: '10.8505', lon: '76.2711' }, // Kerala
+                'OR': { lat: '20.9517', lon: '85.0985' }, // Odisha
+                'JH': { lat: '23.6102', lon: '85.2799' }, // Jharkhand
+                'HR': { lat: '29.0588', lon: '76.0856' }, // Haryana
+                'PB': { lat: '31.1471', lon: '75.3412' }, // Punjab
+                'HP': { lat: '31.1048', lon: '77.1734' }, // Himachal Pradesh
+                'UK': { lat: '30.0668', lon: '79.0193' }, // Uttarakhand
+                'AS': { lat: '26.2006', lon: '92.9376' }, // Assam
+                'CG': { lat: '21.2787', lon: '81.8661' }, // Chhattisgarh
+            };
+
+            const stateCode = STATE_CODES[formData.state.trim()] || formData.state.trim();
+            const stateCoord = STATE_COORDS[stateCode] || { lat: '26.8467', lon: '80.9462' };
+
             const payload = {
                 fname: formData.fname.trim(),
                 middlename: formData.middlename.trim(),
@@ -159,11 +194,11 @@ const AepsOnboarding = () => {
                 pinCode: formData.pinCode.trim(),
                 address: formData.address.trim(),
                 aeps_mobile: formData.aeps_mobile.trim(),
-                state: STATE_CODES[formData.state.trim()] || formData.state.trim(),
+                state: stateCode,
                 shop_name: formData.shop_name.trim(),
                 city: formData.city.trim(),
-                latitude: formData.latitude || location?.lat || '26.8467',
-                longitude: formData.longitude || location?.long || '80.9462',
+                latitude: stateCoord.lat,
+                longitude: stateCoord.lon,
                 email: formData.email.trim(),
                 ad1: formData.address.trim(),
                 ad2: '',
