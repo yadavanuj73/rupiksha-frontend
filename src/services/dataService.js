@@ -288,6 +288,8 @@ export const dataService = {
             const normalizedUser = {
                 id: backendUser.id,
                 username: backendUser.username,
+                mobile: backendUser.mobile,
+                email: backendUser.email,
                 name: backendUser.fullName,
                 fullName: backendUser.fullName,
                 status: backendUser.status,

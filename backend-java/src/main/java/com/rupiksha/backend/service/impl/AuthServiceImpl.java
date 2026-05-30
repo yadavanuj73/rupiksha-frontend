@@ -154,6 +154,8 @@ public class AuthServiceImpl implements AuthService {
         return new AuthDtos.UserView(
                 user.getId().toString(),
                 user.getUsername(),
+                user.getMobile(),
+                user.getEmail(),
                 user.getFullName(),
                 user.getStatus() == null ? null : user.getStatus().name(),
                 user.getKycStatus() == null ? KycStatus.NOT_SUBMITTED.name() : user.getKycStatus().name(),

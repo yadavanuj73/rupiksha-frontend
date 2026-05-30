@@ -290,6 +290,7 @@ public class AdminController {
                 "accessToken", token,
                 "userId", target.getId().toString(),
                 "username", target.getUsername(),
+                "mobile", target.getMobile(),
                 "fullName", target.getFullName(),
                 "roles", roles,
                 "status", target.getStatus() == null ? "APPROVED" : target.getStatus().name(),

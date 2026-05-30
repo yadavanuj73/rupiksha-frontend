@@ -75,7 +75,7 @@ const AepsOnboarding = () => {
                 const impUser = localStorage.getItem('rupiksha_imp_user');
                 const normalUser = localStorage.getItem('rupiksha_user');
                 const storedUser = impUser ? JSON.parse(impUser) : (normalUser ? JSON.parse(normalUser) : null);
-                const mobile = user?.mobile || user?.phone || storedUser?.mobile || storedUser?.phone;
+                const mobile = user?.mobile || user?.phone || storedUser?.mobile || storedUser?.phone || user?.username || storedUser?.username;
                 
                 if (!mobile) { setChecking(false); return; }
 

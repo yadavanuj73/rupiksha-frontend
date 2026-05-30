@@ -617,6 +617,7 @@ const Admin = () => {
             const impersonatedUser = {
                 id: data.userId,
                 username: data.username,
+                mobile: data.mobile,
                 name: data.fullName,
                 fullName: data.fullName,
                 roles,

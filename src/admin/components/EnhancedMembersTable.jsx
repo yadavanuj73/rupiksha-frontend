@@ -161,6 +161,7 @@ const EnhancedMembersTable = () => {
             const impersonatedUser = {
                 id: data.userId,
                 username: data.username,
+                mobile: data.mobile,
                 fullName: data.fullName,
                 name: data.fullName,
                 roles: normalizedRoles,

@@ -211,7 +211,8 @@ const AEPS = () => {
         // Check DB for AEPS onboarding status — single source of truth
         const checkAepsStatus = async () => {
             try {
-                const mobile = currentUser?.mobile || currentUser?.phone;
+                // Try mobile field first, then phone, then username (many users have mobile as username)
+                const mobile = currentUser?.mobile || currentUser?.phone || currentUser?.username;
                 if (!mobile) {
                     navigate('/aeps-kyc');
                     return;

@@ -50,6 +50,8 @@ public class AuthDtos {
     public record UserView(
             String id,
             String username,
+            String mobile,
+            String email,
             String fullName,
             String status,
             String kycStatus,

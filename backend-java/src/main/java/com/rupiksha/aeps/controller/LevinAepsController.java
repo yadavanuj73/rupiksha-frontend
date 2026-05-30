@@ -87,13 +87,17 @@ public class LevinAepsController {
     }
 
     /**
-     * Check AEPS onboarding status for a user by mobile number.
+     * Check AEPS onboarding status for a user by mobile number or username.
      * Frontend calls this on load to decide whether to show onboarding form.
      */
     @GetMapping("/status")
     public ResponseEntity<Map<String, Object>> aepsStatus(@RequestParam String mobile) {
         try {
+            // Try by mobile first, then by username (some users login with party code as username)
             Optional<User> userOpt = userRepository.findByMobile(mobile);
+            if (userOpt.isEmpty()) {
+                userOpt = userRepository.findByUsername(mobile);
+            }
             if (userOpt.isPresent()) {
                 User user = userOpt.get();
                 boolean onboarded = Boolean.TRUE.equals(user.getAepsOnboarded());
