@@ -71,35 +71,16 @@ const AepsOnboarding = () => {
     useEffect(() => {
         const checkOnboardingStatus = async () => {
             try {
-                // Fast path: check localStorage first
+                // Get mobile from multiple possible sources
                 const impUser = localStorage.getItem('rupiksha_imp_user');
                 const normalUser = localStorage.getItem('rupiksha_user');
                 const storedUser = impUser ? JSON.parse(impUser) : (normalUser ? JSON.parse(normalUser) : null);
-                
-                if (storedUser?.aepsOnboarded === true && storedUser?.aepsAgentId) {
-                    navigate('/aeps');
-                    return;
-                }
-
-                // Get mobile from multiple possible sources
                 const mobile = user?.mobile || user?.phone || storedUser?.mobile || storedUser?.phone;
+                
                 if (!mobile) { setChecking(false); return; }
 
                 const status = await aepsService.checkStatus(mobile);
                 if (status?.onboarded) {
-                    // Already onboarded — update correct localStorage and redirect
-                    const updatedUser = {
-                        ...(storedUser || user),
-                        aepsAgentId: status.agentId,
-                        merchantId: status.merchantId,
-                        aepsOnboarded: true,
-                    };
-                    if (impUser) {
-                        localStorage.setItem('rupiksha_imp_user', JSON.stringify(updatedUser));
-                    } else {
-                        localStorage.setItem('rupiksha_user', JSON.stringify(updatedUser));
-                    }
-                    setUser(updatedUser);
                     navigate('/aeps');
                     return;
                 }

@@ -208,15 +208,7 @@ const AEPS = () => {
         const currentUser = impUser ? JSON.parse(impUser) : (normalUser ? JSON.parse(normalUser) : null);
         setUser(currentUser);
 
-        // Fast path: if localStorage already says onboarded, skip API call
-        if (currentUser?.aepsOnboarded === true) {
-            dataService.verifyLocation()
-                .then(loc => setLocation(loc))
-                .catch(() => {});
-            return;
-        }
-
-        // Check DB for AEPS onboarding status
+        // Check DB for AEPS onboarding status — single source of truth
         const checkAepsStatus = async () => {
             try {
                 const mobile = currentUser?.mobile || currentUser?.phone;
@@ -227,35 +219,19 @@ const AEPS = () => {
 
                 const status = await aepsService.checkStatus(mobile);
                 if (status?.onboarded) {
-                    // Already onboarded — update localStorage and stay on AEPS page
-                    const updatedUser = {
-                        ...currentUser,
-                        aepsAgentId: status.agentId,
-                        merchantId: status.merchantId,
-                        aepsOnboarded: true,
-                    };
-                    if (impUser) {
-                        localStorage.setItem('rupiksha_imp_user', JSON.stringify(updatedUser));
-                    } else {
-                        localStorage.setItem('rupiksha_user', JSON.stringify(updatedUser));
-                    }
-                    setUser(updatedUser);
+                    // Onboarded — stay on AEPS page
+                    setUser(prev => ({ ...prev, aepsAgentId: status.agentId, merchantId: status.merchantId }));
                     dataService.verifyLocation()
                         .then(loc => setLocation(loc))
                         .catch(() => {});
                 } else {
-                    // Not onboarded — go to onboarding form
                     navigate('/aeps-kyc');
                 }
             } catch (e) {
-                // On error, check localStorage as fallback
-                if (!currentUser?.aepsOnboarded) {
-                    navigate('/aeps-kyc');
-                } else {
-                    dataService.verifyLocation()
-                        .then(loc => setLocation(loc))
-                        .catch(() => {});
-                }
+                // On API error, still show AEPS page (don't redirect)
+                dataService.verifyLocation()
+                    .then(loc => setLocation(loc))
+                    .catch(() => {});
             }
         };
 
