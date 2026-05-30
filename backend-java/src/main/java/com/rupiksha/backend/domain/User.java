@@ -76,6 +76,15 @@ public class User {
     @Column(name = "party_code", length = 30)
     private String partyCode;
 
+    @Column(name = "aeps_agent_id", length = 80)
+    private String aepsAgentId;
+
+    @Column(name = "aeps_merchant_id", length = 80)
+    private String aepsMerchantId;
+
+    @Column(name = "aeps_onboarded", nullable = false)
+    private Boolean aepsOnboarded = false;
+
     @Column(name = "added_by_user_ref", length = 64)
     private String addedByUserRef;
 

@@ -274,6 +274,9 @@ export const providerTxnService = {
 
 // ─── AEPS ──────────────────────────────────────────────────────────────────────
 export const aepsService = {
+  // Check onboarding status from DB
+  checkStatus: (mobile) =>
+    apiFetch(`/aeps/status?mobile=${encodeURIComponent(mobile)}`),
   // Onboarding for new retailers
   onboard: (payload) =>
     apiFetch("/aeps/onboard", {

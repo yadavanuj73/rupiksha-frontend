@@ -42,6 +42,7 @@ const AepsOnboarding = () => {
     const navigate = useNavigate();
     const [step, setStep] = useState(1);
     const [submitting, setSubmitting] = useState(false);
+    const [checking, setChecking] = useState(true);
     const [location, setLocation] = useState(null);
     const [onboardResult, setOnboardResult] = useState(null);
     const [errors, setErrors] = useState({});
@@ -66,6 +67,36 @@ const AepsOnboarding = () => {
         longitude: '',
     });
 
+    // Check DB for existing onboarding status on mount
+    useEffect(() => {
+        const checkOnboardingStatus = async () => {
+            try {
+                const mobile = user?.mobile;
+                if (!mobile) { setChecking(false); return; }
+
+                const status = await aepsService.checkStatus(mobile);
+                if (status?.onboarded) {
+                    // Already onboarded — update localStorage and redirect
+                    const updatedUser = {
+                        ...user,
+                        aepsAgentId: status.agentId,
+                        merchantId: status.merchantId,
+                        aepsOnboarded: true,
+                    };
+                    localStorage.setItem('rupiksha_user', JSON.stringify(updatedUser));
+                    setUser(updatedUser);
+                    navigate('/aeps');
+                    return;
+                }
+            } catch (e) {
+                // If status check fails, just show the form
+            } finally {
+                setChecking(false);
+            }
+        };
+        checkOnboardingStatus();
+    }, []);
+
     useEffect(() => {
         navigator.geolocation?.getCurrentPosition(
             (pos) => {
@@ -74,7 +105,6 @@ const AepsOnboarding = () => {
                 setFormData(prev => ({ ...prev, latitude: loc.lat, longitude: loc.long }));
             },
             () => {
-                // fallback — allow submission without GPS
                 setLocation({ lat: '26.8467', long: '80.9462' });
                 setFormData(prev => ({ ...prev, latitude: '26.8467', longitude: '80.9462' }));
             }
@@ -148,7 +178,7 @@ const AepsOnboarding = () => {
                 const updatedUser = {
                     ...user,
                     aepsAgentId: result.agentId,
-                    merchantId: result.merchant_id,
+                    merchantId: result.merchantId,   // fixed: was result.merchant_id
                     aepsOnboarded: true,
                 };
                 localStorage.setItem('rupiksha_user', JSON.stringify(updatedUser));
@@ -163,6 +193,18 @@ const AepsOnboarding = () => {
             setSubmitting(false);
         }
     };
+
+    // Loading screen while checking DB status
+    if (checking) {
+        return (
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-slate-500 font-semibold text-sm">Checking AEPS status...</p>
+                </div>
+            </div>
+        );
+    }
 
     // Success screen
     if (step === 4 && onboardResult) {
