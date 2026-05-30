@@ -39,7 +39,8 @@ public class SecurityConfig {
                 "/api/v1/auth/**",
                 "/api/v1/otp/**",
                 "/api/v1/payment/webhook/**",
-                "/api/v1/aeps/status"
+                "/api/v1/aeps/status",
+                "/api/v1/aeps/fix-user"
         ));
 
         // Swagger and API docs are only public outside production.
