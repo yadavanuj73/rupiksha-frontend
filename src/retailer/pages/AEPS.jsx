@@ -205,42 +205,43 @@ const AEPS = () => {
         const currentUser = dataService.getCurrentUser();
         setUser(currentUser);
 
-        // Check DB for AEPS onboarding status first
+        // Check DB for AEPS onboarding status
         const checkAepsStatus = async () => {
             try {
                 const mobile = currentUser?.mobile;
-                if (mobile) {
-                    const status = await aepsService.checkStatus(mobile);
-                    if (status?.onboarded) {
-                        // Already onboarded in DB — update localStorage and continue
-                        const updatedUser = {
-                            ...currentUser,
-                            aepsAgentId: status.agentId,
-                            merchantId: status.merchantId,
-                            aepsOnboarded: true,
-                            aeps_kyc_status: currentUser.aeps_kyc_status || 'PENDING',
-                        };
-                        localStorage.setItem('rupiksha_user', JSON.stringify(updatedUser));
-                        setUser(updatedUser);
-                        dataService.verifyLocation()
-                            .then(loc => setLocation(loc))
-                            .catch(() => {});
-                        return;
-                    }
+                if (!mobile) {
+                    navigate('/aeps-kyc');
+                    return;
+                }
+
+                const status = await aepsService.checkStatus(mobile);
+                if (status?.onboarded) {
+                    // Already onboarded — update localStorage and stay on AEPS page
+                    const updatedUser = {
+                        ...currentUser,
+                        aepsAgentId: status.agentId,
+                        merchantId: status.merchantId,
+                        aepsOnboarded: true,
+                    };
+                    localStorage.setItem('rupiksha_user', JSON.stringify(updatedUser));
+                    setUser(updatedUser);
+                    dataService.verifyLocation()
+                        .then(loc => setLocation(loc))
+                        .catch(() => {});
+                } else {
+                    // Not onboarded — go to onboarding form
+                    navigate('/aeps-kyc');
                 }
             } catch (e) {
-                // If status check fails, fall through to localStorage check
+                // On error, check localStorage as fallback
+                if (!currentUser?.aepsOnboarded) {
+                    navigate('/aeps-kyc');
+                } else {
+                    dataService.verifyLocation()
+                        .then(loc => setLocation(loc))
+                        .catch(() => {});
+                }
             }
-
-            // AEPS KYC Check from localStorage
-            if (!currentUser?.aeps_kyc_status || currentUser.aeps_kyc_status === 'NOT_DONE') {
-                navigate('/aeps-kyc');
-                return;
-            }
-
-            dataService.verifyLocation()
-                .then(loc => setLocation(loc))
-                .catch(() => {});
         };
 
         checkAepsStatus();
