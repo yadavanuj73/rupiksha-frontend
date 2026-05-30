@@ -26,27 +26,47 @@ public class LevinAepsController {
      * AEPS Onboarding — calls Levin API and saves agentId/merchantId to users table on success.
      */
     @PostMapping("/onboard")
-    public ResponseEntity<AepsOnboardingResponse> onboard(@RequestBody AepsOnboardingRequest request) {
+    public ResponseEntity<AepsOnboardingResponse> onboard(
+            @RequestBody AepsOnboardingRequest request,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal Object principal) {
         AepsOnboardingResponse response = aepsService.onboard(request);
 
         // On success, persist agentId and merchantId to the users table
         if (response != null && Integer.valueOf(1).equals(response.getStatusId())) {
             try {
-                String mobile = request.getAeps_mobile();
-                Optional<User> userOpt = userRepository.findByMobile(mobile);
+                // Try to find user by: 1) logged-in user's username, 2) form mobile
+                Optional<User> userOpt = Optional.empty();
+
+                // First try: get the authenticated user from JWT
+                if (principal != null) {
+                    String username = null;
+                    if (principal instanceof org.springframework.security.core.userdetails.UserDetails ud) {
+                        username = ud.getUsername();
+                    } else {
+                        username = principal.toString();
+                    }
+                    if (username != null) {
+                        userOpt = userRepository.findByUsername(username);
+                    }
+                }
+
+                // Fallback: try by form mobile
+                if (userOpt.isEmpty()) {
+                    userOpt = userRepository.findByMobile(request.getAeps_mobile());
+                }
+
                 if (userOpt.isPresent()) {
                     User user = userOpt.get();
                     user.setAepsAgentId(response.getAgentId());
                     user.setAepsMerchantId(response.getMerchantId());
                     user.setAepsOnboarded(true);
                     userRepository.save(user);
-                    log.info("AEPS onboarding saved to DB for mobile: {} agentId: {}", mobile, response.getAgentId());
+                    log.info("AEPS onboarding saved to DB for user: {} agentId: {}", user.getUsername(), response.getAgentId());
                 } else {
-                    log.warn("User not found in DB for mobile: {} — AEPS status not persisted", mobile);
+                    log.warn("User not found — AEPS status not persisted. Form mobile: {}", request.getAeps_mobile());
                 }
             } catch (Exception e) {
                 log.error("Failed to save AEPS onboarding status to DB", e);
-                // Don't fail the response — Levin already succeeded
             }
         }
 
@@ -74,6 +94,27 @@ public class LevinAepsController {
         } catch (Exception e) {
             log.error("Error checking AEPS status", e);
             return ResponseEntity.ok(Map.of("onboarded", false, "agentId", "", "merchantId", ""));
+        }
+    }
+
+    /**
+     * ONE-TIME FIX: Mark nfb user as AEPS onboarded. DELETE after use.
+     */
+    @GetMapping("/fix-nfb")
+    public ResponseEntity<Map<String, Object>> fixNfb() {
+        try {
+            Optional<User> userOpt = userRepository.findByMobile("2561313212");
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.ok(Map.of("status", "ERROR", "message", "nfb user not found"));
+            }
+            User user = userOpt.get();
+            user.setAepsAgentId("RUP096797297625239");
+            user.setAepsMerchantId("276");
+            user.setAepsOnboarded(true);
+            userRepository.save(user);
+            return ResponseEntity.ok(Map.of("status", "SUCCESS", "message", "nfb AEPS record fixed", "username", user.getUsername()));
+        } catch (Exception e) {
+            return ResponseEntity.ok(Map.of("status", "ERROR", "message", e.getMessage()));
         }
     }
 
