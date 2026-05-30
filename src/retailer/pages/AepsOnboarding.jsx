@@ -217,7 +217,13 @@ const AepsOnboarding = () => {
                     merchantId: result.merchantId || '',
                     aepsOnboarded: true,
                 };
-                localStorage.setItem('rupiksha_user', JSON.stringify(updatedUser));
+                // Save to correct localStorage key
+                const isImp = !!localStorage.getItem('rupiksha_imp_user');
+                if (isImp) {
+                    localStorage.setItem('rupiksha_imp_user', JSON.stringify(updatedUser));
+                } else {
+                    localStorage.setItem('rupiksha_user', JSON.stringify(updatedUser));
+                }
                 setUser(updatedUser);
                 setStep(4); // success screen
             } else {

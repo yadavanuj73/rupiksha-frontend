@@ -208,10 +208,18 @@ const AEPS = () => {
         const currentUser = impUser ? JSON.parse(impUser) : (normalUser ? JSON.parse(normalUser) : null);
         setUser(currentUser);
 
+        // Fast path: if localStorage already says onboarded, skip API call
+        if (currentUser?.aepsOnboarded === true) {
+            dataService.verifyLocation()
+                .then(loc => setLocation(loc))
+                .catch(() => {});
+            return;
+        }
+
         // Check DB for AEPS onboarding status
         const checkAepsStatus = async () => {
             try {
-                const mobile = currentUser?.mobile;
+                const mobile = currentUser?.mobile || currentUser?.phone;
                 if (!mobile) {
                     navigate('/aeps-kyc');
                     return;
@@ -226,7 +234,11 @@ const AEPS = () => {
                         merchantId: status.merchantId,
                         aepsOnboarded: true,
                     };
-                    localStorage.setItem('rupiksha_user', JSON.stringify(updatedUser));
+                    if (impUser) {
+                        localStorage.setItem('rupiksha_imp_user', JSON.stringify(updatedUser));
+                    } else {
+                        localStorage.setItem('rupiksha_user', JSON.stringify(updatedUser));
+                    }
                     setUser(updatedUser);
                     dataService.verifyLocation()
                         .then(loc => setLocation(loc))
