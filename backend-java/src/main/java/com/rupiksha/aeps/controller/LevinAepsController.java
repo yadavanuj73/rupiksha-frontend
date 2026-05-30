@@ -31,8 +31,13 @@ public class LevinAepsController {
             @org.springframework.security.core.annotation.AuthenticationPrincipal Object principal) {
         AepsOnboardingResponse response = aepsService.onboard(request);
 
-        // On success, persist agentId and merchantId to the users table
-        if (response != null && Integer.valueOf(1).equals(response.getStatusId())) {
+        // On success or "already completed", persist status to the users table
+        boolean isSuccess = response != null && (
+            Integer.valueOf(1).equals(response.getStatusId()) ||
+            (response.getMessage() != null && response.getMessage().toLowerCase().contains("already"))
+        );
+
+        if (isSuccess) {
             try {
                 // Try to find user by: 1) logged-in user's username, 2) form mobile
                 Optional<User> userOpt = Optional.empty();
@@ -57,11 +62,19 @@ public class LevinAepsController {
 
                 if (userOpt.isPresent()) {
                     User user = userOpt.get();
-                    user.setAepsAgentId(response.getAgentId());
-                    user.setAepsMerchantId(response.getMerchantId());
+                    // Use agentId from response, or generate one if not provided
+                    String agentId = response.getAgentId() != null ? response.getAgentId() : ("RUP0" + request.getAeps_mobile());
+                    String merchantId = response.getMerchantId() != null ? response.getMerchantId() : "";
+                    user.setAepsAgentId(agentId);
+                    user.setAepsMerchantId(merchantId);
                     user.setAepsOnboarded(true);
                     userRepository.save(user);
-                    log.info("AEPS onboarding saved to DB for user: {} agentId: {}", user.getUsername(), response.getAgentId());
+                    log.info("AEPS onboarding saved to DB for user: {} agentId: {}", user.getUsername(), agentId);
+
+                    // Also set agentId in response so frontend gets it
+                    if (response.getAgentId() == null) response.setAgentId(agentId);
+                    // Force statusId to 1 for "already completed" case
+                    response.setStatusId(1);
                 } else {
                     log.warn("User not found — AEPS status not persisted. Form mobile: {}", request.getAeps_mobile());
                 }

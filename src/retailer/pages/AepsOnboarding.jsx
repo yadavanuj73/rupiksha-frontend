@@ -210,11 +210,11 @@ const AepsOnboarding = () => {
             const result = await aepsService.onboard(payload);
             setOnboardResult(result);
 
-            if (result?.statusId === 1) {
+            if (result?.statusId === 1 || (result?.message && result.message.toLowerCase().includes('already'))) {
                 const updatedUser = {
                     ...user,
-                    aepsAgentId: result.agentId,
-                    merchantId: result.merchantId,   // fixed: was result.merchant_id
+                    aepsAgentId: result.agentId || ('RUP0' + formData.aeps_mobile.trim()),
+                    merchantId: result.merchantId || '',
                     aepsOnboarded: true,
                 };
                 localStorage.setItem('rupiksha_user', JSON.stringify(updatedUser));
