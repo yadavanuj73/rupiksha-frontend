@@ -205,15 +205,45 @@ const AEPS = () => {
         const currentUser = dataService.getCurrentUser();
         setUser(currentUser);
 
-        // AEPS KYC Check
-        if (!currentUser?.aeps_kyc_status || currentUser.aeps_kyc_status === 'NOT_DONE') {
-            navigate('/aeps-kyc');
-            return;
-        }
+        // Check DB for AEPS onboarding status first
+        const checkAepsStatus = async () => {
+            try {
+                const mobile = currentUser?.mobile;
+                if (mobile) {
+                    const status = await aepsService.checkStatus(mobile);
+                    if (status?.onboarded) {
+                        // Already onboarded in DB — update localStorage and continue
+                        const updatedUser = {
+                            ...currentUser,
+                            aepsAgentId: status.agentId,
+                            merchantId: status.merchantId,
+                            aepsOnboarded: true,
+                            aeps_kyc_status: currentUser.aeps_kyc_status || 'PENDING',
+                        };
+                        localStorage.setItem('rupiksha_user', JSON.stringify(updatedUser));
+                        setUser(updatedUser);
+                        dataService.verifyLocation()
+                            .then(loc => setLocation(loc))
+                            .catch(() => {});
+                        return;
+                    }
+                }
+            } catch (e) {
+                // If status check fails, fall through to localStorage check
+            }
 
-        dataService.verifyLocation()
-            .then(loc => setLocation(loc))
-            .catch(err => { });
+            // AEPS KYC Check from localStorage
+            if (!currentUser?.aeps_kyc_status || currentUser.aeps_kyc_status === 'NOT_DONE') {
+                navigate('/aeps-kyc');
+                return;
+            }
+
+            dataService.verifyLocation()
+                .then(loc => setLocation(loc))
+                .catch(() => {});
+        };
+
+        checkAepsStatus();
     }, []);
 
     const fetchHistory = async () => {
