@@ -112,7 +112,7 @@ app:
 
 levin:
   aeps:
-    base-url: ${LEVIN_AEPS_BASE_URL:https://api.levinfintech.com}
+    base-url: ${LEVIN_AEPS_BASE_URL:https://api.levinfintech.com/api/levin/v9}
     api-token: ${LEVIN_AEPS_API_TOKEN:}
     user-id: ${LEVIN_AEPS_USER_ID:}
     encryption-key: ${LEVIN_AEPS_ENCRYPTION_KEY:}
