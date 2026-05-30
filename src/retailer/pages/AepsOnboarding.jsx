@@ -77,7 +77,8 @@ const AepsOnboarding = () => {
                     return;
                 }
 
-                const mobile = user?.mobile;
+                // Get mobile from user object (could be 'mobile' or 'phone')
+                const mobile = user?.mobile || user?.phone;
                 if (!mobile) { setChecking(false); return; }
 
                 const status = await aepsService.checkStatus(mobile);

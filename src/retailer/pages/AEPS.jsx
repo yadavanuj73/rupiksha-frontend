@@ -202,7 +202,10 @@ const AEPS = () => {
     const navigate = useNavigate();
     const routeLocation = useLocation();
     useEffect(() => {
-        const currentUser = dataService.getCurrentUser();
+        // Get user from correct localStorage key (handles impersonation)
+        const impUser = localStorage.getItem('rupiksha_imp_user');
+        const normalUser = localStorage.getItem('rupiksha_user');
+        const currentUser = impUser ? JSON.parse(impUser) : (normalUser ? JSON.parse(normalUser) : null);
         setUser(currentUser);
 
         // Check DB for AEPS onboarding status
