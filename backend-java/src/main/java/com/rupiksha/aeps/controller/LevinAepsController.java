@@ -110,27 +110,6 @@ public class LevinAepsController {
         }
     }
 
-    /**
-     * ONE-TIME FIX: Mark user as AEPS onboarded by username. DELETE after use.
-     */
-    @GetMapping("/fix-user")
-    public ResponseEntity<Map<String, Object>> fixUser(@RequestParam String username, @RequestParam String agentId, @RequestParam(defaultValue = "") String merchantId) {
-        try {
-            Optional<User> userOpt = userRepository.findByUsername(username);
-            if (userOpt.isEmpty()) {
-                return ResponseEntity.ok(Map.of("status", "ERROR", "message", "User not found: " + username));
-            }
-            User user = userOpt.get();
-            user.setAepsAgentId(agentId);
-            user.setAepsMerchantId(merchantId.isEmpty() ? "276" : merchantId);
-            user.setAepsOnboarded(true);
-            userRepository.save(user);
-            return ResponseEntity.ok(Map.of("status", "SUCCESS", "message", "Fixed " + username, "mobile", user.getMobile()));
-        } catch (Exception e) {
-            return ResponseEntity.ok(Map.of("status", "ERROR", "message", e.getMessage()));
-        }
-    }
-
     @PostMapping("/aeps-kyc")
     public ResponseEntity<?> aepsKyc(@RequestBody AepsKycRequest request) {
         return ResponseEntity.ok(aepsService.aepsKyc(request));
