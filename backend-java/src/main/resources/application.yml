@@ -128,9 +128,9 @@ spring:
     activate:
       on-profile: prod
   datasource:
-    url: "${DB_URL}"
-    username: "${DB_USERNAME:postgres}"
-    password: "${DB_PASSWORD:postgres}"
+    url: ${DB_URL}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
     hikari:
       maximum-pool-size: 2
       minimum-idle: 1
