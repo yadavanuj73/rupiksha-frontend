@@ -62,43 +62,56 @@ const AepsAgentKyc = () => {
         setError('');
         setPhase('capturing');
 
-        let pidData = null;
-        const xmlBody = `<?xml version="1.0"?><PidOptions ver="1.0"><Opts fCount="1" fType="2" iCount="0" iType="" pCount="0" pType="" format="0" pidVer="2.0" timeout="10000" posh="UNKNOWN" env="P" wadh="" /><CustOpts><Param name="mantrakey" value="" /></CustOpts></PidOptions>`;
+        // Open the local capture page in a popup window
+        // This page runs on HTTP (localhost) so it can talk to Mantra RD Service without CORS issues
+        const captureWindow = window.open(
+            '/mantra-capture.html',
+            'MantraCapture',
+            'width=420,height=400,left=400,top=200,resizable=no'
+        );
 
-        for (const port of MANTRA_PORTS) {
-            try {
-                const response = await fetch(`http://127.0.0.1:${port}/rd/capture`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/xml; charset=utf-8' },
-                    body: xmlBody
-                });
-                if (response.ok || response.status === 200) {
-                    const text = await response.text();
-                    if (!text || text.trim() === '') continue;
-                    const parser = new DOMParser();
-                    const xmlDoc = parser.parseFromString(text, 'text/xml');
-                    const resp = xmlDoc.querySelector('Resp');
-                    const errCode = resp?.getAttribute('errCode');
-                    if (errCode === '0' || errCode === null || errCode === undefined) {
-                        pidData = btoa(unescape(encodeURIComponent(text)));
-                        break;
-                    } else {
-                        const errInfo = resp?.getAttribute('errInfo') || 'Capture failed';
-                        setError(`Device error (${errCode}): ${errInfo}`);
-                        setPhase('idle');
-                        return;
-                    }
-                }
-            } catch (e) {
-                console.log(`Port ${port} failed:`, e.message);
-            }
-        }
-
-        if (!pidData) {
-            setError('Fingerprint capture failed. Make sure Mantra RD Service is running, browser extension is installed, and device is connected.');
+        if (!captureWindow) {
+            setError('Popup was blocked. Please allow popups for rupiksha.in and try again.');
             setPhase('failed');
             return;
         }
+
+        // Wait for PID data from the popup via postMessage
+        const pidData = await new Promise((resolve) => {
+            const handler = (event) => {
+                if (event.data?.type === 'MANTRA_PID_DATA') {
+                    window.removeEventListener('message', handler);
+                    resolve(event.data.pidData || null);
+                }
+            };
+            window.addEventListener('message', handler);
+
+            // Check if popup was closed without capturing
+            const checkClosed = setInterval(() => {
+                if (captureWindow.closed) {
+                    clearInterval(checkClosed);
+                    window.removeEventListener('message', handler);
+                    resolve(null);
+                }
+            }, 500);
+
+            // Timeout after 60 seconds
+            setTimeout(() => {
+                clearInterval(checkClosed);
+                window.removeEventListener('message', handler);
+                if (!captureWindow.closed) captureWindow.close();
+                resolve(null);
+            }, 60000);
+        });
+
+        if (!pidData) {
+            setError('Fingerprint not captured. Please try again.');
+            setPhase('failed');
+            return;
+        }
+
+        // Auto-submit KYC immediately after capture
+        setPhase('submitting');
 
         setPhase('submitting');
         try {
@@ -283,10 +296,11 @@ const AepsAgentKyc = () => {
                                  <Fingerprint size={40} className={phase === 'capturing' ? 'text-blue-600' : 'text-slate-400'} />}
                             </div>
                             <p className="text-sm font-black text-slate-800 uppercase">
-                                {phase === 'capturing' ? 'Scanning...' : phase === 'submitting' ? 'Submitting KYC...' : phase === 'failed' ? 'KYC Failed' : 'Place Finger on Device'}
+                                {phase === 'capturing' ? 'Fingerprint Popup Opened...' : phase === 'submitting' ? 'Submitting KYC...' : phase === 'failed' ? 'KYC Failed' : 'Place Finger on Device'}
                             </p>
                             <p className="text-[10px] text-slate-400 font-bold mt-1">
-                                {phase === 'idle' ? 'Press button below — captures & submits automatically' : ''}
+                                {phase === 'idle' ? 'Press button below — a popup will open for fingerprint' :
+                                 phase === 'capturing' ? 'Complete fingerprint capture in the popup window' : ''}
                             </p>
                         </div>
 
@@ -294,9 +308,14 @@ const AepsAgentKyc = () => {
                             <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
                                 <p className="text-[11px] text-red-700 font-bold text-center">{error}</p>
                                 {phase === 'failed' && (
-                                    <button onClick={() => setPhase('setup')} className="text-[10px] text-blue-600 font-black underline block text-center mt-1 w-full">
-                                        Review setup instructions →
-                                    </button>
+                                    <div className="mt-2 space-y-1 text-center">
+                                        <p className="text-[10px] text-slate-600 font-bold">
+                                            Make sure popups are allowed for rupiksha.in
+                                        </p>
+                                        <button onClick={() => setPhase('setup')} className="text-[10px] text-slate-500 font-bold underline block w-full">
+                                            View setup instructions →
+                                        </button>
+                                    </div>
                                 )}
                             </div>
                         )}
