@@ -85,6 +85,9 @@ public class User {
     @Column(name = "aeps_onboarded", nullable = false)
     private Boolean aepsOnboarded = false;
 
+    @Column(name = "aeps_kyc_done", nullable = false)
+    private Boolean aepsKycDone = false;
+
     @Column(name = "added_by_user_ref", length = 64)
     private String addedByUserRef;
 

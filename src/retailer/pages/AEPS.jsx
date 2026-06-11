@@ -220,7 +220,13 @@ const AEPS = () => {
 
                 const status = await aepsService.checkStatus(mobile);
                 if (status?.onboarded) {
-                    // Onboarded — stay on AEPS page
+                    // Onboarded — check KYC
+                    if (!status?.kycDone) {
+                        // KYC not done — redirect to agent KYC page
+                        navigate('/aeps-agent-kyc');
+                        return;
+                    }
+                    // Both onboarded and KYC done — stay on AEPS page
                     setUser(prev => ({ ...prev, aepsAgentId: status.agentId, merchantId: status.merchantId }));
                     dataService.verifyLocation()
                         .then(loc => setLocation(loc))

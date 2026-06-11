@@ -101,13 +101,15 @@ public class LevinAepsController {
             if (userOpt.isPresent()) {
                 User user = userOpt.get();
                 boolean onboarded = Boolean.TRUE.equals(user.getAepsOnboarded());
+                boolean kycDone = Boolean.TRUE.equals(user.getAepsKycDone());
                 return ResponseEntity.ok(Map.of(
                         "onboarded",  onboarded,
+                        "kycDone",    kycDone,
                         "agentId",    user.getAepsAgentId()    != null ? user.getAepsAgentId()    : "",
                         "merchantId", user.getAepsMerchantId() != null ? user.getAepsMerchantId() : ""
                 ));
             }
-            return ResponseEntity.ok(Map.of("onboarded", false, "agentId", "", "merchantId", ""));
+            return ResponseEntity.ok(Map.of("onboarded", false, "kycDone", false, "agentId", "", "merchantId", ""));
         } catch (Exception e) {
             log.error("Error checking AEPS status", e);
             return ResponseEntity.ok(Map.of("onboarded", false, "agentId", "", "merchantId", ""));
@@ -116,12 +118,42 @@ public class LevinAepsController {
 
     @PostMapping("/aeps-kyc")
     public ResponseEntity<?> aepsKyc(@RequestBody AepsKycRequest request) {
-        return ResponseEntity.ok(aepsService.aepsKyc(request));
+        AepsKycResponse response = aepsService.aepsKyc(request);
+        // Save kycDone = true on success (status_id = 1)
+        if (response != null && Integer.valueOf(1).equals(response.getStatusId())) {
+            try {
+                userRepository.findByMobile(request.getMobile())
+                    .or(() -> userRepository.findByUsername(request.getMobile()))
+                    .ifPresent(user -> {
+                        user.setAepsKycDone(true);
+                        userRepository.save(user);
+                        log.info("AEPS KYC marked done for user: {}", user.getUsername());
+                    });
+            } catch (Exception e) {
+                log.error("Failed to save AEPS KYC done status", e);
+            }
+        }
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/aeps-kyc-otp-verify")
     public ResponseEntity<?> verifyKycOtp(@RequestBody AepsKycOtpVerifyRequest request) {
-        return ResponseEntity.ok(aepsService.verifyKycOtp(request));
+        AepsKycOtpVerifyResponse response = aepsService.verifyKycOtp(request);
+        // Save kycDone = true on OTP verify success (status_id = 1)
+        if (response != null && Integer.valueOf(1).equals(response.getStatusId())) {
+            try {
+                userRepository.findByMobile(request.getContactNumber())
+                    .or(() -> userRepository.findByUsername(request.getContactNumber()))
+                    .ifPresent(user -> {
+                        user.setAepsKycDone(true);
+                        userRepository.save(user);
+                        log.info("AEPS KYC (OTP) marked done for user: {}", user.getUsername());
+                    });
+            } catch (Exception e) {
+                log.error("Failed to save AEPS KYC OTP done status", e);
+            }
+        }
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/aeps-twofa")

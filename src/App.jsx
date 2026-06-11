@@ -54,6 +54,7 @@ const RetailerDetails = lazy(() => import('./admin/components/RetailerDetails'))
 const DistributorDetails = lazy(() => import('./admin/components/DistributorDetails'));
 const KYCVerification = lazy(() => import('./retailer/pages/KYCVerification'));
 const AepsOnboarding = lazy(() => import('./retailer/pages/AepsOnboarding'));
+const AepsAgentKyc = lazy(() => import('./retailer/pages/AepsAgentKyc'));
 
 // Distributor
 const DistributorLayout = lazy(() => import('./distributor/components/DistributorLayout'));
@@ -201,6 +202,7 @@ function App() {
               <Route path="/kyc-verification" element={<ProtectedRoute><KYCVerification /></ProtectedRoute>} />
               <Route path="/aeps-kyc" element={<ProtectedRoute><AepsOnboarding /></ProtectedRoute>} />
               <Route path="/aeps-onboarding" element={<ProtectedRoute><AepsOnboarding /></ProtectedRoute>} />
+              <Route path="/aeps-agent-kyc" element={<ProtectedRoute><AepsAgentKyc /></ProtectedRoute>} />
               <Route path="/complete-kyc" element={<ProtectedRoute allowKycPending><CompleteKyc /></ProtectedRoute>} />
 
               {/* Protected Retailer Routes */}

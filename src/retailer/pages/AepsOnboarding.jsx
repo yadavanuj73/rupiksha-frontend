@@ -214,8 +214,7 @@ const AepsOnboarding = () => {
                     localStorage.setItem('rupiksha_user', JSON.stringify(updatedUser));
                 }
                 setUser(updatedUser);
-                setStep(4); // success screen
-            } else {
+                setStep(4); // success screen            } else {
                 alert(result?.message || 'Onboarding failed. Please check your details and try again.');
             }
         } catch (err) {
@@ -254,9 +253,9 @@ const AepsOnboarding = () => {
                         <Row label="Status" value="ACTIVE" green />
                     </div>
                     <div className="mt-6 space-y-3">
-                        <button onClick={() => navigate('/aeps')}
+                        <button onClick={() => navigate('/aeps-agent-kyc')}
                             className="w-full py-3.5 bg-blue-600 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all">
-                            Go to AEPS Services
+                            Proceed to Agent KYC
                         </button>
                         <button onClick={() => navigate('/dashboard')}
                             className="w-full py-3.5 bg-slate-100 text-slate-700 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all">
