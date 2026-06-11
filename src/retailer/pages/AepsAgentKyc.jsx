@@ -44,11 +44,18 @@ const AepsAgentKyc = () => {
         setDeviceStatus('checking');
         for (const port of MANTRA_PORTS) {
             try {
-                const res = await fetch(`http://127.0.0.1:${port}/rd/info`, { method: 'DEVICEINFO' });
-                if (res.ok || res.status === 200) { setDeviceStatus('ready'); return; }
+                const res = await fetch(`http://127.0.0.1:${port}/rd/info`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/xml' },
+                    body: '<?xml version="1.0"?><DeviceInfo/>'
+                });
+                if (res.ok || res.status === 200) {
+                    setDeviceStatus('ready');
+                    return;
+                }
             } catch (e) { /* try next */ }
         }
-        // If all ports fail, still mark ready — device may respond on CAPTURE even if DEVICEINFO fails
+        // Mark ready anyway — capture will fail gracefully if device not connected
         setDeviceStatus('ready');
     };
 
@@ -63,38 +70,40 @@ const AepsAgentKyc = () => {
         setError('');
         setPhase('capturing');
 
-        // Step 1: Capture fingerprint
+        // Step 1: Capture fingerprint from Mantra RD Service
+        // Mantra RD Service uses POST method (not custom CAPTURE method)
         let pidData = null;
-        const xmlBody = `<?xml version="1.0"?>
-<PidOptions ver="1.0">
-  <Opts fCount="1" fType="2" iCount="0" iType="" pCount="0" pType="" format="0" pidVer="2.0" timeout="10000" posh="UNKNOWN" env="P" wadh="" />
-  <CustOpts><Param name="mantrakey" value="" /></CustOpts>
-</PidOptions>`;
+        const xmlBody = `<?xml version="1.0"?><PidOptions ver="1.0"><Opts fCount="1" fType="2" iCount="0" iType="" pCount="0" pType="" format="0" pidVer="2.0" timeout="10000" posh="UNKNOWN" env="P" wadh="" /><CustOpts><Param name="mantrakey" value="" /></CustOpts></PidOptions>`;
 
         for (const port of MANTRA_PORTS) {
             try {
                 const response = await fetch(`http://127.0.0.1:${port}/rd/capture`, {
-                    method: 'CAPTURE',
-                    headers: { 'Content-Type': 'text/xml' },
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/xml; charset=utf-8' },
                     body: xmlBody
                 });
-                if (response.ok) {
+                if (response.ok || response.status === 200) {
                     const text = await response.text();
+                    if (!text || text.trim() === '') continue;
                     const parser = new DOMParser();
                     const xmlDoc = parser.parseFromString(text, 'text/xml');
                     const resp = xmlDoc.querySelector('Resp');
                     const errCode = resp?.getAttribute('errCode');
-                    if (errCode === '0' || !errCode) {
+                    if (errCode === '0' || errCode === null || errCode === undefined) {
+                        // Valid PID data captured — base64 encode
                         pidData = btoa(unescape(encodeURIComponent(text)));
                         break;
                     } else {
                         const errInfo = resp?.getAttribute('errInfo') || 'Capture failed';
-                        setError(`Device error: ${errInfo}`);
+                        setError(`Device error (${errCode}): ${errInfo}`);
                         setPhase('idle');
                         return;
                     }
                 }
-            } catch (e) { /* try next port */ }
+            } catch (e) {
+                console.log(`Port ${port} failed:`, e.message);
+                // Continue to next port
+            }
         }
 
         if (!pidData) {
