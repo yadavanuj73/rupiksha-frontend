@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Fingerprint, CheckCircle2, RefreshCw, ArrowLeft, ShieldCheck, AlertCircle, XCircle } from 'lucide-react';
+import { Fingerprint, CheckCircle2, RefreshCw, ArrowLeft, ShieldCheck, XCircle, Download, Chrome, Usb, Monitor } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { aepsService } from '../../services/apiService';
 
-// Mantra RD Service ports
 const MANTRA_PORTS = [11100, 11101, 11102];
 
 const AepsAgentKyc = () => {
     const navigate = useNavigate();
-    const [phase, setPhase] = useState('idle'); // idle | capturing | submitting | otp | success | failed
-    const [deviceStatus, setDeviceStatus] = useState('checking'); // checking | ready | notfound
+    const [phase, setPhase] = useState('setup'); // setup | idle | capturing | submitting | otp | success | failed
+    const [deviceStatus, setDeviceStatus] = useState('checking');
     const [error, setError] = useState('');
     const [otp, setOtp] = useState('');
     const [kycRefId, setKycRefId] = useState('');
@@ -37,7 +36,6 @@ const AepsAgentKyc = () => {
             } catch (e) { console.error('Status check failed', e); }
         };
         loadStatus();
-        checkDevice();
     }, []);
 
     const checkDevice = async () => {
@@ -49,29 +47,21 @@ const AepsAgentKyc = () => {
                     headers: { 'Content-Type': 'text/xml' },
                     body: '<?xml version="1.0"?><DeviceInfo/>'
                 });
-                if (res.ok || res.status === 200) {
-                    setDeviceStatus('ready');
-                    return;
-                }
+                if (res.ok || res.status === 200) { setDeviceStatus('ready'); return; }
             } catch (e) { /* try next */ }
         }
-        // Mark ready anyway — capture will fail gracefully if device not connected
         setDeviceStatus('ready');
     };
 
-    // Single button click: capture fingerprint then auto-submit KYC
     const captureAndSubmit = async () => {
         const aadhaar = aadhaarInput.trim();
         if (!aadhaar || aadhaar.length !== 12) {
             setError('Please enter your 12-digit Aadhaar number first');
             return;
         }
-
         setError('');
         setPhase('capturing');
 
-        // Step 1: Capture fingerprint from Mantra RD Service
-        // Mantra RD Service uses POST method (not custom CAPTURE method)
         let pidData = null;
         const xmlBody = `<?xml version="1.0"?><PidOptions ver="1.0"><Opts fCount="1" fType="2" iCount="0" iType="" pCount="0" pType="" format="0" pidVer="2.0" timeout="10000" posh="UNKNOWN" env="P" wadh="" /><CustOpts><Param name="mantrakey" value="" /></CustOpts></PidOptions>`;
 
@@ -90,7 +80,6 @@ const AepsAgentKyc = () => {
                     const resp = xmlDoc.querySelector('Resp');
                     const errCode = resp?.getAttribute('errCode');
                     if (errCode === '0' || errCode === null || errCode === undefined) {
-                        // Valid PID data captured — base64 encode
                         pidData = btoa(unescape(encodeURIComponent(text)));
                         break;
                     } else {
@@ -102,35 +91,30 @@ const AepsAgentKyc = () => {
                 }
             } catch (e) {
                 console.log(`Port ${port} failed:`, e.message);
-                // Continue to next port
             }
         }
 
         if (!pidData) {
-            setError('Fingerprint capture failed. Make sure Mantra RD Service is running and device is connected.');
-            setPhase('idle');
+            setError('Fingerprint capture failed. Make sure Mantra RD Service is running, browser extension is installed, and device is connected.');
+            setPhase('failed');
             return;
         }
 
-        // Step 2: Auto-submit KYC immediately after capture
         setPhase('submitting');
         try {
             const mobile = user?.mobile || user?.username || '';
-            const payload = {
+            const result = await aepsService.kyc({
                 aadharNumber: aadhaar,
                 aepsAgentId: agentInfo.agentId,
                 merchantId: agentInfo.merchantId,
                 rdpiData: pidData,
                 biometricType: 'FMR',
                 mobile: mobile
-            };
-
-            const result = await aepsService.kyc(payload);
+            });
 
             if (result?.statusId === 1) {
                 setPhase('success');
             } else if (result?.statusId === 19) {
-                // OTP required
                 setKycRefId(result?.txnid || result?.agentId || '');
                 setPhase('otp');
             } else {
@@ -138,7 +122,7 @@ const AepsAgentKyc = () => {
                 setPhase('failed');
             }
         } catch (e) {
-            setError('KYC submission error: ' + (e.message || 'Please retry'));
+            setError('KYC error: ' + (e.message || 'Please retry'));
             setPhase('failed');
         }
     };
@@ -158,16 +142,11 @@ const AepsAgentKyc = () => {
                 aepsAgentId: agentInfo.agentId,
                 merchantId: agentInfo.merchantId
             });
-            if (result?.statusId === 1) {
-                setPhase('success');
-            } else {
-                setError(result?.message || 'OTP verification failed. Retry.');
-            }
+            if (result?.statusId === 1) { setPhase('success'); }
+            else { setError(result?.message || 'OTP verification failed'); }
         } catch (e) {
             setError('OTP error: ' + e.message);
-        } finally {
-            setOtpLoading(false);
-        }
+        } finally { setOtpLoading(false); }
     };
 
     return (
@@ -176,7 +155,7 @@ const AepsAgentKyc = () => {
                 className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md border border-slate-100">
 
                 {/* Header */}
-                <div className="flex items-center gap-3 mb-8">
+                <div className="flex items-center gap-3 mb-6">
                     <button onClick={() => navigate('/aeps')}
                         className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600">
                         <ArrowLeft size={16} />
@@ -187,7 +166,47 @@ const AepsAgentKyc = () => {
                     </div>
                 </div>
 
-                {/* OTP Phase */}
+                {/* SETUP INSTRUCTIONS */}
+                {phase === 'setup' && (
+                    <div className="space-y-4">
+                        <div className="text-center mb-2">
+                            <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                                <Fingerprint size={32} className="text-blue-600" />
+                            </div>
+                            <h2 className="text-base font-black text-slate-900 uppercase">One-Time PC Setup</h2>
+                            <p className="text-[11px] text-slate-500 mt-1">Required before biometric KYC</p>
+                        </div>
+
+                        {[
+                            { icon: <Usb size={18} className="text-blue-600" />, n: '1', title: 'Connect Mantra Device', desc: 'Plug Mantra MFS100 fingerprint scanner into PC via USB', link: null },
+                            { icon: <Download size={18} className="text-emerald-600" />, n: '2', title: 'Install Mantra RD Service', desc: 'Download & install from mantratec.com — runs automatically in background', link: 'https://www.mantratec.com/RD-Service' },
+                            { icon: <Chrome size={18} className="text-amber-600" />, n: '3', title: 'Install Chrome Extension', desc: 'Search "Mantra RD Service" in Chrome Web Store and install — fixes browser security restriction', link: 'https://chrome.google.com/webstore/search/mantra+rd+service' },
+                            { icon: <Monitor size={18} className="text-purple-600" />, n: '4', title: 'Verify RD Service Running', desc: 'Look for Mantra icon in system tray. If missing, run MantraRDService.exe as Administrator', link: null },
+                        ].map((item, i) => (
+                            <div key={i} className="flex gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm border border-slate-200">
+                                    {item.icon}
+                                </div>
+                                <div>
+                                    <p className="text-xs font-black text-slate-800">{item.n}. {item.title}</p>
+                                    <p className="text-[10px] text-slate-500 mt-0.5 leading-relaxed">{item.desc}</p>
+                                    {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-600 font-bold underline">Open download page →</a>}
+                                </div>
+                            </div>
+                        ))}
+
+                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                            <p className="text-[10px] text-amber-700 font-bold text-center">⚠️ One-time setup per PC. After this, just plug device and proceed.</p>
+                        </div>
+
+                        <button onClick={() => { setPhase('idle'); checkDevice(); }}
+                            className="w-full py-4 bg-blue-600 text-white rounded-xl font-black text-sm uppercase tracking-widest hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
+                            <CheckCircle2 size={16} /> Setup Done — Proceed to KYC
+                        </button>
+                    </div>
+                )}
+
+                {/* OTP PHASE */}
                 {phase === 'otp' && (
                     <div className="space-y-6">
                         <div className="text-center">
@@ -209,7 +228,7 @@ const AepsAgentKyc = () => {
                     </div>
                 )}
 
-                {/* Success Phase */}
+                {/* SUCCESS */}
                 {phase === 'success' && (
                     <div className="text-center space-y-6 py-4">
                         <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
@@ -217,7 +236,7 @@ const AepsAgentKyc = () => {
                         </div>
                         <div>
                             <h2 className="text-2xl font-black text-slate-900 uppercase">KYC Complete!</h2>
-                            <p className="text-slate-500 text-sm mt-2">Your biometric KYC is verified. You can now do AEPS transactions.</p>
+                            <p className="text-slate-500 text-sm mt-2">Biometric KYC verified. You can now do AEPS transactions.</p>
                         </div>
                         <button onClick={() => navigate('/aeps')}
                             className="w-full py-4 bg-emerald-600 text-white rounded-xl font-black text-sm uppercase tracking-widest hover:bg-emerald-700 transition-all">
@@ -226,89 +245,67 @@ const AepsAgentKyc = () => {
                     </div>
                 )}
 
-                {/* Idle / Capturing / Submitting / Failed Phase */}
+                {/* CAPTURE / IDLE / FAILED */}
                 {(phase === 'idle' || phase === 'capturing' || phase === 'submitting' || phase === 'failed') && (
                     <div className="space-y-5">
 
                         {/* Device status */}
-                        <div className={`p-3 rounded-2xl border flex items-center gap-3 ${
-                            deviceStatus === 'ready' ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'
-                        }`}>
+                        <div className={`p-3 rounded-2xl border flex items-center gap-3 ${deviceStatus === 'ready' ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
                             {deviceStatus === 'ready'
                                 ? <CheckCircle2 size={18} className="text-emerald-600 flex-shrink-0" />
                                 : <RefreshCw size={18} className="text-amber-600 animate-spin flex-shrink-0" />}
-                            <p className={`text-xs font-black uppercase tracking-widest ${
-                                deviceStatus === 'ready' ? 'text-emerald-700' : 'text-amber-700'
-                            }`}>
+                            <p className={`text-xs font-black uppercase tracking-widest ${deviceStatus === 'ready' ? 'text-emerald-700' : 'text-amber-700'}`}>
                                 {deviceStatus === 'ready' ? 'Mantra Device Ready' : 'Checking Device...'}
                             </p>
                         </div>
 
                         {/* Aadhaar input */}
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                                Aadhaar Number *
-                            </label>
-                            <input type="text" maxLength={12}
-                                value={aadhaarInput}
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Aadhaar Number *</label>
+                            <input type="text" maxLength={12} value={aadhaarInput}
                                 readOnly={!!user?.aadhaarNumber}
                                 onChange={e => setAadhaarInput(e.target.value.replace(/\D/g, ''))}
                                 placeholder="12-digit Aadhaar number"
-                                className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-semibold tracking-widest outline-none ${
-                                    user?.aadhaarNumber
-                                        ? 'bg-slate-50 border-slate-200 text-slate-500'
-                                        : 'bg-white border-blue-300 focus:border-blue-500 text-slate-800'
-                                }`}
+                                className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-semibold tracking-widest outline-none ${user?.aadhaarNumber ? 'bg-slate-50 border-slate-200 text-slate-500' : 'bg-white border-blue-300 focus:border-blue-500 text-slate-800'}`}
                             />
-                            {!user?.aadhaarNumber && (
-                                <p className="text-[10px] text-amber-600 font-bold">Enter Aadhaar manually — not saved in your profile</p>
-                            )}
+                            {!user?.aadhaarNumber && <p className="text-[10px] text-amber-600 font-bold">Enter Aadhaar manually — not in your profile</p>}
                         </div>
 
                         {/* Fingerprint icon */}
-                        <div className="text-center py-4">
-                            <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-3 transition-all ${
+                        <div className="text-center py-3">
+                            <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-3 transition-all ${
                                 phase === 'capturing' ? 'bg-blue-100 animate-pulse' :
                                 phase === 'submitting' ? 'bg-amber-100' :
                                 phase === 'failed' ? 'bg-red-100' : 'bg-slate-100'
                             }`}>
-                                {phase === 'failed'
-                                    ? <XCircle size={48} className="text-red-500" />
-                                    : phase === 'submitting'
-                                    ? <RefreshCw size={48} className="text-amber-500 animate-spin" />
-                                    : <Fingerprint size={48} className={phase === 'capturing' ? 'text-blue-600' : 'text-slate-400'} />
-                                }
+                                {phase === 'failed' ? <XCircle size={40} className="text-red-500" /> :
+                                 phase === 'submitting' ? <RefreshCw size={40} className="text-amber-500 animate-spin" /> :
+                                 <Fingerprint size={40} className={phase === 'capturing' ? 'text-blue-600' : 'text-slate-400'} />}
                             </div>
-                            <p className="text-sm font-black text-slate-800 uppercase tracking-tight">
-                                {phase === 'capturing' ? 'Scanning Fingerprint...' :
-                                 phase === 'submitting' ? 'Submitting KYC...' :
-                                 phase === 'failed' ? 'KYC Failed' :
-                                 'Place Finger on Device'}
+                            <p className="text-sm font-black text-slate-800 uppercase">
+                                {phase === 'capturing' ? 'Scanning...' : phase === 'submitting' ? 'Submitting KYC...' : phase === 'failed' ? 'KYC Failed' : 'Place Finger on Device'}
                             </p>
-                            <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase">
-                                {phase === 'idle' ? 'Press button below to capture & submit automatically' :
-                                 phase === 'capturing' ? 'Keep finger steady...' :
-                                 phase === 'submitting' ? 'Sending to Levin...' : ''}
+                            <p className="text-[10px] text-slate-400 font-bold mt-1">
+                                {phase === 'idle' ? 'Press button below — captures & submits automatically' : ''}
                             </p>
                         </div>
 
-                        {/* Error */}
                         {error && (
                             <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
                                 <p className="text-[11px] text-red-700 font-bold text-center">{error}</p>
+                                {phase === 'failed' && (
+                                    <button onClick={() => setPhase('setup')} className="text-[10px] text-blue-600 font-black underline block text-center mt-1 w-full">
+                                        Review setup instructions →
+                                    </button>
+                                )}
                             </div>
                         )}
 
-                        {/* Single action button */}
-                        <button
-                            onClick={captureAndSubmit}
+                        <button onClick={captureAndSubmit}
                             disabled={phase === 'capturing' || phase === 'submitting'}
-                            className={`w-full py-4 text-white rounded-xl font-black text-sm uppercase tracking-widest transition-all disabled:opacity-60 flex items-center justify-center gap-2 ${
-                                phase === 'failed' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'
-                            }`}
-                        >
+                            className={`w-full py-4 text-white rounded-xl font-black text-sm uppercase tracking-widest transition-all disabled:opacity-60 flex items-center justify-center gap-2 ${phase === 'failed' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}>
                             {phase === 'capturing' ? <><RefreshCw size={16} className="animate-spin" /> Capturing...</> :
-                             phase === 'submitting' ? <><RefreshCw size={16} className="animate-spin" /> Submitting KYC...</> :
+                             phase === 'submitting' ? <><RefreshCw size={16} className="animate-spin" /> Submitting...</> :
                              phase === 'failed' ? <><Fingerprint size={16} /> Retry KYC</> :
                              <><Fingerprint size={16} /> Capture & Submit KYC</>}
                         </button>
