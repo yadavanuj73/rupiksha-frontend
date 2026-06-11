@@ -19,6 +19,7 @@ const AepsAgentKyc = () => {
     const [error, setError] = useState('');
     const [user, setUser] = useState(null);
     const [agentInfo, setAgentInfo] = useState({ agentId: '', merchantId: '' });
+    const [aadhaarInput, setAadhaarInput] = useState(''); // manual aadhaar input
 
     useEffect(() => {
         // Get user from localStorage
@@ -136,11 +137,16 @@ const AepsAgentKyc = () => {
             setError('Please capture fingerprint first');
             return;
         }
+        const aadhaar = user?.aadhaarNumber || aadhaarInput;
+        if (!aadhaar || aadhaar.length !== 12) {
+            setError('Please enter a valid 12-digit Aadhaar number below');
+            return;
+        }
         setLoading(true);
         setError('');
         try {
             const mobile = user?.mobile || user?.username || '';
-            const aadhaar = user?.aadhaarNumber || '';
+            const aadhaar = user?.aadhaarNumber || aadhaarInput;
 
             const payload = {
                 aadharNumber: aadhaar,
@@ -276,14 +282,30 @@ const AepsAgentKyc = () => {
                             </p>
                         </div>
 
-                        {/* Aadhaar warning */}
-                        {!user?.aadhaarNumber && (
-                            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                                <p className="text-[11px] text-amber-700 font-bold">
-                                    ⚠️ Aadhaar number not found in your profile. Please update your profile first or contact admin.
+                        {/* Aadhaar input — always show so user can enter/verify */}
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                                Aadhaar Number {user?.aadhaarNumber ? '(from profile)' : '* Enter manually'}
+                            </label>
+                            <input
+                                type="text"
+                                maxLength={12}
+                                value={user?.aadhaarNumber || aadhaarInput}
+                                readOnly={!!user?.aadhaarNumber}
+                                onChange={e => setAadhaarInput(e.target.value.replace(/\D/g, ''))}
+                                placeholder="12-digit Aadhaar number"
+                                className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-semibold text-slate-800 outline-none tracking-widest ${
+                                    user?.aadhaarNumber
+                                        ? 'bg-slate-50 border-slate-200 text-slate-500'
+                                        : 'bg-white border-blue-300 focus:border-blue-500'
+                                }`}
+                            />
+                            {!user?.aadhaarNumber && (
+                                <p className="text-[10px] text-amber-600 font-bold">
+                                    ⚠️ Aadhaar not in profile — enter it here to proceed
                                 </p>
-                            </div>
-                        )}
+                            )}
+                        </div>
 
                         {error && (
                             <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
