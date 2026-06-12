@@ -162,9 +162,9 @@ const AepsAgentKyc = () => {
                         </div>
 
                         {[
-                            { icon: <Usb size={18} className="text-blue-600" />, n: '1', title: 'Connect Mantra Device', desc: 'Plug Mantra MFS100 fingerprint scanner into PC via USB', link: null },
-                            { icon: <Download size={18} className="text-emerald-600" />, n: '2', title: 'Install Mantra RD Service', desc: 'Download & install from mantratec.com — must be running in system tray', link: 'https://www.mantratec.com/RD-Service' },
-                            { icon: <Monitor size={18} className="text-purple-600" />, n: '3', title: 'Allow Popups for this Site', desc: 'In Chrome, click the popup blocked icon in address bar and select "Always allow"', link: null },
+                            { icon: <Usb size={18} className="text-blue-600" />, n: '1', title: 'Connect Mantra Device', desc: 'Plug Mantra MFS100 fingerprint scanner into PC via USB. Check if device LED is on.', link: null },
+                            { icon: <Download size={18} className="text-emerald-600" />, n: '2', title: 'Install & Run Mantra RD Service', desc: 'Download from mantratec.com. MUST run as Administrator (right-click → Run as Administrator)', link: 'https://www.mantratec.com/RD-Service' },
+                            { icon: <Monitor size={18} className="text-purple-600" />, n: '3', title: 'Allow Popups for this Site', desc: 'In Chrome, click the popup blocked icon in address bar and select "Always allow popups from rupiksha.in"', link: null },
                         ].map((item, i) => (
                             <div key={i} className="flex gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
                                 <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm border border-slate-200">

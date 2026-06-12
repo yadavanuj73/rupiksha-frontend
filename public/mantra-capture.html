@@ -42,22 +42,22 @@ function showStatus(msg, type) {
   el.style.display = 'block';
 }
 
-// Use XMLHttpRequest — Mantra RD Service allows XHR from any origin
+// Direct XHR to localhost - works because popup is opened from same origin
 function xhrCapture(port) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', 'http://127.0.0.1:' + port + '/rd/capture', true);
     xhr.setRequestHeader('Content-Type', 'text/xml; charset=utf-8');
-    xhr.timeout = 15000;
+    xhr.timeout = 12000;
     xhr.onload = function() {
-      if (xhr.status === 200 && xhr.responseText) {
+      if (xhr.status === 200 && xhr.responseText && xhr.responseText.trim()) {
         resolve(xhr.responseText);
       } else {
-        reject(new Error('Status: ' + xhr.status));
+        reject(new Error('Empty or invalid response'));
       }
     };
-    xhr.onerror = function() { reject(new Error('Network error on port ' + port)); };
-    xhr.ontimeout = function() { reject(new Error('Timeout on port ' + port)); };
+    xhr.onerror = function() { reject(new Error('Connection refused')); };
+    xhr.ontimeout = function() { reject(new Error('Request timeout')); };
     xhr.send(XML_BODY);
   });
 }
@@ -69,51 +69,85 @@ async function captureFingerprint() {
   showStatus('Place finger on device and hold steady...', 'info');
 
   let lastError = '';
+  let portsTried = [];
 
   for (const port of PORTS) {
     try {
-      showStatus('Trying port ' + port + '...', 'info');
-      const text = await xhrCapture(port);
-
-      if (!text || text.trim() === '') continue;
-
+      showStatus(`Connecting to port ${port}...`, 'info');
+      const xmlText = await xhrCapture(port);
+      portsTried.push(`${port}:OK`);
+      
       const parser = new DOMParser();
-      const xml = parser.parseFromString(text, 'text/xml');
+      const xml = parser.parseFromString(xmlText, 'text/xml');
       const resp = xml.querySelector('Resp');
-      const errCode = resp ? resp.getAttribute('errCode') : null;
-
-      if (errCode === '0' || errCode === null) {
-        // SUCCESS
-        const pidData = btoa(unescape(encodeURIComponent(text)));
-        showStatus('✅ Fingerprint captured! Returning to main window...', 'success');
+      
+      if (!resp) {
+        lastError = 'Invalid XML response';
+        portsTried[portsTried.length - 1] = `${port}:InvalidXML`;
+        continue;
+      }
+      
+      const errCode = resp.getAttribute('errCode');
+      const errInfo = resp.getAttribute('errInfo') || '';
+      
+      if (errCode === '0' || errCode === null || errCode === undefined) {
+        // SUCCESS - Fingerprint captured
+        const pidData = btoa(unescape(encodeURIComponent(xmlText)));
+        showStatus('✅ Fingerprint captured successfully!', 'success');
         btn.innerHTML = '✅ Captured!';
 
         if (window.opener) {
           window.opener.postMessage({ type: 'MANTRA_PID_DATA', pidData: pidData }, '*');
-          setTimeout(() => window.close(), 2000);
+          setTimeout(() => window.close(), 1500);
         } else {
-          showStatus('✅ Captured! You may close this window.', 'success');
+          showStatus('✅ Captured! Close this window and return to main page.', 'success');
         }
         return;
       } else {
-        const errInfo = resp ? (resp.getAttribute('errInfo') || 'Unknown error') : 'Capture failed';
-        showStatus('❌ Device error: ' + errInfo, 'error');
+        // Device error - finger not placed properly, quality issue, etc.
+        portsTried[portsTried.length - 1] = `${port}:DeviceErr${errCode}`;
+        showStatus(
+          `❌ Device Error (Code ${errCode})<br><br>` +
+          `<strong>${errInfo}</strong><br><br>` +
+          `Common issues:<br>` +
+          `• Finger not placed firmly on scanner<br>` +
+          `• Finger is too dry or too wet<br>` +
+          `• Scanner surface is dirty<br>` +
+          `• Wrong finger (use index finger)<br><br>` +
+          `Clean the scanner and try again.`,
+          'error'
+        );
         btn.disabled = false;
         btn.innerHTML = 'Retry Capture';
         return;
       }
     } catch (e) {
       lastError = e.message;
-      console.log('Port ' + port + ': ' + e.message);
+      portsTried.push(`${port}:${e.message}`);
+      console.log(`Port ${port} failed: ${e.message}`);
     }
   }
 
+  // All ports failed - service not running
   showStatus(
-    '❌ Cannot connect to Mantra RD Service.<br><br>' +
-    'Check:<br>• Mantra device is plugged in via USB<br>' +
-    '• MantraRDService is running (system tray)<br>' +
-    '• Try running MantraRDService.exe as Administrator<br><br>' +
-    'Last error: ' + lastError,
+    '❌ <strong>Cannot Connect to Mantra RD Service</strong><br><br>' +
+    '<strong>Fix these issues:</strong><br><br>' +
+    '1️⃣ <strong>Mantra device connected?</strong><br>' +
+    '   → Plug MFS100 scanner into USB port<br>' +
+    '   → Check if device LED is on<br><br>' +
+    '2️⃣ <strong>RD Service running?</strong><br>' +
+    '   → Look for Mantra icon in system tray (bottom-right)<br>' +
+    '   → If not there, run MantraRDService.exe<br>' +
+    '   → <strong>Right-click → Run as Administrator</strong><br><br>' +
+    '3️⃣ <strong>Just installed?</strong><br>' +
+    '   → Restart MantraRDService.exe<br>' +
+    '   → Unplug and replug the device<br><br>' +
+    '4️⃣ <strong>Still not working?</strong><br>' +
+    '   → Restart your computer<br>' +
+    '   → Reinstall Mantra RD Service<br>' +
+    '   → Download from: <a href="https://www.mantratec.com/RD-Service" target="_blank" style="color:#2563eb;font-weight:bold">mantratec.com</a><br><br>' +
+    '<small style="color:#64748b">Ports tried: ' + portsTried.join(', ') + '<br>' +
+    'Last error: ' + lastError + '</small>',
     'error'
   );
   btn.disabled = false;
