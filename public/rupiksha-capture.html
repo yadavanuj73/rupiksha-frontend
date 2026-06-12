@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rupiksha — Fingerprint Capture Tool</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #0f2557 0%, #1a3a6b 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .card { background: white; border-radius: 24px; padding: 36px; max-width: 400px; width: 100%; box-shadow: 0 30px 80px rgba(0,0,0,0.3); }
+  .logo { text-align: center; margin-bottom: 24px; }
+  .logo h2 { font-size: 22px; font-weight: 900; color: #0f2557; letter-spacing: -0.5px; }
+  .logo p { font-size: 10px; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; margin-top: 2px; }
+  .icon { font-size: 56px; text-align: center; margin-bottom: 16px; }
+  h1 { font-size: 18px; font-weight: 900; color: #0f172a; text-transform: uppercase; text-align: center; margin-bottom: 8px; }
+  p.sub { font-size: 12px; color: #64748b; text-align: center; margin-bottom: 28px; line-height: 1.6; }
+  .status { padding: 14px; border-radius: 12px; font-size: 12px; font-weight: 700; margin-bottom: 16px; line-height: 1.5; display: none; }
+  .status.success { background: #f0fdf4; color: #16a34a; border: 1.5px solid #bbf7d0; display: block; }
+  .status.error { background: #fef2f2; color: #dc2626; border: 1.5px solid #fecaca; display: block; }
+  .status.info { background: #eff6ff; color: #2563eb; border: 1.5px solid #bfdbfe; display: block; }
+  button { width: 100%; padding: 16px; background: #2563eb; color: white; border: none; border-radius: 14px; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  button:hover:not(:disabled) { background: #1d4ed8; transform: translateY(-1px); }
+  button:disabled { background: #94a3b8; cursor: not-allowed; transform: none; }
+  .spinner { width: 16px; height: 16px; border: 2.5px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .note { font-size: 10px; color: #94a3b8; text-align: center; margin-top: 16px; font-weight: 600; }
+  .step { display: flex; align-items: flex-start; gap: 10px; background: #f8fafc; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; font-size: 11px; color: #475569; font-weight: 600; line-height: 1.4; }
+  .step-num { background: #0f2557; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 900; flex-shrink: 0; margin-top: 1px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <h2>RUPIKSHA</h2>
+    <p>Fingerprint Capture Tool</p>
+  </div>
+
+  <div id="instructions">
+    <div class="step"><div class="step-num">1</div><span>Make sure your Mantra MFS100 device is connected via USB</span></div>
+    <div class="step"><div class="step-num">2</div><span>Ensure Mantra RD Service is running (check system tray at bottom right)</span></div>
+    <div class="step"><div class="step-num">3</div><span>Place your finger on the device and click Capture</span></div>
+  </div>
+
+  <br>
+  <div id="statusBox" class="status info">Ready to capture. Place finger on device.</div>
+
+  <button id="captureBtn" onclick="captureFingerprint()">
+    <span>☝️</span> Capture Fingerprint
+  </button>
+
+  <p class="note">This tool captures your fingerprint and sends it securely to Rupiksha AEPS KYC system</p>
+</div>
+
+<script>
+const PORTS = [11100, 11101, 11102];
+const XML_BODY = '<?xml version="1.0"?><PidOptions ver="1.0"><Opts fCount="1" fType="2" iCount="0" iType="" pCount="0" pType="" format="0" pidVer="2.0" timeout="10000" posh="UNKNOWN" env="P" wadh="" /><CustOpts><Param name="mantrakey" value="" /></CustOpts></PidOptions>';
+
+// Get the target origin from URL param
+const params = new URLSearchParams(window.location.search);
+const targetOrigin = params.get('origin') || 'https://rupiksha.in';
+
+function showStatus(msg, type) {
+  const el = document.getElementById('statusBox');
+  el.innerHTML = msg;
+  el.className = 'status ' + type;
+}
+
+function xhrCapture(port) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'http://127.0.0.1:' + port + '/rd/capture', true);
+    xhr.setRequestHeader('Content-Type', 'text/xml; charset=utf-8');
+    xhr.timeout = 15000;
+    xhr.onload = () => xhr.status === 200 && xhr.responseText ? resolve(xhr.responseText) : reject(new Error('HTTP ' + xhr.status));
+    xhr.onerror = () => reject(new Error('port ' + port + ' unreachable'));
+    xhr.ontimeout = () => reject(new Error('port ' + port + ' timeout'));
+    xhr.send(XML_BODY);
+  });
+}
+
+async function captureFingerprint() {
+  const btn = document.getElementById('captureBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Scanning...';
+  showStatus('🔄 Scanning fingerprint — keep finger steady on device...', 'info');
+
+  for (const port of PORTS) {
+    try {
+      const text = await xhrCapture(port);
+      if (!text || !text.includes('PidData')) continue;
+
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(text, 'text/xml');
+      const resp = xml.querySelector('Resp');
+      const errCode = resp ? resp.getAttribute('errCode') : null;
+
+      if (errCode === '0' || errCode === null) {
+        const pidData = btoa(unescape(encodeURIComponent(text)));
+        showStatus('✅ Fingerprint captured successfully!', 'success');
+        btn.innerHTML = '✅ Done! Sending data...';
+
+        // Send to parent window
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage({ type: 'MANTRA_PID_DATA', pidData }, targetOrigin);
+          setTimeout(() => { window.close(); }, 1500);
+        } else {
+          // Fallback: redirect with data in sessionStorage
+          sessionStorage.setItem('rupiksha_pid', pidData);
+          showStatus('✅ Captured! Return to the main Rupiksha tab.', 'success');
+          setTimeout(() => { window.close(); }, 2000);
+        }
+        return;
+      } else {
+        const errInfo = resp ? (resp.getAttribute('errInfo') || 'Unknown') : 'Failed';
+        showStatus('❌ Device error: ' + errInfo + '. Please try again.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<span>☝️</span> Retry Capture';
+        return;
+      }
+    } catch (e) {
+      console.log('Port ' + port + ':', e.message);
+    }
+  }
+
+  showStatus(
+    '❌ Could not connect to Mantra RD Service.<br><br>' +
+    '• Check device is plugged in<br>' +
+    '• Look for Mantra icon in system tray<br>' +
+    '• If not running: open MantraRDService.exe as Admin',
+    'error'
+  );
+  btn.disabled = false;
+  btn.innerHTML = '<span>☝️</span> Retry Capture';
+}
+
+// Notify parent window this is ready
+if (window.opener) {
+  window.opener.postMessage({ type: 'MANTRA_WINDOW_READY' }, targetOrigin);
+}
+</script>
+</body>
+</html>

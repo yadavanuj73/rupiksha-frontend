@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Fingerprint, CheckCircle2, RefreshCw, ArrowLeft, ShieldCheck, XCircle, Download, Chrome, Usb, Monitor } from 'lucide-react';
+import { Fingerprint, CheckCircle2, RefreshCw, ArrowLeft, ShieldCheck, XCircle, Download, Usb, Monitor } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { aepsService } from '../../services/apiService';
-
-const MANTRA_PORTS = [11100, 11101, 11102];
 
 const AepsAgentKyc = () => {
     const navigate = useNavigate();
     const [phase, setPhase] = useState('setup'); // setup | idle | capturing | submitting | otp | success | failed
-    const [deviceStatus, setDeviceStatus] = useState('checking');
     const [error, setError] = useState('');
     const [otp, setOtp] = useState('');
     const [kycRefId, setKycRefId] = useState('');
@@ -36,22 +33,16 @@ const AepsAgentKyc = () => {
             } catch (e) { console.error('Status check failed', e); }
         };
         loadStatus();
-    }, []);
 
-    const checkDevice = async () => {
-        setDeviceStatus('checking');
-        for (const port of MANTRA_PORTS) {
-            try {
-                const res = await fetch(`http://127.0.0.1:${port}/rd/info`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/xml' },
-                    body: '<?xml version="1.0"?><DeviceInfo/>'
-                });
-                if (res.ok || res.status === 200) { setDeviceStatus('ready'); return; }
-            } catch (e) { /* try next */ }
-        }
-        setDeviceStatus('ready');
-    };
+        // Listen for PID data from popup window (mantra-capture.html)
+        const handleMessage = (event) => {
+            if (event.data?.type === 'MANTRA_PID_DATA' && event.data?.pidData) {
+                submitKyc(event.data.pidData);
+            }
+        };
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, []);
 
     const captureAndSubmit = async () => {
         const aadhaar = aadhaarInput.trim();
@@ -62,60 +53,40 @@ const AepsAgentKyc = () => {
         setError('');
         setPhase('capturing');
 
-        // Open the local capture page in a popup window
-        // This page runs on HTTP (localhost) so it can talk to Mantra RD Service without CORS issues
+        // Open the capture popup — this window calls localhost directly
         const captureWindow = window.open(
             '/mantra-capture.html',
             'MantraCapture',
-            'width=420,height=400,left=400,top=200,resizable=no'
+            'width=440,height=460,left=400,top=150,resizable=no'
         );
 
         if (!captureWindow) {
-            setError('Popup was blocked. Please allow popups for rupiksha.in and try again.');
+            setError('Popup was blocked. Please allow popups for rupiksha.in in Chrome settings and try again.');
             setPhase('failed');
             return;
         }
 
-        // Wait for PID data from the popup via postMessage
-        const pidData = await new Promise((resolve) => {
-            const handler = (event) => {
-                if (event.data?.type === 'MANTRA_PID_DATA') {
-                    window.removeEventListener('message', handler);
-                    resolve(event.data.pidData || null);
-                }
-            };
-            window.addEventListener('message', handler);
-
-            // Check if popup was closed without capturing
-            const checkClosed = setInterval(() => {
-                if (captureWindow.closed) {
-                    clearInterval(checkClosed);
-                    window.removeEventListener('message', handler);
-                    resolve(null);
-                }
-            }, 500);
-
-            // Timeout after 60 seconds
-            setTimeout(() => {
+        // If popup is closed without capturing, reset phase
+        const checkClosed = setInterval(() => {
+            if (captureWindow.closed) {
                 clearInterval(checkClosed);
-                window.removeEventListener('message', handler);
-                if (!captureWindow.closed) captureWindow.close();
-                resolve(null);
-            }, 60000);
-        });
+                if (phase === 'capturing') {
+                    setPhase('idle');
+                }
+            }
+        }, 500);
+    };
 
-        if (!pidData) {
-            setError('Fingerprint not captured. Please try again.');
-            setPhase('failed');
-            return;
-        }
-
-        // Auto-submit KYC immediately after capture
+    const submitKyc = async (pidData) => {
         setPhase('submitting');
-
-        setPhase('submitting');
+        setError('');
         try {
-            const mobile = user?.mobile || user?.username || '';
+            const impUser = localStorage.getItem('rupiksha_imp_user');
+            const normalUser = localStorage.getItem('rupiksha_user');
+            const currentUser = impUser ? JSON.parse(impUser) : (normalUser ? JSON.parse(normalUser) : null);
+            const mobile = currentUser?.mobile || currentUser?.username || '';
+            const aadhaar = currentUser?.aadhaarNumber || aadhaarInput.trim();
+
             const result = await aepsService.kyc({
                 aadharNumber: aadhaar,
                 aepsAgentId: agentInfo.agentId,
@@ -186,15 +157,14 @@ const AepsAgentKyc = () => {
                             <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
                                 <Fingerprint size={32} className="text-blue-600" />
                             </div>
-                            <h2 className="text-base font-black text-slate-900 uppercase">One-Time PC Setup</h2>
-                            <p className="text-[11px] text-slate-500 mt-1">Required before biometric KYC</p>
+                            <h2 className="text-base font-black text-slate-900 uppercase">Before You Start</h2>
+                            <p className="text-[11px] text-slate-500 mt-1">Make sure these are ready</p>
                         </div>
 
                         {[
                             { icon: <Usb size={18} className="text-blue-600" />, n: '1', title: 'Connect Mantra Device', desc: 'Plug Mantra MFS100 fingerprint scanner into PC via USB', link: null },
-                            { icon: <Download size={18} className="text-emerald-600" />, n: '2', title: 'Install Mantra RD Service', desc: 'Download & install from mantratec.com — runs automatically in background', link: 'https://www.mantratec.com/RD-Service' },
-                            { icon: <Chrome size={18} className="text-amber-600" />, n: '3', title: 'Install Chrome Extension', desc: 'Search "Mantra RD Service" in Chrome Web Store and install — fixes browser security restriction', link: 'https://chrome.google.com/webstore/search/mantra+rd+service' },
-                            { icon: <Monitor size={18} className="text-purple-600" />, n: '4', title: 'Verify RD Service Running', desc: 'Look for Mantra icon in system tray. If missing, run MantraRDService.exe as Administrator', link: null },
+                            { icon: <Download size={18} className="text-emerald-600" />, n: '2', title: 'Install Mantra RD Service', desc: 'Download & install from mantratec.com — must be running in system tray', link: 'https://www.mantratec.com/RD-Service' },
+                            { icon: <Monitor size={18} className="text-purple-600" />, n: '3', title: 'Allow Popups for this Site', desc: 'In Chrome, click the popup blocked icon in address bar and select "Always allow"', link: null },
                         ].map((item, i) => (
                             <div key={i} className="flex gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
                                 <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm border border-slate-200">
@@ -208,13 +178,9 @@ const AepsAgentKyc = () => {
                             </div>
                         ))}
 
-                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                            <p className="text-[10px] text-amber-700 font-bold text-center">⚠️ One-time setup per PC. After this, just plug device and proceed.</p>
-                        </div>
-
-                        <button onClick={() => { setPhase('idle'); checkDevice(); }}
+                        <button onClick={() => setPhase('idle')}
                             className="w-full py-4 bg-blue-600 text-white rounded-xl font-black text-sm uppercase tracking-widest hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
-                            <CheckCircle2 size={16} /> Setup Done — Proceed to KYC
+                            <CheckCircle2 size={16} /> Everything Ready — Start KYC
                         </button>
                     </div>
                 )}
@@ -262,16 +228,6 @@ const AepsAgentKyc = () => {
                 {(phase === 'idle' || phase === 'capturing' || phase === 'submitting' || phase === 'failed') && (
                     <div className="space-y-5">
 
-                        {/* Device status */}
-                        <div className={`p-3 rounded-2xl border flex items-center gap-3 ${deviceStatus === 'ready' ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
-                            {deviceStatus === 'ready'
-                                ? <CheckCircle2 size={18} className="text-emerald-600 flex-shrink-0" />
-                                : <RefreshCw size={18} className="text-amber-600 animate-spin flex-shrink-0" />}
-                            <p className={`text-xs font-black uppercase tracking-widest ${deviceStatus === 'ready' ? 'text-emerald-700' : 'text-amber-700'}`}>
-                                {deviceStatus === 'ready' ? 'Mantra Device Ready' : 'Checking Device...'}
-                            </p>
-                        </div>
-
                         {/* Aadhaar input */}
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Aadhaar Number *</label>
@@ -284,7 +240,7 @@ const AepsAgentKyc = () => {
                             {!user?.aadhaarNumber && <p className="text-[10px] text-amber-600 font-bold">Enter Aadhaar manually — not in your profile</p>}
                         </div>
 
-                        {/* Fingerprint icon */}
+                        {/* Status icon */}
                         <div className="text-center py-3">
                             <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-3 transition-all ${
                                 phase === 'capturing' ? 'bg-blue-100 animate-pulse' :
@@ -296,11 +252,13 @@ const AepsAgentKyc = () => {
                                  <Fingerprint size={40} className={phase === 'capturing' ? 'text-blue-600' : 'text-slate-400'} />}
                             </div>
                             <p className="text-sm font-black text-slate-800 uppercase">
-                                {phase === 'capturing' ? 'Fingerprint Popup Opened...' : phase === 'submitting' ? 'Submitting KYC...' : phase === 'failed' ? 'KYC Failed' : 'Place Finger on Device'}
+                                {phase === 'capturing' ? 'Waiting for fingerprint popup...' :
+                                 phase === 'submitting' ? 'Submitting KYC to Levin...' :
+                                 phase === 'failed' ? 'KYC Failed' : 'Ready to Capture'}
                             </p>
                             <p className="text-[10px] text-slate-400 font-bold mt-1">
-                                {phase === 'idle' ? 'Press button below — a popup will open for fingerprint' :
-                                 phase === 'capturing' ? 'Complete fingerprint capture in the popup window' : ''}
+                                {phase === 'idle' && 'Click button — a fingerprint capture popup will open'}
+                                {phase === 'capturing' && 'Complete fingerprint scan in the popup window'}
                             </p>
                         </div>
 
@@ -308,14 +266,9 @@ const AepsAgentKyc = () => {
                             <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
                                 <p className="text-[11px] text-red-700 font-bold text-center">{error}</p>
                                 {phase === 'failed' && (
-                                    <div className="mt-2 space-y-1 text-center">
-                                        <p className="text-[10px] text-slate-600 font-bold">
-                                            Make sure popups are allowed for rupiksha.in
-                                        </p>
-                                        <button onClick={() => setPhase('setup')} className="text-[10px] text-slate-500 font-bold underline block w-full">
-                                            View setup instructions →
-                                        </button>
-                                    </div>
+                                    <button onClick={() => setPhase('setup')} className="text-[10px] text-blue-600 font-bold underline block text-center mt-2 w-full">
+                                        View setup instructions →
+                                    </button>
                                 )}
                             </div>
                         )}
@@ -323,10 +276,10 @@ const AepsAgentKyc = () => {
                         <button onClick={captureAndSubmit}
                             disabled={phase === 'capturing' || phase === 'submitting'}
                             className={`w-full py-4 text-white rounded-xl font-black text-sm uppercase tracking-widest transition-all disabled:opacity-60 flex items-center justify-center gap-2 ${phase === 'failed' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}>
-                            {phase === 'capturing' ? <><RefreshCw size={16} className="animate-spin" /> Capturing...</> :
-                             phase === 'submitting' ? <><RefreshCw size={16} className="animate-spin" /> Submitting...</> :
+                            {phase === 'capturing' ? <><RefreshCw size={16} className="animate-spin" /> Waiting for Capture...</> :
+                             phase === 'submitting' ? <><RefreshCw size={16} className="animate-spin" /> Submitting KYC...</> :
                              phase === 'failed' ? <><Fingerprint size={16} /> Retry KYC</> :
-                             <><Fingerprint size={16} /> Capture & Submit KYC</>}
+                             <><Fingerprint size={16} /> Capture Fingerprint & Submit KYC</>}
                         </button>
                     </div>
                 )}
