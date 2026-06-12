@@ -37,66 +37,89 @@ const XML_BODY = '<?xml version="1.0"?><PidOptions ver="1.0"><Opts fCount="1" fT
 
 function showStatus(msg, type) {
   const el = document.getElementById('status');
-  el.textContent = msg;
+  el.innerHTML = msg;
   el.className = 'status ' + type;
   el.style.display = 'block';
+}
+
+// Use XMLHttpRequest — Mantra RD Service allows XHR from any origin
+function xhrCapture(port) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'http://127.0.0.1:' + port + '/rd/capture', true);
+    xhr.setRequestHeader('Content-Type', 'text/xml; charset=utf-8');
+    xhr.timeout = 15000;
+    xhr.onload = function() {
+      if (xhr.status === 200 && xhr.responseText) {
+        resolve(xhr.responseText);
+      } else {
+        reject(new Error('Status: ' + xhr.status));
+      }
+    };
+    xhr.onerror = function() { reject(new Error('Network error on port ' + port)); };
+    xhr.ontimeout = function() { reject(new Error('Timeout on port ' + port)); };
+    xhr.send(XML_BODY);
+  });
 }
 
 async function captureFingerprint() {
   const btn = document.getElementById('captureBtn');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Capturing...';
+  btn.innerHTML = '<span class="spinner"></span>Scanning...';
   showStatus('Place finger on device and hold steady...', 'info');
+
+  let lastError = '';
 
   for (const port of PORTS) {
     try {
-      const res = await fetch(`http://127.0.0.1:${port}/rd/capture`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/xml; charset=utf-8' },
-        body: XML_BODY
-      });
-      if (res.ok || res.status === 200) {
-        const text = await res.text();
-        if (!text || text.trim() === '') continue;
+      showStatus('Trying port ' + port + '...', 'info');
+      const text = await xhrCapture(port);
 
-        const parser = new DOMParser();
-        const xml = parser.parseFromString(text, 'text/xml');
-        const resp = xml.querySelector('Resp');
-        const errCode = resp ? resp.getAttribute('errCode') : null;
+      if (!text || text.trim() === '') continue;
 
-        if (errCode === '0' || errCode === null) {
-          // Success — send PID data back to parent window
-          const pidData = btoa(unescape(encodeURIComponent(text)));
-          showStatus('✅ Fingerprint captured! Sending to main window...', 'success');
-          btn.innerHTML = '✅ Captured!';
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(text, 'text/xml');
+      const resp = xml.querySelector('Resp');
+      const errCode = resp ? resp.getAttribute('errCode') : null;
 
-          // Post message to opener (rupiksha.in)
-          if (window.opener) {
-            window.opener.postMessage({ type: 'MANTRA_PID_DATA', pidData: pidData }, '*');
-            setTimeout(() => window.close(), 1500);
-          } else {
-            showStatus('✅ Captured! Please go back to the main window.', 'success');
-          }
-          return;
+      if (errCode === '0' || errCode === null) {
+        // SUCCESS
+        const pidData = btoa(unescape(encodeURIComponent(text)));
+        showStatus('✅ Fingerprint captured! Returning to main window...', 'success');
+        btn.innerHTML = '✅ Captured!';
+
+        if (window.opener) {
+          window.opener.postMessage({ type: 'MANTRA_PID_DATA', pidData: pidData }, '*');
+          setTimeout(() => window.close(), 2000);
         } else {
-          const errInfo = resp ? (resp.getAttribute('errInfo') || 'Unknown error') : 'Capture failed';
-          showStatus('Device error: ' + errInfo, 'error');
-          btn.disabled = false;
-          btn.innerHTML = 'Retry Capture';
-          return;
+          showStatus('✅ Captured! You may close this window.', 'success');
         }
+        return;
+      } else {
+        const errInfo = resp ? (resp.getAttribute('errInfo') || 'Unknown error') : 'Capture failed';
+        showStatus('❌ Device error: ' + errInfo, 'error');
+        btn.disabled = false;
+        btn.innerHTML = 'Retry Capture';
+        return;
       }
     } catch (e) {
-      console.log('Port ' + port + ' failed: ' + e.message);
+      lastError = e.message;
+      console.log('Port ' + port + ': ' + e.message);
     }
   }
 
-  showStatus('❌ Could not connect to Mantra RD Service. Make sure it is running (check system tray) and device is plugged in.', 'error');
+  showStatus(
+    '❌ Cannot connect to Mantra RD Service.<br><br>' +
+    'Check:<br>• Mantra device is plugged in via USB<br>' +
+    '• MantraRDService is running (system tray)<br>' +
+    '• Try running MantraRDService.exe as Administrator<br><br>' +
+    'Last error: ' + lastError,
+    'error'
+  );
   btn.disabled = false;
   btn.innerHTML = 'Retry Capture';
 }
 
-// Auto-close message to opener when loaded
 window.onload = function() {
   if (window.opener) {
     window.opener.postMessage({ type: 'MANTRA_WINDOW_READY' }, '*');
