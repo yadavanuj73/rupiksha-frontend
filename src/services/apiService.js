@@ -272,6 +272,40 @@ export const providerTxnService = {
     }),
 };
 
+// ─── PAYOUT SERVICE ────────────────────────────────────────────────────────────
+export const payoutService = {
+  // Initiate a payout transaction
+  initiatePayout: (payoutData) =>
+    apiFetch("/payout/initiate", {
+      method: "POST",
+      body: JSON.stringify(payoutData),
+    }),
+
+  // Get transaction by orderId
+  getTransaction: (orderId) =>
+    apiFetch(`/payout/transaction/${encodeURIComponent(orderId)}`),
+
+  // Get all transactions for logged-in user
+  getTransactions: () =>
+    apiFetch("/payout/transactions"),
+
+  // Get transactions by status
+  getTransactionsByStatus: (status) =>
+    apiFetch(`/payout/transactions/status/${encodeURIComponent(status)}`),
+
+  // Get transactions within date range
+  getTransactionsByDateRange: (startDate, endDate) =>
+    apiFetch(`/payout/transactions/date-range?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`),
+
+  // Generate unique order ID
+  generateOrderId: () =>
+    apiFetch("/payout/generate-order-id"),
+
+  // Health check
+  health: () =>
+    apiFetch("/payout/health"),
+};
+
 // ─── AEPS ──────────────────────────────────────────────────────────────────────
 export const aepsService = {
   // Check onboarding status from DB

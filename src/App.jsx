@@ -34,6 +34,7 @@ const Travel = lazy(() => import('./retailer/pages/Travel'));
 const Utility = lazy(() => import('./retailer/pages/Utility'));
 const BharatConnect = lazy(() => import('./retailer/pages/BharatConnect'));
 const PayoutHub = lazy(() => import('./retailer/pages/PayoutHub'));
+const Payout = lazy(() => import('./retailer/pages/Payout'));
 const AEPS = lazy(() => import('./retailer/pages/AEPS'));
 const CMS = lazy(() => import('./retailer/pages/CMS'));
 const AllServices = lazy(() => import('./retailer/pages/AllServices'));
@@ -215,6 +216,7 @@ function App() {
                 <Route path="/utility" element={<Utility />} />
                 <Route path="/bharat-connect" element={<BharatConnect />} />
                 <Route path="/payout-hub" element={<PayoutHub />} />
+                <Route path="/payout" element={<Payout />} />
                 <Route path="/aeps" element={<AEPS />} />
                 <Route path="/cms" element={<CMS />} />
                 <Route path="/all-services" element={<AllServices />} />

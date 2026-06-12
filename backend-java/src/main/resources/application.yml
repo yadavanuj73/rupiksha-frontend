@@ -110,6 +110,13 @@ app:
     recharge-enabled: ${SERVICE_RECHARGE_ENABLED:true}
     payout-enabled: ${SERVICE_PAYOUT_ENABLED:true}
 
+# QuickZaps Payout Configuration
+quickzaps:
+  payout:
+    base-url: ${QUICKZAPS_BASE_URL:http://login.quickzaps.io}
+    api-key: ${QUICKZAPS_API_KEY:f43a15b7-1048-4ce8-b1d1-5fcb70c80230}
+    payout-url: ${QUICKZAPS_PAYOUT_URL:https://login.quickzaps.io/api/PayoutApi/Payoutinitiate}
+
 levin:
   aeps:
     base-url: ${LEVIN_AEPS_BASE_URL:https://api.levinfintech.com/api/levin/v9}
