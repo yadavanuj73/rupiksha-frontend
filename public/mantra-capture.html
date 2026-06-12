@@ -32,7 +32,7 @@
 </div>
 
 <script>
-const PORTS = [11100, 11101, 11102];
+const PORTS = [11100, 11101, 11102, 11103, 11104, 11105, 11106, 11107, 11108, 11109, 11110, 11111, 11112, 11113, 11114, 11115, 11116, 11117, 11118, 11119, 11120];
 const XML_BODY = '<?xml version="1.0"?><PidOptions ver="1.0"><Opts fCount="1" fType="2" iCount="0" iType="" pCount="0" pType="" format="0" pidVer="2.0" timeout="10000" posh="UNKNOWN" env="P" wadh="" /><CustOpts><Param name="mantrakey" value="" /></CustOpts></PidOptions>';
 
 function showStatus(msg, type) {
@@ -42,11 +42,76 @@ function showStatus(msg, type) {
   el.style.display = 'block';
 }
 
-// Direct XHR to localhost - works because popup is opened from same origin
-function xhrCapture(port) {
+// Device discovery - check if RD Service is running and device is ready
+function discoverDevice(port) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', 'http://127.0.0.1:' + port + '/rd/capture', true);
+    xhr.open('RDSERVICE', 'http://127.0.0.1:' + port, true);
+    xhr.setRequestHeader('Content-Type', 'text/xml; charset=utf-8');
+    xhr.timeout = 5000;
+    xhr.onload = function() {
+      if (xhr.status === 200 && xhr.responseText && xhr.responseText.trim()) {
+        try {
+          const parser = new DOMParser();
+          const xml = parser.parseFromString(xhr.responseText, 'text/xml');
+          const rdService = xml.querySelector('RDService');
+          if (!rdService) {
+            reject(new Error('Invalid RDService response'));
+            return;
+          }
+          const status = rdService.getAttribute('status');
+          const info = rdService.getAttribute('info') || '';
+          
+          // Check if it's a supported device (Mantra, Morpho, etc.)
+          const infoLower = info.toLowerCase();
+          const isSupported = /mantra/i.test(info) ||
+                            infoLower.includes('idemia') ||
+                            /secugen india registered device/i.test(info) ||
+                            /precision.*biometric device/i.test(info) ||
+                            /startek fm220/i.test(info) ||
+                            /\bnext\b/i.test(info) ||
+                            /face rd/i.test(info);
+          
+          if (!isSupported) {
+            reject(new Error('Unsupported device: ' + info));
+            return;
+          }
+          
+          if (status === 'READY') {
+            // Find capture method path
+            const interfaces = xml.querySelectorAll('Interface');
+            let capturePath = '/rd/capture';
+            for (let i = 0; i < interfaces.length; i++) {
+              const path = interfaces[i].getAttribute('path');
+              if (path === '/rd/capture') {
+                capturePath = path;
+                break;
+              }
+            }
+            resolve({ port, capturePath, deviceInfo: info, status: 'READY' });
+          } else if (status === 'NOTREADY') {
+            reject(new Error('Device not ready'));
+          } else {
+            reject(new Error('Unknown device status: ' + status));
+          }
+        } catch (e) {
+          reject(new Error('Failed to parse device info: ' + e.message));
+        }
+      } else {
+        reject(new Error('Empty or invalid response'));
+      }
+    };
+    xhr.onerror = function() { reject(new Error('Connection refused')); };
+    xhr.ontimeout = function() { reject(new Error('Request timeout')); };
+    xhr.send();
+  });
+}
+
+// Capture fingerprint from discovered device
+function xhrCapture(port, capturePath = '/rd/capture') {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'http://127.0.0.1:' + port + capturePath, true);
     xhr.setRequestHeader('Content-Type', 'text/xml; charset=utf-8');
     xhr.timeout = 12000;
     xhr.onload = function() {
@@ -65,93 +130,114 @@ function xhrCapture(port) {
 async function captureFingerprint() {
   const btn = document.getElementById('captureBtn');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Scanning...';
-  showStatus('Place finger on device and hold steady...', 'info');
+  btn.innerHTML = '<span class="spinner"></span>Discovering device...';
+  showStatus('Searching for Mantra RD Service...', 'info');
 
   let lastError = '';
   let portsTried = [];
+  let deviceFound = null;
 
+  // Step 1: Discover device
   for (const port of PORTS) {
     try {
-      showStatus(`Connecting to port ${port}...`, 'info');
-      const xmlText = await xhrCapture(port);
-      portsTried.push(`${port}:OK`);
-      
-      const parser = new DOMParser();
-      const xml = parser.parseFromString(xmlText, 'text/xml');
-      const resp = xml.querySelector('Resp');
-      
-      if (!resp) {
-        lastError = 'Invalid XML response';
-        portsTried[portsTried.length - 1] = `${port}:InvalidXML`;
-        continue;
-      }
-      
-      const errCode = resp.getAttribute('errCode');
-      const errInfo = resp.getAttribute('errInfo') || '';
-      
-      if (errCode === '0' || errCode === null || errCode === undefined) {
-        // SUCCESS - Fingerprint captured
-        const pidData = btoa(unescape(encodeURIComponent(xmlText)));
-        showStatus('✅ Fingerprint captured successfully!', 'success');
-        btn.innerHTML = '✅ Captured!';
-
-        if (window.opener) {
-          window.opener.postMessage({ type: 'MANTRA_PID_DATA', pidData: pidData }, '*');
-          setTimeout(() => window.close(), 1500);
-        } else {
-          showStatus('✅ Captured! Close this window and return to main page.', 'success');
-        }
-        return;
-      } else {
-        // Device error - finger not placed properly, quality issue, etc.
-        portsTried[portsTried.length - 1] = `${port}:DeviceErr${errCode}`;
-        showStatus(
-          `❌ Device Error (Code ${errCode})<br><br>` +
-          `<strong>${errInfo}</strong><br><br>` +
-          `Common issues:<br>` +
-          `• Finger not placed firmly on scanner<br>` +
-          `• Finger is too dry or too wet<br>` +
-          `• Scanner surface is dirty<br>` +
-          `• Wrong finger (use index finger)<br><br>` +
-          `Clean the scanner and try again.`,
-          'error'
-        );
-        btn.disabled = false;
-        btn.innerHTML = 'Retry Capture';
-        return;
-      }
+      showStatus(`Checking port ${port}...`, 'info');
+      const device = await discoverDevice(port);
+      deviceFound = device;
+      portsTried.push(`${port}:READY`);
+      showStatus(`✅ Device found on port ${port}: ${device.deviceInfo}`, 'success');
+      break;
     } catch (e) {
       lastError = e.message;
       portsTried.push(`${port}:${e.message}`);
-      console.log(`Port ${port} failed: ${e.message}`);
+      console.log(`Port ${port} discovery failed: ${e.message}`);
     }
   }
 
-  // All ports failed - service not running
-  showStatus(
-    '❌ <strong>Cannot Connect to Mantra RD Service</strong><br><br>' +
-    '<strong>Fix these issues:</strong><br><br>' +
-    '1️⃣ <strong>Mantra device connected?</strong><br>' +
-    '   → Plug MFS100 scanner into USB port<br>' +
-    '   → Check if device LED is on<br><br>' +
-    '2️⃣ <strong>RD Service running?</strong><br>' +
-    '   → Look for Mantra icon in system tray (bottom-right)<br>' +
-    '   → If not there, run MantraRDService.exe<br>' +
-    '   → <strong>Right-click → Run as Administrator</strong><br><br>' +
-    '3️⃣ <strong>Just installed?</strong><br>' +
-    '   → Restart MantraRDService.exe<br>' +
-    '   → Unplug and replug the device<br><br>' +
-    '4️⃣ <strong>Still not working?</strong><br>' +
-    '   → Restart your computer<br>' +
-    '   → Reinstall Mantra RD Service<br>' +
-    '   → Download from: <a href="https://www.mantratec.com/RD-Service" target="_blank" style="color:#2563eb;font-weight:bold">mantratec.com</a><br><br>' +
-    '<small style="color:#64748b">Ports tried: ' + portsTried.join(', ') + '<br>' +
-    'Last error: ' + lastError + '</small>',
-    'error'
-  );
-  btn.disabled = false;
-  btn.innerHTML = 'Retry Capture';
+  if (!deviceFound) {
+    // Device discovery failed
+    showStatus(
+      '❌ <strong>Cannot Connect to Mantra RD Service</strong><br><br>' +
+      '<strong>Fix these issues:</strong><br><br>' +
+      '1️⃣ <strong>Mantra device connected?</strong><br>' +
+      '   → Plug MFS100 scanner into USB port<br>' +
+      '   → Check if device LED is on<br><br>' +
+      '2️⃣ <strong>RD Service running?</strong><br>' +
+      '   → Look for Mantra icon in system tray (bottom-right)<br>' +
+      '   → If not there, run MantraRDService.exe<br>' +
+      '   → <strong>Right-click → Run as Administrator</strong><br><br>' +
+      '3️⃣ <strong>Just installed?</strong><br>' +
+      '   → Restart MantraRDService.exe<br>' +
+      '   → Unplug and replug the device<br><br>' +
+      '4️⃣ <strong>Still not working?</strong><br>' +
+      '   → Restart your computer<br>' +
+      '   → Reinstall Mantra RD Service<br>' +
+      '   → Download from: <a href="https://www.mantratec.com/RD-Service" target="_blank" style="color:#2563eb;font-weight:bold">mantratec.com</a><br><br>' +
+      '<small style="color:#64748b">Ports tried: ' + portsTried.join(', ') + '<br>' +
+      'Last error: ' + lastError + '</small>',
+      'error'
+    );
+    btn.disabled = false;
+    btn.innerHTML = 'Retry Capture';
+    return;
+  }
+
+  // Step 2: Capture fingerprint from discovered device
+  btn.innerHTML = '<span class="spinner"></span>Scanning...';
+  showStatus('Place finger on device and hold steady...', 'info');
+
+  try {
+    const xmlText = await xhrCapture(deviceFound.port, deviceFound.capturePath);
+    
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(xmlText, 'text/xml');
+    const resp = xml.querySelector('Resp');
+    
+    if (!resp) {
+      throw new Error('Invalid XML response from capture');
+    }
+    
+    const errCode = resp.getAttribute('errCode');
+    const errInfo = resp.getAttribute('errInfo') || '';
+    
+    if (errCode === '0' || errCode === null || errCode === undefined) {
+      // SUCCESS - Fingerprint captured
+      const pidData = btoa(unescape(encodeURIComponent(xmlText)));
+      showStatus('✅ Fingerprint captured successfully!', 'success');
+      btn.innerHTML = '✅ Captured!';
+
+      if (window.opener) {
+        window.opener.postMessage({ type: 'MANTRA_PID_DATA', pidData: pidData }, '*');
+        setTimeout(() => window.close(), 1500);
+      } else {
+        showStatus('✅ Captured! Close this window and return to main page.', 'success');
+      }
+      return;
+    } else {
+      // Device error - finger not placed properly, quality issue, etc.
+      showStatus(
+        `❌ Device Error (Code ${errCode})<br><br>` +
+        `<strong>${errInfo}</strong><br><br>` +
+        `Common issues:<br>` +
+        `• Finger not placed firmly on scanner<br>` +
+        `• Finger is too dry or too wet<br>` +
+        `• Scanner surface is dirty<br>` +
+        `• Wrong finger (use index finger)<br><br>` +
+        `Clean the scanner and try again.`,
+        'error'
+      );
+      btn.disabled = false;
+      btn.innerHTML = 'Retry Capture';
+      return;
+    }
+  } catch (e) {
+    showStatus(
+      `❌ Capture failed: ${e.message}<br><br>` +
+      `Try again or check if device is still connected.`,
+      'error'
+    );
+    btn.disabled = false;
+    btn.innerHTML = 'Retry Capture';
+  }
 }
 
 window.onload = function() {
