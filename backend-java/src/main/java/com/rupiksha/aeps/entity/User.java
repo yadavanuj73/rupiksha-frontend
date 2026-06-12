@@ -15,12 +15,19 @@ public class User {
 
     private String name;
     private String email;
+    private String username;
 
     @Column(unique = true)
     private String mobile;
 
     private String dob;
     private LocalDateTime createdAt;
+    
+    // AEPS related fields
+    private String aepsAgentId;
+    private String aepsMerchantId;
+    private Boolean aepsOnboarded;
+    private Boolean aepsKycDone;
 
     @PrePersist
     protected void onCreate() {

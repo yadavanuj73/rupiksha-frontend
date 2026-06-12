@@ -2,8 +2,8 @@ package com.rupiksha.aeps.controller;
 
 import com.rupiksha.aeps.dto.*;
 import com.rupiksha.aeps.service.AepsService;
-import com.rupiksha.backend.domain.User;
-import com.rupiksha.backend.repository.UserRepository;
+import com.rupiksha.aeps.entity.User;
+import com.rupiksha.aeps.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
