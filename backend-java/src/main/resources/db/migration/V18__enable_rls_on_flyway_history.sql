@@ -1,2 +1,3 @@
--- Enable Row Level Security on flyway_schema_history to fix Supabase security lint warning
-ALTER TABLE public.flyway_schema_history ENABLE ROW LEVEL SECURITY;
+-- Migration V18: No-op. Enabling RLS on flyway_schema_history is not recommended
+-- as it requires an ACCESS EXCLUSIVE lock that conflicts with Flyway's internal locks,
+-- causing statement timeouts and preventing successful deployments.
