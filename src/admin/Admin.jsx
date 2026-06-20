@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Save, RefreshCcw, Home, LayoutDashboard,
@@ -3189,19 +3189,6 @@ const Admin = () => {
                     </div>
 
                 </nav>
-
-                {/* Bottom Profile / Exit */}
-                <div className="px-6 py-8 border-t border-[#f1f5f9]">
-                    <div className="flex items-center justify-between px-3">
-                        <div className="flex items-center gap-3">
-                             <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center">
-                                 <User size={20} className="text-slate-400" />
-                             </div>
-                             <span className="text-sm font-bold text-[#64748b]">{currentUser?.name || 'Admin'}</span>
-                        </div>
-                        <ArrowLeft size={20} className="text-[#94a3b8] cursor-pointer rotate-180 hover:text-[#18181b] transition-colors" onClick={() => navigate('/dashboard')} title="Back to Portal" />
-                    </div>
-                </div>
             </aside>
 
             {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â• MAIN â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
