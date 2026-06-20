@@ -316,25 +316,28 @@ const EnhancedMembersTable = () => {
                     <table className="w-full border-collapse table-auto">
                         <thead>
                             <tr className="bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200">
-                                <th className="px-4 py-3.5 text-left text-[11px] font-extrabold text-slate-500 uppercase tracking-widest border-r border-slate-200">Member</th>
-                                <th className="px-4 py-3.5 text-left text-[11px] font-extrabold text-slate-500 uppercase tracking-widest border-r border-slate-200">Contact Info</th>
-                                <th className="px-4 py-3.5 text-left text-[11px] font-extrabold text-slate-500 uppercase tracking-widest border-r border-slate-200">Outlet & Owner</th>
-                                <th className="px-4 py-3.5 text-left text-[11px] font-extrabold text-slate-500 uppercase tracking-widest border-r border-slate-200">Location & Joined</th>
-                                <th className="px-4 py-3.5 text-left text-[11px] font-extrabold text-slate-500 uppercase tracking-widest border-r border-slate-200">Wallet & Last AEPS</th>
-                                <th className="px-4 py-3.5 text-center text-[11px] font-extrabold text-slate-500 uppercase tracking-widest">Actions</th>
+                                <th className="px-2.5 py-3.5 text-left text-[14px] font-bold text-slate-700 uppercase tracking-wider border-r border-slate-200">Member</th>
+                                <th className="px-2.5 py-3.5 text-left text-[14px] font-bold text-slate-700 uppercase tracking-wider border-r border-slate-200">Contact Info</th>
+                                <th className="px-2.5 py-3.5 text-left text-[14px] font-bold text-slate-700 uppercase tracking-wider border-r border-slate-200">Outlet</th>
+                                <th className="px-2.5 py-3.5 text-left text-[14px] font-bold text-slate-700 uppercase tracking-wider border-r border-slate-200">Owner</th>
+                                <th className="px-2.5 py-3.5 text-left text-[14px] font-bold text-slate-700 uppercase tracking-wider border-r border-slate-200">Location</th>
+                                <th className="px-2.5 py-3.5 text-left text-[14px] font-bold text-slate-700 uppercase tracking-wider border-r border-slate-200">Joined</th>
+                                <th className="px-2.5 py-3.5 text-left text-[14px] font-bold text-slate-700 uppercase tracking-wider border-r border-slate-200">Wallet</th>
+                                <th className="px-2.5 py-3.5 text-left text-[14px] font-bold text-slate-700 uppercase tracking-wider border-r border-slate-200">Last AEPS</th>
+                                <th className="px-2.5 py-3.5 text-center text-[14px] font-bold text-slate-700 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {loading ? (
                                 <tr>
-                                    <td colSpan="6" className="px-4 py-12 text-center">
+                                    <td colSpan="9" className="px-2.5 py-12 text-center">
                                         <Loader2 className="animate-spin mx-auto text-indigo-500" size={32} />
                                         <p className="text-sm text-slate-400 mt-2">Loading members...</p>
                                     </td>
                                 </tr>
                             ) : pagedMembers.length === 0 ? (
                                 <tr>
-                                    <td colSpan="6" className="px-4 py-12 text-center">
+                                    <td colSpan="9" className="px-2.5 py-12 text-center">
                                         <div className="flex flex-col items-center gap-2">
                                             <User size={32} className="text-slate-300" />
                                             <p className="text-sm font-semibold text-slate-400">No members found</p>
@@ -363,113 +366,99 @@ const EnhancedMembersTable = () => {
                                         className="hover:bg-indigo-50/30 transition-colors group"
                                     >
                                         {/* Member */}
-                                        <td className="px-4 py-3 border-r border-slate-100">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0 ${roleBadge.bg} border`}>
-                                                    {(member.fullName || member.name || '?').charAt(0).toUpperCase()}
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <p className="text-sm font-bold text-slate-800 truncate leading-tight">{member.fullName || member.name || '—'}</p>
-                                                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                                                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-black border ${roleBadge.bg}`}>
-                                                            {roleBadge.label}
-                                                        </span>
-                                                        {member.partyCode ? (
-                                                            <span className="text-[9px] font-mono font-bold text-indigo-500 bg-indigo-50 px-1 py-0.5 rounded">{member.partyCode}</span>
-                                                        ) : (
-                                                            <span className="text-[9px] text-slate-400">No party code</span>
-                                                        )}
-                                                    </div>
-                                                </div>
+                                        <td className="px-2.5 py-3 border-r border-slate-100">
+                                            <div className="flex flex-col gap-1 items-start">
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black border uppercase tracking-wider ${roleBadge.bg}`}>
+                                                    {roleBadge.label}
+                                                </span>
+                                                <span className="text-[15px] font-bold text-slate-800 leading-tight">
+                                                    {member.fullName || member.name || '—'}
+                                                </span>
+                                                <span className="text-[11px] font-mono font-semibold text-slate-400">
+                                                    {member.partyCode || 'No Party Code'}
+                                                </span>
                                             </div>
                                         </td>
                                         {/* Contact Info */}
-                                        <td className="px-4 py-3 border-r border-slate-100">
-                                            <div className="flex flex-col gap-1 text-left">
-                                                <span className="text-xs font-mono font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded-md w-max">{member.username}</span>
-                                                <span className="text-xs font-semibold text-slate-700 whitespace-nowrap">{member.mobile || '—'}</span>
-                                                <span className="text-[11px] text-slate-500 truncate max-w-[150px]" title={member.email}>{member.email || '—'}</span>
+                                        <td className="px-2.5 py-3 border-r border-slate-100">
+                                            <div className="flex flex-col gap-1 text-left text-sm font-semibold text-slate-700">
+                                                <span className="whitespace-nowrap">{member.mobile || '—'}</span>
+                                                <span className="text-xs font-normal text-slate-500 truncate max-w-[150px]" title={member.email}>{member.email || '—'}</span>
                                             </div>
                                         </td>
-                                        {/* Outlet & Owner */}
-                                        <td className="px-4 py-3 border-r border-slate-100">
-                                            <div className="flex flex-col gap-1 text-left">
-                                                <span className="text-sm font-bold text-slate-700 truncate max-w-[160px]" title={member.businessName}>{member.businessName || <span className="text-slate-300">—</span>}</span>
-                                                <div className="flex flex-col text-[10px] text-slate-500">
-                                                    <span className="font-semibold text-slate-600">Owner: {ownerLabel}</span>
-                                                    {member.addedByPartyCode && <span className="font-mono text-indigo-400">{member.addedByPartyCode}</span>}
-                                                </div>
-                                            </div>
+                                        {/* Outlet */}
+                                        <td className="px-2.5 py-3 border-r border-slate-100">
+                                            <span className="text-sm font-bold text-slate-700 truncate block max-w-[130px]" title={member.businessName}>
+                                                {member.businessName || <span className="text-slate-300">—</span>}
+                                            </span>
                                         </td>
-                                        {/* Location & Joined */}
-                                        <td className="px-4 py-3 border-r border-slate-100">
-                                            <div className="flex flex-col gap-1 text-left">
-                                                <span className="text-xs text-slate-600 truncate max-w-[150px]" title={[member.addressLine1, member.city, member.stateName].filter(Boolean).join(', ')}>
-                                                    {[member.city, member.stateName].filter(Boolean).join(', ') || member.addressLine1 || <span className="text-slate-300">—</span>}
+                                        {/* Owner */}
+                                        <td className="px-2.5 py-3 border-r border-slate-100">
+                                            <span className="text-sm font-semibold text-slate-600 whitespace-nowrap">
+                                                {ownerLabel}
+                                            </span>
+                                        </td>
+                                        {/* Location */}
+                                        <td className="px-2.5 py-3 border-r border-slate-100">
+                                            <span className="text-sm text-slate-600 block truncate max-w-[120px]" title={[member.city, member.stateName].filter(Boolean).join(', ')}>
+                                                {[member.city, member.stateName].filter(Boolean).join(', ') || <span className="text-slate-300">—</span>}
+                                            </span>
+                                        </td>
+                                        {/* Joined */}
+                                        <td className="px-2.5 py-3 border-r border-slate-100">
+                                            <span className="text-xs text-slate-500 whitespace-nowrap">
+                                                {formatDate(member.createdAt)}
+                                            </span>
+                                        </td>
+                                        {/* Wallet */}
+                                        <td className="px-2.5 py-3 border-r border-slate-100">
+                                            <span className="text-[15px] font-bold text-slate-800">
+                                                ₹{(member.walletBalance || 0).toLocaleString('en-IN')}
+                                            </span>
+                                        </td>
+                                        {/* Last AEPS */}
+                                        <td className="px-2.5 py-3 border-r border-slate-100">
+                                            {member.lastAepsTxnDate ? (
+                                                <span className="text-xs text-emerald-600 font-semibold whitespace-nowrap">
+                                                    {formatDate(member.lastAepsTxnDate)}
                                                 </span>
-                                                <span className="text-[10px] text-slate-400 font-medium">Joined: {formatDate(member.createdAt)}</span>
-                                            </div>
-                                        </td>
-                                        {/* Wallet & Last AEPS */}
-                                        <td className="px-4 py-3 border-r border-slate-100">
-                                            <div className="flex flex-col gap-1 text-left">
-                                                <span className="text-sm font-bold text-slate-800">₹{(member.walletBalance || 0).toLocaleString('en-IN')}</span>
-                                                <div className="text-[10px]">
-                                                    <span className="text-slate-400">Last AEPS: </span>
-                                                    {member.lastAepsTxnDate ? (
-                                                        <span className="text-emerald-600 font-semibold">{formatDate(member.lastAepsTxnDate)}</span>
-                                                    ) : (
-                                                        <span className="text-slate-400">Never</span>
-                                                    )}
-                                                </div>
-                                            </div>
+                                            ) : (
+                                                <span className="text-xs text-slate-300">Never</span>
+                                            )}
                                         </td>
                                         {/* Actions */}
-                                        <td className="px-4 py-3 text-center">
-                                            <div className="relative inline-block text-left">
+                                        <td className="px-2.5 py-3 text-center">
+                                            <div className="flex flex-col gap-1 w-full min-w-[140px] max-w-[170px] mx-auto">
                                                 <button 
-                                                    onClick={() => setActiveActionRow(activeActionRow === member.id ? null : member.id)}
-                                                    className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-all inline-flex items-center gap-1"
+                                                    onClick={() => handleLoginAsMember(member)} 
+                                                    className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs font-bold bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white border border-emerald-200 hover:border-emerald-600 rounded-lg transition-all"
                                                 >
-                                                    Actions ▾
+                                                    <Zap size={12} /> Login As Member
                                                 </button>
-                                                {activeActionRow === member.id && (
-                                                    <>
-                                                        <div className="fixed inset-0 z-30" onClick={() => setActiveActionRow(null)} />
-                                                        <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl z-40 overflow-hidden py-1 divide-y divide-slate-100 text-left">
-                                                            <button 
-                                                                onClick={() => { handleLoginAsMember(member); setActiveActionRow(null); }} 
-                                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
-                                                            >
-                                                                <Zap size={14} className="text-emerald-500" /> Login As Member
-                                                            </button>
-                                                            <button 
-                                                                onClick={() => { handleViewServices(member); setActiveActionRow(null); }} 
-                                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
-                                                            >
-                                                                <Package size={14} className="text-sky-500" /> Services
-                                                            </button>
-                                                            <button 
-                                                                onClick={() => { handleViewDetail(member); setActiveActionRow(null); }} 
-                                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
-                                                            >
-                                                                <Eye size={14} className="text-indigo-500" /> View Details
-                                                            </button>
-                                                            <button 
-                                                                onClick={() => { handleEditMember(member); setActiveActionRow(null); }} 
-                                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
-                                                            >
-                                                                <Edit3 size={14} className="text-amber-500" /> Edit
-                                                            </button>
-                                                            <button 
-                                                                onClick={() => { handleDelete(member); setActiveActionRow(null); }} 
-                                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors"
-                                                            >
-                                                                <Trash2 size={14} className="text-rose-500" /> Delete
-                                                            </button>
-                                                        </div>
-                                                    </>
-                                                )}
+                                                <button 
+                                                    onClick={() => handleViewServices(member)} 
+                                                    className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs font-bold bg-sky-50 hover:bg-sky-600 text-sky-600 hover:text-white border border-sky-200 hover:border-sky-600 rounded-lg transition-all"
+                                                >
+                                                    <Package size={12} /> Services
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleViewDetail(member)} 
+                                                    className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs font-bold bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white border border-indigo-200 hover:border-indigo-600 rounded-lg transition-all"
+                                                >
+                                                    <Eye size={12} /> View Details
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleEditMember(member)} 
+                                                    className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs font-bold bg-amber-50 hover:bg-amber-600 text-amber-600 hover:text-white border border-amber-200 hover:border-amber-600 rounded-lg transition-all"
+                                                >
+                                                    <Edit3 size={12} /> Edit
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleDelete(member)} 
+                                                    className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs font-bold bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 hover:border-rose-600 rounded-lg transition-all"
+                                                >
+                                                    <Trash2 size={12} /> Delete
+                                                </button>
                                             </div>
                                         </td>
                                     </motion.tr>
