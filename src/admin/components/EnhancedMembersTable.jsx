@@ -254,6 +254,23 @@ const EnhancedMembersTable = () => {
         });
     };
 
+    const formatDateOnly = (dateString) => {
+        if (!dateString) return '—';
+        return new Date(dateString).toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        });
+    };
+
+    const formatTimeOnly = (dateString) => {
+        if (!dateString) return '';
+        return new Date(dateString).toLocaleTimeString('en-IN', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
     const serviceLabels = {
         'AEPS': 'AEPS',
         'BBPS': 'BBPS',
@@ -406,14 +423,19 @@ const EnhancedMembersTable = () => {
                                         </td>
                                         {/* Joined */}
                                         <td className="px-2.5 py-3 border-r border-slate-100">
-                                            <span className="text-xs text-slate-500 whitespace-nowrap">
-                                                {formatDate(member.createdAt)}
-                                            </span>
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="text-xs font-semibold text-slate-700 whitespace-nowrap">
+                                                    {formatDateOnly(member.createdAt)}
+                                                </span>
+                                                <span className="text-[11px] text-slate-400 whitespace-nowrap">
+                                                    {formatTimeOnly(member.createdAt)}
+                                                </span>
+                                            </div>
                                         </td>
                                         {/* Wallet */}
                                         <td className="px-2.5 py-3 border-r border-slate-100">
-                                            <span className="text-[15px] font-bold text-slate-800">
-                                                ₹{(member.walletBalance || 0).toLocaleString('en-IN')}
+                                            <span className="text-[15px] font-black text-slate-800 tracking-tight">
+                                                ₹{(member.walletBalance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </span>
                                         </td>
                                         {/* Last AEPS */}
