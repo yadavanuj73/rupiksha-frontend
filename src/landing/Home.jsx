@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Footer from '../components/Footer';
 import Navbar from '../components/Navbar';
-import VerticalCardSlider from '../components/VerticalCardSlider';
 import PhotoSlider from '../components/PhotoSlider';
+import PinnedCarouselSection from '../components/PinnedCarouselSection';
 const aadhaar_3d_logo = "https://upload.wikimedia.org/wikipedia/en/thumb/c/cf/Aadhaar_Logo.svg/1200px-Aadhaar_Logo.svg.png";
 import { useLanguage } from '../context/LanguageContext';
 import { Phone, Mail, RefreshCcw } from 'lucide-react';
@@ -374,158 +374,209 @@ function Services() {
     const s = SERVICES[activeIndex];
 
     return (
-        <section id="services" className="svc-scroll-pin">
-            <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%', padding: '0 5%' }}>
-                <div className="svc-slider">
-                    <motion.div
-                        className="svc-slider__left"
-                        key={activeIndex + '-left'}
-                        initial={{ opacity: 0, x: -30 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.45 }}
-                    >
-                        <span className="svc-slider__badge" style={{ background: '#1e3a8a', color: '#fff' }}>
-                            ✦ {s.tag}
-                        </span>
-                        <p className="svc-slider__subtitle">{s.subtitle}</p>
-                        <h2 className="svc-slider__title">{s.label}</h2>
-                        <p className="svc-slider__desc">{s.desc}</p>
-                        <div className="svc-slider__features">
-                            {(s.features || []).map((f, fi) => (
-                                <div key={fi} className="svc-slider__feat-item">
-                                    <span style={{ color: '#16a34a', fontWeight: 900, fontSize: 18 }}>✓</span>
-                                    <span>{f}</span>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="svc-slider__nav">
-                            <button
-                                className="svc-slider__arrow"
-                                onClick={() => setActiveIndex((prev) => Math.max(prev - 1, 0))}
-                                aria-label="Previous"
-                            >←</button>
-                            <div className="svc-slider__dots">
-                                {SERVICES.map((_, i) => (
-                                    <button
-                                        key={i}
-                                        type="button"
-                                        onClick={() => setActiveIndex(i)}
-                                        className={`svc-slider__dot ${i === activeIndex ? 'svc-slider__dot--active' : ''}`}
-                                        aria-label={`Slide ${i + 1}`}
-                                    />
+        <PinnedCarouselSection
+            id="services"
+            totalSlides={SERVICES.length}
+            index={activeIndex}
+            setIndex={setActiveIndex}
+            outerStyle={{ background: '#ffffff' }}
+        >
+            <div className="svc-pin-inner">
+                {/* Scroll progress indicator */}
+                <div className="svc-progress-bar">
+                    <div
+                        className="svc-progress-fill"
+                        style={{ width: `${((activeIndex + 1) / SERVICES.length) * 100}%` }}
+                    />
+                </div>
+
+                <div className="svc-slider" style={{ maxWidth: 1200, margin: '0 auto', width: '100%', padding: '0 5%' }}>
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            className="svc-slider__left"
+                            key={activeIndex + '-left'}
+                            initial={{ opacity: 0, x: -40 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -40 }}
+                            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                        >
+                            <span className="svc-slider__badge" style={{ background: '#1e3a8a', color: '#fff' }}>
+                                ✦ {s.tag}
+                            </span>
+                            <p className="svc-slider__subtitle">{s.subtitle}</p>
+                            <h2 className="svc-slider__title">{s.label}</h2>
+                            <p className="svc-slider__desc">{s.desc}</p>
+                            <div className="svc-slider__features">
+                                {(s.features || []).map((f, fi) => (
+                                    <div key={fi} className="svc-slider__feat-item">
+                                        <span style={{ color: '#16a34a', fontWeight: 900, fontSize: 18 }}>✓</span>
+                                        <span>{f}</span>
+                                    </div>
                                 ))}
                             </div>
-                            <button
-                                className="svc-slider__arrow"
-                                onClick={() => setActiveIndex((prev) => Math.min(prev + 1, SERVICES.length - 1))}
-                                aria-label="Next"
-                            >→</button>
-                        </div>
-                    </motion.div>
-
-                    <motion.div
-                        className="svc-slider__right"
-                        key={activeIndex + '-right'}
-                        initial={{ opacity: 0, x: 30 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.45 }}
-                    >
-                        <div
-                            className="svc-slider__card"
-                            style={{ background: s.grad, boxShadow: `0 30px 60px -15px ${s.glow}` }}
-                        >
-                            <h3 className="svc-slider__card-title">{s.label}</h3>
-                            <p className="svc-slider__card-desc">{s.desc}</p>
-                            <div className="svc-slider__card-icon">
-                                {s.img ? (
-                                    <img src={s.img} alt={s.label} style={{ width: 80, height: 80, objectFit: 'contain' }} />
-                                ) : (
-                                    <span style={{ fontSize: '3.5rem' }}>{s.emoji || '✦'}</span>
-                                )}
+                            {/* Dot nav only — scroll drives the slide */}
+                            <div className="svc-slider__nav">
+                                <div className="svc-slider__dots">
+                                    {SERVICES.map((_, i) => (
+                                        <button
+                                            key={i}
+                                            type="button"
+                                            onClick={() => setActiveIndex(i)}
+                                            className={`svc-slider__dot ${i === activeIndex ? 'svc-slider__dot--active' : ''}`}
+                                            aria-label={`Slide ${i + 1}`}
+                                        />
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    </motion.div>
+                        </motion.div>
+                    </AnimatePresence>
+
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            className="svc-slider__right"
+                            key={activeIndex + '-right'}
+                            initial={{ opacity: 0, x: 60, scale: 0.95 }}
+                            animate={{ opacity: 1, x: 0, scale: 1 }}
+                            exit={{ opacity: 0, x: 60, scale: 0.95 }}
+                            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                        >
+                            <div
+                                className="svc-slider__card"
+                                style={{ background: s.grad, boxShadow: `0 30px 60px -15px ${s.glow}` }}
+                            >
+                                <h3 className="svc-slider__card-title">{s.label}</h3>
+                                <p className="svc-slider__card-desc">{s.desc}</p>
+                                <div className="svc-slider__card-icon">
+                                    {s.img ? (
+                                        <img src={s.img} alt={s.label} style={{ width: 80, height: 80, objectFit: 'contain' }} />
+                                    ) : (
+                                        <span style={{ fontSize: '3.5rem' }}>{s.emoji || '✦'}</span>
+                                    )}
+                                </div>
+                            </div>
+                        </motion.div>
+                    </AnimatePresence>
                 </div>
+
+                {/* Scroll hint — only on first slide */}
+                {activeIndex === 0 && (
+                    <motion.div
+                        className="svc-scroll-hint"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 1 }}
+                    >
+                        <span>Scroll to explore services</span>
+                        <div className="svc-scroll-arrow">↓</div>
+                    </motion.div>
+                )}
             </div>
-        </section>
+        </PinnedCarouselSection>
     );
 }
 
 function Advantage() {
     const [currentIndex, setCurrentIndex] = useState(0);
-
-    const nextSlide = () => setCurrentIndex((prev) => Math.min(prev + 1, ADVANTAGE.length - 1));
-    const prevSlide = () => setCurrentIndex((prev) => Math.max(prev - 1, 0));
+    const item = ADVANTAGE[currentIndex];
 
     return (
-        <section
+        <PinnedCarouselSection
             id="advantage"
-            className="rp-adv-section rp-adv-section--pinned"
+            totalSlides={ADVANTAGE.length}
+            index={currentIndex}
+            setIndex={setCurrentIndex}
+            outerStyle={{
+                background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%)'
+            }}
         >
-            <div style={{ textAlign: 'center', marginBottom: 40 }}>
-                <div className="writing-header writing-header--visible">
-                    <span className="tag-reveal tag-reveal--visible" style={{ color: '#fff', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)' }}>Why Choose Us</span>
-                    <h2 className="typewriter-title typewriter-title--visible" style={{ color: '#fff' }}>The Rupiksha Advantage</h2>
+            <div className="rp-adv-pin-inner">
+                {/* Header */}
+                <div className="rp-adv-pin-header">
+                    <span className="rp-adv-pin-tag">Why Choose Us</span>
+                    <h2 className="rp-adv-pin-title">The Rupiksha Advantage</h2>
                 </div>
-            </div>
 
-            {/* Viewport-safe carousel */}
-            <div className="rp-adv-carousel">
-                <button onClick={prevSlide} className="rp-adv-arrow rp-adv-arrow--left" aria-label="Previous">‹</button>
-                <button onClick={nextSlide} className="rp-adv-arrow rp-adv-arrow--right" aria-label="Next">›</button>
+                {/* Full-width card — slides left to right */}
+                <div className="rp-adv-pin-viewport">
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={currentIndex}
+                            className="rp-adv-pin-card"
+                            initial={{ opacity: 0, x: -100, rotateY: -8 }}
+                            animate={{ opacity: 1, x: 0, rotateY: 0 }}
+                            exit={{ opacity: 0, x: 100, rotateY: 8 }}
+                            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                            style={{
+                                background: 'rgba(255,255,255,0.97)',
+                                boxShadow: `0 32px 80px -10px ${item.color}55`
+                            }}
+                        >
+                            {/* Left accent bar */}
+                            <div className="rp-adv-pin-accent" style={{ background: item.grad }} />
 
-                {/* Overflow-hidden viewport: clips cards that slide out */}
-                <div className="rp-adv-viewport">
-                    <motion.div
-                        className="rp-adv-track"
-                        animate={{ x: `calc(-${currentIndex * 100}% - ${currentIndex * 20}px)` }}
-                        transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-                    >
-                        {ADVANTAGE.map((item, i) => {
-                            const isActive = i === currentIndex;
-                            return (
-                                <motion.div
-                                    key={i}
-                                    className="rp-adv-card"
-                                    animate={{
-                                        scale: isActive ? 1 : 0.92,
-                                        opacity: isActive ? 1 : 0.55,
-                                    }}
-                                    transition={{ duration: 0.4, ease: 'easeInOut' }}
-                                    style={{
-                                        background: isActive ? '#fff' : item.grad,
-                                        flexShrink: 0,
-                                    }}
+                            <div className="rp-adv-pin-card-body">
+                                {/* Icon */}
+                                <div
+                                    className="rp-adv-pin-icon"
+                                    style={{ background: `${item.color}18`, boxShadow: `0 0 0 8px ${item.color}10` }}
                                 >
-                                    <div style={{
-                                        width: 60, height: 60, borderRadius: 18,
-                                        background: isActive ? `${item.color}15` : 'rgba(255,255,255,0.2)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        fontSize: '2rem', marginBottom: 20,
-                                    }}>
-                                        {item.icon}
+                                    <span style={{ fontSize: '2.8rem' }}>{item.icon}</span>
+                                </div>
+
+                                {/* Content */}
+                                <div className="rp-adv-pin-content">
+                                    <div className="rp-adv-pin-counter">
+                                        {String(currentIndex + 1).padStart(2, '0')} / {String(ADVANTAGE.length).padStart(2, '0')}
                                     </div>
-                                    <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: isActive ? '#0f172a' : '#fff', marginBottom: 12 }}>{item.title}</h3>
-                                    <p style={{ fontSize: '0.95rem', color: isActive ? '#475569' : 'rgba(255,255,255,0.8)', lineHeight: 1.6, fontWeight: 500 }}>{item.desc}</p>
-                                </motion.div>
-                            );
-                        })}
-                    </motion.div>
+                                    <h3 className="rp-adv-pin-card-title" style={{ color: item.color }}>
+                                        {item.title}
+                                    </h3>
+                                    <p className="rp-adv-pin-card-desc">{item.desc}</p>
+
+                                    {/* Progress bar */}
+                                    <div className="rp-adv-pin-progress">
+                                        <div
+                                            className="rp-adv-pin-progress-fill"
+                                            style={{
+                                                width: `${((currentIndex + 1) / ADVANTAGE.length) * 100}%`,
+                                                background: item.grad
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Large decorative icon */}
+                                <div className="rp-adv-pin-deco">{item.icon}</div>
+                            </div>
+                        </motion.div>
+                    </AnimatePresence>
                 </div>
 
-                {/* Dot indicators */}
-                <div className="rp-adv-dots">
-                    {ADVANTAGE.map((_, i) => (
+                {/* Dot navigation */}
+                <div className="rp-adv-pin-dots">
+                    {ADVANTAGE.map((adv, i) => (
                         <button
                             key={i}
-                            className={`rp-adv-dot ${i === currentIndex ? 'rp-adv-dot--active' : ''}`}
+                            className={`rp-adv-pin-dot ${i === currentIndex ? 'rp-adv-pin-dot--active' : ''}`}
                             onClick={() => setCurrentIndex(i)}
-                            aria-label={`Slide ${i + 1}`}
+                            aria-label={`Advantage ${i + 1}`}
+                            style={i === currentIndex ? { background: '#fff', width: 28 } : {}}
                         />
                     ))}
                 </div>
+
+                {/* Scroll hint */}
+                {currentIndex === 0 && (
+                    <motion.div
+                        className="svc-scroll-hint" style={{ color: 'rgba(255,255,255,0.7)' }}
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }}
+                    >
+                        <span>Scroll to explore</span>
+                        <div className="svc-scroll-arrow">↓</div>
+                    </motion.div>
+                )}
             </div>
-        </section>
+        </PinnedCarouselSection>
     );
 }
 
@@ -651,6 +702,124 @@ function Partners() {
 }
 
 /* ══════════════════════════════════════════════
+   HOW IT WORKS — SCROLL PINNED (curve bottom → up)
+══════════════════════════════════════════════ */
+const HIW_ITEMS = [
+    { title: "Register Now", desc: "Sign up in under 2 minutes with your mobile number. No paperwork needed.", step: "01", color: "#2563eb", grad: "linear-gradient(135deg,#1e3a8a,#2563eb)", icon: "🚀" },
+    { title: "Upload KYC", desc: "Submit your Aadhaar and PAN details securely for instant verification.", step: "02", color: "#4f46e5", grad: "linear-gradient(135deg,#3730a3,#4f46e5)", icon: "🔐" },
+    { title: "Get Approved", desc: "Our team verifies your account and activates all financial services within hours.", step: "03", color: "#16a34a", grad: "linear-gradient(135deg,#14532d,#16a34a)", icon: "✅" },
+    { title: "Add Wallet Balance", desc: "Add funds via UPI, Bank Transfer or Credit Card to start transacting.", step: "04", color: "#dc2626", grad: "linear-gradient(135deg,#991b1b,#dc2626)", icon: "💳" },
+    { title: "Start Earning", desc: "Offer digital payments to customers and earn commissions on every transaction.", step: "05", color: "#ca8a04", grad: "linear-gradient(135deg,#713f12,#ca8a04)", icon: "💰" },
+];
+
+function HowItWorksPinned() {
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const item = HIW_ITEMS[currentIndex];
+
+    return (
+        <PinnedCarouselSection
+            id="how-it-works"
+            totalSlides={HIW_ITEMS.length}
+            index={currentIndex}
+            setIndex={setCurrentIndex}
+            outerStyle={{ background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%)' }}
+        >
+            <div className="hiw-pin-inner">
+                {/* Header */}
+                <div className="hiw-pin-header">
+                    <h2 className="hiw-pin-title">How It Works</h2>
+                    <p className="hiw-pin-sub">Your journey to financial freedom in 5 simple steps</p>
+                </div>
+
+                {/* Step indicators */}
+                <div className="hiw-pin-steps">
+                    {HIW_ITEMS.map((s, i) => (
+                        <button
+                            key={i}
+                            className={`hiw-pin-step-btn ${i === currentIndex ? 'hiw-pin-step-btn--active' : ''} ${i < currentIndex ? 'hiw-pin-step-btn--done' : ''}`}
+                            onClick={() => setCurrentIndex(i)}
+                            style={i <= currentIndex ? { borderColor: s.color, background: i === currentIndex ? s.color : `${s.color}22`, color: i === currentIndex ? '#fff' : s.color } : {}}
+                        >
+                            {i < currentIndex ? '✓' : s.step}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Main card — curve bottom to up */}
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={currentIndex}
+                        className="hiw-pin-card"
+                        initial={{
+                            opacity: 0,
+                            y: 120,
+                            rotate: 6,
+                            scale: 0.88,
+                        }}
+                        animate={{
+                            opacity: 1,
+                            y: 0,
+                            rotate: 0,
+                            scale: 1,
+                        }}
+                        exit={{
+                            opacity: 0,
+                            y: -80,
+                            rotate: -4,
+                            scale: 0.9,
+                        }}
+                        transition={{
+                            duration: 0.6,
+                            ease: [0.22, 1, 0.36, 1],
+                        }}
+                    >
+                        {/* Top gradient band */}
+                        <div className="hiw-pin-card-top" style={{ background: item.grad }} />
+
+                        {/* Step badge */}
+                        <div className="hiw-pin-badge" style={{ background: item.grad }}>
+                            {item.step}
+                        </div>
+
+                        {/* Card body */}
+                        <div className="hiw-pin-card-body">
+                            <div className="hiw-pin-icon">{item.icon}</div>
+                            <h3 className="hiw-pin-card-title">{item.title}</h3>
+                            <p className="hiw-pin-card-desc">{item.desc}</p>
+
+                            {/* Connector dots */}
+                            <div className="hiw-pin-connector">
+                                {HIW_ITEMS.map((_, i) => (
+                                    <div
+                                        key={i}
+                                        className="hiw-pin-dot"
+                                        style={{ background: i <= currentIndex ? item.color : '#cbd5e1' }}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Background watermark */}
+                        <div className="hiw-pin-watermark">{item.icon}</div>
+                    </motion.div>
+                </AnimatePresence>
+
+                {/* Scroll hint */}
+                {currentIndex === 0 && (
+                    <motion.div
+                        className="svc-scroll-hint"
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }}
+                    >
+                        <span>Scroll through steps</span>
+                        <div className="svc-scroll-arrow">↓</div>
+                    </motion.div>
+                )}
+            </div>
+        </PinnedCarouselSection>
+    );
+}
+
+/* ══════════════════════════════════════════════
    APP
 ══════════════════════════════════════════════ */
 export default function Home() {
@@ -680,7 +849,7 @@ export default function Home() {
                 <StatsCounter />
                 <Services />
                 <Advantage />
-                <VerticalCardSlider />
+                <HowItWorksPinned />
                 <Partners />
                 <Footer />
             </div>
@@ -925,95 +1094,184 @@ html, body { overflow-x: hidden; max-width: 100%; }
   .rp-stat-item { flex: 1 1 40%; }
 }
 
-/* ── Services Section ── */
+/* ── Services Section (scroll-pinned) ── */
 .svc-scroll-pin {
   background: #ffffff;
-  padding: 80px 0;
   width: 100%;
+}
+.svc-pin-inner {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 40px 0 20px;
+  position: relative;
+}
+.svc-progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #e2e8f0;
+  z-index: 10;
+}
+.svc-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1e3a8a, #2563eb);
+  transition: width 0.4s ease;
+  border-radius: 0 999px 999px 0;
+}
+.svc-scroll-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: #64748b;
+  margin-top: 24px;
+  text-transform: uppercase;
+}
+.svc-scroll-arrow {
+  animation: scrollBounce 1.5s infinite;
+  font-size: 18px;
+}
+@keyframes scrollBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(6px); }
 }
 
-/* ── Advantage Section ── */
-.rp-adv-section {
-  position: relative;
-  width: 100%;
-  overflow: hidden;
-}
-.rp-adv-section--pinned {
-  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%);
-  padding: 80px 5% 60px;
-  width: 100%;
+/* ── Advantage Section (scroll-pinned, redesigned cards) ── */
+.rp-adv-pin-inner {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
-}
-.rp-adv-carousel {
-  position: relative;
   width: 100%;
-  max-width: 860px;
-  margin: 0 auto;
-}
-/* Clipping window — cards that slide off are hidden here */
-.rp-adv-viewport {
-  width: 100%;
-  overflow: hidden;
-  border-radius: 28px;
-}
-/* Flex row that slides left/right */
-.rp-adv-track {
-  display: flex;
-  flex-direction: row;
-  gap: 20px;
-  will-change: transform;
-}
-.rp-adv-card {
-  /* Each card takes the full viewport width */
-  width: 100%;
-  min-width: 100%;
-  min-height: 320px;
-  border-radius: 24px;
-  padding: 40px 36px;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  height: 100%;
+  padding: 48px 5% 32px;
   box-sizing: border-box;
 }
-.rp-adv-arrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-60%);
-  z-index: 20;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.3);
-  background: rgba(255,255,255,0.1);
+.rp-adv-pin-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+.rp-adv-pin-tag {
+  display: inline-block;
+  padding: 6px 18px;
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 999px;
   color: #fff;
-  font-size: 24px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.rp-adv-pin-title {
+  font-size: clamp(1.8rem, 4vw, 3rem);
   font-weight: 900;
-  cursor: pointer;
+  color: #fff;
+  letter-spacing: -1px;
+  line-height: 1.1;
+}
+.rp-adv-pin-viewport {
+  width: 100%;
+  max-width: 900px;
+  perspective: 1200px;
+}
+.rp-adv-pin-card {
+  width: 100%;
+  border-radius: 32px;
+  overflow: hidden;
+  position: relative;
+  box-sizing: border-box;
+  min-height: 260px;
+}
+.rp-adv-pin-accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  border-radius: 32px 0 0 32px;
+}
+.rp-adv-pin-card-body {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  padding: 48px 52px 48px 48px;
+  position: relative;
+  z-index: 2;
+}
+.rp-adv-pin-icon {
+  width: 96px;
+  height: 96px;
+  border-radius: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.25s;
-  backdrop-filter: blur(8px);
+  flex-shrink: 0;
 }
-.rp-adv-arrow:hover {
-  background: rgba(255,255,255,0.25);
-  border-color: rgba(255,255,255,0.5);
-  transform: translateY(-60%) scale(1.1);
+.rp-adv-pin-content {
+  flex: 1;
 }
-.rp-adv-arrow--left { left: -64px; }
-.rp-adv-arrow--right { right: -64px; }
-/* Dot indicators */
-.rp-adv-dots {
+.rp-adv-pin-counter {
+  font-size: 12px;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+.rp-adv-pin-card-title {
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  font-weight: 900;
+  margin-bottom: 14px;
+  letter-spacing: -1px;
+  line-height: 1.15;
+}
+.rp-adv-pin-card-desc {
+  font-size: 1.05rem;
+  color: #475569;
+  line-height: 1.75;
+  font-weight: 500;
+  max-width: 520px;
+  margin-bottom: 24px;
+}
+.rp-adv-pin-progress {
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  max-width: 280px;
+}
+.rp-adv-pin-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.5s ease;
+}
+.rp-adv-pin-deco {
+  font-size: 7rem;
+  opacity: 0.06;
+  position: absolute;
+  right: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+.rp-adv-pin-dots {
   display: flex;
-  justify-content: center;
   gap: 8px;
   margin-top: 24px;
+  justify-content: center;
 }
-.rp-adv-dot {
+.rp-adv-pin-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
@@ -1023,23 +1281,16 @@ html, body { overflow-x: hidden; max-width: 100%; }
   padding: 0;
   transition: all 0.3s;
 }
-.rp-adv-dot--active {
+.rp-adv-pin-dot--active {
   width: 28px;
   border-radius: 999px;
   background: #fff;
 }
-@media(max-width: 1060px) {
-  .rp-adv-arrow--left { left: -10px; }
-  .rp-adv-arrow--right { right: -10px; }
-  .rp-adv-carousel { max-width: calc(100% - 80px); }
-}
-@media(max-width: 640px) {
-  .rp-adv-arrow { width: 40px; height: 40px; font-size: 20px; }
-  .rp-adv-arrow--left { left: -6px; }
-  .rp-adv-arrow--right { right: -6px; }
-  .rp-adv-carousel { max-width: calc(100% - 60px); }
-  .rp-adv-card { padding: 32px 24px; min-height: 280px; }
-  .rp-adv-section--pinned { padding: 60px 5% 48px; }
+@media(max-width: 768px) {
+  .rp-adv-pin-card-body { flex-direction: column; gap: 24px; padding: 36px 28px; align-items: flex-start; }
+  .rp-adv-pin-deco { display: none; }
+  .rp-adv-pin-card-title { font-size: 1.6rem; }
+  .rp-adv-pin-card { min-height: 320px; }
 }
 
 /* ── Gradient text ── */
@@ -1765,5 +2016,149 @@ html, body { overflow-x: hidden; max-width: 100%; }
 @keyframes blink { from, to { border-right: 3px solid transparent; } 50% { border-right: 3px solid #2563eb; } }
 @keyframes subUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
+/* ══════════════════════════════════════════════
+   HOW IT WORKS — PINNED (hiw-pin-*)
+══════════════════════════════════════════════ */
+.hiw-pin-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 40px 5% 32px;
+  box-sizing: border-box;
+}
+.hiw-pin-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+.hiw-pin-title {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: -1.5px;
+  line-height: 1.1;
+  margin-bottom: 10px;
+}
+.hiw-pin-sub {
+  font-size: 1rem;
+  color: #64748b;
+  font-weight: 500;
+}
+/* ── Step indicator row ── */
+.hiw-pin-steps {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.hiw-pin-step-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 2px solid #e2e8f0;
+  background: #fff;
+  color: #94a3b8;
+  font-size: 0.9rem;
+  font-weight: 900;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+.hiw-pin-step-btn--active {
+  transform: scale(1.15);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+}
+.hiw-pin-step-btn--done {
+  opacity: 0.8;
+}
+/* ── Main card ── */
+.hiw-pin-card {
+  width: 100%;
+  max-width: 560px;
+  background: #fff;
+  border-radius: 36px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.12);
+  overflow: hidden;
+  position: relative;
+  will-change: transform;
+}
+.hiw-pin-card-top {
+  height: 6px;
+  width: 100%;
+}
+.hiw-pin-badge {
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #fff;
+  margin: 28px 0 0 32px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+}
+.hiw-pin-card-body {
+  padding: 20px 36px 36px;
+}
+.hiw-pin-icon {
+  font-size: 3.2rem;
+  margin-bottom: 16px;
+  line-height: 1;
+}
+.hiw-pin-card-title {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: -0.5px;
+  margin-bottom: 14px;
+  line-height: 1.2;
+}
+.hiw-pin-card-desc {
+  font-size: 1rem;
+  color: #475569;
+  line-height: 1.75;
+  font-weight: 500;
+  margin-bottom: 28px;
+}
+/* ── Progress dots inside card ── */
+.hiw-pin-connector {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.hiw-pin-dot {
+  height: 8px;
+  border-radius: 999px;
+  flex: 1;
+  transition: background 0.4s ease;
+}
+/* ── Background watermark ── */
+.hiw-pin-watermark {
+  position: absolute;
+  bottom: -10px;
+  right: 20px;
+  font-size: 8rem;
+  opacity: 0.05;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+@media(max-width: 600px) {
+  .hiw-pin-steps { gap: 8px; }
+  .hiw-pin-step-btn { width: 44px; height: 44px; font-size: 0.8rem; }
+  .hiw-pin-card { border-radius: 28px; }
+  .hiw-pin-card-body { padding: 16px 24px 28px; }
+  .hiw-pin-badge { margin: 20px 0 0 20px; width: 52px; height: 52px; }
+  .hiw-pin-icon { font-size: 2.6rem; }
+}
+
 `;
+
 
