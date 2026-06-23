@@ -26,7 +26,7 @@ export default function PinnedCarouselSection({
             id={id}
             ref={pinRef}
             className={`carousel-scroll-pin ${className}`.trim()}
-            style={{ height: `${slides * 100}vh`, ...outerStyle }}
+            style={{ height: `${slides * 60}vh`, ...outerStyle }}
             aria-label="Scroll through slides"
         >
             <div
