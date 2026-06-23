@@ -465,13 +465,9 @@ function Advantage() {
     const prevSlide = () => setCurrentIndex((prev) => Math.max(prev - 1, 0));
 
     return (
-        <PinnedCarouselSection
+        <section
             id="advantage"
-            totalSlides={1}
-            index={currentIndex}
-            setIndex={setCurrentIndex}
-            stickyClassName="rp-adv-section rp-adv-section--pinned"
-            outerStyle={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%)' }}
+            className="rp-adv-section rp-adv-section--pinned"
         >
             <div style={{ textAlign: 'center', marginBottom: 40 }}>
                 <div className="writing-header writing-header--visible">
@@ -479,52 +475,64 @@ function Advantage() {
                     <h2 className="typewriter-title typewriter-title--visible" style={{ color: '#fff' }}>The Rupiksha Advantage</h2>
                 </div>
             </div>
+
+            {/* Viewport-safe carousel */}
             <div className="rp-adv-carousel">
-                <button onClick={prevSlide} className="rp-adv-arrow rp-adv-arrow--left">‹</button>
-                <button onClick={nextSlide} className="rp-adv-arrow rp-adv-arrow--right">›</button>
-                <div className="rp-adv-track">
-                    {ADVANTAGE.map((item, i) => {
-                        const offset = i - currentIndex;
-                        const isActive = offset === 0;
-                        const scale = isActive ? 1 : 0.75;
-                        const opacity = Math.abs(offset) > 2 ? 0 : isActive ? 1 : 0.5;
-                        const translateX = offset * 340;
-                        const translateY = 0;
-                        const rotate = 0;
-                        return (
-                            <motion.div
-                                key={i}
-                                className="rp-adv-card"
-                                animate={{
-                                    x: translateX,
-                                    y: translateY,
-                                    scale,
-                                    opacity,
-                                    rotateZ: 0,
-                                    zIndex: isActive ? 10 : 5 - Math.abs(offset),
-                                }}
-                                transition={{ duration: 0.5, ease: 'easeInOut' }}
-                                style={{
-                                    background: isActive ? '#fff' : item.grad,
-                                    position: 'absolute',
-                                }}
-                            >
-                                <div style={{
-                                    width: 60, height: 60, borderRadius: 18,
-                                    background: isActive ? `${item.color}15` : 'rgba(255,255,255,0.2)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: '2rem', marginBottom: 20
-                                }}>
-                                    {item.icon}
-                                </div>
-                                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: isActive ? '#0f172a' : '#fff', marginBottom: 12 }}>{item.title}</h3>
-                                <p style={{ fontSize: '0.95rem', color: isActive ? '#475569' : 'rgba(255,255,255,0.8)', lineHeight: 1.6, fontWeight: 500 }}>{item.desc}</p>
-                            </motion.div>
-                        );
-                    })}
+                <button onClick={prevSlide} className="rp-adv-arrow rp-adv-arrow--left" aria-label="Previous">‹</button>
+                <button onClick={nextSlide} className="rp-adv-arrow rp-adv-arrow--right" aria-label="Next">›</button>
+
+                {/* Overflow-hidden viewport: clips cards that slide out */}
+                <div className="rp-adv-viewport">
+                    <motion.div
+                        className="rp-adv-track"
+                        animate={{ x: `calc(-${currentIndex * 100}% - ${currentIndex * 20}px)` }}
+                        transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+                    >
+                        {ADVANTAGE.map((item, i) => {
+                            const isActive = i === currentIndex;
+                            return (
+                                <motion.div
+                                    key={i}
+                                    className="rp-adv-card"
+                                    animate={{
+                                        scale: isActive ? 1 : 0.92,
+                                        opacity: isActive ? 1 : 0.55,
+                                    }}
+                                    transition={{ duration: 0.4, ease: 'easeInOut' }}
+                                    style={{
+                                        background: isActive ? '#fff' : item.grad,
+                                        flexShrink: 0,
+                                    }}
+                                >
+                                    <div style={{
+                                        width: 60, height: 60, borderRadius: 18,
+                                        background: isActive ? `${item.color}15` : 'rgba(255,255,255,0.2)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontSize: '2rem', marginBottom: 20,
+                                    }}>
+                                        {item.icon}
+                                    </div>
+                                    <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: isActive ? '#0f172a' : '#fff', marginBottom: 12 }}>{item.title}</h3>
+                                    <p style={{ fontSize: '0.95rem', color: isActive ? '#475569' : 'rgba(255,255,255,0.8)', lineHeight: 1.6, fontWeight: 500 }}>{item.desc}</p>
+                                </motion.div>
+                            );
+                        })}
+                    </motion.div>
+                </div>
+
+                {/* Dot indicators */}
+                <div className="rp-adv-dots">
+                    {ADVANTAGE.map((_, i) => (
+                        <button
+                            key={i}
+                            className={`rp-adv-dot ${i === currentIndex ? 'rp-adv-dot--active' : ''}`}
+                            onClick={() => setCurrentIndex(i)}
+                            aria-label={`Slide ${i + 1}`}
+                        />
+                    ))}
                 </div>
             </div>
-        </PinnedCarouselSection>
+        </section>
     );
 }
 
@@ -694,6 +702,8 @@ const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@700;800&family=DM+Serif+Display:ital@0;1&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { overflow-x: hidden; max-width: 100%; }
+
 
 :root {
   --blue: #2563eb;
@@ -720,6 +730,8 @@ const CSS = `
   display: flex;
   flex-direction: column;
   padding-top: 92px;
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 /* ── Hero Section ── */
@@ -927,48 +939,57 @@ const CSS = `
   width: 100%;
 }
 
-.rp-adv-section--pinned {
-  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%);
-  padding: 40px 5%;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
 /* ── Advantage Section ── */
 .rp-adv-section {
   position: relative;
   width: 100%;
+  overflow: hidden;
+}
+.rp-adv-section--pinned {
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%);
+  padding: 80px 5% 60px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 .rp-adv-carousel {
   position: relative;
   width: 100%;
-  max-width: 1200px;
+  max-width: 860px;
   margin: 0 auto;
-  overflow: visible;
 }
+/* Clipping window — cards that slide off are hidden here */
+.rp-adv-viewport {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 28px;
+}
+/* Flex row that slides left/right */
 .rp-adv-track {
-  position: relative;
-  height: 380px;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: row;
+  gap: 20px;
+  will-change: transform;
 }
 .rp-adv-card {
-  width: 320px;
-  height: 340px;
+  /* Each card takes the full viewport width */
+  width: 100%;
+  min-width: 100%;
+  min-height: 320px;
   border-radius: 24px;
-  padding: 36px 32px;
+  padding: 40px 36px;
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  box-sizing: border-box;
 }
 .rp-adv-arrow {
   position: absolute;
   top: 50%;
-  transform: translateY(-50%);
+  transform: translateY(-60%);
   z-index: 20;
   width: 52px;
   height: 52px;
@@ -988,13 +1009,44 @@ const CSS = `
 .rp-adv-arrow:hover {
   background: rgba(255,255,255,0.25);
   border-color: rgba(255,255,255,0.5);
-  transform: translateY(-50%) scale(1.1);
+  transform: translateY(-60%) scale(1.1);
 }
-.rp-adv-arrow--left { left: 10px; }
-.rp-adv-arrow--right { right: 10px; }
-@media(max-width: 768px) {
-  .rp-adv-card { width: 260px; height: 280px; padding: 28px 24px; }
-  .rp-adv-track { height: 320px; }
+.rp-adv-arrow--left { left: -64px; }
+.rp-adv-arrow--right { right: -64px; }
+/* Dot indicators */
+.rp-adv-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 24px;
+}
+.rp-adv-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.35);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.3s;
+}
+.rp-adv-dot--active {
+  width: 28px;
+  border-radius: 999px;
+  background: #fff;
+}
+@media(max-width: 1060px) {
+  .rp-adv-arrow--left { left: -10px; }
+  .rp-adv-arrow--right { right: -10px; }
+  .rp-adv-carousel { max-width: calc(100% - 80px); }
+}
+@media(max-width: 640px) {
+  .rp-adv-arrow { width: 40px; height: 40px; font-size: 20px; }
+  .rp-adv-arrow--left { left: -6px; }
+  .rp-adv-arrow--right { right: -6px; }
+  .rp-adv-carousel { max-width: calc(100% - 60px); }
+  .rp-adv-card { padding: 32px 24px; min-height: 280px; }
+  .rp-adv-section--pinned { padding: 60px 5% 48px; }
 }
 
 /* ── Gradient text ── */
@@ -1696,13 +1748,18 @@ const CSS = `
 }
 
 .typewriter-title {
-  font-size: clamp(2rem, 4.5vw, 3rem); font-weight: 900; color: #0f172a; 
+  font-size: clamp(1.6rem, 4.5vw, 3rem); font-weight: 900; color: #0f172a; 
   margin-bottom: 24px; white-space: nowrap; overflow: hidden;
   width: 0; display: inline-block; letter-spacing: -1px;
   border-right: 3px solid transparent;
+  max-width: 90vw;
 }
 .typewriter-title--visible {
   animation: typing 2.2s steps(40, end) 0.5s forwards;
+}
+@media(max-width: 600px) {
+  .typewriter-title { white-space: normal; overflow: visible; width: auto !important; max-width: 100%; font-size: clamp(1.4rem, 6vw, 2rem); }
+  .typewriter-title--visible { animation: none; }
 }
 
 .sub-reveal {

@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
-import PinnedCarouselSection from './PinnedCarouselSection';
 import './VerticalCardSlider.css';
 
 const ITEMS = [
@@ -11,74 +10,69 @@ const ITEMS = [
     { title: "Start Earning", desc: "Offer digital payments to customers and earn commissions on every transaction.", step: "05", color: "#ca8a04", mediumColor: "#fef08a", icon: "💰" },
 ];
 
+const cardVariants = {
+    hidden: { opacity: 0, y: 40, scale: 0.96 },
+    visible: (i) => ({
+        opacity: 1,
+        y: 0,
+        scale: 1,
+        transition: {
+            duration: 0.5,
+            delay: i * 0.1,
+            ease: [0.22, 1, 0.36, 1],
+        },
+    }),
+};
+
 const VerticalCardSlider = () => {
-    const [currentIndex, setCurrentIndex] = useState(0);
-
-    const nextSlide = () => setCurrentIndex((prev) => Math.min(prev + 1, ITEMS.length - 1));
-    const prevSlide = () => setCurrentIndex((prev) => Math.max(prev - 1, 0));
-
     return (
-        <PinnedCarouselSection
-            totalSlides={ITEMS.length}
-            index={currentIndex}
-            setIndex={setCurrentIndex}
-            stickyClassName="hiw-scroll-pin"
-        >
-            <div className="section-header-slider">
-                <span className="slider-tag">Simple Process</span>
-                <h2 className="slider-main-title">How It Works</h2>
-                <p className="slider-main-desc">Follow these 5 simple steps to launch your digital banking point with Rupiksha.</p>
+        <section className="hiw-section">
+            {/* Header — only "How It Works", center-aligned */}
+            <div className="hiw-header">
+                <h2 className="hiw-main-title">How It Works</h2>
             </div>
 
-            <div className="hiw-carousel-wrap">
-                <button type="button" onClick={prevSlide} className="hiw-arrow hiw-arrow--left" aria-label="Previous step">←</button>
-                <button type="button" onClick={nextSlide} className="hiw-arrow hiw-arrow--right" aria-label="Next step">→</button>
-                <div className="hiw-carousel-track">
-                    {ITEMS.map((item, i) => {
-                        const offset = i - currentIndex;
-                        const isActive = offset === 0;
-                        return (
-                            <motion.div
-                                key={i}
-                                className="hiw-card"
-                                animate={{
-                                    x: offset * 380,
-                                    scale: isActive ? 1 : 0.85,
-                                    opacity: Math.abs(offset) > 2 ? 0 : isActive ? 1 : 0.6,
-                                    zIndex: isActive ? 10 : 5 - Math.abs(offset),
-                                }}
-                                transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+            {/* Responsive grid — 1 / 2 / 3 / 5 columns */}
+            <div className="hiw-grid-wrap">
+                <div className="hiw-grid">
+                    {ITEMS.map((item, i) => (
+                        <motion.div
+                            key={i}
+                            className="hiw-grid-card"
+                            custom={i}
+                            initial="hidden"
+                            whileInView="visible"
+                            viewport={{ once: true, amount: 0.15 }}
+                            variants={cardVariants}
+                            style={{
+                                background: item.mediumColor,
+                                border: `2px solid ${item.color}40`,
+                            }}
+                        >
+                            {/* Step badge */}
+                            <div
+                                className="hiw-grid-step"
                                 style={{
-                                    background: item.mediumColor,
-                                    border: `2px solid ${item.color}40`,
-                                    position: 'absolute',
-                                    left: '50%',
-                                    marginLeft: -180,
-                                }}
-                            >
-                                <div style={{
                                     background: item.color,
                                     boxShadow: `0 10px 25px ${item.color}40`,
-                                    width: 64, height: 64, borderRadius: 20,
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: '1.8rem', fontWeight: 900, color: '#fff', marginBottom: 20,
-                                }}>
-                                    {item.step}
-                                </div>
-                                <h3 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#0f172a', marginBottom: 12, letterSpacing: '-0.5px' }}>{item.title}</h3>
-                                <p style={{ fontSize: '1.05rem', color: '#334155', lineHeight: 1.6, fontWeight: 500 }}>{item.desc}</p>
-                                <div style={{ marginTop: 'auto', fontSize: 11, fontWeight: 900, opacity: 0.4, letterSpacing: 2, color: '#0f172a' }}>RUPIKSHA FINTECH PREMIUM</div>
-                                <div style={{
-                                    position: 'absolute', bottom: 20, right: 20,
-                                    fontSize: '5rem', opacity: 0.1, lineHeight: 1,
-                                    filter: 'grayscale(1)',
-                                }}>{item.icon}</div>
-                            </motion.div>
-                        );
-                    })}
+                                }}
+                            >
+                                {item.step}
+                            </div>
+
+                            <h3 className="hiw-grid-title">{item.title}</h3>
+                            <p className="hiw-grid-desc">{item.desc}</p>
+
+                            {/* Watermark icon */}
+                            <div className="hiw-grid-watermark">{item.icon}</div>
+
+                            {/* Footer label */}
+                            <div className="hiw-grid-footer">RUPIKSHA FINTECH PREMIUM</div>
+                        </motion.div>
+                    ))}
                 </div>
             </div>
-        </PinnedCarouselSection>
+        </section>
     );
 };
 
