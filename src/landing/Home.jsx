@@ -1541,8 +1541,8 @@ html, body { overflow-x: clip; max-width: 100%; }
 .svc-slider {
   display: flex;
   align-items: stretch;
-  gap: 60px;
-  min-height: 520px;
+  gap: 40px;
+  min-height: 420px;
 }
 .svc-slider__left {
   flex: 1.3;
@@ -1648,15 +1648,16 @@ html, body { overflow-x: clip; max-width: 100%; }
   background: #2563eb;
 }
 .svc-slider__right {
-  flex: 0.7;
+  flex: 0.65;
   display: flex;
   align-items: stretch;
   justify-content: flex-end;
 }
 .svc-slider__card {
   width: 100%;
-  border-radius: 32px;
-  padding: 56px 40px;
+  max-width: 330px;
+  border-radius: 28px;
+  padding: 32px 24px;
   color: #fff;
   display: flex;
   flex-direction: column;
@@ -1676,14 +1677,14 @@ html, body { overflow-x: clip; max-width: 100%; }
 .svc-slider__card-title {
   font-size: 1.8rem;
   font-weight: 900;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
   position: relative;
 }
 .svc-slider__card-desc {
   font-size: 0.95rem;
   line-height: 1.7;
   color: rgba(255,255,255,0.88);
-  margin-bottom: 32px;
+  margin-bottom: 16px;
   position: relative;
 }
 .svc-slider__card-icon {
