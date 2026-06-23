@@ -730,20 +730,6 @@ function HowItWorksPinned() {
                     <h2 className="hiw-pin-title">How It Works</h2>
                 </div>
 
-                {/* Step indicators */}
-                <div className="hiw-pin-steps">
-                    {HIW_ITEMS.map((s, i) => (
-                        <button
-                            key={i}
-                            className={`hiw-pin-step-btn ${i === currentIndex ? 'hiw-pin-step-btn--active' : ''} ${i < currentIndex ? 'hiw-pin-step-btn--done' : ''}`}
-                            onClick={() => setCurrentIndex(i)}
-                            style={i <= currentIndex ? { borderColor: s.color, background: i === currentIndex ? s.color : `${s.color}22`, color: i === currentIndex ? '#fff' : s.color } : {}}
-                        >
-                            {i < currentIndex ? '✓' : s.step}
-                        </button>
-                    ))}
-                </div>
-
                 {/* Main card — curve bottom to up */}
                 <AnimatePresence mode="wait">
                     <motion.div
@@ -2030,7 +2016,7 @@ html, body { overflow-x: clip; max-width: 100%; }
 }
 .hiw-pin-header {
   text-align: center;
-  margin-bottom: 12px;
+  margin-bottom: 24px;
 }
 .hiw-pin-title {
   font-size: clamp(2rem, 5vw, 3.5rem);
@@ -2038,35 +2024,6 @@ html, body { overflow-x: clip; max-width: 100%; }
   color: #0f172a;
   letter-spacing: -1.5px;
   line-height: 1.1;
-}
-/* ── Step indicator row ── */
-.hiw-pin-steps {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 32px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-.hiw-pin-step-btn {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  border: 2px solid #e2e8f0;
-  background: #fff;
-  color: #94a3b8;
-  font-size: 0.9rem;
-  font-weight: 900;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
-}
-.hiw-pin-step-btn--active {
-  transform: scale(1.15);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-}
-.hiw-pin-step-btn--done {
-  opacity: 0.8;
 }
 /* ── Main card ── */
 .hiw-pin-card {
@@ -2144,8 +2101,6 @@ html, body { overflow-x: clip; max-width: 100%; }
 }
 
 @media(max-width: 600px) {
-  .hiw-pin-steps { gap: 8px; }
-  .hiw-pin-step-btn { width: 44px; height: 44px; font-size: 0.8rem; }
   .hiw-pin-card { border-radius: 28px; }
   .hiw-pin-card-body { padding: 16px 24px 28px; }
   .hiw-pin-badge { margin: 20px 0 0 20px; width: 52px; height: 52px; }
