@@ -864,7 +864,7 @@ const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@700;800&family=DM+Serif+Display:ital@0;1&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { overflow-x: hidden; max-width: 100%; }
+html, body { overflow-x: clip; max-width: 100%; }
 
 
 :root {
@@ -892,7 +892,7 @@ html, body { overflow-x: hidden; max-width: 100%; }
   display: flex;
   flex-direction: column;
   padding-top: 92px;
-  overflow-x: hidden;
+  overflow-x: clip;
   max-width: 100vw;
 }
 

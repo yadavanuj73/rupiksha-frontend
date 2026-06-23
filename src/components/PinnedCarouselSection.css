@@ -4,6 +4,7 @@
 }
 
 .carousel-scroll-pin__sticky {
+  position: -webkit-sticky;
   position: sticky;
   min-height: calc(100vh - 92px);
   display: flex;
