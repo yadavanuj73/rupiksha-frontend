@@ -728,7 +728,6 @@ function HowItWorksPinned() {
                 {/* Header */}
                 <div className="hiw-pin-header">
                     <h2 className="hiw-pin-title">How It Works</h2>
-                    <p className="hiw-pin-sub">Your journey to financial freedom in 5 simple steps</p>
                 </div>
 
                 {/* Step indicators */}
@@ -2031,7 +2030,7 @@ html, body { overflow-x: clip; max-width: 100%; }
 }
 .hiw-pin-header {
   text-align: center;
-  margin-bottom: 28px;
+  margin-bottom: 12px;
 }
 .hiw-pin-title {
   font-size: clamp(2rem, 5vw, 3.5rem);
@@ -2039,12 +2038,6 @@ html, body { overflow-x: clip; max-width: 100%; }
   color: #0f172a;
   letter-spacing: -1.5px;
   line-height: 1.1;
-  margin-bottom: 10px;
-}
-.hiw-pin-sub {
-  font-size: 1rem;
-  color: #64748b;
-  font-weight: 500;
 }
 /* ── Step indicator row ── */
 .hiw-pin-steps {
