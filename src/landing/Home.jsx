@@ -96,8 +96,8 @@ const SERVICES = [
     {
         label: 'AEPS',
         subtitle: 'Aadhaar Enabled Payment System',
-        desc: 'Aadhaar Enabled Payment System allows customers to perform banking transactions using their Aadhaar number and biometric authentication.',
-        features: ['Cash withdrawals using Aadhaar authentication', 'Cash deposits to any bank account', 'Balance enquiry', 'Mini statements', 'Aadhaar Pay for merchant payments', 'Interoperable across all banks'],
+        desc: 'Perform banking transactions using your Aadhaar number and biometric verification. Safe, secure, and cardless banking at your local point.',
+        features: ['Cash withdrawals (Aadhaar)', 'Cash deposits to any bank', 'Balance enquiry & statements', 'Aadhaar Pay for merchants', 'Fully interoperable across banks'],
         grad: 'linear-gradient(160deg,#14532d 0%,#15803d 60%,#16a34a 100%)',
         glow: 'rgba(22,163,74,0.6)', tag: 'RBI Certified',
         img: aadhaar_3d_logo,
@@ -105,88 +105,88 @@ const SERVICES = [
     {
         emoji: '🏦', label: 'Banking Services',
         subtitle: 'Comprehensive Banking Solutions',
-        desc: 'Extend banking services to your customers as a Business Correspondent. Provide account opening, cash deposits, withdrawals, and more.',
-        features: ['Account opening for multiple banks', 'Cash deposits and withdrawals', 'Balance enquiry and mini statements', 'Fixed and recurring deposit creation', 'Micro-ATM services'],
+        desc: 'Extend banking services as a Business Correspondent. Provide instant account opening, cash deposits, withdrawals, and more to your customers.',
+        features: ['Instant bank account opening', 'Cash deposits & withdrawals', 'Balance enquiry & statements', 'Fixed & recurring deposits', 'Micro-ATM cash withdrawals'],
         grad: 'linear-gradient(160deg,#1e3a8a 0%,#1d4ed8 60%,#2563eb 100%)',
         glow: 'rgba(37,99,235,0.6)', tag: 'Pan India',
     },
     {
         emoji: '🤝', label: 'Micro Loans',
         subtitle: '₹5,000 – ₹50,000 Quick Loans',
-        desc: "Facilitate small loans for your customers' immediate needs. Our platform connects borrowers with lenders for quick and hassle-free loan disbursals.",
-        features: ['Small ticket loans from ₹5,000 to ₹50,000', 'Quick approval process', 'Minimal documentation', 'Flexible repayment options', 'No collateral required'],
+        desc: "Facilitate small loans for your customers' immediate personal and business needs. Simple process with quick digital verification and approval.",
+        features: ['Loans from ₹5,000 to ₹50,000', 'Quick approval & disbursal', 'Minimal documentation', 'Flexible repayment plans', 'Zero collateral required'],
         grad: 'linear-gradient(160deg,#164e63 0%,#0891b2 60%,#06b6d4 100%)',
         glow: 'rgba(8,145,178,0.6)', tag: 'Fast Approval',
     },
     {
         emoji: '💳', label: 'Neo Banking',
         subtitle: 'Digital Banking Platform',
-        desc: 'Offer digital banking services with enhanced features and user experience. Our neo-banking platform provides a modern alternative to traditional banking.',
-        features: ['Digital savings accounts', 'Virtual debit cards', 'Real-time transaction notifications', 'Goal-based savings', 'Integrated investment options'],
+        desc: 'Provide modern, high-tech digital banking services. A premium alternative to traditional banking with zero balance features and instant activation.',
+        features: ['Digital savings accounts', 'Virtual debit cards', 'Real-time notifications', 'Goal-based automated savings', 'Integrated investment tools'],
         grad: 'linear-gradient(160deg,#1c1917 0%,#292524 60%,#44403c 100%)',
         glow: 'rgba(68,64,60,0.7)', tag: 'New',
     },
     {
         emoji: '🏠', label: 'CSP',
         subtitle: 'Customer Service Point',
-        desc: 'Transform your shop into a Customer Service Point. Provide essential banking and government services to your local community.',
-        features: ['Dedicated banking outlet', 'Agent registration', 'Multiple bank connectivity', 'Local area service provider'],
+        desc: 'Transform your shop into an official Customer Service Point. Provide essential banking and digital services to your local community.',
+        features: ['Dedicated banking outlet', 'Instant agent registration', 'Multiple bank connectivity', 'Local service provider role'],
         grad: 'linear-gradient(160deg,#713f12 0%,#a16207 60%,#ca8a04 100%)',
         glow: 'rgba(202,138,4,0.6)', tag: 'Business Opportunity',
     },
     {
         emoji: '💼', label: 'Business Correspondent',
         subtitle: 'Business Correspondent',
-        desc: 'Act as a Business Correspondent for leading banks. Facilitate secure transactions and financial inclusion in underserved areas.',
-        features: ['Bank-authorized agent', 'Secure cash management', 'Customer enrollment', 'Financial literacy support'],
+        desc: 'Act as a certified Business Correspondent for leading Indian banks. Facilitate secure cash transactions and inclusion in underserved areas.',
+        features: ['Bank-authorized agent role', 'Secure cash management', 'Direct customer enrollment', 'Financial literacy support'],
         grad: 'linear-gradient(160deg,#581c87 0%,#7c3aed 60%,#8b5cf6 100%)',
         glow: 'rgba(124,58,237,0.6)', tag: 'Certified Agent',
     },
     {
         emoji: '💸', label: 'Money Transfer',
         subtitle: 'DMT / IMPS / NEFT / RTGS',
-        desc: 'Secure and instant domestic money transfers to any bank account in India. Our IMPS, NEFT, and UPI enabled services ensure your customers can send money anywhere, anytime.',
-        features: ['Instant transfers through IMPS/UPI', 'Scheduled transfers through NEFT', 'Real-time transaction status updates', 'Transaction history and digital receipts', 'Secure authentication for every transaction', 'Competitive transfer fees'],
+        desc: 'Secure and instant domestic money transfers to any bank account in India. Fast IMPS, NEFT, and UPI options ensure money goes anywhere, anytime.',
+        features: ['Instant IMPS/UPI transfers', 'Scheduled NEFT transfers', 'Real-time status updates', 'Digital receipts & history', 'Secure authentication', 'Low transfer fees'],
         grad: 'linear-gradient(160deg,#1e3a8a 0%,#1d4ed8 60%,#2563eb 100%)',
         glow: 'rgba(37,99,235,0.6)', tag: 'Most Popular',
     },
     {
         emoji: '🧾', label: 'Bill Payment',
         subtitle: 'BBPS Powered • 100+ Billers',
-        desc: 'Comprehensive bill payment services for utilities, subscriptions, and more. Our platform supports 100+ billers across multiple categories.',
-        features: ['Electricity, water, and gas bill payments', 'Mobile, broadband, and DTH recharges', 'Credit card bill payments', 'Insurance premium payments', 'Educational fee payments', 'Automatic bill payment reminders'],
+        desc: 'Comprehensive utility bill payment services powered by BBPS. Supports electricity, water, gas, insurance, and school fees securely.',
+        features: ['Electricity, gas, & water bills', 'Broadband & DTH recharges', 'Credit card bill payments', 'Insurance premium payments', 'Educational fee payments', 'Auto-payment reminders'],
         grad: 'linear-gradient(160deg,#713f12 0%,#a16207 60%,#ca8a04 100%)',
         glow: 'rgba(202,138,4,0.6)', tag: 'BBPS Certified',
     },
     {
         emoji: '📱', label: 'Recharge',
         subtitle: 'All Operators • Instant',
-        desc: 'Offer prepaid recharges for mobile, DTH, data cards, and more. Our platform supports all major operators and provides instant processing.',
-        features: ['Mobile prepaid recharges', 'DTH recharges', 'Data card recharges', 'Postpaid bill payments', 'Special recharge offers and cashbacks', 'Scheduled recharges'],
+        desc: 'Offer instant prepaid and postpaid mobile, DTH, and data card recharges. Supports all telecom operators with attractive commissions.',
+        features: ['Prepaid mobile recharges', 'Instant DTH recharges', 'Data card updates', 'Postpaid bill payments', 'Operator commission benefits', 'Special cashback offers'],
         grad: 'linear-gradient(160deg,#581c87 0%,#7c3aed 60%,#8b5cf6 100%)',
         glow: 'rgba(124,58,237,0.6)', tag: 'Instant Credit',
     },
     {
         emoji: '✈️', label: 'Tours & Travel',
         subtitle: 'IRCTC Certified Agent',
-        desc: 'Complete travel booking solutions including flights, hotels, buses, trains, and holiday packages. Provide end-to-end travel services to your customers.',
-        features: ['Domestic & international flight bookings', 'Hotel reservations across India', 'Bus and train ticket bookings', 'Customized holiday packages', 'Travel insurance', '24/7 travel support'],
+        desc: 'Complete travel booking portal for flights, hotels, trains, and buses. Become an authorized IRCTC agent and book tickets instantly.',
+        features: ['Flight ticket bookings', 'Hotel reservations', 'Train (IRCTC) & bus booking', 'Holiday package deals', 'Basic travel insurance', '24/7 ticket support'],
         grad: 'linear-gradient(160deg,#0c4a6e 0%,#0369a1 60%,#0ea5e9 100%)',
         glow: 'rgba(14,165,233,0.6)', tag: 'IRCTC Partner',
     },
     {
         emoji: '🛡️', label: 'Insurance',
         subtitle: 'Life & General Insurance',
-        desc: 'Offer a range of insurance products to provide financial security to your customers. Our platform enables quick policy issuance and claims support.',
-        features: ['Life insurance policies', 'Health insurance for individuals & families', 'Two-wheeler and four-wheeler insurance', 'Travel insurance', 'Shop and business insurance', 'Digital policy documents'],
+        desc: 'Provide essential health, motor, life, and shop insurance policies to your customers. Fast digital issuance with hassle-free claim support.',
+        features: ['Term life policies', 'Individual & family health plans', 'Car & bike motor insurance', 'Shop & business protection', 'Instant digital documents', 'Hassle-free claims guidance'],
         grad: 'linear-gradient(160deg,#14532d 0%,#166534 60%,#15803d 100%)',
         glow: 'rgba(21,128,61,0.6)', tag: 'IRDAI Approved',
     },
     {
         emoji: '📋', label: 'Utility Services',
         subtitle: 'PAN • Aadhaar • Documents',
-        desc: 'Provide essential document services like PAN card, Voter ID, Aadhaar updates, and more. Be a one-stop solution for all documentation needs.',
-        features: ['PAN card applications', 'Voter ID applications and corrections', 'Aadhaar enrollment and updates', 'Passport application assistance', 'Certificate attestations', 'Government scheme registrations'],
+        desc: 'Become a one-stop destination for document services. Assist customers with PAN card applications, voter registrations, and scheme enrollments.',
+        features: ['New PAN card applications', 'Voter ID creation & correction', 'Passport application support', 'Govt. scheme enrollment', 'Aadhaar correction assistance', 'Official document printing'],
         grad: 'linear-gradient(160deg,#422006 0%,#b45309 60%,#d97706 100%)',
         glow: 'rgba(180,83,9,0.6)', tag: 'Govt. Approved',
     },
@@ -448,9 +448,9 @@ function Services() {
                                 <p className="svc-slider__card-desc">{s.desc}</p>
                                 <div className="svc-slider__card-icon">
                                     {s.img ? (
-                                        <img src={s.img} alt={s.label} style={{ width: 80, height: 80, objectFit: 'contain' }} />
+                                        <img src={s.img} alt={s.label} style={{ width: 64, height: 64, objectFit: 'contain' }} />
                                     ) : (
-                                        <span style={{ fontSize: '3.5rem' }}>{s.emoji || '✦'}</span>
+                                        <span style={{ fontSize: '2.6rem' }}>{s.emoji || '✦'}</span>
                                     )}
                                 </div>
                             </div>
