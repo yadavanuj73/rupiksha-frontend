@@ -5,7 +5,6 @@ import Footer from '../components/Footer';
 import Navbar from '../components/Navbar';
 import VerticalCardSlider from '../components/VerticalCardSlider';
 import PhotoSlider from '../components/PhotoSlider';
-import PinnedCarouselSection from '../components/PinnedCarouselSection';
 const aadhaar_3d_logo = "https://upload.wikimedia.org/wikipedia/en/thumb/c/cf/Aadhaar_Logo.svg/1200px-Aadhaar_Logo.svg.png";
 import { useLanguage } from '../context/LanguageContext';
 import { Phone, Mail, RefreshCcw } from 'lucide-react';
@@ -375,13 +374,7 @@ function Services() {
     const s = SERVICES[activeIndex];
 
     return (
-        <PinnedCarouselSection
-            id="services"
-            totalSlides={SERVICES.length}
-            index={activeIndex}
-            setIndex={setActiveIndex}
-            stickyClassName="svc-scroll-pin"
-        >
+        <section id="services" className="svc-scroll-pin">
             <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%', padding: '0 5%' }}>
                 <div className="svc-slider">
                     <motion.div
@@ -454,7 +447,7 @@ function Services() {
                     </motion.div>
                 </div>
             </div>
-        </PinnedCarouselSection>
+        </section>
     );
 }
 
@@ -932,10 +925,10 @@ html, body { overflow-x: hidden; max-width: 100%; }
   .rp-stat-item { flex: 1 1 40%; }
 }
 
-/* ── Pinned scroll carousels (Services, Advantage, How It Works) ── */
+/* ── Services Section ── */
 .svc-scroll-pin {
   background: #ffffff;
-  padding: 40px 0;
+  padding: 80px 0;
   width: 100%;
 }
 
