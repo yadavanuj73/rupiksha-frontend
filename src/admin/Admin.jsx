@@ -63,9 +63,8 @@ const Admin = () => {
     const [SuperDistributors, setSuperDistributors] = useState([]);
     const [trashUsers, setTrashUsers] = useState([]);
 
-    // Default to Dashboard for Header users since they might not have Approvals access
-    const initialSection = sessionStorage.getItem('admin_active_section') ||
-        ((currentUser && ['NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER'].includes(currentUser.role)) ? 'Dashboard' : 'Approvals');
+    // Default to Dashboard (Overview) for Admin users
+    const initialSection = sessionStorage.getItem('admin_active_section') || 'Overview';
     const [activeSection, setActiveSection] = useState(initialSection);
 
     const setActiveSectionPersisted = (section) => {
@@ -3289,7 +3288,7 @@ const Admin = () => {
                                     approvingIds={approvingIds}
                                     resolvedApprovalIds={resolvedApprovalIds}
                                 />}
-                                {activeSection === 'Dashboard' && <LiveDashboard data={data} distributors={distributors} SuperDistributors={SuperDistributors} />}
+                                {activeSection === 'Dashboard' && <LiveDashboard data={data} distributors={distributors} SuperDistributors={SuperDistributors} onNavigate={setActiveSectionPersisted} />}
                                 {activeSection === 'EmployeeManager' && <EmployeeManager currentUserForEmployee={isEmployee ? currentUser : null} />}
                                 {activeSection === 'Landing Content' && <LandingCMS />}
                                 {activeSection === 'Trash' && <TrashTable />}

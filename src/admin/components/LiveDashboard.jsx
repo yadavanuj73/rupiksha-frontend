@@ -1,11 +1,20 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { BACKEND_URL } from '../../services/dataService';
 import { sharedDataService } from '../../services/sharedDataService';
+import {
+    TrendingUp, TrendingDown, Users, IndianRupee, CheckCircle2, Clock,
+    MoreVertical, ArrowRight, Search, Bell, Plus, Building2, ShieldCheck,
+    Package, Zap, BarChart3, Calendar, Filter, RefreshCcw, Eye,
+    ArrowUpRight, ArrowDownRight, Wallet, MapPin, Star, Activity,
+    SlidersHorizontal, User, LayoutGrid, List, ChevronDown, Trash2, Settings,
+    XCircle, X
+} from 'lucide-react';
 
 // ─── Utility ─────────────────────────────────────────────────────────────────
 const fmt = (n) => Number(n || 0).toLocaleString('en-IN');
 const fmtCur = (n) =>
     Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtINR = (n) => Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 0 });
 
 const REFRESH_INTERVAL = 5000; // 5 seconds
 
@@ -175,7 +184,7 @@ function ActivityFeed({ transactions, localUsers }) {
             {allTxns.map((txn, i) => {
                 const status = (txn.status || 'PENDING').toUpperCase();
                 const statusColor = TXN_STATUS_COLOR[status] || '#64748b';
-                const statusIcon = TXN_STATUS_ICON[status] || 'â“';
+                const statusIcon = TXN_STATUS_ICON[status] || '❓';
                 return (
                     <div key={txn.id || i} style={{
                         minWidth: 190, flexShrink: 0,
@@ -197,7 +206,7 @@ function ActivityFeed({ transactions, localUsers }) {
                             ₹{fmt(txn.amount)}
                         </div>
                         {txn.operator && (
-                            <div style={{ fontSize: 10, color: '#94a3b8' }}>{txn.operator} Â· {txn.number}</div>
+                            <div style={{ fontSize: 10, color: '#94a3b8' }}>{txn.operator} · {txn.number}</div>
                         )}
                         <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 4 }}>
                             {txn.created_at ? new Date(txn.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : ''}
@@ -209,19 +218,112 @@ function ActivityFeed({ transactions, localUsers }) {
     );
 }
 
-function MetricChange({ current, previous }) {
-    if (previous === null || previous === undefined || previous === current) return null;
-    const diff = current - previous;
-    const up = diff > 0;
+// ── New Bar Chart ────────────────────────────────────────────────────────────
+const BarChart = ({ data = [8, 12, 10, 6, 11], height = 120 }) => {
+    const max = Math.max(...data, 1);
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
     return (
-        <span style={{ fontSize: 10, fontWeight: 700, color: up ? '#16a34a' : '#ef4444', marginLeft: 4 }}>
-            {up ? 'â–²' : 'â–¼'}{Math.abs(diff).toLocaleString('en-IN')}
-        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, height }}>
+                {data.map((v, i) => (
+                    <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                        <div style={{
+                            width: '40%',
+                            height: `${(v / max) * 100}%`,
+                            background: '#18181b', // Solid black bars
+                            borderRadius: 4,
+                            minHeight: 4,
+                            transition: 'height 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+                        }} />
+                    </div>
+                ))}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                {days.map(d => (
+                    <span key={d} style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', flex: 1, textAlign: 'center' }}>{d}</span>
+                ))}
+            </div>
+        </div>
     );
-}
+};
 
-// ─── Main Dashboard ───────────────────────────────────────────────────────────
-const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistributors: parentSAs }) => {
+// ── Semi-Circle Gauge ────────────────────────────────────────────────────────
+const Gauge = ({ pct = 68, size = 180, stroke = 12, label = "Successful deals" }) => {
+    const r = (size - stroke) / 2;
+    const circ = Math.PI * r;
+    const offset = circ * (1 - pct / 100);
+    return (
+        <div style={{ position: 'relative', width: size, height: size / 2 + 20, display: 'flex', justifyContent: 'center', overflow: 'hidden' }}>
+            <svg width={size} height={size} style={{ transform: 'rotate(180deg)' }}>
+                <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f1f5f9" strokeWidth={stroke} strokeDasharray={`${circ} ${circ * 2}`} strokeLinecap="round" />
+                <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#6366f1" strokeWidth={stroke} strokeDasharray={`${circ} ${circ * 2}`} strokeDashoffset={offset} strokeLinecap="round"
+                    style={{ transition: 'stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1)' }} />
+            </svg>
+            <div style={{ position: 'absolute', bottom: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span style={{ fontSize: 32, fontWeight: 800, color: '#312e81', lineHeight: 1 }}>{pct}%</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#6366f1', marginTop: 4 }}>{label}</span>
+            </div>
+        </div>
+    );
+};
+
+// ── Module Card ──────────────────────────────────────────────────────────────
+const ModuleCard = ({ id, label, icon: Icon, onClick, desc, badge }) => {
+    const [isHovered, setIsHovered] = useState(false);
+    return (
+        <div 
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            onClick={() => onClick(id)}
+            style={{
+                background: isHovered ? '#e0f2fe' : '#fff', // Light Blue on hover
+                border: '1px solid #f1f5f9',
+                borderRadius: 28, 
+                padding: '32px',
+                marginBottom: 16, 
+                cursor: 'pointer',
+                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: isHovered ? '0 25px 50px -12px rgba(186, 230, 253, 0.4)' : '0 1px 3px rgba(0,0,0,0.02)',
+                color: '#1e1b4b',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 20,
+                position: 'relative',
+                overflow: 'hidden'
+            }}
+        >
+            {isHovered && (
+                <div style={{ position: 'absolute', top: '-10%', right: '-10%', width: '120px', height: '120px', background: '#0ea5e9', borderRadius: '50%', filter: 'blur(70px)', opacity: 0.15 }} />
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ 
+                    width: 56, height: 56, borderRadius: 18, 
+                    background: isHovered ? '#fff' : '#f8fafc',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.3s',
+                    boxShadow: isHovered ? '0 4px 10px rgba(0,0,0,0.05)' : 'none'
+                }}>
+                    <Icon size={24} style={{ color: isHovered ? '#0ea5e9' : '#64748b' }} />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {badge && (
+                        <span style={{ background: '#0ea5e9', color: '#fff', fontSize: 10, fontWeight: 900, padding: '4px 10px', borderRadius: 8, textTransform: 'uppercase' }}>{badge}</span>
+                    )}
+                    <ArrowUpRight size={20} style={{ color: isHovered ? '#0ea5e9' : '#cbd5e1', opacity: isHovered ? 1 : 0.5, transition: 'all 0.3s' }} />
+                </div>
+            </div>
+            
+            <div>
+                <h4 style={{ fontSize: 19, fontWeight: 800, letterSpacing: -0.4, margin: '0 0 8px' }}>{label}</h4>
+                <p style={{ fontSize: 13, color: isHovered ? '#94a3b8' : '#64748b', lineHeight: 1.6, margin: 0 }}>{desc}</p>
+            </div>
+        </div>
+    );
+};
+
+// ─── Main Live Dashboard Component ───────────────────────────────────────────
+const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistributors: parentSAs, onNavigate }) => {
     const [liveData, setLiveData] = useState(emptyData());
     const [prevData, setPrevData] = useState(null);
     const [connected, setConnected] = useState(false);
@@ -311,6 +413,53 @@ const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistr
     const timeStr = time.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const dateStr = time.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
 
+    // ── Old Dashboard Computations Ported ────────────────────────────────────
+    const getSignupData = () => {
+        const counts = [0, 0, 0, 0, 0];
+        const now = new Date();
+        allLocalUsers.forEach(u => {
+            const created = new Date(u.createdAt || u.created_at || Date.now());
+            const diffDays = Math.floor((now - created) / (1000 * 60 * 60 * 24));
+            if (diffDays >= 0 && diffDays < 5) {
+                counts[4 - diffDays]++;
+            }
+        });
+        return counts;
+    };
+
+    const totalBalance = allLocalUsers.reduce((acc, u) => acc + parseFloat((u.wallet?.balance || '0').toString().replace(/,/g, '')), 0);
+    const pendingKycs = allLocalUsers.filter(u => u.profile_kyc_status === 'PENDING' || u.status === 'Pending').length;
+    const approvalRate = allLocalUsers.length > 0 ? Math.round((allLocalUsers.filter(u => u.status === 'Approved' || u.profile_kyc_status === 'DONE').length / allLocalUsers.length) * 100) : 0;
+
+    const moduleGroups = [
+        {
+            title: 'Operations & Approvals',
+            modules: [
+                { id: 'Approvals', label: 'Verify KYC', icon: ShieldCheck, desc: `Approve or reject member and AEPS KYC requests.`, badge: pendingKycs > 0 ? `${pendingKycs}` : null },
+                { id: 'Loans', label: 'Loan Control', icon: IndianRupee, desc: `Manage capital lending and credit line approvals.` },
+                { id: 'Wallet-Overview', label: 'Cash Desk', icon: Wallet, desc: `Monitor all system floats, credits, and fund releases.` },
+                { id: 'AllMembers', label: 'Member Core', icon: Users, desc: `Full directory of all Retailers and Distributors.` },
+            ]
+        },
+        {
+            title: 'System & Intelligence',
+            modules: [
+                { id: 'ReportsAnalyst', label: 'Analytics', icon: Activity, desc: `Deep dive into revenue and performance metrics.` },
+                { id: 'Logins', label: 'Security Logs', icon: RefreshCcw, desc: `Audit trail of all administrative login attempts.` },
+                { id: 'Trash', label: 'Archive/Bin', icon: Trash2, desc: `Restore or permanently delete removed accounts.` },
+            ]
+        },
+        {
+            title: 'Platform & CMS',
+            modules: [
+                { id: 'Landing Content', label: 'Web Editor', icon: List, desc: `Update website sections and landing page copy.` },
+                { id: 'Services', icon: Package, label: 'Service Hub', desc: `Toggle and configure B2B service availability.` },
+                { id: 'OurMap', icon: MapPin, label: 'Geo Mapping', desc: `Visualize member reach across the country.` },
+                { id: 'Settings', icon: Settings, label: 'Master Setup', desc: `Admin credentials and system-wide configurations.` },
+            ]
+        }
+    ];
+
     return (
         <div style={{
             minHeight: '100vh',
@@ -320,7 +469,7 @@ const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistr
             padding: '24px',
         }}>
             <style>{`
-                @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap');
+                @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@400;700;800;900&display=swap');
                 @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
                 @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
                 @keyframes fadeSlideIn { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:translateX(0)} }
@@ -328,14 +477,55 @@ const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistr
                 .live-grid { display: grid; gap: 16px; animation: fadeIn 0.4s ease; }
             `}</style>
 
-            {/* ── Topbar ── */}
+            {/* ── Ported Header (Search & Actions) ── */}
             <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingBottom: 24,
+                animation: 'fadeIn 0.4s ease'
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, background: '#fff', padding: '14px 24px', borderRadius: 20, border: '1px solid #f1f5f9', width: '100%', maxWidth: 480, boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+                    <Search size={20} style={{ color: '#94a3b8' }} />
+                    <input
+                        placeholder="Search customer..."
+                        style={{
+                            border: 'none', background: 'none', outline: 'none', width: '100%',
+                            fontSize: 15, fontWeight: 500, color: '#18181b'
+                        }}
+                    />
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <button style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 20px', background: '#fff', borderRadius: 16, border: '1px solid #f1f5f9', fontSize: 14, fontWeight: 700, color: '#18181b', cursor: 'pointer', transition: 'all 0.2s' }}>
+                        <SlidersHorizontal size={16} /> Sort by
+                    </button>
+                    <button style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 20px', background: '#fff', borderRadius: 16, border: '1px solid #f1f5f9', fontSize: 14, fontWeight: 700, color: '#18181b', cursor: 'pointer', transition: 'all 0.2s' }}>
+                        <Filter size={16} /> Filters
+                    </button>
+                    <div style={{ width: 1, height: 28, background: '#e2e8f0', margin: '0 8px' }} />
+                    <button style={{ display: 'flex', alignItems: 'center', gap: 10, border: 'none', background: 'none', padding: '4px 12px', borderRadius: 12, cursor: 'pointer' }}>
+                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                            <User size={20} color="#fff" />
+                        </div>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: '#1e1b4b' }}>Account</span>
+                    </button>
+                    <button style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 28px', background: '#6366f1', borderRadius: 16, border: 'none', fontSize: 14, fontWeight: 700, color: '#fff', cursor: 'pointer', marginLeft: 16, boxShadow: '0 10px 20px rgba(99, 102, 241, 0.2)' }}>
+                        <Plus size={18} /> Add customer
+                    </button>
+                </div>
+            </div>
+
+            {/* ── Topbar (Live Control Header) ── */}
+            <div style={{
+                display: 'flex', alignItems: 'center', justifycontent: 'space-between',
                 background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(16px)',
                 border: '1px solid rgba(255,255,255,0.8)',
                 borderRadius: 18, padding: '14px 20px', marginBottom: 22,
                 boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
                 position: 'sticky', top: 0, zIndex: 50,
+                display: 'flex',
+                justifyContent: 'space-between'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{
@@ -379,7 +569,61 @@ const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistr
                 </div>
             </div>
 
-            {/* ── KPI Cards Row ── */}
+            {/* ── Ported Metrics Row (Old Dashboard Charts/Metrics) ── */}
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1.2fr 0.8fr 0.6fr 1.2fr',
+                gap: 48,
+                background: 'rgba(255,255,255,0.7)',
+                backdropFilter: 'blur(10px)',
+                borderRadius: 24,
+                padding: '24px 32px',
+                marginBottom: 24,
+                border: '1px solid rgba(255,255,255,0.8)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
+                alignItems: 'center',
+                animation: 'fadeIn 0.5s ease'
+            }}>
+                {/* New Customers Bar Chart */}
+                <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+                        <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a' }}>New customers</h3>
+                        <div style={{ display: 'flex', gap: 4, height: 20 }}>
+                             <div style={{ width: 5, height: 20, background: '#18181b', borderRadius: 2 }} />
+                             <div style={{ width: 5, height: 14, background: '#e2e8f0', borderRadius: 2, marginTop: 6 }} />
+                        </div>
+                    </div>
+                    <BarChart data={getSignupData()} height={100} />
+                </div>
+
+                {/* Successful Deals Gauge */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <Gauge pct={approvalRate} size={170} label="Account Approval Rate" />
+                </div>
+
+                {/* Tasks Count */}
+                <div style={{ display: 'flex', flexDirection: 'column', padding: '0 16px', alignItems: 'center', textAlign: 'center' }}>
+                    <h2 style={{ fontSize: 52, fontWeight: 900, lineHeight: 1, marginBottom: 12, color: '#18181b' }}>{pendingKycs}</h2>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: '#64748b', lineHeight: 1.4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Pending <br /> Tasks</p>
+                </div>
+
+                {/* Financial Metric & Trend */}
+                <div style={{ flex: 1, borderLeft: '1px solid #e2e8f0', paddingLeft: 40, display: 'flex', alignItems: 'center' }}>
+                    <div>
+                        <h2 style={{ fontSize: 44, fontWeight: 900, lineHeight: 1, marginBottom: 4, color: '#18181b', letterSpacing: -1 }}>₹ {fmtINR(totalBalance)}</h2>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginTop: 20 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fff', border: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+                                    <ShieldCheck size={18} style={{ color: '#6366f1' }} />
+                                </div>
+                                <p style={{ fontSize: 12, fontWeight: 700, color: '#64748b', lineHeight: 1.3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total Float <br />Balance</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* ── KPI Cards Row (Existing Live KPIs) ── */}
             <div className="live-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 16 }}>
                 <KpiCard title="User Network" icon="👥" accent="#0ea5e9">
                     <StatRow label="Total Registered" value={fmt(liveData.users.total)} accent="#0ea5e9" />
@@ -393,8 +637,6 @@ const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistr
                     <StatRow label="KYC Not Done" value={fmt(liveData.kyc.notDone)} accent="#ef4444" />
                     <StatRow label="KYC Pending" value={fmt(liveData.kyc.pending)} accent="#f59e0b" />
                 </KpiCard>
-
-
 
                 <KpiCard title="Wallet Overview" icon="💰" accent="#f59e0b">
                     <StatRow label="Total Float" value={`₹${fmtCur(liveData.walletStats.total)}`} accent="#f59e0b" />
@@ -415,16 +657,20 @@ const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistr
                         borderRadius: 14, padding: '18px 20px',
                         border: `1px solid ${color}25`, borderLeft: `4px solid ${color}`,
                         boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                        display: 'flex', justifycontent: 'space-between', alignItems: 'center',
+                        display: 'flex',
+                        justifyContent: 'space-between'
                     }}>
                         <div>
                             <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>{label}</div>
                             <div style={{ fontSize: 28, fontWeight: 900, color, letterSpacing: -1 }}>{count}</div>
-                            <div style={{ fontSize: 11, color: '#10b981', fontWeight: 700, marginTop: 2 }}>âœ“ {approved} Approved</div>
+                            <div style={{ fontSize: 11, color: '#10b981', fontWeight: 700, marginTop: 2 }}>✓ {approved} Approved</div>
                         </div>
                         <div style={{
-                            fontSize: 36, width: 56, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: `${color}12`, borderRadius: 14, border: `1px solid ${color}25`
+                            fontSize: 36, width: 56, height: 56, display: 'flex', alignItems: 'center', justifycontent: 'center',
+                            background: `${color}12`, borderRadius: 14, border: `1px solid ${color}25`,
+                            display: 'flex',
+                            justifyContent: 'center'
                         }}>{icon}</div>
                     </div>
                 ))}
@@ -444,10 +690,10 @@ const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistr
             <div style={{
                 background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(10px)',
                 border: '1px solid rgba(99,102,241,0.15)', borderRadius: 16,
-                padding: '18px 20px', marginBottom: 16,
+                padding: '18px 20px', marginBottom: 24,
                 boxShadow: '0 4px 24px rgba(0,0,0,0.05)',
             }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <div style={{ display: 'flex', justifycontent: 'space-between', alignItems: 'center', marginBottom: 14, display: 'flex', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <span style={{ fontSize: 20 }}>📡</span>
                         <span style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>Live Activity Feed</span>
@@ -461,6 +707,27 @@ const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistr
                     </span>
                 </div>
                 <ActivityFeed transactions={liveData.recentTransactions} localUsers={allLocalUsers} />
+            </div>
+
+            {/* ── Ported Module Groups (Operations Cards Grid) ── */}
+            <div style={{ animation: 'fadeIn 0.6s ease', marginBottom: 24 }}>
+                {moduleGroups.map((group) => (
+                    <div key={group.title} style={{ marginBottom: 32 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginBottom: 24 }}>
+                            <h3 style={{ fontSize: 16, fontWeight: 900, letterSpacing: 0.5, textTransform: 'uppercase', color: '#94a3b8' }}>{group.title}</h3>
+                            <div style={{ flex: 1, height: 1, background: 'rgba(0,0,0,0.05)' }} />
+                        </div>
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(4, 1fr)',
+                            gap: 20,
+                        }}>
+                            {group.modules.map((mod) => (
+                                <ModuleCard key={mod.id} {...mod} onClick={onNavigate} />
+                            ))}
+                        </div>
+                    </div>
+                ))}
             </div>
 
             {/* ── Footer ── */}
