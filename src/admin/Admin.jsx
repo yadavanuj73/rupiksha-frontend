@@ -63,8 +63,8 @@ const Admin = () => {
     const [SuperDistributors, setSuperDistributors] = useState([]);
     const [trashUsers, setTrashUsers] = useState([]);
 
-    // Default to Dashboard (Overview) for Admin users
-    const initialSection = sessionStorage.getItem('admin_active_section') || 'Overview';
+    // Default to Dashboard (Live telemetry) for Admin users
+    const initialSection = sessionStorage.getItem('admin_active_section') || 'Dashboard';
     const [activeSection, setActiveSection] = useState(initialSection);
 
     const setActiveSectionPersisted = (section) => {
@@ -3003,8 +3003,7 @@ const Admin = () => {
     );
 
     const ANALYTICS_NAV = [
-        { id: 'Overview', icon: LayoutGrid, label: 'Dashboard' },
-        { id: 'Dashboard', icon: Activity, label: 'Live Feed' },
+        { id: 'Dashboard', icon: Activity, label: 'Dashboard' },
         { id: 'ReportsAnalyst', icon: BarChart3, label: 'Analytics' },
     ];
 
@@ -3288,7 +3287,7 @@ const Admin = () => {
                                     approvingIds={approvingIds}
                                     resolvedApprovalIds={resolvedApprovalIds}
                                 />}
-                                {activeSection === 'Dashboard' && <LiveDashboard data={data} distributors={distributors} SuperDistributors={SuperDistributors} onNavigate={setActiveSectionPersisted} />}
+                                {activeSection === 'Dashboard' && <LiveDashboard data={data} distributors={distributors} SuperDistributors={SuperDistributors} />}
                                 {activeSection === 'EmployeeManager' && <EmployeeManager currentUserForEmployee={isEmployee ? currentUser : null} />}
                                 {activeSection === 'Landing Content' && <LandingCMS />}
                                 {activeSection === 'Trash' && <TrashTable />}
