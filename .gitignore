@@ -51,3 +51,11 @@ context.md
 .cursor/
 .kiro/
 .windsurf/
+
+# Documentation and local reference files — never commit
+GO_LIVE_CHECKLIST.md
+PAYOUT_DEPLOYMENT_CHECKLIST.md
+levinaeps.txt
+netlify.toml
+*.docx
+*.csv
