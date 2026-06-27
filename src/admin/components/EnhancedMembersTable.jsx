@@ -241,23 +241,23 @@ const EnhancedMembersTable = () => {
     const ActionButtons = ({ member, compact = false }) => (
         <div className={`flex flex-col ${compact ? 'gap-1' : 'gap-1.5'} w-full`}>
             <button onClick={() => handleLoginAsMember(member)}
-                className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 text-[11px] font-bold bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 hover:border-emerald-600 rounded-lg transition-all whitespace-nowrap">
+                className="w-full flex items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-bold bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 hover:border-emerald-600 rounded-lg transition-all">
                 <Zap size={11} /> Login As Member
             </button>
             <button onClick={() => handleViewServices(member)}
-                className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 text-[11px] font-bold bg-sky-50 hover:bg-sky-600 text-sky-700 hover:text-white border border-sky-200 hover:border-sky-600 rounded-lg transition-all whitespace-nowrap">
+                className="w-full flex items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-bold bg-sky-50 hover:bg-sky-600 text-sky-700 hover:text-white border border-sky-200 hover:border-sky-600 rounded-lg transition-all">
                 <Package size={11} /> Services
             </button>
             <button onClick={() => handleViewDetail(member)}
-                className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 text-[11px] font-bold bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 hover:border-indigo-600 rounded-lg transition-all whitespace-nowrap">
+                className="w-full flex items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-bold bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 hover:border-indigo-600 rounded-lg transition-all">
                 <Eye size={11} /> View Details
             </button>
             <button onClick={() => handleEditMember(member)}
-                className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 text-[11px] font-bold bg-amber-50 hover:bg-amber-600 text-amber-700 hover:text-white border border-amber-200 hover:border-amber-600 rounded-lg transition-all whitespace-nowrap">
+                className="w-full flex items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-bold bg-amber-50 hover:bg-amber-600 text-amber-700 hover:text-white border border-amber-200 hover:border-amber-600 rounded-lg transition-all">
                 <Edit3 size={11} /> Edit
             </button>
             <button onClick={() => handleDelete(member)}
-                className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 text-[11px] font-bold bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 hover:border-rose-600 rounded-lg transition-all whitespace-nowrap">
+                className="w-full flex items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-bold bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 hover:border-rose-600 rounded-lg transition-all">
                 <Trash2 size={11} /> Delete
             </button>
         </div>
@@ -320,22 +320,8 @@ const EnhancedMembersTable = () => {
                 DESKTOP / TABLET TABLE  (md and above)
             ══════════════════════════════════════════ */}
             <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full min-w-[900px] border-collapse table-fixed">
-                        <colgroup>
-                            {/* Sr | Name | Party | Address | Mobile | Email | Role | Wallet | LastAEPS | Joined | Actions */}
-                            <col style={{ width: '44px'  }} />  {/* Sr No   */}
-                            <col style={{ width: '160px' }} />  {/* Name    */}
-                            <col style={{ width: '90px'  }} />  {/* Party   */}
-                            <col className="hidden lg:table-column" style={{ width: '160px' }} />  {/* Address */}
-                            <col style={{ width: '100px' }} />  {/* Mobile  */}
-                            <col style={{ width: '140px' }} />  {/* Email   */}
-                            <col style={{ width: '88px'  }} />  {/* Role    */}
-                            <col style={{ width: '90px'  }} />  {/* Wallet  */}
-                            <col style={{ width: '96px'  }} />  {/* LastAEPS*/}
-                            <col style={{ width: '88px'  }} />  {/* Joined  */}
-                            <col style={{ width: '130px' }} />  {/* Actions */}
-                        </colgroup>
+                <div className="w-full overflow-hidden">
+                    <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
 
                         <thead>
                             <tr className="bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 text-[11px] font-black text-slate-500 uppercase tracking-wider">
@@ -402,25 +388,25 @@ const EnhancedMembersTable = () => {
                                             {member.partyCode || '—'}
                                         </td>
 
-                                        {/* Address (hidden on tablet, visible on lg+) */}
+                                        {/* Address (hidden on tablet md, visible on lg+) */}
                                         <td
-                                            className="px-2 py-3 border-r border-slate-100 text-[12px] text-slate-500 hidden lg:table-cell max-w-[160px] overflow-hidden"
-                                            title={addr || undefined}
+                                            className="px-2 py-3 border-r border-slate-100 text-[12px] text-slate-500 hidden lg:table-cell"
+                                            style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
                                         >
-                                            <span className="block truncate">{addr || '—'}</span>
+                                            {addr || '—'}
                                         </td>
 
                                         {/* Mobile */}
-                                        <td className="px-2 py-3 border-r border-slate-100 text-center text-[12px] font-bold text-slate-700 whitespace-nowrap">
+                                        <td className="px-2 py-3 border-r border-slate-100 text-center text-[12px] font-bold text-slate-700">
                                             {member.mobile || '—'}
                                         </td>
 
                                         {/* Email */}
                                         <td
-                                            className="px-2 py-3 border-r border-slate-100 text-[12px] text-slate-600 max-w-[140px] overflow-hidden"
-                                            title={member.email || undefined}
+                                            className="px-2 py-3 border-r border-slate-100 text-[12px] text-slate-600"
+                                            style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}
                                         >
-                                            <span className="block truncate">{member.email || '—'}</span>
+                                            {member.email || '—'}
                                         </td>
 
                                         {/* Role badge */}
@@ -429,12 +415,12 @@ const EnhancedMembersTable = () => {
                                         </td>
 
                                         {/* Wallet */}
-                                        <td className="px-2 py-3 border-r border-slate-100 text-right text-[13px] font-black text-slate-900 whitespace-nowrap">
+                                        <td className="px-2 py-3 border-r border-slate-100 text-right text-[12px] font-black text-slate-900">
                                             {fmtWallet(member.walletBalance)}
                                         </td>
 
                                         {/* Last AEPS */}
-                                        <td className="px-2 py-3 border-r border-slate-100 text-center text-[11px] whitespace-nowrap">
+                                        <td className="px-2 py-3 border-r border-slate-100 text-center text-[11px]">
                                             {member.lastAepsTxnDate
                                                 ? <span className="text-emerald-600 font-semibold">{fmtDateOnly(member.lastAepsTxnDate)}</span>
                                                 : <span className="text-slate-300">Never</span>}
@@ -443,8 +429,8 @@ const EnhancedMembersTable = () => {
                                         {/* Joined Date */}
                                         <td className="px-2 py-3 border-r border-slate-100 text-center">
                                             <div className="flex flex-col gap-0.5">
-                                                <span className="text-[12px] font-semibold text-slate-700 whitespace-nowrap">{fmtDateOnly(member.createdAt)}</span>
-                                                <span className="text-[10px] text-slate-400 whitespace-nowrap">{fmtTime(member.createdAt)}</span>
+                                                <span className="text-[11px] font-semibold text-slate-700">{fmtDateOnly(member.createdAt)}</span>
+                                                <span className="text-[10px] text-slate-400">{fmtTime(member.createdAt)}</span>
                                             </div>
                                         </td>
 
