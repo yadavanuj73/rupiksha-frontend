@@ -13,8 +13,7 @@ dist-ssr
 *.local
 
 # Editor directories and files
-.vscode/*
-!.vscode/extensions.json
+.vscode/
 .idea
 .DS_Store
 *.suo
@@ -46,3 +45,9 @@ backend/
 
 # Project context file — local only, never push
 context.md
+
+# Local IDE / AI configuration — never commit
+.agents/
+.cursor/
+.kiro/
+.windsurf/
