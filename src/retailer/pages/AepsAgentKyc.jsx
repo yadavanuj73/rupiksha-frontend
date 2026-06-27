@@ -1,291 +1,213 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Fingerprint, CheckCircle2, RefreshCw, ArrowLeft, ShieldCheck, XCircle, Download, Usb, Monitor } from 'lucide-react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { aepsService } from '../../services/apiService';
+import { ArrowLeft, Fingerprint, CheckCircle2, ShieldCheck, AlertCircle } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { useRD } from '../hooks/useRD';
+import DeviceStatus from '../components/DeviceStatus';
+import CaptureButton from '../components/CaptureButton';
+import CaptureLoader from '../components/CaptureLoader';
+import CaptureError from '../components/CaptureError';
+import CaptureSuccess from '../components/CaptureSuccess';
+import { kycWorkflowService } from '../../services/aeps/kycService';
+import { otpVerificationService } from '../../services/aeps/otpVerificationService';
 
-const AepsAgentKyc = () => {
+export default function AepsAgentKyc() {
     const navigate = useNavigate();
-    const [phase, setPhase] = useState('setup'); // setup | idle | capturing | submitting | otp | success | failed
-    const [error, setError] = useState('');
-    const [otp, setOtp] = useState('');
-    const [kycRefId, setKycRefId] = useState('');
-    const [otpLoading, setOtpLoading] = useState(false);
-    const [user, setUser] = useState(null);
-    const [agentInfo, setAgentInfo] = useState({ agentId: '', merchantId: '' });
-    const [aadhaarInput, setAadhaarInput] = useState('');
+    const { captureResult, device } = useRD();
 
-    useEffect(() => {
-        const impUser = localStorage.getItem('rupiksha_imp_user');
-        const normalUser = localStorage.getItem('rupiksha_user');
-        const currentUser = impUser ? JSON.parse(impUser) : (normalUser ? JSON.parse(normalUser) : null);
-        setUser(currentUser);
-        if (currentUser?.aadhaarNumber) setAadhaarInput(currentUser.aadhaarNumber);
+    const [submitting, setSubmitting] = useState(false);
+    const [submittingOtp, setSubmittingOtp] = useState(false);
+    const [kycResponse, setKycResponse] = useState(null);
+    const [kycError, setKycError] = useState('');
+    const [otpError, setOtpError] = useState('');
+    const [otpCode, setOtpCode] = useState('');
 
-        const loadStatus = async () => {
-            try {
-                const mobile = currentUser?.mobile || currentUser?.username;
-                if (!mobile) return;
-                const status = await aepsService.checkStatus(mobile);
-                if (!status?.onboarded) { navigate('/aeps-kyc'); return; }
-                if (status?.kycDone) { navigate('/aeps'); return; }
-                setAgentInfo({ agentId: status.agentId || '', merchantId: status.merchantId || '' });
-            } catch (e) { console.error('Status check failed', e); }
-        };
-        loadStatus();
-
-        // Listen for PID data from popup window (mantra-capture.html)
-        const handleMessage = (event) => {
-            if (event.data?.type === 'MANTRA_PID_DATA' && event.data?.pidData) {
-                submitKyc(event.data.pidData);
-            }
-        };
-        window.addEventListener('message', handleMessage);
-        return () => window.removeEventListener('message', handleMessage);
-    }, []);
-
-    const captureAndSubmit = async () => {
-        const aadhaar = aadhaarInput.trim();
-        if (!aadhaar || aadhaar.length !== 12) {
-            setError('Please enter your 12-digit Aadhaar number first');
-            return;
-        }
-        setError('');
-        setPhase('capturing');
-
-        // Open the capture popup — this window calls localhost directly
-        const captureWindow = window.open(
-            '/mantra-capture.html',
-            'MantraCapture',
-            'width=440,height=460,left=400,top=150,resizable=no'
-        );
-
-        if (!captureWindow) {
-            setError('Popup was blocked. Please allow popups for rupiksha.in in Chrome settings and try again.');
-            setPhase('failed');
+    const handleKycSubmit = async () => {
+        if (!captureResult || !captureResult.pidXml) {
+            setKycError("Please capture your fingerprint first.");
             return;
         }
 
-        // If popup is closed without capturing, reset phase
-        const checkClosed = setInterval(() => {
-            if (captureWindow.closed) {
-                clearInterval(checkClosed);
-                if (phase === 'capturing') {
-                    setPhase('idle');
-                }
-            }
-        }, 500);
-    };
+        setSubmitting(true);
+        setKycError('');
+        setKycResponse(null);
 
-    const submitKyc = async (pidData) => {
-        setPhase('submitting');
-        setError('');
         try {
-            const impUser = localStorage.getItem('rupiksha_imp_user');
-            const normalUser = localStorage.getItem('rupiksha_user');
-            const currentUser = impUser ? JSON.parse(impUser) : (normalUser ? JSON.parse(normalUser) : null);
-            const mobile = currentUser?.mobile || currentUser?.username || '';
-            const aadhaar = currentUser?.aadhaarNumber || aadhaarInput.trim();
-
-            const result = await aepsService.kyc({
-                aadharNumber: aadhaar,
-                aepsAgentId: agentInfo.agentId,
-                merchantId: agentInfo.merchantId,
-                rdpiData: pidData,
-                biometricType: 'FMR',
-                mobile: mobile
-            });
-
-            if (result?.statusId === 1) {
-                setPhase('success');
-            } else if (result?.statusId === 19) {
-                setKycRefId(result?.txnid || result?.agentId || '');
-                setPhase('otp');
-            } else {
-                setError(result?.message || 'KYC failed. Please retry.');
-                setPhase('failed');
-            }
-        } catch (e) {
-            setError('KYC error: ' + (e.message || 'Please retry'));
-            setPhase('failed');
+            const res = await kycWorkflowService.submitBiometricKyc(captureResult.pidXml, 'FMR');
+            setKycResponse(res.data);
+        } catch (err) {
+            console.error("Biometric KYC submission failed", err);
+            setKycError(err.message || "Failed to submit biometric KYC to provider.");
+        } finally {
+            setSubmitting(false);
         }
     };
 
-    const verifyOtp = async () => {
-        if (otp.length < 4) { setError('Enter valid OTP'); return; }
-        setOtpLoading(true);
-        setError('');
+    const handleOtpSubmit = async () => {
+        if (!otpCode || otpCode.length !== 6) {
+            setOtpError("Please enter a valid 6-digit OTP.");
+            return;
+        }
+
+        setSubmittingOtp(true);
+        setOtpError('');
+
         try {
-            const mobile = user?.mobile || user?.username || '';
-            const result = await aepsService.verifyKycOtp({
-                verifyKycOtp: otp,
-                email: user?.email || '',
-                contactNumber: mobile,
-                kycRefId: kycRefId,
-                clientRefId: 'KYC_' + Date.now(),
-                aepsAgentId: agentInfo.agentId,
-                merchantId: agentInfo.merchantId
-            });
-            if (result?.statusId === 1) { setPhase('success'); }
-            else { setError(result?.message || 'OTP verification failed'); }
-        } catch (e) {
-            setError('OTP error: ' + e.message);
-        } finally { setOtpLoading(false); }
+            const res = await otpVerificationService.verifyKycOtp(otpCode);
+            setKycResponse(res.data);
+        } catch (err) {
+            console.error("OTP verification failed", err);
+            setOtpError(err.message || "Failed to verify OTP code.");
+        } finally {
+            setSubmittingOtp(false);
+        }
     };
+
+    const isKycSuccess = kycResponse && kycResponse.workflowState === 'READY_FOR_DAILY_2FA' && kycResponse.success;
+    const isOtpRequired = kycResponse && kycResponse.workflowState === 'OTP_VERIFICATION_REQUIRED';
 
     return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md border border-slate-100">
-
-                {/* Header */}
-                <div className="flex items-center gap-3 mb-6">
-                    <button onClick={() => navigate('/aeps')}
-                        className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600">
-                        <ArrowLeft size={16} />
-                    </button>
-                    <div>
-                        <h1 className="text-lg font-black text-slate-900 uppercase tracking-tight">AEPS Agent KYC</h1>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Biometric Verification</p>
+        <div className="min-h-screen bg-[#f8fafc] py-12 px-4 flex justify-center items-center font-['Inter',sans-serif]">
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white border border-slate-100 shadow-[0_15px_40px_rgb(0,0,0,0.03)] rounded-3xl w-full max-w-xl overflow-hidden relative"
+            >
+                <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-500 to-indigo-600" />
+                
+                <div className="p-8 md:p-10">
+                    {/* Header */}
+                    <div className="mb-6">
+                        <button
+                            onClick={() => navigate('/aeps')}
+                            className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-slate-600 transition mb-3 cursor-pointer"
+                        >
+                            <ArrowLeft size={14} />
+                            Exit KYC
+                        </button>
+                        <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3">
+                            <Fingerprint className="text-slate-700" size={28} />
+                            AEPS Biometric KYC
+                        </h1>
+                        <p className="text-xs text-slate-500 font-semibold mt-1">
+                            Complete Aadhaar fingerprint validation to activate AEPS transaction terminal.
+                        </p>
                     </div>
-                </div>
 
-                {/* SETUP INSTRUCTIONS */}
-                {phase === 'setup' && (
-                    <div className="space-y-4">
-                        <div className="text-center mb-2">
-                            <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                                <Fingerprint size={32} className="text-blue-600" />
-                            </div>
-                            <h2 className="text-base font-black text-slate-900 uppercase">Before You Start</h2>
-                            <p className="text-[11px] text-slate-500 mt-1">Make sure these are ready</p>
-                        </div>
+                    {!isOtpRequired && !isKycSuccess && (
+                        <div className="space-y-6">
+                            {/* Device diagnostic panel */}
+                            <DeviceStatus />
 
-                        {[
-                            { icon: <Usb size={18} className="text-blue-600" />, n: '1', title: 'Connect Mantra Device', desc: 'Plug Mantra MFS100 fingerprint scanner into PC via USB. Check if device LED is on.', link: null },
-                            { icon: <Download size={18} className="text-emerald-600" />, n: '2', title: 'Install & Run Mantra RD Service', desc: 'Download from mantratec.com. MUST run as Administrator (right-click → Run as Administrator)', link: 'https://www.mantratec.com/RD-Service' },
-                            { icon: <Monitor size={18} className="text-purple-600" />, n: '3', title: 'Allow Popups for this Site', desc: 'In Chrome, click the popup blocked icon in address bar and select "Always allow popups from rupiksha.in"', link: null },
-                        ].map((item, i) => (
-                            <div key={i} className="flex gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm border border-slate-200">
-                                    {item.icon}
+                            {/* Capture elements */}
+                            {device && (
+                                <div className="border border-slate-100 rounded-3xl p-5 space-y-4">
+                                    <CaptureButton />
+                                    <CaptureLoader />
+                                    <CaptureError />
+                                    <CaptureSuccess />
+
+                                    {captureResult && (
+                                        <button
+                                            type="button"
+                                            onClick={handleKycSubmit}
+                                            disabled={submitting}
+                                            className="w-full py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-2xl font-bold uppercase tracking-wider text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50 mt-4"
+                                        >
+                                            {submitting ? (
+                                                <>
+                                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                    Submitting KYC...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <ShieldCheck size={16} />
+                                                    Submit Biometric KYC
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
                                 </div>
-                                <div>
-                                    <p className="text-xs font-black text-slate-800">{item.n}. {item.title}</p>
-                                    <p className="text-[10px] text-slate-500 mt-0.5 leading-relaxed">{item.desc}</p>
-                                    {item.link && <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-600 font-bold underline">Open download page →</a>}
+                            )}
+
+                            {kycError && (
+                                <div className="bg-rose-50 border border-rose-100 text-rose-700 text-xs px-4 py-3 rounded-2xl flex items-center gap-2 font-semibold">
+                                    <AlertCircle className="text-rose-500 shrink-0" size={14} />
+                                    <div>{kycError}</div>
                                 </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* OTP Entry Screen */}
+                    {isOtpRequired && (
+                        <div className="space-y-6">
+                            <div className="bg-blue-50 border border-blue-100 rounded-3xl p-5 text-center">
+                                <h3 className="text-sm font-black text-blue-800 uppercase tracking-wide">OTP Verification Required</h3>
+                                <p className="text-xs text-blue-600 font-semibold mt-1">
+                                    Levin provider has generated OTP validation credentials for Transaction ID: <span className="font-bold text-slate-700">{kycResponse.providerReference}</span>.
+                                </p>
                             </div>
-                        ))}
 
-                        <button onClick={() => setPhase('idle')}
-                            className="w-full py-4 bg-blue-600 text-white rounded-xl font-black text-sm uppercase tracking-widest hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
-                            <CheckCircle2 size={16} /> Everything Ready — Start KYC
-                        </button>
-                    </div>
-                )}
-
-                {/* OTP PHASE */}
-                {phase === 'otp' && (
-                    <div className="space-y-6">
-                        <div className="text-center">
-                            <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <ShieldCheck size={40} className="text-blue-600" />
+                            <div className="space-y-2">
+                                <label className="text-xs font-black uppercase text-slate-400 tracking-wider">Enter OTP Code</label>
+                                <input
+                                    type="text"
+                                    maxLength="6"
+                                    value={otpCode}
+                                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                                    placeholder="Enter 6-digit OTP"
+                                    className="w-full px-4 py-3.5 border border-slate-200 rounded-2xl text-center font-bold tracking-[0.2em] text-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                />
                             </div>
-                            <h2 className="text-xl font-black text-slate-900 uppercase">Enter OTP</h2>
-                            <p className="text-sm text-slate-500 mt-2">OTP sent to your registered mobile</p>
-                        </div>
-                        <input type="text" maxLength={6} value={otp}
-                            onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
-                            placeholder="000000"
-                            className="w-full px-4 py-4 border-2 border-slate-200 rounded-xl text-center text-2xl font-black tracking-[0.5em] outline-none focus:border-blue-500" />
-                        {error && <p className="text-red-600 text-sm font-bold text-center">{error}</p>}
-                        <button onClick={verifyOtp} disabled={otpLoading || otp.length < 4}
-                            className="w-full py-4 bg-blue-600 text-white rounded-xl font-black text-sm uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-2">
-                            {otpLoading ? <><RefreshCw size={16} className="animate-spin" /> Verifying...</> : 'Verify OTP'}
-                        </button>
-                    </div>
-                )}
 
-                {/* SUCCESS */}
-                {phase === 'success' && (
-                    <div className="text-center space-y-6 py-4">
-                        <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
-                            <CheckCircle2 size={48} className="text-emerald-500" />
-                        </div>
-                        <div>
-                            <h2 className="text-2xl font-black text-slate-900 uppercase">KYC Complete!</h2>
-                            <p className="text-slate-500 text-sm mt-2">Biometric KYC verified. You can now do AEPS transactions.</p>
-                        </div>
-                        <button onClick={() => navigate('/aeps')}
-                            className="w-full py-4 bg-emerald-600 text-white rounded-xl font-black text-sm uppercase tracking-widest hover:bg-emerald-700 transition-all">
-                            Go to AEPS Services
-                        </button>
-                    </div>
-                )}
-
-                {/* CAPTURE / IDLE / FAILED */}
-                {(phase === 'idle' || phase === 'capturing' || phase === 'submitting' || phase === 'failed') && (
-                    <div className="space-y-5">
-
-                        {/* Aadhaar input */}
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Aadhaar Number *</label>
-                            <input type="text" maxLength={12} value={aadhaarInput}
-                                readOnly={!!user?.aadhaarNumber}
-                                onChange={e => setAadhaarInput(e.target.value.replace(/\D/g, ''))}
-                                placeholder="12-digit Aadhaar number"
-                                className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-semibold tracking-widest outline-none ${user?.aadhaarNumber ? 'bg-slate-50 border-slate-200 text-slate-500' : 'bg-white border-blue-300 focus:border-blue-500 text-slate-800'}`}
-                            />
-                            {!user?.aadhaarNumber && <p className="text-[10px] text-amber-600 font-bold">Enter Aadhaar manually — not in your profile</p>}
-                        </div>
-
-                        {/* Status icon */}
-                        <div className="text-center py-3">
-                            <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-3 transition-all ${
-                                phase === 'capturing' ? 'bg-blue-100 animate-pulse' :
-                                phase === 'submitting' ? 'bg-amber-100' :
-                                phase === 'failed' ? 'bg-red-100' : 'bg-slate-100'
-                            }`}>
-                                {phase === 'failed' ? <XCircle size={40} className="text-red-500" /> :
-                                 phase === 'submitting' ? <RefreshCw size={40} className="text-amber-500 animate-spin" /> :
-                                 <Fingerprint size={40} className={phase === 'capturing' ? 'text-blue-600' : 'text-slate-400'} />}
-                            </div>
-                            <p className="text-sm font-black text-slate-800 uppercase">
-                                {phase === 'capturing' ? 'Waiting for fingerprint popup...' :
-                                 phase === 'submitting' ? 'Submitting KYC to Levin...' :
-                                 phase === 'failed' ? 'KYC Failed' : 'Ready to Capture'}
-                            </p>
-                            <p className="text-[10px] text-slate-400 font-bold mt-1">
-                                {phase === 'idle' && 'Click button — a fingerprint capture popup will open'}
-                                {phase === 'capturing' && 'Complete fingerprint scan in the popup window'}
-                            </p>
-                        </div>
-
-                        {error && (
-                            <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
-                                <p className="text-[11px] text-red-700 font-bold text-center">{error}</p>
-                                {phase === 'failed' && (
-                                    <button onClick={() => setPhase('setup')} className="text-[10px] text-blue-600 font-bold underline block text-center mt-2 w-full">
-                                        View setup instructions →
-                                    </button>
+                            <button
+                                type="button"
+                                onClick={handleOtpSubmit}
+                                disabled={submittingOtp || otpCode.length !== 6}
+                                className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold uppercase tracking-wider text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-blue-500/20 disabled:opacity-50"
+                            >
+                                {submittingOtp ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        Verifying OTP...
+                                    </>
+                                ) : (
+                                    "Verify OTP"
                                 )}
-                            </div>
-                        )}
+                            </button>
 
-                        <button onClick={captureAndSubmit}
-                            disabled={phase === 'capturing' || phase === 'submitting'}
-                            className={`w-full py-4 text-white rounded-xl font-black text-sm uppercase tracking-widest transition-all disabled:opacity-60 flex items-center justify-center gap-2 ${phase === 'failed' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}>
-                            {phase === 'capturing' ? <><RefreshCw size={16} className="animate-spin" /> Waiting for Capture...</> :
-                             phase === 'submitting' ? <><RefreshCw size={16} className="animate-spin" /> Submitting KYC...</> :
-                             phase === 'failed' ? <><Fingerprint size={16} /> Retry KYC</> :
-                             <><Fingerprint size={16} /> Capture Fingerprint & Submit KYC</>}
-                        </button>
-                    </div>
-                )}
+                            {otpError && (
+                                <div className="bg-rose-50 border border-rose-100 text-rose-700 text-xs px-4 py-3 rounded-2xl flex items-center gap-2 font-semibold">
+                                    <AlertCircle className="text-rose-500 shrink-0" size={14} />
+                                    <div>{otpError}</div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Success Screen */}
+                    {isKycSuccess && (
+                        <div className="space-y-6 text-center py-6">
+                            <div className="w-16 h-16 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-3xl flex items-center justify-center mx-auto shadow-md">
+                                <CheckCircle2 size={32} />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-black text-slate-800 uppercase tracking-wide">KYC Verification Completed</h3>
+                                <p className="text-xs text-slate-500 font-semibold mt-1">
+                                    Your merchant account has been authenticated successfully. AEPS terminal is now active.
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => navigate('/aeps')}
+                                className="w-full py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-2xl font-bold uppercase tracking-wider text-xs transition shadow-md cursor-pointer"
+                            >
+                                Go to Terminal
+                            </button>
+                        </div>
+                    )}
+                </div>
             </motion.div>
         </div>
     );
-};
-
-export default AepsAgentKyc;
+}

@@ -28,6 +28,11 @@ public class User {
     private String aepsMerchantId;
     private Boolean aepsOnboarded;
     private Boolean aepsKycDone;
+    private String aepsKycRefId;
+    private String aepsKycTxnId;
+    private LocalDateTime aepsKycCompletedAt;
+    private String aeps2faSessionId;
+    private LocalDateTime aeps2faAuthenticatedAt;
 
     @PrePersist
     protected void onCreate() {

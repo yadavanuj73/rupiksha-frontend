@@ -81,14 +81,6 @@ services:
         sync: false
       - key: SENTRY_DSN
         sync: false
-      - key: LEVIN_AEPS_BASE_URL
-        sync: false
-      - key: LEVIN_AEPS_API_TOKEN
-        sync: false
-      - key: LEVIN_AEPS_USER_ID
-        sync: false
-      - key: LEVIN_AEPS_ENCRYPTION_KEY
-        sync: false
 
   - type: redis
     name: rupiksha-redis

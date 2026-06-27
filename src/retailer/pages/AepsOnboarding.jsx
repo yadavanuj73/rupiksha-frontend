@@ -1,444 +1,471 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-    User, MapPin, Building2, CheckCircle2, ArrowLeft,
-    ShieldCheck, RefreshCw, ChevronRight, FileText
-} from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { Landmark, ArrowLeft, Sparkles, UserCheck, AlertCircle, Compass, CheckCircle2, MapPin } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { aepsService } from '../../services/apiService';
 
-const STATE_CODES = {
-    "Jammu and Kashmir":"JK","Himachal Pradesh":"HP","Punjab":"PB","Chandigarh":"CH",
-    "Uttarakhand":"UA","Haryana":"HR","Delhi":"DL","Rajasthan":"RJ","Uttar Pradesh":"UP",
-    "Bihar":"BR","Sikkim":"SK","Arunachal Pradesh":"AR","Nagaland":"NL","Manipur":"MN",
-    "Mizoram":"MZ","Tripura":"TR","Meghalaya":"ML","Assam":"AS","West Bengal":"WB",
-    "Jharkhand":"JH","Odisha":"OR","Chhattisgarh":"CG","Madhya Pradesh":"MP",
-    "Gujarat":"GJ","Daman and Diu":"DD","Dadra and Nagar Haveli":"DN","Maharashtra":"MH",
-    "Andhra Pradesh":"AP","Karnataka":"KA","Goa":"GA","Lakshadweep":"LD","Kerala":"KL",
-    "Tamil Nadu":"TN","Puducherry":"PY","Andaman and Nicobar Islands":"AN",
-    "Telangana":"TS"
-};
-
-const INDIAN_STATES = [
-    "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh",
-    "Goa","Gujarat","Haryana","Himachal Pradesh","Jammu and Kashmir",
-    "Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra",
-    "Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Punjab",
-    "Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura",
-    "Uttar Pradesh","Uttarakhand","West Bengal","Delhi","Puducherry",
-    "Chandigarh","Dadra and Nagar Haveli","Daman and Diu","Lakshadweep",
-    "Andaman and Nicobar Islands"
-].sort();
-
-const STEPS = [
-    { id: 1, label: 'Personal Details', icon: User },
-    { id: 2, label: 'Shop & Address', icon: Building2 },
-    { id: 3, label: 'Documents & Submit', icon: FileText },
-];
-
-const AepsOnboarding = () => {
-    const { user, setUser } = useAuth();
+export default function AepsOnboarding() {
     const navigate = useNavigate();
-    const [step, setStep] = useState(1);
-    const [submitting, setSubmitting] = useState(false);
-    const [checking, setChecking] = useState(true);
-    const [location, setLocation] = useState(null);
-    const [onboardResult, setOnboardResult] = useState(null);
-    const [errors, setErrors] = useState({});
+    const [loading, setLoading] = useState(false);
+    const [detectingGps, setDetectingGps] = useState(false);
+    const [error, setError] = useState('');
+    const [successMsg, setSuccessMsg] = useState('');
 
     const [formData, setFormData] = useState({
-        // Step 1 — Personal
         fname: '',
         middlename: '',
         lname: '',
-        aeps_mobile: user?.mobile || '',
-        email: user?.email || '',
-        pan_card: user?.panNumber || '',
-        aadhar_number: user?.aadhaarNumber || '',
-        // Step 2 — Shop & Address
-        address: user?.address || '',
-        city: user?.city || '',
-        state: user?.state || 'Uttar Pradesh',
-        pinCode: user?.pincode || '',
-        shop_name: user?.businessName || '',
-        // geo (auto-detected)
+        panCard: '',
+        aadharNumber: '',
+        aepsMobile: '',
+        email: '',
+        shopName: '',
+        address: '',
+        pinCode: '',
+        city: '',
+        state: '',
         latitude: '',
-        longitude: '',
+        longitude: ''
     });
 
-    // Check DB for existing onboarding status on mount
     useEffect(() => {
-        const checkOnboardingStatus = async () => {
+        const rawUser = localStorage.getItem('rupiksha_imp_user') || localStorage.getItem('rupiksha_user');
+        if (rawUser) {
             try {
-                // Get mobile from multiple possible sources
-                const impUser = localStorage.getItem('rupiksha_imp_user');
-                const normalUser = localStorage.getItem('rupiksha_user');
-                const storedUser = impUser ? JSON.parse(impUser) : (normalUser ? JSON.parse(normalUser) : null);
-                const mobile = user?.mobile || user?.phone || storedUser?.mobile || storedUser?.phone || user?.username || storedUser?.username;
-                
-                if (!mobile) { setChecking(false); return; }
-
-                const status = await aepsService.checkStatus(mobile);
-                if (status?.onboarded) {
-                    navigate('/aeps');
-                    return;
-                }
+                const parsed = JSON.parse(rawUser);
+                setFormData(prev => ({
+                    ...prev,
+                    aepsMobile: parsed.mobile || '',
+                    email: parsed.email || '',
+                    fname: parsed.fullName ? parsed.fullName.split(' ')[0] : '',
+                    lname: parsed.fullName && parsed.fullName.split(' ').length > 1 ? parsed.fullName.split(' ').slice(1).join(' ') : ''
+                }));
             } catch (e) {
-                // If status check fails, just show the form
-            } finally {
-                setChecking(false);
+                console.error("Failed to parse user session metadata", e);
             }
-        };
-        checkOnboardingStatus();
-    }, []);
-
-    useEffect(() => {
-        navigator.geolocation?.getCurrentPosition(
-            (pos) => {
-                const loc = { lat: String(pos.coords.latitude), long: String(pos.coords.longitude) };
-                setLocation(loc);
-                setFormData(prev => ({ ...prev, latitude: loc.lat, longitude: loc.long }));
-            },
-            () => {
-                setLocation({ lat: '26.8467', long: '80.9462' });
-                setFormData(prev => ({ ...prev, latitude: '26.8467', longitude: '80.9462' }));
-            }
-        );
+        }
     }, []);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-        setErrors(prev => ({ ...prev, [name]: '' }));
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
     };
 
-    const validateStep1 = () => {
-        const e = {};
-        if (!formData.fname.trim()) e.fname = 'Required';
-        if (!formData.lname.trim()) e.lname = 'Required';
-        if (!/^\d{10}$/.test(formData.aeps_mobile)) e.aeps_mobile = 'Enter valid 10-digit mobile';
-        if (!formData.email.trim()) e.email = 'Required';
-        if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(formData.pan_card.toUpperCase())) e.pan_card = 'Enter valid PAN (e.g. ABCDE1234F)';
-        if (!/^\d{12}$/.test(formData.aadhar_number)) e.aadhar_number = 'Enter valid 12-digit Aadhaar';
-        setErrors(e);
-        return Object.keys(e).length === 0;
+    const detectLocation = () => {
+        if (!navigator.geolocation) {
+            setError("Geolocation is not supported by your browser.");
+            return;
+        }
+
+        setDetectingGps(true);
+        setError('');
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                setFormData(prev => ({
+                    ...prev,
+                    latitude: position.coords.latitude.toFixed(6),
+                    longitude: position.coords.longitude.toFixed(6)
+                }));
+                setDetectingGps(false);
+            },
+            (err) => {
+                console.error("Geolocation error", err);
+                setError("Unable to retrieve GPS coordinates automatically. Please input manually or grant location access permissions.");
+                setDetectingGps(false);
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
     };
 
-    const validateStep2 = () => {
-        const e = {};
-        if (!formData.address.trim()) e.address = 'Required';
-        if (!formData.city.trim()) e.city = 'Required';
-        if (!formData.state.trim()) e.state = 'Required';
-        if (!/^\d{6}$/.test(formData.pinCode)) e.pinCode = 'Enter valid 6-digit pincode';
-        if (!formData.shop_name.trim()) e.shop_name = 'Required';
-        setErrors(e);
-        return Object.keys(e).length === 0;
-    };
+    const validateForm = () => {
+        if (!formData.fname.trim()) return "First name is required";
+        if (!formData.lname.trim()) return "Last name is required";
 
-    const handleNext = () => {
-        if (step === 1 && !validateStep1()) return;
-        if (step === 2 && !validateStep2()) return;
-        setStep(s => s + 1);
+        const panPattern = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+        if (!panPattern.test(formData.panCard.toUpperCase())) {
+            return "Invalid PAN card format (Must match standard e.g. ABCDE1234F)";
+        }
+
+        const aadhaarPattern = /^\d{12}$/;
+        if (!aadhaarPattern.test(formData.aadharNumber)) {
+            return "Aadhaar number must be exactly 12 digits";
+        }
+
+        const mobilePattern = /^[6-9]\d{9}$/;
+        if (!mobilePattern.test(formData.aepsMobile)) {
+            return "Mobile number must be exactly 10 digits starting with 6-9";
+        }
+
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailPattern.test(formData.email)) {
+            return "Invalid email address format";
+        }
+
+        if (!formData.shopName.trim()) return "Shop name is required";
+        if (!formData.address.trim()) return "Shop address is required";
+
+        const pinPattern = /^\d{6}$/;
+        if (!pinPattern.test(formData.pinCode)) {
+            return "Pincode must be exactly 6 digits";
+        }
+
+        if (!formData.city.trim()) return "City is required";
+        if (!formData.state.trim()) return "State code is required (e.g. BR, MH, UP)";
+        if (!formData.latitude.trim() || !formData.longitude.trim()) {
+            return "GPS Coordinates are required. Please click 'Detect GPS'.";
+        }
+
+        return null;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setSubmitting(true);
+        setError('');
+        setSuccessMsg('');
+
+        const validationError = validateForm();
+        if (validationError) {
+            setError(validationError);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+
+        setLoading(true);
         try {
-            // Use GPS if available, otherwise use a default coordinate for the state
-            // Levin validates lat/long — use registered address location not live GPS
-            const STATE_COORDS = {
-                'BR': { lat: '25.0961', lon: '85.3131' }, // Bihar
-                'UP': { lat: '26.8467', lon: '80.9462' }, // Uttar Pradesh
-                'DL': { lat: '28.6139', lon: '77.2090' }, // Delhi
-                'MH': { lat: '19.7515', lon: '75.7139' }, // Maharashtra
-                'RJ': { lat: '27.0238', lon: '74.2179' }, // Rajasthan
-                'GJ': { lat: '22.2587', lon: '71.1924' }, // Gujarat
-                'MP': { lat: '22.9734', lon: '78.6569' }, // Madhya Pradesh
-                'WB': { lat: '22.9868', lon: '87.8550' }, // West Bengal
-                'TN': { lat: '11.1271', lon: '78.6569' }, // Tamil Nadu
-                'KA': { lat: '15.3173', lon: '75.7139' }, // Karnataka
-                'AP': { lat: '15.9129', lon: '79.7400' }, // Andhra Pradesh
-                'TS': { lat: '18.1124', lon: '79.0193' }, // Telangana
-                'KL': { lat: '10.8505', lon: '76.2711' }, // Kerala
-                'OR': { lat: '20.9517', lon: '85.0985' }, // Odisha
-                'JH': { lat: '23.6102', lon: '85.2799' }, // Jharkhand
-                'HR': { lat: '29.0588', lon: '76.0856' }, // Haryana
-                'PB': { lat: '31.1471', lon: '75.3412' }, // Punjab
-                'HP': { lat: '31.1048', lon: '77.1734' }, // Himachal Pradesh
-                'UK': { lat: '30.0668', lon: '79.0193' }, // Uttarakhand
-                'AS': { lat: '26.2006', lon: '92.9376' }, // Assam
-                'CG': { lat: '21.2787', lon: '81.8661' }, // Chhattisgarh
-            };
-
-            const stateCode = STATE_CODES[formData.state.trim()] || formData.state.trim();
-            const stateCoord = STATE_COORDS[stateCode] || { lat: '26.8467', lon: '80.9462' };
-
+            const correlationId = `corr_${Date.now()}`;
             const payload = {
-                fname: formData.fname.trim(),
-                middlename: formData.middlename.trim(),
-                lname: formData.lname.trim(),
-                pan_card: formData.pan_card.trim().toUpperCase(),
-                aadhar_number: formData.aadhar_number.trim(),
-                pinCode: formData.pinCode.trim(),
-                address: formData.address.trim(),
-                aeps_mobile: formData.aeps_mobile.trim(),
-                state: stateCode,
-                shop_name: formData.shop_name.trim(),
-                city: formData.city.trim(),
-                latitude: formData.latitude || stateCoord.lat,
-                longitude: formData.longitude || stateCoord.lon,
-                email: formData.email.trim(),
-                ad1: formData.address.trim(),
-                ad2: '',
-                ad3: '',
-                ad4: '',
+                ...formData,
+                panCard: formData.panCard.toUpperCase(),
+                correlationId,
+                timestamp: Date.now()
             };
 
-            const result = await aepsService.onboard(payload);
-            setOnboardResult(result);
+            await aepsService.onboard(payload);
 
-            if (result?.statusId === 1 || (result?.message && result.message.toLowerCase().includes('already'))) {
-                const updatedUser = {
-                    ...user,
-                    aepsAgentId: result.agentId || ('RUP0' + formData.aeps_mobile.trim()),
-                    merchantId: result.merchantId || '',
-                    aepsOnboarded: true,
-                };
-                // Save to correct localStorage key
-                const isImp = !!localStorage.getItem('rupiksha_imp_user');
-                if (isImp) {
-                    localStorage.setItem('rupiksha_imp_user', JSON.stringify(updatedUser));
-                } else {
-                    localStorage.setItem('rupiksha_user', JSON.stringify(updatedUser));
-                }
-                setUser(updatedUser);
-                setStep(4); // success screen            } else {
-                alert(result?.message || 'Onboarding failed. Please check your details and try again.');
-            }
+            setSuccessMsg("Merchant Onboarding completed successfully! Agent profile registered. Redirecting to dashboard...");
+            setTimeout(() => {
+                navigate('/aeps');
+            }, 3000);
         } catch (err) {
-            alert('Network error: ' + (err?.message || 'Please try again'));
+            console.error("Onboarding submission failed", err);
+            setError(err.message || "Onboarding execution failed. Please verify credentials and network parameters.");
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         } finally {
-            setSubmitting(false);
+            setLoading(false);
         }
     };
 
-    // Loading screen while checking DB status
-    if (checking) {
-        return (
-            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                    <p className="text-slate-500 font-semibold text-sm">Checking AEPS status...</p>
-                </div>
-            </div>
-        );
-    }
-
-    // Success screen
-    if (step === 4 && onboardResult) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-900 to-indigo-950 flex items-center justify-center p-6">
-                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                    className="bg-white rounded-3xl p-10 text-center max-w-md w-full shadow-2xl">
-                    <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <CheckCircle2 size={40} className="text-emerald-500" />
-                    </div>
-                    <h1 className="text-xl font-black text-slate-900 uppercase tracking-tight">AEPS Onboarding Complete!</h1>
-                    <p className="text-slate-500 text-sm font-semibold mt-2">Your AEPS agent account has been created successfully.</p>
-                    <div className="mt-6 bg-slate-50 rounded-2xl p-5 text-left space-y-3">
-                        <Row label="Agent ID" value={onboardResult.agentId} />
-                        <Row label="Merchant ID" value={onboardResult.merchant_id} />
-                        <Row label="Status" value="ACTIVE" green />
-                    </div>
-                    <div className="mt-6 space-y-3">
-                        <button onClick={() => navigate('/aeps-agent-kyc')}
-                            className="w-full py-3.5 bg-blue-600 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all">
-                            Proceed to Agent KYC
-                        </button>
-                        <button onClick={() => navigate('/dashboard')}
-                            className="w-full py-3.5 bg-slate-100 text-slate-700 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all">
-                            Dashboard
-                        </button>
-                    </div>
-                </motion.div>
-            </div>
-        );
-    }
-
     return (
-        <div className="min-h-screen bg-slate-50 font-sans">
-            {/* Header */}
-            <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between h-14">
-                <div className="flex items-center gap-3">
-                    <button onClick={() => step > 1 ? setStep(s => s - 1) : navigate('/dashboard')}
-                        className="w-8 h-8 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center text-slate-600 transition-all flex-shrink-0">
-                        <ArrowLeft size={16} />
-                    </button>
-                    <div>
-                        <h1 className="text-sm font-black text-slate-900 uppercase tracking-tight leading-tight">AEPS Retailer Onboarding</h1>
+        <div className="min-h-screen bg-[#f8fafc] py-12 px-4 flex justify-center items-center font-['Inter',sans-serif]">
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white border border-slate-100 shadow-[0_15px_40px_rgb(0,0,0,0.03)] rounded-3xl w-full max-w-4xl overflow-hidden relative"
+            >
+                <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-500 to-indigo-600" />
+
+                {/* Main Content Area */}
+                <div className="p-8 md:p-12">
+                    {/* Header */}
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                        <div>
+                            <button
+                                onClick={() => navigate(-1)}
+                                className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-slate-600 transition mb-3"
+                            >
+                                <ArrowLeft size={14} />
+                                Go Back
+                            </button>
+                            <h1 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
+                                <Landmark className="text-blue-600" size={32} />
+                                AEPS Merchant Onboarding
+                            </h1>
+                            <p className="text-slate-500 text-sm mt-1.5 font-medium leading-relaxed">
+                                Complete your one-time onboarding form to register your retail merchant account.
+                            </p>
+                        </div>
+                        <div className="bg-blue-50/60 border border-blue-100 rounded-2xl p-4 self-start md:self-auto flex items-center gap-3">
+                            <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center font-bold">
+                                <Sparkles size={20} />
+                            </div>
+                            <div>
+                                <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider">Enterprise Integration</h4>
+                                <p className="text-[10px] text-slate-500 font-semibold">100% paperless registration</p>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
 
-            {/* Step Indicator */}
-            <div className="max-w-2xl mx-auto px-6 pt-8">
-                <div className="flex items-center justify-between mb-8">
-                    {STEPS.map((s, idx) => {
-                        const Icon = s.icon;
-                        const isActive = step === s.id;
-                        const isDone = step > s.id;
-                        return (
-                            <React.Fragment key={s.id}>
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all font-black text-sm
-                                        ${isDone ? 'bg-emerald-500 text-white' : isActive ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
-                                        {isDone ? <CheckCircle2 size={18} /> : <Icon size={18} />}
-                                    </div>
-                                    <span className={`text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-blue-600' : isDone ? 'text-emerald-600' : 'text-slate-400'}`}>
-                                        {s.label}
-                                    </span>
+                    {/* Messages Banners */}
+                    <AnimatePresence>
+                        {error && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="bg-rose-50 border border-rose-100 text-rose-700 px-5 py-4 rounded-2xl flex items-start gap-3.5 mb-6 text-sm font-semibold shadow-sm"
+                            >
+                                <AlertCircle className="text-rose-500 shrink-0 mt-0.5" size={18} />
+                                <div>{error}</div>
+                            </motion.div>
+                        )}
+                        {successMsg && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="bg-emerald-50 border border-emerald-100 text-emerald-700 px-5 py-4 rounded-2xl flex items-start gap-3.5 mb-6 text-sm font-semibold shadow-sm"
+                            >
+                                <CheckCircle2 className="text-emerald-500 shrink-0 mt-0.5" size={18} />
+                                <div>{successMsg}</div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Onboarding Form */}
+                    <form onSubmit={handleSubmit} className="space-y-8">
+                        {/* Section 1: Merchant Details */}
+                        <div>
+                            <h3 className="text-xs font-black uppercase tracking-widest text-blue-600 mb-4 border-b border-slate-100 pb-2">
+                                01. Personal Identity Details
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">First Name *</label>
+                                    <input
+                                        type="text"
+                                        name="fname"
+                                        value={formData.fname}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
+                                        placeholder="Enter First Name"
+                                        disabled={loading}
+                                    />
                                 </div>
-                                {idx < STEPS.length - 1 && (
-                                    <div className={`flex-1 h-0.5 mx-2 mb-6 rounded-full transition-all ${step > s.id ? 'bg-emerald-400' : 'bg-slate-200'}`} />
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Middle Name</label>
+                                    <input
+                                        type="text"
+                                        name="middlename"
+                                        value={formData.middlename}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
+                                        placeholder="Optional"
+                                        disabled={loading}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Last Name *</label>
+                                    <input
+                                        type="text"
+                                        name="lname"
+                                        value={formData.lname}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
+                                        placeholder="Enter Last Name"
+                                        disabled={loading}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">PAN Card Number *</label>
+                                    <input
+                                        type="text"
+                                        name="panCard"
+                                        value={formData.panCard}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none uppercase transition"
+                                        placeholder="E.g. ABCDE1234F"
+                                        maxLength={10}
+                                        disabled={loading}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Aadhaar Number *</label>
+                                    <input
+                                        type="text"
+                                        name="aadharNumber"
+                                        value={formData.aadharNumber}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
+                                        placeholder="12 Digit Aadhaar"
+                                        maxLength={12}
+                                        disabled={loading}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">AEPS Mobile Number *</label>
+                                    <input
+                                        type="text"
+                                        name="aepsMobile"
+                                        value={formData.aepsMobile}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
+                                        placeholder="10 Digit Mobile"
+                                        maxLength={10}
+                                        disabled={loading}
+                                    />
+                                </div>
+                                <div className="md:col-span-3">
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email Address *</label>
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        value={formData.email}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
+                                        placeholder="E.g. agent@rupiksha.com"
+                                        disabled={loading}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Section 2: Shop Details */}
+                        <div>
+                            <h3 className="text-xs font-black uppercase tracking-widest text-blue-600 mb-4 border-b border-slate-100 pb-2">
+                                02. Shop & Geographic Location
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div className="md:col-span-2">
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Shop Name *</label>
+                                    <input
+                                        type="text"
+                                        name="shopName"
+                                        value={formData.shopName}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
+                                        placeholder="E.g. Shreenath Digital Hub"
+                                        disabled={loading}
+                                    />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Shop Full Address *</label>
+                                    <textarea
+                                        name="address"
+                                        value={formData.address}
+                                        onChange={handleChange}
+                                        rows={2}
+                                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none resize-none transition"
+                                        placeholder="Shop No, Complex, Street Name, Landmark"
+                                        disabled={loading}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Pincode *</label>
+                                    <input
+                                        type="text"
+                                        name="pinCode"
+                                        value={formData.pinCode}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
+                                        placeholder="6 Digit PIN Code"
+                                        maxLength={6}
+                                        disabled={loading}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">City *</label>
+                                    <input
+                                        type="text"
+                                        name="city"
+                                        value={formData.city}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
+                                        placeholder="E.g. Patna"
+                                        disabled={loading}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">State Code *</label>
+                                    <input
+                                        type="text"
+                                        name="state"
+                                        value={formData.state}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
+                                        placeholder="State (E.g. BR, MH, UP)"
+                                        disabled={loading}
+                                    />
+                                </div>
+
+                                {/* Geographic GPS Coordinates */}
+                                <div className="border border-dashed border-slate-200 bg-slate-50/50 p-4 rounded-2xl flex flex-col justify-center">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <MapPin className="text-slate-400" size={16} />
+                                            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">GPS Verification</span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={detectLocation}
+                                            disabled={detectingGps || loading}
+                                            className="px-3.5 py-1.5 bg-blue-50 border border-blue-100 hover:bg-blue-100 text-blue-600 font-bold text-[10px] uppercase tracking-wider rounded-xl transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                        >
+                                            <Compass className={`animate-spin ${detectingGps ? 'opacity-100' : 'hidden'}`} size={12} />
+                                            {detectingGps ? 'Detecting...' : 'Detect GPS'}
+                                        </button>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3.5">
+                                        <div>
+                                            <input
+                                                type="text"
+                                                name="latitude"
+                                                value={formData.latitude}
+                                                onChange={handleChange}
+                                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-600 text-xs outline-none focus:border-blue-500 transition"
+                                                placeholder="Latitude"
+                                                disabled={loading}
+                                            />
+                                        </div>
+                                        <div>
+                                            <input
+                                                type="text"
+                                                name="longitude"
+                                                value={formData.longitude}
+                                                onChange={handleChange}
+                                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-600 text-xs outline-none focus:border-blue-500 transition"
+                                                placeholder="Longitude"
+                                                disabled={loading}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Submit Actions */}
+                        <div className="flex gap-4 pt-6 border-t border-slate-100">
+                            <button
+                                type="button"
+                                onClick={() => navigate(-1)}
+                                className="flex-1 py-3.5 border border-slate-200 text-slate-500 rounded-2xl font-bold uppercase tracking-wider text-xs hover:bg-slate-50 transition cursor-pointer"
+                                disabled={loading}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                className="flex-2 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold uppercase tracking-wider text-xs shadow-lg shadow-blue-500/20 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
+                                disabled={loading}
+                            >
+                                {loading ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        Submitting Onboarding...
+                                    </>
+                                ) : (
+                                    <>
+                                        <UserCheck size={16} />
+                                        Complete Onboarding
+                                    </>
                                 )}
-                            </React.Fragment>
-                        );
-                    })}
+                            </button>
+                        </div>
+                    </form>
                 </div>
-
-                {/* Form Card */}
-                <AnimatePresence mode="wait">
-                    <motion.div key={step}
-                        initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }}
-                        transition={{ duration: 0.2 }}
-                        className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-
-                        {/* ── STEP 1: Personal Details ── */}
-                        {step === 1 && (
-                            <div className="p-6 space-y-5">
-                                <SectionHeader icon={<User size={16} />} title="Personal Details" sub="As per Aadhaar / PAN card" />
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                    <Field label="First Name *" name="fname" value={formData.fname} onChange={handleChange} error={errors.fname} placeholder="e.g. Rajesh" />
-                                    <Field label="Middle Name" name="middlename" value={formData.middlename} onChange={handleChange} placeholder="Optional" />
-                                    <Field label="Last Name *" name="lname" value={formData.lname} onChange={handleChange} error={errors.lname} placeholder="e.g. Kumar" />
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <Field label="Mobile Number *" name="aeps_mobile" value={formData.aeps_mobile} onChange={handleChange} error={errors.aeps_mobile} placeholder="10-digit mobile" maxLength={10} />
-                                    <Field label="Email Address *" type="email" name="email" value={formData.email} onChange={handleChange} error={errors.email} placeholder="your@email.com" />
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <Field label="PAN Card Number *" name="pan_card" value={formData.pan_card} onChange={e => handleChange({ target: { name: 'pan_card', value: e.target.value.toUpperCase() } })} error={errors.pan_card} placeholder="ABCDE1234F" maxLength={10} />
-                                    <Field label="Aadhaar Number *" name="aadhar_number" value={formData.aadhar_number} onChange={handleChange} error={errors.aadhar_number} placeholder="12-digit Aadhaar" maxLength={12} />
-                                </div>
-                            </div>
-                        )}
-
-                        {/* ── STEP 2: Shop & Address ── */}
-                        {step === 2 && (
-                            <div className="p-6 space-y-5">
-                                <SectionHeader icon={<Building2 size={16} />} title="Shop & Address Details" sub="As per business registration" />
-                                <Field label="Shop / Business Name *" name="shop_name" value={formData.shop_name} onChange={handleChange} error={errors.shop_name} placeholder="Your shop name" />
-                                <Field label="Address *" name="address" value={formData.address} onChange={handleChange} error={errors.address} placeholder="House No, Street, Area" />
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                    <Field label="City *" name="city" value={formData.city} onChange={handleChange} error={errors.city} placeholder="City name" />
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">State *</label>
-                                        <select name="state" value={formData.state} onChange={handleChange}
-                                            className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100">
-                                            {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-                                        </select>
-                                        {errors.state && <p className="text-[10px] text-red-500 font-bold">{errors.state}</p>}
-                                    </div>
-                                    <Field label="Pincode *" name="pinCode" value={formData.pinCode} onChange={handleChange} error={errors.pinCode} placeholder="6-digit PIN" maxLength={6} />
-                                </div>
-                                {location && (
-                                    <div className="flex items-center gap-2 text-emerald-600 text-[10px] font-bold bg-emerald-50 rounded-lg px-3 py-2 border border-emerald-100">
-                                        <MapPin size={12} /> GPS acquired: {parseFloat(formData.latitude).toFixed(4)}, {parseFloat(formData.longitude).toFixed(4)}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* ── STEP 3: Review & Submit ── */}
-                        {step === 3 && (
-                            <form onSubmit={handleSubmit}>
-                                <div className="p-6 space-y-5">
-                                    <SectionHeader icon={<FileText size={16} />} title="Review & Submit" sub="Confirm your details before submitting" />
-
-                                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3 text-[12px]">
-                                        <p className="font-black text-slate-500 uppercase tracking-widest text-[9px] mb-2">Personal Details</p>
-                                        <Row label="Full Name" value={`${formData.fname} ${formData.middlename} ${formData.lname}`.replace(/\s+/g,' ').trim()} />
-                                        <Row label="Mobile" value={formData.aeps_mobile} />
-                                        <Row label="Email" value={formData.email} />
-                                        <Row label="PAN" value={formData.pan_card.toUpperCase()} />
-                                        <Row label="Aadhaar" value={`XXXX XXXX XXXX ${formData.aadhar_number.slice(-4)}`} />
-                                        <hr className="border-slate-200 my-1" />
-                                        <p className="font-black text-slate-500 uppercase tracking-widest text-[9px] mb-2">Shop & Address</p>
-                                        <Row label="Shop Name" value={formData.shop_name} />
-                                        <Row label="Address" value={formData.address} />
-                                        <Row label="City" value={formData.city} />
-                                        <Row label="State" value={formData.state} />
-                                        <Row label="Pincode" value={formData.pinCode} />
-                                        {location && <Row label="GPS" value={`${parseFloat(formData.latitude).toFixed(4)}, ${parseFloat(formData.longitude).toFixed(4)}`} />}
-                                    </div>
-
-                                    <label className="flex items-start gap-3 cursor-pointer group">
-                                        <input type="checkbox" required className="mt-0.5 w-4 h-4 rounded text-blue-600 border-slate-300" />
-                                        <span className="text-[11px] font-semibold text-slate-500 group-hover:text-slate-700 transition-colors leading-relaxed">
-                                            I confirm that all details are accurate and I consent to AEPS registration under NPCI guidelines.
-                                        </span>
-                                    </label>
-
-                                    <button type="submit" disabled={submitting}
-                                        className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-sm uppercase tracking-widest transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-blue-200">
-                                        {submitting ? <><RefreshCw size={16} className="animate-spin" /> Processing...</> : <><ShieldCheck size={16} /> Submit Onboarding Request</>}
-                                    </button>
-                                </div>
-                            </form>
-                        )}
-
-                        {/* Navigation Footer (steps 1 & 2) */}
-                        {step < 3 && (
-                            <div className="px-6 pb-6">
-                                <button type="button" onClick={handleNext}
-                                    className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-200">
-                                    Next: {STEPS[step].label} <ChevronRight size={16} />
-                                </button>
-                            </div>
-                        )}
-                    </motion.div>
-                </AnimatePresence>
-            </div>
+            </motion.div>
         </div>
     );
-};
-
-// ── Sub-components ──
-const SectionHeader = ({ icon, title, sub }) => (
-    <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
-        <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600">{icon}</div>
-        <div>
-            <p className="text-sm font-black text-slate-800">{title}</p>
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{sub}</p>
-        </div>
-    </div>
-);
-
-const Field = ({ label, error, ...props }) => (
-    <div className="space-y-1.5">
-        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">{label}</label>
-        <input {...props} className={`w-full px-3 py-2.5 bg-white border rounded-xl text-sm font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:ring-1 transition-all ${error ? 'border-red-400 focus:border-red-400 focus:ring-red-100' : 'border-slate-200 focus:border-blue-500 focus:ring-blue-100'}`} />
-        {error && <p className="text-[10px] text-red-500 font-bold">{error}</p>}
-    </div>
-);
-
-const Row = ({ label, value, green }) => (
-    <div className="flex justify-between items-center">
-        <span className="text-slate-400 font-semibold">{label}</span>
-        <span className={`font-black ${green ? 'text-emerald-600' : 'text-slate-700'}`}>{value || '—'}</span>
-    </div>
-);
-
-export default AepsOnboarding;
+}

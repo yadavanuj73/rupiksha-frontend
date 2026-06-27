@@ -1,5 +1,9 @@
 package com.rupiksha.aeps.config;
 
+import com.rupiksha.aeps.client.AepsLoggingInterceptor;
+import com.rupiksha.aeps.client.AepsResponseErrorHandler;
+import com.rupiksha.aeps.client.AepsRetryInterceptor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.BufferingClientHttpRequestFactory;
@@ -17,12 +21,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Configuration
+@RequiredArgsConstructor
 public class RestTemplateConfig {
+
+    private final AepsProperties aepsProperties;
+    private final AepsLoggingInterceptor aepsLoggingInterceptor;
+    private final AepsRetryInterceptor aepsRetryInterceptor;
+    private final AepsResponseErrorHandler aepsResponseErrorHandler;
 
     @Bean
     public RestTemplate aepsRestTemplate() {
         try {
-            // Trust all SSL certificates to avoid SSL handshake issues with Levin API
+            // Trust all SSL certificates to avoid SSL handshake issues with external APIs
             TrustManager[] trustAllCerts = new TrustManager[]{
                 new X509TrustManager() {
                     public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
@@ -47,16 +57,19 @@ public class RestTemplateConfig {
                 }
             };
 
-            factory.setConnectTimeout(30000);
-            factory.setReadTimeout(30000);
+            factory.setConnectTimeout(aepsProperties.getTimeout().getConnect());
+            factory.setReadTimeout(aepsProperties.getTimeout().getRead());
 
             RestTemplate restTemplate = new RestTemplate(
                 new BufferingClientHttpRequestFactory(factory)
             );
 
             List<ClientHttpRequestInterceptor> interceptors = new ArrayList<>();
-            interceptors.add(new RestTemplateLoggingInterceptor());
+            interceptors.add(aepsRetryInterceptor);
+            interceptors.add(aepsLoggingInterceptor);
             restTemplate.setInterceptors(interceptors);
+
+            restTemplate.setErrorHandler(aepsResponseErrorHandler);
 
             return restTemplate;
         } catch (Exception e) {

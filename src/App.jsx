@@ -1,10 +1,11 @@
-﻿import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 
 import { LanguageProvider } from './context/LanguageContext';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { RDProvider } from './context/RDProvider';
 
 // --- Loading Component ---
 const PageLoader = () => (
@@ -56,6 +57,7 @@ const DistributorDetails = lazy(() => import('./admin/components/DistributorDeta
 const KYCVerification = lazy(() => import('./retailer/pages/KYCVerification'));
 const AepsOnboarding = lazy(() => import('./retailer/pages/AepsOnboarding'));
 const AepsAgentKyc = lazy(() => import('./retailer/pages/AepsAgentKyc'));
+const AepsDeviceTest = lazy(() => import('./retailer/pages/AepsDeviceTest'));
 
 // Distributor
 const DistributorLayout = lazy(() => import('./distributor/components/DistributorLayout'));
@@ -180,8 +182,9 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-      <LanguageProvider>
-        <Router>
+        <RDProvider>
+          <LanguageProvider>
+            <Router>
           <LockScreen />
           <Suspense fallback={<PageLoader />}>
             <Routes>
@@ -218,6 +221,7 @@ function App() {
                 <Route path="/payout-hub" element={<PayoutHub />} />
                 <Route path="/payout" element={<Payout />} />
                 <Route path="/aeps" element={<AEPS />} />
+                <Route path="/aeps-device-test" element={<ProtectedRoute role="DIAGNOSTIC_ALLOWED"><AepsDeviceTest /></ProtectedRoute>} />
                 <Route path="/cms" element={<CMS />} />
                 <Route path="/all-services" element={<AllServices />} />
                 <Route path="/plans" element={<Plans />} />
@@ -354,6 +358,7 @@ function App() {
           </Suspense>
         </Router>
       </LanguageProvider>
+        </RDProvider>
     </AuthProvider>
     </ThemeProvider>
   );

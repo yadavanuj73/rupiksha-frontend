@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -37,6 +37,18 @@ const shouldRequireKyc = (user) => {
     return userRoles.some((r) => KYC_REQUIRED_ROLES.includes(r));
 };
 
+const AccessDeniedView = () => (
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center font-['Inter',sans-serif]">
+        <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-3xl flex items-center justify-center mb-6 border border-rose-100/60 shadow-lg">
+            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+        </div>
+        <h1 className="text-2xl font-black text-slate-800 uppercase tracking-wide">404 - Page Not Found</h1>
+        <p className="text-slate-500 font-semibold text-xs mt-2 max-w-sm">The requested URL was not found on this server or you do not have permission to access it.</p>
+    </div>
+);
+
 const ProtectedRoute = ({ children, role, allowKycPending = false }) => {
     const { user, loading } = useAuth();
     const location = useLocation();
@@ -71,6 +83,18 @@ const ProtectedRoute = ({ children, role, allowKycPending = false }) => {
     if (role) {
         const userRoles = getUserRoles(user);
         const isEmployee = ['NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].some(r => userRoles.includes(r));
+
+        if (role === 'DIAGNOSTIC_ALLOWED') {
+            const hasAccess = userRoles.some(r => ['SUPER_ADMIN', 'SYSTEM_ADMIN', 'DEVELOPER'].includes(r));
+            const isLocalDev = window.location.hostname === 'localhost' || 
+                               window.location.hostname === '127.0.0.1' ||
+                               import.meta.env.MODE === 'development';
+            
+            if (hasAccess || isLocalDev) {
+                return children;
+            }
+            return <AccessDeniedView />;
+        }
 
         // Handle pseudoroles
         if (role === 'ADMIN_OR_EMPLOYEE') {

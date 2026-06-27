@@ -6,7 +6,7 @@ import {
     ArrowLeft, CheckCircle2, AlertTriangle, Plus, Trash2, Edit3, FileText,
     BarChart3, Megaphone, Zap, Upload, X, ImageIcon, Play,
     Camera, Eye, IndianRupee, ChevronRight, Wallet, TrendingUp, History, ArrowRight,
-    Building2, UserPlus, UserMinus, ShieldCheck, Link2, Crown, ChevronDown, Mail, MapPin, Search, Smartphone, Clock, LayoutGrid, User, Activity, Lock, LogOut
+    Building2, UserPlus, UserMinus, ShieldCheck, Link2, Crown, ChevronDown, Mail, MapPin, Search, Smartphone, Clock, LayoutGrid, User, Activity, Lock, LogOut, Terminal
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { dataService, BACKEND_URL } from '../services/dataService';
@@ -32,6 +32,17 @@ const Admin = () => {
 
     const { user: currentUser, loading, setUser, setIsLocked, logout } = useAuth();
     const [showAdminMenu, setShowAdminMenu] = useState(false);
+
+    const isLocalDev = window.location.hostname === 'localhost' || 
+                       window.location.hostname === '127.0.0.1' ||
+                       import.meta.env.MODE === 'development';
+
+    const userRoles = (Array.isArray(currentUser?.roles) && currentUser.roles.length ? currentUser.roles : [currentUser?.role])
+        .map((r) => String(typeof r === 'string' ? r : r?.name || ''))
+        .map((r) => r.trim().replace(/^ROLE_/i, '').replace(/[\s-]+/g, '_').toUpperCase())
+        .filter(Boolean);
+
+    const isDiagnosticAllowed = userRoles.some(r => ['SUPER_ADMIN', 'SYSTEM_ADMIN', 'DEVELOPER'].includes(r)) || isLocalDev;
 
     // ── Auth guard: redirect to AdminLogin if not authenticated ──
     // Note: Uses the roles from AuthContext as the source of truth so the page
@@ -75,6 +86,21 @@ const Admin = () => {
     const [expandedNav, setExpandedNav] = useState(null); // which nav group is expanded
     const [status, setStatus] = useState(null);
     const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+
+    const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+    const [isTablet, setIsTablet] = useState(typeof window !== 'undefined' ? (window.innerWidth >= 768 && window.innerWidth < 1024) : false);
+    const [isHovered, setIsHovered] = useState(false);
+    const [sidebarExpanded, setSidebarExpanded] = useState(false);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const handleResize = () => {
+            setIsMobile(window.innerWidth < 768);
+            setIsTablet(window.innerWidth >= 768 && window.innerWidth < 1024);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // SUPER_DISTRIBUTOR Addition States
     const [showAddSAModal, setShowAddSAModal] = useState(false);
@@ -3100,96 +3126,164 @@ const Admin = () => {
                 )}
             </AnimatePresence>
 
-            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â• SIDEBAR â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
-            <aside className={`fixed lg:relative !w-72 bg-white border-r border-[#f1f5f9] flex flex-col h-screen z-50 transition-all duration-300 ${showMobileSidebar ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} shrink-0`}>
-
+            {/* ── ═════════════════════ SIDEBAR ═════════════════════ ── */}
+            <aside
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
+                className={`fixed lg:relative bg-white border-r border-[#f1f5f9] flex flex-col h-screen z-50 transition-all duration-300 ease-in-out ${
+                    isMobile
+                        ? (showMobileSidebar ? 'translate-x-0' : '-translate-x-full')
+                        : 'translate-x-0'
+                } shrink-0`}
+                style={{
+                    width: isMobile
+                        ? '250px'
+                        : (isTablet
+                            ? (sidebarExpanded ? '250px' : '72px')
+                            : (isHovered ? '250px' : '72px')
+                          )
+                }}
+            >
                 {/* Logo area */}
-                <div className="flex items-center gap-3 px-8 py-8 shrink-0">
-                    <h1 className="text-2xl font-black text-[#18181b] tracking-tighter uppercase italic">RUPIKSHA</h1>
+                <div className="flex items-center gap-3 px-6 py-8 shrink-0 justify-center lg:justify-start">
+                    {(() => {
+                        const isExpanded = isMobile
+                            ? true
+                            : (isTablet ? sidebarExpanded : isHovered);
+                        return isExpanded ? (
+                            <h1 className="text-2xl font-black text-[#18181b] tracking-tighter uppercase italic transition-all duration-300">RUPIKSHA</h1>
+                        ) : (
+                            <h1 className="text-2xl font-black text-[#6366f1] tracking-tighter uppercase italic transition-all duration-300">R</h1>
+                        );
+                    })()}
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 overflow-y-auto py-2 px-6 space-y-8 scrollbar-hide">
-                    
-                    {/* Analytics Section */}
-                    <div className="space-y-2">
-                        <p className="text-[10px] font-black text-[#94a3b8] uppercase tracking-[0.2em] mb-4 ml-3">Analytics</p>
-                        {ANALYTICS_NAV.map(item => {
-                            const isActive = activeSection === item.id;
-                            return (
-                                <button key={item.id}
-                                    onClick={() => { setActiveSectionPersisted(item.id); setShowMobileSidebar(false); }}
-                                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl transition-all duration-200 ${isActive ? 'bg-[#fcfcf7] border shadow-sm border-[#f1f5f9]' : 'hover:bg-slate-50'}`}>
-                                    <div className="flex items-center gap-4">
-                                         <item.icon size={18} className={isActive ? 'text-[#18181b]' : 'text-[#94a3b8]'} />
-                                         <span className={`text-[14px] font-bold ${isActive ? 'text-[#18181b]' : 'text-[#64748b]'}`}>{item.label}</span>
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </div>
+                <nav className="flex-1 overflow-y-auto py-2 px-3 space-y-8 scrollbar-hide">
+                    {(() => {
+                        const isExpanded = isMobile
+                            ? true
+                            : (isTablet ? sidebarExpanded : isHovered);
 
-                    {/* Operations Section */}
-                    <div className="space-y-2">
-                        <p className="text-[10px] font-black text-[#94a3b8] uppercase tracking-[0.2em] mb-4 ml-3">Operations</p>
-                        {OPERATIONS_NAV.map(item => {
-                            const isActive = activeSection === item.id;
-                            return (
-                                <button key={item.id}
-                                    onClick={() => { setActiveSectionPersisted(item.id); setShowMobileSidebar(false); }}
-                                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl transition-all duration-200 ${isActive ? 'bg-[#fcfcf7] border shadow-sm border-[#f1f5f9]' : 'hover:bg-slate-50'}`}>
-                                    <div className="flex items-center gap-4">
-                                         <item.icon size={18} className={isActive ? 'text-[#18181b]' : 'text-[#94a3b8]'} />
-                                         <span className={`text-[14px] font-bold ${isActive ? 'text-[#18181b]' : 'text-[#64748b]'}`}>{item.label}</span>
-                                    </div>
-                                    {item.badge && (
-                                        <span className="bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-lg text-[10px] font-black border border-emerald-100">{item.badge}</span>
+                        return (
+                            <>
+                                {/* Analytics Section */}
+                                <div className="space-y-2">
+                                    {isExpanded && (
+                                        <p className="text-[10px] font-black text-[#94a3b8] uppercase tracking-[0.2em] mb-4 ml-3 transition-all duration-300">Analytics</p>
                                     )}
-                                </button>
-                            );
-                        })}
-                    </div>
+                                    {ANALYTICS_NAV.map(item => {
+                                        const isActive = activeSection === item.id;
+                                        return (
+                                            <button key={item.id}
+                                                onClick={() => { setActiveSectionPersisted(item.id); setShowMobileSidebar(false); setSidebarExpanded(false); }}
+                                                className={`w-full flex items-center rounded-2xl transition-all duration-200 ${isExpanded ? 'justify-between px-3 py-2.5' : 'justify-center p-2.5'} ${isActive ? 'bg-[#fcfcf7] border shadow-sm border-[#f1f5f9]' : 'hover:bg-slate-50'}`}>
+                                                <div className="flex items-center gap-4">
+                                                     <item.icon size={18} className={isActive ? 'text-[#18181b]' : 'text-[#94a3b8]'} />
+                                                     {isExpanded && (
+                                                         <span className={`text-[14px] font-bold ${isActive ? 'text-[#18181b]' : 'text-[#64748b]'}`}>{item.label}</span>
+                                                     )}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
 
-                    {/* Management Section */}
-                    <div className="space-y-2">
-                        <p className="text-[10px] font-black text-[#94a3b8] uppercase tracking-[0.2em] mb-4 ml-3">Management</p>
-                        {MANAGEMENT_NAV.map(item => {
-                            const isActive = activeSection === item.id;
-                            return (
-                                <button key={item.id}
-                                    onClick={() => { setActiveSectionPersisted(item.id); setShowMobileSidebar(false); }}
-                                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl transition-all duration-200 ${isActive ? 'bg-[#fcfcf7] border shadow-sm border-[#f1f5f9]' : 'hover:bg-slate-50'}`}>
-                                    <div className="flex items-center gap-4">
-                                         <item.icon size={18} className={isActive ? 'text-[#18181b]' : 'text-[#94a3b8]'} />
-                                         <span className={`text-[14px] font-bold ${isActive ? 'text-[#18181b]' : 'text-[#64748b]'}`}>{item.label}</span>
+                                {/* Operations Section */}
+                                <div className="space-y-2">
+                                    {isExpanded && (
+                                        <p className="text-[10px] font-black text-[#94a3b8] uppercase tracking-[0.2em] mb-4 ml-3 transition-all duration-300">Operations</p>
+                                    )}
+                                    {OPERATIONS_NAV.map(item => {
+                                        const isActive = activeSection === item.id;
+                                        return (
+                                            <button key={item.id}
+                                                onClick={() => { setActiveSectionPersisted(item.id); setShowMobileSidebar(false); setSidebarExpanded(false); }}
+                                                className={`w-full flex items-center rounded-2xl transition-all duration-200 ${isExpanded ? 'justify-between px-3 py-2.5' : 'justify-center p-2.5'} ${isActive ? 'bg-[#fcfcf7] border shadow-sm border-[#f1f5f9]' : 'hover:bg-slate-50'}`}>
+                                                <div className="flex items-center gap-4">
+                                                     <item.icon size={18} className={isActive ? 'text-[#18181b]' : 'text-[#94a3b8]'} />
+                                                     {isExpanded && (
+                                                         <span className={`text-[14px] font-bold ${isActive ? 'text-[#18181b]' : 'text-[#64748b]'}`}>{item.label}</span>
+                                                     )}
+                                                </div>
+                                                {isExpanded && item.badge && (
+                                                    <span className="bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-lg text-[10px] font-black border border-emerald-100">{item.badge}</span>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Management Section */}
+                                <div className="space-y-2">
+                                    {isExpanded && (
+                                        <p className="text-[10px] font-black text-[#94a3b8] uppercase tracking-[0.2em] mb-4 ml-3 transition-all duration-300">Management</p>
+                                    )}
+                                    {MANAGEMENT_NAV.map(item => {
+                                        const isActive = activeSection === item.id;
+                                        return (
+                                            <button key={item.id}
+                                                onClick={() => { setActiveSectionPersisted(item.id); setShowMobileSidebar(false); setSidebarExpanded(false); }}
+                                                className={`w-full flex items-center rounded-2xl transition-all duration-200 ${isExpanded ? 'justify-between px-3 py-2.5' : 'justify-center p-2.5'} ${isActive ? 'bg-[#fcfcf7] border shadow-sm border-[#f1f5f9]' : 'hover:bg-slate-50'}`}>
+                                                <div className="flex items-center gap-4">
+                                                     <item.icon size={18} className={isActive ? 'text-[#18181b]' : 'text-[#94a3b8]'} />
+                                                     {isExpanded && (
+                                                         <span className={`text-[14px] font-bold ${isActive ? 'text-[#18181b]' : 'text-[#64748b]'}`}>{item.label}</span>
+                                                     )}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* System Section */}
+                                <div className="space-y-2">
+                                    {isExpanded && (
+                                        <p className="text-[10px] font-black text-[#94a3b8] uppercase tracking-[0.2em] mb-4 ml-3 transition-all duration-300">System</p>
+                                    )}
+                                    {SYSTEM_NAV.map(item => {
+                                        const isActive = activeSection === item.id;
+                                        return (
+                                            <button key={item.id}
+                                                onClick={() => { setActiveSectionPersisted(item.id); setShowMobileSidebar(false); setSidebarExpanded(false); }}
+                                                className={`w-full flex items-center rounded-2xl transition-all duration-200 ${isExpanded ? 'justify-between px-3 py-2.5' : 'justify-center p-2.5'} ${isActive ? 'bg-[#fcfcf7] border shadow-sm border-[#f1f5f9]' : 'hover:bg-slate-50'}`}>
+                                                <div className="flex items-center gap-4">
+                                                     <item.icon size={18} className={isActive ? 'text-[#18181b]' : 'text-[#94a3b8]'} />
+                                                     {isExpanded && (
+                                                         <span className={`text-[14px] font-bold ${isActive ? 'text-[#18181b]' : 'text-[#64748b]'}`}>{item.label}</span>
+                                                     )}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Developer Section */}
+                                {isDiagnosticAllowed && (
+                                    <div className="space-y-2 pt-4">
+                                        {isExpanded && (
+                                            <p className="text-[10px] font-black text-[#94a3b8] uppercase tracking-[0.2em] mb-4 ml-3 transition-all duration-300">Developer</p>
+                                        )}
+                                        <button
+                                            onClick={() => { window.location.href = '/aeps-device-test'; }}
+                                            className={`w-full flex items-center rounded-2xl transition-all duration-200 hover:bg-slate-50 text-[#64748b] hover:text-slate-800 ${isExpanded ? 'justify-between px-3 py-2.5' : 'justify-center p-2.5'}`}
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                 <Terminal size={18} className="text-[#94a3b8]" />
+                                                 {isExpanded && (
+                                                     <span className="text-[14px] font-bold">RD Diagnostic</span>
+                                                 )}
+                                            </div>
+                                        </button>
                                     </div>
-                                </button>
-                            );
-                        })}
-                    </div>
-
-                    {/* System Section */}
-                    <div className="space-y-2">
-                        <p className="text-[10px] font-black text-[#94a3b8] uppercase tracking-[0.2em] mb-4 ml-3">System</p>
-                        {SYSTEM_NAV.map(item => {
-                            const isActive = activeSection === item.id;
-                            return (
-                                <button key={item.id}
-                                    onClick={() => { setActiveSectionPersisted(item.id); setShowMobileSidebar(false); }}
-                                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl transition-all duration-200 ${isActive ? 'bg-[#fcfcf7] border shadow-sm border-[#f1f5f9]' : 'hover:bg-slate-50'}`}>
-                                    <div className="flex items-center gap-4">
-                                         <item.icon size={18} className={isActive ? 'text-[#18181b]' : 'text-[#94a3b8]'} />
-                                         <span className={`text-[14px] font-bold ${isActive ? 'text-[#18181b]' : 'text-[#64748b]'}`}>{item.label}</span>
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </div>
-
+                                )}
+                            </>
+                        );
+                    })()}
                 </nav>
             </aside>
 
-            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â• MAIN â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+            {/* ── ═════════════════════ MAIN ═════════════════════ ── */}
             <div className={`flex-1 flex flex-col min-w-0 overflow-hidden bg-[#fcfcf7]`}>
 
                 {/* Top Header Removal (it's inside Overview now) */}

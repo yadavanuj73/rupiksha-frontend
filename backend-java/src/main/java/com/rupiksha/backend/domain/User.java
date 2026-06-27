@@ -88,6 +88,21 @@ public class User {
     @Column(name = "aeps_kyc_done", nullable = false)
     private Boolean aepsKycDone = false;
 
+    @Column(name = "aeps_kyc_refid", length = 255)
+    private String aepsKycRefId;
+
+    @Column(name = "aeps_kyc_txnid", length = 255)
+    private String aepsKycTxnId;
+
+    @Column(name = "aeps_kyc_completed_at")
+    private Instant aepsKycCompletedAt;
+
+    @Column(name = "aeps_2fa_session_id", length = 255)
+    private String aeps2faSessionId;
+
+    @Column(name = "aeps_2fa_authenticated_at")
+    private Instant aeps2faAuthenticatedAt;
+
     @Column(name = "added_by_user_ref", length = 64)
     private String addedByUserRef;
 

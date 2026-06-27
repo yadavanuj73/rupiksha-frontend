@@ -306,59 +306,6 @@ export const payoutService = {
     apiFetch("/payout/health"),
 };
 
-// ─── AEPS ──────────────────────────────────────────────────────────────────────
-export const aepsService = {
-  // Check onboarding status from DB
-  checkStatus: (mobile) =>
-    apiFetch(`/aeps/status?mobile=${encodeURIComponent(mobile)}`),
-  // Onboarding for new retailers
-  onboard: (payload) =>
-    apiFetch("/aeps/onboard", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-  // KYC verification with biometric
-  kyc: (payload) =>
-    apiFetch("/aeps/aeps-kyc", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-  // KYC OTP verification
-  verifyKycOtp: (payload) =>
-    apiFetch("/aeps/aeps-kyc-otp-verify", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-  // 2FA verification (required every 24 hours)
-  twoFa: (payload) =>
-    apiFetch("/aeps/aeps-twofa", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-  // Main transaction (withdrawal, balance inquiry, etc.)
-  transact: (payload) =>
-    apiFetch("/aeps/transaction", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-  // Transaction status check
-  statusCheck: (clientId) =>
-    apiFetch("/aeps/transaction-status", {
-      method: "POST",
-      body: JSON.stringify({ clientId }),
-    }),
-  getHistory: (userId) => apiFetch(`/aeps/history?userId=${encodeURIComponent(userId)}`),
-  reconcile: (date) =>
-    apiFetch("/aeps/recon", {
-      method: "POST",
-      body: JSON.stringify({ date }),
-    }),
-  whitelistRequest: (payload) =>
-    apiFetch("/aeps/whitelist-request", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-};
 
 // ─── BBPS / Bharat Connect ─────────────────────────────────────────────────────
 export const bbpsService = {
@@ -384,3 +331,34 @@ export const supportService = {
     }),
   myTickets: (userId) => apiFetch(`/tickets/mine?userId=${encodeURIComponent(userId)}`),
 };
+
+// ─── AEPS / Aadhaar Enabled Payment System ───────────────────────────────────
+export const aepsService = {
+  getStatus: (mobile) => apiFetch(`/aeps/status?mobile=${encodeURIComponent(mobile)}`),
+  onboard: (payload) =>
+    apiFetch("/aeps/onboard", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  validateRdTest: (pidXml) =>
+    apiFetch("/aeps/rd/test", {
+      method: "POST",
+      body: JSON.stringify({ pidXml }),
+    }),
+  submitKyc: (payload) =>
+    apiFetch("/aeps/aeps-kyc", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  verifyOtp: (otp) =>
+    apiFetch("/aeps/otp-verify", {
+      method: "POST",
+      body: JSON.stringify({ otp }),
+    }),
+  dailyAuthenticate: (payload) =>
+    apiFetch("/aeps/daily-authenticate", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+};
+
