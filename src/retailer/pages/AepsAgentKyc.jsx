@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Fingerprint, CheckCircle2, ShieldCheck, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useRD } from '../hooks/useRD';
-import DeviceStatus from '../components/DeviceStatus';
-import CaptureButton from '../components/CaptureButton';
-import CaptureLoader from '../components/CaptureLoader';
-import CaptureError from '../components/CaptureError';
-import CaptureSuccess from '../components/CaptureSuccess';
+import { useRD } from '../../hooks/useRD';
+import DeviceStatus from '../../components/DeviceStatus';
+import CaptureButton from '../../components/CaptureButton';
+import CaptureLoader from '../../components/CaptureLoader';
+import CaptureError from '../../components/CaptureError';
+import CaptureSuccess from '../../components/CaptureSuccess';
 import { kycWorkflowService } from '../../services/aeps/kycService';
 import { otpVerificationService } from '../../services/aeps/otpVerificationService';
 

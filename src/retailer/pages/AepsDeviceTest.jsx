@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Terminal, Code, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useRD } from '../hooks/useRD';
-import DeviceStatus from '../components/DeviceStatus';
-import CaptureButton from '../components/CaptureButton';
-import CaptureLoader from '../components/CaptureLoader';
-import CaptureError from '../components/CaptureError';
-import CaptureSuccess from '../components/CaptureSuccess';
+import { useRD } from '../../hooks/useRD';
+import DeviceStatus from '../../components/DeviceStatus';
+import CaptureButton from '../../components/CaptureButton';
+import CaptureLoader from '../../components/CaptureLoader';
+import CaptureError from '../../components/CaptureError';
+import CaptureSuccess from '../../components/CaptureSuccess';
 import { aepsService } from '../../services/apiService';
 import { useNavigate } from 'react-router-dom';
 
