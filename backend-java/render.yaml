@@ -27,13 +27,9 @@ services:
           name: rupiksha-postgres
           property: database
       - key: DB_USERNAME
-        fromDatabase:
-          name: rupiksha-postgres
-          property: user
+        sync: false
       - key: DB_PASSWORD
-        fromDatabase:
-          name: rupiksha-postgres
-          property: password
+        sync: false
       - key: REDIS_HOST
         fromService:
           name: rupiksha-redis

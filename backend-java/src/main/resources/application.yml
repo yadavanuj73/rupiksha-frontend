@@ -141,7 +141,7 @@ spring:
     activate:
       on-profile: prod
   datasource:
-    url: ${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:rupiksha}?sslmode=require}
+    url: ${DB_URL}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
     hikari:
