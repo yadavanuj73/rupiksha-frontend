@@ -67,4 +67,43 @@ public class LevinRequestMapper {
         payload.put("biometricType",  request.getBiometricType());
         return payload;
     }
+
+    public static Map<String, Object> mapToTransactionPayload(
+            com.rupiksha.aeps.dto.TransactionContext context, String apiToken, String userId) {
+        Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("api_token", apiToken);
+        payload.put("user_id", userId);
+        payload.put("aeps_agent_id", context.getMerchant().getAepsAgentId());
+        payload.put("merchant_id", context.getMerchant().getAepsMerchantId());
+        payload.put("mobile", context.getMerchant().getMobile());
+        payload.put("adhar_number", context.getRequest().getAdhaarNumber());
+        payload.put("amount", context.getRequest().getAmount());
+        payload.put("iin", context.getRequest().getBankName());
+        
+        String base64PidXml = "";
+        if (context.getRequest().getPidXml() != null) {
+            base64PidXml = Base64.getEncoder().encodeToString(
+                    context.getRequest().getPidXml().getBytes(StandardCharsets.UTF_8)
+            );
+        }
+        payload.put("pidData", base64PidXml);
+        payload.put("biometricType", context.getRequest().getBiometricType());
+        
+        // Method: 152 = Balance Inquiry, 188 = Cash Withdrawal, 177 = Mini Statement
+        String method = "152";
+        if ("CASH_WITHDRAWAL".equalsIgnoreCase(context.getServiceType())) {
+            method = "188";
+        } else if ("MINI_STATEMENT".equalsIgnoreCase(context.getServiceType())) {
+            method = "177";
+        } else if ("BALANCE_INQUIRY".equalsIgnoreCase(context.getServiceType())) {
+            method = "152";
+        }
+        payload.put("method", method);
+        payload.put("latitude", context.getRequest().getLatitude());
+        payload.put("longitude", context.getRequest().getLongitude());
+        payload.put("device_id", context.getRequest().getDeviceId());
+        
+        return payload;
+    }
 }
+

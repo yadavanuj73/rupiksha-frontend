@@ -7,6 +7,9 @@ import com.rupiksha.aeps.dto.request.AepsDailyAuthRequest;
 import com.rupiksha.aeps.dto.response.OnboardingResponse;
 import com.rupiksha.aeps.dto.response.ProviderKycResult;
 
+import com.rupiksha.aeps.dto.TransactionContext;
+import com.rupiksha.aeps.dto.TransactionResult;
+
 /**
  * Interface representing an AEPS service provider.
  * Specific partner API integrations (e.g. Levin) should implement this interface.
@@ -42,4 +45,10 @@ public interface AepsProvider {
      * Executes merchant Daily 2FA authentication session with the partner API.
      */
     ProviderKycResult dailyAuthenticate(AepsDailyAuthRequest request);
+
+    /**
+     * Executes an AEPS transaction (Cash Withdrawal, Balance Inquiry, etc.) with the partner API.
+     */
+    TransactionResult executeTransaction(TransactionContext context);
 }
+

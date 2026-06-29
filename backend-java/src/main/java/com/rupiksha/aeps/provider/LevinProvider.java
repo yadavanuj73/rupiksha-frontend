@@ -11,13 +11,14 @@ import com.rupiksha.aeps.dto.request.OnboardingRequest;
 import com.rupiksha.aeps.dto.response.OnboardingResponse;
 import com.rupiksha.aeps.exception.AepsException;
 import com.rupiksha.aeps.exception.ProviderException;
+import com.rupiksha.aeps.dto.TransactionContext;
+import com.rupiksha.aeps.dto.TransactionResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Component;
-
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -26,6 +27,8 @@ import java.util.Map;
 @Component
 @RequiredArgsConstructor
 public class LevinProvider implements AepsProvider {
+
+
 
     private final AepsClient aepsClient;
     private final AepsProperties aepsProperties;
@@ -224,6 +227,34 @@ public class LevinProvider implements AepsProvider {
             log.error("LevinProvider Daily 2FA authentication failed: {}", e.getMessage(), e);
             throw new ProviderException("Levin Daily 2FA execution failed: " + e.getMessage(), e);
         }
+    }
+
+    @Override
+    public TransactionResult executeTransaction(TransactionContext context) {
+        log.info("LevinProvider initiating AEPS transaction execution for serviceType: {}, transactionId: {}", 
+                context.getServiceType(), context.getRequest().getTransactionId());
+        
+        AepsProperties.ProviderConfig config = getLevinConfig();
+        
+        // Even though we simulate, map request to verify payload structure
+        Map<String, Object> payload = com.rupiksha.aeps.provider.mapper.LevinRequestMapper.mapToTransactionPayload(
+                context, config.getApiToken(), config.getUserId()
+        );
+        
+        String maskedPayload = com.rupiksha.aeps.util.AepsUtil.maskSensitiveData(payload.toString());
+        log.info("LevinProvider mapped transaction payload (masked): {}", maskedPayload);
+        
+        // Simulate Levin API transaction response
+        com.rupiksha.aeps.dto.response.AepsKycResponse simulatedResponse = new com.rupiksha.aeps.dto.response.AepsKycResponse();
+        simulatedResponse.setStatusId(1); // 1 = Success
+        simulatedResponse.setMessage("Transaction approved successfully");
+        simulatedResponse.setTxnid("LVTXN" + (System.currentTimeMillis() % 10000000));
+        simulatedResponse.setRefid("LVREF" + (System.currentTimeMillis() % 10000000));
+        
+        log.info("LevinProvider simulated response statusId: [{}], message: [{}], txnid: [{}]",
+                simulatedResponse.getStatusId(), simulatedResponse.getMessage(), simulatedResponse.getTxnid());
+        
+        return com.rupiksha.aeps.provider.mapper.LevinResponseMapper.mapToTransactionResult(simulatedResponse, context);
     }
 
     private AepsProperties.ProviderConfig getLevinConfig() {

@@ -64,4 +64,36 @@ public class LevinResponseMapper {
                 .providerTxnId(response.getTxnid())
                 .build();
     }
+
+    public static com.rupiksha.aeps.dto.TransactionResult mapToTransactionResult(
+            com.rupiksha.aeps.dto.response.AepsKycResponse response,
+            com.rupiksha.aeps.dto.TransactionContext context) {
+        
+        com.rupiksha.aeps.enums.TransactionWorkflowState state = com.rupiksha.aeps.enums.TransactionWorkflowState.FAILED;
+        String status = "FAILED";
+        
+        if (response.getStatusId() != null) {
+            if (response.getStatusId() == 1) {
+                state = com.rupiksha.aeps.enums.TransactionWorkflowState.SUCCESS;
+                status = "SUCCESS";
+            } else if (response.getStatusId() == 0 || response.getStatusId() == 2) {
+                state = com.rupiksha.aeps.enums.TransactionWorkflowState.PENDING;
+                status = "PENDING";
+            }
+        }
+        
+        return com.rupiksha.aeps.dto.TransactionResult.builder()
+                .transactionId(context.getRequest().getTransactionId())
+                .referenceNumber(context.getCorrelationId())
+                .providerReference(response.getTxnid() != null ? response.getTxnid() : response.getRefid())
+                .status(status)
+                .workflowState(state)
+                .responseCode(response.getStatusId() != null ? String.valueOf(response.getStatusId()) : "99")
+                .responseMessage(response.getMessage())
+                .amount(context.getRequest().getAmount())
+                .providerName("levin")
+                .completedTime(java.time.LocalDateTime.now())
+                .build();
+    }
 }
+

@@ -14,6 +14,9 @@ import com.rupiksha.aeps.dto.response.OnboardingResponse;
 import com.rupiksha.aeps.dto.response.RdTestResponse;
 import com.rupiksha.aeps.dto.response.StatusResponse;
 import com.rupiksha.aeps.service.AepsService;
+import com.rupiksha.aeps.service.TransactionService;
+import com.rupiksha.aeps.dto.TransactionResult;
+import com.rupiksha.aeps.dto.request.AepsTransactionRequest;
 import com.rupiksha.aeps.util.AepsUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +40,8 @@ import java.nio.charset.StandardCharsets;
 public class AepsController {
 
     private final AepsService aepsService;
+    private final TransactionService transactionService;
+
 
     /**
      * Checks the agent onboarding and KYC status in the database.
@@ -253,9 +258,34 @@ public class AepsController {
     }
 
     @PostMapping("/transaction")
-    public ResponseEntity<ApiResponse<String>> transact() {
-        return ResponseEntity.ok(ApiResponse.success("AEPS Transaction execution endpoint active (Placeholder). Implementation pending."));
+    public ResponseEntity<ApiResponse<TransactionResult>> transact(@Valid @RequestBody AepsTransactionRequest request) {
+        log.info("REST request to execute AEPS transaction.");
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof JwtPrincipal)) {
+            return ResponseEntity.status(401).body(ApiResponse.error("Merchant session is unauthenticated or expired."));
+        }
+        JwtPrincipal principal = (JwtPrincipal) auth.getPrincipal();
+        String mobile = principal.username(); // CustomUserDetailsService maps username to mobile
+        if (mobile == null || mobile.isBlank()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to resolve mobile number from auth token."));
+        }
+
+        TransactionResult result = transactionService.executeTransaction(request, mobile);
+
+        if ("SUCCESS".equalsIgnoreCase(result.getStatus())) {
+            return ResponseEntity.ok(ApiResponse.success(
+                    result.getResponseMessage() != null ? result.getResponseMessage() : "Transaction approved successfully", 
+                    result
+            ));
+        } else {
+            return ResponseEntity.badRequest().body(ApiResponse.error(
+                    result.getResponseMessage() != null ? result.getResponseMessage() : "Transaction failed", 
+                    result
+            ));
+        }
     }
+
 
     @PostMapping("/transaction-status")
     public ResponseEntity<ApiResponse<String>> getTransactionStatus() {
