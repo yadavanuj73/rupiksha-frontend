@@ -41,7 +41,7 @@ backend-java/.env.*
 backend-java/target/
 
 # Legacy node backend (kept out of deployment)
-backend/
+/backend/
 
 # Project context file — local only, never push
 context.md

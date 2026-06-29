@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 
-@Entity
+@Entity(name = "AepsUser")
 @Data
 @Table(name = "aeps_users")
 public class User {
