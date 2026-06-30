@@ -28,10 +28,18 @@ public class User {
     private String aepsMerchantId;
     private Boolean aepsOnboarded;
     private Boolean aepsKycDone;
+    @Column(name = "aeps_kyc_refid")
     private String aepsKycRefId;
+
+    @Column(name = "aeps_kyc_txnid")
     private String aepsKycTxnId;
+
     private LocalDateTime aepsKycCompletedAt;
+
+    @Column(name = "aeps_2fa_session_id")
     private String aeps2faSessionId;
+
+    @Column(name = "aeps_2fa_authenticated_at")
     private LocalDateTime aeps2faAuthenticatedAt;
 
     @PrePersist
