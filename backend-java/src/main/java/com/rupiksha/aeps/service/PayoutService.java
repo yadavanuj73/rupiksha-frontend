@@ -42,7 +42,7 @@ public class PayoutService {
             PayoutTransaction transaction = PayoutTransaction.builder()
                 .orderId(payoutRequest.getOrderId())
                 .userId(userId)
-                .amount(payoutRequest.getAmount())
+                .amount(java.math.BigDecimal.valueOf(payoutRequest.getAmount()))
                 .beneficiaryName(payoutRequest.getBeneficiaryName())
                 .accountNumber(payoutRequest.getAccountNumber())
                 .ifsc(payoutRequest.getIfsc())
