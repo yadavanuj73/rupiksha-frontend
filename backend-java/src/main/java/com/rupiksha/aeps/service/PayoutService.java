@@ -15,7 +15,6 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -43,7 +42,7 @@ public class PayoutService {
             PayoutTransaction transaction = PayoutTransaction.builder()
                 .orderId(payoutRequest.getOrderId())
                 .userId(userId)
-                .amount(BigDecimal.valueOf(payoutRequest.getAmount()))
+                .amount(payoutRequest.getAmount())
                 .beneficiaryName(payoutRequest.getBeneficiaryName())
                 .accountNumber(payoutRequest.getAccountNumber())
                 .ifsc(payoutRequest.getIfsc())

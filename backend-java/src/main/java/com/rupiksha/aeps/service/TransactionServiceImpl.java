@@ -10,7 +10,7 @@ import com.rupiksha.aeps.enums.TransactionWorkflowState;
 import com.rupiksha.aeps.exception.AepsException;
 import com.rupiksha.aeps.exception.ValidationException;
 import com.rupiksha.aeps.repository.AepsTransactionEngineRepository;
-import com.rupiksha.aeps.repository.AepsUserRepository;
+import com.rupiksha.aeps.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -26,7 +26,7 @@ import java.util.UUID;
 @Service
 public class TransactionServiceImpl implements TransactionService {
 
-    private final AepsUserRepository aepsUserRepository;
+    private final UserRepository aepsUserRepository;
     private final com.rupiksha.backend.repository.UserRepository mainUserRepository;
     private final AepsTransactionEngineRepository transactionRepository;
     private final TransactionEngine transactionEngine;
@@ -35,7 +35,7 @@ public class TransactionServiceImpl implements TransactionService {
 
     @org.springframework.beans.factory.annotation.Autowired
     public TransactionServiceImpl(
-            @org.springframework.beans.factory.annotation.Qualifier("aepsUserRepository") AepsUserRepository aepsUserRepository,
+            @org.springframework.beans.factory.annotation.Qualifier("aepsUserRepository") UserRepository aepsUserRepository,
             @org.springframework.beans.factory.annotation.Qualifier("userRepository") com.rupiksha.backend.repository.UserRepository mainUserRepository,
             AepsTransactionEngineRepository transactionRepository,
             TransactionEngine transactionEngine,

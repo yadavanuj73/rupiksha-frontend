@@ -8,7 +8,7 @@ import com.rupiksha.aeps.dto.response.AepsWorkflowState;
 import com.rupiksha.aeps.dto.response.ProviderKycResult;
 import com.rupiksha.aeps.entity.User;
 import com.rupiksha.aeps.entity.AepsKycHistory;
-import com.rupiksha.aeps.repository.AepsUserRepository;
+import com.rupiksha.aeps.repository.UserRepository;
 import com.rupiksha.aeps.repository.AepsKycHistoryRepository;
 import com.rupiksha.aeps.config.AepsProperties;
 import com.rupiksha.aeps.dto.request.OnboardingRequest;
@@ -31,7 +31,7 @@ public class AepsServiceImpl implements AepsService {
 
     private final List<AepsProvider> providers;
     private final AepsProperties aepsProperties;
-    private final AepsUserRepository aepsUserRepository;
+    private final UserRepository aepsUserRepository;
     private final com.rupiksha.backend.repository.UserRepository mainUserRepository;
     private final AepsKycHistoryRepository aepsKycHistoryRepository;
 
@@ -39,7 +39,7 @@ public class AepsServiceImpl implements AepsService {
     public AepsServiceImpl(
             List<AepsProvider> providers,
             AepsProperties aepsProperties,
-            @Qualifier("aepsUserRepository") AepsUserRepository aepsUserRepository,
+            @Qualifier("aepsUserRepository") UserRepository aepsUserRepository,
             @Qualifier("userRepository") com.rupiksha.backend.repository.UserRepository mainUserRepository,
             AepsKycHistoryRepository aepsKycHistoryRepository
     ) {
