@@ -20,7 +20,9 @@ public class User {
     @Column(unique = true)
     private String mobile;
 
+    @Transient
     private String dob;
+
     private LocalDateTime createdAt;
     
     // AEPS related fields
