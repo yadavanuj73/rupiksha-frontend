@@ -30,6 +30,7 @@ public class AepsTransactionRequest {
     @NotBlank(message = "PID XML is required")
     private String pidXml;
 
+    @Builder.Default
     private String biometricType = "FMR";
 
     private String latitude;

@@ -27,12 +27,14 @@ public class FundRequest {
     private BigDecimal amount;
 
     @Column(nullable = false, length = 20)
+    @Builder.Default
     private String status = "PENDING"; // PENDING, APPROVED, REJECTED, CANCELLED
 
     @Column(name = "utr_number", length = 64)
     private String utrNumber;
 
     @Column(nullable = false, length = 30)
+    @Builder.Default
     private String method = "NEFT/IMPS";
 
     @Column(length = 255)
@@ -49,5 +51,6 @@ public class FundRequest {
     private Instant approvedAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
+    @Builder.Default
     private Instant createdAt = Instant.now();
 }

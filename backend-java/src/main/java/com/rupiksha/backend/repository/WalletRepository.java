@@ -2,6 +2,7 @@ package com.rupiksha.backend.repository;
 
 import com.rupiksha.backend.domain.Wallet;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 

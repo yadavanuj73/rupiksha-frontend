@@ -37,6 +37,7 @@ public class AuditLog {
     private BigDecimal amount;
 
     @Column(name = "wallet_type", nullable = false, length = 20)
+    @Builder.Default
     private String walletType = "MAIN";
 
     @Column(name = "ledger_type", nullable = false, length = 30)
@@ -55,5 +56,6 @@ public class AuditLog {
     private String remark;
 
     @Column(name = "created_at", nullable = false, updatable = false)
+    @Builder.Default
     private Instant createdAt = Instant.now();
 }
