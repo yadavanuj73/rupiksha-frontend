@@ -12,7 +12,8 @@ public record AppProperties(
         Bbps bbps,
         Services services,
         Environment environment,
-        String publicBaseUrl
+        String publicBaseUrl,
+        Wallet wallet
 ) {
     public record Jwt(String issuer, String secret, long accessTokenMinutes, long refreshTokenDays) {}
     public record Otp(long ttlSeconds, int maxAttempts) {}
@@ -24,5 +25,6 @@ public record AppProperties(
     public record Bbps(String provider, String baseUrl, String apiKey, String apiSecret) {}
     public record Services(boolean aepsEnabled, boolean bbpsEnabled, boolean ticketsEnabled, boolean rechargeEnabled, boolean payoutEnabled) {}
     public record Environment(boolean allowMockProvidersInProduction) {}
+    public record Wallet(java.math.BigDecimal tdsPercentage, java.math.BigDecimal gstPercentage) {}
 }
 

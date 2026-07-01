@@ -7,6 +7,7 @@ import com.rupiksha.aeps.dto.PayoutResponse;
 import com.rupiksha.aeps.entity.PayoutTransaction;
 import com.rupiksha.aeps.repository.PayoutTransactionRepository;
 import com.rupiksha.aeps.util.SignatureUtil;
+import com.rupiksha.backend.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
@@ -27,6 +28,7 @@ public class PayoutService {
     private final ObjectMapper objectMapper;
     private final PayoutProperties payoutProperties;
     private final PayoutTransactionRepository payoutTransactionRepository;
+    private final WalletService walletService;
 
     /**
      * Initiate a payout transaction
@@ -55,6 +57,17 @@ public class PayoutService {
                 .build();
 
             payoutTransactionRepository.save(transaction);
+
+            // 1. Debit the retailer's wallet first
+            walletService.debitForService(
+                UUID.fromString(userId),
+                transaction.getAmount(),
+                "Payout initiated: " + transaction.getOrderId(),
+                com.rupiksha.backend.domain.WalletTransactionContext.PAYOUT,
+                "PAYOUT",
+                "127.0.0.1",
+                transaction.getOrderId()
+            );
 
             String apiKey = payoutProperties.getApiKey();
             String payoutUrl = payoutProperties.getPayoutUrl();
@@ -107,6 +120,17 @@ public class PayoutService {
                 transaction.setStatus("SUCCESS");
             } else {
                 transaction.setStatus("FAILED");
+                // 2. Refund the wallet if the provider indicates failure
+                walletService.refundForService(
+                    UUID.fromString(userId),
+                    transaction.getAmount(),
+                    transaction.getOrderId(),
+                    "Payout failed: " + payoutResponse.getMessage(),
+                    com.rupiksha.backend.domain.WalletTransactionContext.PAYOUT_REFUND,
+                    "PAYOUT",
+                    "127.0.0.1",
+                    transaction.getOrderId() + "_REFUND"
+                );
             }
             
             payoutTransactionRepository.save(transaction);
@@ -121,6 +145,22 @@ public class PayoutService {
             updateTransactionStatus(payoutRequest.getOrderId(), "FAILED", 
                 String.valueOf(e.getStatusCode().value()), e.getResponseBodyAsString());
             
+            // 3. Refund the wallet if exception occurs
+            try {
+                walletService.refundForService(
+                    UUID.fromString(userId),
+                    java.math.BigDecimal.valueOf(payoutRequest.getAmount()),
+                    payoutRequest.getOrderId(),
+                    "Payout failed (ClientError): " + e.getResponseBodyAsString(),
+                    com.rupiksha.backend.domain.WalletTransactionContext.PAYOUT_REFUND,
+                    "PAYOUT",
+                    "127.0.0.1",
+                    payoutRequest.getOrderId() + "_REFUND"
+                );
+            } catch (Exception ex) {
+                log.error("Refund failed for payout {}: {}", payoutRequest.getOrderId(), ex.getMessage());
+            }
+
             try {
                 return objectMapper.readValue(e.getResponseBodyAsString(), PayoutResponse.class);
             } catch (Exception ex) {
@@ -135,6 +175,22 @@ public class PayoutService {
             // Update transaction status
             updateTransactionStatus(payoutRequest.getOrderId(), "FAILED", "500", e.getMessage());
             
+            // 4. Refund the wallet if general exception occurs
+            try {
+                walletService.refundForService(
+                    UUID.fromString(userId),
+                    java.math.BigDecimal.valueOf(payoutRequest.getAmount()),
+                    payoutRequest.getOrderId(),
+                    "Payout failed (ServerError): " + e.getMessage(),
+                    com.rupiksha.backend.domain.WalletTransactionContext.PAYOUT_REFUND,
+                    "PAYOUT",
+                    "127.0.0.1",
+                    payoutRequest.getOrderId() + "_REFUND"
+                );
+            } catch (Exception ex) {
+                log.error("Refund failed for payout {}: {}", payoutRequest.getOrderId(), ex.getMessage());
+            }
+
             return PayoutResponse.builder()
                 .statusCode("500")
                 .message("Payout failed: " + e.getMessage())

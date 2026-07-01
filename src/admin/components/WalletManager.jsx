@@ -7,12 +7,33 @@ import {
     Hash, Building2, ChevronDown, Loader2, X, ShieldCheck, History
 } from 'lucide-react';
 
-const API = '/api';
+const API = '/api/v1';
+
+const uuid = () => {
+    if (typeof window !== 'undefined' && window.crypto && window.crypto.randomUUID) {
+        return window.crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+};
 
 const fetchAPI = async (endpoint, opts = {}) => {
+    const token = localStorage.getItem('rupiksha_token');
+    const isMutation = opts.method === 'POST' || opts.method === 'PUT';
+    const idempotencyKey = isMutation ? uuid() : undefined;
+
+    const headers = {
+        'Content-Type': 'application/json',
+        ...(opts.headers || {}),
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...(idempotencyKey ? { 'X-Idempotency-Key': idempotencyKey } : {})
+    };
     const res = await fetch(`${API}${endpoint}`, {
-        headers: { 'Content-Type': 'application/json' },
         ...opts,
+        headers,
     });
     return res.json();
 };
@@ -97,6 +118,7 @@ const TABS = [
     { id: 'release', label: 'Release Lock', icon: Unlock, color: '#06b6d4' },
     { id: 'commission', label: 'Give Commission', icon: IndianRupee, color: '#ec4899' },
     { id: 'tax', label: 'Tax Wallet', icon: ShieldCheck, color: '#10b981' },
+    { id: 'history', label: 'Wallet History', icon: History, color: '#64748b' },
 ];
 
 // ─── Overview Tab ─────────────────────────────────────────────────────────
@@ -727,7 +749,7 @@ const TaxWalletTab = () => {
     const loadStats = async () => {
         setLoading(true);
         try {
-            const res = await fetchAPI('/admin/tax-wallet');
+            const res = await fetchAPI('/admin/tax-summary');
             if (res.success) setStats(res.wallet);
         } catch { } finally { setLoading(false); }
     };
@@ -760,6 +782,213 @@ const TaxWalletTab = () => {
                  <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Tax Deduction History</h3>
                  <p className="text-slate-400 text-xs font-black uppercase tracking-widest mt-2">Deductions are automatically recorded in the main transaction ledger.</p>
                  <button className="mt-6 px-10 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all">View All Transactions</button>
+            </div>
+        </div>
+    );
+};
+
+const HistoryTab = ({ users, onToast }) => {
+    const [history, setHistory] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [page, setPage] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
+    const [totalElements, setTotalElements] = useState(0);
+    
+    // Filter states
+    const [type, setType] = useState('ALL');
+    const [context, setContext] = useState('ALL');
+    const [status, setStatus] = useState('ALL');
+    const [search, setSearch] = useState('');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+
+    const loadHistory = useCallback(async () => {
+        setLoading(true);
+        try {
+            const params = new URLSearchParams({
+                type,
+                context,
+                status,
+                search,
+                startDate: startDate ? new Date(startDate).toISOString() : '',
+                endDate: endDate ? new Date(endDate).toISOString() : '',
+                page: page.toString(),
+                size: '10'
+            });
+            const res = await fetchAPI(`/wallet/history?${params.toString()}`);
+            if (res.success) {
+                setHistory(res.history || []);
+                setTotalPages(res.totalPages || 0);
+                setTotalElements(res.totalElements || 0);
+            }
+        } catch {
+            onToast({ type: 'error', message: 'Error loading wallet history' });
+        } finally {
+            setLoading(false);
+        }
+    }, [type, context, status, search, startDate, endDate, page]);
+
+    useEffect(() => {
+        setPage(0);
+    }, [type, context, status, search, startDate, endDate]);
+
+    useEffect(() => {
+        loadHistory();
+    }, [page, loadHistory]);
+
+    const handleExport = async () => {
+        try {
+            const params = new URLSearchParams({
+                type,
+                context,
+                status,
+                search,
+                startDate: startDate ? new Date(startDate).toISOString() : '',
+                endDate: endDate ? new Date(endDate).toISOString() : ''
+            });
+            const token = localStorage.getItem('rupiksha_token');
+            const res = await fetch(`/api/v1/wallet/history/export?${params.toString()}`, {
+                headers: {
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                }
+            });
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'wallet_history.csv';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        } catch {
+            onToast({ type: 'error', message: 'Failed to export CSV' });
+        }
+    };
+
+    return (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+            {/* Filters panel */}
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <h3 className="font-black text-slate-800 text-sm uppercase tracking-wide">Filters & Search</h3>
+                    <button onClick={handleExport}
+                        className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-emerald-700 transition-all shadow-md">
+                        Export CSV
+                    </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Type</label>
+                        <select value={type} onChange={e => setType(e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-indigo-400">
+                            {['ALL', 'CREDIT', 'DEBIT', 'LOCK', 'UNLOCK', 'COMMISSION', 'REFUND', 'REVERSAL', 'SERVICE_DEBIT', 'SERVICE_REFUND', 'FUND_REQUEST', 'STATUS_CHANGE', 'TAX'].map(t => (
+                                <option key={t} value={t}>{t}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Context</label>
+                        <select value={context} onChange={e => setContext(e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-indigo-400">
+                            {['ALL', 'ADMIN_CREDIT', 'ADMIN_DEBIT', 'FUND_REQUEST_CREATED', 'FUND_REQUEST_APPROVED', 'FUND_REQUEST_REJECTED', 'AEPS_CASH_WITHDRAWAL', 'AEPS_BALANCE_INQUIRY', 'AEPS_MINI_STATEMENT', 'AEPS_AADHAAR_PAY', 'AEPS_REFUND', 'BBPS_PAYMENT', 'RECHARGE', 'DMT_TRANSFER', 'PAYOUT', 'PAYOUT_REFUND', 'COMMISSION', 'TAX_DEDUCTION', 'LOCK_BALANCE', 'RELEASE_LOCK', 'MANUAL_ADJUSTMENT', 'SYSTEM_ADJUSTMENT', 'STATUS_CHANGE', 'REVERSAL'].map(c => (
+                                <option key={c} value={c}>{c}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Status</label>
+                        <select value={status} onChange={e => setStatus(e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-indigo-400">
+                            {['ALL', 'INITIATED', 'PENDING', 'PROCESSING', 'SUCCESS', 'FAILED', 'REFUNDED', 'REVERSED', 'CANCELLED', 'EXPIRED'].map(s => (
+                                <option key={s} value={s}>{s}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Start Date</label>
+                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-indigo-400" />
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">End Date</label>
+                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-indigo-400" />
+                    </div>
+                </div>
+                <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input value={search} onChange={e => setSearch(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-400 font-semibold"
+                        placeholder="Search reference number, narration, username..." />
+                </div>
+            </div>
+
+            {/* History Table */}
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="bg-slate-50 border-b border-slate-100">
+                                {['Ref No', 'Type', 'Context', 'Status', 'Amount', 'Opening', 'Closing', 'Operator', 'Target User', 'Date'].map(h => (
+                                    <th key={h} className="text-left px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">{h}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {loading ? (
+                                <tr>
+                                    <td colSpan={10} className="py-12 text-center text-xs text-slate-400 font-bold">
+                                        <div className="flex items-center justify-center gap-2">
+                                            <Loader2 size={16} className="animate-spin text-indigo-500" />
+                                            <span>Loading history entries...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : history.length === 0 ? (
+                                <tr>
+                                    <td colSpan={10} className="py-12 text-center text-xs text-slate-400 font-bold">No history entries found</td>
+                                </tr>
+                            ) : history.map((row, i) => (
+                                <tr key={i} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                    <td className="px-4 py-3 text-xs font-black text-slate-800 font-mono">{row.referenceNumber}</td>
+                                    <td className="px-4 py-3 text-xs font-semibold text-slate-600">{row.ledgerType}</td>
+                                    <td className="px-4 py-3 text-xs font-semibold text-slate-500 text-[10px]">{row.transactionContext}</td>
+                                    <td className="px-4 py-3 text-xs">
+                                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase border ${
+                                            row.status === 'SUCCESS' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                            row.status === 'FAILED' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                            row.status === 'PENDING' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                            'bg-slate-50 text-slate-600'
+                                        }`}>{row.status}</span>
+                                    </td>
+                                    <td className="px-4 py-3 text-xs font-black text-slate-800">₹{row.amount.toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-xs text-slate-500">₹{row.openingBalance.toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-xs text-slate-500">₹{row.closingBalance.toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-xs font-semibold text-slate-700">{row.operatorUsername}</td>
+                                    <td className="px-4 py-3 text-xs font-semibold text-slate-700">{row.targetUsername}</td>
+                                    <td className="px-4 py-3 text-xs text-slate-400 text-[10px]">{new Date(row.createdAt).toLocaleString()}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                    <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs">
+                        <span className="text-slate-500 font-semibold">Showing page {page + 1} of {totalPages} ({totalElements} entries)</span>
+                        <div className="flex gap-2">
+                            <button disabled={page === 0} onClick={() => setPage(page - 1)}
+                                className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl font-bold uppercase hover:border-slate-300 disabled:opacity-50 transition-all">
+                                Prev
+                            </button>
+                            <button disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}
+                                className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl font-bold uppercase hover:border-slate-300 disabled:opacity-50 transition-all">
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -831,6 +1060,7 @@ const WalletManager = ({ initialTab }) => {
                     {activeTab === 'release' && <LockReleaseTab users={wallets} type="release" onToast={setToast} onRefresh={loadWallets} />}
                     {activeTab === 'commission' && <GiveCommissionTab users={wallets} onToast={setToast} onRefresh={loadWallets} />}
                     {activeTab === 'tax' && <TaxWalletTab />}
+                    {activeTab === 'history' && <HistoryTab users={wallets} onToast={setToast} />}
                 </motion.div>
             </AnimatePresence>
         </div>

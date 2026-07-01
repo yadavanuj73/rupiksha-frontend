@@ -2,13 +2,19 @@ package com.rupiksha.aeps.listener;
 
 import com.rupiksha.aeps.dto.AepsTransactionEvent;
 import com.rupiksha.aeps.entity.AepsTransactionEngine;
+import com.rupiksha.backend.domain.WalletTransactionContext;
+import com.rupiksha.backend.service.WalletService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class AepsTransactionEventListener {
+
+    private final WalletService walletService;
 
     @EventListener
     public void onTransactionComplete(AepsTransactionEvent event) {
@@ -16,7 +22,32 @@ public class AepsTransactionEventListener {
         log.info("AepsTransactionEvent received for transaction ID: {}, status: {}", txn.getTransactionId(), txn.getStatus());
 
         // 1. Extension Point: Wallet Deduction / Credit
-        log.info("[EXTENSION POINT] Wallet handler: Skipped in this phase. Target transaction: {}", txn.getTransactionId());
+        if ("SUCCESS".equalsIgnoreCase(txn.getStatus()) || "APPROVED".equalsIgnoreCase(txn.getStatus())) {
+            String serviceType = txn.getServiceType() != null ? txn.getServiceType().toUpperCase() : "";
+            if ("CASH_WITHDRAWAL".equals(serviceType) || "AADHAAR_PAY".equals(serviceType)) {
+                try {
+                    log.info("Crediting wallet for successful AEPS transaction: {}, user: {}, amount: {}", 
+                            txn.getTransactionId(), txn.getUserId(), txn.getAmount());
+                    
+                    WalletTransactionContext context = "AADHAAR_PAY".equals(serviceType) 
+                            ? WalletTransactionContext.AEPS_AADHAAR_PAY 
+                            : WalletTransactionContext.AEPS_CASH_WITHDRAWAL;
+
+                    walletService.creditForService(
+                            txn.getUserId(),
+                            txn.getAmount(),
+                            "AEPS Withdrawal - " + txn.getTransactionId(),
+                            context,
+                            "AEPS",
+                            "127.0.0.1",
+                            txn.getTransactionId()
+                    );
+                    log.info("Successfully credited wallet for AEPS transaction: {}", txn.getTransactionId());
+                } catch (Exception e) {
+                    log.error("Failed to credit wallet for AEPS transaction {}: {}", txn.getTransactionId(), e.getMessage(), e);
+                }
+            }
+        }
 
         // 2. Extension Point: Commission Calculation
         log.info("[EXTENSION POINT] Commission calculator: Skipped in this phase. Target transaction: {}", txn.getTransactionId());
