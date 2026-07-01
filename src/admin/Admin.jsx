@@ -6,7 +6,7 @@ import {
     ArrowLeft, CheckCircle2, AlertTriangle, Plus, Trash2, Edit3, FileText,
     BarChart3, Megaphone, Zap, Upload, X, ImageIcon, Play,
     Camera, Eye, IndianRupee, ChevronRight, Wallet, TrendingUp, History, ArrowRight,
-    Building2, UserPlus, UserMinus, ShieldCheck, Link2, Crown, ChevronDown, Mail, MapPin, Search, Smartphone, Clock, LayoutGrid, User, Activity, Lock, LogOut, Terminal
+    Building2, UserPlus, UserMinus, ShieldCheck, Link2, Crown, ChevronDown, Mail, MapPin, Search, Smartphone, Clock, LayoutGrid, User, Activity, Lock, Unlock, LogOut, Terminal
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { dataService, BACKEND_URL } from '../services/dataService';
@@ -21,8 +21,8 @@ import EmployeeManager from './components/EmployeeManager';
 import LandingCMS from '../super-distributor/pages/LandingCMS';
 import ReportsAnalyst from './components/ReportsAnalyst';
 import WalletManager from './components/WalletManager';
-import LoanApprovalManager from './components/LoanApprovalManager';
 import Overview from './components/Overview';
+import rupikshaNewLogo from '../assets/rupiksha_new_logo.png';
 import EnhancedMembersTable from './components/EnhancedMembersTable';
 import { useAuth } from '../context/AuthContext';
 import { generateUniquePartyCode, stateCodeMap } from '../database/partyCode';
@@ -91,6 +91,17 @@ const Admin = () => {
     const [isTablet, setIsTablet] = useState(typeof window !== 'undefined' ? (window.innerWidth >= 768 && window.innerWidth < 1024) : false);
     const [isHovered, setIsHovered] = useState(false);
     const [sidebarExpanded, setSidebarExpanded] = useState(false);
+    const [isSidebarLocked, setIsSidebarLocked] = useState(() => localStorage.getItem('rupiksha_admin_sidebar_locked') === 'true');
+    const toggleSidebarLock = () => {
+        setIsSidebarLocked(prev => {
+            const next = !prev;
+            localStorage.setItem('rupiksha_admin_sidebar_locked', String(next));
+            return next;
+        });
+    };
+    const isExpanded = isMobile
+        ? true
+        : (isTablet ? sidebarExpanded : (isHovered || isSidebarLocked));
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -3035,7 +3046,6 @@ const Admin = () => {
 
     const OPERATIONS_NAV = [
         { id: 'Approvals', icon: CheckCircle2, label: 'Approvals', badge: 'New' },
-        { id: 'Loans', icon: IndianRupee, label: 'Loan Approval' },
         { id: 'Wallet-Overview', icon: Wallet, label: 'Wallet Manager' },
     ];
 
@@ -3137,34 +3147,36 @@ const Admin = () => {
                 } shrink-0`}
                 style={{
                     width: isMobile
-                        ? '250px'
+                        ? '210px'
                         : (isTablet
-                            ? (sidebarExpanded ? '250px' : '72px')
-                            : (isHovered ? '250px' : '72px')
+                            ? (sidebarExpanded ? '210px' : '72px')
+                            : (isExpanded ? '210px' : '72px')
                           )
                 }}
             >
                 {/* Logo area */}
-                <div className="flex items-center gap-3 px-6 py-8 shrink-0 justify-center lg:justify-start">
-                    {(() => {
-                        const isExpanded = isMobile
-                            ? true
-                            : (isTablet ? sidebarExpanded : isHovered);
-                        return isExpanded ? (
+                <div className={`flex items-center shrink-0 py-8 ${isExpanded ? 'justify-between px-6' : 'justify-center'}`}>
+                    <div className="flex items-center gap-3">
+                        {isExpanded ? (
                             <h1 className="text-2xl font-black text-[#18181b] tracking-tighter uppercase italic transition-all duration-300">RUPIKSHA</h1>
                         ) : (
-                            <h1 className="text-2xl font-black text-[#6366f1] tracking-tighter uppercase italic transition-all duration-300">R</h1>
-                        );
-                    })()}
+                            <img src={rupikshaNewLogo} alt="R" className="w-8 h-8 object-contain rounded-lg shadow-sm" />
+                        )}
+                    </div>
+                    {isExpanded && !isMobile && (
+                        <button
+                            onClick={toggleSidebarLock}
+                            className="p-1.5 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 text-[#94a3b8] hover:text-[#6366f1] transition-all"
+                            title={isSidebarLocked ? "Unlock Sidebar (Auto-collapse)" : "Lock Sidebar (Always expanded)"}
+                        >
+                            {isSidebarLocked ? <Lock size={16} className="text-[#6366f1]" /> : <Unlock size={16} />}
+                        </button>
+                    )}
                 </div>
 
                 {/* Navigation */}
                 <nav className="flex-1 overflow-y-auto py-2 px-3 space-y-8 scrollbar-hide">
                     {(() => {
-                        const isExpanded = isMobile
-                            ? true
-                            : (isTablet ? sidebarExpanded : isHovered);
-
                         return (
                             <>
                                 {/* Analytics Section */}
@@ -3389,7 +3401,6 @@ const Admin = () => {
                                 {activeSection === 'Promotions' && PromotionsEditor()}
                                 {activeSection === 'ReportsAnalyst' && <ReportsAnalyst />}
                                 {activeSection === 'Logins' && LoginsTable()}
-                                {activeSection === 'Loans' && <LoanApprovalManager />}
                                 {activeSection === 'OurMap' && <OurMap />}
                                 {activeSection === 'Plans' && <AdminPlanManager defaultType="retailer" />}
                                 {activeSection === 'Plans-retailer' && <AdminPlanManager defaultType="retailer" restrictType={true} />}

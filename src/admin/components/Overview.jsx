@@ -80,7 +80,6 @@ const Overview = ({ data = {}, distributors = [], SuperDistributors = [], onNavi
         yesterdayTxnAmt: 0,
         fraudAlerts: 0
     });
-    const [pendingLoansCount, setPendingLoansCount] = useState(0);
     const [recentLogs, setRecentLogs] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -126,12 +125,7 @@ const Overview = ({ data = {}, distributors = [], SuperDistributors = [], onNavi
                 fraudAlerts: 0 // Mock alert status (no active fraud alerts)
             });
 
-            // 2. Fetch ONDC Loan stats
-            const loans = await dataService.getLoans();
-            const pendingLoans = loans.filter(l => ['pending', 'initiated'].includes(l.status?.toLowerCase())).length;
-            setPendingLoansCount(pendingLoans);
-
-            // 3. Assemble recent activities log
+            // 2. Assemble recent activities log
             const activities = [];
             
             // Add recent member registrations
@@ -209,7 +203,6 @@ const Overview = ({ data = {}, distributors = [], SuperDistributors = [], onNavi
 
     const quickNavigationGroups = [
         { id: 'Approvals', label: 'KYC Verification', icon: ShieldCheck, desc: 'Review & approve member identity proofs.', badge: pendingKycs > 0 ? `${pendingKycs}` : null },
-        { id: 'Loans', label: 'Loan Manager', icon: IndianRupee, desc: 'Manage ONDC loan applications.' },
         { id: 'Wallet-Overview', label: 'Float Ledger', icon: Wallet, desc: 'Credit, debit, or lock member floats.' },
         { id: 'AllMembers', label: 'Member Core', icon: Users, desc: 'Search and audit member directory.' },
         { id: 'ReportsAnalyst', label: 'Analytics Panel', icon: Activity, desc: 'Aggregated reports and analytics.' },
@@ -334,7 +327,7 @@ const Overview = ({ data = {}, distributors = [], SuperDistributors = [], onNavi
             {/* ── Key Metrics Grid ───────────────────────────────────────────── */}
             <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(5, 1fr)',
+                gridTemplateColumns: 'repeat(4, 1fr)',
                 gap: 20,
                 marginBottom: 40,
                 ...cardStyle(200)
@@ -342,7 +335,6 @@ const Overview = ({ data = {}, distributors = [], SuperDistributors = [], onNavi
                 {[
                     { label: 'Total Members', value: totalMembers, desc: `${liveMembers} approved active`, icon: Users, color: '#6366f1', bg: '#eef2ff' },
                     { label: 'Pending Approvals', value: pendingApprovals, desc: `${pendingKycs} pending documents`, icon: ShieldCheck, color: '#f59e0b', bg: '#fffbeb' },
-                    { label: 'ONDC Loan Leads', value: pendingLoansCount, desc: 'Awaiting webhook actions', icon: IndianRupee, color: '#0ea5e9', bg: '#f0f9ff' },
                     { label: 'Wallet Pool Float', value: `₹${fmtCur(walletBalance)}`, desc: 'Aggregated ledger float', icon: Wallet, color: '#10b981', bg: '#ecfdf5', largeVal: true },
                     { label: 'Fraud Alerts', value: liveData.fraudAlerts === 0 ? 'CLEAN' : liveData.fraudAlerts, desc: 'System integrity monitoring', icon: liveData.fraudAlerts === 0 ? Shield : ShieldAlert, color: liveData.fraudAlerts === 0 ? '#10b981' : '#ef4444', bg: liveData.fraudAlerts === 0 ? '#f0fdf4' : '#fef2f2' },
                 ].map((stat, i) => (
