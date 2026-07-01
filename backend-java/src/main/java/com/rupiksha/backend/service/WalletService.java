@@ -17,6 +17,14 @@ public interface WalletService {
     // Core balance operations
     WalletDtos.WalletBalanceResponse credit(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey);
     WalletDtos.WalletBalanceResponse debit(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey);
+    
+    default WalletDtos.WalletBalanceResponse credit(WalletDtos.WalletEntryRequest request) {
+        return credit(request, UUID.fromString(request.userId()), "127.0.0.1", UUID.randomUUID().toString());
+    }
+    default WalletDtos.WalletBalanceResponse debit(WalletDtos.WalletEntryRequest request) {
+        return debit(request, UUID.fromString(request.userId()), "127.0.0.1", UUID.randomUUID().toString());
+    }
+
     WalletDtos.WalletBalanceResponse lock(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey);
     WalletDtos.WalletBalanceResponse release(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey);
     WalletDtos.WalletBalanceResponse giveCommission(WalletDtos.CommissionRequest request, UUID operatorId, String ipAddress, String idempotencyKey);
