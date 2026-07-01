@@ -27,6 +27,10 @@ public class WalletDtos {
             String narration,
             String remark
     ) {
+        public WalletEntryRequest(String userId, BigDecimal amount, String narration) {
+            this(userId, amount, narration, null);
+        }
+
         public String getNarrationOrRemark() {
             if (narration != null && !narration.isBlank()) return narration;
             if (remark != null && !remark.isBlank()) return remark;

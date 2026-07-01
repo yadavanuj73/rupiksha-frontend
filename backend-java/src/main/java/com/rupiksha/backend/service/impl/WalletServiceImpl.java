@@ -1335,6 +1335,7 @@ public class WalletServiceImpl implements WalletService {
             BigDecimal amount,
             String narration,
             String parentReferenceNumber,
+            WalletTransactionContext context,
             String serviceName,
             String ipAddress,
             String idempotencyKey) {
@@ -1366,7 +1367,7 @@ public class WalletServiceImpl implements WalletService {
         entry.setClosingBalance(newBal);
         entry.setIpAddress(ipAddress);
         entry.setIdempotencyKey(idempotencyKey);
-        entry.setTransactionContext(WalletTransactionContext.AEPS_REFUND);
+        entry.setTransactionContext(context);
         entry.setStatus(WalletTransactionStatus.SUCCESS);
         walletEntryRepository.save(entry);
 
@@ -1379,7 +1380,7 @@ public class WalletServiceImpl implements WalletService {
                 .ledgerType("SERVICE_REFUND")
                 .referenceNumber(refNum)
                 .ipAddress(ipAddress)
-                .remark("Service refund: " + serviceName + " parentRef: " + parentReferenceNumber)
+                .remark("Service refund: " + serviceName + " parentRef: " + parentReferenceNumber + " Context: " + context)
                 .build();
         auditLogRepository.save(audit);
 

@@ -75,6 +75,7 @@ public interface WalletService {
             BigDecimal amount,
             String narration,
             String parentReferenceNumber,
+            WalletTransactionContext context,
             String serviceName,
             String ipAddress,
             String idempotencyKey);
