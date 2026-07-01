@@ -186,14 +186,14 @@ public class WalletServiceImpl implements WalletService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public WalletDtos.WalletBalanceResponse getBalance(String userId) {
         Wallet wallet = getOrCreateWallet(UUID.fromString(userId));
         return mapBalanceResponse(wallet);
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public List<WalletDtos.WalletBalanceResponse> getWalletsList(UUID currentUserId) {
         User currentUser = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
