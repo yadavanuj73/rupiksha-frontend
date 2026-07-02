@@ -9,7 +9,8 @@ import {
 import irctcLogo from '../../assets/service-logos/irctc.svg';
 
 const routeMap = {
-    aeps_services: '/aeps',
+    aeps_services_1: '/aeps-1',
+    aeps_services_2: '/aeps-2',
     cms: '/cms',
     travel: '/travel',
     utility: '/utility',
@@ -32,7 +33,8 @@ const SERVICE_SECTIONS = [
         title: 'Banking & Finance',
         color: 'from-indigo-500 to-blue-500',
         services: dedupeServices([
-            { id: 'aeps_services', title: 'AEPS Services', icon: Landmark },
+            { id: 'aeps_services_1', title: 'AEPS Services 1', icon: Landmark },
+            { id: 'aeps_services_2', title: 'AEPS Services 2', icon: Landmark },
             { id: 'matm_cash', title: 'm-ATM Cash', icon: Banknote },
             { id: 'cms', title: 'CMS Banking', icon: Building2 },
         ]),

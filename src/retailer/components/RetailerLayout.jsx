@@ -23,7 +23,9 @@ const RetailerLayout = () => {
         const reportType = searchParams.get('report');
 
         if (path === '/dashboard') return 'dashboard';
-        if (path.startsWith('/aeps')) return 'aeps_services';
+        if (path.startsWith('/aeps-1')) return 'aeps_services_1';
+        if (path.startsWith('/aeps-2')) return 'aeps_services_2';
+        if (path.startsWith('/aeps')) return 'aeps_services_2';
         if (path.startsWith('/cms')) return 'cms';
         if (path.startsWith('/travel')) return 'travel';
         if (path.startsWith('/travel-hub')) return 'travel';
@@ -131,7 +133,8 @@ const RetailerLayout = () => {
 
         const routes = {
             'dashboard': '/dashboard',
-            'aeps_services': '/aeps',
+            'aeps_services_1': '/aeps-1',
+            'aeps_services_2': '/aeps-2',
             'cms': '/cms',
             'travel': '/travel',
             'travel_hub': '/travel',

@@ -79,7 +79,7 @@ export default function AepsAgentKyc() {
                     {/* Header */}
                     <div className="mb-6">
                         <button
-                            onClick={() => navigate('/aeps')}
+                            onClick={() => navigate('/aeps-2')}
                             className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-slate-600 transition mb-3 cursor-pointer"
                         >
                             <ArrowLeft size={14} />
@@ -199,7 +199,7 @@ export default function AepsAgentKyc() {
                                 </p>
                             </div>
                             <button
-                                onClick={() => navigate('/aeps')}
+                                onClick={() => navigate('/aeps-2')}
                                 className="w-full py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-2xl font-bold uppercase tracking-wider text-xs transition shadow-md cursor-pointer"
                             >
                                 Go to Terminal

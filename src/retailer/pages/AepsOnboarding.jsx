@@ -148,7 +148,7 @@ export default function AepsOnboarding() {
 
             setSuccessMsg("Merchant Onboarding completed successfully! Agent profile registered. Redirecting to dashboard...");
             setTimeout(() => {
-                navigate('/aeps');
+                navigate('/aeps-2');
             }, 3000);
         } catch (err) {
             console.error("Onboarding submission failed", err);

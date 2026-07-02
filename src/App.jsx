@@ -37,6 +37,7 @@ const BharatConnect = lazy(() => import('./retailer/pages/BharatConnect'));
 const PayoutHub = lazy(() => import('./retailer/pages/PayoutHub'));
 const Payout = lazy(() => import('./retailer/pages/Payout'));
 const AEPS = lazy(() => import('./retailer/pages/AEPS'));
+const AepsFingpayComingSoon = lazy(() => import('./retailer/pages/AepsFingpayComingSoon'));
 const CMS = lazy(() => import('./retailer/pages/CMS'));
 const AllServices = lazy(() => import('./retailer/pages/AllServices'));
 const Reports = lazy(() => import('./retailer/pages/Reports'));
@@ -220,7 +221,9 @@ function App() {
                 <Route path="/bharat-connect" element={<BharatConnect />} />
                 <Route path="/payout-hub" element={<PayoutHub />} />
                 <Route path="/payout" element={<Payout />} />
-                <Route path="/aeps" element={<AEPS />} />
+                <Route path="/aeps" element={<Navigate to="/aeps-2" replace />} />
+                <Route path="/aeps-1" element={<AepsFingpayComingSoon />} />
+                <Route path="/aeps-2" element={<AEPS />} />
                 <Route path="/aeps-device-test" element={<ProtectedRoute role="DIAGNOSTIC_ALLOWED"><AepsDeviceTest /></ProtectedRoute>} />
                 <Route path="/cms" element={<CMS />} />
                 <Route path="/all-services" element={<AllServices />} />

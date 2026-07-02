@@ -26,7 +26,8 @@ const DEVICE_LIST = [
 ];
 
 const BANKING_QUICK_LINKS = [
-    { id: 'aeps_services', label: 'AEPS Services', route: '/aeps' },
+    { id: 'aeps_services_1', label: 'AEPS Services 1', route: '/aeps-1' },
+    { id: 'aeps_services_2', label: 'AEPS Services 2', route: '/aeps-2' },
     { id: 'cms', label: 'CMS - Loan EMI', route: '/cms' },
     { id: 'matm', label: 'MATM', route: '/matm' },
     { id: 'add_money', label: 'Add Money', route: '/add-money' },
