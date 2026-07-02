@@ -26,7 +26,7 @@ import java.util.Map;
 public class CashWithdrawalService {
 
     private final FingpayEncryptionUtil encryptionUtil;
-    private final AepsTransactionRepository txnRepo;
+    private final FingpayTransactionRepository txnRepo;
     private final FingBankRepository bankRepo;
     private final AepsKycRepository aepsKycRepo;
     private final FingUserRepository userRepo;
@@ -144,7 +144,7 @@ public class CashWithdrawalService {
             boolean success = isSuccess(root, data);
 
             // 11. Save transaction
-            AepsTransaction txn = buildTxn(req, txnId, maskedAadhaar, plainJson,
+            FingpayTransaction txn = buildTxn(req, txnId, maskedAadhaar, plainJson,
                     httpResp.getBody(), success, root, data);
             txnRepo.save(txn);
 
@@ -174,11 +174,11 @@ public class CashWithdrawalService {
         return !rrn.isEmpty() && "00".equals(rc);
     }
 
-    private AepsTransaction buildTxn(CashWithdrawalRequest req, String txnId,
+    private FingpayTransaction buildTxn(CashWithdrawalRequest req, String txnId,
                                      String maskedAadhaar, String plainJson, String rawResponse,
                                      boolean success, JsonNode root, JsonNode data) {
 
-        AepsTransaction txn = new AepsTransaction();
+        FingpayTransaction txn = new FingpayTransaction();
         txn.setUid(req.getUid());
         txn.setType("CW");
         txn.setAadhar(maskedAadhaar);
@@ -208,7 +208,7 @@ public class CashWithdrawalService {
     }
 
     private CashWithdrawalResponse buildResponse(boolean success, String txnId,
-                                                 String maskedAadhaar, JsonNode root, JsonNode data, AepsTransaction txn) {
+                                                 String maskedAadhaar, JsonNode root, JsonNode data, FingpayTransaction txn) {
 
         CashWithdrawalResponse resp = new CashWithdrawalResponse();
         resp.setMaskedAadhaar(maskedAadhaar);

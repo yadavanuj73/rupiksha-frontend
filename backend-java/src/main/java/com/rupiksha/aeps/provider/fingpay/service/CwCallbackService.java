@@ -1,8 +1,8 @@
 package com.rupiksha.aeps.provider.fingpay.service;
 
 import com.rupiksha.aeps.provider.fingpay.dto.CwCallbackRequest;
-import com.rupiksha.aeps.provider.fingpay.entity.AepsTransaction;
-import com.rupiksha.aeps.provider.fingpay.repository.AepsTransactionRepository;
+import com.rupiksha.aeps.provider.fingpay.entity.FingpayTransaction;
+import com.rupiksha.aeps.provider.fingpay.repository.FingpayTransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -14,7 +14,7 @@ import java.util.Optional;
 @Slf4j
 public class CwCallbackService {
 
-    private final AepsTransactionRepository txnRepo;
+    private final FingpayTransactionRepository txnRepo;
 
     public void handle(CwCallbackRequest req) {
         log.info("CW Callback received | merchantRefNo={} status={}",
@@ -31,7 +31,7 @@ public class CwCallbackService {
         }
 
         // S = success, F = failure — DB update karo
-        Optional<AepsTransaction> txnOpt = txnRepo.findByTxnid(req.getMerchantRefNo());
+        Optional<FingpayTransaction> txnOpt = txnRepo.findByTxnid(req.getMerchantRefNo());
 
         if (txnOpt.isEmpty()) {
             log.warn("CW Callback — txn not found in DB for merchantRefNo={}",
@@ -39,7 +39,7 @@ public class CwCallbackService {
             return;
         }
 
-        AepsTransaction txn = txnOpt.get();
+        FingpayTransaction txn = txnOpt.get();
 
         if ("S".equalsIgnoreCase(status)) {
             txn.setStatus("SUCCESS");

@@ -33,7 +33,7 @@ import java.util.regex.Pattern;
 public class MiniStatementService {
 
     private final FingpayEncryptionUtil encryptionUtil;
-    private final AepsTransactionRepository txnRepo;
+    private final FingpayTransactionRepository txnRepo;
     private final FingBankRepository bankRepo;
     private final AepsKycRepository aepsKycRepo;
     private final FingUserRepository userRepo;
@@ -147,7 +147,7 @@ public class MiniStatementService {
                     || "SUCCESS".equalsIgnoreCase(root.path("status").asText());
 
             // Save transaction
-            AepsTransaction txn = new AepsTransaction();
+            FingpayTransaction txn = new FingpayTransaction();
             txn.setUid(req.getUid());
             txn.setType("MSI");
             txn.setAadhar(maskedAadhaar);

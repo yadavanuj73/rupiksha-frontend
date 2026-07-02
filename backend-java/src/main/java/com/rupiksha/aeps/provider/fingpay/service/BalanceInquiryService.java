@@ -26,7 +26,7 @@ import java.util.Map;
 public class BalanceInquiryService {
 
     private final FingpayEncryptionUtil encryptionUtil;
-    private final AepsTransactionRepository txnRepo;
+    private final FingpayTransactionRepository txnRepo;
     private final FingBankRepository bankRepo;
     private final AepsKycRepository aepsKycRepo;
     private final FingUserRepository userRepo;
@@ -140,7 +140,7 @@ public class BalanceInquiryService {
             boolean success = isSuccess(root, data);
 
             // Save transaction
-            AepsTransaction txn = new AepsTransaction();
+            FingpayTransaction txn = new FingpayTransaction();
             txn.setUid(req.getUid());
             txn.setType("BE");
             txn.setAadhar(maskedAadhaar);

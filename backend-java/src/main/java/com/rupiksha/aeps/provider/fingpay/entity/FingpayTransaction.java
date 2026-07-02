@@ -5,9 +5,9 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@Entity
+@Entity(name = "FingpayTransaction")
 @Table(name = "iaepstxn")
-public class AepsTransaction {
+public class FingpayTransaction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
