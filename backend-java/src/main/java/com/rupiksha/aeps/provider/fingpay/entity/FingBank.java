@@ -9,8 +9,12 @@ import lombok.Data;
 public class FingBank {
 
     @Id
-    private Long id; // Fingpay ka id use karo, auto-generate nahi
+    @Column(name = "id")
+    private Long id; // Fingpay bank ID (non-generated)
 
+    @Column(name = "bank_name")
     private String bankName;
+
+    @Column(name = "iinno")
     private String iinno;
 }

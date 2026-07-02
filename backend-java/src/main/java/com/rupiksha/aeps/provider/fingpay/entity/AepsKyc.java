@@ -12,7 +12,12 @@ public class AepsKyc {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "uid")
     private Long uid;
+
+    @Column(name = "outlet")
     private String outlet;
+
+    @Column(name = "mpin")
     private String mpin;
 }
