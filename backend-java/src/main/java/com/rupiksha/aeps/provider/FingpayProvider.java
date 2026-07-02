@@ -91,24 +91,27 @@ public class FingpayProvider implements AepsProvider {
         merchant.setEmailId(request.getEmail());
         
         MerchantAddressDTO address = new MerchantAddressDTO();
-        address.setAddressLine1(request.getAddress());
-        address.setCity(request.getCity());
-        address.setState(request.getState());
-        address.setPinCode(request.getPinCode());
+        address.setMerchantAddress1(request.getAddress());
+        address.setMerchantAddress2("");
+        address.setMerchantCityName(request.getCity());
+        address.setMerchantDistrictName(request.getCity());
+        address.setMerchantState(1);
+        address.setMerchantPinCode(request.getPinCode());
         merchant.setMerchantAddress(address);
         
         merchant.setCompanyLegalName(request.getShopName());
         merchant.setCompanyType(1); // Individual/Proprietorship
         
         KycDTO kyc = new KycDTO();
-        kyc.setAadharNumber(request.getAadharNumber());
-        kyc.setPanNumber(request.getPanCard());
+        kyc.setAadhaarNumber(request.getAadharNumber());
+        kyc.setUserPan(request.getPanCard());
         merchant.setKyc(kyc);
         
         SettlementDTO settlement = new SettlementDTO();
-        settlement.setSettlementType("1");
-        settlement.setBankAccountNumber("1234567890");
+        settlement.setCompanyBankAccountNumber("1234567890");
         settlement.setBankIfscCode("UTIB0000001");
+        settlement.setCompanyBankName("AXIS BANK");
+        settlement.setBankAccountName(request.getFname() + " " + request.getLname());
         merchant.setSettlementV1(settlement);
         
         dto.setMerchant(merchant);
@@ -364,7 +367,7 @@ public class FingpayProvider implements AepsProvider {
 
             return TransactionResult.builder()
                     .transactionId(context.getRequest().getTransactionId())
-                    .referenceNumber(context.getTransaction().getReferenceNumber())
+                    .referenceNumber(context.getCorrelationId())
                     .providerReference(resp.getFpTxnId())
                     .status(success ? "SUCCESS" : "FAILED")
                     .workflowState(success ? TransactionWorkflowState.SUCCESS : TransactionWorkflowState.FAILED)
@@ -391,7 +394,7 @@ public class FingpayProvider implements AepsProvider {
 
             return TransactionResult.builder()
                     .transactionId(context.getRequest().getTransactionId())
-                    .referenceNumber(context.getTransaction().getReferenceNumber())
+                    .referenceNumber(context.getCorrelationId())
                     .providerReference(resp.getFpTxnId())
                     .status(success ? "SUCCESS" : "FAILED")
                     .workflowState(success ? TransactionWorkflowState.SUCCESS : TransactionWorkflowState.FAILED)
@@ -418,7 +421,7 @@ public class FingpayProvider implements AepsProvider {
 
             return TransactionResult.builder()
                     .transactionId(context.getRequest().getTransactionId())
-                    .referenceNumber(context.getTransaction().getReferenceNumber())
+                    .referenceNumber(context.getCorrelationId())
                     .providerReference(resp.getFpTxnId())
                     .status(success ? "SUCCESS" : "FAILED")
                     .workflowState(success ? TransactionWorkflowState.SUCCESS : TransactionWorkflowState.FAILED)
@@ -446,7 +449,7 @@ public class FingpayProvider implements AepsProvider {
 
             return TransactionResult.builder()
                     .transactionId(context.getRequest().getTransactionId())
-                    .referenceNumber(context.getTransaction().getReferenceNumber())
+                    .referenceNumber(context.getCorrelationId())
                     .providerReference(resp.getFpTxnId())
                     .status(success ? "SUCCESS" : "FAILED")
                     .workflowState(success ? TransactionWorkflowState.SUCCESS : TransactionWorkflowState.FAILED)
