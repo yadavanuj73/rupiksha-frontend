@@ -33,8 +33,8 @@ const SERVICE_SECTIONS = [
         title: 'Banking & Finance',
         color: 'from-indigo-500 to-blue-500',
         services: dedupeServices([
-            { id: 'aeps_services_1', title: 'AEPS Services 1', icon: Landmark },
-            { id: 'aeps_services_2', title: 'AEPS Services 2', icon: Landmark },
+            { id: 'aeps_services_1', title: 'Fingpay AEPS', icon: Landmark },
+            { id: 'aeps_services_2', title: 'Levin AEPS', icon: Landmark },
             { id: 'matm_cash', title: 'm-ATM Cash', icon: Banknote },
             { id: 'cms', title: 'CMS Banking', icon: Building2 },
         ]),

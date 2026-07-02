@@ -41,6 +41,7 @@ public class AepsController {
 
     private final AepsService aepsService;
     private final TransactionService transactionService;
+    private final com.rupiksha.aeps.provider.fingpay.service.BankSyncService bankSyncService;
 
 
     /**
@@ -290,5 +291,17 @@ public class AepsController {
     @PostMapping("/transaction-status")
     public ResponseEntity<ApiResponse<String>> getTransactionStatus() {
         return ResponseEntity.ok(ApiResponse.success("AEPS Transaction status query endpoint active (Placeholder). Implementation pending."));
+    }
+
+    @GetMapping("/sync-banks")
+    public ResponseEntity<ApiResponse<String>> syncBanks() {
+        log.info("REST request to sync Fingpay banks.");
+        try {
+            int count = bankSyncService.syncBanks();
+            return ResponseEntity.ok(ApiResponse.success("Successfully synchronized " + count + " banks from Fingpay API", "Synced " + count + " banks"));
+        } catch (Exception e) {
+            log.error("Failed to synchronize banks from Fingpay API", e);
+            return ResponseEntity.internalServerError().body(ApiResponse.error("Bank synchronization failed: " + e.getMessage()));
+        }
     }
 }

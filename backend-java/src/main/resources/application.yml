@@ -132,6 +132,48 @@ aeps:
       api-token: ${LEVIN_AEPS_API_TOKEN:}
       user-id: ${LEVIN_AEPS_USER_ID:}
       encryption-key: ${LEVIN_AEPS_ENCRYPTION_KEY:}
+    fingpay:
+      base-url: ${FINGPAY_AEPS_BASE_URL:https://fpuat.tapits.in}
+
+fingpay:
+  base:
+    url: ${FINGPAY_BASE_URL:https://fpuat.tapits.in}
+  username: ${FINGPAY_USERNAME:rupikshad}
+  password: ${FINGPAY_PASSWORD:796c3ee556ac31f3754a38cfd15b8044}
+  supermerchant:
+    id: ${FINGPAY_SUPERMERCHANT_ID:1407}
+  device:
+    imei: ${FINGPAY_DEVICE_IMEI:10068311}
+  api:
+    secret: ${FINGPAY_API_SECRET:adb9af1d9d8c573d8600d73754c248c9343ce074d68af0722af434bc922061fa}
+  public:
+    key:
+      path: ${FINGPAY_PUBLIC_KEY_PATH:classpath:fingpay.cer}
+  ip: ${FINGPAY_IP:223.235.103.251}
+  onboard:
+    url: ${FINGPAY_ONBOARD_URL:https://fingpayap.tapits.in/fpaepsweb/api/onboarding/merchant/creation/v2}
+  ekyc:
+    url: ${FINGPAY_EKYC_URL:https://fpekyc.tapits.in/fpekyc/api/ekyc/merchant/sendotp}
+    validate:
+      url: ${FINGPAY_EKYC_VALIDATE_URL:https://fpekyc.tapits.in/fpekyc/api/ekyc/merchant/validateotp}
+    resend:
+      url: ${FINGPAY_EKYC_RESEND_URL:https://fpekyc.tapits.in/fpekyc/api/ekyc/merchant/resendotp}
+    biometric:
+      url: ${FINGPAY_EKYC_BIOMETRIC_URL:https://fpekyc.tapits.in/fpekyc/api/ekyc/merchant/biometric}
+    status:
+      url: ${FINGPAY_EKYC_STATUS_URL:https://fpekyc.tapits.in/fpekyc/api/ekyc/status/check}
+  cw:
+    url: ${FINGPAY_CW_URL:https://fingpayap.tapits.in/fpaepsservice/api/cashWithdrawal/merchant/withdrawal}
+    status:
+      url: ${FINGPAY_CW_STATUS_URL:https://fingpayap.tapits.in/fpaepsweb/api/auth/merchantInfo/statusCheckV2/merchantLoginId/cashWithdrawal/v2}
+  bi:
+    url: ${FINGPAY_BI_URL:https://fingpayap.tapits.in/fpaepsservice/api/balanceInquiry/merchant/getBalance}
+  ms:
+    url: ${FINGPAY_MS_URL:https://fingpayap.tapits.in/fpaepsservice/api/miniStatement/merchant/statement}
+  ap:
+    url: ${FINGPAY_AP_URL:https://fingpayap.tapits.in/fpaepsservice/api/aadhaarPay/merchant/pay}
+    status:
+      url: ${FINGPAY_AP_STATUS_URL:https://fingpayap.tapits.in/fpaepsweb/api/auth/merchantInfo/statusCheckV3/aadhaarPay/merchantLoginId}
 
 ---
 # Production profile overrides. Activated with SPRING_PROFILES_ACTIVE=prod.

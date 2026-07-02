@@ -1,0 +1,16 @@
+﻿package com.rupiksha.aeps.provider.fingpay.dto;
+
+import lombok.Data;
+
+@Data
+public class CashWithdrawalResponse {
+    private String status;       // SUCCESS / FAILED / ERROR
+    private String message;
+    private String txnId;        // hamara txnId
+    private String fpTxnId;      // fingpay ka txnId
+    private String bankRRN;
+    private Double transactionAmount;
+    private Double balanceAmount;
+    private String maskedAadhaar;
+    private String responseCode;
+}

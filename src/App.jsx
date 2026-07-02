@@ -222,7 +222,7 @@ function App() {
                 <Route path="/payout-hub" element={<PayoutHub />} />
                 <Route path="/payout" element={<Payout />} />
                 <Route path="/aeps" element={<Navigate to="/aeps-2" replace />} />
-                <Route path="/aeps-1" element={<AepsFingpayComingSoon />} />
+                <Route path="/aeps-1" element={<AEPS />} />
                 <Route path="/aeps-2" element={<AEPS />} />
                 <Route path="/aeps-device-test" element={<ProtectedRoute role="DIAGNOSTIC_ALLOWED"><AepsDeviceTest /></ProtectedRoute>} />
                 <Route path="/cms" element={<CMS />} />

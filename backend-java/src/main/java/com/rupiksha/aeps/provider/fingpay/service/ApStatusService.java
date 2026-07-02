@@ -1,0 +1,92 @@
+﻿package com.rupiksha.aeps.provider.fingpay.service;
+
+import com.rupiksha.aeps.provider.fingpay.dto.ApStatusRequest;
+import com.rupiksha.aeps.provider.fingpay.dto.ApStatusResponse;
+import com.rupiksha.aeps.provider.fingpay.entity.AepsKyc;
+import com.rupiksha.aeps.provider.fingpay.repository.AepsKycRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.Base64;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class ApStatusService {
+
+    private final AepsKycRepository aepsKycRepo;
+    private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
+
+    @Value("${fingpay.ap.status.url}")
+    private String apStatusUrl;
+
+    @Value("${fingpay.username}")
+    private String superMerchantLoginId;
+
+    @Value("${fingpay.password}")
+    private String superMerchantPassword;
+
+    @Value("${fingpay.supermerchant.id}")
+    private String superMerchantId;
+
+    public ApStatusResponse checkStatus(ApStatusRequest req) {
+        try {
+            AepsKyc kyc = aepsKycRepo.findByUid(req.getUid())
+                    .orElseThrow(() -> new RuntimeException("AepsKyc not found for uid: " + req.getUid()));
+
+            String merchantLoginId = kyc.getOutlet();
+
+            // Hash: base64(SHA256(merchantTranId + "+" + merchantLoginId.lower + "+" + superMerchantLoginId.lower))
+            String hashInput = req.getMerchantTranId()
+                    + "+" + merchantLoginId.toLowerCase()
+                    + "+" + superMerchantLoginId.toLowerCase();
+
+            String hash = generateHash(hashInput);
+
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("merchantTranId", req.getMerchantTranId());
+            payload.put("merchantLoginId", merchantLoginId);
+            payload.put("merchantPassword", "");
+            payload.put("superMerchantId", Integer.parseInt(superMerchantId));
+            payload.put("superMerchantPassword", superMerchantPassword);
+            payload.put("hash", hash);
+
+            String plainJson = objectMapper.writeValueAsString(payload);
+            log.debug("AP status request JSON: {}", plainJson);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<String> entity = new HttpEntity<>(plainJson, headers);
+            ResponseEntity<String> httpResp = restTemplate.exchange(
+                    apStatusUrl, HttpMethod.POST, entity, String.class);
+            log.debug("AP status response: {}", httpResp.getBody());
+
+            return objectMapper.readValue(httpResp.getBody(), ApStatusResponse.class);
+
+        } catch (Exception e) {
+            log.error("AP status error uid={} txnId={} msg={}",
+                    req.getUid(), req.getMerchantTranId(), e.getMessage(), e);
+            ApStatusResponse resp = new ApStatusResponse();
+            resp.setApiStatus(false);
+            resp.setApiStatusMessage("Internal error: " + e.getMessage());
+            return resp;
+        }
+    }
+
+    private String generateHash(String input) throws Exception {
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        byte[] hash = md.digest(input.getBytes(StandardCharsets.UTF_8));
+        return Base64.getEncoder().encodeToString(hash);
+    }
+}

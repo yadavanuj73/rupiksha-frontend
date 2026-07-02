@@ -226,8 +226,8 @@ const RetailerDashboard = () => {
     }, []);
 
     const services = [
-        { id: 'aeps_1', label: 'AEPS 1 (Fingpay)', emoji: '🏦', color: 'from-indigo-50 to-indigo-100 border border-indigo-200', path: '/aeps-1' },
-        { id: 'aeps_2', label: 'AEPS 2 (Levin)', emoji: '🏦', color: 'from-blue-50 to-blue-100 border border-blue-200', path: '/aeps-2' },
+        { id: 'aeps_1', label: 'Fingpay AEPS', emoji: '🏦', color: 'from-indigo-50 to-indigo-100 border border-indigo-200', path: '/aeps-1' },
+        { id: 'aeps_2', label: 'Levin AEPS', emoji: '🏦', color: 'from-blue-50 to-blue-100 border border-blue-200', path: '/aeps-2' },
         { id: 'dmt', label: 'Money Transfer', emoji: '💸', color: 'from-emerald-50 to-emerald-100 border border-emerald-200', path: '/all-services' },
         { id: 'matm', label: 'Micro ATM', emoji: '💳', color: 'from-orange-50 to-orange-100 border border-orange-200', path: '/matm' },
         { id: 'utility', label: 'Recharge', emoji: '📱', color: 'from-purple-50 to-purple-100 border border-purple-200', path: '/utility' },

@@ -9,8 +9,8 @@ import java.util.TimeZone;
 
 @SpringBootApplication
 @ComponentScan(basePackages = {"com.rupiksha.backend", "com.rupiksha.aeps"})
-@EnableJpaRepositories(basePackages = {"com.rupiksha.backend.repository", "com.rupiksha.aeps.repository"})
-@EntityScan(basePackages = {"com.rupiksha.backend.domain", "com.rupiksha.aeps.entity"})
+@EnableJpaRepositories(basePackages = {"com.rupiksha.backend.repository", "com.rupiksha.aeps.repository", "com.rupiksha.aeps.provider.fingpay.repository"})
+@EntityScan(basePackages = {"com.rupiksha.backend.domain", "com.rupiksha.aeps.entity", "com.rupiksha.aeps.provider.fingpay.entity"})
 public class BackendJavaApplication {
     public static void main(String[] args) {
         // Normalize JVM timezone explicitly so the PostgreSQL JDBC startup packet
