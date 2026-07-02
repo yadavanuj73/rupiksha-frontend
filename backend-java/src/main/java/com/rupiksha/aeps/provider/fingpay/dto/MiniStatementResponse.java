@@ -1,4 +1,4 @@
-﻿package com.rupiksha.aeps.provider.fingpay.dto;
+package com.rupiksha.aeps.provider.fingpay.dto;
 
 import lombok.Data;
 import java.util.List;

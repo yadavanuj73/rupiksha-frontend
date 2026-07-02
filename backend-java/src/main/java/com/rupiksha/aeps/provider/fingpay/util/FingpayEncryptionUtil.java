@@ -1,4 +1,4 @@
-﻿package com.rupiksha.aeps.provider.fingpay.util;
+package com.rupiksha.aeps.provider.fingpay.util;
 
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;

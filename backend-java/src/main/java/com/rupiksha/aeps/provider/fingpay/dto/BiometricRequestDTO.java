@@ -1,4 +1,4 @@
-﻿package com.rupiksha.aeps.provider.fingpay.dto;
+package com.rupiksha.aeps.provider.fingpay.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;

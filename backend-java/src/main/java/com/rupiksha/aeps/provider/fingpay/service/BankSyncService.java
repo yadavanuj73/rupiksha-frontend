@@ -1,4 +1,4 @@
-﻿package com.rupiksha.aeps.provider.fingpay.service;
+package com.rupiksha.aeps.provider.fingpay.service;
 
 import com.rupiksha.aeps.provider.fingpay.entity.FingBank;
 import com.rupiksha.aeps.provider.fingpay.repository.FingBankRepository;

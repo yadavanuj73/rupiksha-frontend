@@ -1,4 +1,4 @@
-﻿package com.rupiksha.aeps.provider.fingpay.config;
+package com.rupiksha.aeps.provider.fingpay.config;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpEntity;

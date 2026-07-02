@@ -1,4 +1,4 @@
-﻿package com.rupiksha.aeps.provider.fingpay.exception;
+package com.rupiksha.aeps.provider.fingpay.exception;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;

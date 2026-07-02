@@ -1,4 +1,4 @@
-﻿package com.rupiksha.aeps.provider.fingpay.repository;
+package com.rupiksha.aeps.provider.fingpay.repository;
 
 import com.rupiksha.aeps.provider.fingpay.entity.FingUser;
 import org.springframework.data.jpa.repository.JpaRepository;

@@ -1,4 +1,4 @@
-﻿package com.rupiksha.aeps.provider.fingpay.config;
+package com.rupiksha.aeps.provider.fingpay.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

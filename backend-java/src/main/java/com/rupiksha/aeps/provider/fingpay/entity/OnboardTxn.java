@@ -1,4 +1,4 @@
-﻿package com.rupiksha.aeps.provider.fingpay.entity;
+package com.rupiksha.aeps.provider.fingpay.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;

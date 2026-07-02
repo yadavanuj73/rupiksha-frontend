@@ -1,4 +1,4 @@
-﻿package com.rupiksha.aeps.provider.fingpay.exception;
+package com.rupiksha.aeps.provider.fingpay.exception;
 
 public class FingpayException extends RuntimeException {
 
