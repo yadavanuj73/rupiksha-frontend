@@ -136,7 +136,6 @@ const RetailerLayout = () => {
             'travel': '/travel',
             'travel_hub': '/travel',
             'utility': '/utility',
-            'ybl_mr': '/travel',
             'travelhub': '/travel',
             'bharat_connect': '/bharat-connect',
             'payout': '/payout-hub',

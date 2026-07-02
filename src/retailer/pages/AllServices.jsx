@@ -14,10 +14,6 @@ const routeMap = {
     travel: '/travel',
     utility: '/utility',
     matm_cash: '/matm',
-    matm_mp63: '/matm',
-    smart_pos: '/matm',
-    qpos_mini: '/matm',
-    ybl_mr: '/travel',
 };
 
 const dedupeServices = (services) => {
@@ -37,11 +33,7 @@ const SERVICE_SECTIONS = [
         color: 'from-indigo-500 to-blue-500',
         services: dedupeServices([
             { id: 'aeps_services', title: 'AEPS Services', icon: Landmark },
-            { id: 'smart_pos', title: 'Smart POS', icon: Smartphone },
             { id: 'matm_cash', title: 'm-ATM Cash', icon: Banknote },
-            { id: 'matm_mp63', title: 'mATM MP63', icon: Smartphone },
-            { id: 'qpos_mini', title: '2-in-1 QPOS Mini', icon: CreditCard },
-            { id: 'ybl_mr', title: 'Indo Nepal MR', icon: Globe },
             { id: 'cms', title: 'CMS Banking', icon: Building2 },
         ]),
     },

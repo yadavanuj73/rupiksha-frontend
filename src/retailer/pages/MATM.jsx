@@ -30,7 +30,6 @@ const BANKING_QUICK_LINKS = [
     { id: 'cms', label: 'CMS - Loan EMI', route: '/cms' },
     { id: 'matm', label: 'MATM', route: '/matm' },
     { id: 'add_money', label: 'Add Money', route: '/add-money' },
-    { id: 'ybl_mr', label: 'YBL MR', route: '/travel' },
 ];
 
 /* ══════════════════════════════════════════════════════════════════
