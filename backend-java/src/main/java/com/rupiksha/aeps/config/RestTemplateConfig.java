@@ -6,6 +6,7 @@ import com.rupiksha.aeps.client.AepsRetryInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.client.BufferingClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -30,6 +31,7 @@ public class RestTemplateConfig {
     private final AepsResponseErrorHandler aepsResponseErrorHandler;
 
     @Bean
+    @Primary
     public RestTemplate aepsRestTemplate() {
         try {
             // Trust all SSL certificates to avoid SSL handshake issues with external APIs
