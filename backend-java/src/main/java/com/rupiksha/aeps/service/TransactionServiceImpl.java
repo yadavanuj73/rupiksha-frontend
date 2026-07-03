@@ -51,6 +51,42 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
 
+    private com.rupiksha.aeps.entity.User getOrSyncAepsUser(String mobile) {
+        Optional<com.rupiksha.aeps.entity.User> userOpt = aepsUserRepository.findByMobile(mobile)
+                .or(() -> aepsUserRepository.findByUsername(mobile));
+        if (userOpt.isPresent()) {
+            return userOpt.get();
+        }
+
+        // Try syncing from main core user registry
+        Optional<com.rupiksha.backend.domain.User> coreUserOpt = mainUserRepository.findByMobile(mobile)
+                .or(() -> mainUserRepository.findByUsername(mobile));
+        if (coreUserOpt.isPresent()) {
+            com.rupiksha.backend.domain.User coreUser = coreUserOpt.get();
+            com.rupiksha.aeps.entity.User aepsUser = new com.rupiksha.aeps.entity.User();
+            aepsUser.setMobile(coreUser.getMobile());
+            aepsUser.setUsername(coreUser.getUsername());
+            aepsUser.setEmail(coreUser.getEmail());
+            aepsUser.setName(coreUser.getFullName());
+            aepsUser.setAepsAgentId(coreUser.getAepsAgentId());
+            aepsUser.setAepsMerchantId(coreUser.getAepsMerchantId());
+            aepsUser.setAepsOnboarded(coreUser.getAepsOnboarded());
+            aepsUser.setAepsKycDone(coreUser.getAepsKycDone());
+            aepsUser.setAepsKycRefId(coreUser.getAepsKycRefId());
+            aepsUser.setAepsKycTxnId(coreUser.getAepsKycTxnId());
+            if (coreUser.getAepsKycCompletedAt() != null) {
+                aepsUser.setAepsKycCompletedAt(java.time.LocalDateTime.ofInstant(coreUser.getAepsKycCompletedAt(), java.time.ZoneId.systemDefault()));
+            }
+            aepsUser.setAeps2faSessionId(coreUser.getAeps2faSessionId());
+            if (coreUser.getAeps2faAuthenticatedAt() != null) {
+                aepsUser.setAeps2faAuthenticatedAt(java.time.LocalDateTime.ofInstant(coreUser.getAeps2faAuthenticatedAt(), java.time.ZoneId.systemDefault()));
+            }
+            log.info("Synchronizing core user to AEPS registry for mobile: {}", mobile);
+            return aepsUserRepository.save(aepsUser);
+        }
+        return null;
+    }
+
     @Override
     @Transactional
     public TransactionResult executeTransaction(AepsTransactionRequest request, String mobile) {
@@ -61,9 +97,10 @@ public class TransactionServiceImpl implements TransactionService {
         validateRequest(request);
 
         // 2. Fetch and validate AEPS merchant record
-        com.rupiksha.aeps.entity.User aepsUser = aepsUserRepository.findByMobile(mobile)
-                .or(() -> aepsUserRepository.findByUsername(mobile))
-                .orElseThrow(() -> new ValidationException("Merchant record not found in AEPS registry."));
+        com.rupiksha.aeps.entity.User aepsUser = getOrSyncAepsUser(mobile);
+        if (aepsUser == null) {
+            throw new ValidationException("Merchant record not found in AEPS registry.");
+        }
 
         // 3. Fetch and validate Core User record
         com.rupiksha.backend.domain.User mainUser = mainUserRepository.findByMobile(mobile)

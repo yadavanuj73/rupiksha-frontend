@@ -50,15 +50,48 @@ public class AepsServiceImpl implements AepsService {
         this.aepsKycHistoryRepository = aepsKycHistoryRepository;
     }
 
+    private User getOrSyncAepsUser(String mobile) {
+        Optional<User> userOpt = aepsUserRepository.findByMobile(mobile)
+                .or(() -> aepsUserRepository.findByUsername(mobile));
+        if (userOpt.isPresent()) {
+            return userOpt.get();
+        }
+
+        // Try syncing from main core user registry
+        Optional<com.rupiksha.backend.domain.User> coreUserOpt = mainUserRepository.findByMobile(mobile)
+                .or(() -> mainUserRepository.findByUsername(mobile));
+        if (coreUserOpt.isPresent()) {
+            com.rupiksha.backend.domain.User coreUser = coreUserOpt.get();
+            User aepsUser = new User();
+            aepsUser.setMobile(coreUser.getMobile());
+            aepsUser.setUsername(coreUser.getUsername());
+            aepsUser.setEmail(coreUser.getEmail());
+            aepsUser.setName(coreUser.getFullName());
+            aepsUser.setAepsAgentId(coreUser.getAepsAgentId());
+            aepsUser.setAepsMerchantId(coreUser.getAepsMerchantId());
+            aepsUser.setAepsOnboarded(coreUser.getAepsOnboarded());
+            aepsUser.setAepsKycDone(coreUser.getAepsKycDone());
+            aepsUser.setAepsKycRefId(coreUser.getAepsKycRefId());
+            aepsUser.setAepsKycTxnId(coreUser.getAepsKycTxnId());
+            if (coreUser.getAepsKycCompletedAt() != null) {
+                aepsUser.setAepsKycCompletedAt(java.time.LocalDateTime.ofInstant(coreUser.getAepsKycCompletedAt(), java.time.ZoneId.systemDefault()));
+            }
+            aepsUser.setAeps2faSessionId(coreUser.getAeps2faSessionId());
+            if (coreUser.getAeps2faAuthenticatedAt() != null) {
+                aepsUser.setAeps2faAuthenticatedAt(java.time.LocalDateTime.ofInstant(coreUser.getAeps2faAuthenticatedAt(), java.time.ZoneId.systemDefault()));
+            }
+            log.info("Synchronizing core user to AEPS registry for mobile: {}", mobile);
+            return aepsUserRepository.save(aepsUser);
+        }
+        return null;
+    }
+
     @Override
     public StatusResponse getAgentStatus(String mobile) {
         log.info("Checking AEPS status details in database for mobile: {}", mobile);
-        Optional<User> userOpt = aepsUserRepository.findByMobile(mobile)
-                .or(() -> aepsUserRepository.findByUsername(mobile));
+        User user = getOrSyncAepsUser(mobile);
 
-        if (userOpt.isPresent()) {
-            User user = userOpt.get();
-            
+        if (user != null) {
             // Verify if a valid 2FA session exists for today
             boolean hasValidSession = false;
             if (user.getAeps2faSessionId() != null && user.getAeps2faAuthenticatedAt() != null) {
@@ -111,17 +144,19 @@ public class AepsServiceImpl implements AepsService {
             String merchantId = response.getMerchantId();
             
             // 1. Update AEPS Module User
-            Optional<User> aepsUserOpt = aepsUserRepository.findByMobile(request.getAepsMobile());
-            if (aepsUserOpt.isPresent()) {
-                User aepsUser = aepsUserOpt.get();
-                aepsUser.setAepsAgentId(agentId);
-                aepsUser.setAepsMerchantId(merchantId);
-                aepsUser.setAepsOnboarded(true);
-                aepsUserRepository.save(aepsUser);
-                log.info("AEPS module user table updated successfully for mobile: {}", request.getAepsMobile());
-            } else {
-                log.warn("AEPS module user record not found for mobile: {}. Skipping AEPS table update.", request.getAepsMobile());
+            User aepsUser = getOrSyncAepsUser(request.getAepsMobile());
+            if (aepsUser == null) {
+                aepsUser = new User();
+                aepsUser.setMobile(request.getAepsMobile());
+                aepsUser.setUsername(request.getAepsMobile());
+                aepsUser.setEmail(request.getEmail());
+                aepsUser.setName(request.getFname() + " " + request.getLname());
             }
+            aepsUser.setAepsAgentId(agentId);
+            aepsUser.setAepsMerchantId(merchantId);
+            aepsUser.setAepsOnboarded(true);
+            aepsUserRepository.save(aepsUser);
+            log.info("AEPS module user table updated successfully for mobile: {}", request.getAepsMobile());
             
             // 2. Update Main Core User
             Optional<com.rupiksha.backend.domain.User> mainUserOpt = mainUserRepository.findByMobile(request.getAepsMobile());
@@ -149,12 +184,10 @@ public class AepsServiceImpl implements AepsService {
         AepsProvider activeProvider = getActiveProvider();
 
         // 1. Fetch and validate AEPS User record
-        Optional<User> aepsUserOpt = aepsUserRepository.findByMobile(mobile)
-                .or(() -> aepsUserRepository.findByUsername(mobile));
-        if (aepsUserOpt.isEmpty()) {
+        User aepsUser = getOrSyncAepsUser(mobile);
+        if (aepsUser == null) {
             throw new AepsException("Merchant record not found in AEPS registry for mobile: " + mobile);
         }
-        User aepsUser = aepsUserOpt.get();
         if (aepsUser.getAepsOnboarded() == null || !aepsUser.getAepsOnboarded()) {
             throw new AepsException("Merchant must complete onboarding before initiating KYC.");
         }
@@ -311,12 +344,10 @@ public class AepsServiceImpl implements AepsService {
         AepsProvider activeProvider = getActiveProvider();
 
         // 1. Fetch and validate AEPS User record
-        Optional<User> aepsUserOpt = aepsUserRepository.findByMobile(mobile)
-                .or(() -> aepsUserRepository.findByUsername(mobile));
-        if (aepsUserOpt.isEmpty()) {
+        User aepsUser = getOrSyncAepsUser(mobile);
+        if (aepsUser == null) {
             throw new AepsException("Merchant record not found in AEPS registry for mobile: " + mobile);
         }
-        User aepsUser = aepsUserOpt.get();
         if (aepsUser.getAepsOnboarded() == null || !aepsUser.getAepsOnboarded()) {
             throw new AepsException("Merchant must complete onboarding before verifying OTP.");
         }
@@ -438,12 +469,10 @@ public class AepsServiceImpl implements AepsService {
         AepsProvider activeProvider = getActiveProvider();
 
         // 1. Fetch and validate AEPS User record
-        Optional<User> aepsUserOpt = aepsUserRepository.findByMobile(mobile)
-                .or(() -> aepsUserRepository.findByUsername(mobile));
-        if (aepsUserOpt.isEmpty()) {
+        User aepsUser = getOrSyncAepsUser(mobile);
+        if (aepsUser == null) {
             throw new AepsException("Merchant record not found in AEPS registry for mobile: " + mobile);
         }
-        User aepsUser = aepsUserOpt.get();
         if (aepsUser.getAepsOnboarded() == null || !aepsUser.getAepsOnboarded()) {
             throw new AepsException("Merchant must complete onboarding before executing Daily 2FA.");
         }
