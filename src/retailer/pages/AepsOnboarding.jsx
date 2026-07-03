@@ -6,6 +6,7 @@ import { aepsService } from '../../services/apiService';
 
 export default function AepsOnboarding() {
     const navigate = useNavigate();
+    const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [detectingGps, setDetectingGps] = useState(false);
     const [error, setError] = useState('');
@@ -81,7 +82,7 @@ export default function AepsOnboarding() {
         );
     };
 
-    const validateForm = () => {
+    const validateStep1 = () => {
         if (!formData.fname.trim()) return "First name is required";
         if (!formData.lname.trim()) return "Last name is required";
 
@@ -105,6 +106,10 @@ export default function AepsOnboarding() {
             return "Invalid email address format";
         }
 
+        return null;
+    };
+
+    const validateStep2 = () => {
         if (!formData.shopName.trim()) return "Shop name is required";
         if (!formData.address.trim()) return "Shop address is required";
 
@@ -122,14 +127,27 @@ export default function AepsOnboarding() {
         return null;
     };
 
+    const handleNext = (e) => {
+        e.preventDefault();
+        setError('');
+        const step1Err = validateStep1();
+        if (step1Err) {
+            setError(step1Err);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+        setStep(2);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
         setSuccessMsg('');
 
-        const validationError = validateForm();
-        if (validationError) {
-            setError(validationError);
+        const step2Err = validateStep2();
+        if (step2Err) {
+            setError(step2Err);
             window.scrollTo({ top: 0, behavior: 'smooth' });
             return;
         }
@@ -188,14 +206,24 @@ export default function AepsOnboarding() {
                                 Complete your one-time onboarding form to register your retail merchant account.
                             </p>
                         </div>
-                        <div className="bg-blue-50/60 border border-blue-100 rounded-2xl p-4 self-start md:self-auto flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center font-bold">
-                                <Sparkles size={20} />
-                            </div>
-                            <div>
-                                <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider">Enterprise Integration</h4>
-                                <p className="text-[10px] text-slate-500 font-semibold">100% paperless registration</p>
-                            </div>
+                    </div>
+
+                    {/* Step Progress Indicator */}
+                    <div className="flex items-center justify-between gap-2 mb-8 bg-slate-50 border border-slate-100/80 rounded-2xl p-4">
+                        <div className="flex items-center gap-2">
+                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300 ${step === 1 ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-emerald-100 text-emerald-700 font-bold'}`}>
+                                {step > 1 ? '✓' : '1'}
+                            </span>
+                            <span className={`text-xs font-bold uppercase tracking-wider ${step === 1 ? 'text-slate-700' : 'text-slate-400'}`}>Personal Details</span>
+                        </div>
+                        <div className="flex-1 h-0.5 bg-slate-200 mx-3 rounded-full overflow-hidden">
+                            <div className={`h-full bg-blue-600 transition-all duration-500 ${step === 2 ? 'w-full' : 'w-0'}`} />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300 ${step === 2 ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-slate-100 text-slate-400'}`}>
+                                2
+                            </span>
+                            <span className={`text-xs font-bold uppercase tracking-wider ${step === 2 ? 'text-slate-700' : 'text-slate-400'}`}>Shop & Location</span>
                         </div>
                     </div>
 
@@ -226,243 +254,267 @@ export default function AepsOnboarding() {
 
                     {/* Onboarding Form */}
                     <form onSubmit={handleSubmit} className="space-y-8">
-                        {/* Section 1: Merchant Details */}
-                        <div>
-                            <h3 className="text-xs font-black uppercase tracking-widest text-blue-600 mb-4 border-b border-slate-100 pb-2">
-                                01. Personal Identity Details
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                                <div>
-                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">First Name *</label>
-                                    <input
-                                        type="text"
-                                        name="fname"
-                                        value={formData.fname}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
-                                        placeholder="Enter First Name"
-                                        disabled={loading}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Middle Name</label>
-                                    <input
-                                        type="text"
-                                        name="middlename"
-                                        value={formData.middlename}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
-                                        placeholder="Optional"
-                                        disabled={loading}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Last Name *</label>
-                                    <input
-                                        type="text"
-                                        name="lname"
-                                        value={formData.lname}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
-                                        placeholder="Enter Last Name"
-                                        disabled={loading}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">PAN Card Number *</label>
-                                    <input
-                                        type="text"
-                                        name="panCard"
-                                        value={formData.panCard}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none uppercase transition"
-                                        placeholder="E.g. ABCDE1234F"
-                                        maxLength={10}
-                                        disabled={loading}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Aadhaar Number *</label>
-                                    <input
-                                        type="text"
-                                        name="aadharNumber"
-                                        value={formData.aadharNumber}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
-                                        placeholder="12 Digit Aadhaar"
-                                        maxLength={12}
-                                        disabled={loading}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">AEPS Mobile Number *</label>
-                                    <input
-                                        type="text"
-                                        name="aepsMobile"
-                                        value={formData.aepsMobile}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
-                                        placeholder="10 Digit Mobile"
-                                        maxLength={10}
-                                        disabled={loading}
-                                    />
-                                </div>
-                                <div className="md:col-span-3">
-                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email Address *</label>
-                                    <input
-                                        type="email"
-                                        name="email"
-                                        value={formData.email}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
-                                        placeholder="E.g. agent@rupiksha.com"
-                                        disabled={loading}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Section 2: Shop Details */}
-                        <div>
-                            <h3 className="text-xs font-black uppercase tracking-widest text-blue-600 mb-4 border-b border-slate-100 pb-2">
-                                02. Shop & Geographic Location
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <div className="md:col-span-2">
-                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Shop Name *</label>
-                                    <input
-                                        type="text"
-                                        name="shopName"
-                                        value={formData.shopName}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
-                                        placeholder="E.g. Shreenath Digital Hub"
-                                        disabled={loading}
-                                    />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Shop Full Address *</label>
-                                    <textarea
-                                        name="address"
-                                        value={formData.address}
-                                        onChange={handleChange}
-                                        rows={2}
-                                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none resize-none transition"
-                                        placeholder="Shop No, Complex, Street Name, Landmark"
-                                        disabled={loading}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Pincode *</label>
-                                    <input
-                                        type="text"
-                                        name="pinCode"
-                                        value={formData.pinCode}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
-                                        placeholder="6 Digit PIN Code"
-                                        maxLength={6}
-                                        disabled={loading}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">City *</label>
-                                    <input
-                                        type="text"
-                                        name="city"
-                                        value={formData.city}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
-                                        placeholder="E.g. Patna"
-                                        disabled={loading}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">State Code *</label>
-                                    <input
-                                        type="text"
-                                        name="state"
-                                        value={formData.state}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
-                                        placeholder="State (E.g. BR, MH, UP)"
-                                        disabled={loading}
-                                    />
-                                </div>
-
-                                {/* Geographic GPS Coordinates */}
-                                <div className="border border-dashed border-slate-200 bg-slate-50/50 p-4 rounded-2xl flex flex-col justify-center">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <div className="flex items-center gap-2">
-                                            <MapPin className="text-slate-400" size={16} />
-                                            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">GPS Verification</span>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={detectLocation}
-                                            disabled={detectingGps || loading}
-                                            className="px-3.5 py-1.5 bg-blue-50 border border-blue-100 hover:bg-blue-100 text-blue-600 font-bold text-[10px] uppercase tracking-wider rounded-xl transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                                        >
-                                            <Compass className={`animate-spin ${detectingGps ? 'opacity-100' : 'hidden'}`} size={12} />
-                                            {detectingGps ? 'Detecting...' : 'Detect GPS'}
-                                        </button>
+                        {step === 1 && (
+                            <div className="space-y-6">
+                                <h3 className="text-xs font-black uppercase tracking-widest text-blue-600 mb-4 border-b border-slate-100 pb-2">
+                                    01. Personal Identity Details
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">First Name *</label>
+                                        <input
+                                            type="text"
+                                            name="fname"
+                                            value={formData.fname}
+                                            onChange={handleChange}
+                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
+                                            placeholder="Enter First Name"
+                                            disabled={loading}
+                                        />
                                     </div>
-                                    <div className="grid grid-cols-2 gap-3.5">
-                                        <div>
-                                            <input
-                                                type="text"
-                                                name="latitude"
-                                                value={formData.latitude}
-                                                onChange={handleChange}
-                                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-600 text-xs outline-none focus:border-blue-500 transition"
-                                                placeholder="Latitude"
-                                                disabled={loading}
-                                            />
-                                        </div>
-                                        <div>
-                                            <input
-                                                type="text"
-                                                name="longitude"
-                                                value={formData.longitude}
-                                                onChange={handleChange}
-                                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-600 text-xs outline-none focus:border-blue-500 transition"
-                                                placeholder="Longitude"
-                                                disabled={loading}
-                                            />
-                                        </div>
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Middle Name</label>
+                                        <input
+                                            type="text"
+                                            name="middlename"
+                                            value={formData.middlename}
+                                            onChange={handleChange}
+                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
+                                            placeholder="Optional"
+                                            disabled={loading}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Last Name *</label>
+                                        <input
+                                            type="text"
+                                            name="lname"
+                                            value={formData.lname}
+                                            onChange={handleChange}
+                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
+                                            placeholder="Enter Last Name"
+                                            disabled={loading}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">PAN Card Number *</label>
+                                        <input
+                                            type="text"
+                                            name="panCard"
+                                            value={formData.panCard}
+                                            onChange={handleChange}
+                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none uppercase transition"
+                                            placeholder="E.g. ABCDE1234F"
+                                            maxLength={10}
+                                            disabled={loading}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Aadhaar Number *</label>
+                                        <input
+                                            type="text"
+                                            name="aadharNumber"
+                                            value={formData.aadharNumber}
+                                            onChange={handleChange}
+                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
+                                            placeholder="12 Digit Aadhaar"
+                                            maxLength={12}
+                                            disabled={loading}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">AEPS Mobile Number *</label>
+                                        <input
+                                            type="text"
+                                            name="aepsMobile"
+                                            value={formData.aepsMobile}
+                                            onChange={handleChange}
+                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
+                                            placeholder="10 Digit Mobile"
+                                            maxLength={10}
+                                            disabled={loading}
+                                        />
+                                    </div>
+                                    <div className="md:col-span-3">
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email Address *</label>
+                                        <input
+                                            type="email"
+                                            name="email"
+                                            value={formData.email}
+                                            onChange={handleChange}
+                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
+                                            placeholder="E.g. agent@rupiksha.com"
+                                            disabled={loading}
+                                        />
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
+
+                        {step === 2 && (
+                            <div className="space-y-6">
+                                <h3 className="text-xs font-black uppercase tracking-widest text-blue-600 mb-4 border-b border-slate-100 pb-2">
+                                    02. Shop & Geographic Location
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div className="md:col-span-2">
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Shop Name *</label>
+                                        <input
+                                            type="text"
+                                            name="shopName"
+                                            value={formData.shopName}
+                                            onChange={handleChange}
+                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
+                                            placeholder="E.g. Shreenath Digital Hub"
+                                            disabled={loading}
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Shop Full Address *</label>
+                                        <textarea
+                                            name="address"
+                                            value={formData.address}
+                                            onChange={handleChange}
+                                            rows={2}
+                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none resize-none transition"
+                                            placeholder="Shop No, Complex, Street Name, Landmark"
+                                            disabled={loading}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Pincode *</label>
+                                        <input
+                                            type="text"
+                                            name="pinCode"
+                                            value={formData.pinCode}
+                                            onChange={handleChange}
+                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
+                                            placeholder="6 Digit PIN Code"
+                                            maxLength={6}
+                                            disabled={loading}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">City *</label>
+                                        <input
+                                            type="text"
+                                            name="city"
+                                            value={formData.city}
+                                            onChange={handleChange}
+                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
+                                            placeholder="E.g. Patna"
+                                            disabled={loading}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">State Code *</label>
+                                        <input
+                                            type="text"
+                                            name="state"
+                                            value={formData.state}
+                                            onChange={handleChange}
+                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
+                                            placeholder="State (E.g. BR, MH, UP)"
+                                            disabled={loading}
+                                        />
+                                    </div>
+
+                                    {/* Geographic GPS Coordinates */}
+                                    <div className="border border-dashed border-slate-200 bg-slate-50/50 p-4 rounded-2xl flex flex-col justify-center">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-2">
+                                                <MapPin className="text-slate-400" size={16} />
+                                                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">GPS Verification</span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={detectLocation}
+                                                disabled={detectingGps || loading}
+                                                className="px-3.5 py-1.5 bg-blue-50 border border-blue-100 hover:bg-blue-100 text-blue-600 font-bold text-[10px] uppercase tracking-wider rounded-xl transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                            >
+                                                <Compass className={`animate-spin ${detectingGps ? 'opacity-100' : 'hidden'}`} size={12} />
+                                                {detectingGps ? 'Detecting...' : 'Detect GPS'}
+                                            </button>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3.5">
+                                            <div>
+                                                <input
+                                                    type="text"
+                                                    name="latitude"
+                                                    value={formData.latitude}
+                                                    onChange={handleChange}
+                                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-600 text-xs outline-none focus:border-blue-500 transition"
+                                                    placeholder="Latitude"
+                                                    disabled={loading}
+                                                />
+                                            </div>
+                                            <div>
+                                                <input
+                                                    type="text"
+                                                    name="longitude"
+                                                    value={formData.longitude}
+                                                    onChange={handleChange}
+                                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-600 text-xs outline-none focus:border-blue-500 transition"
+                                                    placeholder="Longitude"
+                                                    disabled={loading}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Submit Actions */}
-                        <div className="flex gap-4 pt-6 border-t border-slate-100">
-                            <button
-                                type="button"
-                                onClick={() => navigate(-1)}
-                                className="flex-1 py-3.5 border border-slate-200 text-slate-500 rounded-2xl font-bold uppercase tracking-wider text-xs hover:bg-slate-50 transition cursor-pointer"
-                                disabled={loading}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                className="flex-2 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold uppercase tracking-wider text-xs shadow-lg shadow-blue-500/20 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
-                                disabled={loading}
-                            >
-                                {loading ? (
-                                    <>
-                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                        Submitting Onboarding...
-                                    </>
-                                ) : (
-                                    <>
-                                        <UserCheck size={16} />
-                                        Complete Onboarding
-                                    </>
-                                )}
-                            </button>
-                        </div>
+                        {step === 1 && (
+                            <div className="flex gap-4 pt-6 border-t border-slate-100">
+                                <button
+                                    type="button"
+                                    onClick={() => navigate(-1)}
+                                    className="flex-1 py-3.5 border border-slate-200 text-slate-500 rounded-2xl font-bold uppercase tracking-wider text-xs hover:bg-slate-50 transition cursor-pointer"
+                                    disabled={loading}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleNext}
+                                    className="flex-2 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold uppercase tracking-wider text-xs shadow-lg shadow-blue-500/20 transition flex items-center justify-center gap-2 cursor-pointer"
+                                >
+                                    Next Step
+                                </button>
+                            </div>
+                        )}
+
+                        {step === 2 && (
+                            <div className="flex gap-4 pt-6 border-t border-slate-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setStep(1)}
+                                    className="flex-1 py-3.5 border border-slate-200 text-slate-500 rounded-2xl font-bold uppercase tracking-wider text-xs hover:bg-slate-50 transition cursor-pointer"
+                                    disabled={loading}
+                                >
+                                    Back
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="flex-2 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold uppercase tracking-wider text-xs shadow-lg shadow-blue-500/20 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
+                                    disabled={loading}
+                                >
+                                    {loading ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            Submitting Onboarding...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <UserCheck size={16} />
+                                            Complete Onboarding
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        )}
                     </form>
                 </div>
             </motion.div>
