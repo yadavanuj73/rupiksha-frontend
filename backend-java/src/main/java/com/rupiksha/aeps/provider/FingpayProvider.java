@@ -148,6 +148,8 @@ public class FingpayProvider implements AepsProvider {
                 AepsKyc aepsKyc = aepsKycRepo.findByUid(uidLong).orElse(new AepsKyc());
                 aepsKyc.setUid(uidLong);
                 aepsKyc.setOutlet(response.getAgentId());
+                aepsKyc.setMerchantId(response.getMerchantId());
+                aepsKyc.setKycDone(false);
                 aepsKyc.setMpin("1234");
                 aepsKycRepo.save(aepsKyc);
 

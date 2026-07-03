@@ -6,6 +6,8 @@ import { aepsService } from '../../services/apiService';
 
 export default function AepsOnboarding() {
     const navigate = useNavigate();
+    const query = new URLSearchParams(window.location.search);
+    const provider = query.get('provider') || 'levin';
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [detectingGps, setDetectingGps] = useState(false);
@@ -164,9 +166,9 @@ export default function AepsOnboarding() {
 
             await aepsService.onboard(payload);
 
-            setSuccessMsg("Merchant Onboarding completed successfully! Agent profile registered. Redirecting to dashboard...");
+            setSuccessMsg("Merchant Onboarding completed successfully! Agent profile registered. Redirecting...");
             setTimeout(() => {
-                navigate('/aeps-2');
+                navigate(provider === 'fingpay' ? '/aeps-1' : '/aeps-2');
             }, 3000);
         } catch (err) {
             console.error("Onboarding submission failed", err);

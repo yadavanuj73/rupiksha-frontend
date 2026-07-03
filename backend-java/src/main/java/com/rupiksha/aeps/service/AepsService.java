@@ -16,7 +16,7 @@ public interface AepsService {
     /**
      * Fetch the agent's enrollment status.
      */
-    StatusResponse getAgentStatus(String mobile);
+    StatusResponse getAgentStatus(String mobile, String provider);
 
     /**
      * Test the connection of the configured active provider.

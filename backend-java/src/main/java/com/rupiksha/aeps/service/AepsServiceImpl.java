@@ -16,6 +16,8 @@ import com.rupiksha.aeps.dto.response.OnboardingResponse;
 import com.rupiksha.aeps.dto.response.StatusResponse;
 import com.rupiksha.aeps.exception.AepsException;
 import com.rupiksha.aeps.provider.AepsProvider;
+import com.rupiksha.aeps.provider.fingpay.entity.AepsKyc;
+import com.rupiksha.aeps.provider.fingpay.repository.AepsKycRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -34,6 +36,7 @@ public class AepsServiceImpl implements AepsService {
     private final AepsUserRepository aepsUserRepository;
     private final com.rupiksha.backend.repository.UserRepository mainUserRepository;
     private final AepsKycHistoryRepository aepsKycHistoryRepository;
+    private final AepsKycRepository aepsKycRepository;
 
     @Autowired
     public AepsServiceImpl(
@@ -41,13 +44,15 @@ public class AepsServiceImpl implements AepsService {
             AepsProperties aepsProperties,
             @Qualifier("aepsUserRepository") AepsUserRepository aepsUserRepository,
             @Qualifier("userRepository") com.rupiksha.backend.repository.UserRepository mainUserRepository,
-            AepsKycHistoryRepository aepsKycHistoryRepository
+            AepsKycHistoryRepository aepsKycHistoryRepository,
+            AepsKycRepository aepsKycRepository
     ) {
         this.providers = providers;
         this.aepsProperties = aepsProperties;
         this.aepsUserRepository = aepsUserRepository;
         this.mainUserRepository = mainUserRepository;
         this.aepsKycHistoryRepository = aepsKycHistoryRepository;
+        this.aepsKycRepository = aepsKycRepository;
     }
 
     private User getOrSyncAepsUser(String mobile) {
@@ -87,33 +92,67 @@ public class AepsServiceImpl implements AepsService {
     }
 
     @Override
-    public StatusResponse getAgentStatus(String mobile) {
-        log.info("Checking AEPS status details in database for mobile: {}", mobile);
-        User user = getOrSyncAepsUser(mobile);
+    public StatusResponse getAgentStatus(String mobile, String provider) {
+        log.info("Checking AEPS status details for mobile: {}, provider: {}", mobile, provider);
+        
+        Optional<com.rupiksha.backend.domain.User> coreUserOpt = mainUserRepository.findByMobile(mobile)
+                .or(() -> mainUserRepository.findByUsername(mobile));
+        if (coreUserOpt.isEmpty()) {
+            return StatusResponse.builder().onboarded(false).kycDone(false).aeps2faDone(false).build();
+        }
+        com.rupiksha.backend.domain.User coreUser = coreUserOpt.get();
+        long uidLong = coreUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
 
-        if (user != null) {
-            // Verify if a valid 2FA session exists for today
-            boolean hasValidSession = false;
-            if (user.getAeps2faSessionId() != null && user.getAeps2faAuthenticatedAt() != null) {
-                java.time.LocalDate authenticatedDate = user.getAeps2faAuthenticatedAt().toLocalDate();
-                java.time.LocalDate today = java.time.LocalDate.now();
-                hasValidSession = authenticatedDate.isEqual(today);
+        if ("fingpay".equalsIgnoreCase(provider)) {
+            Optional<AepsKyc> kycOpt = aepsKycRepository.findByUid(uidLong);
+            if (kycOpt.isPresent()) {
+                AepsKyc kyc = kycOpt.get();
+                boolean hasValidSession = false;
+                if (coreUser.getAeps2faSessionId() != null && coreUser.getAeps2faSessionId().startsWith("FGP") && coreUser.getAeps2faAuthenticatedAt() != null) {
+                    java.time.LocalDate authenticatedDate = coreUser.getAeps2faAuthenticatedAt().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+                    java.time.LocalDate today = java.time.LocalDate.now();
+                    hasValidSession = authenticatedDate.isEqual(today);
+                }
+
+                return StatusResponse.builder()
+                        .onboarded(true)
+                        .kycDone(kyc.getKycDone() != null && kyc.getKycDone())
+                        .aeps2faDone(hasValidSession)
+                        .agentId(kyc.getOutlet())
+                        .merchantId(kyc.getMerchantId() != null ? kyc.getMerchantId() : kyc.getOutlet())
+                        .build();
+            } else {
+                return StatusResponse.builder()
+                        .onboarded(false)
+                        .kycDone(false)
+                        .aeps2faDone(false)
+                        .build();
             }
+        } else {
+            // Default to Levin
+            User user = getOrSyncAepsUser(mobile);
+            if (user != null) {
+                boolean hasValidSession = false;
+                if (user.getAeps2faSessionId() != null && !user.getAeps2faSessionId().startsWith("FGP") && user.getAeps2faAuthenticatedAt() != null) {
+                    java.time.LocalDate authenticatedDate = user.getAeps2faAuthenticatedAt().toLocalDate();
+                    java.time.LocalDate today = java.time.LocalDate.now();
+                    hasValidSession = authenticatedDate.isEqual(today);
+                }
 
+                return StatusResponse.builder()
+                        .onboarded(user.getAepsOnboarded() != null && user.getAepsOnboarded())
+                        .kycDone(user.getAepsKycDone() != null && user.getAepsKycDone())
+                        .aeps2faDone(hasValidSession)
+                        .agentId(user.getAepsAgentId())
+                        .merchantId(user.getAepsMerchantId())
+                        .build();
+            }
             return StatusResponse.builder()
-                    .onboarded(user.getAepsOnboarded() != null && user.getAepsOnboarded())
-                    .kycDone(user.getAepsKycDone() != null && user.getAepsKycDone())
-                    .aeps2faDone(hasValidSession)
-                    .agentId(user.getAepsAgentId())
-                    .merchantId(user.getAepsMerchantId())
+                    .onboarded(false)
+                    .kycDone(false)
+                    .aeps2faDone(false)
                     .build();
         }
-
-        return StatusResponse.builder()
-                .onboarded(false)
-                .kycDone(false)
-                .aeps2faDone(false)
-                .build();
     }
 
     @Override
@@ -259,26 +298,34 @@ public class AepsServiceImpl implements AepsService {
         if (isSuccess) {
             log.info("Biometric KYC completed instantly. Updating database records...");
             
-            // Update AEPS user
-            aepsUser.setAepsKycDone(true);
-            aepsUser.setAepsKycCompletedAt(java.time.LocalDateTime.now());
-            aepsUser.setAepsKycRefId(providerResult.getProviderReference());
-            aepsUser.setAepsKycTxnId(providerResult.getProviderTxnId());
-            aepsUserRepository.save(aepsUser);
+            if ("fingpay".equalsIgnoreCase(activeProvider.getProviderName())) {
+                long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
+                AepsKyc aepsKyc = aepsKycRepository.findByUid(uidLong)
+                        .orElseThrow(() -> new AepsException("Fingpay merchant profile not found."));
+                aepsKyc.setKycDone(true);
+                aepsKycRepository.save(aepsKyc);
+            } else {
+                // Update AEPS user
+                aepsUser.setAepsKycDone(true);
+                aepsUser.setAepsKycCompletedAt(java.time.LocalDateTime.now());
+                aepsUser.setAepsKycRefId(providerResult.getProviderReference());
+                aepsUser.setAepsKycTxnId(providerResult.getProviderTxnId());
+                aepsUserRepository.save(aepsUser);
 
-            // Update main core user
-            mainUser.setAepsKycDone(true);
-            mainUser.setAepsKycCompletedAt(java.time.Instant.now());
-            mainUser.setAepsKycRefId(providerResult.getProviderReference());
-            mainUser.setAepsKycTxnId(providerResult.getProviderTxnId());
-            mainUserRepository.save(mainUser);
+                // Update main core user
+                mainUser.setAepsKycDone(true);
+                mainUser.setAepsKycCompletedAt(java.time.Instant.now());
+                mainUser.setAepsKycRefId(providerResult.getProviderReference());
+                mainUser.setAepsKycTxnId(providerResult.getProviderTxnId());
+                mainUserRepository.save(mainUser);
+            }
 
             // Update audit history log
             history.setWorkflowState(AepsWorkflowState.READY_FOR_DAILY_2FA.name());
             history.setStatus("SUCCESS");
             history.setProviderReference(providerResult.getProviderTxnId());
             history.setCompletedAt(java.time.LocalDateTime.now());
-            history.setRemarks("Biometric KYC successfully validated on Levin.");
+            history.setRemarks("Biometric KYC successfully validated on " + activeProvider.getProviderName().toUpperCase() + ".");
             aepsKycHistoryRepository.save(history);
 
             return KycResponse.builder()
@@ -419,20 +466,28 @@ public class AepsServiceImpl implements AepsService {
         if (isSuccess) {
             log.info("OTP verified successfully. Updating database records to active KYC status...");
 
-            // Update AEPS user
-            aepsUser.setAepsKycDone(true);
-            aepsUser.setAepsKycCompletedAt(java.time.LocalDateTime.now());
-            aepsUserRepository.save(aepsUser);
+            if ("fingpay".equalsIgnoreCase(activeProvider.getProviderName())) {
+                long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
+                AepsKyc aepsKyc = aepsKycRepository.findByUid(uidLong)
+                        .orElseThrow(() -> new AepsException("Fingpay merchant profile not found."));
+                aepsKyc.setKycDone(true);
+                aepsKycRepository.save(aepsKyc);
+            } else {
+                // Update AEPS user
+                aepsUser.setAepsKycDone(true);
+                aepsUser.setAepsKycCompletedAt(java.time.LocalDateTime.now());
+                aepsUserRepository.save(aepsUser);
 
-            // Update main core user
-            mainUser.setAepsKycDone(true);
-            mainUser.setAepsKycCompletedAt(java.time.Instant.now());
-            mainUserRepository.save(mainUser);
+                // Update main core user
+                mainUser.setAepsKycDone(true);
+                mainUser.setAepsKycCompletedAt(java.time.Instant.now());
+                mainUserRepository.save(mainUser);
+            }
 
             // Update audit history log
             history.setWorkflowState(AepsWorkflowState.READY_FOR_DAILY_2FA.name());
             history.setStatus("OTP_SUCCESS");
-            history.setRemarks("OTP successfully verified on Levin. KYC Activated.");
+            history.setRemarks("OTP successfully verified on " + activeProvider.getProviderName().toUpperCase() + ". KYC Activated.");
             history.setCompletedAt(java.time.LocalDateTime.now());
             aepsKycHistoryRepository.save(history);
 

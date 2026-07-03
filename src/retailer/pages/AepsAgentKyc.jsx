@@ -13,6 +13,8 @@ import { otpVerificationService } from '../../services/aeps/otpVerificationServi
 
 export default function AepsAgentKyc() {
     const navigate = useNavigate();
+    const query = new URLSearchParams(window.location.search);
+    const provider = query.get('provider') || 'levin';
     const { captureResult, device } = useRD();
 
     const [submitting, setSubmitting] = useState(false);
@@ -79,7 +81,7 @@ export default function AepsAgentKyc() {
                     {/* Header */}
                     <div className="mb-6">
                         <button
-                            onClick={() => navigate('/aeps-2')}
+                            onClick={() => navigate(provider === 'fingpay' ? '/aeps-1' : '/aeps-2')}
                             className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-slate-600 transition mb-3 cursor-pointer"
                         >
                             <ArrowLeft size={14} />
@@ -199,7 +201,7 @@ export default function AepsAgentKyc() {
                                 </p>
                             </div>
                             <button
-                                onClick={() => navigate('/aeps-2')}
+                                onClick={() => navigate(provider === 'fingpay' ? '/aeps-1' : '/aeps-2')}
                                 className="w-full py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-2xl font-bold uppercase tracking-wider text-xs transition shadow-md cursor-pointer"
                             >
                                 Go to Terminal

@@ -20,4 +20,10 @@ public class AepsKyc {
 
     @Column(name = "mpin")
     private String mpin;
+
+    @Column(name = "kyc_done")
+    private Boolean kycDone = false;
+
+    @Column(name = "merchant_id")
+    private String merchantId;
 }

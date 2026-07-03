@@ -16,6 +16,8 @@ export default function AEPS() {
         merchantId: ''
     });
 
+    const provider = window.location.pathname.includes('aeps-1') ? 'fingpay' : 'levin';
+
     useEffect(() => {
         const rawUser = localStorage.getItem('rupiksha_imp_user') || localStorage.getItem('rupiksha_user');
         if (!rawUser) {
@@ -33,7 +35,7 @@ export default function AEPS() {
                     setLoading(false);
                     return;
                 }
-                const res = await aepsService.getStatus(mobile);
+                const res = await aepsService.getStatus(mobile, provider);
                 setStatus(res);
             } catch (e) {
                 console.error("Failed to fetch AEPS status", e);
@@ -44,7 +46,7 @@ export default function AEPS() {
         };
 
         fetchStatus();
-    }, []);
+    }, [provider]);
 
     if (loading) {
         return (
@@ -107,8 +109,8 @@ export default function AEPS() {
                             >
                                 Back
                             </button>
-                            <button
-                                onClick={() => navigate('/aeps-onboarding')}
+                             <button
+                                onClick={() => navigate(`/aeps-onboarding?provider=${provider}`)}
                                 className="flex-1 py-3.5 bg-blue-600 text-white rounded-2xl font-bold uppercase tracking-wider text-xs hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition flex items-center justify-center gap-1.5"
                             >
                                 Start Onboarding
@@ -145,7 +147,7 @@ export default function AEPS() {
                                 Back
                             </button>
                             <button
-                                onClick={() => navigate('/aeps-agent-kyc')}
+                                onClick={() => navigate(`/aeps-agent-kyc?provider=${provider}`)}
                                 className="flex-1 py-3.5 bg-blue-600 text-white rounded-2xl font-bold uppercase tracking-wider text-xs hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition flex items-center justify-center gap-1.5"
                             >
                                 Start Biometric KYC

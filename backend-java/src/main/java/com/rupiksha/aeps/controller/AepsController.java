@@ -48,9 +48,12 @@ public class AepsController {
      * Checks the agent onboarding and KYC status in the database.
      */
     @GetMapping("/status")
-    public ResponseEntity<StatusResponse> getStatus(@RequestParam String mobile) {
-        log.info("REST request to check AEPS status for: {}", mobile);
-        StatusResponse response = aepsService.getAgentStatus(mobile);
+    public ResponseEntity<StatusResponse> getStatus(
+            @RequestParam String mobile,
+            @RequestParam(required = false) String provider
+    ) {
+        log.info("REST request to check AEPS status for: {}, provider: {}", mobile, provider);
+        StatusResponse response = aepsService.getAgentStatus(mobile, provider);
         return ResponseEntity.ok(response);
     }
 

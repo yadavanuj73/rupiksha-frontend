@@ -334,7 +334,7 @@ export const supportService = {
 
 // ─── AEPS / Aadhaar Enabled Payment System ───────────────────────────────────
 export const aepsService = {
-  getStatus: (mobile) => apiFetch(`/aeps/status?mobile=${encodeURIComponent(mobile)}`),
+  getStatus: (mobile, provider) => apiFetch(`/aeps/status?mobile=${encodeURIComponent(mobile)}${provider ? `&provider=${encodeURIComponent(provider)}` : ''}`),
   onboard: (payload) =>
     apiFetch("/aeps/onboard", {
       method: "POST",
