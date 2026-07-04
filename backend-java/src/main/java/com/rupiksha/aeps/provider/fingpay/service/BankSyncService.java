@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.client.RestTemplate;
 
 @Service
@@ -19,11 +20,11 @@ public class BankSyncService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    private static final String BANK_LIST_URL =
-            "https://fingpayap.tapits.in/fpaepsservice/api/bankdata/bank/details";
+    @Value("${fingpay.bank-sync.url}")
+    private String bankListUrl;
 
     public int syncBanks() throws Exception {
-        ResponseEntity<String> resp = restTemplate.getForEntity(BANK_LIST_URL, String.class);
+        ResponseEntity<String> resp = restTemplate.getForEntity(bankListUrl, String.class);
         JsonNode root = objectMapper.readTree(resp.getBody());
         JsonNode data = root.path("data");
 
