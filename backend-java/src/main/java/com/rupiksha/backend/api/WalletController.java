@@ -59,6 +59,7 @@ public class WalletController {
     }
 
     @GetMapping("/wallet")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> getWalletsList(Authentication auth) {
         List<WalletDtos.WalletBalanceResponse> list = walletService.getWalletsList(getPrincipalId(auth));
         Map<String, Object> response = new HashMap<>();
@@ -82,7 +83,7 @@ public class WalletController {
     }
 
     @PostMapping("/wallet/credit")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_DISTRIBUTOR','DISTRIBUTOR')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> credit(
             @Valid @RequestBody WalletDtos.WalletEntryRequest request,
             Authentication auth,
@@ -100,7 +101,7 @@ public class WalletController {
     }
 
     @PostMapping("/wallet/debit")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_DISTRIBUTOR','DISTRIBUTOR')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> debit(
             @Valid @RequestBody WalletDtos.WalletEntryRequest request,
             Authentication auth,
@@ -118,7 +119,7 @@ public class WalletController {
     }
 
     @PostMapping("/wallet/lock")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_DISTRIBUTOR','DISTRIBUTOR')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> lock(
             @Valid @RequestBody WalletDtos.WalletEntryRequest request,
             Authentication auth,
@@ -136,7 +137,7 @@ public class WalletController {
     }
 
     @PostMapping("/wallet/release")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_DISTRIBUTOR','DISTRIBUTOR')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> release(
             @Valid @RequestBody WalletDtos.WalletEntryRequest request,
             Authentication auth,
@@ -154,7 +155,7 @@ public class WalletController {
     }
 
     @PostMapping("/wallet/give-commission")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_DISTRIBUTOR','DISTRIBUTOR')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> giveCommission(
             @Valid @RequestBody WalletDtos.CommissionRequest request,
             Authentication auth,

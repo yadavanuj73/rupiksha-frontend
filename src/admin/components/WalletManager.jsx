@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../../context/AuthContext';
 import {
     Wallet, ArrowDownCircle, ArrowUpCircle, FileText,
     Lock, Unlock, Search, RefreshCcw, CheckCircle2,
@@ -997,6 +998,9 @@ const HistoryTab = ({ users, onToast }) => {
 // ─── Main WalletManager ────────────────────────────────────────────────────
 
 const WalletManager = ({ initialTab }) => {
+    const { user: currentUser } = useAuth();
+    const isAdmin = currentUser?.role === 'ADMIN' || (Array.isArray(currentUser?.roles) && currentUser.roles.includes('ADMIN'));
+
     const [activeTab, setActiveTab] = useState(initialTab || 'overview');
     const [wallets, setWallets] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -1012,6 +1016,22 @@ const WalletManager = ({ initialTab }) => {
 
     useEffect(() => { loadWallets(); }, []);
     useEffect(() => { if (initialTab) setActiveTab(initialTab); }, [initialTab]);
+
+    if (!isAdmin) {
+        return (
+            <div className="bg-white rounded-2xl border border-rose-100 shadow-xl p-6 mb-6 text-left space-y-3">
+                <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                    <div className="w-8 h-8 rounded-xl bg-rose-50 flex items-center justify-center">
+                        <AlertTriangle size={16} className="text-rose-500" />
+                    </div>
+                    <p className="text-xs font-black text-slate-600 uppercase tracking-widest">Access Restricted</p>
+                </div>
+                <p className="text-sm text-slate-500 font-semibold leading-relaxed">
+                    You don't have permission to view this section. This area is reserved for Administrators only.
+                </p>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">

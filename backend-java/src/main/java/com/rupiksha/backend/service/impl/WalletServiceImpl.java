@@ -10,8 +10,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.TransactionDefinition;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -34,12 +38,23 @@ public class WalletServiceImpl implements WalletService {
     private final FundRequestRepository fundRequestRepository;
     private final AuditLogRepository auditLogRepository;
     private final AppProperties appProperties;
+    private final PlatformTransactionManager transactionManager;
 
     // Helper to generate reference number (WLT-YYYYMMDD-XXXXXX)
     private String generateReferenceNumber() {
         String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         String randStr = UUID.randomUUID().toString().replace("-", "").substring(0, 6).toUpperCase();
         return "WLT-" + dateStr + "-" + randStr;
+    }
+
+    private void enforceAdmin(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+        boolean isAdmin = user.getRoles().stream()
+                .anyMatch(r -> r.getName().name().equalsIgnoreCase("ADMIN"));
+        if (!isAdmin) {
+            throw new AccessDeniedException("Access denied: only administrators can perform manual wallet mutations");
+        }
     }
 
     // Helper to check user hierarchy (recursive upline lookup)
@@ -141,16 +156,31 @@ public class WalletServiceImpl implements WalletService {
     }
 
     private Wallet getOrCreateWallet(UUID userId) {
-        return walletRepository.findByUserId(userId).orElseGet(() -> {
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
-            Wallet wallet = new Wallet();
-            wallet.setUser(user);
-            wallet.setBalance(BigDecimal.ZERO);
-            wallet.setLockedBalance(BigDecimal.ZERO);
-            wallet.setStatus(WalletStatus.ACTIVE);
-            return walletRepository.save(wallet);
-        });
+        Optional<Wallet> opt = walletRepository.findByUserId(userId);
+        if (opt.isPresent()) {
+            return opt.get();
+        }
+
+        TransactionTemplate template = new TransactionTemplate(transactionManager);
+        template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+
+        try {
+            return template.execute(status -> {
+                return walletRepository.findByUserId(userId).orElseGet(() -> {
+                    User user = userRepository.findById(userId)
+                            .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+                    Wallet wallet = new Wallet();
+                    wallet.setUser(user);
+                    wallet.setBalance(BigDecimal.ZERO);
+                    wallet.setLockedBalance(BigDecimal.ZERO);
+                    wallet.setStatus(WalletStatus.ACTIVE);
+                    return walletRepository.saveAndFlush(wallet);
+                });
+            });
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            return walletRepository.findByUserId(userId)
+                    .orElseThrow(() -> new IllegalStateException("Failed to find wallet after concurrent creation", e));
+        }
     }
 
     private Wallet getOrCreateWalletWithLock(UUID userId) {
@@ -158,7 +188,11 @@ public class WalletServiceImpl implements WalletService {
         if (walletOpt.isPresent()) {
             return walletOpt.get();
         }
-        getOrCreateWallet(userId);
+        try {
+            getOrCreateWallet(userId);
+        } catch (Exception e) {
+            // Ignore to allow retry finding
+        }
         return walletRepository.findByUserIdWithLock(userId)
                 .orElseThrow(() -> new IllegalStateException("Failed to lock newly created wallet"));
     }
@@ -200,38 +234,11 @@ public class WalletServiceImpl implements WalletService {
 
         boolean isAdmin = currentUser.getRoles().stream()
                 .anyMatch(r -> r.getName().name().equalsIgnoreCase("ADMIN"));
-
-        List<User> users;
-        if (isAdmin) {
-            users = userRepository.findAll();
-        } else {
-            // Find all descendants in the hierarchy tree
-            String currentUserIdStr = currentUserId.toString();
-            users = userRepository.findAll().stream()
-                    .filter(u -> {
-                        if (u.getId().equals(currentUserId)) {
-                            return true;
-                        }
-                        String ref = u.getAddedByUserRef();
-                        while (ref != null && !ref.isBlank()) {
-                            if (ref.equalsIgnoreCase(currentUserIdStr)) {
-                                return true;
-                            }
-                            try {
-                                UUID parentUuid = UUID.fromString(ref);
-                                User nextParent = userRepository.findById(parentUuid).orElse(null);
-                                if (nextParent == null) {
-                                    break;
-                                }
-                                ref = nextParent.getAddedByUserRef();
-                            } catch (Exception e) {
-                                break;
-                            }
-                        }
-                        return false;
-                    })
-                    .collect(Collectors.toList());
+        if (!isAdmin) {
+            throw new AccessDeniedException("Access denied: non-admin users cannot access the Admin Wallet Manager dataset");
         }
+
+        List<User> users = userRepository.findAll();
 
         return users.stream()
                 .map(u -> getOrCreateWallet(u.getId()))
@@ -242,69 +249,44 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletDtos.WalletBalanceResponse credit(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey) {
-        // Idempotency check
-        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            Optional<WalletEntry> existing = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
-            if (existing.isPresent()) {
-                return mapBalanceResponse(existing.get().getWallet());
-            }
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new IllegalArgumentException("Idempotency key is required");
         }
+
+        // Idempotency check
+        Optional<WalletEntry> existing = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
+        if (existing.isPresent()) {
+            return mapBalanceResponse(existing.get().getWallet());
+        }
+
+        enforceAdmin(operatorId);
 
         User operator = userRepository.findById(operatorId)
                 .orElseThrow(() -> new IllegalArgumentException("Operator not found"));
         User target = userRepository.findById(UUID.fromString(request.userId()))
                 .orElseThrow(() -> new IllegalArgumentException("Target user not found"));
 
-        checkHierarchy(operator, target);
-
-        List<Wallet> locked = lockWallets(operatorId, target.getId());
-        Wallet opWallet = locked.stream().filter(w -> w.getUser().getId().equals(operatorId)).findFirst().orElseThrow();
-        Wallet tgtWallet = locked.stream().filter(w -> w.getUser().getId().equals(target.getId())).findFirst().orElseThrow();
-
-        validateWalletStatus(opWallet, "DEBIT");
+        Wallet tgtWallet = getOrCreateWalletWithLock(target.getId());
         validateWalletStatus(tgtWallet, "CREDIT");
 
         BigDecimal amount = request.amount();
-        BigDecimal opAvailable = opWallet.getBalance().subtract(opWallet.getLockedBalance());
-        if (opAvailable.compareTo(amount) < 0) {
-            throw new IllegalArgumentException("Insufficient wallet balance of operator");
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Amount must be positive");
         }
 
-        // Apply mutations
-        BigDecimal oldOpBal = opWallet.getBalance();
-        BigDecimal newOpBal = opWallet.getBalance().subtract(amount);
-        opWallet.setBalance(newOpBal);
-        walletRepository.save(opWallet);
-
         BigDecimal oldTgtBal = tgtWallet.getBalance();
-        BigDecimal newTgtBal = tgtWallet.getBalance().add(amount);
+        BigDecimal newTgtBal = oldTgtBal.add(amount);
         tgtWallet.setBalance(newTgtBal);
         walletRepository.save(tgtWallet);
 
         String refNum = generateReferenceNumber();
-
-        // Write ledger entries
-        WalletEntry opEntry = new WalletEntry();
-        opEntry.setWallet(opWallet);
-        opEntry.setAmount(amount);
-        opEntry.setEntryType("DEBIT");
-        opEntry.setReferenceId(refNum);
-        opEntry.setNarration("Credit out to " + target.getUsername() + ": " + request.narration());
-        opEntry.setOpeningBalance(oldOpBal);
-        opEntry.setClosingBalance(newOpBal);
-        opEntry.setOperator(operator);
-        opEntry.setIpAddress(ipAddress);
-        opEntry.setIdempotencyKey(idempotencyKey + "_OP");
-        opEntry.setTransactionContext(WalletTransactionContext.ADMIN_CREDIT);
-        opEntry.setStatus(WalletTransactionStatus.SUCCESS);
-        walletEntryRepository.save(opEntry);
 
         WalletEntry tgtEntry = new WalletEntry();
         tgtEntry.setWallet(tgtWallet);
         tgtEntry.setAmount(amount);
         tgtEntry.setEntryType("CREDIT");
         tgtEntry.setReferenceId(refNum);
-        tgtEntry.setNarration("Credit from " + operator.getUsername() + ": " + request.narration());
+        tgtEntry.setNarration("Credit from " + operator.getUsername() + ": " + request.getNarrationOrRemark());
         tgtEntry.setOpeningBalance(oldTgtBal);
         tgtEntry.setClosingBalance(newTgtBal);
         tgtEntry.setOperator(operator);
@@ -312,22 +294,16 @@ public class WalletServiceImpl implements WalletService {
         tgtEntry.setIdempotencyKey(idempotencyKey);
         tgtEntry.setTransactionContext(WalletTransactionContext.ADMIN_CREDIT);
         tgtEntry.setStatus(WalletTransactionStatus.SUCCESS);
-        walletEntryRepository.save(tgtEntry);
 
-        // Write Audits
-        AuditLog auditOp = AuditLog.builder()
-                .operator(operator)
-                .targetUser(operator)
-                .oldBalance(oldOpBal)
-                .newBalance(newOpBal)
-                .amount(amount)
-                .walletType("MAIN")
-                .ledgerType("DEBIT")
-                .referenceNumber(refNum)
-                .ipAddress(ipAddress)
-                .remark("Debited from operator for crediting " + target.getUsername())
-                .build();
-        auditLogRepository.save(auditOp);
+        try {
+            walletEntryRepository.saveAndFlush(tgtEntry);
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            Optional<WalletEntry> dup = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
+            if (dup.isPresent()) {
+                return mapBalanceResponse(dup.get().getWallet());
+            }
+            throw ex;
+        }
 
         AuditLog auditTgt = AuditLog.builder()
                 .operator(operator)
@@ -349,53 +325,48 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletDtos.WalletBalanceResponse debit(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey) {
-        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            Optional<WalletEntry> existing = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
-            if (existing.isPresent()) {
-                return mapBalanceResponse(existing.get().getWallet());
-            }
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new IllegalArgumentException("Idempotency key is required");
         }
+
+        Optional<WalletEntry> existing = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
+        if (existing.isPresent()) {
+            return mapBalanceResponse(existing.get().getWallet());
+        }
+
+        enforceAdmin(operatorId);
 
         User operator = userRepository.findById(operatorId)
                 .orElseThrow(() -> new IllegalArgumentException("Operator not found"));
         User target = userRepository.findById(UUID.fromString(request.userId()))
                 .orElseThrow(() -> new IllegalArgumentException("Target user not found"));
 
-        checkHierarchy(operator, target);
-
-        List<Wallet> locked = lockWallets(operatorId, target.getId());
-        Wallet opWallet = locked.stream().filter(w -> w.getUser().getId().equals(operatorId)).findFirst().orElseThrow();
-        Wallet tgtWallet = locked.stream().filter(w -> w.getUser().getId().equals(target.getId())).findFirst().orElseThrow();
-
+        Wallet tgtWallet = getOrCreateWalletWithLock(target.getId());
         validateWalletStatus(tgtWallet, "DEBIT");
-        validateWalletStatus(opWallet, "CREDIT");
 
         BigDecimal amount = request.amount();
-        BigDecimal tgtAvailable = tgtWallet.getBalance().subtract(tgtWallet.getLockedBalance());
-        if (tgtAvailable.compareTo(amount) < 0) {
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Amount must be positive");
+        }
+
+        BigDecimal availableBalance = tgtWallet.getBalance().subtract(tgtWallet.getLockedBalance());
+        if (amount.compareTo(availableBalance) > 0) {
             throw new IllegalArgumentException("Insufficient wallet balance of target user");
         }
 
-        // Apply mutations
         BigDecimal oldTgtBal = tgtWallet.getBalance();
-        BigDecimal newTgtBal = tgtWallet.getBalance().subtract(amount);
+        BigDecimal newTgtBal = oldTgtBal.subtract(amount);
         tgtWallet.setBalance(newTgtBal);
         walletRepository.save(tgtWallet);
 
-        BigDecimal oldOpBal = opWallet.getBalance();
-        BigDecimal newOpBal = opWallet.getBalance().add(amount);
-        opWallet.setBalance(newOpBal);
-        walletRepository.save(opWallet);
-
         String refNum = generateReferenceNumber();
 
-        // Write ledger entries
         WalletEntry tgtEntry = new WalletEntry();
         tgtEntry.setWallet(tgtWallet);
         tgtEntry.setAmount(amount);
         tgtEntry.setEntryType("DEBIT");
         tgtEntry.setReferenceId(refNum);
-        tgtEntry.setNarration("Debit by operator " + operator.getUsername() + ": " + request.narration());
+        tgtEntry.setNarration("Debit by operator " + operator.getUsername() + ": " + request.getNarrationOrRemark());
         tgtEntry.setOpeningBalance(oldTgtBal);
         tgtEntry.setClosingBalance(newTgtBal);
         tgtEntry.setOperator(operator);
@@ -403,24 +374,17 @@ public class WalletServiceImpl implements WalletService {
         tgtEntry.setIdempotencyKey(idempotencyKey);
         tgtEntry.setTransactionContext(WalletTransactionContext.ADMIN_DEBIT);
         tgtEntry.setStatus(WalletTransactionStatus.SUCCESS);
-        walletEntryRepository.save(tgtEntry);
 
-        WalletEntry opEntry = new WalletEntry();
-        opEntry.setWallet(opWallet);
-        opEntry.setAmount(amount);
-        opEntry.setEntryType("CREDIT");
-        opEntry.setReferenceId(refNum);
-        opEntry.setNarration("Debit received from " + target.getUsername() + ": " + request.narration());
-        opEntry.setOpeningBalance(oldOpBal);
-        opEntry.setClosingBalance(newOpBal);
-        opEntry.setOperator(operator);
-        opEntry.setIpAddress(ipAddress);
-        opEntry.setIdempotencyKey(idempotencyKey + "_OP");
-        opEntry.setTransactionContext(WalletTransactionContext.ADMIN_DEBIT);
-        opEntry.setStatus(WalletTransactionStatus.SUCCESS);
-        walletEntryRepository.save(opEntry);
+        try {
+            walletEntryRepository.saveAndFlush(tgtEntry);
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            Optional<WalletEntry> dup = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
+            if (dup.isPresent()) {
+                return mapBalanceResponse(dup.get().getWallet());
+            }
+            throw ex;
+        }
 
-        // Write Audits
         AuditLog auditTgt = AuditLog.builder()
                 .operator(operator)
                 .targetUser(target)
@@ -435,62 +399,52 @@ public class WalletServiceImpl implements WalletService {
                 .build();
         auditLogRepository.save(auditTgt);
 
-        AuditLog auditOp = AuditLog.builder()
-                .operator(operator)
-                .targetUser(operator)
-                .oldBalance(oldOpBal)
-                .newBalance(newOpBal)
-                .amount(amount)
-                .walletType("MAIN")
-                .ledgerType("CREDIT")
-                .referenceNumber(refNum)
-                .ipAddress(ipAddress)
-                .remark("Credited operator wallet from target " + target.getUsername())
-                .build();
-        auditLogRepository.save(auditOp);
-
         return mapBalanceResponse(tgtWallet);
     }
 
     @Override
     @Transactional
     public WalletDtos.WalletBalanceResponse lock(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey) {
-        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            Optional<WalletEntry> existing = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
-            if (existing.isPresent()) {
-                return mapBalanceResponse(existing.get().getWallet());
-            }
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new IllegalArgumentException("Idempotency key is required");
         }
+
+        Optional<WalletEntry> existing = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
+        if (existing.isPresent()) {
+            return mapBalanceResponse(existing.get().getWallet());
+        }
+
+        enforceAdmin(operatorId);
 
         User operator = userRepository.findById(operatorId)
                 .orElseThrow(() -> new IllegalArgumentException("Operator not found"));
         User target = userRepository.findById(UUID.fromString(request.userId()))
                 .orElseThrow(() -> new IllegalArgumentException("Target user not found"));
 
-        checkHierarchy(operator, target);
-
         Wallet wallet = getOrCreateWalletWithLock(target.getId());
         validateWalletStatus(wallet, "DEBIT");
 
         BigDecimal amount = request.amount();
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Amount must be positive");
+        }
+
         BigDecimal available = wallet.getBalance().subtract(wallet.getLockedBalance());
         if (available.compareTo(amount) < 0) {
             throw new IllegalArgumentException("Insufficient available wallet balance to lock");
         }
 
-        // Lock amount (add to lockedBalance)
         wallet.setLockedBalance(wallet.getLockedBalance().add(amount));
         walletRepository.save(wallet);
 
         String refNum = generateReferenceNumber();
 
-        // Write ledger entry
         WalletEntry entry = new WalletEntry();
         entry.setWallet(wallet);
         entry.setAmount(amount);
         entry.setEntryType("LOCK");
         entry.setReferenceId(refNum);
-        entry.setNarration("Balance locked: " + request.narration());
+        entry.setNarration("Balance locked: " + request.getNarrationOrRemark());
         entry.setOpeningBalance(wallet.getBalance());
         entry.setClosingBalance(wallet.getBalance());
         entry.setOperator(operator);
@@ -498,9 +452,17 @@ public class WalletServiceImpl implements WalletService {
         entry.setIdempotencyKey(idempotencyKey);
         entry.setTransactionContext(WalletTransactionContext.LOCK_BALANCE);
         entry.setStatus(WalletTransactionStatus.SUCCESS);
-        walletEntryRepository.save(entry);
 
-        // Audit
+        try {
+            walletEntryRepository.saveAndFlush(entry);
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            Optional<WalletEntry> dup = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
+            if (dup.isPresent()) {
+                return mapBalanceResponse(dup.get().getWallet());
+            }
+            throw ex;
+        }
+
         AuditLog audit = AuditLog.builder()
                 .operator(operator)
                 .targetUser(target)
@@ -521,41 +483,45 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletDtos.WalletBalanceResponse release(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey) {
-        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            Optional<WalletEntry> existing = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
-            if (existing.isPresent()) {
-                return mapBalanceResponse(existing.get().getWallet());
-            }
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new IllegalArgumentException("Idempotency key is required");
         }
+
+        Optional<WalletEntry> existing = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
+        if (existing.isPresent()) {
+            return mapBalanceResponse(existing.get().getWallet());
+        }
+
+        enforceAdmin(operatorId);
 
         User operator = userRepository.findById(operatorId)
                 .orElseThrow(() -> new IllegalArgumentException("Operator not found"));
         User target = userRepository.findById(UUID.fromString(request.userId()))
                 .orElseThrow(() -> new IllegalArgumentException("Target user not found"));
 
-        checkHierarchy(operator, target);
-
         Wallet wallet = getOrCreateWalletWithLock(target.getId());
         validateWalletStatus(wallet, "CREDIT");
 
         BigDecimal amount = request.amount();
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Amount must be positive");
+        }
+
         if (wallet.getLockedBalance().compareTo(amount) < 0) {
             throw new IllegalArgumentException("Release amount exceeds current locked balance");
         }
 
-        // Release locked amount
         wallet.setLockedBalance(wallet.getLockedBalance().subtract(amount));
         walletRepository.save(wallet);
 
         String refNum = generateReferenceNumber();
 
-        // Write ledger entry
         WalletEntry entry = new WalletEntry();
         entry.setWallet(wallet);
         entry.setAmount(amount);
         entry.setEntryType("UNLOCK");
         entry.setReferenceId(refNum);
-        entry.setNarration("Balance released: " + request.narration());
+        entry.setNarration("Balance released: " + request.getNarrationOrRemark());
         entry.setOpeningBalance(wallet.getBalance());
         entry.setClosingBalance(wallet.getBalance());
         entry.setOperator(operator);
@@ -563,9 +529,17 @@ public class WalletServiceImpl implements WalletService {
         entry.setIdempotencyKey(idempotencyKey);
         entry.setTransactionContext(WalletTransactionContext.RELEASE_LOCK);
         entry.setStatus(WalletTransactionStatus.SUCCESS);
-        walletEntryRepository.save(entry);
 
-        // Audit
+        try {
+            walletEntryRepository.saveAndFlush(entry);
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            Optional<WalletEntry> dup = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
+            if (dup.isPresent()) {
+                return mapBalanceResponse(dup.get().getWallet());
+            }
+            throw ex;
+        }
+
         AuditLog audit = AuditLog.builder()
                 .operator(operator)
                 .targetUser(target)
@@ -586,40 +560,44 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletDtos.WalletBalanceResponse giveCommission(WalletDtos.CommissionRequest request, UUID operatorId, String ipAddress, String idempotencyKey) {
-        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            Optional<WalletEntry> existing = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
-            if (existing.isPresent()) {
-                return mapBalanceResponse(existing.get().getWallet());
-            }
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new IllegalArgumentException("Idempotency key is required");
         }
+
+        Optional<WalletEntry> existing = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
+        if (existing.isPresent()) {
+            return mapBalanceResponse(existing.get().getWallet());
+        }
+
+        enforceAdmin(operatorId);
 
         User operator = userRepository.findById(operatorId)
                 .orElseThrow(() -> new IllegalArgumentException("Operator not found"));
         User target = userRepository.findById(UUID.fromString(request.userId()))
                 .orElseThrow(() -> new IllegalArgumentException("Target user not found"));
 
-        checkHierarchy(operator, target);
-
-        List<Wallet> locked = lockWallets(operatorId, target.getId());
-        Wallet opWallet = locked.stream().filter(w -> w.getUser().getId().equals(operatorId)).findFirst().orElseThrow();
-        Wallet tgtWallet = locked.stream().filter(w -> w.getUser().getId().equals(target.getId())).findFirst().orElseThrow();
-
-        validateWalletStatus(opWallet, "DEBIT");
+        Wallet tgtWallet = getOrCreateWalletWithLock(target.getId());
         validateWalletStatus(tgtWallet, "CREDIT");
 
         BigDecimal grossAmount = request.amount();
-        BigDecimal opAvailable = opWallet.getBalance().subtract(opWallet.getLockedBalance());
-        if (opAvailable.compareTo(grossAmount) < 0) {
-            throw new IllegalArgumentException("Insufficient operator wallet balance to distribute commission");
+        if (grossAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Amount must be positive");
         }
 
-        // Centralized configuration check
+        // Centralized configuration from AppProperties
         BigDecimal tdsPct = BigDecimal.valueOf(2.0); // Default 2%
-        BigDecimal gstPct = request.gstPercentage(); // Read from UI input custom rate
+        BigDecimal gstPct = BigDecimal.ZERO; // Default 0%
         if (appProperties != null && appProperties.wallet() != null) {
             if (appProperties.wallet().tdsPercentage() != null) {
                 tdsPct = appProperties.wallet().tdsPercentage();
             }
+            if (appProperties.wallet().gstPercentage() != null) {
+                gstPct = appProperties.wallet().gstPercentage();
+            }
+        }
+
+        if (tdsPct.compareTo(BigDecimal.ZERO) < 0 || gstPct.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Tax percentages must be valid non-negative values");
         }
 
         BigDecimal tdsAmount = grossAmount.multiply(tdsPct).divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
@@ -630,42 +608,19 @@ public class WalletServiceImpl implements WalletService {
             throw new IllegalArgumentException("TDS and GST percentages exceed the gross commission amount");
         }
 
-        // Apply mutations
-        BigDecimal oldOpBal = opWallet.getBalance();
-        BigDecimal newOpBal = opWallet.getBalance().subtract(grossAmount);
-        opWallet.setBalance(newOpBal);
-        walletRepository.save(opWallet);
-
         BigDecimal oldTgtBal = tgtWallet.getBalance();
-        BigDecimal newTgtBal = tgtWallet.getBalance().add(netCredited);
+        BigDecimal newTgtBal = oldTgtBal.add(netCredited);
         tgtWallet.setBalance(newTgtBal);
         walletRepository.save(tgtWallet);
 
         String refNum = generateReferenceNumber();
 
-        // Write operator debit entry
-        WalletEntry opEntry = new WalletEntry();
-        opEntry.setWallet(opWallet);
-        opEntry.setAmount(grossAmount);
-        opEntry.setEntryType("DEBIT");
-        opEntry.setReferenceId(refNum);
-        opEntry.setNarration("Commission payout to " + target.getUsername() + ": " + request.narration());
-        opEntry.setOpeningBalance(oldOpBal);
-        opEntry.setClosingBalance(newOpBal);
-        opEntry.setOperator(operator);
-        opEntry.setIpAddress(ipAddress);
-        opEntry.setIdempotencyKey(idempotencyKey + "_OP");
-        opEntry.setTransactionContext(WalletTransactionContext.COMMISSION);
-        opEntry.setStatus(WalletTransactionStatus.SUCCESS);
-        walletEntryRepository.save(opEntry);
-
-        // Write target credit entry with TDS and GST columns stored
         WalletEntry tgtEntry = new WalletEntry();
         tgtEntry.setWallet(tgtWallet);
         tgtEntry.setAmount(netCredited);
         tgtEntry.setEntryType("CREDIT");
         tgtEntry.setReferenceId(refNum);
-        tgtEntry.setNarration("Commission credited: " + request.narration());
+        tgtEntry.setNarration("Commission credited: " + request.getNarrationOrRemark());
         tgtEntry.setOpeningBalance(oldTgtBal);
         tgtEntry.setClosingBalance(newTgtBal);
         tgtEntry.setOperator(operator);
@@ -675,22 +630,16 @@ public class WalletServiceImpl implements WalletService {
         tgtEntry.setTds(tdsAmount);
         tgtEntry.setTransactionContext(WalletTransactionContext.COMMISSION);
         tgtEntry.setStatus(WalletTransactionStatus.SUCCESS);
-        walletEntryRepository.save(tgtEntry);
 
-        // Audits
-        AuditLog auditOp = AuditLog.builder()
-                .operator(operator)
-                .targetUser(operator)
-                .oldBalance(oldOpBal)
-                .newBalance(newOpBal)
-                .amount(grossAmount)
-                .walletType("MAIN")
-                .ledgerType("DEBIT")
-                .referenceNumber(refNum)
-                .ipAddress(ipAddress)
-                .remark("Distributed commission gross amount: " + grossAmount)
-                .build();
-        auditLogRepository.save(auditOp);
+        try {
+            walletEntryRepository.saveAndFlush(tgtEntry);
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            Optional<WalletEntry> dup = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
+            if (dup.isPresent()) {
+                return mapBalanceResponse(dup.get().getWallet());
+            }
+            throw ex;
+        }
 
         AuditLog auditTgt = AuditLog.builder()
                 .operator(operator)
@@ -712,15 +661,10 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletDtos.WalletBalanceResponse updateWalletStatus(WalletDtos.WalletStatusUpdateRequest request, UUID adminId, String ipAddress) {
+        enforceAdmin(adminId);
+
         User admin = userRepository.findById(adminId)
                 .orElseThrow(() -> new IllegalArgumentException("Admin not found"));
-
-        // Admin Role Gate
-        boolean isAdmin = admin.getRoles().stream()
-                .anyMatch(r -> r.getName().name().equalsIgnoreCase("ADMIN"));
-        if (!isAdmin) {
-            throw new SecurityException("Only administrators can override wallet statuses");
-        }
 
         User target = userRepository.findById(UUID.fromString(request.userId()))
                 .orElseThrow(() -> new IllegalArgumentException("Target user not found"));
@@ -798,6 +742,250 @@ public class WalletServiceImpl implements WalletService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         User currentUser = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new IllegalArgumentException("Current User not found"));
+
+        checkHierarchyOrSelf(currentUser, target);
+
+        FundRequest fr = FundRequest.builder()
+                .user(target)
+                .amount(request.amount())
+                .status("PENDING")
+                .utrNumber(request.utrNumber())
+                .method(request.method())
+                .remark(request.remark())
+                .createdAt(Instant.now())
+                .build();
+        fr = fundRequestRepository.save(fr);
+
+        // Add non-financial record to ledger trace
+        String refNum = generateReferenceNumber();
+        Wallet w = getOrCreateWallet(target.getId());
+
+        WalletEntry entry = new WalletEntry();
+        entry.setWallet(w);
+        entry.setAmount(request.amount());
+        entry.setEntryType("FUND_REQUEST");
+        entry.setReferenceId(refNum);
+        entry.setNarration("Fund request submitted for UTR: " + request.utrNumber());
+        entry.setOpeningBalance(w.getBalance());
+        entry.setClosingBalance(w.getBalance());
+        entry.setOperator(currentUser);
+        entry.setTransactionContext(WalletTransactionContext.FUND_REQUEST_CREATED);
+        entry.setStatus(WalletTransactionStatus.PENDING);
+        walletEntryRepository.save(entry);
+
+        return new WalletDtos.FundRequestResponse(
+                fr.getId().toString(),
+                target.getId().toString(),
+                target.getUsername(),
+                target.getFullName(),
+                fr.getAmount(),
+                fr.getStatus(),
+                fr.getUtrNumber(),
+                fr.getMethod(),
+                fr.getRemark(),
+                null,
+                null,
+                null,
+                fr.getCreatedAt()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WalletDtos.FundRequestResponse> getFundRequests(UUID currentUserId) {
+        User currentUser = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        boolean isAdmin = currentUser.getRoles().stream()
+                .anyMatch(r -> r.getName().name().equalsIgnoreCase("ADMIN"));
+
+        List<FundRequest> reqs;
+        if (isAdmin) {
+            reqs = fundRequestRepository.findAll();
+        } else {
+            // Distributors can view their hierarchy's fund requests
+            String currentUserIdStr = currentUserId.toString();
+            reqs = fundRequestRepository.findAll().stream()
+                    .filter(fr -> {
+                        User reqUser = fr.getUser();
+                        if (reqUser.getId().equals(currentUserId)) {
+                            return true;
+                        }
+                        String ref = reqUser.getAddedByUserRef();
+                        while (ref != null && !ref.isBlank()) {
+                            if (ref.equalsIgnoreCase(currentUserIdStr)) {
+                                return true;
+                            }
+                            try {
+                                UUID parentUuid = UUID.fromString(ref);
+                                User nextParent = userRepository.findById(parentUuid).orElse(null);
+                                if (nextParent == null) {
+                                    break;
+                                }
+                                ref = nextParent.getAddedByUserRef();
+                            } catch (Exception e) {
+                                break;
+                            }
+                        }
+                        return false;
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        return reqs.stream()
+                .map(fr -> new WalletDtos.FundRequestResponse(
+                        fr.getId().toString(),
+                        fr.getUser().getId().toString(),
+                        fr.getUser().getUsername(),
+                        fr.getUser().getFullName(),
+                        fr.getAmount(),
+                        fr.getStatus(),
+                        fr.getUtrNumber(),
+                        fr.getMethod(),
+                        fr.getRemark(),
+                        fr.getAdminRemark(),
+                        fr.getApprovedBy() != null ? fr.getApprovedBy().getUsername() : null,
+                        fr.getApprovedAt(),
+                        fr.getCreatedAt()
+                ))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public WalletDtos.FundRequestResponse approveFundRequest(UUID requestId, UUID adminId, String ipAddress) {
+        enforceAdmin(adminId);
+
+        FundRequest fr = fundRequestRepository.findByIdForUpdate(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Fund request not found"));
+
+        if (!"PENDING".equalsIgnoreCase(fr.getStatus())) {
+            throw new IllegalStateException("Only PENDING requests can be approved");
+        }
+
+        User admin = userRepository.findById(adminId)
+                .orElseThrow(() -> new IllegalArgumentException("Admin operator not found"));
+
+        User targetUser = fr.getUser();
+
+        Wallet tgtWallet = getOrCreateWalletWithLock(targetUser.getId());
+        validateWalletStatus(tgtWallet, "CREDIT");
+
+        BigDecimal amount = fr.getAmount();
+
+        BigDecimal oldTgtBal = tgtWallet.getBalance();
+        BigDecimal newTgtBal = oldTgtBal.add(amount);
+        tgtWallet.setBalance(newTgtBal);
+        walletRepository.save(tgtWallet);
+
+        String refNum = generateReferenceNumber();
+
+        fr.setStatus("APPROVED");
+        fr.setApprovedBy(admin);
+        fr.setApprovedAt(Instant.now());
+        fr.setAdminRemark("Approved by " + admin.getUsername() + " - Ref: " + refNum);
+        fundRequestRepository.save(fr);
+
+        WalletEntry tgtEntry = new WalletEntry();
+        tgtEntry.setWallet(tgtWallet);
+        tgtEntry.setAmount(amount);
+        tgtEntry.setEntryType("CREDIT");
+        tgtEntry.setReferenceId(refNum);
+        tgtEntry.setNarration("Request approved, UTR: " + fr.getUtrNumber());
+        tgtEntry.setOpeningBalance(oldTgtBal);
+        tgtEntry.setClosingBalance(newTgtBal);
+        tgtEntry.setOperator(admin);
+        tgtEntry.setIpAddress(ipAddress);
+        tgtEntry.setTransactionContext(WalletTransactionContext.FUND_REQUEST_APPROVED);
+        tgtEntry.setStatus(WalletTransactionStatus.SUCCESS);
+        walletEntryRepository.save(tgtEntry);
+
+        AuditLog auditTgt = AuditLog.builder()
+                .operator(admin)
+                .targetUser(targetUser)
+                .oldBalance(oldTgtBal)
+                .newBalance(newTgtBal)
+                .amount(amount)
+                .walletType("MAIN")
+                .ledgerType("CREDIT")
+                .referenceNumber(refNum)
+                .ipAddress(ipAddress)
+                .remark("Credited user for request approval from Admin: " + admin.getUsername())
+                .build();
+        auditLogRepository.save(auditTgt);
+
+        return new WalletDtos.FundRequestResponse(
+                fr.getId().toString(),
+                targetUser.getId().toString(),
+                targetUser.getUsername(),
+                targetUser.getFullName(),
+                fr.getAmount(),
+                fr.getStatus(),
+                fr.getUtrNumber(),
+                fr.getMethod(),
+                fr.getRemark(),
+                fr.getAdminRemark(),
+                admin.getUsername(),
+                fr.getApprovedAt(),
+                fr.getCreatedAt()
+        );
+    }
+
+    @Override
+    @Transactional
+    public WalletDtos.FundRequestResponse rejectFundRequest(UUID requestId, UUID adminId, String ipAddress) {
+        enforceAdmin(adminId);
+
+        FundRequest fr = fundRequestRepository.findByIdForUpdate(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Fund request not found"));
+
+        if (!"PENDING".equalsIgnoreCase(fr.getStatus())) {
+            throw new IllegalStateException("Only PENDING requests can be rejected");
+        }
+
+        User admin = userRepository.findById(adminId)
+                .orElseThrow(() -> new IllegalArgumentException("Admin operator not found"));
+
+        fr.setStatus("REJECTED");
+        fr.setApprovedBy(admin);
+        fr.setApprovedAt(Instant.now());
+        fr.setAdminRemark("Rejected by " + admin.getUsername());
+        fundRequestRepository.save(fr);
+
+        String refNum = generateReferenceNumber();
+        Wallet w = getOrCreateWallet(fr.getUser().getId());
+
+        WalletEntry entry = new WalletEntry();
+        entry.setWallet(w);
+        entry.setAmount(fr.getAmount());
+        entry.setEntryType("FUND_REQUEST");
+        entry.setReferenceId(refNum);
+        entry.setNarration("Fund request rejected, UTR: " + fr.getUtrNumber());
+        entry.setOpeningBalance(w.getBalance());
+        entry.setClosingBalance(w.getBalance());
+        entry.setOperator(admin);
+        entry.setIpAddress(ipAddress);
+        entry.setTransactionContext(WalletTransactionContext.FUND_REQUEST_REJECTED);
+        entry.setStatus(WalletTransactionStatus.CANCELLED);
+        walletEntryRepository.save(entry);
+
+        return new WalletDtos.FundRequestResponse(
+                fr.getId().toString(),
+                fr.getUser().getId().toString(),
+                fr.getUser().getUsername(),
+                fr.getUser().getFullName(),
+                fr.getAmount(),
+                fr.getStatus(),
+                fr.getUtrNumber(),
+                fr.getMethod(),
+                fr.getRemark(),
+                fr.getAdminRemark(),
+                admin.getUsername(),
+                fr.getApprovedAt(),
+                fr.getCreatedAt()
+        );
+    }
                 .orElseThrow(() -> new IllegalArgumentException("Current User not found"));
 
         checkHierarchyOrSelf(currentUser, target);

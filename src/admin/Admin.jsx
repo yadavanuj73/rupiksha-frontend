@@ -3046,7 +3046,7 @@ const Admin = () => {
 
     const OPERATIONS_NAV = [
         { id: 'Approvals', icon: CheckCircle2, label: 'Approvals', badge: 'New' },
-        { id: 'Wallet-Overview', icon: Wallet, label: 'Wallet Manager' },
+        ...((currentUser?.role === 'ADMIN' || isAdminUser) ? [{ id: 'Wallet-Overview', icon: Wallet, label: 'Wallet Manager' }] : []),
     ];
 
     const MANAGEMENT_NAV = [
@@ -3408,12 +3408,20 @@ const Admin = () => {
                                 {activeSection === 'Plans-superdistributor' && <AdminPlanManager defaultType="superdistributor" restrictType={true} />}
 
                                 {/* Wallet Management */}
-                                {activeSection === 'Wallet-Overview' && <WalletManager initialTab="overview" />}
-                                {activeSection === 'Wallet-Credit' && <WalletManager initialTab="credit" />}
-                                {activeSection === 'Wallet-Debit' && <WalletManager initialTab="debit" />}
-                                {activeSection === 'Wallet-Requests' && <WalletManager initialTab="requests" />}
-                                {activeSection === 'Wallet-Lock' && <WalletManager initialTab="lock" />}
-                                {activeSection === 'Wallet-Release' && <WalletManager initialTab="release" />}
+                                {activeSection.startsWith('Wallet-') && (
+                                    (currentUser?.role === 'ADMIN' || isAdminUser) ? (
+                                        <>
+                                            {activeSection === 'Wallet-Overview' && <WalletManager initialTab="overview" />}
+                                            {activeSection === 'Wallet-Credit' && <WalletManager initialTab="credit" />}
+                                            {activeSection === 'Wallet-Debit' && <WalletManager initialTab="debit" />}
+                                            {activeSection === 'Wallet-Requests' && <WalletManager initialTab="requests" />}
+                                            {activeSection === 'Wallet-Lock' && <WalletManager initialTab="lock" />}
+                                            {activeSection === 'Wallet-Release' && <WalletManager initialTab="release" />}
+                                        </>
+                                    ) : (
+                                        <UnauthorizedAccess sectionName={activeLabel} />
+                                    )
+                                )}
 
                                 {/* All Members — merged Retailers + Distributors + SuperDistributors */}
                                 {activeSection === 'AllMembers' && (
