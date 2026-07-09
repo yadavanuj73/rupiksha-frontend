@@ -60,7 +60,7 @@ const UserSelector = ({ users, value, onChange, placeholder, disabled = false })
         u.mobile?.includes(search)
     );
     return (
-        <div className="relative">
+        <div className="relative user-selector-dropdown">
             <button type="button"
                 onClick={() => !disabled && setOpen(!open)}
                 disabled={disabled}
@@ -68,9 +68,9 @@ const UserSelector = ({ users, value, onChange, placeholder, disabled = false })
                 {selected ? (
                     <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-black">{selected.name?.charAt(0) || 'U'}</div>
-                        <span>{selected.name} <span className="text-slate-400 font-normal">({selected.username})</span></span>
+                        <span className="user-selector-selected-text">{selected.name} <span className="user-selector-selected-username text-slate-400 font-normal">({selected.username})</span></span>
                     </div>
-                ) : <span className="text-slate-400">{placeholder || 'Select user...'}</span>}
+                ) : <span className="user-selector-placeholder text-slate-400">{placeholder || 'Select user...'}</span>}
                 <ChevronDown size={16} className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
             </button>
             <AnimatePresence>
@@ -81,7 +81,7 @@ const UserSelector = ({ users, value, onChange, placeholder, disabled = false })
                             <div className="relative">
                                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                                 <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
-                                    className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 rounded-lg border border-slate-200 outline-none focus:border-indigo-400"
+                                    className="user-selector-search-input w-full pl-9 pr-3 py-2 text-xs bg-slate-50 rounded-lg border border-slate-200 outline-none focus:border-indigo-400"
                                     placeholder="Search name/mobile/username..." />
                             </div>
                         </div>
@@ -94,8 +94,8 @@ const UserSelector = ({ users, value, onChange, placeholder, disabled = false })
                                     className="w-full flex items-center gap-3 px-4 py-3 hover:bg-indigo-50 transition-colors text-left">
                                     <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-black shrink-0">{u.name?.charAt(0) || 'U'}</div>
                                     <div>
-                                        <p className="text-xs font-bold text-slate-800">{u.name}</p>
-                                        <p className="text-[10px] text-slate-400">{u.mobile} · {u.role} · Balance: ₹{(u.balance || u.availableBalance || 0).toLocaleString('en-IN')}</p>
+                                        <p className="user-selector-option-name text-xs font-bold text-slate-800">{u.name}</p>
+                                        <p className="user-selector-option-meta text-[10px] text-slate-400">{u.mobile} · {u.role} · Balance: ₹{(u.balance || u.availableBalance || 0).toLocaleString('en-IN')}</p>
                                     </div>
                                 </button>
                             ))}
@@ -104,6 +104,7 @@ const UserSelector = ({ users, value, onChange, placeholder, disabled = false })
                 )}
             </AnimatePresence>
         </div>
+
     );
 };
 
@@ -175,7 +176,7 @@ const OverviewTab = ({ wallets, loading, onRefresh }) => {
                         <div className="relative">
                             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                             <input value={search} onChange={e => setSearch(e.target.value)}
-                                className="pl-9 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-400 w-48 transition-all"
+                                className="overview-search-input pl-9 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-400 w-48 transition-all"
                                 placeholder="Search user..." />
                         </div>
                         <button onClick={onRefresh} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
@@ -336,7 +337,7 @@ const CreditDebitTab = ({ users, type, onToast, onRefresh }) => {
 
                     {selectedUser && (
                         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-                            className={`p-4 bg-${color}-50 border border-${color}-200 rounded-xl flex items-center gap-4`}>
+                            className={`selected-user-card p-4 bg-${color}-50 border border-${color}-200 rounded-xl flex items-center gap-4`}>
                             <div className={`w-10 h-10 rounded-xl bg-${color}-100 flex items-center justify-center text-${color}-600 font-black`}>
                                 {selectedUser.name?.charAt(0)}
                             </div>
@@ -487,7 +488,7 @@ const FundRequestsTab = ({ users, onToast, onRefresh }) => {
                 <div className="flex items-center gap-3">
                     {['PENDING', 'APPROVED', 'REJECTED', 'ALL'].map(f => (
                         <button key={f} onClick={() => setFilter(f)}
-                            className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${filter === f ? 'bg-indigo-600 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-500 hover:border-indigo-300'}`}>
+                            className={`filter-button px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${filter === f ? 'bg-indigo-600 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-500 hover:border-indigo-300'}`}>
                             {f}
                         </button>
                     ))}
@@ -668,7 +669,7 @@ const LockReleaseTab = ({ users, type, onToast, onRefresh }) => {
 
                     {selectedUser && (
                         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-                            className="p-4 bg-slate-50 border border-slate-200 rounded-xl grid grid-cols-3 gap-3">
+                            className="lock-user-card p-4 bg-slate-50 border border-slate-200 rounded-xl grid grid-cols-3 gap-3">
                             {[
                                 { label: 'Total Balance', value: `₹${(selectedUser.balance || 0).toLocaleString('en-IN')}`, color: 'text-slate-800' },
                                 { label: 'Locked', value: `₹${(selectedUser.lockedAmount || 0).toLocaleString('en-IN')}`, color: 'text-purple-600' },
@@ -798,7 +799,7 @@ const GiveCommissionTab = ({ users, onToast, onRefresh }) => {
                     </form>
                 </div>
 
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4">
+                <div className="breakdown-summary-card bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4">
                     <h3 className="font-black text-slate-800 text-xs uppercase tracking-widest border-b pb-3">Breakdown Summary</h3>
                     <div className="space-y-3">
                         <div className="flex justify-between items-center text-xs font-bold text-slate-500 uppercase">
@@ -819,12 +820,13 @@ const GiveCommissionTab = ({ users, onToast, onRefresh }) => {
                         </div>
                     </div>
                     {selectedUser && (
-                        <div className="mt-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                        <div className="commission-impact-card mt-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
                              <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">Impact on Wallet</p>
                              <p className="text-xs font-bold text-indigo-900">₹{(selectedUser.balance || 0).toLocaleString()} → ₹{( (parseFloat(selectedUser.balance) || 0) + net).toLocaleString()}</p>
                         </div>
                     )}
                 </div>
+
             </div>
         </div>
     );
@@ -957,7 +959,7 @@ const HistoryTab = ({ users, onToast }) => {
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
             {/* Filters panel */}
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
+            <div className="filters-panel bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <h3 className="font-black text-slate-800 text-sm uppercase tracking-wide">Filters & Search</h3>
                     <button onClick={handleExport}
@@ -1122,7 +1124,7 @@ const WalletManager = ({ initialTab }) => {
     }
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+        <div className="wallet-manager-page space-y-6 animate-in fade-in slide-in-from-bottom-4">
             <AnimatePresence>{toast && <Toast toast={toast} onClose={() => setToast(null)} />}</AnimatePresence>
 
             {/* Page Header */}

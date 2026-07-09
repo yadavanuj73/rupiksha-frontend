@@ -146,3 +146,69 @@ a {
     display: none !important;
   }
 }
+
+/* ── WALLET MANAGER SCOPED GLOBAL BLACK TEXT OVERRIDES ── */
+.wallet-manager-page label,
+.wallet-manager-page input,
+.wallet-manager-page select,
+.wallet-manager-page textarea,
+.wallet-manager-page option {
+  color: #000000 !important;
+}
+
+/* User selection cards and meta elements */
+.wallet-manager-page .user-selector-selected-text,
+.wallet-manager-page .user-selector-selected-username,
+.wallet-manager-page .user-selector-placeholder,
+.wallet-manager-page .user-selector-option-name,
+.wallet-manager-page .user-selector-option-meta {
+  color: #000000 !important;
+}
+
+/* User Selection Cards Info & Lock / Release Detail Cards */
+.wallet-manager-page .selected-user-card p,
+.wallet-manager-page .selected-user-card span,
+.wallet-manager-page .lock-user-card p,
+.wallet-manager-page .lock-user-card span {
+  color: #000000 !important;
+}
+
+/* Non-semantic helper text, form captions, and form titles */
+.wallet-manager-page form label,
+.wallet-manager-page form p,
+.wallet-manager-page form span:not(.text-white):not(.animate-spin) {
+  color: #000000 !important;
+}
+
+/* Overview and general search controls */
+.wallet-manager-page .overview-search-input,
+.wallet-manager-page .user-selector-search-input {
+  color: #000000 !important;
+}
+
+/* Scoped Placeholder styling */
+.wallet-manager-page input::placeholder,
+.wallet-manager-page textarea::placeholder {
+  color: #000000 !important;
+  opacity: 1 !important;
+}
+
+/* Filters Panel and Dropdowns */
+.wallet-manager-page .filters-panel label,
+.wallet-manager-page .filters-panel select,
+.wallet-manager-page .filters-panel input,
+.wallet-manager-page .filters-panel option {
+  color: #000000 !important;
+}
+
+/* Inactive Filter buttons */
+.wallet-manager-page .filter-button:not(.bg-indigo-600) {
+  color: #000000 !important;
+}
+
+/* Breakdown Summary cards (except rose/emerald/tds/gst semantic highlights) */
+.wallet-manager-page .breakdown-summary-card h3,
+.wallet-manager-page .breakdown-summary-card div:not(.text-rose-500):not(.text-emerald-600) span,
+.wallet-manager-page .commission-impact-card p {
+  color: #000000 !important;
+}
