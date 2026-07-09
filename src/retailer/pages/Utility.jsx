@@ -7,6 +7,7 @@ import {
     Hash, Home, Phone, FileText, MapPin, Landmark, Wallet, ShieldCheck
 } from 'lucide-react';
 import { dataService } from '../../services/dataService';
+import { useWallet } from '../../context/WalletContext';
 import { providerTxnService, bbpsService } from '../../services/apiService';
 import {
     PREFIX_DB, OPERATOR_PLANS, DTH_PROVIDERS, BILL_CATEGORIES,

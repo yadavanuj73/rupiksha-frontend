@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 const logo = '/rupiksha logo.jpeg';
 import { dataService } from '../../services/dataService';
 import { useAuth } from '../../context/AuthContext';
+import { useWallet } from '../../context/WalletContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Wallet, Filter, Send, Settings, ShieldCheck, 
@@ -125,7 +126,7 @@ const RetailerDashboard = () => {
     const { user: currentUser, loading: authLoading } = useAuth();
     const [appData, setAppData] = useState(dataService.getData());
     const [activeWallet, setActiveWallet] = useState(null);
-    const [balance, setBalance] = useState("0.00");
+    const { balance } = useWallet();
     const [transactions, setTransactions] = useState([]);
     const [isServicesExpanded, setIsServicesExpanded] = useState(false);
 
@@ -135,8 +136,6 @@ const RetailerDashboard = () => {
         if (authLoading || !currentUser) return;
 
         const fetchData = async () => {
-            const bal = await dataService.getWalletBalance(currentUser.id);
-            setBalance(bal);
             const txs = await dataService.getUserTransactions(currentUser.id);
             setTransactions(txs || []);
         };

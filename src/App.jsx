@@ -6,6 +6,7 @@ import { LanguageProvider } from './context/LanguageContext';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { RDProvider } from './context/RDProvider';
+import { WalletProvider } from './context/WalletContext';
 
 // --- Loading Component ---
 const PageLoader = () => (
@@ -183,12 +184,13 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <RDProvider>
-          <LanguageProvider>
-            <Router>
-          <LockScreen />
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
+        <WalletProvider>
+          <RDProvider>
+            <LanguageProvider>
+              <Router>
+            <LockScreen />
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
               {/* Landing (Now Public) */}
               <Route path="/" element={<Home />} />
               <Route path="/about" element={<About />} />
@@ -362,6 +364,7 @@ function App() {
         </Router>
       </LanguageProvider>
         </RDProvider>
+        </WalletProvider>
     </AuthProvider>
     </ThemeProvider>
   );

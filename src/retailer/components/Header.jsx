@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Wallet, Bell, ChevronDown, Menu, User, CreditCard, Settings, MoreVertical, Plus, BadgeCheck, Clock3, OctagonAlert } from 'lucide-react';
 import { dataService } from '../../services/dataService';
+import { useWallet } from '../../context/WalletContext';
 // Using logo from public folder
 const mainLogo = '/rupiksha logo.jpeg';
 import { useNavigate } from 'react-router-dom';
@@ -12,7 +13,8 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
     const [notifications, setNotifications] = useState([]);
-    const [balance, setBalance] = useState("0.00");
+
+    const { balance, isWalletLoading, walletError } = useWallet();
 
     const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -33,11 +35,6 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
                 });
             }
             setNotifications(systemNotifs);
-
-            // Fetch live balance
-            if (data.currentUser) {
-                dataService.getWalletBalance(data.currentUser.id).then(bal => setBalance(bal));
-            }
         };
         updateData();
         window.addEventListener('dataUpdated', updateData);
@@ -92,9 +89,15 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
                     </div>
                     <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
                         <Wallet size={13} className="text-amber-500" />
-                        <div className="text-right hidden sm:block">
+                        <div className="text-right hidden sm:block min-w-[64px]">
                             <p className="text-[9px] font-black text-slate-500 uppercase leading-none">Main</p>
-                            <p className="text-[11px] font-black text-amber-600 mt-0.5">₹ {balance}</p>
+                            {isWalletLoading ? (
+                                <div className="h-3 w-16 bg-slate-200 rounded animate-pulse mt-1" />
+                            ) : walletError ? (
+                                <span className="text-[9px] text-rose-500 font-bold block mt-0.5">Error</span>
+                            ) : (
+                                <p className="text-[11px] font-black text-amber-600 mt-0.5">₹ {parseFloat(balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                            )}
                         </div>
                         <button onClick={onAddMoney} className="bg-amber-500 hover:bg-amber-400 text-white rounded-lg p-1.5 transition-all shadow-sm shadow-amber-500/30">
                             <Plus size={13} />

@@ -113,11 +113,10 @@ export default function Footer() {
                             {FOOTER_SERVICES.map((s) => (
                                 <button
                                     key={s.slug}
-                                    onMouseEnter={() => preloadServiceImages()}
+                                    onMouseEnter={(e) => { preloadServiceImages(); e.currentTarget.style.color = '#fff'; }}
                                     onFocus={() => preloadServiceImages()}
                                     onClick={() => navigate(`/services/${s.slug}`)}
                                     style={linkStyle}
-                                    onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; }}
                                     onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; }}
                                 >
                                     {s.label}

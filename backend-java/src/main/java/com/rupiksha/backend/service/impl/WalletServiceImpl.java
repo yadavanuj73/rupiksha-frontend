@@ -220,7 +220,7 @@ public class WalletServiceImpl implements WalletService {
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public WalletDtos.WalletBalanceResponse getBalance(String userId) {
         Wallet wallet = getOrCreateWallet(UUID.fromString(userId));
         return mapBalanceResponse(wallet);
