@@ -3158,9 +3158,9 @@ const Admin = () => {
                 <div className={`flex items-center shrink-0 py-8 ${isExpanded ? 'justify-between px-6' : 'justify-center'}`}>
                     <div className="flex items-center gap-3">
                         {isExpanded ? (
-                            <h1 className="text-2xl font-black text-[#18181b] tracking-tighter uppercase italic transition-all duration-300">RUPIKSHA</h1>
+                            <img src={mainLogo} alt="Rupiksha" className="h-8 object-contain rounded-lg" />
                         ) : (
-                            <img src={rupikshaNewLogo} alt="R" className="w-8 h-8 object-contain rounded-lg shadow-sm" />
+                            <img src={mainLogo} alt="R" className="w-8 h-8 object-contain rounded-lg shadow-sm" />
                         )}
                     </div>
                     {isExpanded && !isMobile && (
