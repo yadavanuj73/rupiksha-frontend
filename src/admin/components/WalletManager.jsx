@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import confetti from 'canvas-confetti';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -21,10 +22,18 @@ const uuid = () => {
     });
 };
 
-const fetchAPI = async (endpoint, opts = {}) => {
+/**
+ * fetchAPI — wraps fetch with auth + idempotency headers.
+ * @param {string} endpoint
+ * @param {object} opts          — standard fetch options
+ * @param {string} [explicitKey] — caller-supplied idempotency key.
+ *   When provided, this key is used as-is (stable across retries).
+ *   When omitted for a mutation, a one-off key is generated internally.
+ */
+const fetchAPI = async (endpoint, opts = {}, explicitKey = undefined) => {
     const token = localStorage.getItem('rupiksha_token');
     const isMutation = opts.method === 'POST' || opts.method === 'PUT';
-    const idempotencyKey = isMutation ? uuid() : undefined;
+    const idempotencyKey = explicitKey ?? (isMutation ? uuid() : undefined);
 
     const headers = {
         'Content-Type': 'application/json',
@@ -41,7 +50,7 @@ const fetchAPI = async (endpoint, opts = {}) => {
 
 // ─── Shared Form Components ────────────────────────────────────────────────
 
-const UserSelector = ({ users, value, onChange, placeholder }) => {
+const UserSelector = ({ users, value, onChange, placeholder, disabled = false }) => {
     const [search, setSearch] = useState('');
     const [open, setOpen] = useState(false);
     const selected = users.find(u => u.username === value || u.userId == value || u.id == value);
@@ -52,8 +61,10 @@ const UserSelector = ({ users, value, onChange, placeholder }) => {
     );
     return (
         <div className="relative">
-            <button type="button" onClick={() => setOpen(!open)}
-                className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:border-indigo-400 transition-all outline-none">
+            <button type="button"
+                onClick={() => !disabled && setOpen(!open)}
+                disabled={disabled}
+                className={`w-full flex items-center justify-between px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-semibold text-slate-700 transition-all outline-none ${disabled ? 'opacity-60 cursor-not-allowed' : 'hover:border-indigo-400'}`}>
                 {selected ? (
                     <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-black">{selected.name?.charAt(0) || 'U'}</div>
@@ -63,7 +74,7 @@ const UserSelector = ({ users, value, onChange, placeholder }) => {
                 <ChevronDown size={16} className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
             </button>
             <AnimatePresence>
-                {open && (
+                {open && !disabled && (
                     <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
                         className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden">
                         <div className="p-2 border-b border-slate-100">
@@ -218,38 +229,80 @@ const CreditDebitTab = ({ users, type, onToast, onRefresh }) => {
     const [userId, setUserId] = useState('');
     const [amount, setAmount] = useState('');
     const [remark, setRemark] = useState('');
-    const [loading, setLoading] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+
+    // Stable idempotency key — one UUID per logical transaction.
+    // Only rotated after a *confirmed* successful backend response.
+    // Retries on failure reuse the same key, preserving backend deduplication.
+    const [idempotencyKey, setIdempotencyKey] = useState(() => uuid());
+    // Ref guard ensures a concurrent re-render cannot fire a second request
+    const submittingRef = useRef(false);
 
     const isCredit = type === 'credit';
-        const color = isCredit ? 'emerald' : 'rose';
-        const endpoint = isCredit ? '/wallet/credit' : '/wallet/debit';
-    
-        const handleSubmit = async (e) => {
-            e.preventDefault();
-            if (!userId) return onToast({ type: 'error', message: 'Please select a user' });
-            if (!amount || parseFloat(amount) <= 0) return onToast({ type: 'error', message: 'Please enter a valid amount' });
-    
-            // Find numeric ID if userId is username
-            const selected = users.find(u => u.username === userId || u.id == userId);
-            const targetId = selected ? selected.id : userId;
-    
-            setLoading(true);
-            try {
-                const res = await fetchAPI(endpoint, {
-                    method: 'POST',
-                    body: JSON.stringify({ userId: targetId, amount: parseFloat(amount), remark })
-                });
+    const color = isCredit ? 'emerald' : 'rose';
+    const endpoint = isCredit ? '/wallet/credit' : '/wallet/debit';
+
+    /** Fire canvas-confetti celebration (already installed as a dependency). */
+    const fireCelebration = () => {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        confetti({
+            particleCount: 90,
+            spread: 75,
+            origin: { y: 0.6 },
+            colors: ['#10b981', '#06b6d4', '#6366f1', '#f59e0b', '#ec4899'],
+            ticks: 120,     // ~1.5 s natural decay
+            gravity: 1.2,
+            scalar: 0.9,
+            zIndex: 9999
+        });
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        // Hard guard — prevents duplicate submissions from rapid double-clicks
+        if (submittingRef.current) return;
+        if (!userId) return onToast({ type: 'error', message: 'Please select a user' });
+        if (!amount || parseFloat(amount) <= 0) return onToast({ type: 'error', message: 'Please enter a valid amount' });
+
+        const selected = users.find(u => u.username === userId || u.id == userId);
+        const targetId = selected ? selected.id : userId;
+
+        submittingRef.current = true;
+        setSubmitting(true);
+        try {
+            // Pass stable idempotency key — same key reused on retry so backend
+            // deduplication remains intact and balance is credited exactly once.
+            const res = await fetchAPI(endpoint, {
+                method: 'POST',
+                body: JSON.stringify({ userId: targetId, amount: parseFloat(amount), remark })
+            }, idempotencyKey);
+
             if (res.success) {
+                // ── Success path ────────────────────────────────────────────
                 onToast({ type: 'success', message: res.message });
-                setUserId(''); setAmount(''); setRemark('');
+                fireCelebration();
+                // Reset form only after confirmed success
+                setUserId('');
+                setAmount('');
+                setRemark('');
+                // Rotate to a fresh idempotency key for the NEXT transaction
+                setIdempotencyKey(uuid());
+                // Refresh WalletManager overview balance list
                 onRefresh();
+                // Signal EnhancedMembersTable to re-fetch authoritative balances
+                window.dispatchEvent(new CustomEvent('walletUpdated'));
             } else {
+                // ── Failure path ────────────────────────────────────────────
+                // Keep all form values and same idempotency key for retry
                 onToast({ type: 'error', message: res.message || 'Operation failed' });
             }
         } catch {
+            // Network / parse error — keep form and key for retry
             onToast({ type: 'error', message: 'Network error. Try again.' });
         } finally {
-            setLoading(false);
+            // Spinner lifecycle is bound entirely to the API promise — no setTimeout
+            submittingRef.current = false;
+            setSubmitting(false);
         }
     };
 
@@ -269,9 +322,16 @@ const CreditDebitTab = ({ users, type, onToast, onRefresh }) => {
 
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
                 <form onSubmit={handleSubmit} className="space-y-5">
+                    {/* User selector — disabled while submitting */}
                     <div className="space-y-1.5">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select User</label>
-                        <UserSelector users={users} value={userId} onChange={setUserId} placeholder="Choose a user..." />
+                        <UserSelector
+                            users={users}
+                            value={userId}
+                            onChange={setUserId}
+                            placeholder="Choose a user..."
+                            disabled={submitting}
+                        />
                     </div>
 
                     {selectedUser && (
@@ -289,33 +349,61 @@ const CreditDebitTab = ({ users, type, onToast, onRefresh }) => {
                         </motion.div>
                     )}
 
+                    {/* Amount — disabled while submitting */}
                     <div className="space-y-1.5">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount (₹)</label>
                         <div className="relative">
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black">₹</span>
-                            <input type="number" min="1" step="0.01" value={amount} onChange={e => setAmount(e.target.value)}
+                            <input
+                                type="number" min="1" step="0.01"
+                                value={amount}
+                                onChange={e => setAmount(e.target.value)}
                                 placeholder="0.00"
-                                className={`w-full pl-8 pr-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-base font-black outline-none focus:border-${color}-500 transition-all`} />
+                                disabled={submitting}
+                                className={`w-full pl-8 pr-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-base font-black outline-none focus:border-${color}-500 transition-all disabled:opacity-60 disabled:cursor-not-allowed`}
+                            />
                         </div>
                     </div>
 
+                    {/* Remark — disabled while submitting */}
                     <div className="space-y-1.5">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Remark (Optional)</label>
-                        <input type="text" value={remark} onChange={e => setRemark(e.target.value)}
+                        <input
+                            type="text"
+                            value={remark}
+                            onChange={e => setRemark(e.target.value)}
                             placeholder={isCredit ? 'e.g. Load from NEFT transfer' : 'e.g. Chargeback deduction'}
-                            className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-400 transition-all" />
+                            disabled={submitting}
+                            className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-400 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                        />
                     </div>
 
-                    <button type="submit" disabled={loading}
-                        className={`w-full py-4 rounded-2xl font-black text-white text-sm uppercase tracking-widest shadow-lg transition-all disabled:opacity-60 active:scale-95 ${isCredit ? 'bg-gradient-to-r from-emerald-500 to-teal-600 shadow-emerald-500/30 hover:shadow-emerald-500/50' : 'bg-gradient-to-r from-rose-500 to-red-600 shadow-rose-500/30 hover:shadow-rose-500/50'}`}>
-                        {loading ? <div className="flex items-center justify-center gap-2"><Loader2 size={16} className="animate-spin" /><span>Processing...</span></div>
-                            : isCredit ? '+ Credit Fund' : '- Debit Fund'}
+                    {/* Submit button — disabled + spinner while submitting */}
+                    <button
+                        type="submit"
+                        disabled={submitting}
+                        aria-busy={submitting}
+                        className={`w-full py-4 rounded-2xl font-black text-white text-sm uppercase tracking-widest shadow-lg transition-all
+                            disabled:opacity-70 disabled:cursor-not-allowed active:scale-95
+                            ${isCredit
+                                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 shadow-emerald-500/30 hover:shadow-emerald-500/50'
+                                : 'bg-gradient-to-r from-rose-500 to-red-600 shadow-rose-500/30 hover:shadow-rose-500/50'
+                            }`}
+                    >
+                        {submitting
+                            ? <div className="flex items-center justify-center gap-2">
+                                <Loader2 size={16} className="animate-spin" />
+                                <span>PROCESSING...</span>
+                              </div>
+                            : isCredit ? '+ CREDIT FUND' : '- DEBIT FUND'
+                        }
                     </button>
                 </form>
             </div>
         </div>
     );
 };
+
 
 // ─── Fund Requests Tab ─────────────────────────────────────────────────────
 

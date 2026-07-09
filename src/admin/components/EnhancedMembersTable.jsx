@@ -104,10 +104,16 @@ const EnhancedMembersTable = () => {
 
     useEffect(() => {
         fetchMembers();
-        const h = () => fetchMembers();
-        window.addEventListener('membersUpdated', h);
+        const onMembersUpdated = () => fetchMembers();
+        const onWalletUpdated  = () => fetchMembers();
+        window.addEventListener('membersUpdated', onMembersUpdated);
+        window.addEventListener('walletUpdated',  onWalletUpdated);
         const t = setInterval(fetchMembers, 30000);
-        return () => { window.removeEventListener('membersUpdated', h); clearInterval(t); };
+        return () => {
+            window.removeEventListener('membersUpdated', onMembersUpdated);
+            window.removeEventListener('walletUpdated',  onWalletUpdated);
+            clearInterval(t);
+        };
     }, []);
 
     useEffect(() => { setPage(0); }, [search, roleFilter]);

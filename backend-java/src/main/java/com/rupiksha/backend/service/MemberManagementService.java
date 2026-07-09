@@ -32,13 +32,24 @@ public class MemberManagementService {
         } else {
             users = userRepository.findAll(pageable);
         }
-        return users.map(this::mapToMemberDetail);
+
+        // Batch-load wallets for all users on this page in ONE query (eliminates N+1).
+        List<UUID> userIds = users.stream().map(User::getId).collect(Collectors.toList());
+        Map<UUID, BigDecimal> walletBalanceMap = walletRepository.findByUserIdIn(userIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        w -> w.getUser().getId(),
+                        Wallet::getBalance,
+                        (a, b) -> a  // keep first on duplicate
+                ));
+
+        return users.map(user -> mapToMemberDetail(user, walletBalanceMap, false));
     }
 
     public MemberDetailResponse getMemberDetail(UUID userId, boolean includePassword) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        return mapToMemberDetail(user, includePassword);
+        return mapToMemberDetail(user, Collections.emptyMap(), includePassword);
     }
 
     @Transactional
@@ -110,12 +121,24 @@ public class MemberManagementService {
     }
 
     private MemberDetailResponse mapToMemberDetail(User user) {
-        return mapToMemberDetail(user, false);
+        return mapToMemberDetail(user, Collections.emptyMap(), false);
     }
 
-    private MemberDetailResponse mapToMemberDetail(User user, boolean includePassword) {
-        Wallet wallet = walletRepository.findByUserId(user.getId()).orElse(null);
-        BigDecimal balance = wallet != null ? wallet.getBalance() : BigDecimal.ZERO;
+    /**
+     * Maps a User to MemberDetailResponse using a pre-fetched wallet balance map.
+     * When the map is empty (e.g. single-user getMemberDetail), falls back to a direct
+     * wallet lookup — one query is acceptable for a single-user detail view.
+     */
+    private MemberDetailResponse mapToMemberDetail(User user, Map<UUID, BigDecimal> walletBalanceMap, boolean includePassword) {
+        BigDecimal balance;
+        if (walletBalanceMap.containsKey(user.getId())) {
+            balance = walletBalanceMap.get(user.getId());
+        } else {
+            // Fallback for single-user detail view (getMemberDetail)
+            balance = walletRepository.findByUserId(user.getId())
+                    .map(Wallet::getBalance)
+                    .orElse(BigDecimal.ZERO);
+        }
         
         // Get last AEPS transaction
         Optional<Txn> lastAepsTxn = txnRepository.findTopByUserIdAndServiceTypeOrderByCreatedAtDesc(

@@ -6,8 +6,10 @@ import com.rupiksha.backend.domain.Role;
 import com.rupiksha.backend.domain.RoleName;
 import com.rupiksha.backend.domain.User;
 import com.rupiksha.backend.domain.UserStatus;
+import com.rupiksha.backend.domain.Wallet;
 import com.rupiksha.backend.repository.RoleRepository;
 import com.rupiksha.backend.repository.UserRepository;
+import com.rupiksha.backend.repository.WalletRepository;
 import com.rupiksha.backend.security.JwtPrincipal;
 import com.rupiksha.backend.security.JwtService;
 import jakarta.validation.Valid;
@@ -19,8 +21,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -28,6 +32,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Admin / network management endpoints.
@@ -49,6 +54,7 @@ public class AdminController {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final WalletRepository walletRepository;
 
     @GetMapping("/approvals")
     public Map<String, Object> approvals() {
@@ -65,15 +71,28 @@ public class AdminController {
     /**
      * Full user list for admin UI. Returns lightweight DTOs (no password) with a
      * primary `role` string field the legacy frontend expects.
+     * Wallet balances are batch-loaded in ONE query to avoid N+1.
      */
     @GetMapping("/users")
     public Map<String, Object> listUsers() {
-        List<Map<String, Object>> users = userRepository.findAll().stream()
-                .map(this::toAdminDto)
+        List<User> users = userRepository.findAll();
+
+        // Batch-load wallets for ALL users in one query
+        List<UUID> userIds = users.stream().map(User::getId).collect(Collectors.toList());
+        Map<UUID, BigDecimal> walletMap = walletRepository.findByUserIdIn(userIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        w -> w.getUser().getId(),
+                        Wallet::getBalance,
+                        (a, b) -> a  // keep first on duplicate (edge case)
+                ));
+
+        List<Map<String, Object>> dtos = users.stream()
+                .map(u -> toAdminDto(u, walletMap))
                 .toList();
         return Map.of(
                 "success", true,
-                "users", users
+                "users", dtos
         );
     }
 
@@ -386,8 +405,10 @@ public class AdminController {
                 .orElse(null);
     }
 
-    /** Light DTO for the admin members list. Excludes password hash and base64 KYC blobs. */
-    private Map<String, Object> toAdminDto(User u) {
+    /** Light DTO for the admin members list. Excludes password hash and base64 KYC blobs.
+     *  Accepts a pre-built wallet balance map for batch-load callers; falls back to
+     *  a direct single-user lookup when the map is empty (detail / approval views). */
+    private Map<String, Object> toAdminDto(User u, Map<UUID, BigDecimal> walletMap) {
         String primaryRole = u.getRoles().stream()
                 .map(r -> r.getName().name())
                 .findFirst()
@@ -432,8 +453,26 @@ public class AdminController {
         dto.put("addedByPartyCode", u.getAddedByPartyCode());
         dto.put("createdAt", u.getCreatedAt());
         dto.put("updatedAt", u.getUpdatedAt());
-        dto.put("wallet", Map.of("balance", 0));
+
+        // ─── Authoritative wallet balance ──────────────────────────────────────
+        // Use the pre-built map (batch-load) when available; otherwise do a
+        // single direct lookup (for detail / approval endpoints with 1 user).
+        BigDecimal balance;
+        if (!walletMap.isEmpty()) {
+            balance = walletMap.getOrDefault(u.getId(), BigDecimal.ZERO);
+        } else {
+            balance = walletRepository.findByUserId(u.getId())
+                    .map(Wallet::getBalance)
+                    .orElse(BigDecimal.ZERO);
+        }
+        dto.put("walletBalance", balance);          // canonical field read by Members table
+        dto.put("wallet", Map.of("balance", balance)); // legacy compat
         return dto;
+    }
+
+    /** Convenience overload for single-user endpoints (approvals, kyc detail, etc.) */
+    private Map<String, Object> toAdminDto(User u) {
+        return toAdminDto(u, Collections.emptyMap());
     }
 
     private RoleName mapRole(String raw) {
