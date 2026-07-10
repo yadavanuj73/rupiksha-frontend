@@ -1015,7 +1015,7 @@ public class WalletServiceImpl implements WalletService {
         WalletTransactionStatus statusEnum = (status != null && !status.isBlank() && !status.equalsIgnoreCase("ALL")) ? WalletTransactionStatus.valueOf(status.toUpperCase()) : null;
         WalletTransactionContext contextEnum = (context != null && !context.isBlank() && !context.equalsIgnoreCase("ALL")) ? WalletTransactionContext.valueOf(context.toUpperCase()) : null;
         String typeFilter = (type != null && !type.isBlank() && !type.equalsIgnoreCase("ALL")) ? type.toUpperCase() : null;
-        String searchVal = (search != null && !search.isBlank()) ? "%" + search.trim().toLowerCase() + "%" : null;
+        String searchVal = (search != null && !search.isBlank()) ? "%" + search.trim().toLowerCase() + "%" : "%";
 
         Instant startInstant = null;
         Instant endInstant = null;
