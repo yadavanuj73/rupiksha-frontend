@@ -30,7 +30,7 @@ public interface WalletEntryRepository extends JpaRepository<WalletEntry, UUID> 
            "(:entryType is null or e.entryType = :entryType) and " +
            "(:startDate is null or e.createdAt >= :startDate) and " +
            "(:endDate is null or e.createdAt <= :endDate) and " +
-           "(:search is null or lower(e.narration) like lower(concat('%', :search, '%')) or lower(e.referenceId) like lower(concat('%', :search, '%')) or lower(e.wallet.user.username) like lower(concat('%', :search, '%')))")
+           "(:search is null or lower(e.narration) like :search or lower(e.referenceId) like :search or lower(e.wallet.user.username) like :search)")
     Page<WalletEntry> findWithFilters(
             UUID walletId,
             WalletTransactionStatus status,
