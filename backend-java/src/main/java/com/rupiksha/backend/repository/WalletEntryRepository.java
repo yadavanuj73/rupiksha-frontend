@@ -24,12 +24,12 @@ public interface WalletEntryRepository extends JpaRepository<WalletEntry, UUID> 
     BigDecimal sumGstByUserId(UUID userId);
 
     @Query("select e from WalletEntry e where " +
-           "(:walletId is null or e.wallet.id = :walletId) and " +
-           "(:status is null or e.status = :status) and " +
+           "e.wallet.id = coalesce(:walletId, e.wallet.id) and " +
+           "e.status = coalesce(:status, e.status) and " +
            "(:context is null or e.transactionContext = :context) and " +
-           "(:entryType is null or e.entryType = :entryType) and " +
-           "(:startDate is null or e.createdAt >= :startDate) and " +
-           "(:endDate is null or e.createdAt <= :endDate) and " +
+           "e.entryType = coalesce(:entryType, e.entryType) and " +
+           "e.createdAt >= coalesce(:startDate, e.createdAt) and " +
+           "e.createdAt <= coalesce(:endDate, e.createdAt) and " +
            "(lower(e.narration) like :search or lower(e.referenceId) like :search or lower(e.wallet.user.username) like :search)")
     Page<WalletEntry> findWithFilters(
             UUID walletId,
