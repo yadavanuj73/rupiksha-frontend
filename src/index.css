@@ -212,3 +212,45 @@ a {
 .wallet-manager-page .commission-impact-card p {
   color: #000000 !important;
 }
+
+/* ── WALLET HISTORY TABLE: readable dark text on all body cells ── */
+.wallet-manager-page table thead th {
+  color: #334155 !important;
+}
+
+.wallet-manager-page table tbody td {
+  color: #1e293b !important;
+}
+
+/* Preserve semantic badge colours inside table cells */
+.wallet-manager-page table tbody td span[class*="text-emerald"] {
+  color: inherit !important;
+}
+.wallet-manager-page table tbody td span[class*="text-rose"] {
+  color: inherit !important;
+}
+.wallet-manager-page table tbody td span[class*="text-amber"] {
+  color: inherit !important;
+}
+.wallet-manager-page table tbody td span[class*="text-violet"] {
+  color: inherit !important;
+}
+.wallet-manager-page table tbody td span[class*="text-cyan"] {
+  color: inherit !important;
+}
+.wallet-manager-page table tbody td span[class*="text-blue"] {
+  color: inherit !important;
+}
+.wallet-manager-page table tbody td span[class*="text-indigo"] {
+  color: inherit !important;
+}
+
+/* Pagination buttons dark text */
+.wallet-manager-page table ~ div button:not([disabled]) {
+  color: #1e293b !important;
+}
+
+/* History error banner text */
+.wallet-manager-page .bg-rose-50 p {
+  color: inherit !important;
+}

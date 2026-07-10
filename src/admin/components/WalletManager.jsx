@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
 import confetti from 'canvas-confetti';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
@@ -878,13 +880,56 @@ const TaxWalletTab = () => {
     );
 };
 
+// ─── Helper: sanitize a CSV cell value against formula injection ──────────
+const sanitizeCsvCell = (val) => {
+    const s = val == null ? '' : String(val);
+    if (/^[=+\-@\t\r]/.test(s)) return `'${s}`;
+    return s;
+};
+
+// ─── Helper: format Instant string to Indian date+time ───────────────────
+const fmtDateTime = (isoStr) => {
+    if (!isoStr) return '—';
+    try {
+        return new Date(isoStr).toLocaleString('en-IN', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', second: '2-digit',
+            hour12: true
+        });
+    } catch { return isoStr; }
+};
+
+// ─── Helper: build history API params ─────────────────────────────────────
+const buildHistoryParams = ({ type, context, status, search, startDate, endDate, page, size }) => {
+    const params = new URLSearchParams();
+    params.set('type', type);
+    params.set('context', context);
+    params.set('status', status);
+    if (search && search.trim()) params.set('search', search.trim());
+    // Only append dates when set — and use full-day inclusive range (IST-aware)
+    if (startDate) {
+        // startDate input value is YYYY-MM-DD (local date) — start of day in IST
+        const start = new Date(startDate + 'T00:00:00+05:30');
+        params.set('startDate', start.toISOString());
+    }
+    if (endDate) {
+        // End of selected day in IST — 23:59:59.999
+        const end = new Date(endDate + 'T23:59:59.999+05:30');
+        params.set('endDate', end.toISOString());
+    }
+    if (page != null) params.set('page', String(page));
+    if (size != null) params.set('size', String(size));
+    return params;
+};
+
 const HistoryTab = ({ users, onToast }) => {
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
     const [totalElements, setTotalElements] = useState(0);
-    
+
     // Filter states
     const [type, setType] = useState('ALL');
     const [context, setContext] = useState('ALL');
@@ -893,126 +938,423 @@ const HistoryTab = ({ users, onToast }) => {
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
 
+    // Export loading states
+    const [exportingCsv, setExportingCsv] = useState(false);
+    const [exportingPdf, setExportingPdf] = useState(false);
+    const [exportingXlsx, setExportingXlsx] = useState(false);
+
     const loadHistory = useCallback(async () => {
         setLoading(true);
+        setError(null);
         try {
-            const params = new URLSearchParams({
-                type,
-                context,
-                status,
-                search,
-                startDate: startDate ? new Date(startDate).toISOString() : '',
-                endDate: endDate ? new Date(endDate).toISOString() : '',
-                page: page.toString(),
-                size: '10'
-            });
+            const params = buildHistoryParams({ type, context, status, search, startDate, endDate, page, size: 10 });
             const res = await fetchAPI(`/wallet/history?${params.toString()}`);
             if (res.success) {
                 setHistory(res.history || []);
                 setTotalPages(res.totalPages || 0);
                 setTotalElements(res.totalElements || 0);
+            } else {
+                setError(res.message || 'Failed to load wallet history');
+                setHistory([]);
             }
-        } catch {
-            onToast({ type: 'error', message: 'Error loading wallet history' });
+        } catch (e) {
+            setError('Network error — could not reach the server');
+            setHistory([]);
         } finally {
             setLoading(false);
         }
     }, [type, context, status, search, startDate, endDate, page]);
 
-    useEffect(() => {
-        setPage(0);
-    }, [type, context, status, search, startDate, endDate]);
+    useEffect(() => { setPage(0); }, [type, context, status, search, startDate, endDate]);
+    useEffect(() => { loadHistory(); }, [page, loadHistory]);
 
-    useEffect(() => {
-        loadHistory();
-    }, [page, loadHistory]);
+    // ── Fetch all matching records (for exports) ─────────────────────────
+    const fetchAllForExport = async () => {
+        const token = localStorage.getItem('rupiksha_token');
+        const params = buildHistoryParams({ type, context, status, search, startDate, endDate });
+        const res = await fetch(`/api/v1/wallet/history/export?${params.toString()}`, {
+            headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) }
+        });
+        if (!res.ok) throw new Error(`Export failed: HTTP ${res.status}`);
+        return res;
+    };
 
-    const handleExport = async () => {
+    // ── CSV Export ───────────────────────────────────────────────────────
+    const handleExportCsv = async () => {
+        if (exportingCsv) return;
+        setExportingCsv(true);
         try {
-            const params = new URLSearchParams({
-                type,
-                context,
-                status,
-                search,
-                startDate: startDate ? new Date(startDate).toISOString() : '',
-                endDate: endDate ? new Date(endDate).toISOString() : ''
-            });
-            const token = localStorage.getItem('rupiksha_token');
-            const res = await fetch(`/api/v1/wallet/history/export?${params.toString()}`, {
-                headers: {
-                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                }
-            });
-            const blob = await res.blob();
-            const url = window.URL.createObjectURL(blob);
+            const res = await fetchAllForExport();
+            const text = await res.text();
+            // Add UTF-8 BOM so Excel on Windows correctly renders ₹ and other chars
+            const bom = '\uFEFF';
+            const blob = new Blob([bom + text], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'wallet_history.csv';
+            a.download = `wallet_history_${new Date().toISOString().slice(0,10)}.csv`;
             document.body.appendChild(a);
             a.click();
             a.remove();
-        } catch {
+            URL.revokeObjectURL(url);
+            onToast({ type: 'success', message: 'CSV downloaded successfully' });
+        } catch (e) {
             onToast({ type: 'error', message: 'Failed to export CSV' });
+        } finally {
+            setExportingCsv(false);
         }
+    };
+
+    // ── PDF Export (jsPDF) ───────────────────────────────────────────────
+    const handleExportPdf = async () => {
+        if (exportingPdf) return;
+        setExportingPdf(true);
+        try {
+            // Fetch all records as JSON for PDF generation
+            const token = localStorage.getItem('rupiksha_token');
+            const params = buildHistoryParams({ type, context, status, search, startDate, endDate, page: 0, size: 5000 });
+            const res = await fetchAPI(`/wallet/history?${params.toString()}`);
+            const rows = (res.success && res.history) ? res.history : history;
+
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+            const pageW = doc.internal.pageSize.getWidth();
+            const pageH = doc.internal.pageSize.getHeight();
+            const marginL = 10;
+            const marginR = 10;
+            const usableW = pageW - marginL - marginR;
+
+            // ── Header ──
+            doc.setFillColor(30, 27, 75);
+            doc.rect(0, 0, pageW, 18, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(13);
+            doc.text('Rupiksha Wallet History Report', marginL, 11);
+            doc.setFontSize(7);
+            doc.setTextColor(180, 180, 220);
+            doc.text(`Generated: ${fmtDateTime(new Date().toISOString())}  |  Total Records: ${rows.length}`, pageW - marginR, 11, { align: 'right' });
+
+            // ── Filter summary ──
+            let y = 23;
+            doc.setFontSize(7);
+            doc.setTextColor(80, 80, 100);
+            const filterText = [
+                type !== 'ALL' ? `Type: ${type}` : null,
+                context !== 'ALL' ? `Context: ${context}` : null,
+                status !== 'ALL' ? `Status: ${status}` : null,
+                search ? `Search: "${search}"` : null,
+                startDate ? `From: ${startDate}` : null,
+                endDate ? `To: ${endDate}` : null,
+            ].filter(Boolean).join('   |   ') || 'All records (no filters applied)';
+            doc.setFont('helvetica', 'normal');
+            doc.text(`Filters: ${filterText}`, marginL, y);
+            y += 6;
+
+            // ── Table header ──
+            const cols = [
+                { label: 'Ref No',       w: 36, key: 'referenceNumber' },
+                { label: 'Type',         w: 18, key: 'ledgerType' },
+                { label: 'Context',      w: 30, key: 'transactionContext' },
+                { label: 'Status',       w: 18, key: 'status' },
+                { label: 'Amount (₹)',   w: 22, key: 'amount', align: 'right' },
+                { label: 'Opening (₹)',  w: 22, key: 'openingBalance', align: 'right' },
+                { label: 'Closing (₹)', w: 22, key: 'closingBalance', align: 'right' },
+                { label: 'Operator',     w: 25, key: 'operatorUsername' },
+                { label: 'Target User',  w: 25, key: 'targetUsername' },
+                { label: 'Date & Time',  w: 42, key: 'createdAt' },
+            ];
+
+            const drawTableHeader = (yPos) => {
+                doc.setFillColor(240, 240, 250);
+                doc.rect(marginL, yPos, usableW, 6, 'F');
+                doc.setTextColor(40, 40, 80);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(6.5);
+                let x = marginL + 1;
+                cols.forEach(col => {
+                    doc.text(col.label.toUpperCase(), col.align === 'right' ? x + col.w - 2 : x, yPos + 4, { align: col.align || 'left' });
+                    x += col.w;
+                });
+                return yPos + 6;
+            };
+
+            y = drawTableHeader(y);
+
+            // ── Table rows ──
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(6);
+            const rowH = 5.5;
+
+            rows.forEach((row, idx) => {
+                if (y + rowH > pageH - 10) {
+                    doc.addPage();
+                    doc.setFillColor(30, 27, 75);
+                    doc.rect(0, 0, pageW, 10, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(7);
+                    doc.text('Rupiksha Wallet History (cont.)', marginL, 7);
+                    const pageNum = doc.internal.getNumberOfPages();
+                    doc.text(`Page ${pageNum}`, pageW - marginR, 7, { align: 'right' });
+                    y = 14;
+                    y = drawTableHeader(y);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(6);
+                }
+
+                if (idx % 2 === 0) {
+                    doc.setFillColor(250, 250, 255);
+                    doc.rect(marginL, y, usableW, rowH, 'F');
+                }
+
+                // Status colour dot
+                const statusColors = {
+                    SUCCESS: [16, 185, 129], FAILED: [239, 68, 68],
+                    PENDING: [245, 158, 11], REVERSED: [99, 102, 241],
+                    REFUNDED: [6, 182, 212]
+                };
+                const [sr, sg, sb] = statusColors[row.status] || [100, 100, 100];
+
+                doc.setTextColor(30, 30, 30);
+                let x = marginL + 1;
+                cols.forEach(col => {
+                    let val;
+                    if (col.key === 'createdAt') {
+                        val = fmtDateTime(row[col.key]);
+                    } else if (['amount', 'openingBalance', 'closingBalance'].includes(col.key)) {
+                        val = Number(row[col.key]).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                    } else if (col.key === 'status') {
+                        doc.setTextColor(sr, sg, sb);
+                        val = row[col.key];
+                    } else {
+                        val = row[col.key] || '—';
+                    }
+                    const displayVal = String(val).length > 20 && col.w < 40 ? String(val).substring(0, 18) + '…' : String(val);
+                    doc.text(displayVal, col.align === 'right' ? x + col.w - 2 : x, y + 3.8, { align: col.align || 'left' });
+                    if (col.key === 'status') doc.setTextColor(30, 30, 30);
+                    x += col.w;
+                });
+
+                // Row separator
+                doc.setDrawColor(230, 230, 240);
+                doc.setLineWidth(0.1);
+                doc.line(marginL, y + rowH, marginL + usableW, y + rowH);
+                y += rowH;
+            });
+
+            // ── Footer on last page ──
+            const totalPages_ = doc.internal.getNumberOfPages();
+            for (let p = 1; p <= totalPages_; p++) {
+                doc.setPage(p);
+                doc.setFontSize(6);
+                doc.setTextColor(150, 150, 170);
+                doc.text(`Rupiksha Fintech — Confidential | Page ${p} of ${totalPages_}`, pageW / 2, pageH - 4, { align: 'center' });
+            }
+
+            doc.save(`wallet_history_${new Date().toISOString().slice(0,10)}.pdf`);
+            onToast({ type: 'success', message: 'PDF downloaded successfully' });
+        } catch (e) {
+            console.error('PDF export error:', e);
+            onToast({ type: 'error', message: 'Failed to export PDF' });
+        } finally {
+            setExportingPdf(false);
+        }
+    };
+
+    // ── Excel Export (SheetJS) ───────────────────────────────────────────
+    const handleExportXlsx = async () => {
+        if (exportingXlsx) return;
+        setExportingXlsx(true);
+        try {
+            // Fetch all records as JSON
+            const token = localStorage.getItem('rupiksha_token');
+            const params = buildHistoryParams({ type, context, status, search, startDate, endDate, page: 0, size: 5000 });
+            const res = await fetchAPI(`/wallet/history?${params.toString()}`);
+            const rows = (res.success && res.history) ? res.history : history;
+
+            // Build worksheet data
+            const headers = [
+                'Reference No', 'Ledger Type', 'Transaction Context', 'Status',
+                'Amount (₹)', 'Opening Balance (₹)', 'Closing Balance (₹)',
+                'Operator', 'Target User', 'Narration', 'Date & Time'
+            ];
+
+            const data = rows.map(row => ([
+                row.referenceNumber || '',
+                row.ledgerType || '',
+                row.transactionContext || '',
+                row.status || '',
+                Number(row.amount) || 0,
+                Number(row.openingBalance) || 0,
+                Number(row.closingBalance) || 0,
+                row.operatorUsername || '',
+                row.targetUsername || '',
+                row.narration || '',
+                fmtDateTime(row.createdAt)
+            ]));
+
+            const wsData = [headers, ...data];
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+            // Column widths
+            ws['!cols'] = [
+                { wch: 24 }, { wch: 14 }, { wch: 26 }, { wch: 12 },
+                { wch: 16 }, { wch: 20 }, { wch: 20 },
+                { wch: 16 }, { wch: 16 }, { wch: 40 }, { wch: 24 }
+            ];
+
+            // Bold header row
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            for (let c = range.s.c; c <= range.e.c; c++) {
+                const cellAddr = XLSX.utils.encode_cell({ r: 0, c });
+                if (!ws[cellAddr]) continue;
+                ws[cellAddr].s = { font: { bold: true }, fill: { fgColor: { rgb: 'E8EAF6' } } };
+            }
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Wallet History');
+
+            XLSX.writeFile(wb, `wallet_history_${new Date().toISOString().slice(0,10)}.xlsx`);
+            onToast({ type: 'success', message: 'Excel file downloaded successfully' });
+        } catch (e) {
+            console.error('Excel export error:', e);
+            onToast({ type: 'error', message: 'Failed to export Excel' });
+        } finally {
+            setExportingXlsx(false);
+        }
+    };
+
+    // ── Status badge helper ─────────────────────────────────────────────
+    const statusBadge = (s) => {
+        const map = {
+            SUCCESS: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+            FAILED: 'bg-rose-50 text-rose-700 border-rose-200',
+            PENDING: 'bg-amber-50 text-amber-700 border-amber-200',
+            PROCESSING: 'bg-blue-50 text-blue-700 border-blue-200',
+            REVERSED: 'bg-violet-50 text-violet-700 border-violet-200',
+            REFUNDED: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+        };
+        return `px-2 py-0.5 rounded-full text-[9px] font-black uppercase border ${map[s] || 'bg-slate-50 text-slate-600 border-slate-200'}`;
     };
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
             {/* Filters panel */}
             <div className="filters-panel bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                    <h3 className="font-black text-slate-800 text-sm uppercase tracking-wide">Filters & Search</h3>
-                    <button onClick={handleExport}
-                        className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-emerald-700 transition-all shadow-md">
-                        Export CSV
-                    </button>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <History size={16} className="text-indigo-500" />
+                        <h3 className="font-black text-slate-800 text-sm uppercase tracking-wide">Filters & Search</h3>
+                        {totalElements > 0 && (
+                            <span className="px-2.5 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-[10px] font-black">
+                                {totalElements.toLocaleString('en-IN')} records
+                            </span>
+                        )}
+                    </div>
+                    {/* Export buttons */}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button
+                            id="history-export-csv"
+                            onClick={handleExportCsv}
+                            disabled={exportingCsv}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-emerald-700 transition-all shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                            {exportingCsv ? <Loader2 size={11} className="animate-spin" /> : <FileText size={11} />}
+                            {exportingCsv ? 'Exporting…' : 'CSV'}
+                        </button>
+                        <button
+                            id="history-export-pdf"
+                            onClick={handleExportPdf}
+                            disabled={exportingPdf}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-rose-700 transition-all shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                            {exportingPdf ? <Loader2 size={11} className="animate-spin" /> : <FileText size={11} />}
+                            {exportingPdf ? 'Generating…' : 'PDF'}
+                        </button>
+                        <button
+                            id="history-export-excel"
+                            onClick={handleExportXlsx}
+                            disabled={exportingXlsx}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-indigo-700 transition-all shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                            {exportingXlsx ? <Loader2 size={11} className="animate-spin" /> : <FileText size={11} />}
+                            {exportingXlsx ? 'Building…' : 'Excel'}
+                        </button>
+                        <button
+                            onClick={loadHistory}
+                            title="Refresh"
+                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                        >
+                            <RefreshCcw size={13} className={loading ? 'animate-spin' : ''} />
+                        </button>
+                    </div>
                 </div>
+
+                {/* Filter row */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                     <div className="space-y-1.5">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Type</label>
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Type</label>
                         <select value={type} onChange={e => setType(e.target.value)}
-                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-indigo-400">
-                            {['ALL', 'CREDIT', 'DEBIT', 'LOCK', 'UNLOCK', 'COMMISSION', 'REFUND', 'REVERSAL', 'SERVICE_DEBIT', 'SERVICE_REFUND', 'FUND_REQUEST', 'STATUS_CHANGE', 'TAX'].map(t => (
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-indigo-400 text-slate-900">
+                            {['ALL', 'CREDIT', 'DEBIT', 'LOCK', 'UNLOCK', 'COMMISSION', 'REFUND', 'REVERSAL', 'SERVICE_DEBIT', 'SERVICE_CREDIT', 'FUND_REQUEST', 'STATUS_CHANGE', 'TAX'].map(t => (
                                 <option key={t} value={t}>{t}</option>
                             ))}
                         </select>
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Context</label>
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Context</label>
                         <select value={context} onChange={e => setContext(e.target.value)}
-                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-indigo-400">
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-indigo-400 text-slate-900">
                             {['ALL', 'ADMIN_CREDIT', 'ADMIN_DEBIT', 'FUND_REQUEST_CREATED', 'FUND_REQUEST_APPROVED', 'FUND_REQUEST_REJECTED', 'AEPS_CASH_WITHDRAWAL', 'AEPS_BALANCE_INQUIRY', 'AEPS_MINI_STATEMENT', 'AEPS_AADHAAR_PAY', 'AEPS_REFUND', 'BBPS_PAYMENT', 'RECHARGE', 'DMT_TRANSFER', 'PAYOUT', 'PAYOUT_REFUND', 'COMMISSION', 'TAX_DEDUCTION', 'LOCK_BALANCE', 'RELEASE_LOCK', 'MANUAL_ADJUSTMENT', 'SYSTEM_ADJUSTMENT', 'STATUS_CHANGE', 'REVERSAL'].map(c => (
                                 <option key={c} value={c}>{c}</option>
                             ))}
                         </select>
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Status</label>
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Status</label>
                         <select value={status} onChange={e => setStatus(e.target.value)}
-                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-indigo-400">
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-indigo-400 text-slate-900">
                             {['ALL', 'INITIATED', 'PENDING', 'PROCESSING', 'SUCCESS', 'FAILED', 'REFUNDED', 'REVERSED', 'CANCELLED', 'EXPIRED'].map(s => (
                                 <option key={s} value={s}>{s}</option>
                             ))}
                         </select>
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Start Date</label>
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Start Date</label>
                         <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-indigo-400" />
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-indigo-400 text-slate-900" />
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">End Date</label>
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">End Date</label>
                         <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-indigo-400" />
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-indigo-400 text-slate-900" />
                     </div>
                 </div>
+
+                {/* Search */}
                 <div className="relative">
                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input value={search} onChange={e => setSearch(e.target.value)}
-                        className="w-full pl-9 pr-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-400 font-semibold"
-                        placeholder="Search reference number, narration, username..." />
+                    <input
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-400 font-semibold text-slate-900"
+                        placeholder="Search by reference number, narration, or username…" />
                 </div>
             </div>
+
+            {/* Error Banner */}
+            {error && (
+                <div className="bg-rose-50 border border-rose-200 rounded-2xl px-5 py-4 flex items-start gap-3">
+                    <AlertTriangle size={16} className="text-rose-500 mt-0.5 shrink-0" />
+                    <div>
+                        <p className="text-xs font-black text-rose-700 uppercase tracking-wide">Failed to Load History</p>
+                        <p className="text-xs text-rose-600 mt-0.5">{error}</p>
+                    </div>
+                    <button onClick={loadHistory} className="ml-auto px-3 py-1 bg-rose-600 text-white rounded-lg text-[10px] font-black hover:bg-rose-700 transition-all">
+                        Retry
+                    </button>
+                </div>
+            )}
 
             {/* History Table */}
             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
@@ -1020,44 +1362,59 @@ const HistoryTab = ({ users, onToast }) => {
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="bg-slate-50 border-b border-slate-100">
-                                {['Ref No', 'Type', 'Context', 'Status', 'Amount', 'Opening', 'Closing', 'Operator', 'Target User', 'Date'].map(h => (
-                                    <th key={h} className="text-left px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">{h}</th>
+                                {['Ref No', 'Type', 'Context', 'Status', 'Amount', 'Opening', 'Closing', 'Operator', 'Target User', 'Narration', 'Date & Time'].map(h => (
+                                    <th key={h} className="text-left px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">{h}</th>
                                 ))}
                             </tr>
                         </thead>
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={10} className="py-12 text-center text-xs text-slate-400 font-bold">
-                                        <div className="flex items-center justify-center gap-2">
-                                            <Loader2 size={16} className="animate-spin text-indigo-500" />
-                                            <span>Loading history entries...</span>
+                                    <td colSpan={11} className="py-14 text-center">
+                                        <div className="flex items-center justify-center gap-2 text-slate-400">
+                                            <Loader2 size={18} className="animate-spin text-indigo-500" />
+                                            <span className="text-xs font-bold">Loading history entries…</span>
                                         </div>
                                     </td>
                                 </tr>
-                            ) : history.length === 0 ? (
+                            ) : !error && history.length === 0 ? (
                                 <tr>
-                                    <td colSpan={10} className="py-12 text-center text-xs text-slate-400 font-bold">No history entries found</td>
+                                    <td colSpan={11} className="py-16 text-center">
+                                        <div className="flex flex-col items-center gap-3">
+                                            <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center">
+                                                <History size={28} className="text-slate-200" />
+                                            </div>
+                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">No history entries found</p>
+                                            <p className="text-[10px] text-slate-300">Try adjusting your filters or perform a wallet operation first</p>
+                                        </div>
+                                    </td>
                                 </tr>
                             ) : history.map((row, i) => (
-                                <tr key={i} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
-                                    <td className="px-4 py-3 text-xs font-black text-slate-800 font-mono">{row.referenceNumber}</td>
-                                    <td className="px-4 py-3 text-xs font-semibold text-slate-600">{row.ledgerType}</td>
-                                    <td className="px-4 py-3 text-xs font-semibold text-slate-500 text-[10px]">{row.transactionContext}</td>
-                                    <td className="px-4 py-3 text-xs">
+                                <tr key={row.referenceNumber || i} className="border-b border-slate-50 hover:bg-indigo-50/30 transition-colors">
+                                    <td className="px-4 py-3 text-[10px] font-black text-indigo-700 font-mono whitespace-nowrap">{row.referenceNumber}</td>
+                                    <td className="px-4 py-3">
                                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase border ${
-                                            row.status === 'SUCCESS' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                            row.status === 'FAILED' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                                            row.status === 'PENDING' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                                            'bg-slate-50 text-slate-600'
-                                        }`}>{row.status}</span>
+                                            row.ledgerType === 'CREDIT' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                            row.ledgerType === 'DEBIT' ? 'bg-rose-50 text-rose-600 border-rose-200' :
+                                            'bg-slate-50 text-slate-600 border-slate-200'
+                                        }`}>{row.ledgerType}</span>
                                     </td>
-                                    <td className="px-4 py-3 text-xs font-black text-slate-800">₹{row.amount.toLocaleString()}</td>
-                                    <td className="px-4 py-3 text-xs text-slate-500">₹{row.openingBalance.toLocaleString()}</td>
-                                    <td className="px-4 py-3 text-xs text-slate-500">₹{row.closingBalance.toLocaleString()}</td>
-                                    <td className="px-4 py-3 text-xs font-semibold text-slate-700">{row.operatorUsername}</td>
-                                    <td className="px-4 py-3 text-xs font-semibold text-slate-700">{row.targetUsername}</td>
-                                    <td className="px-4 py-3 text-xs text-slate-400 text-[10px]">{new Date(row.createdAt).toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-[10px] font-semibold text-slate-500 whitespace-nowrap">{row.transactionContext}</td>
+                                    <td className="px-4 py-3">
+                                        <span className={statusBadge(row.status)}>{row.status}</span>
+                                    </td>
+                                    <td className="px-4 py-3 text-xs font-black text-slate-800 text-right whitespace-nowrap">
+                                        <span className={row.ledgerType === 'DEBIT' || row.ledgerType === 'SERVICE_DEBIT' ? 'text-rose-600' : 'text-emerald-700'}>
+                                            {row.ledgerType === 'DEBIT' || row.ledgerType === 'SERVICE_DEBIT' ? '−' : '+'}
+                                            ₹{Number(row.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-[10px] text-slate-500 text-right whitespace-nowrap">₹{Number(row.openingBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                                    <td className="px-4 py-3 text-[10px] text-slate-500 text-right whitespace-nowrap">₹{Number(row.closingBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                                    <td className="px-4 py-3 text-[10px] font-semibold text-slate-700 whitespace-nowrap">{row.operatorUsername || '—'}</td>
+                                    <td className="px-4 py-3 text-[10px] font-semibold text-slate-700 whitespace-nowrap">{row.targetUsername || '—'}</td>
+                                    <td className="px-4 py-3 text-[10px] text-slate-400 max-w-[180px] truncate" title={row.narration}>{row.narration || '—'}</td>
+                                    <td className="px-4 py-3 text-[10px] text-slate-500 whitespace-nowrap">{fmtDateTime(row.createdAt)}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -1066,16 +1423,22 @@ const HistoryTab = ({ users, onToast }) => {
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                    <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs">
-                        <span className="text-slate-500 font-semibold">Showing page {page + 1} of {totalPages} ({totalElements} entries)</span>
+                    <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+                        <span className="text-slate-600 font-semibold">
+                            Page {page + 1} of {totalPages} &nbsp;·&nbsp; {totalElements.toLocaleString('en-IN')} total entries
+                        </span>
                         <div className="flex gap-2">
-                            <button disabled={page === 0} onClick={() => setPage(page - 1)}
-                                className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl font-bold uppercase hover:border-slate-300 disabled:opacity-50 transition-all">
-                                Prev
+                            <button
+                                disabled={page === 0}
+                                onClick={() => setPage(p => Math.max(0, p - 1))}
+                                className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl font-bold uppercase hover:border-indigo-300 hover:text-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-slate-700">
+                                ← Prev
                             </button>
-                            <button disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}
-                                className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl font-bold uppercase hover:border-slate-300 disabled:opacity-50 transition-all">
-                                Next
+                            <button
+                                disabled={page >= totalPages - 1}
+                                onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                                className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl font-bold uppercase hover:border-indigo-300 hover:text-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-slate-700">
+                                Next →
                             </button>
                         </div>
                     </div>
