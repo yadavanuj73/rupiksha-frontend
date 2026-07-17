@@ -1,4 +1,4 @@
-﻿import { BACKEND_URL } from './config';
+import { BACKEND_URL, getStorageKey } from './config';
 import { generateUniquePartyCode } from '../database/partyCode';
 
 // Environment-based toggle: Use real backend on localhost, localstorage in production
@@ -19,7 +19,7 @@ export const sharedDataService = {
 
     // --- LIVE API METHODS ---
     getAuthHeader: () => {
-        const token = localStorage.getItem('rupiksha_token');
+        const token = localStorage.getItem(getStorageKey('rupiksha_token'));
         return token ? { 'Authorization': `Bearer ${token}` } : {};
     },
 
@@ -369,7 +369,7 @@ export const sharedDataService = {
 
     // --- SESSION HELPERS ---
     getCurrentDistributor: () => {
-        const saved = localStorage.getItem('rupiksha_user');
+        const saved = localStorage.getItem(getStorageKey('rupiksha_user'));
         if (!saved) return null;
         const user = JSON.parse(saved);
         const allowed = ['DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'ADMIN', 'SUPER_DISTRIBUTOR', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'];
@@ -377,11 +377,11 @@ export const sharedDataService = {
     },
 
     setCurrentDistributor: (dist) => {
-        localStorage.setItem('rupiksha_user', JSON.stringify(dist));
+        localStorage.setItem(getStorageKey('rupiksha_user'), JSON.stringify(dist));
     },
 
     getCurrentSuperDistributor: () => {
-        const saved = localStorage.getItem('rupiksha_user');
+        const saved = localStorage.getItem(getStorageKey('rupiksha_user'));
         if (!saved) return null;
         const user = JSON.parse(saved);
         const allowed = ['SUPER_DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'];
@@ -389,12 +389,12 @@ export const sharedDataService = {
     },
 
     setCurrentSuperDistributor: (sa) => {
-        localStorage.setItem('rupiksha_user', JSON.stringify(sa));
+        localStorage.setItem(getStorageKey('rupiksha_user'), JSON.stringify(sa));
     },
 
     logout: () => {
-        localStorage.removeItem('rupiksha_user');
-        localStorage.removeItem('rupiksha_token');
+        localStorage.removeItem(getStorageKey('rupiksha_user'));
+        localStorage.removeItem(getStorageKey('rupiksha_token'));
         window.location.href = '/';
     }
 };

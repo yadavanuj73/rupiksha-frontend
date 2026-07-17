@@ -5,6 +5,8 @@ import { motion } from 'framer-motion';
 import { aepsService } from '../../services/apiService';
 import DailyAuthentication from '../../components/DailyAuthentication';
 
+import { getStorageKey } from '../../services/config';
+
 export default function AEPS() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
@@ -19,7 +21,7 @@ export default function AEPS() {
     const provider = window.location.pathname.includes('aeps-1') ? 'fingpay' : 'levin';
 
     useEffect(() => {
-        const rawUser = localStorage.getItem('rupiksha_imp_user') || localStorage.getItem('rupiksha_user');
+        const rawUser = localStorage.getItem(getStorageKey('rupiksha_imp_user')) || localStorage.getItem(getStorageKey('rupiksha_user'));
         if (!rawUser) {
             setError("No active user session found. Please log in.");
             setLoading(false);

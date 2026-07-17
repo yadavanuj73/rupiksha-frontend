@@ -28,7 +28,12 @@ const DistributorLayout = () => {
         // Ensure we always read the freshest data from localStorage
         const fresh = sharedDataService.getDistributorById(session.id);
         if (fresh) {
-            sharedDataService.setCurrentDistributor(fresh);
+            sharedDataService.setCurrentDistributor({
+                ...session,
+                ...fresh,
+                role: session.role || 'DISTRIBUTOR',
+                roles: session.roles || ['DISTRIBUTOR']
+            });
         }
     }, [navigate]);
 

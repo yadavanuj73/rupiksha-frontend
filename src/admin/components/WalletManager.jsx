@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import * as XLSX from 'xlsx';
+import { getStorageKey } from '../../services/config';
 import jsPDF from 'jspdf';
 import confetti from 'canvas-confetti';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -33,7 +34,7 @@ const uuid = () => {
  *   When omitted for a mutation, a one-off key is generated internally.
  */
 const fetchAPI = async (endpoint, opts = {}, explicitKey = undefined) => {
-    const token = localStorage.getItem('rupiksha_token');
+    const token = localStorage.getItem(getStorageKey('rupiksha_token'));
     const isMutation = opts.method === 'POST' || opts.method === 'PUT';
     const idempotencyKey = explicitKey ?? (isMutation ? uuid() : undefined);
 
@@ -970,7 +971,7 @@ const HistoryTab = ({ users, onToast }) => {
 
     // ── Fetch all matching records (for exports) ─────────────────────────
     const fetchAllForExport = async () => {
-        const token = localStorage.getItem('rupiksha_token');
+        const token = localStorage.getItem(getStorageKey('rupiksha_token'));
         const params = buildHistoryParams({ type, context, status, search, startDate, endDate });
         const res = await fetch(`/api/v1/wallet/history/export?${params.toString()}`, {
             headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) }
@@ -1010,8 +1011,8 @@ const HistoryTab = ({ users, onToast }) => {
         if (exportingPdf) return;
         setExportingPdf(true);
         try {
-            // Fetch all records as JSON for PDF generation
-            const token = localStorage.getItem('rupiksha_token');
+            // Fetch all records as JSON
+            const token = localStorage.getItem(getStorageKey('rupiksha_token'));
             const params = buildHistoryParams({ type, context, status, search, startDate, endDate, page: 0, size: 5000 });
             const res = await fetchAPI(`/wallet/history?${params.toString()}`);
             const rows = (res.success && res.history) ? res.history : history;
@@ -1166,8 +1167,8 @@ const HistoryTab = ({ users, onToast }) => {
         if (exportingXlsx) return;
         setExportingXlsx(true);
         try {
-            // Fetch all records as JSON
-            const token = localStorage.getItem('rupiksha_token');
+            // Fetch all records as JSON for PDF generation
+            const token = localStorage.getItem(getStorageKey('rupiksha_token'));
             const params = buildHistoryParams({ type, context, status, search, startDate, endDate, page: 0, size: 5000 });
             const res = await fetchAPI(`/wallet/history?${params.toString()}`);
             const rows = (res.success && res.history) ? res.history : history;

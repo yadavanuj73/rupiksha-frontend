@@ -1,5 +1,5 @@
-﻿import { sendOTPEmail, sendCredentialsEmail } from './emailService';
-import { BACKEND_URL } from './config';
+import { sendOTPEmail, sendCredentialsEmail } from './emailService';
+import { BACKEND_URL, getStorageKey } from './config';
 import { generateUniquePartyCode } from '../database/partyCode';
 import { mockApiService } from '../database/mockApiService';
 import { walletService, transactionService, supportService } from './apiService';
@@ -21,7 +21,7 @@ async function safeJson(res, fallback = {}) {
 
 // ── Auth-aware fetch: clears stale token and redirects to login on 401 ──────
 async function authFetch(url, options = {}) {
-    const token = localStorage.getItem('rupiksha_token');
+    const token = localStorage.getItem(getStorageKey('rupiksha_token'));
     const headers = {
         ...(options.headers || {}),
         ...(token ? { 'Authorization': `Bearer ${token}` } : {})
@@ -31,8 +31,8 @@ async function authFetch(url, options = {}) {
         const isAdminTab = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
         if (!isAdminTab) {
             console.warn('[authFetch] 401 on', url, '— token expired, clearing session');
-            localStorage.removeItem('rupiksha_token');
-            localStorage.removeItem('rupiksha_user');
+            localStorage.removeItem(getStorageKey('rupiksha_token'));
+            localStorage.removeItem(getStorageKey('rupiksha_user'));
             window.location.href = '/login';
         }
     }
@@ -303,9 +303,9 @@ export const dataService = {
                 return { success: false, message: 'Invalid credentials.' };
             }
 
-            localStorage.setItem('rupiksha_user', JSON.stringify(normalizedUser));
-            localStorage.setItem('rupiksha_token', data.accessToken);
-            if (data.refreshToken) localStorage.setItem('rupiksha_refresh_token', data.refreshToken);
+            localStorage.setItem(getStorageKey('rupiksha_user'), JSON.stringify(normalizedUser));
+            localStorage.setItem(getStorageKey('rupiksha_token'), data.accessToken);
+            if (data.refreshToken) localStorage.setItem(getStorageKey('rupiksha_refresh_token'), data.refreshToken);
             return { success: true, user: normalizedUser, token: data.accessToken };
         } catch (e) {
             return { success: false, message: "Server connection failed. Please check your internet connection or try again in a moment. (" + (e?.message || 'network error') + ")" };
@@ -313,13 +313,13 @@ export const dataService = {
     },
 
     getCurrentUser: function () {
-        const saved = localStorage.getItem('rupiksha_user');
+        const saved = localStorage.getItem(getStorageKey('rupiksha_user'));
         return saved ? JSON.parse(saved) : null;
     },
 
     logoutUser: function () {
-        localStorage.removeItem('rupiksha_user');
-        localStorage.removeItem('rupiksha_token');
+        localStorage.removeItem(getStorageKey('rupiksha_user'));
+        localStorage.removeItem(getStorageKey('rupiksha_token'));
         window.location.href = '/';
     },
 
@@ -329,7 +329,7 @@ export const dataService = {
         if (useLocalOnly) {
             const user = this.getUserByUsername(currentUser.username);
             if (user) {
-                localStorage.setItem('rupiksha_user', JSON.stringify(user));
+                localStorage.setItem(getStorageKey('rupiksha_user'), JSON.stringify(user));
                 window.dispatchEvent(new Event('dataUpdated'));
                 return user;
             }
@@ -343,7 +343,7 @@ export const dataService = {
             });
             const data = await res.json();
             if (data.success) {
-                localStorage.setItem('rupiksha_user', JSON.stringify(data.user));
+                localStorage.setItem(getStorageKey('rupiksha_user'), JSON.stringify(data.user));
                 window.dispatchEvent(new Event('dataUpdated'));
                 return data.user;
             }
@@ -359,7 +359,7 @@ export const dataService = {
             const idx = data.users.findIndex(u => u.username === currentUser.username);
             const updated = { ...currentUser, ...profileData };
             if (idx !== -1) data.users[idx] = updated;
-            localStorage.setItem('rupiksha_user', JSON.stringify(updated));
+            localStorage.setItem(getStorageKey('rupiksha_user'), JSON.stringify(updated));
             this.saveData(data);
             return true;
         }
@@ -373,7 +373,7 @@ export const dataService = {
             const data = await res.json();
             if (data.success) {
                 const updatedUser = { ...currentUser, ...data.user };
-                localStorage.setItem('rupiksha_user', JSON.stringify(updatedUser));
+                localStorage.setItem(getStorageKey('rupiksha_user'), JSON.stringify(updatedUser));
                 window.dispatchEvent(new Event('dataUpdated'));
                 return true;
             }
@@ -444,7 +444,7 @@ export const dataService = {
             const nextBal = String(data?.balance ?? "0.00");
             const current = this.getCurrentUser();
             if (current) {
-                localStorage.setItem('rupiksha_user', JSON.stringify({ ...current, balance: nextBal }));
+                localStorage.setItem(getStorageKey('rupiksha_user'), JSON.stringify({ ...current, balance: nextBal }));
             }
             return nextBal;
         } catch (e) {

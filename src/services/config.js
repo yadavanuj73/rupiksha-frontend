@@ -12,3 +12,18 @@ export const SERVICE_FLAGS = {
   recharge: String(import.meta.env.VITE_SERVICE_RECHARGE_ENABLED ?? 'true') === 'true',
   payout: String(import.meta.env.VITE_SERVICE_PAYOUT_ENABLED ?? 'true') === 'true',
 };
+
+export const getStorageKey = (baseKey) => {
+  if (typeof window === 'undefined') return baseKey;
+  const path = window.location.pathname;
+  if (path.startsWith('/admin')) {
+    return `${baseKey}_admin`;
+  }
+  if (path.startsWith('/distributor') || path === '/portal/distributor') {
+    return `${baseKey}_distributor`;
+  }
+  if (path.startsWith('/super-distributor') || path === '/portal/super-distributor') {
+    return `${baseKey}_super_distributor`;
+  }
+  return `${baseKey}_retailer`;
+};

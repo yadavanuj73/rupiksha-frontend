@@ -7,6 +7,7 @@ import {
     ArrowDownLeft, AlertCircle, CheckCircle2, Clock
 } from 'lucide-react';
 import { BACKEND_URL } from '../../services/dataService';
+import { getStorageKey } from '../../services/config';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const today = () => new Date().toISOString().split('T')[0];
@@ -168,7 +169,7 @@ const PlansRates = () => {
         setPage(1);
 
         try {
-            const token = localStorage.getItem('rupiksha_token');
+            const token = localStorage.getItem(getStorageKey('rupiksha_token'));
             const endpoint = viewType === 'COMMISSION' ? '/all-commissions' : '/all-transactions';
             const res = await fetch(
                 `${BACKEND_URL}${endpoint}?from=${fromDate}&to=${toDate}`,

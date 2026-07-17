@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import SuperDistributorSidebar from './SuperDistributorSidebar';
 import SuperDistributorTopBar from './SuperDistributorTopBar';
@@ -28,7 +28,12 @@ const SuperDistributorLayout = () => {
         // Ensure we always read the freshest data from localStorage
         const fresh = sharedDataService.getSuperDistributorById(session.id);
         if (fresh) {
-            sharedDataService.setCurrentSuperDistributor(fresh);
+            sharedDataService.setCurrentSuperDistributor({
+                ...session,
+                ...fresh,
+                role: session.role || 'SUPER_DISTRIBUTOR',
+                roles: session.roles || ['SUPER_DISTRIBUTOR']
+            });
         }
     }, [navigate]);
 
