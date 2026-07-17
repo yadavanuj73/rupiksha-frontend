@@ -9,7 +9,7 @@ import { Lock, Shield } from 'lucide-react';
 const SuperDistributorLayout = () => {
     const [showMobileSidebar, setShowMobileSidebar] = useState(false);
     const navigate = useNavigate();
-    const { lockTimeLeft, logoutTimeLeft } = useAuth();
+    const { user, loading, lockTimeLeft, logoutTimeLeft } = useAuth();
 
     const formatTime = (ms) => {
         const totalSecs = Math.floor(ms / 1000);
@@ -19,23 +19,30 @@ const SuperDistributorLayout = () => {
     };
 
     useEffect(() => {
-        // Guard: if no active session, send to login
-        const session = sharedDataService.getCurrentSuperDistributor();
-        if (!session) {
+        if (loading) return;
+
+        if (!user) {
             navigate('/', { replace: true });
             return;
         }
+
+        const allowed = ['SUPER_DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'];
+        if (!allowed.includes(user.role)) {
+            navigate('/', { replace: true });
+            return;
+        }
+
         // Ensure we always read the freshest data from localStorage
-        const fresh = sharedDataService.getSuperDistributorById(session.id);
+        const fresh = sharedDataService.getSuperDistributorById(user.id);
         if (fresh) {
             sharedDataService.setCurrentSuperDistributor({
-                ...session,
+                ...user,
                 ...fresh,
-                role: session.role || 'SUPER_DISTRIBUTOR',
-                roles: session.roles || ['SUPER_DISTRIBUTOR']
+                role: user.role || 'SUPER_DISTRIBUTOR',
+                roles: user.roles || ['SUPER_DISTRIBUTOR']
             });
         }
-    }, [navigate]);
+    }, [user, loading, navigate]);
 
     return (
         <div className="h-screen bg-[#eef3ff] overflow-hidden font-['Inter',sans-serif]">
