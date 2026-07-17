@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import { dataService, BACKEND_URL } from '../../services/dataService';
 import { sharedDataService } from '../../services/sharedDataService';
-import { getStorageKey } from '../../services/config';
 
 const AllMembers = () => {
     const [members, setMembers] = useState([]);
@@ -154,7 +153,7 @@ const AllMembers = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            const token = localStorage.getItem(getStorageKey('rupiksha_token'));
+            const token = localStorage.getItem('rupiksha_token');
             const res = await fetch(`${BACKEND_URL}/admin/users`, {
                 method: 'POST',
                 headers: {

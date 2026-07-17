@@ -3,6 +3,47 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 
+// Global localStorage Patch for multi-tab portal/role isolation
+const SESSION_KEYS = [
+  'rupiksha_token',
+  'rupiksha_user',
+  'rupiksha_refresh_token',
+  'rupiksha_imp_token',
+  'rupiksha_imp_user',
+  'last_activity'
+];
+
+const getPortalStorageKey = (key) => {
+  if (!SESSION_KEYS.includes(key)) return key;
+  const path = window.location.pathname;
+  if (path.startsWith('/admin')) {
+    return `${key}_admin`;
+  }
+  if (path.startsWith('/distributor') || path === '/portal/distributor') {
+    return `${key}_distributor`;
+  }
+  if (path.startsWith('/super-distributor') || path === '/portal/super-distributor') {
+    return `${key}_super_distributor`;
+  }
+  return `${key}_retailer`;
+};
+
+if (typeof window !== 'undefined' && window.localStorage) {
+  const originalGetItem = localStorage.getItem;
+  const originalSetItem = localStorage.setItem;
+  const originalRemoveItem = localStorage.removeItem;
+
+  localStorage.getItem = function (key) {
+    return originalGetItem.call(localStorage, getPortalStorageKey(key));
+  };
+  localStorage.setItem = function (key, value) {
+    originalSetItem.call(localStorage, getPortalStorageKey(key), value);
+  };
+  localStorage.removeItem = function (key) {
+    originalRemoveItem.call(localStorage, getPortalStorageKey(key));
+  };
+}
+
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);

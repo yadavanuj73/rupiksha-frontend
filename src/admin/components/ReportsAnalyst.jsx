@@ -5,7 +5,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { dataService, BACKEND_URL } from '../../services/dataService';
-import { getStorageKey } from '../../services/config';
 
 const ReportsAnalyst = () => {
     const [merchants, setMerchants] = useState([]);
@@ -24,7 +23,7 @@ const ReportsAnalyst = () => {
     const fetchTopMerchants = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem(getStorageKey('rupiksha_token'));
+            const token = localStorage.getItem('rupiksha_token');
             const res = await fetch(`${BACKEND_URL}/admin/reports/top-merchants?timeframe=${timeframe}&state=${selectedState}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`

@@ -1,4 +1,3 @@
-import { getStorageKey } from './config';
 // Base API URL
 const _isLocalhost = typeof window !== 'undefined'
   && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
@@ -10,8 +9,8 @@ const BASE_URL = _isLocalhost
 // Token helper — admin path always uses admin token, member imp-tab uses imp token
 const getToken = () => {
   const isAdminTab = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
-  if (isAdminTab) return localStorage.getItem(getStorageKey('rupiksha_token'));
-  return localStorage.getItem(getStorageKey('rupiksha_imp_token')) || localStorage.getItem(getStorageKey('rupiksha_token'));
+  if (isAdminTab) return localStorage.getItem('rupiksha_token');
+  return localStorage.getItem('rupiksha_imp_token') || localStorage.getItem('rupiksha_token');
 };
 const makeIdempotencyKey = () =>
   (globalThis.crypto?.randomUUID?.() || `idem_${Date.now()}_${Math.random().toString(16).slice(2)}`);
@@ -29,15 +28,15 @@ export const apiFetch = async (endpoint, options = {}) => {
   });
   if (res.status === 401) {
     const isAdminTab = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
-    const isImp = !!localStorage.getItem(getStorageKey("rupiksha_imp_token"));
+    const isImp = !!localStorage.getItem("rupiksha_imp_token");
     if (!isAdminTab) {
       // Member tab: clear only relevant session keys and redirect
       if (isImp) {
-        localStorage.removeItem(getStorageKey("rupiksha_imp_token"));
-        localStorage.removeItem(getStorageKey("rupiksha_imp_user"));
+        localStorage.removeItem("rupiksha_imp_token");
+        localStorage.removeItem("rupiksha_imp_user");
       } else {
-        localStorage.removeItem(getStorageKey("rupiksha_token"));
-        localStorage.removeItem(getStorageKey("rupiksha_user"));
+        localStorage.removeItem("rupiksha_token");
+        localStorage.removeItem("rupiksha_user");
       }
       window.location.href = "/login";
       return;
@@ -74,8 +73,8 @@ export const authService = {
       body: JSON.stringify(userData),
     }),
   logout: () => {
-    localStorage.removeItem(getStorageKey("rupiksha_token"));
-    localStorage.removeItem(getStorageKey("rupiksha_user"));
+    localStorage.removeItem("rupiksha_token");
+    localStorage.removeItem("rupiksha_user");
     return Promise.resolve({ success: true });
   },
 };

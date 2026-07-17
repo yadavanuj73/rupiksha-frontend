@@ -4,7 +4,7 @@
  * Uses the pre-configured SMTP settings in backend/.env
  */
 
-import { BACKEND_URL, getStorageKey } from './config';
+import { BACKEND_URL } from './config';
 
 /**
  * Safe JSON parser to prevent "Unexpected end of JSON input" errors
@@ -29,7 +29,7 @@ async function safeJson(res, fallback = { success: false, message: 'Invalid serv
  */
 export const sendApprovalEmail = async (params) => {
     try {
-        const token = localStorage.getItem(getStorageKey('rupiksha_token'));
+        const token = localStorage.getItem('rupiksha_token');
         const response = await fetch(`${BACKEND_URL}/send-approval`, {
             method: 'POST',
             headers: { 
@@ -60,7 +60,7 @@ export const sendApprovalEmail = async (params) => {
  */
 export const sendOTPEmail = async (email, otp, name) => {
     try {
-        const token = localStorage.getItem(getStorageKey('rupiksha_token'));
+        const token = localStorage.getItem('rupiksha_token');
         const response = await fetch(`${BACKEND_URL}/send-otp`, {
             method: 'POST',
             headers: { 
@@ -83,7 +83,7 @@ export const sendOTPEmail = async (email, otp, name) => {
  */
 export const sendCredentialsEmail = async (params) => {
     try {
-        const token = localStorage.getItem(getStorageKey('rupiksha_token'));
+        const token = localStorage.getItem('rupiksha_token');
         const response = await fetch(`${BACKEND_URL}/send-credentials`, {
             method: 'POST',
             headers: { 

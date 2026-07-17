@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, useEffect } from "react";
+﻿import { createContext, useContext, useState, useEffect } from "react";
 import { dataService } from "../services/dataService";
-import { BACKEND_URL, getStorageKey } from "../services/config";
+import { BACKEND_URL } from "../services/config";
 
 const AuthContext = createContext({
   user: null,
@@ -86,8 +86,8 @@ export function AuthProvider({ children }) {
             if (impToken && impUserObj) {
               localStorage.removeItem(impKey); // clean up handoff key immediately
               // Use a separate key so we do NOT overwrite the admin's rupiksha_token
-              localStorage.setItem(getStorageKey('rupiksha_imp_token'), impToken);
-              localStorage.setItem(getStorageKey('rupiksha_imp_user'), JSON.stringify(impUserObj));
+              localStorage.setItem('rupiksha_imp_token', impToken);
+              localStorage.setItem('rupiksha_imp_user', JSON.stringify(impUserObj));
               // Immediately set user state so UI reflects impersonated user
               const normalizedUser = normalizeUserSession(impUserObj);
               console.log('[AuthContext] Normalized user:', normalizedUser);
@@ -128,8 +128,8 @@ export function AuthProvider({ children }) {
     // BUT: only if the URL path looks like a member portal (not /admin*).
     // A stale rupiksha_imp_token can get left behind in the same browser when an admin
     // opens "Login as Member" and then hard-refreshes their own /admin tab.
-    const impToken = localStorage.getItem(getStorageKey("rupiksha_imp_token"));
-    const impUser = localStorage.getItem(getStorageKey("rupiksha_imp_user"));
+    const impToken = localStorage.getItem("rupiksha_imp_token");
+    const impUser = localStorage.getItem("rupiksha_imp_user");
     const isAdminPath = window.location.pathname.startsWith('/admin');
     if (impToken && impUser && !isAdminPath) {
       try {
@@ -143,13 +143,13 @@ export function AuthProvider({ children }) {
       } catch { /* fall through to normal session */ }
     } else if (impToken && isAdminPath) {
       // Stale imp keys on admin tab — clear them so admin session loads cleanly
-      localStorage.removeItem(getStorageKey("rupiksha_imp_token"));
-      localStorage.removeItem(getStorageKey("rupiksha_imp_user"));
+      localStorage.removeItem("rupiksha_imp_token");
+      localStorage.removeItem("rupiksha_imp_user");
     }
 
-    const token = localStorage.getItem(getStorageKey("rupiksha_token"));
-    const savedUser = localStorage.getItem(getStorageKey("rupiksha_user"));
-    const lastActivity = localStorage.getItem(getStorageKey("last_activity"));
+    const token = localStorage.getItem("rupiksha_token");
+    const savedUser = localStorage.getItem("rupiksha_user");
+    const lastActivity = localStorage.getItem("last_activity");
 
     if (token && savedUser) {
       try {
@@ -204,7 +204,7 @@ export function AuthProvider({ children }) {
     if (!user) return;
 
     const handleActivity = () => {
-      localStorage.setItem(getStorageKey("last_activity"), Date.now().toString());
+      localStorage.setItem("last_activity", Date.now().toString());
     };
 
     window.addEventListener("mousemove", handleActivity);
@@ -215,7 +215,7 @@ export function AuthProvider({ children }) {
     handleActivity();
 
     const interval = setInterval(() => {
-      const last = parseInt(localStorage.getItem(getStorageKey("last_activity")) || "0");
+      const last = parseInt(localStorage.getItem("last_activity") || "0");
       const now = Date.now();
       const diff = now - last;
 
@@ -252,7 +252,7 @@ export function AuthProvider({ children }) {
         if (!normalized) {
           return { success: false, message: "Session normalization failed." };
         }
-        localStorage.setItem(getStorageKey("rupiksha_user"), JSON.stringify(normalized));
+        localStorage.setItem("rupiksha_user", JSON.stringify(normalized));
         setUser(normalized);
         setPermissions(normalized.permissions || []);
 
@@ -260,7 +260,7 @@ export function AuthProvider({ children }) {
         const isExempt = ['ADMIN', 'DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE', 'RETAILER'].includes(normalized.role);
         setIsLocked(!isExempt);
 
-        localStorage.setItem(getStorageKey("last_activity"), Date.now().toString());
+        localStorage.setItem("last_activity", Date.now().toString());
         return { success: true };
       } else {
         return { success: false, message: res.message };
@@ -273,24 +273,24 @@ export function AuthProvider({ children }) {
   const verifyPin = (pin) => {
     if (user && user.pin === pin) {
       setIsLocked(false);
-      localStorage.setItem(getStorageKey("last_activity"), Date.now().toString());
+      localStorage.setItem("last_activity", Date.now().toString());
       return true;
     }
     return false;
   };
 
   const logout = () => {
-    const isImpSession = !!localStorage.getItem(getStorageKey("rupiksha_imp_token"));
+    const isImpSession = !!localStorage.getItem("rupiksha_imp_token");
     if (isImpSession) {
       // In an impersonation tab — only clear imp keys, not admin's real token
-      localStorage.removeItem(getStorageKey("rupiksha_imp_token"));
-      localStorage.removeItem(getStorageKey("rupiksha_imp_user"));
+      localStorage.removeItem("rupiksha_imp_token");
+      localStorage.removeItem("rupiksha_imp_user");
     } else {
-      localStorage.removeItem(getStorageKey("rupiksha_token"));
-      localStorage.removeItem(getStorageKey("rupiksha_user"));
-      localStorage.removeItem(getStorageKey("rupiksha_imp_token"));
-      localStorage.removeItem(getStorageKey("rupiksha_imp_user"));
-      localStorage.removeItem(getStorageKey("last_activity"));
+      localStorage.removeItem("rupiksha_token");
+      localStorage.removeItem("rupiksha_user");
+      localStorage.removeItem("rupiksha_imp_token");
+      localStorage.removeItem("rupiksha_imp_user");
+      localStorage.removeItem("last_activity");
     }
     setUser(null);
     setPermissions([]);
@@ -308,8 +308,8 @@ export function AuthProvider({ children }) {
   // Admin tab should NEVER use rupiksha_imp_token — it would send member token to admin endpoints.
   const getToken = () => {
     const isAdminTab = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
-    if (isAdminTab) return localStorage.getItem(getStorageKey("rupiksha_token"));
-    return localStorage.getItem(getStorageKey("rupiksha_imp_token")) || localStorage.getItem(getStorageKey("rupiksha_token"));
+    if (isAdminTab) return localStorage.getItem("rupiksha_token");
+    return localStorage.getItem("rupiksha_imp_token") || localStorage.getItem("rupiksha_token");
   };
 
   return (

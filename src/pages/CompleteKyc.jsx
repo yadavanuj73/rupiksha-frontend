@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { userService } from '../services/apiService';
-import { getStorageKey } from '../services/config';
 
 const INDIAN_STATES = [
   'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat',
@@ -176,7 +175,7 @@ const CompleteKyc = () => {
       };
       const res = await userService.submitKyc(payload);
       const nextUser = { ...(user || {}), kycStatus: res?.kycStatus || 'PENDING' };
-      const userKey = localStorage.getItem(getStorageKey('rupiksha_imp_token')) ? getStorageKey('rupiksha_imp_user') : getStorageKey('rupiksha_user');
+      const userKey = localStorage.getItem('rupiksha_imp_token') ? 'rupiksha_imp_user' : 'rupiksha_user';
       localStorage.setItem(userKey, JSON.stringify(nextUser));
       setUser(nextUser);
       setSubmitted(true);
