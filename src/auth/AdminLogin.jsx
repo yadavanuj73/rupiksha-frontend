@@ -206,7 +206,7 @@ const AdminLogin = () => {
 
     const timerFmt = `${String(Math.floor(timer / 60)).padStart(2, '0')}:${String(timer % 60).padStart(2, '0')}`;
     return (
-        <div className="relative min-h-screen w-screen flex flex-col md:flex-row bg-[#FAF9F6] overflow-hidden font-outfit">
+        <div className="relative min-h-screen w-screen bg-[#FAF9F6] overflow-hidden font-outfit">
             <style>{`
                 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
                 .font-outfit {
@@ -254,7 +254,7 @@ const AdminLogin = () => {
             {/* Navigation Header Overlay */}
             <header className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 py-5 bg-transparent pointer-events-none">
                 <div className="flex items-center gap-4 cursor-pointer pointer-events-auto" onClick={() => navigate('/login')}>
-                    <img src={logo} alt="RUPIKSHA" className="h-9 w-auto object-contain select-none" />
+                    <img src={logo} alt="RUPIKSHA" style={{ height: '36px', width: 'auto' }} className="object-contain select-none" />
                 </div>
 
                 <div className="flex items-center gap-3 pointer-events-auto">
@@ -290,7 +290,9 @@ const AdminLogin = () => {
                 </div>
             </header>
 
-            {/* Left Section (Login & Controls) */}
+            {/* Split Page columns wrapper */}
+            <div className="w-full flex flex-col md:flex-row min-h-screen">
+                {/* Left Section (Login & Controls) */}
             <div className="w-full md:w-1/2 min-h-screen bg-[#FAF9F6] relative flex flex-col justify-between p-6 md:p-12 pt-24 md:pt-24 z-10">
                 {/* Background Orbits */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
@@ -532,6 +534,7 @@ const AdminLogin = () => {
                 <div className="text-right text-[9px] font-black uppercase tracking-[0.3em] text-emerald-400/30 select-none">
                     Secure Admin Gateway
                 </div>
+            </div>
             </div>
         </div>
     );
