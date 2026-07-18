@@ -250,11 +250,10 @@ const AdminLogin = () => {
                     animation: orbit-dash 15s linear infinite;
                 }
             `}</style>
-
             {/* Navigation Header Overlay */}
             <header className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 py-3 bg-transparent pointer-events-none">
                 <div className="flex items-center gap-4 cursor-pointer pointer-events-auto" onClick={() => navigate('/login')}>
-                    <img src={logo} alt="RUPIKSHA" style={{ height: '32px', width: 'auto' }} className="object-contain select-none" />
+                    <img src={logo} alt="RUPIKSHA" style={{ height: '54px', width: 'auto' }} className="object-contain select-none" />
                 </div>
 
                 <div className="flex items-center gap-3 pointer-events-auto">
@@ -265,7 +264,7 @@ const AdminLogin = () => {
                                 type="color"
                                 value={brandColor}
                                 onChange={(e) => setBrandColor(e.target.value)}
-                                className="absolute inset-0 opacity-0 cursor-pointer w-8 h-8"
+                                className="absolute inset-0 opacity-0 cursor-pointer w-6 h-6"
                                 title="Choose Theme Color"
                             />
                             <Palette size={10} className={parseInt(brandColor.replace('#',''), 16) > 0xffffff/2 ? 'text-black' : 'text-white'} />
@@ -293,7 +292,7 @@ const AdminLogin = () => {
             {/* Split Page columns wrapper (strictly h-screen and overflow-hidden to prevent scroll) */}
             <div className="w-full flex flex-col md:flex-row h-screen overflow-hidden">
                 {/* Left Section (Login & Controls) */}
-                <div className="w-full md:w-1/2 h-full bg-[#FAF9F6] relative flex flex-col justify-between p-6 md:p-12 pt-20 z-10 overflow-hidden">
+                <div className="w-full md:w-1/2 h-full bg-[#FAF9F6] relative flex flex-col justify-between p-6 md:p-12 pt-24 z-10 overflow-hidden">
                     {/* Background Orbits */}
                     <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
                         <div className="absolute top-[20%] left-[10%] w-[380px] h-[380px] bg-emerald-500/[0.04] rounded-full blur-[70px]" />
@@ -414,7 +413,7 @@ const AdminLogin = () => {
                 </div>
 
                 {/* Right Section (Futuristic Administration Display - Strictly h-full & overflow-hidden) */}
-                <div className="hidden md:flex md:w-1/2 h-full bg-[#021612] relative flex-col justify-between p-6 md:p-12 pt-20 z-10 overflow-hidden">
+                <div className="hidden md:flex md:w-1/2 h-full bg-[#021612] relative flex-col justify-between p-6 md:p-12 pt-24 z-10 overflow-hidden">
                     {/* Background Glows */}
                     <div className="absolute inset-0 pointer-events-none">
                         <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[120px]" />
