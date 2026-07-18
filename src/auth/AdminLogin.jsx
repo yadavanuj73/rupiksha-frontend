@@ -206,7 +206,7 @@ const AdminLogin = () => {
 
     const timerFmt = `${String(Math.floor(timer / 60)).padStart(2, '0')}:${String(timer % 60).padStart(2, '0')}`;
     return (
-        <div className="relative min-h-screen w-screen bg-[#FAF9F6] overflow-hidden font-outfit">
+        <div className="relative h-screen w-screen bg-[#FAF9F6] overflow-hidden font-outfit">
             <style>{`
                 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
                 .font-outfit {
@@ -252,15 +252,15 @@ const AdminLogin = () => {
             `}</style>
 
             {/* Navigation Header Overlay */}
-            <header className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 py-5 bg-transparent pointer-events-none">
+            <header className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 py-3 bg-transparent pointer-events-none">
                 <div className="flex items-center gap-4 cursor-pointer pointer-events-auto" onClick={() => navigate('/login')}>
-                    <img src={logo} alt="RUPIKSHA" style={{ height: '36px', width: 'auto' }} className="object-contain select-none" />
+                    <img src={logo} alt="RUPIKSHA" style={{ height: '32px', width: 'auto' }} className="object-contain select-none" />
                 </div>
 
                 <div className="flex items-center gap-3 pointer-events-auto">
                     {/* Theme Control */}
-                    <div className="flex items-center gap-2.5 bg-white/80 md:bg-[#03251f]/60 border border-slate-200/80 md:border-[#043d33]/80 px-3 py-1.5 rounded-xl shadow-sm backdrop-blur-sm">
-                        <div className="w-5 h-5 rounded-lg shadow-inner flex items-center justify-center overflow-hidden relative" style={{ backgroundColor: brandColor }}>
+                    <div className="flex items-center gap-2 bg-white/85 md:bg-[#03251f]/60 border border-slate-200/80 md:border-[#043d33]/80 px-2.5 py-1 rounded-xl shadow-sm backdrop-blur-sm">
+                        <div className="w-4.5 h-4.5 rounded-lg shadow-inner flex items-center justify-center overflow-hidden relative" style={{ backgroundColor: brandColor }}>
                             <input
                                 type="color"
                                 value={brandColor}
@@ -268,273 +268,273 @@ const AdminLogin = () => {
                                 className="absolute inset-0 opacity-0 cursor-pointer w-8 h-8"
                                 title="Choose Theme Color"
                             />
-                            <Palette size={11} className={parseInt(brandColor.replace('#',''), 16) > 0xffffff/2 ? 'text-black' : 'text-white'} />
+                            <Palette size={10} className={parseInt(brandColor.replace('#',''), 16) > 0xffffff/2 ? 'text-black' : 'text-white'} />
                         </div>
                         <span className="text-[8px] font-black uppercase text-slate-500 md:text-emerald-400/80 tracking-widest">Theme</span>
                     </div>
 
                     {/* Protocol Badge (hidden on mobile) */}
-                    <div className="hidden md:flex items-center gap-2 bg-[#03251f]/60 border border-[#043d33]/80 px-4 py-2 rounded-xl backdrop-blur-sm text-emerald-400 text-[10px] font-black uppercase tracking-widest shadow-sm">
-                        <ShieldCheck size={14} className="text-emerald-400" />
+                    <div className="hidden md:flex items-center gap-1.5 bg-[#03251f]/60 border border-[#043d33]/80 px-3 py-1.5 rounded-xl backdrop-blur-sm text-emerald-400 text-[9px] font-black uppercase tracking-widest shadow-sm">
+                        <ShieldCheck size={12} className="text-emerald-400" />
                         <span>Headquarters Protocol</span>
                     </div>
 
                     {/* Back Button */}
                     <button
                         onClick={() => navigate('/login')}
-                        className="h-9 px-4 bg-white/80 hover:bg-slate-50 md:bg-[#03251f]/60 md:hover:bg-[#043d33]/80 text-slate-700 md:text-white rounded-xl transition-all flex items-center gap-2 group border border-slate-200/80 md:border-[#043d33]/80 shadow-sm backdrop-blur-sm"
+                        className="h-8 px-3 bg-white/80 hover:bg-slate-50 md:bg-[#03251f]/60 md:hover:bg-[#043d33]/80 text-slate-700 md:text-white rounded-xl transition-all flex items-center gap-1.5 group border border-slate-200/80 md:border-[#043d33]/80 shadow-sm backdrop-blur-sm"
                     >
-                        <ChevronLeft size={15} className="group-hover:-translate-x-0.5 transition-transform" />
+                        <ChevronLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
                         <span className="text-[10px] font-black uppercase tracking-wider">Back</span>
                     </button>
                 </div>
             </header>
 
-            {/* Split Page columns wrapper */}
-            <div className="w-full flex flex-col md:flex-row min-h-screen">
+            {/* Split Page columns wrapper (strictly h-screen and overflow-hidden to prevent scroll) */}
+            <div className="w-full flex flex-col md:flex-row h-screen overflow-hidden">
                 {/* Left Section (Login & Controls) */}
-            <div className="w-full md:w-1/2 min-h-screen bg-[#FAF9F6] relative flex flex-col justify-between p-6 md:p-12 pt-24 md:pt-24 z-10">
-                {/* Background Orbits */}
-                <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-                    <div className="absolute top-[20%] left-[10%] w-[380px] h-[380px] bg-emerald-500/[0.04] rounded-full blur-[70px]" />
-                    <div className="absolute bottom-[20%] right-[10%] w-[280px] h-[280px] bg-lime-500/[0.03] rounded-full blur-[70px]" />
-                    
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[550px] border border-emerald-500/10 rounded-full animate-orbit-slow" />
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] border border-slate-200/50 rounded-full animate-orbit-reverse" />
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] border border-emerald-500/[0.05] rounded-full" />
-                </div>
-
-                <div className="flex-1 flex flex-col items-center justify-center relative">
-                    <div className="w-full max-w-[400px] z-10 relative space-y-7">
-                        <div className="text-center space-y-1.5">
-                            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400/80 block">Welcome Back!</span>
-                            <h2 className="text-4xl md:text-5xl font-black tracking-tight text-slate-800 italic" style={{ color: brandColor }}>
-                                Login
-                            </h2>
-                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Access System Headquarters</p>
-                        </div>
-
-                        <div className="bg-white rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden">
-                            <div className="text-white text-center py-4 font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-800 to-emerald-600">
-                                <ShieldCheck size={15} /> Restricted Access — Authorized Personnel
-                            </div>
-
-                            <div className="p-7">
-                                <AnimatePresence mode="wait">
-                                    <motion.div key={step} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} transition={{ duration: 0.2 }}>
-                                        <AnimatePresence>
-                                            {error && (
-                                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                                                    className="bg-red-50 border border-red-200 text-red-600 text-[11px] font-bold px-4 py-3.5 rounded-xl mb-4 flex items-center gap-2">
-                                                    <AlertCircle size={14} />{error}
-                                                </motion.div>
-                                            )}
-                                            {info && !error && (
-                                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                                                    className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold px-4 py-3.5 rounded-xl mb-4 flex items-center gap-2">
-                                                    <CheckCircle2 size={14} />{info}
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-
-                                        {step === 'credentials' ? (
-                                            <form onSubmit={handlePasswordSubmit} className="space-y-4">
-                                                <div className="relative">
-                                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"><User size={16} /></div>
-                                                    <input type="text" placeholder="Admin Username" value={username} onChange={(e) => setUsername(e.target.value)} required
-                                                        className="w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200 rounded-xl text-slate-800 focus:border-emerald-500 outline-none text-sm font-semibold transition-all" />
-                                                </div>
-                                                <div className="relative">
-                                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"><Lock size={16} /></div>
-                                                    <input type={showPw ? 'text' : 'password'} placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required
-                                                        className="w-full pl-11 pr-12 py-3.5 bg-white border border-slate-200 rounded-xl text-slate-800 focus:border-emerald-500 outline-none text-sm font-semibold transition-all" />
-                                                    <button type="button" onClick={() => setShowPw((v) => !v)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-600 transition-colors">
-                                                        {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
-                                                    </button>
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <div className="flex items-center justify-between bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl">
-                                                        <span className="text-base tracking-widest text-slate-600 select-none flex-1 text-center font-outfit font-bold">{captcha}</span>
-                                                        <button type="button" onClick={genCaptcha} className="text-slate-400 hover:text-emerald-500 transition-all duration-500 ml-2 refresh-rotate"><RefreshCcw size={14} /></button>
-                                                    </div>
-                                                    <input type="text" placeholder="Enter answer" value={captchaInput} onChange={(e) => setCaptchaInput(e.target.value)} required
-                                                        className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-xl text-slate-800 focus:border-emerald-500 outline-none text-sm font-semibold transition-all" />
-                                                </div>
-                                                <motion.button type="submit" disabled={loadingLogin} whileHover={{ scale: 1.02, boxShadow: '0 10px 20px rgba(16, 185, 129, 0.15)' }} whileTap={{ scale: 0.98 }}
-                                                    className="w-full mt-2 bg-gradient-to-r from-teal-800 via-emerald-600 to-lime-500 text-white font-black py-4 rounded-xl text-[11px] uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 transition-all disabled:opacity-60 cursor-pointer">
-                                                    {loadingLogin ? <><Loader2 size={14} className="animate-spin" /> Validating...</> : <><ShieldCheck size={15} /> Continue to OTP <ArrowRight size={14} /></>}
-                                                </motion.button>
-                                            </form>
-                                        ) : (
-                                            <form onSubmit={handleVerifyOtp} className="space-y-5">
-                                                <div>
-                                                    <div className="flex items-center justify-between mb-3">
-                                                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Enter 6-digit OTP</p>
-                                                        <span className={`text-[11px] font-black tabular-nums ${timer > 30 ? 'text-emerald-500' : 'text-red-500'}`}>⏱ {timerFmt}</span>
-                                                    </div>
-                                                    <div className="flex gap-2 justify-center">
-                                                        {Array(OTP_LENGTH).fill(0).map((_, i) => (
-                                                            <input key={i} ref={(el) => { otpRefs.current[i] = el; }}
-                                                                type="text" inputMode="numeric" maxLength={1} value={otpValues[i]}
-                                                                onChange={(e) => handleOtpKey(e.target.value, i)}
-                                                                onKeyDown={(e) => handleOtpBack(e, i)}
-                                                                className={`w-11 h-12 text-center text-slate-800 font-black text-lg bg-white border-2 rounded-xl border-slate-200 outline-none transition-all
-                                                                    ${otpValues[i] ? 'border-emerald-500 bg-emerald-50/50' : 'focus:border-emerald-400'}`} />
-                                                        ))}
-                                                    </div>
-                                                    <p className="text-slate-400 text-[9px] font-bold text-center mt-3 uppercase tracking-widest">User: {username}</p>
-                                                </div>
-
-                                                <motion.button type="submit" disabled={loadingOtp || timer === 0} whileHover={{ scale: 1.02, boxShadow: '0 10px 20px rgba(16, 185, 129, 0.15)' }} whileTap={{ scale: 0.98 }}
-                                                    className="w-full bg-gradient-to-r from-teal-800 via-emerald-600 to-lime-500 text-white font-black py-4 rounded-xl text-[11px] uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 transition-all disabled:opacity-60 cursor-pointer">
-                                                    {loadingOtp ? <><Loader2 size={14} className="animate-spin" /> Verifying...</> : <><KeyRound size={14} /> Verify & Login <ArrowRight size={14} /></>}
-                                                </motion.button>
-
-                                                <button type="button" onClick={restartLogin}
-                                                    className="w-full text-[10px] font-black uppercase tracking-widest text-center flex items-center justify-center gap-2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
-                                                    <RefreshCcw size={12} /> Back to Password Step
-                                                </button>
-                                            </form>
-                                        )}
-                                    </motion.div>
-                                </AnimatePresence>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center justify-center gap-2 text-slate-400/80 text-[9.5px] font-black uppercase tracking-widest">
-                            <CheckCircle2 size={13} className="text-emerald-500/80" />
-                            Secure Login Protected by AES-256 Encryption
-                        </div>
-                    </div>
-                </div>
-
-                <div className="text-center opacity-40">
-                    <p className="text-slate-600 text-[9px] font-black uppercase tracking-[0.8em]">© 2026 RuPiKsha Digital</p>
-                </div>
-            </div>
-
-            {/* Right Section (Futuristic Administration Display - Hidden on Mobile) */}
-            <div className="hidden md:flex md:w-1/2 min-h-screen bg-[#021612] relative flex-col justify-between p-6 md:p-12 pt-24 z-10 overflow-hidden">
-                {/* Background Glows */}
-                <div className="absolute inset-0 pointer-events-none">
-                    <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[120px]" />
-                    <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-teal-500/10 rounded-full blur-[100px]" />
-                </div>
-
-                <div className="flex-1 flex items-center justify-center relative">
-                    {/* Elliptical Orbits & Connected Floating Badges Wrapper */}
-                    <div className="relative flex items-center justify-center w-full max-w-[620px] h-[500px]">
+                <div className="w-full md:w-1/2 h-full bg-[#FAF9F6] relative flex flex-col justify-between p-6 md:p-12 pt-20 z-10 overflow-hidden">
+                    {/* Background Orbits */}
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+                        <div className="absolute top-[20%] left-[10%] w-[380px] h-[380px] bg-emerald-500/[0.04] rounded-full blur-[70px]" />
+                        <div className="absolute bottom-[20%] right-[10%] w-[280px] h-[280px] bg-lime-500/[0.03] rounded-full blur-[70px]" />
                         
-                        {/* SVG Paths & Glow Filters */}
-                        <svg className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-visible" viewBox="0 0 620 500">
-                            <defs>
-                                <linearGradient id="orbit-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" stopColor="#10b981" stopOpacity="0" />
-                                    <stop offset="50%" stopColor="#34d399" stopOpacity="1" />
-                                    <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
-                                </linearGradient>
-                            </defs>
-                            <ellipse cx="310" cy="250" rx="230" ry="180" stroke="rgba(16, 185, 129, 0.18)" strokeWidth="1.5" strokeDasharray="5 7" />
-                            <ellipse cx="310" cy="250" rx="280" ry="220" stroke="rgba(16, 185, 129, 0.06)" strokeWidth="1.5" strokeDasharray="10 10" />
-                            <ellipse cx="310" cy="250" rx="230" ry="180" stroke="url(#orbit-grad)" strokeWidth="2" strokeDasharray="50 300" className="animate-orbit-flow" />
-                        </svg>
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[550px] border border-emerald-500/10 rounded-full animate-orbit-slow" />
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] border border-slate-200/50 rounded-full animate-orbit-reverse" />
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] border border-emerald-500/[0.05] rounded-full" />
+                    </div>
 
-                        {/* Central Glassmorphic Dashboard Card */}
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 0.8, ease: "easeOut" }}
-                            className="relative bg-teal-950/15 backdrop-blur-md border border-white/10 rounded-[2.5rem] p-10 text-white max-w-sm w-full text-center space-y-6 z-10 shadow-[0_30px_70px_rgba(0,0,0,0.5)]"
-                        >
-                            {/* Glowing check shield */}
-                            <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/20 flex items-center justify-center mx-auto shadow-2xl animate-float relative overflow-hidden">
-                                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-teal-500/10" />
-                                <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center shadow-inner relative z-10">
-                                    <ShieldCheck size={26} className="text-teal-800 animate-pulse" />
+                    <div className="flex-1 flex flex-col items-center justify-center relative py-4">
+                        <div className="w-full max-w-[380px] z-10 relative space-y-6">
+                            <div className="text-center space-y-1">
+                                <span className="text-[9px] font-black uppercase tracking-[0.25em] text-slate-400/80 block">Welcome Back!</span>
+                                <h2 className="text-3xl md:text-4xl font-black tracking-tight text-slate-800 italic" style={{ color: brandColor }}>
+                                    Login
+                                </h2>
+                                <p className="text-slate-400 text-[9px] font-bold uppercase tracking-widest">Access System Headquarters</p>
+                            </div>
+
+                            <div className="bg-white rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden">
+                                <div className="text-white text-center py-3 md:py-3.5 font-black uppercase tracking-widest text-[9px] flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-800 to-emerald-600">
+                                    <ShieldCheck size={14} /> Restricted Access — Authorized Personnel
+                                </div>
+
+                                <div className="p-6">
+                                    <AnimatePresence mode="wait">
+                                        <motion.div key={step} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} transition={{ duration: 0.2 }}>
+                                            <AnimatePresence>
+                                                {error && (
+                                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                                        className="bg-red-50 border border-red-200 text-red-600 text-[11px] font-bold px-4 py-3 rounded-xl mb-4 flex items-center gap-2">
+                                                        <AlertCircle size={13} />{error}
+                                                    </motion.div>
+                                                )}
+                                                {info && !error && (
+                                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                                        className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold px-4 py-3 rounded-xl mb-4 flex items-center gap-2">
+                                                        <CheckCircle2 size={13} />{info}
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+
+                                            {step === 'credentials' ? (
+                                                <form onSubmit={handlePasswordSubmit} className="space-y-3.5">
+                                                    <div className="relative">
+                                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"><User size={15} /></div>
+                                                        <input type="text" placeholder="Admin Username" value={username} onChange={(e) => setUsername(e.target.value)} required
+                                                            className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 focus:border-emerald-500 outline-none text-sm font-semibold transition-all" />
+                                                    </div>
+                                                    <div className="relative">
+                                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"><Lock size={15} /></div>
+                                                        <input type={showPw ? 'text' : 'password'} placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required
+                                                            className="w-full pl-11 pr-12 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 focus:border-emerald-500 outline-none text-sm font-semibold transition-all" />
+                                                        <button type="button" onClick={() => setShowPw((v) => !v)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-600 transition-colors">
+                                                            {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                                                        </button>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <div className="flex items-center justify-between bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl">
+                                                            <span className="text-base tracking-widest text-slate-600 select-none flex-1 text-center font-outfit font-bold">{captcha}</span>
+                                                            <button type="button" onClick={genCaptcha} className="text-slate-400 hover:text-emerald-500 transition-all duration-500 ml-2 refresh-rotate"><RefreshCcw size={13} /></button>
+                                                        </div>
+                                                        <input type="text" placeholder="Enter answer" value={captchaInput} onChange={(e) => setCaptchaInput(e.target.value)} required
+                                                            className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 focus:border-emerald-500 outline-none text-sm font-semibold transition-all" />
+                                                    </div>
+                                                    <motion.button type="submit" disabled={loadingLogin} whileHover={{ scale: 1.02, boxShadow: '0 10px 20px rgba(16, 185, 129, 0.15)' }} whileTap={{ scale: 0.98 }}
+                                                        className="w-full mt-2 bg-gradient-to-r from-teal-800 via-emerald-600 to-lime-500 text-white font-black py-3.5 rounded-xl text-[10px] uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 transition-all disabled:opacity-60 cursor-pointer">
+                                                        {loadingLogin ? <><Loader2 size={13} className="animate-spin" /> Validating...</> : <><ShieldCheck size={14} /> Continue to OTP <ArrowRight size={13} /></>}
+                                                    </motion.button>
+                                                </form>
+                                            ) : (
+                                                <form onSubmit={handleVerifyOtp} className="space-y-4">
+                                                    <div>
+                                                        <div className="flex items-center justify-between mb-3">
+                                                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Enter 6-digit OTP</p>
+                                                            <span className={`text-[11px] font-black tabular-nums ${timer > 30 ? 'text-emerald-500' : 'text-red-500'}`}>⏱ {timerFmt}</span>
+                                                        </div>
+                                                        <div className="flex gap-2 justify-center">
+                                                            {Array(OTP_LENGTH).fill(0).map((_, i) => (
+                                                                <input key={i} ref={(el) => { otpRefs.current[i] = el; }}
+                                                                    type="text" inputMode="numeric" maxLength={1} value={otpValues[i]}
+                                                                    onChange={(e) => handleOtpKey(e.target.value, i)}
+                                                                    onKeyDown={(e) => handleOtpBack(e, i)}
+                                                                    className={`w-10 h-11 text-center text-slate-800 font-black text-lg bg-white border-2 rounded-xl border-slate-200 outline-none transition-all
+                                                                        ${otpValues[i] ? 'border-emerald-500 bg-emerald-50/50' : 'focus:border-emerald-400'}`} />
+                                                            ))}
+                                                        </div>
+                                                        <p className="text-slate-400 text-[9px] font-bold text-center mt-3 uppercase tracking-widest">User: {username}</p>
+                                                    </div>
+
+                                                    <motion.button type="submit" disabled={loadingOtp || timer === 0} whileHover={{ scale: 1.02, boxShadow: '0 10px 20px rgba(16, 185, 129, 0.15)' }} whileTap={{ scale: 0.98 }}
+                                                        className="w-full bg-gradient-to-r from-teal-800 via-emerald-600 to-lime-500 text-white font-black py-3.5 rounded-xl text-[10px] uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 transition-all disabled:opacity-60 cursor-pointer">
+                                                        {loadingOtp ? <><Loader2 size={13} className="animate-spin" /> Verifying...</> : <><KeyRound size={13} /> Verify & Login <ArrowRight size={13} /></>}
+                                                    </motion.button>
+
+                                                    <button type="button" onClick={restartLogin}
+                                                        className="w-full text-[10px] font-black uppercase tracking-widest text-center flex items-center justify-center gap-2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
+                                                        <RefreshCcw size={12} /> Back to Password Step
+                                                    </button>
+                                                </form>
+                                            )}
+                                        </motion.div>
+                                    </AnimatePresence>
                                 </div>
                             </div>
-                            
-                            <div className="space-y-2">
-                                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-emerald-400/80 block">Headquarters Protocol</span>
-                                <h3 className="text-2xl font-black tracking-tight leading-tight">System<br />Administration</h3>
-                                <p className="text-white/60 text-[13px] font-medium leading-relaxed">
-                                    Manage the entire platform seamlessly. Monitor, control and secure live operations in real-time.
-                                </p>
-                            </div>
 
-                            <div className="space-y-2.5">
-                                {[
-                                    { text: 'Real-time Employee Directory', icon: Clock },
-                                    { text: 'Geo-fenced Tracking Map', icon: MapPin },
-                                    { text: 'System Integrity & Security', icon: ShieldCheck },
-                                    { text: 'Hierarchical Flow Management', icon: Network }
-                                ].map((item, i) => {
-                                    const IconComp = item.icon;
-                                    return (
-                                        <div key={i} className="flex items-center gap-3 text-left bg-white/[0.04] hover:bg-white/[0.08] border border-white/5 hover:border-white/10 rounded-xl px-4 py-3 transition-all duration-300 group">
-                                            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 group-hover:bg-emerald-500 group-hover:border-emerald-400 transition-all duration-300">
-                                                <IconComp size={14} className="text-emerald-400 group-hover:text-white transition-colors duration-300" />
-                                            </div>
-                                            <span className="text-[12px] font-bold text-white/80 group-hover:text-white transition-colors duration-300">{item.text}</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </motion.div>
-
-                        {/* Orbit Floating Badges */}
-                        {/* Users badge (Right Top) */}
-                        <div className="absolute right-[5%] top-[12%] z-20 animate-float">
-                            <div className="w-14 h-14 bg-white/[0.03] border border-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-[0_15px_30px_rgba(16,185,129,0.12)]">
-                                <div className="w-10 h-10 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 shadow-inner">
-                                    <Users size={18} />
-                                </div>
+                            <div className="flex items-center justify-center gap-2 text-slate-400/80 text-[9px] font-black uppercase tracking-widest">
+                                <CheckCircle2 size={12} className="text-emerald-500/80" />
+                                Secure Login Protected by AES-256 Encryption
                             </div>
                         </div>
+                    </div>
 
-                        {/* Map Pin badge (Right Middle) */}
-                        <div className="absolute right-[-2%] top-[45%] z-20 animate-float-delayed">
-                            <div className="w-14 h-14 bg-white/[0.03] border border-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-[0_15px_30px_rgba(16,185,129,0.12)]">
-                                <div className="w-10 h-10 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 shadow-inner">
-                                    <MapPin size={18} />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Shield check badge (Right Bottom) */}
-                        <div className="absolute right-[6%] bottom-[13%] z-20 animate-float">
-                            <div className="w-14 h-14 bg-white/[0.03] border border-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-[0_15px_30px_rgba(16,185,129,0.12)]">
-                                <div className="w-10 h-10 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 shadow-inner">
-                                    <ShieldCheck size={18} />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Stats chart badge (Left Top) */}
-                        <div className="absolute left-[2%] top-[25%] z-20 animate-float">
-                            <div className="w-14 h-14 bg-white/[0.03] border border-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-[0_15px_30px_rgba(16,185,129,0.12)]">
-                                <div className="w-10 h-10 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 shadow-inner">
-                                    <BarChart3 size={18} />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Network hierarchy badge (Left Bottom) */}
-                        <div className="absolute left-[6%] bottom-[17%] z-20 animate-float-delayed">
-                            <div className="w-14 h-14 bg-white/[0.03] border border-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-[0_15px_30px_rgba(16,185,129,0.12)]">
-                                <div className="w-10 h-10 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 shadow-inner">
-                                    <Network size={18} />
-                                </div>
-                            </div>
-                        </div>
-
+                    <div className="text-center opacity-40 py-2">
+                        <p className="text-slate-600 text-[9px] font-black uppercase tracking-[0.8em]">© 2026 RuPiKsha Digital</p>
                     </div>
                 </div>
 
-                <div className="text-right text-[9px] font-black uppercase tracking-[0.3em] text-emerald-400/30 select-none">
-                    Secure Admin Gateway
+                {/* Right Section (Futuristic Administration Display - Strictly h-full & overflow-hidden) */}
+                <div className="hidden md:flex md:w-1/2 h-full bg-[#021612] relative flex-col justify-between p-6 md:p-12 pt-20 z-10 overflow-hidden">
+                    {/* Background Glows */}
+                    <div className="absolute inset-0 pointer-events-none">
+                        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[120px]" />
+                        <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-teal-500/10 rounded-full blur-[100px]" />
+                    </div>
+
+                    <div className="flex-1 flex items-center justify-center relative">
+                        {/* Elliptical Orbits & Connected Floating Badges Wrapper (Scaled down to prevent overlap) */}
+                        <div className="relative flex items-center justify-center w-full max-w-[580px] h-[440px]">
+                            
+                            {/* SVG Paths & Glow Filters */}
+                            <svg className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-visible" viewBox="0 0 580 440">
+                                <defs>
+                                    <linearGradient id="orbit-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stopColor="#10b981" stopOpacity="0" />
+                                        <stop offset="50%" stopColor="#34d399" stopOpacity="1" />
+                                        <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+                                    </linearGradient>
+                                </defs>
+                                <ellipse cx="290" cy="220" rx="210" ry="160" stroke="rgba(16, 185, 129, 0.18)" strokeWidth="1.5" strokeDasharray="5 7" />
+                                <ellipse cx="290" cy="220" rx="260" ry="200" stroke="rgba(16, 185, 129, 0.06)" strokeWidth="1.5" strokeDasharray="10 10" />
+                                <ellipse cx="290" cy="220" rx="210" ry="160" stroke="url(#orbit-grad)" strokeWidth="2" strokeDasharray="50 300" className="animate-orbit-flow" />
+                            </svg>
+
+                            {/* Central Glassmorphic Dashboard Card (Compact padding & space-y to fit well) */}
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ duration: 0.8, ease: "easeOut" }}
+                                className="relative bg-teal-950/15 backdrop-blur-md border border-white/10 rounded-[2.5rem] p-6 md:p-8 text-white max-w-xs w-full text-center space-y-4 md:space-y-5 z-10 shadow-[0_30px_70px_rgba(0,0,0,0.5)]"
+                            >
+                                {/* Glowing check shield */}
+                                <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/20 flex items-center justify-center mx-auto shadow-2xl animate-float relative overflow-hidden">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-teal-500/10" />
+                                    <div className="w-9.5 h-9.5 rounded-xl bg-white flex items-center justify-center shadow-inner relative z-10">
+                                        <ShieldCheck size={22} className="text-teal-800 animate-pulse" />
+                                    </div>
+                                </div>
+                                
+                                <div className="space-y-1.5">
+                                    <span className="text-[8px] font-black uppercase tracking-[0.3em] text-emerald-400/80 block">Headquarters Protocol</span>
+                                    <h3 className="text-xl md:text-2xl font-black tracking-tight leading-tight">System<br />Administration</h3>
+                                    <p className="text-white/60 text-[11.5px] font-medium leading-relaxed">
+                                        Manage the entire platform seamlessly. Monitor, control and secure live operations in real-time.
+                                    </p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    {[
+                                        { text: 'Real-time Employee Directory', icon: Clock },
+                                        { text: 'Geo-fenced Tracking Map', icon: MapPin },
+                                        { text: 'System Integrity & Security', icon: ShieldCheck },
+                                        { text: 'Hierarchical Flow Management', icon: Network }
+                                    ].map((item, i) => {
+                                        const IconComp = item.icon;
+                                        return (
+                                            <div key={i} className="flex items-center gap-2.5 text-left bg-white/[0.04] hover:bg-white/[0.08] border border-white/5 hover:border-white/10 rounded-xl px-3.5 py-2.5 transition-all duration-300 group">
+                                                <div className="w-6.5 h-6.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 group-hover:bg-emerald-500 group-hover:border-emerald-400 transition-all duration-300">
+                                                    <IconComp size={12} className="text-emerald-400 group-hover:text-white transition-colors duration-300" />
+                                                </div>
+                                                <span className="text-[11px] font-bold text-white/80 group-hover:text-white transition-colors duration-300">{item.text}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </motion.div>
+
+                            {/* Orbit Floating Badges */}
+                            {/* Users badge (Right Top) */}
+                            <div className="absolute right-[4%] top-[10%] z-20 animate-float">
+                                <div className="w-12 h-12 bg-white/[0.03] border border-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-[0_15px_30px_rgba(16,185,129,0.12)]">
+                                    <div className="w-8.5 h-8.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 shadow-inner">
+                                        <Users size={16} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Map Pin badge (Right Middle) */}
+                            <div className="absolute right-[-3%] top-[45%] z-20 animate-float-delayed">
+                                <div className="w-12 h-12 bg-white/[0.03] border border-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-[0_15px_30px_rgba(16,185,129,0.12)]">
+                                    <div className="w-8.5 h-8.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 shadow-inner">
+                                        <MapPin size={16} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Shield check badge (Right Bottom) */}
+                            <div className="absolute right-[5%] bottom-[10%] z-20 animate-float">
+                                <div className="w-12 h-12 bg-white/[0.03] border border-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-[0_15px_30px_rgba(16,185,129,0.12)]">
+                                    <div className="w-8.5 h-8.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 shadow-inner">
+                                        <ShieldCheck size={16} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Stats chart badge (Left Top) */}
+                            <div className="absolute left-[2%] top-[25%] z-20 animate-float">
+                                <div className="w-12 h-12 bg-white/[0.03] border border-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-[0_15px_30px_rgba(16,185,129,0.12)]">
+                                    <div className="w-8.5 h-8.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 shadow-inner">
+                                        <BarChart3 size={16} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Network hierarchy badge (Left Bottom) */}
+                            <div className="absolute left-[5%] bottom-[14%] z-20 animate-float-delayed">
+                                <div className="w-12 h-12 bg-white/[0.03] border border-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-[0_15px_30px_rgba(16,185,129,0.12)]">
+                                    <div className="w-8.5 h-8.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 shadow-inner">
+                                        <Network size={16} />
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div className="text-right text-[9px] font-black uppercase tracking-[0.3em] text-emerald-400/30 select-none">
+                        Secure Admin Gateway
+                    </div>
                 </div>
-            </div>
             </div>
         </div>
     );
