@@ -3300,7 +3300,7 @@ const Admin = () => {
 
                 {/* Top Header Removal (it's inside Overview now) */}
                 {activeSection !== 'Overview' && (
-                    <header className="bg-white/90 backdrop-blur-md border-b border-slate-200/60 px-5 py-3 flex items-center justify-between sticky top-0 z-30 shrink-0">
+                    <header className="bg-white/90 backdrop-blur-md border-b border-slate-200/60 px-5 py-3 flex items-center justify-between sticky top-0 z-40 shrink-0">
                         <div className="flex items-center gap-3">
                             <button onClick={() => setShowMobileSidebar(true)}
                                 className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 hover:bg-slate-100 lg:hidden transition-all">
