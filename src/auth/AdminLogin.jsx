@@ -422,10 +422,10 @@ const AdminLogin = () => {
 
                     <div className="flex-1 flex items-center justify-center relative">
                         {/* Elliptical Orbits & Connected Floating Badges Wrapper (Scaled down to prevent overlap) */}
-                        <div className="relative flex items-center justify-center w-full max-w-[580px] h-[440px]">
+                        <div className="relative flex items-center justify-center w-full max-w-[480px] h-[360px]">
                             
                             {/* SVG Paths & Glow Filters */}
-                            <svg className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-visible" viewBox="0 0 580 440">
+                            <svg className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-visible" viewBox="0 0 480 360">
                                 <defs>
                                     <linearGradient id="orbit-grad" x1="0%" y1="0%" x2="100%" y2="100%">
                                         <stop offset="0%" stopColor="#10b981" stopOpacity="0" />
@@ -433,9 +433,9 @@ const AdminLogin = () => {
                                         <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
                                     </linearGradient>
                                 </defs>
-                                <ellipse cx="290" cy="220" rx="210" ry="160" stroke="rgba(16, 185, 129, 0.18)" strokeWidth="1.5" strokeDasharray="5 7" />
-                                <ellipse cx="290" cy="220" rx="260" ry="200" stroke="rgba(16, 185, 129, 0.06)" strokeWidth="1.5" strokeDasharray="10 10" />
-                                <ellipse cx="290" cy="220" rx="210" ry="160" stroke="url(#orbit-grad)" strokeWidth="2" strokeDasharray="50 300" className="animate-orbit-flow" />
+                                <ellipse cx="240" cy="180" rx="170" ry="120" stroke="rgba(16, 185, 129, 0.18)" strokeWidth="1.5" strokeDasharray="5 7" />
+                                <ellipse cx="240" cy="180" rx="210" ry="150" stroke="rgba(16, 185, 129, 0.06)" strokeWidth="1.5" strokeDasharray="10 10" />
+                                <ellipse cx="240" cy="180" rx="170" ry="120" stroke="url(#orbit-grad)" strokeWidth="2" strokeDasharray="50 300" className="animate-orbit-flow" />
                             </svg>
 
                             {/* Central Glassmorphic Dashboard Card (Compact padding & space-y to fit well) */}
@@ -443,25 +443,25 @@ const AdminLogin = () => {
                                 initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{ duration: 0.8, ease: "easeOut" }}
-                                className="relative bg-teal-950/15 backdrop-blur-md border border-white/10 rounded-[2.5rem] p-6 md:p-8 text-white max-w-xs w-full text-center space-y-4 md:space-y-5 z-10 shadow-[0_30px_70px_rgba(0,0,0,0.5)]"
+                                className="relative bg-teal-950/15 backdrop-blur-md border border-white/10 rounded-[2.5rem] p-5 md:p-6 text-white max-w-[270px] w-full text-center space-y-3 md:space-y-4 z-10 shadow-[0_30px_70px_rgba(0,0,0,0.5)]"
                             >
                                 {/* Glowing check shield */}
-                                <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/20 flex items-center justify-center mx-auto shadow-2xl animate-float relative overflow-hidden">
+                                <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/20 flex items-center justify-center mx-auto shadow-2xl animate-float relative overflow-hidden">
                                     <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-teal-500/10" />
-                                    <div className="w-9.5 h-9.5 rounded-xl bg-white flex items-center justify-center shadow-inner relative z-10">
-                                        <ShieldCheck size={22} className="text-teal-800 animate-pulse" />
+                                    <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center shadow-inner relative z-10">
+                                        <ShieldCheck size={18} className="text-teal-800 animate-pulse" />
                                     </div>
                                 </div>
                                 
-                                <div className="space-y-1.5">
+                                <div className="space-y-1">
                                     <span className="text-[8px] font-black uppercase tracking-[0.3em] text-emerald-400/80 block">Headquarters Protocol</span>
-                                    <h3 className="text-xl md:text-2xl font-black tracking-tight leading-tight">System<br />Administration</h3>
-                                    <p className="text-white/60 text-[11.5px] font-medium leading-relaxed">
+                                    <h3 className="text-lg md:text-xl font-black tracking-tight leading-tight">System<br />Administration</h3>
+                                    <p className="text-white/60 text-[10.5px] font-medium leading-relaxed">
                                         Manage the entire platform seamlessly. Monitor, control and secure live operations in real-time.
                                     </p>
                                 </div>
 
-                                <div className="space-y-2">
+                                <div className="space-y-1.5">
                                     {[
                                         { text: 'Real-time Employee Directory', icon: Clock },
                                         { text: 'Geo-fenced Tracking Map', icon: MapPin },
@@ -470,11 +470,11 @@ const AdminLogin = () => {
                                     ].map((item, i) => {
                                         const IconComp = item.icon;
                                         return (
-                                            <div key={i} className="flex items-center gap-2.5 text-left bg-white/[0.04] hover:bg-white/[0.08] border border-white/5 hover:border-white/10 rounded-xl px-3.5 py-2.5 transition-all duration-300 group">
-                                                <div className="w-6.5 h-6.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 group-hover:bg-emerald-500 group-hover:border-emerald-400 transition-all duration-300">
-                                                    <IconComp size={12} className="text-emerald-400 group-hover:text-white transition-colors duration-300" />
+                                            <div key={i} className="flex items-center gap-2 text-left bg-white/[0.04] hover:bg-white/[0.08] border border-white/5 hover:border-white/10 rounded-xl px-3 py-2 transition-all duration-300 group">
+                                                <div className="w-5.5 h-5.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 group-hover:bg-emerald-500 group-hover:border-emerald-400 transition-all duration-300">
+                                                    <IconComp size={10} className="text-emerald-400 group-hover:text-white transition-colors duration-300" />
                                                 </div>
-                                                <span className="text-[11px] font-bold text-white/80 group-hover:text-white transition-colors duration-300">{item.text}</span>
+                                                <span className="text-[10px] font-bold text-white/80 group-hover:text-white transition-colors duration-300">{item.text}</span>
                                             </div>
                                         );
                                     })}
@@ -484,45 +484,45 @@ const AdminLogin = () => {
                             {/* Orbit Floating Badges */}
                             {/* Users badge (Right Top) */}
                             <div className="absolute right-[4%] top-[10%] z-20 animate-float">
-                                <div className="w-12 h-12 bg-white/[0.03] border border-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-[0_15px_30px_rgba(16,185,129,0.12)]">
-                                    <div className="w-8.5 h-8.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 shadow-inner">
-                                        <Users size={16} />
+                                <div className="w-10 h-10 bg-white/[0.03] border border-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-[0_15px_30px_rgba(16,185,129,0.12)]">
+                                    <div className="w-7 h-7 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 shadow-inner">
+                                        <Users size={14} />
                                     </div>
                                 </div>
                             </div>
 
                             {/* Map Pin badge (Right Middle) */}
                             <div className="absolute right-[-3%] top-[45%] z-20 animate-float-delayed">
-                                <div className="w-12 h-12 bg-white/[0.03] border border-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-[0_15px_30px_rgba(16,185,129,0.12)]">
-                                    <div className="w-8.5 h-8.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 shadow-inner">
-                                        <MapPin size={16} />
+                                <div className="w-10 h-10 bg-white/[0.03] border border-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-[0_15px_30px_rgba(16,185,129,0.12)]">
+                                    <div className="w-7 h-7 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 shadow-inner">
+                                        <MapPin size={14} />
                                     </div>
                                 </div>
                             </div>
 
                             {/* Shield check badge (Right Bottom) */}
                             <div className="absolute right-[5%] bottom-[10%] z-20 animate-float">
-                                <div className="w-12 h-12 bg-white/[0.03] border border-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-[0_15px_30px_rgba(16,185,129,0.12)]">
-                                    <div className="w-8.5 h-8.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 shadow-inner">
-                                        <ShieldCheck size={16} />
+                                <div className="w-10 h-10 bg-white/[0.03] border border-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-[0_15px_30px_rgba(16,185,129,0.12)]">
+                                    <div className="w-7 h-7 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 shadow-inner">
+                                        <ShieldCheck size={14} />
                                     </div>
                                 </div>
                             </div>
 
                             {/* Stats chart badge (Left Top) */}
                             <div className="absolute left-[2%] top-[25%] z-20 animate-float">
-                                <div className="w-12 h-12 bg-white/[0.03] border border-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-[0_15px_30px_rgba(16,185,129,0.12)]">
-                                    <div className="w-8.5 h-8.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 shadow-inner">
-                                        <BarChart3 size={16} />
+                                <div className="w-10 h-10 bg-white/[0.03] border border-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-[0_15px_30px_rgba(16,185,129,0.12)]">
+                                    <div className="w-7 h-7 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 shadow-inner">
+                                        <BarChart3 size={14} />
                                     </div>
                                 </div>
                             </div>
 
                             {/* Network hierarchy badge (Left Bottom) */}
                             <div className="absolute left-[5%] bottom-[14%] z-20 animate-float-delayed">
-                                <div className="w-12 h-12 bg-white/[0.03] border border-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-[0_15px_30px_rgba(16,185,129,0.12)]">
-                                    <div className="w-8.5 h-8.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 shadow-inner">
-                                        <Network size={16} />
+                                <div className="w-10 h-10 bg-white/[0.03] border border-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-[0_15px_30px_rgba(16,185,129,0.12)]">
+                                    <div className="w-7 h-7 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 shadow-inner">
+                                        <Network size={14} />
                                     </div>
                                 </div>
                             </div>
