@@ -335,7 +335,7 @@ const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistr
                 border: '1px solid rgba(255,255,255,0.8)',
                 borderRadius: 18, padding: '14px 20px', marginBottom: 22,
                 boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
-                position: 'sticky', top: 0, zIndex: 50,
+                position: 'sticky', top: 0, zIndex: 10,
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{
