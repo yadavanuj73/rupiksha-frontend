@@ -34,6 +34,14 @@ const RetailerLayout = () => {
         if (path.startsWith('/bharat-connect')) return 'bharat_connect';
         if (path.startsWith('/payout-hub')) return 'payout';
         if (path.startsWith('/all-services')) return 'all_services';
+        
+        if (path === '/reports/sale-report') return 'sale_report';
+        if (path === '/reports/consolidated-ledger') return 'consolidated_ledger';
+        if (path === '/reports/daily-ledger') return 'daily_ledger';
+        if (path === '/reports/gst-invoice') return 'gst_einvoice';
+        if (path === '/reports/audit-report') return 'all';
+        if (path === '/gst-invoice-report') return ['gst_einvoice', 'gst_einvoice_report'].includes(reportType) ? reportType : 'gst_einvoice_report';
+
         if (path.startsWith('/reports')) {
             return reportType || 'reports';
         }
@@ -45,12 +53,6 @@ const RetailerLayout = () => {
         if (path === '/gold_loan') return 'gold_loan';
         if (path === '/instant_loan') return 'instant_loan';
         if (path === '/loan_status') return 'loan_status';
-        if (path === '/reports/sale-report') return 'sale_report';
-        if (path === '/reports/consolidated-ledger') return 'consolidated_ledger';
-        if (path === '/reports/daily-ledger') return 'daily_ledger';
-        if (path === '/reports/gst-invoice') return 'gst_einvoice';
-        if (path === '/reports/audit-report') return 'all';
-        if (path === '/gst-invoice-report') return ['gst_einvoice', 'gst_einvoice_report'].includes(reportType) ? reportType : 'gst_einvoice_report';
         return 'dashboard';
     };
 
@@ -95,7 +97,14 @@ const RetailerLayout = () => {
             'sale_report', 'consolidated_ledger', 'daily_ledger', 
             'gstin_invoice', 'cons_gstin_invoice', 
             'cons_comm_receipt', 'tds_report', 'payment_req_history', 
-            'emi_reports', 'qr_txn_report'
+            'emi_reports', 'qr_txn_report',
+            
+            // 17 Transaction History Subcategories
+            'aeps_1', 'aeps_2', 'money_transfer', 'move_to_bank',
+            'airtel_cms', 'fingpay_cms', 'bbps_bill_pay', 'wallet',
+            'wallet_to_wallet', 'mobile_dth_recharge', 'aeps_cash_deposit',
+            'micro_atm_transactions', 'aadhaar_pay', 'payment_gateway',
+            'credit_card_bill', 'upi_cash_withdrawal', 'my_earnings_report'
         ];
 
         const reportRoutes = {

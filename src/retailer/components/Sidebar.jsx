@@ -4,10 +4,92 @@ import {
     LayoutGrid, Plane, Smartphone, HandCoins, FileText,
     Fingerprint, Calculator, Zap, Lightbulb, Landmark, Headset,
     FileChartColumn, CreditCard, ScanFace, ChevronRight, ChevronDown,
-    Handshake, Home, Coins, Shield
+    Handshake, Home, Coins, Shield, History
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { dataService } from '../../services/dataService';
+
+// Standalone MenuItem component to avoid unmounting/remounting (fixes blinking issue)
+const MenuItem = ({ item, isActive, onClick, isExpanded, toggleExpand, activeTab, setActiveTab }) => {
+    return (
+        <div className="px-3">
+            <motion.div
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                    if (item.hasSubmenu) {
+                        toggleExpand(item.id);
+                    } else {
+                        onClick();
+                    }
+                }}
+                className="flex items-center justify-between px-3 py-2.5 my-1.5 cursor-pointer group transition-all duration-300 rounded-xl relative"
+                style={{ color: isActive ? '#ffffff' : '#334155' }}
+            >
+                {isActive && (
+                    <div className="absolute inset-0 bg-blue-600 border border-blue-600 shadow-sm rounded-xl z-0" />
+                )}
+
+                <div className="flex items-center space-x-3 relative z-10 w-full">
+                    <div className="transition-all duration-300" style={{ color: isActive ? '#ffffff' : '#334155' }}>
+                        <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                    </div>
+                    <span className="font-bold text-[13.5px] tracking-tight" style={{ color: isActive ? '#ffffff' : '#334155' }}>
+                        {item.label}
+                    </span>
+                </div>
+                <div className="relative z-10">
+                    {item.hasSubmenu ? (
+                        <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : 'rotate-0'}`}>
+                            <ChevronDown size={14} style={{ color: isActive ? '#ffffff' : '#94a3b8' }} />
+                        </div>
+                    ) : null}
+                </div>
+            </motion.div>
+
+            {/* Submenu */}
+            <AnimatePresence>
+                {item.hasSubmenu && isExpanded && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="ml-9 border-l border-slate-200 overflow-hidden"
+                    >
+                        {item.subItems.map((sub, idx) => {
+                            const isSubActive = activeTab === sub.id;
+                            return (
+                                <div
+                                    key={idx}
+                                    onClick={() => {
+                                        if (item.id === 'travel') {
+                                            setActiveTab('travel');
+                                            try { window.dispatchEvent(new CustomEvent('travelSelect', { detail: sub.id })); } catch (e) { }
+                                        }
+                                        else if (item.id === 'utility') {
+                                            setActiveTab('utility');
+                                            try { window.dispatchEvent(new CustomEvent('utilitySelect', { detail: sub.id })); } catch (e) { }
+                                        }
+                                        else {
+                                            setActiveTab(sub.id);
+                                        }
+                                    }}
+                                    className="block px-4 py-2 text-[11px] font-black uppercase tracking-widest transition-all rounded-lg cursor-pointer"
+                                    style={{ 
+                                        color: isSubActive ? '#1d4ed8' : '#64748b',
+                                        backgroundColor: isSubActive ? '#eff6ff' : undefined
+                                    }}
+                                >
+                                    {sub.label}
+                                </div>
+                            );
+                        })}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
+
 const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
     const { t } = useLanguage();
     const [expandedItems, setExpandedItems] = useState({ travel: false, reports: false });
@@ -20,8 +102,6 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
     }, []);
 
     const toggleExpand = (id) => setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }));
-
-    // Professional, clean colors.
 
     const serviceItems = [
         { id: 'travel', label: 'Travel Hub', icon: Plane },
@@ -45,13 +125,31 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
     const businessItems = [
         {
             id: 'reports',
-            label: 'Reports & Ledger',
-            icon: FileChartColumn,
+            label: 'Transactions History',
+            icon: History,
             hasSubmenu: true,
             subItems: [
+                // Requested 17 Subcategories
+                { id: 'aeps_1', label: 'AEPS 1' },
+                { id: 'aeps_2', label: 'AEPS 2' },
+                { id: 'money_transfer', label: 'Money Transfer' },
+                { id: 'move_to_bank', label: 'Move To Bank' },
+                { id: 'airtel_cms', label: 'Airtel CMS' },
+                { id: 'fingpay_cms', label: 'Fingpay CMS' },
+                { id: 'bbps_bill_pay', label: 'BBPS Bill Pay' },
+                { id: 'wallet', label: 'Wallet' },
+                { id: 'wallet_to_wallet', label: 'Wallet To Wallet' },
+                { id: 'mobile_dth_recharge', label: 'Mobile & Dth Recharge' },
+                { id: 'aeps_cash_deposit', label: 'Aeps Cash Deposit' },
+                { id: 'micro_atm_transactions', label: 'Micro ATM Transactions' },
+                { id: 'aadhaar_pay', label: 'Aadhaar Pay' },
+                { id: 'payment_gateway', label: 'Payment Gateway' },
+                { id: 'credit_card_bill', label: 'Credit Card Bill' },
+                { id: 'upi_cash_withdrawal', label: 'UPI Cash Withdrawal' },
+                { id: 'my_earnings_report', label: 'My Earnings Report' },
+                
+                // Existing subcategories from the history sub category (excluding ledger parts)
                 { id: 'sale_report', label: 'Sale Report' },
-                { id: 'consolidated_ledger', label: 'Consolidated-ledger' },
-                { id: 'daily_ledger', label: 'Daily ledger' },
                 { id: 'gstin_invoice', label: 'GSTIN Invoice' },
                 { id: 'cons_gstin_invoice', label: 'Consolidated GSTIN Invoice' },
                 { id: 'cons_comm_receipt', label: 'Consolidated Commission Receipt' },
@@ -72,88 +170,6 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
         { id: 'icici_ekyc', label: 'ICICI eKYC', icon: Fingerprint, type: 'ekyc' },
         { id: 'support', label: 'Help & Support', icon: Headset, type: 'support' },
     ];
-
-    const MenuItem = ({ item, isActive, onClick }) => {
-        const isExpanded = expandedItems[item.id];
-
-        return (
-            <div className="px-3">
-                <motion.div
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => {
-                        if (item.hasSubmenu) {
-                            toggleExpand(item.id);
-                        } else {
-                            onClick();
-                        }
-                    }}
-                    className="flex items-center justify-between px-3 py-2.5 my-1.5 cursor-pointer group transition-all duration-300 rounded-xl relative"
-                    style={{ color: isActive ? '#ffffff' : '#334155' }}
-                >
-                    {isActive && (
-                        <div className="absolute inset-0 bg-blue-600 border border-blue-600 shadow-sm rounded-xl z-0" />
-                    )}
-
-                    <div className="flex items-center space-x-3 relative z-10 w-full">
-                        <div className="transition-all duration-300" style={{ color: isActive ? '#ffffff' : '#334155' }}>
-                            <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
-                        </div>
-                        <span className="font-bold text-[13.5px] tracking-tight" style={{ color: isActive ? '#ffffff' : '#334155' }}>
-                            {item.label}
-                        </span>
-                    </div>
-                    <div className="relative z-10">
-                        {item.hasSubmenu ? (
-                            <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : 'rotate-0'}`}>
-                                <ChevronDown size={14} style={{ color: isActive ? '#ffffff' : '#94a3b8' }} />
-                            </div>
-                        ) : null}
-                    </div>
-                </motion.div>
-
-                {/* Submenu */}
-                <AnimatePresence>
-                    {item.hasSubmenu && isExpanded && (
-                        <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="ml-9 border-l border-slate-200 overflow-hidden"
-                        >
-                            {item.subItems.map((sub, idx) => {
-                                const isSubActive = activeTab === sub.id;
-                                return (
-                                    <div
-                                        key={idx}
-                                        onClick={() => {
-                                            if (item.id === 'travel') {
-                                                setActiveTab('travel');
-                                                try { window.dispatchEvent(new CustomEvent('travelSelect', { detail: sub.id })); } catch (e) { }
-                                            }
-                                            else if (item.id === 'utility') {
-                                                setActiveTab('utility');
-                                                try { window.dispatchEvent(new CustomEvent('utilitySelect', { detail: sub.id })); } catch (e) { }
-                                            }
-                                            else {
-                                                setActiveTab(sub.id);
-                                            }
-                                        }}
-                                        className="block px-4 py-2 text-[11px] font-black uppercase tracking-widest transition-all rounded-lg"
-                                        style={{ 
-                                            color: isSubActive ? '#1d4ed8' : '#64748b',
-                                            backgroundColor: isSubActive ? '#eff6ff' : undefined
-                                        }}
-                                    >
-                                                    {sub.label}
-                                    </div>
-                                );
-                            })}
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
-        );
-    };
 
     const currentUser = appData.currentUser;
     const getInitials = () => {
@@ -182,18 +198,25 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
             </div>
 
             <div className="flex-1 overflow-y-auto py-2 scrollbar-none">
-                {/* Main section */}
                 {/* Main Navigation List */}
                 <div className="flex flex-col px-1">
                     <MenuItem
                         item={{ id: 'dashboard', label: 'Dashboard', icon: LayoutGrid }}
                         isActive={activeTab === 'dashboard'}
                         onClick={() => setActiveTab('dashboard')}
+                        isExpanded={expandedItems['dashboard']}
+                        toggleExpand={toggleExpand}
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
                     />
                     <MenuItem
                         item={{ id: 'all_services', label: 'All Services', icon: Smartphone }}
                         isActive={activeTab === 'all_services'}
                         onClick={() => setActiveTab('all_services')}
+                        isExpanded={expandedItems['all_services']}
+                        toggleExpand={toggleExpand}
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
                     />
                     
                     {serviceItems.map((item) => (
@@ -202,6 +225,10 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
                             item={item}
                             isActive={activeTab === item.id || (item.subItems && item.subItems.some(sub => sub.id === activeTab))}
                             onClick={() => setActiveTab(item.id)}
+                            isExpanded={expandedItems[item.id]}
+                            toggleExpand={toggleExpand}
+                            activeTab={activeTab}
+                            setActiveTab={setActiveTab}
                         />
                     ))}
 
@@ -211,6 +238,10 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
                             item={item}
                             isActive={activeTab === item.id || (item.subItems && item.subItems.some(sub => sub.id === activeTab))}
                             onClick={item.onClick}
+                            isExpanded={expandedItems[item.id]}
+                            toggleExpand={toggleExpand}
+                            activeTab={activeTab}
+                            setActiveTab={setActiveTab}
                         />
                     ))}
 
@@ -220,10 +251,13 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
                             item={item}
                             isActive={activeTab === item.id}
                             onClick={() => setActiveTab(item.id)}
+                            isExpanded={expandedItems[item.id]}
+                            toggleExpand={toggleExpand}
+                            activeTab={activeTab}
+                            setActiveTab={setActiveTab}
                         />
                     ))}
                 </div>
-                
             </div>
 
             <div className="p-4 border-t border-slate-200">
