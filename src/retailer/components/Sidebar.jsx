@@ -146,17 +146,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
                 { id: 'payment_gateway', label: 'Payment Gateway' },
                 { id: 'credit_card_bill', label: 'Credit Card Bill' },
                 { id: 'upi_cash_withdrawal', label: 'UPI Cash Withdrawal' },
-                { id: 'my_earnings_report', label: 'My Earnings Report' },
-                
-                // Existing subcategories from the history sub category (excluding ledger parts)
-                { id: 'sale_report', label: 'Sale Report' },
-                { id: 'gstin_invoice', label: 'GSTIN Invoice' },
-                { id: 'cons_gstin_invoice', label: 'Consolidated GSTIN Invoice' },
-                { id: 'cons_comm_receipt', label: 'Consolidated Commission Receipt' },
-                { id: 'tds_report', label: 'TDS' },
-                { id: 'payment_req_history', label: 'Payment Request History' },
-                { id: 'emi_reports', label: 'EMI Reports' },
-                { id: 'qr_txn_report', label: 'QR Transactions Report' },
+                { id: 'my_earnings_report', label: 'My Earnings Report' }
             ]
         },
         { id: 'gst_einvoice_report', label: 'GST E-Invoice Report', icon: FileChartColumn, onClick: () => setActiveTab('gst_einvoice_report') },
