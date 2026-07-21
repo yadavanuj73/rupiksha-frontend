@@ -195,11 +195,30 @@ export const transactionService = {
       body: JSON.stringify(data),
     }),
   getAeps: (territory) => apiFetch(`/transactions/aeps?territory=${territory}`),
-  getPayout: (territory) => apiFetch(`/transactions/payout?territory=${territory}`),
-  getDmt: (territory) => apiFetch(`/transactions/dmt?territory=${territory}`),
-  getBbps: (territory) => apiFetch(`/transactions/bbps?territory=${territory}`),
+  getDmt: (territory) => apiFetch(`/transactions/aeps?territory=${territory}`), // note: keeping existing mapping
   getMine: (userId) => apiFetch(`/transactions/mine?userId=${encodeURIComponent(userId)}`),
   getStatus: (txnId) => apiFetch(`/transactions/${encodeURIComponent(txnId)}`),
+  getHistory: (filters = {}) => {
+    const cleanFilters = {};
+    Object.entries(filters).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') {
+        cleanFilters[k] = v;
+      }
+    });
+    const params = new URLSearchParams(cleanFilters).toString();
+    return apiFetch(`/transactions/history?${params}`);
+  },
+  getHistoryDetail: (txnId) => apiFetch(`/transactions/history/${encodeURIComponent(txnId)}`),
+  getHistoryExport: (filters = {}) => {
+    const cleanFilters = {};
+    Object.entries(filters).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') {
+        cleanFilters[k] = v;
+      }
+    });
+    const params = new URLSearchParams(cleanFilters).toString();
+    return apiFetch(`/transactions/history/export?${params}`);
+  },
 };
 
 // ─── USER PROFILE ─────────────────────────────────────────────────────────────

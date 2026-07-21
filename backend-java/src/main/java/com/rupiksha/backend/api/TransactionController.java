@@ -1,14 +1,22 @@
 package com.rupiksha.backend.api;
 
 import com.rupiksha.backend.api.dto.RetailerServiceDtos;
+import com.rupiksha.backend.api.dto.TransactionHistoryPageResponse;
+import com.rupiksha.backend.api.dto.TransactionHistoryResponseDto;
 import com.rupiksha.backend.domain.Txn;
 import com.rupiksha.backend.domain.TransactionStatus;
+import com.rupiksha.backend.domain.TransactionReportType;
 import com.rupiksha.backend.repository.TxnRepository;
 import com.rupiksha.backend.repository.UserRepository;
 import com.rupiksha.backend.security.JwtPrincipal;
 import com.rupiksha.backend.service.WalletService;
+import com.rupiksha.backend.service.TransactionHistoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,6 +26,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.time.Instant;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/transactions")
 @RequiredArgsConstructor
@@ -25,6 +34,7 @@ public class TransactionController {
     private final TxnRepository txnRepository;
     private final UserRepository userRepository;
     private final WalletService walletService;
+    private final TransactionHistoryService transactionHistoryService;
 
     /**
      * Client-initiated transaction log. The server ALWAYS records the txn as INITIATED
@@ -110,6 +120,115 @@ public class TransactionController {
                 .map(txnRepository::save)
                 .count();
         return Map.of("success", true, "reconciled", updated);
+    }
+
+    @GetMapping("/history")
+    public TransactionHistoryPageResponse history(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @RequestParam String reportType,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String provider,
+            @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDirection
+    ) {
+        if (principal == null || principal.userId() == null) {
+            throw new IllegalArgumentException("Unauthorized");
+        }
+
+        TransactionReportType type = TransactionReportType.valueOf(reportType.toUpperCase());
+        
+        java.time.LocalDateTime start = parseDateTime(fromDate, false);
+        java.time.LocalDateTime end = parseDateTime(toDate, true);
+
+        Sort sort = Sort.by(Sort.Direction.DESC, "createdAt");
+        if (sortBy != null && !sortBy.isBlank()) {
+            Sort.Direction direction = Sort.Direction.DESC;
+            if ("asc".equalsIgnoreCase(sortDirection)) {
+                direction = Sort.Direction.ASC;
+            }
+            String sortField = sortBy;
+            if ("date".equalsIgnoreCase(sortBy)) {
+                sortField = "createdAt";
+            }
+            sort = Sort.by(direction, sortField);
+        }
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+        return transactionHistoryService.getHistory(
+                type, UUID.fromString(principal.userId()), search, status, provider, start, end, pageable);
+    }
+
+    @GetMapping("/history/{transactionId}")
+    public Map<String, Object> historyDetail(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @PathVariable String transactionId
+    ) {
+        if (principal == null || principal.userId() == null) {
+            throw new IllegalArgumentException("Unauthorized");
+        }
+        TransactionHistoryResponseDto dto = transactionHistoryService.getTransactionDetail(
+                UUID.fromString(principal.userId()), transactionId);
+        return Map.of("success", true, "data", dto);
+    }
+
+    @GetMapping("/history/export")
+    public List<TransactionHistoryResponseDto> export(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @RequestParam String reportType,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String provider,
+            @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDirection
+    ) {
+        if (principal == null || principal.userId() == null) {
+            throw new IllegalArgumentException("Unauthorized");
+        }
+
+        TransactionReportType type = TransactionReportType.valueOf(reportType.toUpperCase());
+
+        java.time.LocalDateTime start = parseDateTime(fromDate, false);
+        java.time.LocalDateTime end = parseDateTime(toDate, true);
+
+        Sort sort = Sort.by(Sort.Direction.DESC, "createdAt");
+        if (sortBy != null && !sortBy.isBlank()) {
+            Sort.Direction direction = Sort.Direction.DESC;
+            if ("asc".equalsIgnoreCase(sortDirection)) {
+                direction = Sort.Direction.ASC;
+            }
+            String sortField = sortBy;
+            if ("date".equalsIgnoreCase(sortBy)) {
+                sortField = "createdAt";
+            }
+            sort = Sort.by(direction, sortField);
+        }
+
+        return transactionHistoryService.getAllHistory(
+                type, UUID.fromString(principal.userId()), search, status, provider, start, end, sort);
+    }
+
+    private java.time.LocalDateTime parseDateTime(String dateStr, boolean endOfDay) {
+        if (dateStr == null || dateStr.isBlank()) return null;
+        try {
+            String cleaned = dateStr.endsWith("Z") ? dateStr.substring(0, dateStr.length() - 1) : dateStr;
+            if (cleaned.contains("T")) {
+                String timePart = cleaned.split("\\.")[0];
+                return java.time.LocalDateTime.parse(timePart);
+            } else {
+                java.time.LocalDate date = java.time.LocalDate.parse(cleaned);
+                return endOfDay ? date.atTime(23, 59, 59) : date.atStartOfDay();
+            }
+        } catch (Exception e) {
+            log.error("Failed to parse date string: {}", dateStr, e);
+            return null;
+        }
     }
 
     private Map<String, Object> toMap(Txn txn) {
