@@ -17,10 +17,7 @@ export const menuItems = [
         title: "TRANSACTIONS", icon: Repeat, path: "/distributor/transactions",
         submenu: [
             { title: "Distributor Receipt", icon: FileText, path: "/distributor/transactions/distributor-receipt" },
-            { title: "Retailer Receipt", icon: FileText, path: "/distributor/transactions/retailer-receipt" },
-            { title: "Add Money", icon: Wallet, path: "/distributor/transactions/add-money" },
-            { title: "Axis CDM Card", icon: Monitor, path: "/distributor/transactions/axis-cdm" },
-            { title: "Axis Card Mapping", icon: Percent, path: "/distributor/transactions/axis-mapping" }
+            { title: "Retailer Receipt", icon: FileText, path: "/distributor/transactions/retailer-receipt" }
         ]
     },
     {

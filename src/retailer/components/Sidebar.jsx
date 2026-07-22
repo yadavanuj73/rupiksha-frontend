@@ -103,24 +103,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
 
     const toggleExpand = (id) => setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }));
 
-    const serviceItems = [
-        { id: 'travel', label: 'Travel Hub', icon: Plane },
-        { id: 'utility', label: 'Utility Hub', icon: Zap },
-        { id: 'payout', label: 'Payout Hub', icon: HandCoins },
-        {
-            id: 'loans',
-            label: 'Loan Hub',
-            icon: Handshake,
-            hasSubmenu: true,
-            subItems: [
-                { id: 'personal_loan', label: 'Personal Loan' },
-                { id: 'home_loan', label: 'Home Loan' },
-                { id: 'gold_loan', label: 'Gold Loan' },
-                { id: 'instant_loan', label: 'Instant Loan' },
-                { id: 'loan_status', label: 'Track Application' },
-            ]
-        },
-    ];
+    const serviceItems = [];
 
     const businessItems = [
         {
@@ -151,8 +134,6 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
         },
         { id: 'gst_einvoice_report', label: 'GST E-Invoice Report', icon: FileChartColumn, onClick: () => setActiveTab('gst_einvoice_report') },
         { id: 'plans', label: 'Commission Plans', icon: CreditCard, onClick: () => setActiveTab('plans') },
-        { id: 'gst_certification', label: 'GST Certification', icon: Shield, onClick: () => setActiveTab('gst_certification') },
-        { id: 'tds_certificate', label: 'TDS Certificate', icon: FileText, onClick: () => setActiveTab('tds_certificate') },
     ];
 
     const ekycItems = [

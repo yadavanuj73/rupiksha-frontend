@@ -151,7 +151,7 @@ const DistributorTopBar = ({ onMenuClick }) => {
                                 <p className="text-[9px] font-bold text-slate-400 mt-0.5">{dist?.id}</p>
                                 <p className="text-[9px] font-bold text-amber-600 mt-1">Wallet: ₹ {walletBal}</p>
                             </div>
-                            <button onClick={() => { setShowProfile(false); navigate('/distributor'); }}
+                            <button onClick={() => { setShowProfile(false); navigate('/distributor/profile'); }}
                                 className="w-full flex items-center gap-3 px-4 py-3 text-[10px] font-black text-slate-600 hover:bg-slate-50 hover:text-amber-600 transition-colors uppercase tracking-wider">
                                 <User size={14} /> My Profile
                             </button>

@@ -48,6 +48,7 @@ const RetailerLayout = () => {
         if (path.startsWith('/plans')) return 'plans';
         if (path.startsWith('/matm')) return 'matm';
         if (path === '/add-money') return 'add_money';
+        if (path === '/support') return 'support';
         if (path === '/personal_loan') return 'personal_loan';
         if (path === '/home_loan') return 'home_loan';
         if (path === '/gold_loan') return 'gold_loan';
@@ -158,7 +159,7 @@ const RetailerLayout = () => {
             'add_money': '/add-money',
             'retailer_ekyc': '/aeps-kyc',
             'icici_ekyc': '/aeps-kyc',
-            'support': '/reports',
+            'support': '/support',
             'personal_loan': '/personal_loan',
             'home_loan': '/home_loan',
             'gold_loan': '/gold_loan',

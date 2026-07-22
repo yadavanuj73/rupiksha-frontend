@@ -51,6 +51,7 @@ const ConsolidatedLedger = lazy(() => import('./retailer/pages/reports/Consolida
 const DailyLedger = lazy(() => import('./retailer/pages/reports/DailyLedger'));
 const GSTInvoiceReport = lazy(() => import('./retailer/pages/reports/GstInvoiceReport'));
 const AuditReport = lazy(() => import('./retailer/pages/reports/AuditReport'));
+const RetailerSupport = lazy(() => import('./retailer/pages/Support'));
 
 // Admin Core
 const Admin = lazy(() => import('./admin/Admin'));
@@ -238,6 +239,7 @@ function App() {
                 <Route path="/gold_loan" element={<Loans />} />
                 <Route path="/instant_loan" element={<Loans />} />
                 <Route path="/loan_status" element={<Loans />} />
+                <Route path="/support" element={<RetailerSupport />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/reports/sale-report" element={<SaleReport />} />
                 <Route path="/reports/consolidated-ledger" element={<ConsolidatedLedger />} />
@@ -260,6 +262,7 @@ function App() {
               <Route path="/distributor-plans" element={<ProtectedRoute role="DISTRIBUTOR"><DistributorPlans /></ProtectedRoute>} />
               <Route path="/distributor" element={<ProtectedRoute role="DISTRIBUTOR"><DistributorLayout /></ProtectedRoute>}>
                 <Route index element={<DistributorDashboard />} />
+                <Route path="profile" element={<Profile />} />
                 <Route path="all-services" element={<AllServices readOnly />} />
                 <Route path="distributors" element={<SuperDistributorDistributors />} />
                 <Route path="retailers" element={<Retailers />} />
