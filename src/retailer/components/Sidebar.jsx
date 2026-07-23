@@ -30,9 +30,15 @@ const MenuItem = ({ item, isActive, onClick, isExpanded, toggleExpand, activeTab
                 )}
 
                 <div className="flex items-center space-x-3 relative z-10 w-full">
-                    <div className="transition-all duration-300" style={{ color: isActive ? '#ffffff' : '#334155' }}>
-                        <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
-                    </div>
+                    {item.iconColor ? (
+                        <div className={`p-1.5 rounded-lg transition-all duration-300 ${isActive ? 'bg-white/20 text-white ring-2 ring-white/30' : item.iconColor}`}>
+                            <item.icon size={16} strokeWidth={2.5} />
+                        </div>
+                    ) : (
+                        <div className="transition-all duration-300" style={{ color: isActive ? '#ffffff' : '#334155' }}>
+                            <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                        </div>
+                    )}
                     <span className="font-bold text-[13.5px] tracking-tight" style={{ color: isActive ? '#ffffff' : '#334155' }}>
                         {item.label}
                     </span>
@@ -92,7 +98,7 @@ const MenuItem = ({ item, isActive, onClick, isExpanded, toggleExpand, activeTab
 
 const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
     const { t } = useLanguage();
-    const [expandedItems, setExpandedItems] = useState({ travel: false, reports: false });
+    const [expandedItems, setExpandedItems] = useState({ travel: false, reports: false, all_services: true });
     const [appData, setAppData] = useState(dataService.getData());
 
     useEffect(() => {
@@ -103,7 +109,26 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
 
     const toggleExpand = (id) => setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }));
 
-    const serviceItems = [];
+    const serviceItems = [
+        {
+            id: 'all_services',
+            label: 'All Services',
+            icon: Smartphone,
+            iconColor: 'bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-200',
+            hasSubmenu: true,
+            subItems: [
+                { id: 'all_services', label: 'All Catalog' },
+                { id: 'aeps_services_1', label: 'Fingpay AEPS' },
+                { id: 'aeps_services_2', label: 'Levin AEPS' },
+                { id: 'matm', label: 'Micro ATM (m-ATM)' },
+                { id: 'cms', label: 'CMS Banking' },
+                { id: 'utility', label: 'Recharge & Bill Pay' },
+                { id: 'travel', label: 'Travel Services' },
+                { id: 'payout', label: 'Payout Hub' },
+                { id: 'bharat_connect', label: 'Bharat Connect' }
+            ]
+        }
+    ];
 
     const businessItems = [
         {
@@ -176,15 +201,6 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
                         isActive={activeTab === 'dashboard'}
                         onClick={() => setActiveTab('dashboard')}
                         isExpanded={expandedItems['dashboard']}
-                        toggleExpand={toggleExpand}
-                        activeTab={activeTab}
-                        setActiveTab={setActiveTab}
-                    />
-                    <MenuItem
-                        item={{ id: 'all_services', label: 'All Services', icon: Smartphone }}
-                        isActive={activeTab === 'all_services'}
-                        onClick={() => setActiveTab('all_services')}
-                        isExpanded={expandedItems['all_services']}
                         toggleExpand={toggleExpand}
                         activeTab={activeTab}
                         setActiveTab={setActiveTab}

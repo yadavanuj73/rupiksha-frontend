@@ -100,49 +100,129 @@ function PhoneIcon(props) {
     );
 }
 
+const serviceColorMap = {
+    'Fingpay AEPS': 'from-blue-600 to-indigo-700 text-white shadow-blue-500/25',
+    'Levin AEPS': 'from-sky-500 to-blue-700 text-white shadow-sky-500/25',
+    'm-ATM Cash': 'from-amber-500 to-orange-600 text-white shadow-amber-500/25',
+    'CMS Banking': 'from-purple-600 to-violet-700 text-white shadow-purple-500/25',
+    'Rail E-Ticketing (IRCTC)': 'from-rose-600 to-red-700 text-white shadow-rose-500/25',
+    'Hotel Booking': 'from-emerald-500 to-teal-700 text-white shadow-emerald-500/25',
+    'Bus Ticketing': 'from-cyan-500 to-blue-600 text-white shadow-cyan-500/25',
+    'Air Ticketing': 'from-indigo-500 to-purple-600 text-white shadow-indigo-500/25',
+    'Bill Pay': 'from-blue-500 to-indigo-600 text-white shadow-blue-500/25',
+    'Loan Payments': 'from-emerald-600 to-teal-700 text-white shadow-emerald-500/25',
+    'Electricity Bill': 'from-amber-400 to-amber-600 text-white shadow-amber-500/25',
+    'Gas Bill': 'from-orange-500 to-red-600 text-white shadow-orange-500/25',
+    'Water Bill': 'from-cyan-400 to-blue-600 text-white shadow-cyan-500/25',
+    'FASTag Payments': 'from-purple-500 to-indigo-600 text-white shadow-purple-500/25',
+    'DTH': 'from-pink-500 to-rose-600 text-white shadow-pink-500/25',
+    'Broadband': 'from-teal-500 to-emerald-600 text-white shadow-teal-500/25',
+    'Landline Postpaid': 'from-blue-600 to-slate-700 text-white shadow-blue-500/25',
+    'Mobile Postpaid': 'from-violet-600 to-purple-700 text-white shadow-violet-500/25',
+    'Insurance Premium': 'from-emerald-500 to-green-700 text-white shadow-emerald-500/25',
+    'Credit Card Bill': 'from-amber-500 to-yellow-600 text-white shadow-amber-500/25',
+    'Municipal Taxes': 'from-indigo-600 to-blue-800 text-white shadow-indigo-500/25',
+    'Hospital Bill': 'from-rose-500 to-red-600 text-white shadow-rose-500/25',
+    'Education Bill': 'from-blue-600 to-indigo-700 text-white shadow-blue-500/25',
+    'Mobile Recharge': 'from-blue-500 to-indigo-600 text-white shadow-blue-500/25',
+    'DTH Recharge': 'from-fuchsia-500 to-pink-600 text-white shadow-fuchsia-500/25',
+    'Collection': 'from-emerald-600 to-teal-700 text-white shadow-emerald-500/25',
+    'PAN Card': 'from-amber-500 to-orange-600 text-white shadow-amber-500/25',
+    'Ayushpay Subscription': 'from-rose-500 to-pink-600 text-white shadow-rose-500/25',
+    'Digital Wallet Top-up': 'from-cyan-500 to-blue-600 text-white shadow-cyan-500/25',
+    'Vouchers': 'from-purple-500 to-indigo-600 text-white shadow-purple-500/25',
+    'HDFC BF': 'from-blue-700 to-indigo-900 text-white shadow-blue-500/25',
+    'Recharge OTT': 'from-red-500 to-rose-700 text-white shadow-red-500/25',
+    'Digi Gold': 'from-yellow-400 to-amber-600 text-white shadow-yellow-500/25',
+    'ITR Filing': 'from-teal-600 to-emerald-700 text-white shadow-teal-500/25',
+};
+
 const ServiceIcon = ({ service }) => {
     if (service.logo) {
         return (
-            <div className="h-14 w-14 rounded-2xl border border-slate-200 bg-white shadow-sm flex items-center justify-center">
-                <img src={service.logo} alt={service.title} className="h-10 w-10 object-contain" />
+            <div className="relative z-10 h-14 w-14 rounded-2xl border border-slate-200/80 bg-white shadow-md shadow-slate-200/60 flex items-center justify-center group-hover:scale-110 group-hover:rotate-2 transition-all duration-300">
+                <img src={service.logo} alt={service.title} className="h-9 w-9 object-contain" />
             </div>
         );
     }
 
     const Icon = service.icon || Wallet;
+    const colorClass = serviceColorMap[service.title] || 'from-indigo-500 to-blue-600 text-white shadow-indigo-500/25';
     return (
-        <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 shadow-sm flex items-center justify-center text-slate-700">
-            <Icon className="h-7 w-7" />
+        <div className={`relative z-10 h-14 w-14 rounded-2xl bg-gradient-to-br ${colorClass} shadow-lg flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
+            <Icon className="h-7 w-7 drop-shadow-sm" />
         </div>
     );
 };
 
-const ServiceCard = ({ service, readOnly, onClick, index }) => (
-    <motion.button
-        type="button"
-        initial={{ opacity: 0, y: 18 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: index * 0.02 }}
-        whileHover={!readOnly ? { y: -4 } : undefined}
-        onClick={onClick}
-        className={`group relative text-left rounded-3xl border p-5 bg-white/80 backdrop-blur-sm shadow-[0_10px_24px_rgba(15,23,42,0.06)] transition-all ${readOnly ? 'cursor-default border-slate-200' : 'cursor-pointer hover:border-indigo-200 hover:shadow-[0_16px_34px_rgba(79,70,229,0.14)] border-slate-200'
+const ServiceCard = ({ service, readOnly, onClick, index }) => {
+    const gradient = serviceColorMap[service.title] || 'from-indigo-500 to-blue-600 text-white shadow-indigo-500/25';
+    
+    return (
+        <motion.button
+            type="button"
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: index * 0.02 }}
+            whileHover={!readOnly ? { y: -6, scale: 1.02 } : undefined}
+            whileTap={!readOnly ? { scale: 0.96 } : undefined}
+            onClick={onClick}
+            className={`group relative overflow-hidden text-left rounded-3xl border p-5 bg-white/90 backdrop-blur-md shadow-[0_10px_30px_rgba(15,23,42,0.06)] transition-all duration-300 ${
+                readOnly
+                    ? 'cursor-default border-slate-200'
+                    : 'cursor-pointer hover:border-indigo-300 hover:shadow-[0_20px_40px_rgba(79,70,229,0.18)] border-slate-200/80'
             }`}
-    >
-        <div className="flex items-start justify-between gap-3">
-            <ServiceIcon service={service} />
-            <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full ${readOnly ? 'bg-slate-100 text-slate-500' : 'bg-emerald-50 text-emerald-700'}`}>
-                {readOnly ? 'View only' : 'Active'}
-            </span>
-        </div>
-        <h3 className="mt-4 text-[13px] font-extrabold text-slate-800 leading-snug min-h-[40px]">
-            {service.title}
-        </h3>
-        <div className={`mt-4 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider ${readOnly ? 'text-slate-400' : 'text-indigo-600'}`}>
-            {readOnly ? 'Visible in this panel' : 'Open service'}
-            {!readOnly && <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />}
-        </div>
-    </motion.button>
-);
+        >
+            {/* BUTTON BUBBLE EFFECT - Animated background circles & hover liquid fill */}
+            {!readOnly && (
+                <>
+                    {/* Primary Expanding Liquid Bubble Fill on Hover */}
+                    <div className={`pointer-events-none absolute -bottom-12 -right-12 w-44 h-44 rounded-full bg-gradient-to-tr ${gradient} opacity-0 group-hover:opacity-15 group-hover:scale-[3.2] transition-all duration-700 ease-out blur-xl`} />
+
+                    {/* Floating Bubble Particles */}
+                    <motion.div
+                        animate={{ y: [0, -6, 0], scale: [1, 1.15, 1] }}
+                        transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: (index % 5) * 0.3 }}
+                        className={`pointer-events-none absolute top-3 right-8 w-6 h-6 rounded-full bg-gradient-to-br ${gradient} opacity-25 blur-[1px] group-hover:scale-150 group-hover:opacity-40 transition-all duration-500`}
+                    />
+                    <motion.div
+                        animate={{ y: [0, -8, 0], scale: [1, 1.2, 1] }}
+                        transition={{ duration: 4.2, repeat: Infinity, ease: 'easeInOut', delay: (index % 4) * 0.4 }}
+                        className={`pointer-events-none absolute bottom-4 left-6 w-8 h-8 rounded-full bg-gradient-to-tr ${gradient} opacity-20 blur-[2px] group-hover:scale-125 group-hover:opacity-35 transition-all duration-500`}
+                    />
+                    <motion.div
+                        animate={{ y: [0, -5, 0], scale: [1, 1.1, 1] }}
+                        transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: (index % 3) * 0.5 }}
+                        className="pointer-events-none absolute top-12 left-10 w-4 h-4 rounded-full bg-white/60 blur-[1px] opacity-40 group-hover:opacity-70 transition-opacity"
+                    />
+
+                    {/* Interactive Bubble Ring Glow */}
+                    <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-indigo-500/0 group-hover:ring-indigo-500/30 transition-all duration-500" />
+                </>
+            )}
+
+            <div className="relative z-10 flex items-start justify-between gap-3">
+                <ServiceIcon service={service} />
+                <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full backdrop-blur-sm ${
+                    readOnly ? 'bg-slate-100 text-slate-500' : 'bg-emerald-50/90 text-emerald-700 border border-emerald-200/50 shadow-sm'
+                }`}>
+                    {readOnly ? 'View only' : 'Active'}
+                </span>
+            </div>
+
+            <h3 className="relative z-10 mt-4 text-[13.5px] font-extrabold text-slate-800 group-hover:text-indigo-950 transition-colors leading-snug min-h-[40px]">
+                {service.title}
+            </h3>
+
+            <div className={`relative z-10 mt-4 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider transition-colors ${
+                readOnly ? 'text-slate-400' : 'text-indigo-600 group-hover:text-indigo-700'
+            }`}>
+                {readOnly ? 'Visible in this panel' : 'Open service'}
+                {!readOnly && <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1.5" />}
+            </div>
+        </motion.button>
+    );
+};
 
 const AllServices = ({ readOnly = false }) => {
     const navigate = useNavigate();
