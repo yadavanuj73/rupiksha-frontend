@@ -62,10 +62,34 @@ public class TwoFactorOtpProvider implements OtpProvider {
         }
         if (reference == null || reference.isBlank()) return false;
         RestTemplate rt = restTemplateBuilder.build();
-        String url = "https://2factor.in/API/V1/" + apiKey + "/SMS/VERIFY3/" + reference + "/" + otp;
-        ResponseEntity<Map> response = rt.getForEntity(url, Map.class);
-        Map body = response.getBody();
-        return body != null && "Success".equalsIgnoreCase(String.valueOf(body.get("Status")));
+
+        // 1. Try standard VERIFY endpoint (for AUTOGEN OTP sessions)
+        try {
+            String url = "https://2factor.in/API/V1/" + apiKey + "/SMS/VERIFY/" + reference.trim() + "/" + otp.trim();
+            ResponseEntity<Map> response = rt.getForEntity(url, Map.class);
+            Map body = response.getBody();
+            if (body != null && "Success".equalsIgnoreCase(String.valueOf(body.get("Status")))) {
+                log.info("2Factor OTP verified successfully via VERIFY endpoint for {}", mobile);
+                return true;
+            }
+        } catch (Exception e) {
+            log.warn("2Factor VERIFY endpoint failed for mobile {}: {}", mobile, e.getMessage());
+        }
+
+        // 2. Fallback to VERIFY3 endpoint (for custom/transactional OTP sessions)
+        try {
+            String url3 = "https://2factor.in/API/V1/" + apiKey + "/SMS/VERIFY3/" + reference.trim() + "/" + otp.trim();
+            ResponseEntity<Map> response3 = rt.getForEntity(url3, Map.class);
+            Map body3 = response3.getBody();
+            if (body3 != null && "Success".equalsIgnoreCase(String.valueOf(body3.get("Status")))) {
+                log.info("2Factor OTP verified successfully via VERIFY3 endpoint for {}", mobile);
+                return true;
+            }
+        } catch (Exception e) {
+            log.warn("2Factor VERIFY3 endpoint failed for mobile {}: {}", mobile, e.getMessage());
+        }
+
+        return false;
     }
 }
 
