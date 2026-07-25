@@ -55,6 +55,7 @@ public class AdminController {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final WalletRepository walletRepository;
+    private final com.rupiksha.backend.repository.UserServiceRepository userServiceRepository;
 
     @GetMapping("/approvals")
     public Map<String, Object> approvals() {
@@ -355,11 +356,14 @@ public class AdminController {
             user.setStatus(UserStatus.ACTIVE);
             user.setKycApprovedAt(Instant.now());
             user.setKycRejectionReason(null);
-        } else if ("reject".equals(action)) {
+            enableKycServices(user);
+        } else if ("reject".equals(action) || "resubmit".equals(action)) {
             user.setKycStatus(KycStatus.REJECTED);
-            user.setKycRejectionReason(request.remarks() == null ? "KYC rejected by admin" : request.remarks());
+            user.setKycRejectionReason(request.remarks() == null || request.remarks().isBlank()
+                    ? ("resubmit".equals(action) ? "Resubmission requested by admin" : "KYC rejected by admin")
+                    : request.remarks());
         } else {
-            throw new IllegalArgumentException("Unsupported action. Use approve/reject");
+            throw new IllegalArgumentException("Unsupported action. Use approve/reject/resubmit");
         }
         User saved = userRepository.save(user);
         return new KycDtos.KycStatusResponse(
@@ -371,6 +375,117 @@ public class AdminController {
                 saved.getKycApprovedAt()
         );
     }
+
+    private void enableKycServices(User user) {
+        List<com.rupiksha.backend.domain.ServiceType> kycServices = List.of(
+                com.rupiksha.backend.domain.ServiceType.AEPS,
+                com.rupiksha.backend.domain.ServiceType.DMT,
+                com.rupiksha.backend.domain.ServiceType.PAYOUT
+        );
+        for (com.rupiksha.backend.domain.ServiceType type : kycServices) {
+            var opt = userServiceRepository.findByUserIdAndServiceType(user.getId(), type);
+            com.rupiksha.backend.domain.UserService s = opt.orElseGet(() -> {
+                com.rupiksha.backend.domain.UserService news = new com.rupiksha.backend.domain.UserService();
+                news.setUser(user);
+                news.setServiceType(type);
+                return news;
+            });
+            s.setIsEnabled(true);
+            s.setEnabledBy("admin");
+            s.setEnabledAt(Instant.now());
+            userServiceRepository.save(s);
+        }
+    }
+
+    @PostMapping("/users/{identifier}/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Map<String, Object> updateUserStatus(@PathVariable String identifier, @RequestBody Map<String, String> body) {
+        User u = resolveUser(identifier);
+        if (u == null) return Map.of("success", false, "error", "User not found");
+        String statusStr = body.get("status");
+        if (statusStr == null || statusStr.isBlank()) return Map.of("success", false, "error", "Status required");
+        try {
+            UserStatus newStatus = UserStatus.valueOf(statusStr.trim().toUpperCase());
+            u.setStatus(newStatus);
+            User saved = userRepository.save(u);
+            return Map.of("success", true, "message", "User status updated to " + newStatus.name(), "user", toAdminDto(saved));
+        } catch (Exception e) {
+            return Map.of("success", false, "error", "Invalid status value: " + statusStr);
+        }
+    }
+
+    @PostMapping("/users/{identifier}/reset-password")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Map<String, Object> adminResetPassword(@PathVariable String identifier, @RequestBody Map<String, String> body) {
+        User u = resolveUser(identifier);
+        if (u == null) return Map.of("success", false, "error", "User not found");
+        String newPassword = body.get("newPassword");
+        if (newPassword == null || newPassword.length() < 6) {
+            return Map.of("success", false, "error", "New password must be at least 6 characters");
+        }
+        u.setPasswordHash(passwordEncoder.encode(newPassword.trim()));
+        u.setPasswordLastChanged(Instant.now());
+        userRepository.save(u);
+        return Map.of("success", true, "message", "Password reset successfully");
+    }
+
+    @PostMapping("/users/{identifier}/reset-pin")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Map<String, Object> adminResetPin(@PathVariable String identifier, @RequestBody Map<String, String> body) {
+        User u = resolveUser(identifier);
+        if (u == null) return Map.of("success", false, "error", "User not found");
+        String newPin = body.get("newPin");
+        if (newPin == null || newPin.isBlank()) {
+            return Map.of("success", false, "error", "New PIN is required");
+        }
+        u.setPinHash(passwordEncoder.encode(newPin.trim()));
+        u.setPinLastChanged(Instant.now());
+        userRepository.save(u);
+        return Map.of("success", true, "message", "Login PIN reset successfully");
+    }
+
+    @PostMapping("/users/{identifier}/change-parent")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Map<String, Object> changeParent(@PathVariable String identifier, @RequestBody Map<String, String> body) {
+        User u = resolveUser(identifier);
+        if (u == null) return Map.of("success", false, "error", "User not found");
+        String parentIdentifier = body.get("parentIdentifier");
+        if (parentIdentifier == null || parentIdentifier.isBlank()) {
+            u.setParentUser(null);
+            u.setAddedByUserRef(null);
+            u.setAddedByName(null);
+            u.setAddedByPartyCode(null);
+            u.setAddedByRole(null);
+        } else {
+            User parent = resolveUser(parentIdentifier);
+            if (parent == null) return Map.of("success", false, "error", "Parent user not found");
+            u.setParentUser(parent);
+            u.setAddedByUserRef(parent.getId().toString());
+            u.setAddedByName(parent.getFullName());
+            u.setAddedByPartyCode(parent.getPartyCode());
+            String pRole = parent.getRoles().stream().map(r -> r.getName().name()).findFirst().orElse("DISTRIBUTOR");
+            u.setAddedByRole(pRole);
+        }
+        User saved = userRepository.save(u);
+        return Map.of("success", true, "message", "Parent hierarchy updated", "user", toAdminDto(saved));
+    }
+
+    @GetMapping("/parents")
+    public Map<String, Object> listCandidateParents(@RequestParam(required = false) String role) {
+        List<Map<String, Object>> parents = userRepository.findAll().stream()
+                .filter(u -> u.getStatus() == UserStatus.ACTIVE || u.getStatus() == UserStatus.APPROVED)
+                .map(u -> Map.<String, Object>of(
+                        "id", u.getId().toString(),
+                        "fullName", u.getFullName() == null ? "" : u.getFullName(),
+                        "username", u.getUsername(),
+                        "mobile", u.getMobile(),
+                        "partyCode", u.getPartyCode() == null ? "" : u.getPartyCode(),
+                        "role", u.getRoles().stream().map(r -> r.getName().name()).findFirst().orElse("RETAILER")
+                ))
+                .toList();
+        return Map.of("success", true, "parents", parents);
+    }
+
 
     @GetMapping("/reports/users")
     public Map<String, Object> userReport() {
@@ -447,12 +562,61 @@ public class AdminController {
         dto.put("businessName", u.getBusinessName());
         dto.put("partyCode", u.getPartyCode());
         dto.put("state", u.getStateName());
-        dto.put("addedByUserRef", u.getAddedByUserRef());
-        dto.put("addedByName", u.getAddedByName());
-        dto.put("addedByRole", u.getAddedByRole());
-        dto.put("addedByPartyCode", u.getAddedByPartyCode());
+        dto.put("registrationStatus", u.getRegistrationStatus() == null ? "APPROVED" : u.getRegistrationStatus().name());
+        dto.put("pinConfigured", u.getPinHash() != null && !u.getPinHash().isBlank());
+        dto.put("otpVerified", u.getOtpVerified() != null && u.getOtpVerified());
+        dto.put("passwordLastChanged", u.getPasswordLastChanged());
+        dto.put("pinLastChanged", u.getPinLastChanged());
+
+        // Personal & Business
+        dto.put("fatherName", u.getFatherName());
+        dto.put("gender", u.getGender());
+        dto.put("businessType", u.getBusinessType());
+        dto.put("gstNumber", u.getGstNumber());
+
+        // Shop & Permanent Address
+        dto.put("shopLandmark", u.getShopLandmark());
+        dto.put("shopState", u.getShopState());
+        dto.put("shopDistrict", u.getShopDistrict());
+        dto.put("shopCity", u.getShopCity());
+        dto.put("shopPincode", u.getShopPincode());
+        dto.put("permState", u.getPermState());
+        dto.put("permDistrict", u.getPermDistrict());
+        dto.put("permCity", u.getPermCity());
+        dto.put("permPincode", u.getPermPincode());
+
+        // Bank Details
+        dto.put("bankAccountHolder", u.getBankAccountHolder());
+        dto.put("bankName", u.getBankName());
+        dto.put("bankAccountNumber", u.getBankAccountNumber());
+        dto.put("bankIfsc", u.getBankIfsc());
+        dto.put("bankBranch", u.getBankBranch());
+
+        // Documents & Live Verification
+        dto.put("aadhaarBackPhotoUrl", u.getAadhaarBackPhotoUrl());
+        dto.put("drivingLicenceUrl", u.getDrivingLicenceUrl());
+        dto.put("voterIdUrl", u.getVoterIdUrl());
+        dto.put("passportUrl", u.getPassportUrl());
+        dto.put("liveSelfieUrl", u.getLiveSelfieUrl());
+        dto.put("gpsLat", u.getGpsLat());
+        dto.put("gpsLong", u.getGpsLong());
+        dto.put("gpsTimestamp", u.getGpsTimestamp());
+        dto.put("deviceInfo", u.getDeviceInfo());
+
+        // Hierarchy Parent
+        if (u.getParentUser() != null) {
+            dto.put("parentUserId", u.getParentUser().getId().toString());
+            dto.put("parentName", u.getParentUser().getFullName());
+            dto.put("parentPartyCode", u.getParentUser().getPartyCode());
+        } else {
+            dto.put("parentUserId", u.getAddedByUserRef());
+            dto.put("parentName", u.getAddedByName());
+            dto.put("parentPartyCode", u.getAddedByPartyCode());
+        }
+
         dto.put("createdAt", u.getCreatedAt());
         dto.put("updatedAt", u.getUpdatedAt());
+
 
         // ─── Authoritative wallet balance ──────────────────────────────────────
         // Use the pre-built map (batch-load) when available; otherwise do a

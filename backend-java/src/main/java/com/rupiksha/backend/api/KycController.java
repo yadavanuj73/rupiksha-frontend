@@ -28,27 +28,84 @@ public class KycController {
         User user = userRepository.findById(UUID.fromString(principal.userId()))
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        user.setAadhaarNumber(request.aadhaarNumber());
-        user.setPanNumber(request.panNumber().toUpperCase());
-        user.setPhotoUrl(request.photoUrl());
-        user.setAadhaarPhotoUrl(request.aadhaarPhotoUrl());
-        user.setPanPhotoUrl(request.panPhotoUrl());
-        user.setAddressLine1(request.addressLine1());
-        user.setCity(request.city());
-        user.setStateName(request.state());
-        user.setPincode(request.pincode());
-        // Save extended onboarding fields if provided
-        if (request.firstName() != null) user.setFirstName(request.firstName());
-        if (request.lastName() != null) user.setLastName(request.lastName());
-        if (request.dob() != null) user.setDob(request.dob());
-        if (request.shopAddress() != null) user.setShopAddress(request.shopAddress());
-        if (request.permanentAddress() != null) user.setPermanentAddress(request.permanentAddress());
-        if (request.shopPhotoUrl() != null && !request.shopPhotoUrl().isBlank()) user.setShopPhotoUrl(request.shopPhotoUrl());
-        if (request.bankPassbookUrl() != null && !request.bankPassbookUrl().isBlank()) user.setBankPassbookUrl(request.bankPassbookUrl());
+        // Section 1: Personal Details
+        if (isPresent(request.fullName())) user.setFullName(request.fullName().trim());
+        if (isPresent(request.fatherName())) user.setFatherName(request.fatherName().trim());
+        if (isPresent(request.email())) user.setEmail(request.email().trim());
+        if (isPresent(request.dob())) user.setDob(request.dob().trim());
+        if (isPresent(request.gender())) user.setGender(request.gender().trim());
+
+        // Section 2: Business Details
+        if (isPresent(request.shopName())) user.setBusinessName(request.shopName().trim());
+        else if (isPresent(request.businessName())) user.setBusinessName(request.businessName().trim());
+        if (isPresent(request.businessType())) user.setBusinessType(request.businessType().trim());
+        if (isPresent(request.gstNumber())) user.setGstNumber(request.gstNumber().trim().toUpperCase());
+
+        // Section 3: Shop Address
+        if (isPresent(request.shopAddress())) user.setShopAddress(request.shopAddress().trim());
+        if (isPresent(request.shopLandmark())) user.setShopLandmark(request.shopLandmark().trim());
+        if (isPresent(request.shopState())) user.setShopState(request.shopState().trim());
+        else if (isPresent(request.state())) user.setShopState(request.state().trim());
+        if (isPresent(request.shopDistrict())) user.setShopDistrict(request.shopDistrict().trim());
+        if (isPresent(request.shopCity())) user.setShopCity(request.shopCity().trim());
+        else if (isPresent(request.city())) user.setShopCity(request.city().trim());
+        if (isPresent(request.shopPincode())) user.setShopPincode(request.shopPincode().trim());
+        else if (isPresent(request.pincode())) user.setShopPincode(request.pincode().trim());
+
+        // Fallback for general address fields
+        if (isPresent(request.addressLine1())) user.setAddressLine1(request.addressLine1().trim());
+        else if (isPresent(request.shopAddress())) user.setAddressLine1(request.shopAddress().trim());
+        if (isPresent(request.city())) user.setCity(request.city().trim());
+        if (isPresent(request.state())) user.setStateName(request.state().trim());
+        if (isPresent(request.pincode())) user.setPincode(request.pincode().trim());
+
+        // Section 4: Permanent Address
+        if (isPresent(request.permanentAddress())) user.setPermanentAddress(request.permanentAddress().trim());
+        if (isPresent(request.permState())) user.setPermState(request.permState().trim());
+        if (isPresent(request.permDistrict())) user.setPermDistrict(request.permDistrict().trim());
+        if (isPresent(request.permCity())) user.setPermCity(request.permCity().trim());
+        if (isPresent(request.permPincode())) user.setPermPincode(request.permPincode().trim());
+
+        // Section 5: Identity Details
+        if (isPresent(request.aadhaarNumber())) user.setAadhaarNumber(request.aadhaarNumber().trim());
+        if (isPresent(request.panNumber())) user.setPanNumber(request.panNumber().trim().toUpperCase());
+
+        // Section 6: Bank Details
+        if (isPresent(request.bankAccountHolder())) user.setBankAccountHolder(request.bankAccountHolder().trim());
+        if (isPresent(request.bankName())) user.setBankName(request.bankName().trim());
+        if (isPresent(request.bankAccountNumber())) user.setBankAccountNumber(request.bankAccountNumber().trim());
+        if (isPresent(request.bankIfsc())) user.setBankIfsc(request.bankIfsc().trim().toUpperCase());
+        if (isPresent(request.bankBranch())) user.setBankBranch(request.bankBranch().trim());
+
+        // Section 7: Documents
+        if (isPresent(request.photoUrl())) user.setPhotoUrl(request.photoUrl());
+        if (isPresent(request.aadhaarPhotoUrl())) user.setAadhaarPhotoUrl(request.aadhaarPhotoUrl());
+        if (isPresent(request.aadhaarBackPhotoUrl())) user.setAadhaarBackPhotoUrl(request.aadhaarBackPhotoUrl());
+        if (isPresent(request.panPhotoUrl())) user.setPanPhotoUrl(request.panPhotoUrl());
+        if (isPresent(request.bankPassbookUrl())) user.setBankPassbookUrl(request.bankPassbookUrl());
+        if (isPresent(request.shopPhotoUrl())) user.setShopPhotoUrl(request.shopPhotoUrl());
+        if (isPresent(request.drivingLicenceUrl())) user.setDrivingLicenceUrl(request.drivingLicenceUrl());
+        if (isPresent(request.voterIdUrl())) user.setVoterIdUrl(request.voterIdUrl());
+        if (isPresent(request.passportUrl())) user.setPassportUrl(request.passportUrl());
+
+        // Section 8: Live Verification & GPS
+        if (isPresent(request.liveSelfieUrl())) user.setLiveSelfieUrl(request.liveSelfieUrl());
+        if (isPresent(request.gpsLat())) user.setGpsLat(request.gpsLat().trim());
+        if (isPresent(request.gpsLong())) user.setGpsLong(request.gpsLong().trim());
+        if (isPresent(request.gpsTimestamp())) {
+            try { user.setGpsTimestamp(Instant.parse(request.gpsTimestamp().trim())); }
+            catch (Exception e) { user.setGpsTimestamp(Instant.now()); }
+        } else {
+            user.setGpsTimestamp(Instant.now());
+        }
+        if (isPresent(request.deviceInfo())) user.setDeviceInfo(request.deviceInfo().trim());
+
+        // Update status to PENDING_ADMIN_APPROVAL
         user.setKycStatus(KycStatus.PENDING);
         user.setKycRejectionReason(null);
         user.setKycSubmittedAt(Instant.now());
         user.setKycApprovedAt(null);
+
         return toStatusResponse(userRepository.save(user));
     }
 
@@ -60,15 +117,18 @@ public class KycController {
         return toStatusResponse(user);
     }
 
+    private boolean isPresent(String val) {
+        return val != null && !val.isBlank();
+    }
+
     private KycDtos.KycStatusResponse toStatusResponse(User user) {
         return new KycDtos.KycStatusResponse(
                 user.getId().toString(),
-                user.getStatus().name(),
-                user.getKycStatus().name(),
+                user.getStatus() == null ? null : user.getStatus().name(),
+                user.getKycStatus() == null ? KycStatus.NOT_SUBMITTED.name() : user.getKycStatus().name(),
                 user.getKycRejectionReason(),
                 user.getKycSubmittedAt(),
                 user.getKycApprovedAt()
         );
     }
 }
-

@@ -21,5 +21,10 @@ public class OtpController {
     public OtpDtos.OtpResponse verify(@Valid @RequestBody OtpDtos.VerifyOtpRequest request) {
         return otpService.verifyOtp(request);
     }
+
+    @PostMapping("/resend")
+    public OtpDtos.OtpResponse resend(@Valid @RequestBody OtpDtos.SendOtpRequest request) {
+        return otpService.resendOtp(request);
+    }
 }
 

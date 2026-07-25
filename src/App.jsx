@@ -20,6 +20,7 @@ const PageLoader = () => (
 
 // --- Lazy Loads ---
 const Login = lazy(() => import('./auth/Login'));
+const RegisterWizard = lazy(() => import('./auth/RegisterWizard'));
 const AdminLogin = lazy(() => import('./auth/AdminLogin'));
 const Home = lazy(() => import('./landing/Home'));
 const About = lazy(() => import('./landing/About'));
@@ -203,6 +204,7 @@ function App() {
               <Route path="/portal/distributor" element={<Login />} />
               <Route path="/portal/super-distributor" element={<Login />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<RegisterWizard />} />
               <Route path="/admin" element={<AdminLogin />} />
               <Route path="/admin-login" element={<AdminLogin />} />
               <Route path="/admin/login" element={<AdminLogin />} />

@@ -17,17 +17,31 @@ public class TwoFactorOtpProvider implements OtpProvider {
     private final AppProperties appProperties;
     private final RestTemplateBuilder restTemplateBuilder;
 
+    @org.springframework.beans.factory.annotation.Value("${twofactor.api-key:}")
+    private String envTwoFactorApiKey;
+
     @Override
     public String providerName() {
         return "2factor";
     }
 
+    private String getApiKey() {
+        if (envTwoFactorApiKey != null && !envTwoFactorApiKey.isBlank()) {
+            return envTwoFactorApiKey.trim();
+        }
+        if (appProperties.providers() != null && appProperties.providers().otp() != null) {
+            return appProperties.providers().otp().apiKey();
+        }
+        return null;
+    }
+
     @Override
     public String sendOtp(String mobile) {
-        String apiKey = appProperties.providers().otp().apiKey();
+        String apiKey = getApiKey();
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalArgumentException("2Factor API key not configured");
         }
+
         RestTemplate rt = restTemplateBuilder.build();
         String url = "https://2factor.in/API/V1/" + apiKey + "/SMS/" + mobile + "/AUTOGEN";
         ResponseEntity<Map> response = rt.getForEntity(url, Map.class);
@@ -42,7 +56,7 @@ public class TwoFactorOtpProvider implements OtpProvider {
 
     @Override
     public boolean verifyOtp(String mobile, String otp, String reference) {
-        String apiKey = appProperties.providers().otp().apiKey();
+        String apiKey = getApiKey();
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalArgumentException("2Factor API key not configured");
         }

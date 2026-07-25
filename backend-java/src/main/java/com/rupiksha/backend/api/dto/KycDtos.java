@@ -8,24 +8,68 @@ import java.time.Instant;
 
 public class KycDtos {
     public record SubmitKycRequest(
+            // Section 1: Personal Details
+            @NotBlank String fullName,
+            String fatherName,
+            String email,
+            String dob,
+            String gender,
+
+            // Section 2: Business Details
+            String shopName,
+            String businessName,
+            String businessType,
+            String gstNumber,
+
+            // Section 3: Shop Address
+            String shopAddress,
+            String shopLandmark,
+            String shopState,
+            String shopDistrict,
+            String shopCity,
+            String shopPincode,
+
+            // Section 4: Permanent Address
+            String permanentAddress,
+            String permState,
+            String permDistrict,
+            String permCity,
+            String permPincode,
+
+            // Section 5: Identity Details
             @NotBlank @Pattern(regexp = "\\d{12}", message = "Aadhaar must be 12 digits") String aadhaarNumber,
             @NotBlank @Pattern(regexp = "[A-Z]{5}[0-9]{4}[A-Z]{1}", message = "PAN format invalid") String panNumber,
-            @NotBlank @Size(max = 5_000_000, message = "Selfie image is too large (max ~3.5MB base64)") String photoUrl,
-            @NotBlank @Size(max = 5_000_000, message = "Aadhaar image is too large (max ~3.5MB base64)") String aadhaarPhotoUrl,
-            @NotBlank @Size(max = 5_000_000, message = "PAN image is too large (max ~3.5MB base64)") String panPhotoUrl,
-            @NotBlank @Size(max = 200) String addressLine1,
-            @NotBlank @Size(max = 100) String city,
-            @NotBlank @Size(max = 100) String state,
-            @NotBlank @Pattern(regexp = "\\d{6}", message = "Pincode must be 6 digits") String pincode,
-            // Extended onboarding fields — optional, stored if provided
-            String firstName,
-            String lastName,
-            String dob,
-            String mobile,
-            String shopAddress,
-            String permanentAddress,
-            @Size(max = 5_000_000) String shopPhotoUrl,
-            @Size(max = 5_000_000) String bankPassbookUrl
+
+            // Section 6: Bank Details
+            String bankAccountHolder,
+            String bankName,
+            String bankAccountNumber,
+            String bankIfsc,
+            String bankBranch,
+
+            // Section 7 & 9: Documents & Shop Photo
+            @Size(max = 10_000_000) String photoUrl,
+            @Size(max = 10_000_000) String aadhaarPhotoUrl,
+            @Size(max = 10_000_000) String aadhaarBackPhotoUrl,
+            @Size(max = 10_000_000) String panPhotoUrl,
+            @Size(max = 10_000_000) String bankPassbookUrl,
+            @Size(max = 10_000_000) String shopPhotoUrl,
+            @Size(max = 10_000_000) String drivingLicenceUrl,
+            @Size(max = 10_000_000) String voterIdUrl,
+            @Size(max = 10_000_000) String passportUrl,
+
+            // Section 8: Live Verification & GPS
+            @Size(max = 10_000_000) String liveSelfieUrl,
+            String gpsLat,
+            String gpsLong,
+            String gpsTimestamp,
+            String deviceInfo,
+
+            // Compatibility fallback fields
+            String addressLine1,
+            String city,
+            String state,
+            String pincode
     ) {}
 
     public record KycStatusResponse(
@@ -42,4 +86,3 @@ public class KycDtos {
             String remarks
     ) {}
 }
-

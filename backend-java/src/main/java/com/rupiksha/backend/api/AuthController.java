@@ -1,6 +1,7 @@
 package com.rupiksha.backend.api;
 
 import com.rupiksha.backend.api.dto.AuthDtos;
+import com.rupiksha.backend.api.dto.OtpDtos;
 import com.rupiksha.backend.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -34,5 +35,24 @@ public class AuthController {
     public void logout(@Valid @RequestBody AuthDtos.RefreshRequest request) {
         authService.logout(request.refreshToken());
     }
-}
 
+    @PostMapping("/forgot-password/send-otp")
+    public OtpDtos.OtpResponse forgotPasswordSendOtp(@Valid @RequestBody AuthDtos.ForgotPasswordRequest request) {
+        return authService.forgotPasswordSendOtp(request);
+    }
+
+    @PostMapping("/forgot-password/reset")
+    public OtpDtos.OtpResponse resetPassword(@Valid @RequestBody AuthDtos.ResetPasswordRequest request) {
+        return authService.resetPassword(request);
+    }
+
+    @PostMapping("/forgot-pin/send-otp")
+    public OtpDtos.OtpResponse forgotPinSendOtp(@Valid @RequestBody AuthDtos.ForgotPinRequest request) {
+        return authService.forgotPinSendOtp(request);
+    }
+
+    @PostMapping("/forgot-pin/reset")
+    public OtpDtos.OtpResponse resetPin(@Valid @RequestBody AuthDtos.ResetPinRequest request) {
+        return authService.resetPin(request);
+    }
+}

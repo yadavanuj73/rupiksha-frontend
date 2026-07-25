@@ -84,8 +84,12 @@ app:
     otp:
       name: ${OTP_PROVIDER:mock}
       base-url: ${OTP_BASE_URL:}
-      api-key: ${OTP_API_KEY:}
+      api-key: ${TWOFACTOR_API_KEY:${OTP_API_KEY:2f056347-ce8a-11f0-a6b2-0200cd936042}}
       sender-id: ${OTP_SENDER_ID:}
+
+twofactor:
+  api-key: ${TWOFACTOR_API_KEY:${OTP_API_KEY:2f056347-ce8a-11f0-a6b2-0200cd936042}}
+
     payment:
       name: ${PAYMENT_PROVIDER:mock}
       base-url: ${PAYMENT_BASE_URL:}

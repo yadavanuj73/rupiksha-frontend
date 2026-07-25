@@ -62,15 +62,35 @@ export const apiFetch = async (endpoint, options = {}) => {
 
 // ─── AUTH ────────────────────────────────────────────────────────────────────
 export const authService = {
-  login: (username, password) =>
+  login: (username, password, pin) =>
     apiFetch("/auth/login", {
       method: "POST",
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password, pin }),
     }),
   register: (userData) =>
     apiFetch("/auth/register", {
       method: "POST",
       body: JSON.stringify(userData),
+    }),
+  forgotPasswordSendOtp: (mobile) =>
+    apiFetch("/auth/forgot-password/send-otp", {
+      method: "POST",
+      body: JSON.stringify({ mobile }),
+    }),
+  resetPassword: (mobile, otp, newPassword) =>
+    apiFetch("/auth/forgot-password/reset", {
+      method: "POST",
+      body: JSON.stringify({ mobile, otp, newPassword }),
+    }),
+  forgotPinSendOtp: (mobile) =>
+    apiFetch("/auth/forgot-pin/send-otp", {
+      method: "POST",
+      body: JSON.stringify({ mobile }),
+    }),
+  resetPin: (mobile, otp, newPin) =>
+    apiFetch("/auth/forgot-pin/reset", {
+      method: "POST",
+      body: JSON.stringify({ mobile, otp, newPin }),
     }),
   logout: () => {
     localStorage.removeItem("rupiksha_token");
@@ -249,6 +269,11 @@ export const userService = {
 
 // ─── OTP SERVICE ──────────────────────────────────────────────────────────────
 export const otpService = {
+  sendOtp: (mobile) =>
+    apiFetch("/otp/send", {
+      method: "POST",
+      body: JSON.stringify({ mobile }),
+    }),
   sendMobileOtp: (mobile) =>
     apiFetch("/otp/send", {
       method: "POST",
@@ -259,6 +284,56 @@ export const otpService = {
       method: "POST",
       body: JSON.stringify({ mobile, otp }),
     }),
+  resendOtp: (mobile) =>
+    apiFetch("/otp/resend", {
+      method: "POST",
+      body: JSON.stringify({ mobile }),
+    }),
+};
+
+// ─── KYC ONBOARDING SERVICE ───────────────────────────────────────────────────
+export const kycService = {
+  submitKyc: (payload) =>
+    apiFetch("/user/submit-kyc", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  getKycStatus: () => apiFetch("/user/kyc-status"),
+};
+
+// ─── ADMIN MANAGEMENT SERVICE ─────────────────────────────────────────────────
+export const adminService = {
+  getUsers: () => apiFetch("/admin/users"),
+  getApprovals: () => apiFetch("/admin/approvals"),
+  getPendingKyc: () => apiFetch("/admin/kyc/pending"),
+  getAllKyc: () => apiFetch("/admin/kyc/all"),
+  getKycDetail: (id) => apiFetch(`/admin/kyc/${id}`),
+  decideKyc: (id, action, remarks) =>
+    apiFetch(`/admin/kyc/${id}`, {
+      method: "POST",
+      body: JSON.stringify({ action, remarks }),
+    }),
+  updateUserStatus: (id, status) =>
+    apiFetch(`/admin/users/${id}/status`, {
+      method: "POST",
+      body: JSON.stringify({ status }),
+    }),
+  resetUserPassword: (id, newPassword) =>
+    apiFetch(`/admin/users/${id}/reset-password`, {
+      method: "POST",
+      body: JSON.stringify({ newPassword }),
+    }),
+  resetUserPin: (id, newPin) =>
+    apiFetch(`/admin/users/${id}/reset-pin`, {
+      method: "POST",
+      body: JSON.stringify({ newPin }),
+    }),
+  changeParent: (id, parentIdentifier) =>
+    apiFetch(`/admin/users/${id}/change-parent`, {
+      method: "POST",
+      body: JSON.stringify({ parentIdentifier }),
+    }),
+  getCandidateParents: (role) => apiFetch(`/admin/parents${role ? `?role=${role}` : ''}`),
 };
 
 // ─── PAYMENT GATEWAY (Java backend compatibility) ─────────────────────────────

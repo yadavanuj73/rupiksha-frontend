@@ -145,6 +145,109 @@ public class User {
     @Column(name = "kyc_approved_at")
     private Instant kycApprovedAt;
 
+    // --- V27 Enhancements ---
+    @JsonIgnore
+    @Column(name = "pin_hash", length = 255)
+    private String pinHash;
+
+    @Column(name = "father_name", length = 120)
+    private String fatherName;
+
+    @Column(name = "gender", length = 20)
+    private String gender;
+
+    @Column(name = "business_type", length = 100)
+    private String businessType;
+
+    @Column(name = "gst_number", length = 20)
+    private String gstNumber;
+
+    @Column(name = "shop_landmark", length = 120)
+    private String shopLandmark;
+
+    @Column(name = "shop_state", length = 100)
+    private String shopState;
+
+    @Column(name = "shop_district", length = 100)
+    private String shopDistrict;
+
+    @Column(name = "shop_city", length = 100)
+    private String shopCity;
+
+    @Column(name = "shop_pincode", length = 10)
+    private String shopPincode;
+
+    @Column(name = "perm_state", length = 100)
+    private String permState;
+
+    @Column(name = "perm_district", length = 100)
+    private String permDistrict;
+
+    @Column(name = "perm_city", length = 100)
+    private String permCity;
+
+    @Column(name = "perm_pincode", length = 10)
+    private String permPincode;
+
+    @Column(name = "bank_account_holder", length = 120)
+    private String bankAccountHolder;
+
+    @Column(name = "bank_name", length = 120)
+    private String bankName;
+
+    @Column(name = "bank_account_number", length = 50)
+    private String bankAccountNumber;
+
+    @Column(name = "bank_ifsc", length = 20)
+    private String bankIfsc;
+
+    @Column(name = "bank_branch", length = 120)
+    private String bankBranch;
+
+    @Column(name = "aadhaar_back_photo_url", columnDefinition = "text")
+    private String aadhaarBackPhotoUrl;
+
+    @Column(name = "driving_licence_url", columnDefinition = "text")
+    private String drivingLicenceUrl;
+
+    @Column(name = "voter_id_url", columnDefinition = "text")
+    private String voterIdUrl;
+
+    @Column(name = "passport_url", columnDefinition = "text")
+    private String passportUrl;
+
+    @Column(name = "live_selfie_url", columnDefinition = "text")
+    private String liveSelfieUrl;
+
+    @Column(name = "gps_lat", length = 50)
+    private String gpsLat;
+
+    @Column(name = "gps_long", length = 50)
+    private String gpsLong;
+
+    @Column(name = "gps_timestamp")
+    private Instant gpsTimestamp;
+
+    @Column(name = "device_info", length = 255)
+    private String deviceInfo;
+
+    @Column(name = "password_last_changed")
+    private Instant passwordLastChanged;
+
+    @Column(name = "pin_last_changed")
+    private Instant pinLastChanged;
+
+    @Column(name = "otp_verified")
+    private Boolean otpVerified = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "registration_status", length = 40)
+    private RegistrationStatus registrationStatus = RegistrationStatus.APPROVED;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_user_id")
+    private User parentUser;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "user_roles",
@@ -164,4 +267,5 @@ public class User {
         this.updatedAt = Instant.now();
     }
 }
+
 

@@ -9,7 +9,8 @@ import java.util.List;
 public class AuthDtos {
     public record LoginRequest(
             @NotBlank String username,
-            @NotBlank String password
+            @NotBlank String password,
+            String pin
     ) {}
 
     public record RefreshRequest(@NotBlank String refreshToken) {}
@@ -27,20 +28,16 @@ public class AuthDtos {
             @NotBlank @Size(min = 10, max = 20) String mobile,
             @NotBlank String email,
             @NotBlank String fullName,
-            @NotBlank @Size(min = 8, max = 100) String password,
-            // Optional: "RETAILER" | "DISTRIBUTOR" | "SUPER_DISTRIBUTOR".
-            // Anything else (including "ADMIN") is silently downgraded to RETAILER.
-            // Regardless of role, the account is created in PENDING status and must
-            // be approved by an admin via /admin/approvals before the user can log in.
+            @NotBlank @Size(min = 6, max = 100) String password,
+            String pin,
+            String otp,
             String role,
-            // Optional profile attributes collected by the public/portal registration
-            // form. They are persisted so the admin approval screen can auto-generate
-            // a state-coded party code (e.g. RPRBR######) without a second round-trip.
             String state,
             String city,
             String pincode,
             String address,
             String businessName,
+            String parentUserId,
             String addedByUserRef,
             String addedByName,
             String addedByRole,
@@ -53,10 +50,34 @@ public class AuthDtos {
             String mobile,
             String email,
             String fullName,
+            String partyCode,
             String status,
+            String registrationStatus,
             String kycStatus,
+            boolean pinConfigured,
             List<String> roles,
+            String parentName,
+            String parentPartyCode,
             Instant createdAt
     ) {}
-}
 
+    public record ForgotPasswordRequest(
+            @NotBlank String mobile
+    ) {}
+
+    public record ResetPasswordRequest(
+            @NotBlank String mobile,
+            @NotBlank String otp,
+            @NotBlank @Size(min = 6, max = 100) String newPassword
+    ) {}
+
+    public record ForgotPinRequest(
+            @NotBlank String mobile
+    ) {}
+
+    public record ResetPinRequest(
+            @NotBlank String mobile,
+            @NotBlank String otp,
+            @NotBlank String newPin
+    ) {}
+}
