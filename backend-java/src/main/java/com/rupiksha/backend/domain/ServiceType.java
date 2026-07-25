@@ -5,6 +5,9 @@ public enum ServiceType {
     BBPS,
     RECHARGE,
     PAYOUT,
+    DMT,
+    MATM,
+    CMS,
     WALLET_TRANSFER,
     TICKET_SUPPORT
 }
