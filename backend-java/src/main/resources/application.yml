@@ -86,26 +86,22 @@ app:
       base-url: ${OTP_BASE_URL:}
       api-key: ${TWOFACTOR_API_KEY:${OTP_API_KEY:2f056347-ce8a-11f0-a6b2-0200cd936042}}
       sender-id: ${OTP_SENDER_ID:}
-
-twofactor:
-  api-key: ${TWOFACTOR_API_KEY:${OTP_API_KEY:2f056347-ce8a-11f0-a6b2-0200cd936042}}
-
     payment:
       name: ${PAYMENT_PROVIDER:mock}
       base-url: ${PAYMENT_BASE_URL:}
       key-id: ${PAYMENT_KEY_ID:}
       key-secret: ${PAYMENT_KEY_SECRET:}
       webhook-secret: ${PAYMENT_WEBHOOK_SECRET:}
-  recharge:
-    provider: ${RECHARGE_PROVIDER:mock}
-    base-url: ${RECHARGE_BASE_URL:}
-    api-key: ${RECHARGE_API_KEY:}
-    api-secret: ${RECHARGE_API_SECRET:}
-  bbps:
-    provider: ${BBPS_PROVIDER:mock}
-    base-url: ${BBPS_BASE_URL:}
-    api-key: ${BBPS_API_KEY:}
-    api-secret: ${BBPS_API_SECRET:}
+    recharge:
+      provider: ${RECHARGE_PROVIDER:mock}
+      base-url: ${RECHARGE_BASE_URL:}
+      api-key: ${RECHARGE_API_KEY:}
+      api-secret: ${RECHARGE_API_SECRET:}
+    bbps:
+      provider: ${BBPS_PROVIDER:mock}
+      base-url: ${BBPS_BASE_URL:}
+      api-key: ${BBPS_API_KEY:}
+      api-secret: ${BBPS_API_SECRET:}
   services:
     # Note: Legacy AEPS provider config removed. Using Levin AEPS only.
     aeps-enabled: ${SERVICE_AEPS_ENABLED:true}
@@ -113,6 +109,9 @@ twofactor:
     tickets-enabled: ${SERVICE_TICKETS_ENABLED:true}
     recharge-enabled: ${SERVICE_RECHARGE_ENABLED:true}
     payout-enabled: ${SERVICE_PAYOUT_ENABLED:true}
+
+twofactor:
+  api-key: ${TWOFACTOR_API_KEY:${OTP_API_KEY:2f056347-ce8a-11f0-a6b2-0200cd936042}}
 
 # QuickZaps Payout Configuration
 quickzaps:
