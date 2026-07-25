@@ -1,0 +1,9 @@
+# Use this workspace to collaborate
+workspace:
+  id: 14b4c0be-ae35-4ade-bdaa-1a93a19d0be4
+
+localResources:
+  collections:
+    - ../backend-java/qa/postman/Rupiksha-Live.postman_collection.json
+  environments:
+    - ../backend-java/qa/postman/Rupiksha-Live.postman_environment.json

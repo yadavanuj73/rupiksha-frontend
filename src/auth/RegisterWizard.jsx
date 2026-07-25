@@ -295,7 +295,7 @@ export default function RegisterWizard() {
                     name="firstName"
                     value={formData.firstName}
                     onChange={handleChange}
-                    placeholder="e.g. Anujkumar"
+                    placeholder="e.g. First Name"
                     required
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-2 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
                   />
@@ -313,7 +313,7 @@ export default function RegisterWizard() {
                     name="lastName"
                     value={formData.lastName}
                     onChange={handleChange}
-                    placeholder="e.g. Yadav"
+                    placeholder="e.g. Last Name"
                     required
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-2 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
                   />
@@ -335,7 +335,7 @@ export default function RegisterWizard() {
                     maxLength={10}
                     value={formData.mobile}
                     onChange={handleChange}
-                    placeholder="9876543210"
+                    placeholder="e.g. 9876543210"
                     required
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-2 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
                   />
@@ -353,7 +353,7 @@ export default function RegisterWizard() {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    placeholder="user@example.com"
+                    placeholder="e.g. name@example.com"
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-2 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
                   />
                 </div>
