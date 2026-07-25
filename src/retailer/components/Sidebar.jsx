@@ -79,7 +79,7 @@ const MenuItem = ({ item, isActive, onClick, isExpanded, toggleExpand, activeTab
                                             setActiveTab(sub.id);
                                         }
                                     }}
-                                    className="block px-4 py-2 text-[11px] font-black uppercase tracking-widest transition-all rounded-lg cursor-pointer"
+                                    className="block w-full text-left px-3.5 py-2 text-[11px] font-black uppercase tracking-wider transition-all rounded-lg cursor-pointer hover:bg-slate-100 hover:text-blue-700"
                                     style={{ 
                                         color: isSubActive ? '#1d4ed8' : '#64748b',
                                         backgroundColor: isSubActive ? '#eff6ff' : undefined
