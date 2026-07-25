@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Phone, Lock, ShieldCheck, CheckCircle2, AlertCircle, ArrowRight, ArrowLeft, 
-  User, Mail, Building2, MapPin, KeyRound, Sparkles, Send, RefreshCw
+  User, Mail, KeyRound, Sparkles, Send, RefreshCw
 } from 'lucide-react';
 import { authService, otpService, adminService } from '../services/apiService';
 import { useAuth } from '../context/AuthContext';
@@ -18,10 +18,11 @@ export default function RegisterWizard() {
   const [otpSent, setOtpSent] = useState(false);
   const [otpTimer, setOtpTimer] = useState(60);
 
-  // Form State
+  // Form State with First Name & Last Name
   const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
     mobile: '',
-    fullName: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -40,7 +41,6 @@ export default function RegisterWizard() {
   const [parents, setParents] = useState([]);
 
   useEffect(() => {
-    // Load candidate parents for hierarchy selection
     adminService.getCandidateParents()
       .then(res => {
         if (res && res.parents) setParents(res.parents);
@@ -64,17 +64,21 @@ export default function RegisterWizard() {
     if (error) setError('');
   };
 
-  // STEP 1: Validate Mobile & Basic details, send OTP
+  // STEP 1: Validate Details & send OTP
   const handleStep1Continue = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (!formData.mobile || formData.mobile.length < 10) {
-      setError('Please enter a valid 10-digit mobile number');
+    if (!formData.firstName.trim()) {
+      setError('First Name is required');
       return;
     }
-    if (!formData.fullName.trim()) {
-      setError('Full Name is required');
+    if (!formData.lastName.trim()) {
+      setError('Last Name is required');
+      return;
+    }
+    if (!formData.mobile || formData.mobile.length < 10) {
+      setError('Please enter a valid 10-digit mobile number');
       return;
     }
     if (!formData.password || formData.password.length < 6) {
@@ -157,12 +161,13 @@ export default function RegisterWizard() {
     try {
       const username = formData.mobile.trim();
       const email = formData.email.trim() || `${username}@rupiksha.local`;
+      const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`;
 
       const payload = {
         username: username,
         mobile: formData.mobile.trim(),
         email: email,
-        fullName: formData.fullName.trim(),
+        fullName: fullName,
         password: formData.password,
         pin: formData.pin.trim(),
         otp: formData.otp.trim(),
@@ -175,8 +180,8 @@ export default function RegisterWizard() {
         parentUserId: formData.parentUserId,
       };
 
-      const userView = await authService.register(payload);
-      setStep(4); // Auto-Approval Success Step
+      await authService.register(payload);
+      setStep(4);
     } catch (err) {
       setError(err.message || 'Registration failed. Please verify details.');
     } finally {
@@ -207,32 +212,32 @@ export default function RegisterWizard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4 relative overflow-hidden font-sans">
-      {/* Dynamic Background Glows */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-600/20 rounded-full blur-3xl pointer-events-none animate-pulse" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDelay: '1s' }} />
+    <div className="h-screen w-screen max-h-screen max-w-vw overflow-hidden bg-slate-950 text-slate-100 flex items-center justify-center p-2 sm:p-4 relative font-sans">
+      {/* Ambient Glows */}
+      <div className="absolute top-1/4 left-1/4 w-72 h-72 sm:w-96 sm:h-96 bg-emerald-600/15 rounded-full blur-3xl pointer-events-none animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-72 h-72 sm:w-96 sm:h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDelay: '1s' }} />
 
-      <div className="w-full max-w-xl bg-slate-900/90 border border-slate-800 backdrop-blur-xl rounded-3xl shadow-2xl p-6 sm:p-10 relative z-10">
+      <div className="w-full max-w-lg bg-slate-900/95 border border-slate-800 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 relative z-10 my-auto flex flex-col justify-center">
         
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 shadow-lg shadow-emerald-500/20 mb-3">
-            <ShieldCheck className="w-8 h-8 text-slate-950" />
+        <div className="text-center mb-3 sm:mb-4">
+          <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 shadow-md shadow-emerald-500/20 mb-1.5">
+            <ShieldCheck className="w-6 h-6 sm:w-7 sm:h-7 text-slate-950" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white leading-tight">
             Create Rupiksha Account
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5">
             Instant Auto-Approved Partner Registration
           </p>
         </div>
 
         {/* Step Indicator */}
         {step < 4 && (
-          <div className="flex items-center justify-between mb-8 px-4 relative">
-            <div className="absolute top-1/2 left-8 right-8 h-0.5 bg-slate-800 -translate-y-1/2 z-0" />
+          <div className="flex items-center justify-between mb-3 sm:mb-4 px-3 sm:px-6 relative">
+            <div className="absolute top-1/2 left-6 right-6 h-0.5 bg-slate-800 -translate-y-1/2 z-0" />
             <div 
-              className="absolute top-1/2 left-8 h-0.5 bg-emerald-500 -translate-y-1/2 z-0 transition-all duration-300"
+              className="absolute top-1/2 left-6 h-0.5 bg-emerald-500 -translate-y-1/2 z-0 transition-all duration-300"
               style={{ width: `${((step - 1) / 2) * 80 + 10}%` }}
             />
 
@@ -242,16 +247,16 @@ export default function RegisterWizard() {
               { num: 3, label: 'Security PIN' }
             ].map(s => (
               <div key={s.num} className="relative z-10 flex flex-col items-center">
-                <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${
+                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-300 ${
                   step > s.num 
-                    ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/30' 
+                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/30' 
                     : step === s.num 
                     ? 'bg-emerald-500 text-slate-950 ring-4 ring-emerald-500/20' 
                     : 'bg-slate-800 text-slate-400'
                 }`}>
-                  {step > s.num ? <CheckCircle2 className="w-5 h-5" /> : s.num}
+                  {step > s.num ? <CheckCircle2 className="w-4 h-4" /> : s.num}
                 </div>
-                <span className={`text-[11px] font-semibold mt-1 ${step >= s.num ? 'text-emerald-400' : 'text-slate-500'}`}>
+                <span className={`text-[10px] sm:text-[11px] font-semibold mt-0.5 ${step >= s.num ? 'text-emerald-400' : 'text-slate-500'}`}>
                   {s.label}
                 </span>
               </div>
@@ -263,45 +268,67 @@ export default function RegisterWizard() {
         <AnimatePresence>
           {error && (
             <motion.div 
-              initial={{ opacity: 0, y: -10 }} 
+              initial={{ opacity: 0, y: -6 }} 
               animate={{ opacity: 1, y: 0 }} 
               exit={{ opacity: 0 }}
-              className="mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-3 text-rose-400 text-sm"
+              className="mb-3 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center gap-2 text-rose-400 text-xs"
             >
-              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+              <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* STEP 1: MOBILE & ACCOUNT INFO */}
+        {/* STEP 1: FIRST NAME, LAST NAME & ACCOUNT INFO */}
         {step === 1 && (
-          <form onSubmit={handleStep1Continue} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                Full Name *
-              </label>
-              <div className="relative">
-                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  name="fullName"
-                  value={formData.fullName}
-                  onChange={handleChange}
-                  placeholder="e.g. Anujkumar Yadav"
-                  required
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                />
+          <form onSubmit={handleStep1Continue} className="space-y-2.5">
+            {/* First Name & Last Name (2 Sections) */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <div>
+                <label className="block text-[10px] sm:text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                  First Name *
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  <input
+                    type="text"
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    placeholder="e.g. Anujkumar"
+                    required
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-2 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] sm:text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                  Last Name *
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  <input
+                    type="text"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    placeholder="e.g. Yadav"
+                    required
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-2 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Mobile Number & Email */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-[10px] sm:text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
                   Mobile Number * (10 Digits)
                 </label>
                 <div className="relative">
-                  <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                   <input
                     type="tel"
                     name="mobile"
@@ -310,36 +337,37 @@ export default function RegisterWizard() {
                     onChange={handleChange}
                     placeholder="9876543210"
                     required
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-2 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-[10px] sm:text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
                   Email Address
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                   <input
                     type="email"
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
                     placeholder="user@example.com"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-2 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Password & Confirm Password */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-[10px] sm:text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
                   Password *
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                   <input
                     type="password"
                     name="password"
@@ -347,17 +375,17 @@ export default function RegisterWizard() {
                     onChange={handleChange}
                     placeholder="••••••••"
                     required
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-2 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-[10px] sm:text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
                   Confirm Password *
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                   <input
                     type="password"
                     name="confirmPassword"
@@ -365,22 +393,23 @@ export default function RegisterWizard() {
                     onChange={handleChange}
                     placeholder="••••••••"
                     required
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-2 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Role & Parent Selection */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-[10px] sm:text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
                   Partner Role
                 </label>
                 <select
                   name="role"
                   value={formData.role}
                   onChange={handleChange}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-3 text-sm text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-500"
                 >
                   <option value="RETAILER">Retailer</option>
                   <option value="DISTRIBUTOR">Distributor</option>
@@ -389,14 +418,14 @@ export default function RegisterWizard() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-[10px] sm:text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
                   Assign Parent (Optional)
                 </label>
                 <select
                   name="parentUserId"
                   value={formData.parentUserId}
                   onChange={handleChange}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-3 text-sm text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-500"
                 >
                   <option value="">-- Direct Parent --</option>
                   {parents.map(p => (
@@ -411,12 +440,12 @@ export default function RegisterWizard() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+              className="w-full mt-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold py-2.5 sm:py-3 rounded-lg sm:rounded-xl shadow-md shadow-emerald-500/25 flex items-center justify-center gap-2 text-xs sm:text-sm transition-all disabled:opacity-50"
             >
-              {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <>Continue & Send OTP <ArrowRight className="w-4 h-4" /></>}
+              {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <>Continue & Send OTP <ArrowRight className="w-3.5 h-3.5" /></>}
             </button>
 
-            <p className="text-center text-xs text-slate-400 mt-4">
+            <p className="text-center text-[11px] text-slate-400 mt-2">
               Already have an account? <Link to="/login" className="text-emerald-400 hover:underline font-semibold">Login here</Link>
             </p>
           </form>
@@ -424,14 +453,14 @@ export default function RegisterWizard() {
 
         {/* STEP 2: 2FACTOR OTP VERIFICATION */}
         {step === 2 && (
-          <form onSubmit={handleVerifyOtp} className="space-y-5 text-center">
-            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-sm">
-              <Send className="w-6 h-6 mx-auto mb-2 text-emerald-400" />
+          <form onSubmit={handleVerifyOtp} className="space-y-4 text-center">
+            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs sm:text-sm">
+              <Send className="w-5 h-5 mx-auto mb-1 text-emerald-400" />
               OTP has been sent to <strong>+91 {formData.mobile}</strong> via 2Factor SMS.
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+              <label className="block text-[10px] sm:text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
                 Enter 6-Digit OTP *
               </label>
               <input
@@ -442,7 +471,7 @@ export default function RegisterWizard() {
                 onChange={handleChange}
                 placeholder="123456"
                 required
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3.5 text-center text-2xl font-mono tracking-widest text-emerald-400 focus:outline-none focus:border-emerald-500"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-center text-xl font-mono tracking-widest text-emerald-400 focus:outline-none focus:border-emerald-500"
               />
             </div>
 
@@ -452,7 +481,7 @@ export default function RegisterWizard() {
                 onClick={() => setStep(1)} 
                 className="flex items-center gap-1 hover:text-white"
               >
-                <ArrowLeft className="w-3.5 h-3.5" /> Back to Mobile
+                <ArrowLeft className="w-3.5 h-3.5" /> Back to Details
               </button>
 
               <button
@@ -468,24 +497,24 @@ export default function RegisterWizard() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+              className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold py-3 rounded-xl shadow-md shadow-emerald-500/25 flex items-center justify-center gap-2 text-xs sm:text-sm transition-all disabled:opacity-50"
             >
-              {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <>Verify OTP & Set PIN <ArrowRight className="w-4 h-4" /></>}
+              {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <>Verify OTP & Set PIN <ArrowRight className="w-3.5 h-3.5" /></>}
             </button>
           </form>
         )}
 
         {/* STEP 3: CREATE LOGIN PIN */}
         {step === 3 && (
-          <form onSubmit={handleCompleteRegistration} className="space-y-4">
-            <div className="text-center mb-4">
-              <KeyRound className="w-8 h-8 text-emerald-400 mx-auto mb-1" />
-              <h3 className="text-base font-bold text-white">Create Security Login PIN</h3>
-              <p className="text-xs text-slate-400">Default 4-digit PIN for instant secure login</p>
+          <form onSubmit={handleCompleteRegistration} className="space-y-3">
+            <div className="text-center mb-2">
+              <KeyRound className="w-7 h-7 text-emerald-400 mx-auto mb-1" />
+              <h3 className="text-sm sm:text-base font-bold text-white">Create Security Login PIN</h3>
+              <p className="text-[11px] text-slate-400">Default 4-digit PIN for instant secure login</p>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="block text-[10px] sm:text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
                 Create Login PIN * (4 Digits)
               </label>
               <input
@@ -496,12 +525,12 @@ export default function RegisterWizard() {
                 onChange={handleChange}
                 placeholder="••••"
                 required
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-center text-xl font-mono tracking-widest text-white focus:outline-none focus:border-emerald-500"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-center text-lg font-mono tracking-widest text-white focus:outline-none focus:border-emerald-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="block text-[10px] sm:text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
                 Confirm Login PIN *
               </label>
               <input
@@ -512,58 +541,58 @@ export default function RegisterWizard() {
                 onChange={handleChange}
                 placeholder="••••"
                 required
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-center text-xl font-mono tracking-widest text-white focus:outline-none focus:border-emerald-500"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-center text-lg font-mono tracking-widest text-white focus:outline-none focus:border-emerald-500"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+              className="w-full mt-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold py-3 rounded-xl shadow-md shadow-emerald-500/25 flex items-center justify-center gap-2 text-xs sm:text-sm transition-all disabled:opacity-50"
             >
-              {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <>Complete Auto-Approval Registration <Sparkles className="w-4 h-4" /></>}
+              {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <>Complete Auto-Approval Registration <Sparkles className="w-3.5 h-3.5" /></>}
             </button>
           </form>
         )}
 
         {/* STEP 4: AUTO APPROVAL SUCCESS & LOGIN */}
         {step === 4 && (
-          <div className="text-center py-4 space-y-5">
-            <div className="w-20 h-20 rounded-full bg-emerald-500/20 border-2 border-emerald-500 flex items-center justify-center mx-auto text-emerald-400 shadow-2xl shadow-emerald-500/30">
-              <CheckCircle2 className="w-12 h-12" />
+          <div className="text-center py-2 space-y-4">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-emerald-500/20 border-2 border-emerald-500 flex items-center justify-center mx-auto text-emerald-400 shadow-xl shadow-emerald-500/30">
+              <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10" />
             </div>
 
             <div>
-              <span className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold uppercase tracking-wider">
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
                 Registration Status: APPROVED
               </span>
-              <h2 className="text-2xl font-black text-white mt-3">Welcome to Rupiksha!</h2>
-              <p className="text-sm text-slate-300 mt-1">
+              <h2 className="text-xl sm:text-2xl font-black text-white mt-2">Welcome to Rupiksha!</h2>
+              <p className="text-xs text-slate-300 mt-0.5">
                 Your account is <strong>ACTIVE</strong> and auto-approved. Wallet created with default services enabled.
               </p>
             </div>
 
-            <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 text-left text-xs space-y-2 text-slate-300">
-              <div className="flex justify-between border-b border-slate-900 pb-1.5">
+            <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-left text-[11px] space-y-1.5 text-slate-300">
+              <div className="flex justify-between border-b border-slate-900 pb-1">
+                <span className="text-slate-500">Name:</span>
+                <span className="font-semibold text-white">{formData.firstName} {formData.lastName}</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-900 pb-1">
                 <span className="text-slate-500">Mobile Number:</span>
                 <span className="font-mono text-white">+91 {formData.mobile}</span>
               </div>
-              <div className="flex justify-between border-b border-slate-900 pb-1.5">
+              <div className="flex justify-between">
                 <span className="text-slate-500">Account Status:</span>
                 <span className="text-emerald-400 font-bold">ACTIVE</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Default Services:</span>
-                <span className="text-emerald-400">Wallet, Recharge, BBPS, Reports Enabled</span>
               </div>
             </div>
 
             <button
               onClick={handleImmediateLogin}
               disabled={loading}
-              className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold py-4 rounded-xl shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2 text-base transition-all"
+              className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold py-3 rounded-xl shadow-md shadow-emerald-500/30 flex items-center justify-center gap-2 text-sm transition-all"
             >
-              {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <>Login Immediately & Open Portal <ArrowRight className="w-5 h-5" /></>}
+              {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <>Login Immediately & Open Portal <ArrowRight className="w-4 h-4" /></>}
             </button>
           </div>
         )}
