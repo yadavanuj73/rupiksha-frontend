@@ -552,16 +552,16 @@ export default function RegisterWizard() {
                   )}
                 </AnimatePresence>
 
-                {/* ── STEP 1: FIRST NAME, LAST NAME & ACCOUNT INFO (Fits 100% without vertical scroll) ── */}
+                {/* ── STEP 1: FIRST NAME, LAST NAME & ACCOUNT INFO ── */}
                 {step === 1 && (
-                  <form onSubmit={handleStep1Continue} className="space-y-2 text-left">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <form onSubmit={handleStep1Continue} className="space-y-3 text-left">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-0.5">
+                        <label className="block text-[11px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
                           First Name *
                         </label>
                         <div className="relative">
-                          <User className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                           <input
                             type="text"
                             name="firstName"
@@ -569,17 +569,17 @@ export default function RegisterWizard() {
                             onChange={handleChange}
                             placeholder="First Name"
                             required
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2.5 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9.5 pr-3 py-2 sm:py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-0.5">
+                        <label className="block text-[11px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
                           Last Name *
                         </label>
                         <div className="relative">
-                          <User className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                           <input
                             type="text"
                             name="lastName"
@@ -587,19 +587,19 @@ export default function RegisterWizard() {
                             onChange={handleChange}
                             placeholder="Last Name"
                             required
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2.5 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9.5 pr-3 py-2 sm:py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
                           />
                         </div>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-0.5">
+                        <label className="block text-[11px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
                           Mobile Number * (10 Digits)
                         </label>
                         <div className="relative">
-                          <Phone className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                           <input
                             type="tel"
                             name="mobile"
@@ -608,36 +608,36 @@ export default function RegisterWizard() {
                             onChange={handleChange}
                             placeholder="e.g. 9876543210"
                             required
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2.5 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9.5 pr-3 py-2 sm:py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-0.5">
+                        <label className="block text-[11px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
                           Email Address
                         </label>
                         <div className="relative">
-                          <Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                           <input
                             type="email"
                             name="email"
                             value={formData.email}
                             onChange={handleChange}
                             placeholder="name@example.com"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2.5 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9.5 pr-3 py-2 sm:py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
                           />
                         </div>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-0.5">
+                        <label className="block text-[11px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
                           Password *
                         </label>
                         <div className="relative">
-                          <Lock className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                           <input
                             type="password"
                             name="password"
@@ -645,17 +645,17 @@ export default function RegisterWizard() {
                             onChange={handleChange}
                             placeholder="••••••••"
                             required
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2.5 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9.5 pr-3 py-2 sm:py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-0.5">
+                        <label className="block text-[11px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
                           Confirm Password *
                         </label>
                         <div className="relative">
-                          <Lock className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                           <input
                             type="password"
                             name="confirmPassword"
@@ -663,52 +663,35 @@ export default function RegisterWizard() {
                             onChange={handleChange}
                             placeholder="••••••••"
                             required
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2.5 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9.5 pr-3 py-2 sm:py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
                           />
                         </div>
                       </div>
                     </div>
 
-                    {/* Role Selector & Parent Option */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {/* Role Fixed to RETAILER & Parent Option */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-0.5">
+                        <label className="block text-[11px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
                           Partner Role
                         </label>
-                        <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-                          {[
-                            { id: 'RETAILER', label: 'Retailer' },
-                            { id: 'DISTRIBUTOR', label: 'Distributor' },
-                            { id: 'SUPER_DISTRIBUTOR', label: 'Super Dist.' }
-                          ].map(r => {
-                            const isSelected = formData.role === r.id;
-                            return (
-                              <button
-                                key={r.id}
-                                type="button"
-                                onClick={() => setFormData(prev => ({ ...prev, role: r.id }))}
-                                className={`flex-1 py-1 px-1 rounded font-bold text-[10px] transition-all ${
-                                  isSelected
-                                    ? 'bg-blue-600 text-white shadow-sm'
-                                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                                }`}
-                              >
-                                {r.label}
-                              </button>
-                            );
-                          })}
+                        <div className="w-full bg-blue-50/80 border border-blue-200 rounded-xl px-3.5 py-2 sm:py-2.5 flex items-center justify-between shadow-sm">
+                          <span className="text-xs sm:text-sm font-black text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <ShieldCheck className="w-4 h-4 text-blue-600" /> RETAILER
+                          </span>
+                          <span className="text-[10px] font-bold text-blue-600 bg-blue-100/80 px-2 py-0.5 rounded-full uppercase tracking-widest">Default</span>
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-0.5">
+                        <label className="block text-[11px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
                           Assign Parent (Optional)
                         </label>
                         <select
                           name="parentUserId"
                           value={formData.parentUserId}
                           onChange={handleChange}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 sm:py-2.5 text-xs sm:text-sm text-slate-800 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
                         >
                           <option value="">-- Direct Parent --</option>
                           {parents.map(p => (
@@ -723,7 +706,7 @@ export default function RegisterWizard() {
                     <button
                       type="submit"
                       disabled={loading}
-                      className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 text-xs sm:text-sm transition-all disabled:opacity-50 active:scale-[0.99]"
+                      className="w-full mt-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 text-xs sm:text-sm transition-all disabled:opacity-50 active:scale-[0.99]"
                     >
                       {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <>Continue & Send Mobile OTP <ArrowRight className="w-4 h-4" /></>}
                     </button>
@@ -1145,38 +1128,38 @@ export default function RegisterWizard() {
           </motion.div>
         </div>
 
-        {/* ── RIGHT COLUMN: Animated Image Carousel Slider (Decreased Compact Size) ── */}
+        {/* ── RIGHT COLUMN: Animated Image Carousel Slider (Tall Prominent Size) ── */}
         <div className="hidden md:flex md:col-span-4 lg:col-span-4 xl:col-span-4 bg-blue-50/80 border-l border-blue-100/60 p-3 sm:p-4 flex-col justify-center items-center relative overflow-hidden h-full min-h-0 shrink-0">
           
           {/* Ambient Decorative Blurs */}
-          <div className="absolute top-0 right-0 w-[18rem] h-[18rem] bg-blue-500/5 rounded-full blur-[70px] pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-[15rem] h-[15rem] bg-indigo-500/5 rounded-full blur-[70px] pointer-events-none" />
+          <div className="absolute top-0 right-0 w-[22rem] h-[22rem] bg-blue-500/5 rounded-full blur-[80px] pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-[18rem] h-[18rem] bg-indigo-500/5 rounded-full blur-[80px] pointer-events-none" />
 
-          <div className="relative z-10 w-full max-w-xs sm:max-w-sm mx-auto space-y-2 flex flex-col items-center justify-center my-auto">
+          <div className="relative z-10 w-full max-w-sm lg:max-w-md mx-auto space-y-2 flex flex-col items-center justify-center my-auto">
             
             {/* ── ANIMATED IMAGE CAROUSEL / CARD HOLDER SLIDER ── */}
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5 }}
-              className="w-full space-y-1.5"
+              className="w-full space-y-2"
             >
               <div className="flex items-center justify-between px-1">
-                <span className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-100/70 px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
-                  <Sparkles size={10} /> FEATURED SERVICES
+                <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-100/70 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+                  <Sparkles size={11} /> FEATURED SERVICES
                 </span>
-                <span className="text-[9px] text-slate-400 font-bold">
+                <span className="text-[10px] text-slate-400 font-bold">
                   {currentSlide + 1} / {PROMO_SLIDES.length}
                 </span>
               </div>
 
               <div 
-                className="relative bg-white rounded-2xl p-2.5 shadow-lg shadow-blue-900/10 border border-blue-100 overflow-hidden group w-full"
+                className="relative bg-white rounded-2xl sm:rounded-3xl p-3 shadow-xl shadow-blue-900/10 border border-blue-100 overflow-hidden group w-full"
                 onMouseEnter={() => setIsCarouselPaused(true)}
                 onMouseLeave={() => setIsCarouselPaused(false)}
               >
-                {/* Carousel Image Container (Compact Decreased Height) */}
-                <div className="relative h-44 sm:h-52 lg:h-60 xl:h-64 rounded-xl overflow-hidden bg-slate-900 flex items-center justify-center">
+                {/* Carousel Image Container (Increased Height) */}
+                <div className="relative h-56 sm:h-64 lg:h-[21rem] xl:h-[23rem] rounded-xl sm:rounded-2xl overflow-hidden bg-slate-900 flex items-center justify-center">
                   
                   <AnimatePresence mode="wait">
                     <motion.div
@@ -1190,20 +1173,20 @@ export default function RegisterWizard() {
                       <img 
                         src={PROMO_SLIDES[currentSlide].src} 
                         alt={PROMO_SLIDES[currentSlide].title}
-                        className="w-full h-full object-contain p-1.5"
+                        className="w-full h-full object-contain p-2"
                       />
                     </motion.div>
                   </AnimatePresence>
 
                   {/* Gradient Overlay for Title & Badge */}
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent p-2.5 text-white flex flex-col justify-end z-10">
-                    <span className="text-[8px] font-black uppercase tracking-widest text-blue-400 mb-0.5">
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent p-3 text-white flex flex-col justify-end z-10">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-blue-400 mb-0.5">
                       {PROMO_SLIDES[currentSlide].badge}
                     </span>
-                    <h4 className="text-xs font-bold text-white drop-shadow-sm">
+                    <h4 className="text-xs sm:text-sm font-bold text-white drop-shadow-sm">
                       {PROMO_SLIDES[currentSlide].title}
                     </h4>
-                    <p className="text-[10px] text-slate-300 font-medium line-clamp-2 mt-0.5">
+                    <p className="text-[11px] text-slate-300 font-medium line-clamp-2 mt-0.5">
                       {PROMO_SLIDES[currentSlide].desc}
                     </p>
                   </div>
@@ -1212,22 +1195,22 @@ export default function RegisterWizard() {
                   <button
                     type="button"
                     onClick={handlePrevSlide}
-                    className="absolute left-1.5 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-slate-800 rounded-full p-1 shadow-md opacity-0 group-hover:opacity-100 transition-all z-20"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-slate-800 rounded-full p-1.5 shadow-md opacity-0 group-hover:opacity-100 transition-all z-20"
                   >
-                    <ChevronLeft size={14} />
+                    <ChevronLeft size={15} />
                   </button>
 
                   <button
                     type="button"
                     onClick={handleNextSlide}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-slate-800 rounded-full p-1 shadow-md opacity-0 group-hover:opacity-100 transition-all z-20"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-slate-800 rounded-full p-1.5 shadow-md opacity-0 group-hover:opacity-100 transition-all z-20"
                   >
-                    <ChevronRight size={14} />
+                    <ChevronRight size={15} />
                   </button>
                 </div>
 
                 {/* Carousel Indicator Dots */}
-                <div className="flex items-center justify-center gap-1 mt-1.5 mb-0.5">
+                <div className="flex items-center justify-center gap-1.5 mt-2 mb-0.5">
                   {PROMO_SLIDES.map((_, idx) => (
                     <button
                       key={idx}
@@ -1235,8 +1218,8 @@ export default function RegisterWizard() {
                       onClick={() => setCurrentSlide(idx)}
                       className={`transition-all rounded-full ${
                         idx === currentSlide 
-                          ? 'w-4 h-1 bg-blue-600 shadow-sm' 
-                          : 'w-1 h-1 bg-slate-300 hover:bg-slate-400'
+                          ? 'w-5 h-1.5 bg-blue-600 shadow-sm' 
+                          : 'w-1.5 h-1.5 bg-slate-300 hover:bg-slate-400'
                       }`}
                     />
                   ))}
@@ -1246,7 +1229,7 @@ export default function RegisterWizard() {
 
           </div>
 
-          <div className="text-center text-[9px] text-slate-400 font-medium py-0.5 shrink-0">
+          <div className="text-center text-[10px] text-slate-400 font-medium py-0.5 shrink-0">
             © RuPiKsha Digital Services Private Limited
           </div>
         </div>
