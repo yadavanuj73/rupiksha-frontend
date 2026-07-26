@@ -308,7 +308,7 @@ public class AuthServiceImpl implements AuthService {
         String rolePrefix = switch (roleName) {
             case SUPER_DISTRIBUTOR -> "RPSD";
             case DISTRIBUTOR -> "RPD";
-            case ADMIN, NATIONAL_HEADER, STATE_HEADER, REGIONAL_HEADER, EMPLOYEE -> "RPADM";
+            case ADMIN -> "RPADM";
             default -> "RPR";
         };
         String statePlate = resolveStatePlateCode(state);
@@ -333,39 +333,43 @@ public class AuthServiceImpl implements AuthService {
             return upper;
         }
 
-        if (upper.contains("BIHAR") || upper.contains("MUZAFFARPUR") || upper.contains("PATNA") || upper.contains("NALANDA")) return "BR";
-        if (upper.contains("MAHARASHTRA") || upper.contains("MUMBAI") || upper.contains("PUNE")) return "MH";
-        if (upper.contains("UTTAR PRADESH") || upper.contains("LUCKNOW") || upper.contains("KANPUR") || upper.contains("NOIDA")) return "UP";
-        if (upper.contains("DELHI") || upper.contains("NEW DELHI")) return "DL";
-        if (upper.contains("WEST BENGAL") || upper.contains("BENGAL") || upper.contains("KOLKATA")) return "WB";
-        if (upper.contains("RAJASTHAN") || upper.contains("JAIPUR")) return "RJ";
-        if (upper.contains("PUNJAB") || upper.contains("LUDHIANA")) return "PB";
-        if (upper.contains("HARYANA") || upper.contains("GURGAON") || upper.contains("GURUGRAM")) return "HR";
-        if (upper.contains("GUJARAT") || upper.contains("SURAT") || upper.contains("AHMEDABAD")) return "GJ";
-        if (upper.contains("KARNATAKA") || upper.contains("BANGALORE") || upper.contains("BENGALURU")) return "KA";
-        if (upper.contains("TAMIL NADU") || upper.contains("CHENNAI")) return "TN";
-        if (upper.contains("TELANGANA") || upper.contains("HYDERABAD")) return "TS";
-        if (upper.contains("ANDHRA")) return "AP";
-        if (upper.contains("MADHYA PRADESH") || upper.contains("INDORE") || upper.contains("BHOPAL")) return "MP";
-        if (upper.contains("ODISHA") || upper.contains("ORISSA")) return "OD";
-        if (upper.contains("JHARKHAND") || upper.contains("RANCHI")) return "JH";
-        if (upper.contains("CHHATTISGARH") || upper.contains("RAIPUR")) return "CG";
-        if (upper.contains("ASSAM") || upper.contains("GUWAHATI")) return "AS";
-        if (upper.contains("KERALA")) return "KL";
-        if (upper.contains("UTTARAKHAND") || upper.contains("DEHRADUN")) return "UK";
-        if (upper.contains("HIMACHAL")) return "HP";
-        if (upper.contains("JAMMU") || upper.contains("KASHMIR")) return "JK";
-        if (upper.contains("GOA")) return "GA";
-        if (upper.contains("MANIPUR")) return "MN";
-        if (upper.contains("MEGHALAYA")) return "ML";
-        if (upper.contains("MIZORAM")) return "MZ";
-        if (upper.contains("NAGALAND")) return "NL";
-        if (upper.contains("SIKKIM")) return "SK";
-        if (upper.contains("TRIPURA")) return "TR";
-        if (upper.contains("ARUNACHAL")) return "AR";
-        if (upper.contains("PUDUCHERRY")) return "PY";
+        // 28 States & 8 UTs mapping
+        if (upper.contains("BIHAR") || upper.contains("MUZAFFARPUR") || upper.contains("PATNA") || upper.contains("NALANDA") || upper.contains("GAYA") || upper.contains("BHAGALPUR") || upper.contains("DARBHANGA") || upper.contains("PURNEA")) return "BR";
+        if (upper.contains("MAHARASHTRA") || upper.contains("MUMBAI") || upper.contains("PUNE") || upper.contains("NAGPUR") || upper.contains("THANE") || upper.contains("NASHIK")) return "MH";
+        if (upper.contains("UTTAR PRADESH") || upper.contains("LUCKNOW") || upper.contains("KANPUR") || upper.contains("NOIDA") || upper.contains("VARANASI") || upper.contains("AGRA") || upper.contains("PRAYAGRAJ") || upper.contains("GHAZIABAD")) return "UP";
+        if (upper.contains("DELHI") || upper.contains("NEW DELHI") || upper.contains("NCT")) return "DL";
+        if (upper.contains("WEST BENGAL") || upper.contains("BENGAL") || upper.contains("KOLKATA") || upper.contains("HOWRAH") || upper.contains("SILIGURI")) return "WB";
+        if (upper.contains("RAJASTHAN") || upper.contains("JAIPUR") || upper.contains("JODHPUR") || upper.contains("UDAIPUR") || upper.contains("KOTA")) return "RJ";
+        if (upper.contains("PUNJAB") || upper.contains("LUDHIANA") || upper.contains("AMRITSAR") || upper.contains("JALANDHAR")) return "PB";
+        if (upper.contains("HARYANA") || upper.contains("GURGAON") || upper.contains("GURUGRAM") || upper.contains("FARIDABAD") || upper.contains("PANIPAT")) return "HR";
+        if (upper.contains("GUJARAT") || upper.contains("SURAT") || upper.contains("AHMEDABAD") || upper.contains("VADODARA") || upper.contains("RAJKOT")) return "GJ";
+        if (upper.contains("KARNATAKA") || upper.contains("BANGALORE") || upper.contains("BENGALURU") || upper.contains("MYSORE") || upper.contains("MYSURU")) return "KA";
+        if (upper.contains("TAMIL NADU") || upper.contains("CHENNAI") || upper.contains("COIMBATORE") || upper.contains("MADURAI")) return "TN";
+        if (upper.contains("TELANGANA") || upper.contains("HYDERABAD") || upper.contains("WARANGAL")) return "TS";
+        if (upper.contains("ANDHRA") || upper.contains("VISAKHAPATNAM") || upper.contains("VIJAYAWADA")) return "AP";
+        if (upper.contains("MADHYA PRADESH") || upper.contains("INDORE") || upper.contains("BHOPAL") || upper.contains("GWALIOR") || upper.contains("JABALPUR")) return "MP";
+        if (upper.contains("ODISHA") || upper.contains("ORISSA") || upper.contains("BHUBANESWAR") || upper.contains("CUTTACK")) return "OD";
+        if (upper.contains("JHARKHAND") || upper.contains("RANCHI") || upper.contains("JAMSHEDPUR") || upper.contains("DHANBAD")) return "JH";
+        if (upper.contains("CHHATTISGARH") || upper.contains("RAIPUR") || upper.contains("BILASPUR")) return "CG";
+        if (upper.contains("ASSAM") || upper.contains("GUWAHATI") || upper.contains("DISPUR")) return "AS";
+        if (upper.contains("KERALA") || upper.contains("KOCHI") || upper.contains("THIRUVANANTHAPURAM") || upper.contains("TRIVANDRUM")) return "KL";
+        if (upper.contains("UTTARAKHAND") || upper.contains("UTTARANCHAL") || upper.contains("DEHRADUN") || upper.contains("HARIDWAR")) return "UK";
+        if (upper.contains("HIMACHAL") || upper.contains("SHIMLA")) return "HP";
+        if (upper.contains("JAMMU") || upper.contains("KASHMIR") || upper.contains("SRINAGAR")) return "JK";
+        if (upper.contains("GOA") || upper.contains("PANAJI")) return "GA";
+        if (upper.contains("MANIPUR") || upper.contains("IMPHAL")) return "MN";
+        if (upper.contains("MEGHALAYA") || upper.contains("SHILLONG")) return "ML";
+        if (upper.contains("MIZORAM") || upper.contains("AIZAWL")) return "MZ";
+        if (upper.contains("NAGALAND") || upper.contains("KOHIMA")) return "NL";
+        if (upper.contains("SIKKIM") || upper.contains("GANGTOK")) return "SK";
+        if (upper.contains("TRIPURA") || upper.contains("AGARTALA")) return "TR";
+        if (upper.contains("ARUNACHAL") || upper.contains("ITANAGAR")) return "AR";
+        if (upper.contains("PUDUCHERRY") || upper.contains("PONDICHERRY")) return "PY";
         if (upper.contains("CHANDIGARH")) return "CH";
-        if (upper.contains("LADAKH")) return "LA";
+        if (upper.contains("LADAKH") || upper.contains("LEH")) return "LA";
+        if (upper.contains("ANDAMAN") || upper.contains("NICOBAR") || upper.contains("PORT BLAIR")) return "AN";
+        if (upper.contains("DADRA") || upper.contains("DAMAN") || upper.contains("DIU")) return "DN";
+        if (upper.contains("LAKSHADWEEP") || upper.contains("KAVARATTI")) return "LD";
 
         return "BR";
     }
