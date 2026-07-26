@@ -414,17 +414,17 @@ export default function RegisterWizard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans relative overflow-x-hidden">
+    <div className="h-screen max-h-screen w-screen bg-slate-50 flex flex-col font-sans relative overflow-hidden">
       
-      {/* ── Top Header Navigation Bar (Matches Image 1) ── */}
-      <header className="w-full bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 md:px-8 py-3 flex items-center justify-between z-30 sticky top-0 shadow-sm">
+      {/* ── Top Header Navigation Bar (Locked at top) ── */}
+      <header className="w-full h-14 bg-white/95 backdrop-blur-md border-b border-slate-100 px-4 md:px-8 py-2.5 flex items-center justify-between z-30 shrink-0 shadow-sm">
         <motion.div 
           initial={{ opacity: 0, x: -10 }} 
           animate={{ opacity: 1, x: 0 }}
           className="flex items-center gap-3 cursor-pointer" 
           onClick={() => navigate('/login')}
         >
-          <img src={logo} alt="RUPIKSHA" style={{ height: '40px', width: 'auto' }} className="object-contain" />
+          <img src={logo} alt="RUPIKSHA" style={{ height: '38px', width: 'auto' }} className="object-contain" />
         </motion.div>
 
         <div className="flex items-center gap-3 md:gap-5">
@@ -469,33 +469,33 @@ export default function RegisterWizard() {
         </div>
       </header>
 
-      {/* ── Main Content Area (Two-Column Layout) ── */}
-      <main className="flex-1 grid grid-cols-1 md:grid-cols-12 min-h-[calc(100vh-65px)]">
+      {/* ── Main Content Area (Two-Column Fixed Layout) ── */}
+      <main className="flex-1 grid grid-cols-1 md:grid-cols-12 h-[calc(100vh-56px)] overflow-hidden">
         
-        {/* ── LEFT COLUMN: Registration Form Card (Expanded Width) ── */}
-        <div className="md:col-span-7 lg:col-span-8 xl:col-span-9 p-4 sm:p-6 lg:p-8 flex flex-col justify-center items-center bg-gradient-to-br from-amber-50/50 via-blue-50/30 to-slate-50 overflow-y-auto">
+        {/* ── LEFT COLUMN: Registration Form Card (Fills Left Area) ── */}
+        <div className="md:col-span-7 lg:col-span-8 xl:col-span-8 p-3 sm:p-4 lg:p-6 flex flex-col justify-center items-center bg-gradient-to-br from-amber-50/50 via-blue-50/30 to-slate-50 overflow-hidden h-full">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className="w-full max-w-2xl lg:max-w-3xl space-y-3 sm:space-y-4"
+            className="w-full max-w-2xl lg:max-w-3xl xl:max-w-4xl flex flex-col justify-center max-h-full py-1"
           >
             {/* Header Title */}
-            <div className="space-y-1 text-center sm:text-left">
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            <div className="space-y-0.5 text-center sm:text-left mb-2">
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                 Welcome to <span className="text-blue-600">Rupiksha</span>
               </h2>
-              <p className="text-xs sm:text-sm text-slate-500 font-medium">
+              <p className="text-[11px] sm:text-xs text-slate-500 font-medium">
                 Create your partner account & complete instant auto-approval onboarding
               </p>
             </div>
 
             {/* Main Form White Card */}
-            <div className="bg-white rounded-3xl shadow-2xl shadow-blue-100/70 border border-blue-50 overflow-hidden text-slate-800">
+            <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl shadow-blue-100/70 border border-blue-50 overflow-hidden text-slate-800 flex flex-col max-h-full">
               
               {/* Blue Header Pill Banner */}
-              <div className="bg-blue-600 py-3.5 px-4 text-center shadow-sm">
-                <span className="text-white text-xs sm:text-sm font-black uppercase tracking-[0.2em]">
+              <div className="bg-blue-600 py-2.5 px-4 text-center shadow-sm shrink-0">
+                <span className="text-white text-xs font-black uppercase tracking-[0.2em]">
                   {step === 1 && 'NEW PARTNER REGISTRATION'}
                   {step === 2 && 'MOBILE OTP VERIFICATION'}
                   {step === 3 && 'ONBOARDING & KYC DOCUMENTS'}
@@ -503,11 +503,11 @@ export default function RegisterWizard() {
                 </span>
               </div>
 
-              <div className="p-4 sm:p-6 space-y-4">
+              <div className="p-3.5 sm:p-4 space-y-2.5 flex-1 flex flex-col justify-center overflow-hidden">
                 
                 {/* Step Indicator Bar */}
                 {step < 4 && (
-                  <div className="flex items-center justify-between mb-4 px-2 sm:px-6 relative">
+                  <div className="flex items-center justify-between mb-2 px-2 sm:px-6 relative shrink-0">
                     <div className="absolute top-1/2 left-6 right-6 h-0.5 bg-slate-200 -translate-y-1/2 z-0" />
                     <div 
                       className="absolute top-1/2 left-6 h-0.5 bg-blue-600 -translate-y-1/2 z-0 transition-all duration-300"
@@ -520,16 +520,16 @@ export default function RegisterWizard() {
                       { num: 3, label: 'PIN & Documents' }
                     ].map(s => (
                       <div key={s.num} className="relative z-10 flex flex-col items-center">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-300 ${
+                        <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-300 ${
                           step > s.num 
                             ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' 
                             : step === s.num 
                             ? 'bg-blue-600 text-white ring-4 ring-blue-100 shadow-md' 
                             : 'bg-slate-100 text-slate-400 border border-slate-200'
                         }`}>
-                          {step > s.num ? <CheckCircle2 className="w-4 h-4" /> : s.num}
+                          {step > s.num ? <CheckCircle2 className="w-3.5 h-3.5" /> : s.num}
                         </div>
-                        <span className={`text-[10px] sm:text-xs font-bold mt-1 ${step >= s.num ? 'text-blue-600' : 'text-slate-400'}`}>
+                        <span className={`text-[10px] sm:text-[11px] font-bold mt-0.5 ${step >= s.num ? 'text-blue-600' : 'text-slate-400'}`}>
                           {s.label}
                         </span>
                       </div>
@@ -541,10 +541,10 @@ export default function RegisterWizard() {
                 <AnimatePresence>
                   {error && (
                     <motion.div 
-                      initial={{ opacity: 0, y: -6 }} 
+                      initial={{ opacity: 0, y: -4 }} 
                       animate={{ opacity: 1, y: 0 }} 
                       exit={{ opacity: 0 }}
-                      className="p-3 rounded-xl bg-rose-50 border border-rose-200 flex items-center gap-2 text-rose-600 text-xs font-semibold"
+                      className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 flex items-center gap-2 text-rose-600 text-xs font-semibold shrink-0"
                     >
                       <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
                       <span>{error}</span>
@@ -552,12 +552,12 @@ export default function RegisterWizard() {
                   )}
                 </AnimatePresence>
 
-                {/* ── STEP 1: FIRST NAME, LAST NAME & ACCOUNT INFO ── */}
+                {/* ── STEP 1: FIRST NAME, LAST NAME & ACCOUNT INFO (No Vertical Scroll) ── */}
                 {step === 1 && (
-                  <form onSubmit={handleStep1Continue} className="space-y-3.5">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <form onSubmit={handleStep1Continue} className="space-y-2.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       <div>
-                        <label className="block text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                        <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-0.5">
                           First Name *
                         </label>
                         <div className="relative">
@@ -569,13 +569,13 @@ export default function RegisterWizard() {
                             onChange={handleChange}
                             placeholder="First Name"
                             required
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                        <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-0.5">
                           Last Name *
                         </label>
                         <div className="relative">
@@ -587,15 +587,15 @@ export default function RegisterWizard() {
                             onChange={handleChange}
                             placeholder="Last Name"
                             required
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
                           />
                         </div>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       <div>
-                        <label className="block text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                        <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-0.5">
                           Mobile Number * (10 Digits)
                         </label>
                         <div className="relative">
@@ -608,13 +608,13 @@ export default function RegisterWizard() {
                             onChange={handleChange}
                             placeholder="e.g. 9876543210"
                             required
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                        <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-0.5">
                           Email Address
                         </label>
                         <div className="relative">
@@ -625,15 +625,15 @@ export default function RegisterWizard() {
                             value={formData.email}
                             onChange={handleChange}
                             placeholder="name@example.com"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
                           />
                         </div>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       <div>
-                        <label className="block text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                        <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-0.5">
                           Password *
                         </label>
                         <div className="relative">
@@ -645,13 +645,13 @@ export default function RegisterWizard() {
                             onChange={handleChange}
                             placeholder="••••••••"
                             required
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                        <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-0.5">
                           Confirm Password *
                         </label>
                         <div className="relative">
@@ -663,16 +663,16 @@ export default function RegisterWizard() {
                             onChange={handleChange}
                             placeholder="••••••••"
                             required
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
                           />
                         </div>
                       </div>
                     </div>
 
                     {/* Role Selector & Parent Option */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       <div>
-                        <label className="block text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                        <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-0.5">
                           Partner Role
                         </label>
                         <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
@@ -687,7 +687,7 @@ export default function RegisterWizard() {
                                 key={r.id}
                                 type="button"
                                 onClick={() => setFormData(prev => ({ ...prev, role: r.id }))}
-                                className={`flex-1 py-2 px-1 rounded-lg font-bold text-[11px] transition-all ${
+                                className={`flex-1 py-1.5 px-1 rounded-lg font-bold text-[11px] transition-all ${
                                   isSelected
                                     ? 'bg-blue-600 text-white shadow-sm'
                                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
@@ -701,14 +701,14 @@ export default function RegisterWizard() {
                       </div>
 
                       <div>
-                        <label className="block text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                        <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-0.5">
                           Assign Parent (Optional)
                         </label>
                         <select
                           name="parentUserId"
                           value={formData.parentUserId}
                           onChange={handleChange}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-800 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
                         >
                           <option value="">-- Direct Parent --</option>
                           {parents.map(p => (
@@ -723,12 +723,12 @@ export default function RegisterWizard() {
                     <button
                       type="submit"
                       disabled={loading}
-                      className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 text-xs sm:text-sm transition-all disabled:opacity-50 active:scale-[0.99]"
+                      className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 text-xs sm:text-sm transition-all disabled:opacity-50 active:scale-[0.99]"
                     >
                       {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <>Continue & Send Mobile OTP <ArrowRight className="w-4 h-4" /></>}
                     </button>
 
-                    <div className="pt-2 flex items-center justify-center gap-4 text-xs font-bold uppercase tracking-wider text-slate-500 border-t border-slate-100 mt-3">
+                    <div className="pt-1.5 flex items-center justify-center gap-4 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-t border-slate-100 mt-2">
                       <Link to="/login" className="text-blue-600 hover:underline flex items-center gap-1">
                         <User size={13} /> Already Registered? Login
                       </Link>
@@ -736,11 +736,11 @@ export default function RegisterWizard() {
                   </form>
                 )}
 
-                {/* ── STEP 2: MOBILE OTP VERIFICATION ── */}
+                {/* ── STEP 2: MOBILE OTP VERIFICATION (No Vertical Scroll) ── */}
                 {step === 2 && (
-                  <form onSubmit={handleVerifyOtp} className="space-y-4 text-center py-2">
-                    <div className="p-4 rounded-2xl bg-blue-50 border border-blue-100 text-blue-900 text-xs sm:text-sm font-medium">
-                      <Send className="w-6 h-6 mx-auto mb-2 text-blue-600" />
+                  <form onSubmit={handleVerifyOtp} className="space-y-3 text-center py-2">
+                    <div className="p-3.5 rounded-2xl bg-blue-50 border border-blue-100 text-blue-900 text-xs sm:text-sm font-medium">
+                      <Send className="w-5 h-5 mx-auto mb-1.5 text-blue-600" />
                       OTP has been sent to <strong>+91 {formData.mobile}</strong> via mobile SMS.
                     </div>
 
@@ -756,7 +756,7 @@ export default function RegisterWizard() {
                         onChange={handleChange}
                         placeholder="123456"
                         required
-                        className="w-full max-w-xs mx-auto bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-center text-2xl font-mono tracking-widest text-blue-600 focus:outline-none focus:border-blue-600 focus:bg-white shadow-inner"
+                        className="w-full max-w-xs mx-auto bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-center text-xl font-mono tracking-widest text-blue-600 focus:outline-none focus:border-blue-600 focus:bg-white shadow-inner"
                       />
                     </div>
 
@@ -782,26 +782,26 @@ export default function RegisterWizard() {
                     <button
                       type="submit"
                       disabled={loading}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 text-sm transition-all disabled:opacity-50 active:scale-[0.99]"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 text-sm transition-all disabled:opacity-50 active:scale-[0.99]"
                     >
                       {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <>Verify OTP & Proceed <ArrowRight className="w-4 h-4" /></>}
                     </button>
                   </form>
                 )}
 
-                {/* ── STEP 3: SECURITY PIN + ONBOARDING DETAILS (BUSINESS, ADDRESS, KYC & DOCUMENTS) ── */}
+                {/* ── STEP 3: SECURITY PIN + ONBOARDING DETAILS (Scrollable inside form only) ── */}
                 {step === 3 && (
-                  <form onSubmit={handleCompleteRegistration} className="space-y-4 max-h-[60vh] overflow-y-auto pr-1 text-left">
+                  <form onSubmit={handleCompleteRegistration} className="space-y-3.5 max-h-[calc(100vh-210px)] overflow-y-auto pr-1 text-left">
                     
                     {/* Section 1: Security PIN */}
-                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-3">
-                      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/80 space-y-2.5">
+                      <div className="flex items-center gap-2 border-b border-slate-200 pb-1.5">
                         <KeyRound className="w-4 h-4 text-blue-600" />
                         <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">1. Create Security Login PIN</h3>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-0.5">
                             4-Digit Login PIN *
                           </label>
                           <input
@@ -812,11 +812,11 @@ export default function RegisterWizard() {
                             onChange={handleChange}
                             placeholder="••••"
                             required
-                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-center text-sm font-mono tracking-widest text-slate-900 focus:outline-none focus:border-blue-600 shadow-sm"
+                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-center text-sm font-mono tracking-widest text-slate-900 focus:outline-none focus:border-blue-600 shadow-sm"
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-0.5">
                             Confirm Login PIN *
                           </label>
                           <input
@@ -827,22 +827,22 @@ export default function RegisterWizard() {
                             onChange={handleChange}
                             placeholder="••••"
                             required
-                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-center text-sm font-mono tracking-widest text-slate-900 focus:outline-none focus:border-blue-600 shadow-sm"
+                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-center text-sm font-mono tracking-widest text-slate-900 focus:outline-none focus:border-blue-600 shadow-sm"
                           />
                         </div>
                       </div>
                     </div>
 
                     {/* Section 2: Business & Address Details */}
-                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-3">
-                      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/80 space-y-2.5">
+                      <div className="flex items-center gap-2 border-b border-slate-200 pb-1.5">
                         <Building className="w-4 h-4 text-blue-600" />
                         <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">2. Business & Address Details</h3>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Shop / Business Name *</label>
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">Shop / Business Name *</label>
                           <input 
                             type="text" 
                             name="businessName" 
@@ -854,7 +854,7 @@ export default function RegisterWizard() {
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Shop Address *</label>
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">Shop Address *</label>
                           <input 
                             type="text" 
                             name="shopAddress" 
@@ -867,9 +867,9 @@ export default function RegisterWizard() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Permanent Address *</label>
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">Permanent Address *</label>
                           <input 
                             type="text" 
                             name="permanentAddress" 
@@ -882,7 +882,7 @@ export default function RegisterWizard() {
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">
                             Pincode * <span className="text-[9px] text-blue-600 font-semibold">(Auto-fills City & State)</span>
                           </label>
                           <input 
@@ -898,9 +898,9 @@ export default function RegisterWizard() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">State *</label>
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">State *</label>
                           <select 
                             name="state" 
                             value={formData.state} 
@@ -915,7 +915,7 @@ export default function RegisterWizard() {
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">City / District *</label>
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">City / District *</label>
                           <input 
                             type="text" 
                             name="city" 
@@ -930,15 +930,15 @@ export default function RegisterWizard() {
                     </div>
 
                     {/* Section 3: KYC & Banking */}
-                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-3">
-                      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/80 space-y-2.5">
+                      <div className="flex items-center gap-2 border-b border-slate-200 pb-1.5">
                         <CreditCard className="w-4 h-4 text-blue-600" />
                         <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">3. KYC & FINANCE DETAILS</h3>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">
                             Aadhaar Number * <span className="text-[9px] text-slate-400">(12 Digits)</span>
                           </label>
                           <input 
@@ -954,7 +954,7 @@ export default function RegisterWizard() {
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">PAN Card Number *</label>
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">PAN Card Number *</label>
                           <input 
                             type="text" 
                             name="panNumber" 
@@ -968,11 +968,11 @@ export default function RegisterWizard() {
                         </div>
                       </div>
 
-                      <div className="pt-2 border-t border-slate-200">
-                        <p className="text-[11px] font-bold text-blue-600 uppercase tracking-wider mb-2">Bank Account & Settlement Details</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-2.5">
+                      <div className="pt-1.5 border-t border-slate-200">
+                        <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1.5">Bank Account & Settlement Details</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
                           <div>
-                            <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Account Holder Name *</label>
+                            <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">Account Holder Name *</label>
                             <input 
                               type="text" 
                               name="bankAccountHolder" 
@@ -985,7 +985,7 @@ export default function RegisterWizard() {
                           </div>
 
                           <div>
-                            <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Account Number *</label>
+                            <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">Account Number *</label>
                             <input 
                               type="text" 
                               name="bankAccountNumber" 
@@ -998,7 +998,7 @@ export default function RegisterWizard() {
                           </div>
 
                           <div>
-                            <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Bank Name *</label>
+                            <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">Bank Name *</label>
                             <input 
                               type="text" 
                               name="bankName" 
@@ -1011,9 +1011,9 @@ export default function RegisterWizard() {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           <div>
-                            <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">IFSC Code *</label>
+                            <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">IFSC Code *</label>
                             <input 
                               type="text" 
                               name="bankIfsc" 
@@ -1026,7 +1026,7 @@ export default function RegisterWizard() {
                           </div>
 
                           <div>
-                            <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">UPI ID (Optional)</label>
+                            <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">UPI ID (Optional)</label>
                             <input 
                               type="text" 
                               name="upiId" 
@@ -1041,13 +1041,13 @@ export default function RegisterWizard() {
                     </div>
 
                     {/* Section 4: Document & Photo Uploads */}
-                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-3">
-                      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/80 space-y-2.5">
+                      <div className="flex items-center gap-2 border-b border-slate-200 pb-1.5">
                         <Camera className="w-4 h-4 text-blue-600" />
                         <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">4. DOCUMENT & PHOTO UPLOADS</h3>
                       </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {[
                           { key: 'aadhaarPhotoUrl', label: 'Aadhaar Front' },
                           { key: 'aadhaarBackPhotoUrl', label: 'Aadhaar Back' },
@@ -1057,21 +1057,21 @@ export default function RegisterWizard() {
                           { key: 'liveSelfieUrl', label: 'User Live Selfie' },
                           { key: 'electricityBillUrl', label: 'Electricity Bill' },
                         ].map((doc) => (
-                          <div key={doc.key} className="bg-white p-2.5 rounded-xl border border-slate-200 flex flex-col justify-between shadow-sm">
+                          <div key={doc.key} className="bg-white p-2 rounded-xl border border-slate-200 flex flex-col justify-between shadow-sm">
                             <div>
-                              <p className="text-[10px] font-bold text-slate-700 uppercase tracking-wide truncate mb-1">{doc.label}</p>
+                              <p className="text-[9px] font-bold text-slate-700 uppercase tracking-wide truncate mb-1">{doc.label}</p>
                               {formData[doc.key] ? (
-                                <div className="relative w-full h-16 rounded-lg overflow-hidden border border-blue-500 mb-2">
+                                <div className="relative w-full h-14 rounded-lg overflow-hidden border border-blue-500 mb-1.5">
                                   <img src={formData[doc.key]} alt={doc.label} className="w-full h-full object-cover" />
                                 </div>
                               ) : (
-                                <div className="w-full h-16 rounded-lg border border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center text-slate-400 mb-2">
-                                  <ImageIcon className="w-5 h-5 mb-0.5" />
-                                  <span className="text-[9px]">No file</span>
+                                <div className="w-full h-14 rounded-lg border border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center text-slate-400 mb-1.5">
+                                  <ImageIcon className="w-4 h-4 mb-0.5" />
+                                  <span className="text-[8px]">No file</span>
                                 </div>
                               )}
                             </div>
-                            <label className="cursor-pointer w-full py-1 px-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg text-[10px] font-bold text-blue-600 flex items-center justify-center gap-1 transition-colors">
+                            <label className="cursor-pointer w-full py-1 px-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg text-[9px] font-bold text-blue-600 flex items-center justify-center gap-1 transition-colors">
                               <Upload className="w-3 h-3" /> Upload
                               <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(doc.key, e)} />
                             </label>
@@ -1083,7 +1083,7 @@ export default function RegisterWizard() {
                     <button
                       type="submit"
                       disabled={loading}
-                      className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 text-sm transition-all disabled:opacity-50 active:scale-[0.99]"
+                      className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 text-sm transition-all disabled:opacity-50 active:scale-[0.99]"
                     >
                       {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <>Submit & Auto-Approve Registration <Sparkles className="w-4 h-4" /></>}
                     </button>
@@ -1092,35 +1092,35 @@ export default function RegisterWizard() {
 
                 {/* ── STEP 4: AUTO APPROVAL SUCCESS & LOGIN ── */}
                 {step === 4 && (
-                  <div className="text-center py-4 space-y-4">
-                    <div className="w-16 h-16 rounded-full bg-emerald-100 border-2 border-emerald-500 flex items-center justify-center mx-auto text-emerald-600 shadow-lg shadow-emerald-500/20">
-                      <CheckCircle2 className="w-10 h-10" />
+                  <div className="text-center py-2 space-y-3">
+                    <div className="w-14 h-14 rounded-full bg-emerald-100 border-2 border-emerald-500 flex items-center justify-center mx-auto text-emerald-600 shadow-lg shadow-emerald-500/20">
+                      <CheckCircle2 className="w-8 h-8" />
                     </div>
 
                     <div>
-                      <span className="px-3.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold uppercase tracking-wider">
+                      <span className="px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold uppercase tracking-wider">
                         STATUS: AUTO APPROVED & ACTIVE
                       </span>
-                      <h2 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">Welcome to Rupiksha!</h2>
-                      <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                      <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-1.5">Welcome to Rupiksha!</h2>
+                      <p className="text-xs text-slate-500 mt-0.5 max-w-md mx-auto">
                         Your partner account has been successfully registered and <strong>APPROVED</strong>.
                       </p>
                     </div>
 
-                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-left text-xs space-y-2 text-slate-700 max-w-md mx-auto">
-                      <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                    <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-left text-xs space-y-1.5 text-slate-700 max-w-md mx-auto">
+                      <div className="flex justify-between border-b border-slate-200 pb-1">
                         <span className="text-slate-400">Full Name:</span>
                         <span className="font-bold text-slate-900">{formData.firstName} {formData.lastName}</span>
                       </div>
-                      <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                      <div className="flex justify-between border-b border-slate-200 pb-1">
                         <span className="text-slate-400">Mobile Number:</span>
                         <span className="font-mono font-bold text-slate-900">+91 {formData.mobile}</span>
                       </div>
-                      <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                      <div className="flex justify-between border-b border-slate-200 pb-1">
                         <span className="text-slate-400">Partner Role:</span>
                         <span className="font-bold text-blue-600">{formData.role}</span>
                       </div>
-                      <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                      <div className="flex justify-between border-b border-slate-200 pb-1">
                         <span className="text-slate-400">State:</span>
                         <span className="font-bold text-slate-900">{formData.state}</span>
                       </div>
@@ -1133,7 +1133,7 @@ export default function RegisterWizard() {
                     <button
                       onClick={handleImmediateLogin}
                       disabled={loading}
-                      className="w-full max-w-md mx-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 text-sm transition-all active:scale-[0.99]"
+                      className="w-full max-w-md mx-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 text-sm transition-all active:scale-[0.99]"
                     >
                       {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <>Login Immediately & Open Dashboard <ArrowRight className="w-5 h-5" /></>}
                     </button>
@@ -1145,21 +1145,21 @@ export default function RegisterWizard() {
           </motion.div>
         </div>
 
-        {/* ── RIGHT COLUMN: Animated Image Carousel Slider (No Vertical Scroll) ── */}
-        <div className="hidden md:flex md:col-span-5 lg:col-span-4 xl:col-span-3 bg-blue-50/80 border-l border-blue-100/60 p-4 lg:p-6 flex-col justify-between items-center relative overflow-hidden h-full">
+        {/* ── RIGHT COLUMN: Animated Image Carousel Slider (No Vertical Scroll, Enlarged Frame) ── */}
+        <div className="hidden md:flex md:col-span-5 lg:col-span-4 xl:col-span-4 bg-blue-50/80 border-l border-blue-100/60 p-4 lg:p-6 flex-col justify-center items-center relative overflow-hidden h-full shrink-0">
           
           {/* Ambient Decorative Blurs */}
           <div className="absolute top-0 right-0 w-[25rem] h-[25rem] bg-blue-500/5 rounded-full blur-[80px] pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-[20rem] h-[20rem] bg-indigo-500/5 rounded-full blur-[80px] pointer-events-none" />
 
-          <div className="relative z-10 w-full max-w-sm my-auto space-y-4">
+          <div className="relative z-10 w-full max-w-md mx-auto space-y-3 flex flex-col items-center justify-center my-auto">
             
             {/* ── ANIMATED IMAGE CAROUSEL / CARD HOLDER SLIDER ── */}
             <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5 }}
-              className="space-y-2.5"
+              className="w-full space-y-2.5"
             >
               <div className="flex items-center justify-between px-1">
                 <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-100/70 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
@@ -1171,12 +1171,12 @@ export default function RegisterWizard() {
               </div>
 
               <div 
-                className="relative bg-white rounded-3xl p-3 shadow-xl shadow-blue-900/10 border border-blue-100 overflow-hidden group"
+                className="relative bg-white rounded-3xl p-3 sm:p-4 shadow-xl shadow-blue-900/10 border border-blue-100 overflow-hidden group w-full"
                 onMouseEnter={() => setIsCarouselPaused(true)}
                 onMouseLeave={() => setIsCarouselPaused(false)}
               >
-                {/* Carousel Image Container */}
-                <div className="relative h-64 lg:h-80 rounded-2xl overflow-hidden bg-slate-900 flex items-center justify-center">
+                {/* Carousel Image Container (Enlarged Height & Width) */}
+                <div className="relative h-[22rem] lg:h-[26rem] xl:h-[28rem] rounded-2xl overflow-hidden bg-slate-900 flex items-center justify-center">
                   
                   <AnimatePresence mode="wait">
                     <motion.div
@@ -1246,7 +1246,7 @@ export default function RegisterWizard() {
 
           </div>
 
-          <div className="text-center text-[10px] text-slate-400 font-medium py-1">
+          <div className="text-center text-[10px] text-slate-400 font-medium py-1 shrink-0">
             © RuPiKsha Digital Services Private Limited
           </div>
         </div>
@@ -1275,3 +1275,4 @@ export default function RegisterWizard() {
     </div>
   );
 }
+
