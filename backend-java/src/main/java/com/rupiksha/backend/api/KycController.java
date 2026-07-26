@@ -11,6 +11,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
+import com.rupiksha.backend.repository.UserServiceRepository;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -18,6 +22,28 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class KycController {
     private final UserRepository userRepository;
+    private final UserServiceRepository userServiceRepository;
+
+    @GetMapping("/services")
+    public Map<String, Boolean> getUserServices(@AuthenticationPrincipal JwtPrincipal principal) {
+        if (principal == null) throw new IllegalArgumentException("Unauthorized");
+        UUID userId = UUID.fromString(principal.userId());
+        List<com.rupiksha.backend.domain.UserService> services = userServiceRepository.findByUserId(userId);
+        Map<String, Boolean> statusMap = new HashMap<>();
+        for (com.rupiksha.backend.domain.UserService s : services) {
+            statusMap.put(s.getServiceType().name(), s.getIsEnabled());
+        }
+        for (com.rupiksha.backend.domain.ServiceType type : com.rupiksha.backend.domain.ServiceType.values()) {
+            if (!statusMap.containsKey(type.name())) {
+                boolean def = switch (type) {
+                    case AEPS, BBPS, PAYOUT, DMT -> false;
+                    default -> true;
+                };
+                statusMap.put(type.name(), def);
+            }
+        }
+        return statusMap;
+    }
 
     @PostMapping("/submit-kyc")
     public KycDtos.KycStatusResponse submitKyc(

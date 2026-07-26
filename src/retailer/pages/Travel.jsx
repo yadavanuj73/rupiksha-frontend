@@ -8,6 +8,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { dataService } from '../../services/dataService';
 import { initSpeech, speak } from '../../services/speechService';
 
+import { userService } from '../../services/apiService';
+import DisabledServiceBanner from '../../components/shared/DisabledServiceBanner';
+
 const Icon3D = ({ icon: Icon, color, size = 48, shadow }) => (
     <div className="flex items-center justify-center rounded-2xl" style={{
         width: size, height: size, background: `linear-gradient(135deg, ${color}, ${color}dd)`,
@@ -25,14 +28,31 @@ const INDIAN_CITIES = ["Mumbai", "Delhi", "Bangalore", "Hyderabad", "Ahmedabad"]
 const Travel = () => {
     const [activeTab, setActiveTab] = useState('air');
     const [loading, setLoading] = useState(false);
+    const [serviceDisabled, setServiceDisabled] = useState(false);
     const [user, setUser] = useState(null);
     const [location, setLocation] = useState({ lat: '...', long: '...' });
 
     useEffect(() => {
+        const checkService = async () => {
+            try {
+                const services = await userService.getUserServices();
+                if (services && services.TRAVEL === false) {
+                    setServiceDisabled(true);
+                }
+            } catch (e) {
+                console.warn("Could not check Travel service status", e);
+            }
+        };
+        checkService();
+
         const currentUser = dataService.getCurrentUser();
         setUser(currentUser);
         dataService.verifyLocation().then(loc => setLocation(loc));
     }, []);
+
+    if (serviceDisabled) {
+        return <DisabledServiceBanner serviceName="Travel Services" />;
+    }
 
     const NAVY = '#0f2557';
     const NAVY3 = '#2257a8';

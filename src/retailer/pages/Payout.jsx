@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { payoutService } from '../../services/apiService';
+import { payoutService, userService } from '../../services/apiService';
+import DisabledServiceBanner from '../../components/shared/DisabledServiceBanner';
 
 const Payout = () => {
   const [formData, setFormData] = useState({
@@ -17,14 +18,30 @@ const Payout = () => {
 
   const [orderId, setOrderId] = useState('');
   const [loading, setLoading] = useState(false);
+  const [serviceDisabled, setServiceDisabled] = useState(false);
   const [response, setResponse] = useState(null);
   const [error, setError] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [showTransactions, setShowTransactions] = useState(false);
 
   useEffect(() => {
+    const checkService = async () => {
+      try {
+        const services = await userService.getUserServices();
+        if (services && services.PAYOUT === false) {
+          setServiceDisabled(true);
+        }
+      } catch (e) {
+        console.warn("Could not verify payout service status", e);
+      }
+    };
+    checkService();
     generateOrderId();
   }, []);
+
+  if (serviceDisabled) {
+    return <DisabledServiceBanner serviceName="Payout" />;
+  }
 
   const generateOrderId = async () => {
     try {

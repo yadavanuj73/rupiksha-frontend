@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { initSpeech, speak, announceSuccess, announceFailure, announceProcessing, announceError, announceWarning, announceGrandSuccess } from '../../services/speechService';
 import { dataService } from '../../services/dataService';
+import { userService } from '../../services/apiService';
+import DisabledServiceBanner from '../../components/shared/DisabledServiceBanner';
 
 /* ── Constants ── */
 const NAVY = '#0f2557';
@@ -42,61 +44,61 @@ function GrandSuccessScreen({ title, subtitle, details = [], onReset, resetLabel
         { x: 88, y: 10, s: 7, dur: 2.6, delay: 0.3, col: '#fbbf24' },
         { x: 20, y: 75, s: 14, dur: 1.9, delay: 0.6, col: '#6ee7b7' },
         { x: 78, y: 80, s: 9, dur: 2.4, delay: 0.2, col: '#a78bfa' },
+        { x: 50, y: 5, s: 6, dur: 2.8, delay: 0.9, col: '#38bdf8' },
+        { x: 5, y: 50, s: 11, dur: 2.0, delay: 1.1, col: '#34d399' },
+        { x: 93, y: 45, s: 8, dur: 2.3, delay: 0.4, col: '#fbbf24' },
+        { x: 40, y: 90, s: 13, dur: 1.7, delay: 0.8, col: '#10b981' },
+        { x: 65, y: 20, s: 5, dur: 3.0, delay: 1.4, col: '#a78bfa' },
+        { x: 30, y: 35, s: 7, dur: 2.2, delay: 0.5, col: '#38bdf8' },
     ];
 
     return (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="relative flex flex-col items-center justify-center min-h-[62vh] py-10 overflow-hidden">
-            <div className="absolute inset-0 pointer-events-none"
-                style={{ background: 'radial-gradient(ellipse at 50% 38%, rgba(16,185,129,0.14) 0%, rgba(15,37,87,0.06) 62%, transparent 100%)' }} />
+        <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md" style={{ fontFamily: "'Inter', sans-serif" }}>
 
             {DOTS.map((d, i) => (
-                <motion.div key={i} className="absolute rounded-full pointer-events-none"
-                    style={{ left: `${d.x}%`, top: `${d.y}%`, width: d.s, height: d.s, background: d.col, opacity: 0.55 }}
-                    animate={{ y: [-10, 12, -10], opacity: [0.4, 0.85, 0.4], scale: [1, 1.4, 1] }}
-                    transition={{ duration: d.dur, repeat: Infinity, delay: d.delay, ease: 'easeInOut' }} />
+                <motion.div key={i} animate={{ y: [0, -18, 0], opacity: [0.3, 0.8, 0.3] }}
+                    transition={{ duration: d.dur, repeat: Infinity, delay: d.delay }}
+                    style={{ position: 'absolute', left: `${d.x}%`, top: `${d.y}%`, width: d.s, height: d.s, borderRadius: '50%', background: d.col, pointerEvents: 'none' }} />
             ))}
 
-            <motion.div className="relative flex items-center justify-center"
-                initial={{ scale: 0.15, rotate: -25 }} animate={{ scale: 1, rotate: 0 }}
-                transition={{ type: 'spring', stiffness: 230, damping: 13 }}>
-                <div className="w-28 h-28 rounded-full flex items-center justify-center"
-                    style={{ background: 'linear-gradient(145deg, #10b981, #059669)', boxShadow: '0 0 0 7px rgba(16,185,129,0.18), 0 22px 55px rgba(16,185,129,0.55)' }}>
-                    <motion.span style={{ fontSize: 54, lineHeight: 1 }} animate={{ rotateY: [0, 360] }} transition={{ duration: 1.8, delay: 0.4 }}>🏆</motion.span>
-                </div>
-            </motion.div>
+            <motion.div initial={{ scale: 0.8, y: 30 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.8, y: 30 }} transition={{ type: 'spring', damping: 20 }}
+                className="bg-white rounded-3xl p-8 max-w-md w-full text-center relative overflow-hidden shadow-2xl border border-slate-100">
 
-            <motion.div className="text-center mt-7 space-y-1 px-4" initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-                <h2 className="text-3xl font-black text-slate-900 leading-tight">{title}</h2>
-                <p className="text-slate-500 text-sm mt-1">{subtitle}</p>
-            </motion.div>
+                <div className="absolute top-0 left-0 right-0 h-3 bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500" />
 
-            <motion.div className="mt-8 w-full max-w-sm rounded-[2.5rem] overflow-hidden bg-white shadow-2xl border border-emerald-100">
-                <div className="bg-slate-900 text-white px-8 py-4 flex justify-between items-center">
-                    <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Micro-ATM Receipt</p>
-                    <div className="bg-emerald-500 h-2 w-2 rounded-full animate-pulse" />
-                </div>
-                <div className="p-8 space-y-4">
-                    {details.map((d, i) => (
-                        <div key={i} className="flex justify-between items-center text-sm border-b border-slate-50 pb-3 last:border-0">
-                            <span className="text-slate-400 font-bold uppercase text-[9px] tracking-widest">{d.label}</span>
-                            <span className={`font-black uppercase tracking-tighter text-right ${d.highlight ? 'text-emerald-600 text-xl' : 'text-slate-800'}`}>{d.value}</span>
+                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2, type: 'spring' }}
+                    className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner">
+                    <CheckCircle size={40} strokeWidth={2.5} />
+                </motion.div>
+
+                <h2 className="text-xl font-black text-slate-900 mb-1">{title}</h2>
+                <p className="text-xs font-bold text-slate-500 mb-6">{subtitle}</p>
+
+                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 text-left space-y-2.5 mb-6 text-xs">
+                    {details.map((item, idx) => (
+                        <div key={idx} className="flex justify-between items-center pb-2 border-b border-slate-200/60 last:border-0 last:pb-0">
+                            <span className="font-bold text-slate-400 uppercase text-[10px]">{item.label}</span>
+                            <span className="font-black text-slate-800">{item.value}</span>
                         </div>
                     ))}
-                    <motion.button onClick={onReset}
-                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                        className="w-full mt-4 py-4 rounded-2xl bg-slate-900 text-white font-black text-xs uppercase tracking-[0.2em] hover:bg-black transition-all shadow-xl">
-                        {resetLabel}
-                    </motion.button>
                 </div>
+
+                <button onClick={onReset}
+                    className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-slate-900/20 active:scale-[0.98]">
+                    {resetLabel}
+                </button>
             </motion.div>
         </motion.div>
     );
 }
 
-const Icon3D = ({ icon: Icon, color, size = 48, shadow }) => (
-    <div className="flex items-center justify-center rounded-2xl" style={{
-        width: size, height: size, background: `linear-gradient(135deg, ${color}, ${color}dd)`,
+const Icon3D = ({ icon: Icon, color, size = 38, shadow }) => (
+    <div style={{
+        width: size, height: size, borderRadius: size * 0.32,
+        background: `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
         boxShadow: shadow || `0 8px 16px ${color}40, inset 0 1px 0 rgba(255,255,255,0.3)`,
         position: 'relative', overflow: 'hidden'
     }}>
@@ -114,6 +116,7 @@ const MATM = () => {
     const [mobile, setMobile] = useState('');
     const [amount, setAmount] = useState('');
     const [loading, setLoading] = useState(false);
+    const [serviceDisabled, setServiceDisabled] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [lastTx, setLastTx] = useState(null);
     const [user, setUser] = useState(null);

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Landmark, ArrowLeft, Sparkles, UserCheck, AlertCircle, Compass, CheckCircle2, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { aepsService } from '../../services/apiService';
+import { aepsService, userService } from '../../services/apiService';
+import DisabledServiceBanner from '../../components/shared/DisabledServiceBanner';
 
 export default function AepsOnboarding() {
     const navigate = useNavigate();
@@ -10,6 +11,7 @@ export default function AepsOnboarding() {
     const provider = query.get('provider') || 'levin';
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [serviceDisabled, setServiceDisabled] = useState(false);
     const [detectingGps, setDetectingGps] = useState(false);
     const [error, setError] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
@@ -32,6 +34,18 @@ export default function AepsOnboarding() {
     });
 
     useEffect(() => {
+        const checkService = async () => {
+            try {
+                const services = await userService.getUserServices();
+                if (services && services.AEPS === false) {
+                    setServiceDisabled(true);
+                }
+            } catch (e) {
+                console.warn("Could not check service enablement", e);
+            }
+        };
+        checkService();
+
         const rawUser = localStorage.getItem('rupiksha_imp_user') || localStorage.getItem('rupiksha_user');
         if (rawUser) {
             try {
@@ -48,6 +62,10 @@ export default function AepsOnboarding() {
             }
         }
     }, []);
+
+    if (serviceDisabled) {
+        return <DisabledServiceBanner serviceName="AEPS" />;
+    }
 
     const handleChange = (e) => {
         const { name, value } = e.target;

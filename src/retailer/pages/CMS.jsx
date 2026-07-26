@@ -10,6 +10,9 @@ import { MapPin } from 'lucide-react';
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
+import { userService } from '../../services/apiService';
+import DisabledServiceBanner from '../../components/shared/DisabledServiceBanner';
+
 const NAVY = '#0f2557';
 const NAVY3 = '#2257a8';
 
@@ -37,6 +40,7 @@ const CMS = () => {
     const [consumerNo, setConsumerNo] = useState('');
     const [amount, setAmount] = useState('');
     const [loading, setLoading] = useState(false);
+    const [serviceDisabled, setServiceDisabled] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [user, setUser] = useState(null);
     const [location, setLocation] = useState({ lat: '...', long: '...' });
@@ -44,6 +48,18 @@ const CMS = () => {
     const currentPath = useLocation().pathname;
 
     useEffect(() => {
+        const checkService = async () => {
+            try {
+                const services = await userService.getUserServices();
+                if (services && services.CMS === false) {
+                    setServiceDisabled(true);
+                }
+            } catch (e) {
+                console.warn("Could not check CMS service status", e);
+            }
+        };
+        checkService();
+
         const currentUser = dataService.getCurrentUser();
         setUser(currentUser);
 
@@ -51,6 +67,10 @@ const CMS = () => {
             .then(loc => setLocation(loc))
             .catch(err => {});
     }, []);
+
+    if (serviceDisabled) {
+        return <DisabledServiceBanner serviceName="CMS (Cash Management Service)" />;
+    }
 
     const handlePay = () => {
         if (!biller) { announceWarning('बैलर चुनें'); return; }

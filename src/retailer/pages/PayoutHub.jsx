@@ -1,13 +1,33 @@
-import React, { useMemo, useState } from 'react';
-import { providerTxnService } from '../../services/apiService';
+import React, { useMemo, useState, useEffect } from 'react';
+import { providerTxnService, userService } from '../../services/apiService';
 import { dataService } from '../../services/dataService';
+import DisabledServiceBanner from '../../components/shared/DisabledServiceBanner';
 
 const PayoutHub = () => {
     const user = useMemo(() => dataService.getCurrentUser(), []);
     const [form, setForm] = useState({ beneficiaryName: '', accountNumber: '', ifsc: '', amount: '' });
     const [loading, setLoading] = useState(false);
+    const [serviceDisabled, setServiceDisabled] = useState(false);
     const [result, setResult] = useState(null);
     const [error, setError] = useState('');
+
+    useEffect(() => {
+        const checkService = async () => {
+            try {
+                const services = await userService.getUserServices();
+                if (services && services.PAYOUT === false) {
+                    setServiceDisabled(true);
+                }
+            } catch (e) {
+                console.warn("Could not verify payout service status", e);
+            }
+        };
+        checkService();
+    }, []);
+
+    if (serviceDisabled) {
+        return <DisabledServiceBanner serviceName="Payout" />;
+    }
 
     const canSubmit = form.beneficiaryName.trim() && /^\d{9,18}$/.test(form.accountNumber) && /^[A-Z]{4}0[A-Z0-9]{6}$/.test(form.ifsc.toUpperCase()) && Number(form.amount) > 0;
 

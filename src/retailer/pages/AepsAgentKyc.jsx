@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Fingerprint, CheckCircle2, ShieldCheck, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -10,6 +10,8 @@ import CaptureError from '../../components/CaptureError';
 import CaptureSuccess from '../../components/CaptureSuccess';
 import { kycWorkflowService } from '../../services/aeps/kycService';
 import { otpVerificationService } from '../../services/aeps/otpVerificationService';
+import { userService } from '../../services/apiService';
+import DisabledServiceBanner from '../../components/shared/DisabledServiceBanner';
 
 export default function AepsAgentKyc() {
     const navigate = useNavigate();
@@ -18,11 +20,30 @@ export default function AepsAgentKyc() {
     const { captureResult, device } = useRD();
 
     const [submitting, setSubmitting] = useState(false);
+    const [serviceDisabled, setServiceDisabled] = useState(false);
     const [submittingOtp, setSubmittingOtp] = useState(false);
     const [kycResponse, setKycResponse] = useState(null);
     const [kycError, setKycError] = useState('');
     const [otpError, setOtpError] = useState('');
     const [otpCode, setOtpCode] = useState('');
+
+    useEffect(() => {
+        const checkService = async () => {
+            try {
+                const services = await userService.getUserServices();
+                if (services && services.AEPS === false) {
+                    setServiceDisabled(true);
+                }
+            } catch (e) {
+                console.warn("Could not check service enablement", e);
+            }
+        };
+        checkService();
+    }, []);
+
+    if (serviceDisabled) {
+        return <DisabledServiceBanner serviceName="AEPS" />;
+    }
 
     const handleKycSubmit = async () => {
         if (!captureResult || !captureResult.pidXml) {

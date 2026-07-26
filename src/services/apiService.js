@@ -244,6 +244,7 @@ export const transactionService = {
 // ─── USER PROFILE ─────────────────────────────────────────────────────────────
 export const userService = {
   getProfile: () => apiFetch("/user/profile"),
+  getUserServices: () => apiFetch("/user/services"),
   updateProfile: (data) =>
     apiFetch("/user/update-profile", {
       method: "POST",

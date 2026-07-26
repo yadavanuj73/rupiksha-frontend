@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Landmark, ArrowLeft, Sparkles, Server, UserPlus, Fingerprint, CheckCircle2, ChevronRight, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { aepsService } from '../../services/apiService';
+import { aepsService, userService } from '../../services/apiService';
 import DailyAuthentication from '../../components/DailyAuthentication';
+import DisabledServiceBanner from '../../components/shared/DisabledServiceBanner';
 
 export default function AEPS() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
+    const [serviceDisabled, setServiceDisabled] = useState(false);
     const [error, setError] = useState('');
     const [status, setStatus] = useState({
         onboarded: false,
@@ -28,6 +30,18 @@ export default function AEPS() {
 
         const fetchStatus = async () => {
             try {
+                // Check service enablement first
+                try {
+                    const services = await userService.getUserServices();
+                    if (services && services.AEPS === false) {
+                        setServiceDisabled(true);
+                        setLoading(false);
+                        return;
+                    }
+                } catch (se) {
+                    console.warn("Could not verify user service status", se);
+                }
+
                 const parsed = JSON.parse(rawUser);
                 const mobile = parsed.mobile;
                 if (!mobile) {
@@ -55,6 +69,10 @@ export default function AEPS() {
                 <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Checking registration status...</p>
             </div>
         );
+    }
+
+    if (serviceDisabled) {
+        return <DisabledServiceBanner serviceName="AEPS" />;
     }
 
     return (
