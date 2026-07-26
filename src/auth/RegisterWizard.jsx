@@ -469,23 +469,23 @@ export default function RegisterWizard() {
         </div>
       </header>
 
-      {/* ── Main Content Area (Two-Column Fixed Responsive Layout) ── */}
+      {/* ── Main Content Area (Two-Column Responsive Layout) ── */}
       <main className="flex-1 grid grid-cols-1 md:grid-cols-12 h-[calc(100vh-48px)] sm:h-[calc(100vh-56px)] overflow-y-auto md:overflow-hidden">
         
-        {/* ── LEFT COLUMN: Registration Form Card (Aesthetic Balanced Width) ── */}
-        <div className="md:col-span-7 lg:col-span-7 xl:col-span-7 p-2 sm:p-3 lg:p-4 flex flex-col justify-center items-center bg-gradient-to-br from-amber-50/50 via-blue-50/30 to-slate-50 overflow-y-auto md:overflow-hidden h-full min-h-0">
+        {/* ── LEFT COLUMN: Registration Form Card (Increased Width & Clear Readable Text) ── */}
+        <div className="md:col-span-8 lg:col-span-8 xl:col-span-8 p-3 sm:p-4 lg:p-5 flex flex-col justify-center items-center bg-gradient-to-br from-amber-50/50 via-blue-50/30 to-slate-50 overflow-y-auto md:overflow-hidden h-full min-h-0">
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className="w-full max-w-xl lg:max-w-2xl flex flex-col justify-center max-h-full py-0.5"
+            className="w-full max-w-2xl lg:max-w-3xl flex flex-col justify-center max-h-full py-0.5"
           >
             {/* Header Title */}
-            <div className="space-y-0.5 text-center sm:text-left mb-1 shrink-0">
-              <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+            <div className="space-y-0.5 text-center sm:text-left mb-1.5 shrink-0">
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                 Welcome to <span className="text-blue-600">Rupiksha</span>
               </h2>
-              <p className="text-[10px] sm:text-xs text-slate-500 font-medium">
+              <p className="text-xs sm:text-sm text-slate-500 font-medium">
                 Create your partner account & complete instant auto-approval onboarding
               </p>
             </div>
@@ -495,7 +495,7 @@ export default function RegisterWizard() {
               
               {/* Blue Header Pill Banner */}
               <div className="bg-blue-600 py-2.5 px-4 text-center shadow-sm shrink-0">
-                <span className="text-white text-xs font-black uppercase tracking-[0.2em]">
+                <span className="text-white text-xs sm:text-sm font-black uppercase tracking-[0.2em]">
                   {step === 1 && 'NEW PARTNER REGISTRATION'}
                   {step === 2 && 'MOBILE OTP VERIFICATION'}
                   {step === 3 && 'ONBOARDING & KYC DOCUMENTS'}
@@ -1145,38 +1145,38 @@ export default function RegisterWizard() {
           </motion.div>
         </div>
 
-        {/* ── RIGHT COLUMN: Animated Image Carousel Slider (Fills Nicely Without Vertical Overflow) ── */}
-        <div className="hidden md:flex md:col-span-5 lg:col-span-5 xl:col-span-5 bg-blue-50/80 border-l border-blue-100/60 p-3 sm:p-4 lg:p-5 flex-col justify-center items-center relative overflow-hidden h-full min-h-0 shrink-0">
+        {/* ── RIGHT COLUMN: Animated Image Carousel Slider (Decreased Compact Size) ── */}
+        <div className="hidden md:flex md:col-span-4 lg:col-span-4 xl:col-span-4 bg-blue-50/80 border-l border-blue-100/60 p-3 sm:p-4 flex-col justify-center items-center relative overflow-hidden h-full min-h-0 shrink-0">
           
           {/* Ambient Decorative Blurs */}
-          <div className="absolute top-0 right-0 w-[22rem] h-[22rem] bg-blue-500/5 rounded-full blur-[80px] pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-[18rem] h-[18rem] bg-indigo-500/5 rounded-full blur-[80px] pointer-events-none" />
+          <div className="absolute top-0 right-0 w-[18rem] h-[18rem] bg-blue-500/5 rounded-full blur-[70px] pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-[15rem] h-[15rem] bg-indigo-500/5 rounded-full blur-[70px] pointer-events-none" />
 
-          <div className="relative z-10 w-full max-w-sm lg:max-w-md mx-auto space-y-2 flex flex-col items-center justify-center my-auto">
+          <div className="relative z-10 w-full max-w-xs sm:max-w-sm mx-auto space-y-2 flex flex-col items-center justify-center my-auto">
             
             {/* ── ANIMATED IMAGE CAROUSEL / CARD HOLDER SLIDER ── */}
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5 }}
-              className="w-full space-y-2"
+              className="w-full space-y-1.5"
             >
               <div className="flex items-center justify-between px-1">
-                <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-100/70 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
-                  <Sparkles size={11} /> FEATURED SERVICES
+                <span className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-100/70 px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+                  <Sparkles size={10} /> FEATURED SERVICES
                 </span>
-                <span className="text-[10px] text-slate-400 font-bold">
+                <span className="text-[9px] text-slate-400 font-bold">
                   {currentSlide + 1} / {PROMO_SLIDES.length}
                 </span>
               </div>
 
               <div 
-                className="relative bg-white rounded-2xl sm:rounded-3xl p-2.5 sm:p-3 shadow-xl shadow-blue-900/10 border border-blue-100 overflow-hidden group w-full"
+                className="relative bg-white rounded-2xl p-2.5 shadow-lg shadow-blue-900/10 border border-blue-100 overflow-hidden group w-full"
                 onMouseEnter={() => setIsCarouselPaused(true)}
                 onMouseLeave={() => setIsCarouselPaused(false)}
               >
-                {/* Carousel Image Container (Optimized Responsive Height) */}
-                <div className="relative h-52 sm:h-60 lg:h-[19rem] xl:h-[21rem] rounded-xl sm:rounded-2xl overflow-hidden bg-slate-900 flex items-center justify-center">
+                {/* Carousel Image Container (Compact Decreased Height) */}
+                <div className="relative h-44 sm:h-52 lg:h-60 xl:h-64 rounded-xl overflow-hidden bg-slate-900 flex items-center justify-center">
                   
                   <AnimatePresence mode="wait">
                     <motion.div
@@ -1190,20 +1190,20 @@ export default function RegisterWizard() {
                       <img 
                         src={PROMO_SLIDES[currentSlide].src} 
                         alt={PROMO_SLIDES[currentSlide].title}
-                        className="w-full h-full object-contain p-2"
+                        className="w-full h-full object-contain p-1.5"
                       />
                     </motion.div>
                   </AnimatePresence>
 
                   {/* Gradient Overlay for Title & Badge */}
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent p-3 text-white flex flex-col justify-end z-10">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-blue-400 mb-0.5">
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent p-2.5 text-white flex flex-col justify-end z-10">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-blue-400 mb-0.5">
                       {PROMO_SLIDES[currentSlide].badge}
                     </span>
-                    <h4 className="text-xs sm:text-sm font-bold text-white drop-shadow-sm">
+                    <h4 className="text-xs font-bold text-white drop-shadow-sm">
                       {PROMO_SLIDES[currentSlide].title}
                     </h4>
-                    <p className="text-[11px] text-slate-300 font-medium line-clamp-2 mt-0.5">
+                    <p className="text-[10px] text-slate-300 font-medium line-clamp-2 mt-0.5">
                       {PROMO_SLIDES[currentSlide].desc}
                     </p>
                   </div>
@@ -1212,22 +1212,22 @@ export default function RegisterWizard() {
                   <button
                     type="button"
                     onClick={handlePrevSlide}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-slate-800 rounded-full p-1.5 shadow-md opacity-0 group-hover:opacity-100 transition-all z-20"
+                    className="absolute left-1.5 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-slate-800 rounded-full p-1 shadow-md opacity-0 group-hover:opacity-100 transition-all z-20"
                   >
-                    <ChevronLeft size={15} />
+                    <ChevronLeft size={14} />
                   </button>
 
                   <button
                     type="button"
                     onClick={handleNextSlide}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-slate-800 rounded-full p-1.5 shadow-md opacity-0 group-hover:opacity-100 transition-all z-20"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-slate-800 rounded-full p-1 shadow-md opacity-0 group-hover:opacity-100 transition-all z-20"
                   >
-                    <ChevronRight size={15} />
+                    <ChevronRight size={14} />
                   </button>
                 </div>
 
                 {/* Carousel Indicator Dots */}
-                <div className="flex items-center justify-center gap-1.5 mt-2 mb-0.5">
+                <div className="flex items-center justify-center gap-1 mt-1.5 mb-0.5">
                   {PROMO_SLIDES.map((_, idx) => (
                     <button
                       key={idx}
@@ -1235,8 +1235,8 @@ export default function RegisterWizard() {
                       onClick={() => setCurrentSlide(idx)}
                       className={`transition-all rounded-full ${
                         idx === currentSlide 
-                          ? 'w-5 h-1.5 bg-blue-600 shadow-sm' 
-                          : 'w-1.5 h-1.5 bg-slate-300 hover:bg-slate-400'
+                          ? 'w-4 h-1 bg-blue-600 shadow-sm' 
+                          : 'w-1 h-1 bg-slate-300 hover:bg-slate-400'
                       }`}
                     />
                   ))}
@@ -1246,7 +1246,7 @@ export default function RegisterWizard() {
 
           </div>
 
-          <div className="text-center text-[10px] text-slate-400 font-medium py-0.5 shrink-0">
+          <div className="text-center text-[9px] text-slate-400 font-medium py-0.5 shrink-0">
             © RuPiKsha Digital Services Private Limited
           </div>
         </div>
