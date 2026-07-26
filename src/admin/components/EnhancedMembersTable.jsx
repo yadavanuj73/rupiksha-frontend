@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     Search, Zap, Trash2, Edit3, Eye, X, CheckCircle2,
-    AlertTriangle, Lock, User, Loader2, Save, ToggleRight, ToggleLeft, Package
+    AlertTriangle, Lock, User, Loader2, Save, ToggleRight, ToggleLeft, Package, Image as ImageIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -81,6 +81,7 @@ const EnhancedMembersTable = () => {
     const [memberServices, setMemberServices] = useState([]);
     const [actionLoading, setActionLoading] = useState(false);
     const [showPassword, setShowPassword]   = useState(false);
+    const [activeLightboxImg, setActiveLightboxImg] = useState(null);
     const [toast, setToast]                 = useState(null);
 
     const PAGE_SIZE = 10;
@@ -121,21 +122,39 @@ const EnhancedMembersTable = () => {
     /* ── service fetch / toggle ── */
     const fetchMemberServices = async (userId) => {
         try {
-            const res = await authFetch(`${BACKEND_URL}/admin/members/${userId}/services`);
-            if (res.ok) { const d = await res.json(); setMemberServices(Array.isArray(d) ? d : []); }
+            let res = await authFetch(`${BACKEND_URL}/admin/members/${userId}/services`);
+            if (!res.ok) {
+                res = await authFetch(`${BACKEND_URL}/admin/users/${userId}/services`);
+            }
+            if (res.ok) { 
+                const d = await res.json(); 
+                setMemberServices(Array.isArray(d) ? d : (d.services || [])); 
+            }
         } catch (e) { console.error(e); }
     };
 
     const toggleService = async (userId, serviceType, enable) => {
         setActionLoading(true);
         try {
-            const res = await authFetch(`${BACKEND_URL}/admin/members/${userId}/services/toggle`, {
+            let res = await authFetch(`${BACKEND_URL}/admin/members/${userId}/services/toggle`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ serviceType, enable, remarks: `Service ${enable ? 'enabled' : 'disabled'} by admin` })
             });
-            if (res.ok) await fetchMemberServices(userId);
-        } catch (e) { console.error(e); }
+            if (!res.ok) {
+                res = await authFetch(`${BACKEND_URL}/admin/users/${userId}/services/toggle`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ serviceType, enable, remarks: `Service ${enable ? 'enabled' : 'disabled'} by admin` })
+                });
+            }
+            if (res.ok) {
+                showToast(`Service ${serviceType} ${enable ? 'enabled' : 'disabled'}`);
+                await fetchMemberServices(userId);
+            } else {
+                showToast('Failed to toggle service', 'error');
+            }
+        } catch (e) { showToast(e.message, 'error'); }
         finally { setActionLoading(false); }
     };
 
@@ -624,6 +643,53 @@ const EnhancedMembersTable = () => {
                                     </div>
                                 </div>
                                 <div className="border-t border-slate-100 pt-4">
+                                    <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                                        <ImageIcon size={14} className="text-indigo-600" /> Uploaded Registration Documents & Photos
+                                    </h3>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                        {[
+                                            { label: 'Aadhaar Front', url: selectedMember.aadhaarPhotoUrl },
+                                            { label: 'Aadhaar Back', url: selectedMember.aadhaarBackPhotoUrl },
+                                            { label: 'PAN Card', url: selectedMember.panPhotoUrl },
+                                            { label: 'Bank Passbook / Cheque', url: selectedMember.bankPassbookUrl },
+                                            { label: 'Shop Photo', url: selectedMember.shopPhotoUrl },
+                                            { label: 'Live Selfie', url: selectedMember.liveSelfieUrl || selectedMember.photoUrl },
+                                            { label: 'Driving Licence', url: selectedMember.drivingLicenceUrl },
+                                            { label: 'Voter ID', url: selectedMember.voterIdUrl },
+                                            { label: 'Passport', url: selectedMember.passportUrl },
+                                        ].filter(d => d.url).length === 0 ? (
+                                            <p className="text-xs text-slate-400 col-span-3 italic">No document photos uploaded by user.</p>
+                                        ) : (
+                                            [
+                                                { label: 'Aadhaar Front', url: selectedMember.aadhaarPhotoUrl },
+                                                { label: 'Aadhaar Back', url: selectedMember.aadhaarBackPhotoUrl },
+                                                { label: 'PAN Card', url: selectedMember.panPhotoUrl },
+                                                { label: 'Bank Passbook / Cheque', url: selectedMember.bankPassbookUrl },
+                                                { label: 'Shop Photo', url: selectedMember.shopPhotoUrl },
+                                                { label: 'Live Selfie', url: selectedMember.liveSelfieUrl || selectedMember.photoUrl },
+                                                { label: 'Driving Licence', url: selectedMember.drivingLicenceUrl },
+                                                { label: 'Voter ID', url: selectedMember.voterIdUrl },
+                                                { label: 'Passport', url: selectedMember.passportUrl },
+                                            ].map(doc => doc.url ? (
+                                                <div key={doc.label} className="bg-slate-50 border border-slate-200 rounded-xl p-2 flex flex-col justify-between group hover:border-indigo-400 transition-all">
+                                                    <div>
+                                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide truncate mb-1">{doc.label}</p>
+                                                        <div 
+                                                            onClick={() => setActiveLightboxImg({ title: doc.label, url: doc.url })}
+                                                            className="relative w-full h-24 rounded-lg overflow-hidden border border-slate-200 cursor-pointer bg-slate-200 group-hover:shadow-md transition-all"
+                                                        >
+                                                            <img src={doc.url} alt={doc.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-[11px] font-bold transition-opacity">
+                                                                Click to View
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : null)
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="border-t border-slate-100 pt-4">
                                     <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Wallet & Stats</h3>
                                     <div className="grid grid-cols-3 gap-3">
                                         {[
@@ -745,6 +811,27 @@ const EnhancedMembersTable = () => {
                             toast.type === 'error' ? 'bg-rose-600 text-white' : 'bg-emerald-600 text-white'}`}>
                         {toast.type === 'error' ? <AlertTriangle size={15} /> : <CheckCircle2 size={15} />}
                         {toast.msg}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Lightbox Modal */}
+            <AnimatePresence>
+                {activeLightboxImg && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+                        onClick={() => setActiveLightboxImg(null)}>
+                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-slate-900 border border-slate-800 rounded-2xl p-4 max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl relative"
+                            onClick={e => e.stopPropagation()}>
+                            <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+                                <h3 className="text-sm font-bold text-white uppercase tracking-wider">{activeLightboxImg.title}</h3>
+                                <button onClick={() => setActiveLightboxImg(null)} className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white"><X size={18} /></button>
+                            </div>
+                            <div className="flex-1 overflow-auto flex items-center justify-center bg-slate-950 rounded-xl p-2 min-h-[300px]">
+                                <img src={activeLightboxImg.url} alt={activeLightboxImg.title} className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg" />
+                            </div>
+                        </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>

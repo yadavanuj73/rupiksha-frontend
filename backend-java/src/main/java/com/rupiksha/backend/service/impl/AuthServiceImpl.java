@@ -109,22 +109,70 @@ public class AuthServiceImpl implements AuthService {
         user.setPasswordLastChanged(Instant.now());
         user.setOtpVerified(true);
 
-        // AUTO APPROVAL REQUIREMENT
+        // AUTO APPROVAL REQUIREMENT (Instant auto approval for registration + onboarding)
         user.setStatus(UserStatus.ACTIVE);
         user.setRegistrationStatus(RegistrationStatus.APPROVED);
-        user.setKycStatus(KycStatus.NOT_SUBMITTED);
+        user.setKycStatus(KycStatus.APPROVED);
+        user.setKycSubmittedAt(Instant.now());
+        user.setKycApprovedAt(Instant.now());
         user.getRoles().add(role);
 
         // Auto-generate Party Code
         String partyCode = generatePartyCode(request.state(), roleName);
         user.setPartyCode(partyCode);
 
-        // Optional profile attributes
+        // Populate Onboarding Details
+        if (isPresent(request.firstName())) user.setFirstName(request.firstName().trim());
+        if (isPresent(request.lastName())) user.setLastName(request.lastName().trim());
+        if (isPresent(request.dob())) user.setDob(request.dob().trim());
+        if (isPresent(request.fatherName())) user.setFatherName(request.fatherName().trim());
+        if (isPresent(request.gender())) user.setGender(request.gender().trim());
         if (isPresent(request.state())) user.setStateName(request.state().trim());
         if (isPresent(request.city())) user.setCity(request.city().trim());
         if (isPresent(request.pincode())) user.setPincode(request.pincode().trim());
         if (isPresent(request.address())) user.setAddressLine1(request.address().trim());
         if (isPresent(request.businessName())) user.setBusinessName(request.businessName().trim());
+        if (isPresent(request.businessType())) user.setBusinessType(request.businessType().trim());
+        if (isPresent(request.gstNumber())) user.setGstNumber(request.gstNumber().trim());
+
+        // Address Details
+        if (isPresent(request.shopLandmark())) user.setShopLandmark(request.shopLandmark().trim());
+        if (isPresent(request.shopAddress())) user.setShopAddress(request.shopAddress().trim());
+        if (isPresent(request.shopState())) user.setShopState(request.shopState().trim());
+        if (isPresent(request.shopDistrict())) user.setShopDistrict(request.shopDistrict().trim());
+        if (isPresent(request.shopCity())) user.setShopCity(request.shopCity().trim());
+        if (isPresent(request.shopPincode())) user.setShopPincode(request.shopPincode().trim());
+
+        if (isPresent(request.permanentAddress())) user.setPermanentAddress(request.permanentAddress().trim());
+        if (isPresent(request.permState())) user.setPermState(request.permState().trim());
+        if (isPresent(request.permDistrict())) user.setPermDistrict(request.permDistrict().trim());
+        if (isPresent(request.permCity())) user.setPermCity(request.permCity().trim());
+        if (isPresent(request.permPincode())) user.setPermPincode(request.permPincode().trim());
+
+        // Identity & Bank Details
+        if (isPresent(request.aadhaarNumber())) user.setAadhaarNumber(request.aadhaarNumber().trim());
+        if (isPresent(request.panNumber())) user.setPanNumber(request.panNumber().trim());
+        if (isPresent(request.bankAccountHolder())) user.setBankAccountHolder(request.bankAccountHolder().trim());
+        if (isPresent(request.bankName())) user.setBankName(request.bankName().trim());
+        if (isPresent(request.bankAccountNumber())) user.setBankAccountNumber(request.bankAccountNumber().trim());
+        if (isPresent(request.bankIfsc())) user.setBankIfsc(request.bankIfsc().trim());
+        if (isPresent(request.bankBranch())) user.setBankBranch(request.bankBranch().trim());
+
+        // Document Image URLs
+        if (isPresent(request.photoUrl())) user.setPhotoUrl(request.photoUrl().trim());
+        if (isPresent(request.aadhaarPhotoUrl())) user.setAadhaarPhotoUrl(request.aadhaarPhotoUrl().trim());
+        if (isPresent(request.aadhaarBackPhotoUrl())) user.setAadhaarBackPhotoUrl(request.aadhaarBackPhotoUrl().trim());
+        if (isPresent(request.panPhotoUrl())) user.setPanPhotoUrl(request.panPhotoUrl().trim());
+        if (isPresent(request.shopPhotoUrl())) user.setShopPhotoUrl(request.shopPhotoUrl().trim());
+        if (isPresent(request.bankPassbookUrl())) user.setBankPassbookUrl(request.bankPassbookUrl().trim());
+        if (isPresent(request.liveSelfieUrl())) user.setLiveSelfieUrl(request.liveSelfieUrl().trim());
+        if (isPresent(request.drivingLicenceUrl())) user.setDrivingLicenceUrl(request.drivingLicenceUrl().trim());
+        if (isPresent(request.voterIdUrl())) user.setVoterIdUrl(request.voterIdUrl().trim());
+        if (isPresent(request.passportUrl())) user.setPassportUrl(request.passportUrl().trim());
+
+        if (isPresent(request.gpsLat())) user.setGpsLat(request.gpsLat().trim());
+        if (isPresent(request.gpsLong())) user.setGpsLong(request.gpsLong().trim());
+        if (isPresent(request.deviceInfo())) user.setDeviceInfo(request.deviceInfo().trim());
 
         // Resolve Parent Hierarchy
         resolveAndSetParent(user, request);
@@ -241,8 +289,8 @@ public class AuthServiceImpl implements AuthService {
     private void initializeUserServices(User user) {
         for (ServiceType type : ServiceType.values()) {
             boolean defaultEnable = switch (type) {
-                case AEPS, DMT, PAYOUT -> false; // Enable ONLY after KYC Approval
-                default -> true; // Wallet, Recharge, BBPS, Reports, Profile, Settings enabled immediately
+                case AEPS, BBPS, PAYOUT, DMT -> false; // AEPS, BBPS, Payout, DMT remain disabled for new user until Admin enables
+                default -> true; // Wallet, Recharge, MATM, CMS, etc.
             };
             if (userServiceRepository.findByUserIdAndServiceType(user.getId(), type).isEmpty()) {
                 com.rupiksha.backend.domain.UserService s = new com.rupiksha.backend.domain.UserService();

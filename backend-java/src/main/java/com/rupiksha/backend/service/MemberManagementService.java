@@ -106,10 +106,14 @@ public class MemberManagementService {
         
         List<UserService> services = new ArrayList<>();
         for (ServiceType type : ServiceType.values()) {
+            boolean defaultEnable = switch (type) {
+                case AEPS, BBPS, PAYOUT, DMT -> false;
+                default -> true;
+            };
             UserService service = new UserService();
             service.setUser(user);
             service.setServiceType(type);
-            service.setIsEnabled(true);
+            service.setIsEnabled(defaultEnable);
             service.setEnabledBy("system");
             service.setEnabledAt(Instant.now());
             services.add(userServiceRepository.save(service));

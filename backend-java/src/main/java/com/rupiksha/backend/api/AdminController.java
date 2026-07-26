@@ -149,6 +149,75 @@ public class AdminController {
         return toAdminDto(saved);
     }
 
+    @GetMapping("/users/{identifier}/services")
+    public List<Map<String, Object>> getUserServicesAdmin(@PathVariable String identifier) {
+        User u = resolveUser(identifier);
+        if (u == null) return List.of();
+        List<com.rupiksha.backend.domain.UserService> services = userServiceRepository.findByUserId(u.getId());
+        if (services.isEmpty()) {
+            for (com.rupiksha.backend.domain.ServiceType type : com.rupiksha.backend.domain.ServiceType.values()) {
+                boolean defaultEnable = switch (type) {
+                    case AEPS, BBPS, PAYOUT, DMT -> false;
+                    default -> true;
+                };
+                com.rupiksha.backend.domain.UserService s = new com.rupiksha.backend.domain.UserService();
+                s.setUser(u);
+                s.setServiceType(type);
+                s.setIsEnabled(defaultEnable);
+                s.setEnabledBy("system");
+                s.setEnabledAt(Instant.now());
+                services.add(userServiceRepository.save(s));
+            }
+        }
+        return services.stream().map(s -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", s.getId().toString());
+            map.put("serviceType", s.getServiceType().name());
+            map.put("isEnabled", s.getIsEnabled());
+            map.put("enabledBy", s.getEnabledBy());
+            map.put("enabledAt", s.getEnabledAt());
+            map.put("remarks", s.getRemarks());
+            return map;
+        }).toList();
+    }
+
+    @PostMapping("/users/{identifier}/services/toggle")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Map<String, Object> toggleUserServiceAdmin(
+            @PathVariable String identifier,
+            @RequestBody Map<String, Object> body,
+            @AuthenticationPrincipal JwtPrincipal admin) {
+        User u = resolveUser(identifier);
+        if (u == null) return Map.of("success", false, "error", "User not found");
+        String serviceTypeStr = (String) body.get("serviceType");
+        Boolean enable = (Boolean) body.get("enable");
+        if (serviceTypeStr == null || enable == null) {
+            return Map.of("success", false, "error", "serviceType and enable boolean required");
+        }
+        com.rupiksha.backend.domain.ServiceType type = com.rupiksha.backend.domain.ServiceType.valueOf(serviceTypeStr.trim().toUpperCase());
+        var opt = userServiceRepository.findByUserIdAndServiceType(u.getId(), type);
+        com.rupiksha.backend.domain.UserService service = opt.orElseGet(() -> {
+            com.rupiksha.backend.domain.UserService ns = new com.rupiksha.backend.domain.UserService();
+            ns.setUser(u);
+            ns.setServiceType(type);
+            return ns;
+        });
+        service.setIsEnabled(enable);
+        service.setEnabledBy(admin != null ? admin.username() : "admin");
+        service.setEnabledAt(Instant.now());
+        if (body.containsKey("remarks")) {
+            service.setRemarks((String) body.get("remarks"));
+        }
+        com.rupiksha.backend.domain.UserService saved = userServiceRepository.save(service);
+        return Map.of(
+                "success", true,
+                "id", saved.getId().toString(),
+                "serviceType", saved.getServiceType().name(),
+                "isEnabled", saved.getIsEnabled(),
+                "enabledBy", saved.getEnabledBy()
+        );
+    }
+
     @PostMapping("/approvals/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public Map<String, Object> approve(@PathVariable String id, @RequestBody Map<String, String> body) {
