@@ -472,13 +472,13 @@ export default function RegisterWizard() {
       {/* ── Main Content Area (Two-Column Layout) ── */}
       <main className="flex-1 grid grid-cols-1 md:grid-cols-12 min-h-[calc(100vh-65px)]">
         
-        {/* ── LEFT COLUMN: Registration Form Card ── */}
-        <div className="md:col-span-6 lg:col-span-7 xl:col-span-6 p-4 sm:p-6 lg:p-8 flex flex-col justify-center items-center bg-gradient-to-br from-amber-50/50 via-blue-50/30 to-slate-50 overflow-y-auto">
+        {/* ── LEFT COLUMN: Registration Form Card (Expanded Width) ── */}
+        <div className="md:col-span-7 lg:col-span-8 xl:col-span-9 p-4 sm:p-6 lg:p-8 flex flex-col justify-center items-center bg-gradient-to-br from-amber-50/50 via-blue-50/30 to-slate-50 overflow-y-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className="w-full max-w-xl space-y-3 sm:space-y-4"
+            className="w-full max-w-2xl lg:max-w-3xl space-y-3 sm:space-y-4"
           >
             {/* Header Title */}
             <div className="space-y-1 text-center sm:text-left">
@@ -1145,62 +1145,25 @@ export default function RegisterWizard() {
           </motion.div>
         </div>
 
-        {/* ── RIGHT COLUMN: Empowering Merchant Column & Animated Image Carousel ── */}
-        <div className="hidden md:flex md:col-span-6 lg:col-span-5 xl:col-span-6 bg-blue-50/80 border-l border-blue-100/60 p-6 lg:p-10 flex-col justify-between relative overflow-y-auto min-h-full">
+        {/* ── RIGHT COLUMN: Animated Image Carousel Slider (No Vertical Scroll) ── */}
+        <div className="hidden md:flex md:col-span-5 lg:col-span-4 xl:col-span-3 bg-blue-50/80 border-l border-blue-100/60 p-4 lg:p-6 flex-col justify-between items-center relative overflow-hidden h-full">
           
           {/* Ambient Decorative Blurs */}
-          <div className="absolute top-0 right-0 w-[35rem] h-[35rem] bg-blue-500/5 rounded-full blur-[100px] pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-[25rem] h-[25rem] bg-indigo-500/5 rounded-full blur-[100px] pointer-events-none" />
+          <div className="absolute top-0 right-0 w-[25rem] h-[25rem] bg-blue-500/5 rounded-full blur-[80px] pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-[20rem] h-[20rem] bg-indigo-500/5 rounded-full blur-[80px] pointer-events-none" />
 
-          <div className="relative z-10 w-full max-w-lg mx-auto space-y-6">
+          <div className="relative z-10 w-full max-w-sm my-auto space-y-4">
             
-            {/* Merchant Empower Box (Matches Image 1) */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5 }}
-              className="bg-white rounded-[2rem] p-6 lg:p-8 shadow-xl shadow-blue-900/5 border border-white space-y-5"
-            >
-              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20 text-white">
-                <Users size={28} />
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="text-2xl lg:text-3xl font-black text-slate-900 leading-tight">
-                  Empowering Every<br />Merchant Everyday.
-                </h3>
-                <p className="text-slate-500 font-medium text-xs lg:text-sm">
-                  Join 50k+ retailers providing essential digital services across India.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-2.5">
-                {[
-                  'AEPS & Aadhaar Withdrawals',
-                  'DMT & Instant Money Transfer',
-                  'Utility Bill Payments (BBPS)',
-                  'Comprehensive Travel Booking'
-                ].map((f, i) => (
-                  <div key={i} className="flex items-center gap-3.5 bg-slate-50 rounded-2xl p-3.5 border border-slate-100 transition-all hover:bg-blue-50/50 hover:border-blue-100">
-                    <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center shrink-0 text-blue-600">
-                      <Check size={14} strokeWidth={3} />
-                    </div>
-                    <span className="text-xs sm:text-sm font-bold text-slate-700">{f}</span>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-
             {/* ── ANIMATED IMAGE CAROUSEL / CARD HOLDER SLIDER ── */}
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="space-y-2"
+              transition={{ duration: 0.5 }}
+              className="space-y-2.5"
             >
               <div className="flex items-center justify-between px-1">
-                <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-100/60 px-3 py-1 rounded-full flex items-center gap-1.5">
-                  <Sparkles size={11} /> FEATURED SERVICES & PROMOTIONS
+                <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-100/70 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
+                  <Sparkles size={11} /> FEATURED SERVICES
                 </span>
                 <span className="text-[10px] text-slate-400 font-bold">
                   {currentSlide + 1} / {PROMO_SLIDES.length}
@@ -1208,12 +1171,12 @@ export default function RegisterWizard() {
               </div>
 
               <div 
-                className="relative bg-white rounded-3xl p-3 shadow-xl shadow-blue-900/5 border border-blue-100 overflow-hidden group"
+                className="relative bg-white rounded-3xl p-3 shadow-xl shadow-blue-900/10 border border-blue-100 overflow-hidden group"
                 onMouseEnter={() => setIsCarouselPaused(true)}
                 onMouseLeave={() => setIsCarouselPaused(false)}
               >
                 {/* Carousel Image Container */}
-                <div className="relative h-56 lg:h-64 rounded-2xl overflow-hidden bg-slate-900 flex items-center justify-center">
+                <div className="relative h-64 lg:h-80 rounded-2xl overflow-hidden bg-slate-900 flex items-center justify-center">
                   
                   <AnimatePresence mode="wait">
                     <motion.div
@@ -1240,7 +1203,7 @@ export default function RegisterWizard() {
                     <h4 className="text-sm font-bold text-white drop-shadow-sm">
                       {PROMO_SLIDES[currentSlide].title}
                     </h4>
-                    <p className="text-xs text-slate-300 font-medium line-clamp-1 mt-0.5">
+                    <p className="text-xs text-slate-300 font-medium line-clamp-2 mt-0.5">
                       {PROMO_SLIDES[currentSlide].desc}
                     </p>
                   </div>
@@ -1283,8 +1246,8 @@ export default function RegisterWizard() {
 
           </div>
 
-          <div className="text-center text-[11px] text-slate-400 font-medium py-2">
-            © RuPiKsha Digital Services Private Limited | All rights reserved.
+          <div className="text-center text-[10px] text-slate-400 font-medium py-1">
+            © RuPiKsha Digital Services Private Limited
           </div>
         </div>
 
