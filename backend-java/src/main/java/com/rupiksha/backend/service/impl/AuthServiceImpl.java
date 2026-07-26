@@ -305,17 +305,69 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private String generatePartyCode(String state, RoleName roleName) {
-        String stCode = "IN";
-        if (state != null && state.trim().length() >= 2) {
-            stCode = state.trim().substring(0, 2).toUpperCase();
-        }
-        String rCode = switch (roleName) {
-            case SUPER_DISTRIBUTOR -> "SD";
-            case DISTRIBUTOR -> "DI";
-            default -> "RT";
+        String rolePrefix = switch (roleName) {
+            case SUPER_DISTRIBUTOR -> "RPSD";
+            case DISTRIBUTOR -> "RPD";
+            case ADMIN, NATIONAL_HEADER, STATE_HEADER, REGIONAL_HEADER, EMPLOYEE -> "RPADM";
+            default -> "RPR";
         };
-        int num = 100000 + secureRandom.nextInt(900000);
-        return "RPR" + stCode + rCode + num;
+        String statePlate = resolveStatePlateCode(state);
+        String prefix = rolePrefix + statePlate;
+
+        String candidate;
+        int attempts = 0;
+        do {
+            int random5Digit = 10000 + secureRandom.nextInt(90000);
+            candidate = prefix + random5Digit;
+            attempts++;
+        } while (userRepository.existsByPartyCode(candidate) && attempts < 100);
+
+        return candidate;
+    }
+
+    private String resolveStatePlateCode(String rawState) {
+        if (rawState == null || rawState.isBlank()) return "BR";
+        String upper = rawState.trim().toUpperCase();
+
+        if (upper.length() == 2 && upper.matches("[A-Z]{2}")) {
+            return upper;
+        }
+
+        if (upper.contains("BIHAR") || upper.contains("MUZAFFARPUR") || upper.contains("PATNA") || upper.contains("NALANDA")) return "BR";
+        if (upper.contains("MAHARASHTRA") || upper.contains("MUMBAI") || upper.contains("PUNE")) return "MH";
+        if (upper.contains("UTTAR PRADESH") || upper.contains("LUCKNOW") || upper.contains("KANPUR") || upper.contains("NOIDA")) return "UP";
+        if (upper.contains("DELHI") || upper.contains("NEW DELHI")) return "DL";
+        if (upper.contains("WEST BENGAL") || upper.contains("BENGAL") || upper.contains("KOLKATA")) return "WB";
+        if (upper.contains("RAJASTHAN") || upper.contains("JAIPUR")) return "RJ";
+        if (upper.contains("PUNJAB") || upper.contains("LUDHIANA")) return "PB";
+        if (upper.contains("HARYANA") || upper.contains("GURGAON") || upper.contains("GURUGRAM")) return "HR";
+        if (upper.contains("GUJARAT") || upper.contains("SURAT") || upper.contains("AHMEDABAD")) return "GJ";
+        if (upper.contains("KARNATAKA") || upper.contains("BANGALORE") || upper.contains("BENGALURU")) return "KA";
+        if (upper.contains("TAMIL NADU") || upper.contains("CHENNAI")) return "TN";
+        if (upper.contains("TELANGANA") || upper.contains("HYDERABAD")) return "TS";
+        if (upper.contains("ANDHRA")) return "AP";
+        if (upper.contains("MADHYA PRADESH") || upper.contains("INDORE") || upper.contains("BHOPAL")) return "MP";
+        if (upper.contains("ODISHA") || upper.contains("ORISSA")) return "OD";
+        if (upper.contains("JHARKHAND") || upper.contains("RANCHI")) return "JH";
+        if (upper.contains("CHHATTISGARH") || upper.contains("RAIPUR")) return "CG";
+        if (upper.contains("ASSAM") || upper.contains("GUWAHATI")) return "AS";
+        if (upper.contains("KERALA")) return "KL";
+        if (upper.contains("UTTARAKHAND") || upper.contains("DEHRADUN")) return "UK";
+        if (upper.contains("HIMACHAL")) return "HP";
+        if (upper.contains("JAMMU") || upper.contains("KASHMIR")) return "JK";
+        if (upper.contains("GOA")) return "GA";
+        if (upper.contains("MANIPUR")) return "MN";
+        if (upper.contains("MEGHALAYA")) return "ML";
+        if (upper.contains("MIZORAM")) return "MZ";
+        if (upper.contains("NAGALAND")) return "NL";
+        if (upper.contains("SIKKIM")) return "SK";
+        if (upper.contains("TRIPURA")) return "TR";
+        if (upper.contains("ARUNACHAL")) return "AR";
+        if (upper.contains("PUDUCHERRY")) return "PY";
+        if (upper.contains("CHANDIGARH")) return "CH";
+        if (upper.contains("LADAKH")) return "LA";
+
+        return "BR";
     }
 
     private boolean isPresent(String value) {
