@@ -3,17 +3,8 @@ name: Frontend Vercel CI/CD
 on:
   push:
     branches: [ "main" ]
-    paths:
-      - "src/**"
-      - "public/**"
-      - "package.json"
-      - "package-lock.json"
-      - "vite.config.js"
-      - ".github/workflows/frontend-vercel-ci.yml"
   pull_request:
-    paths:
-      - "src/**"
-      - "public/**"
+    branches: [ "main" ]
 
 jobs:
   build:

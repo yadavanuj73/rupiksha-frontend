@@ -3,12 +3,8 @@ name: Backend Java CI/CD
 on:
   push:
     branches: [ "main" ]
-    paths:
-      - "backend-java/**"
-      - ".github/workflows/backend-java-ci.yml"
   pull_request:
-    paths:
-      - "backend-java/**"
+    branches: [ "main" ]
 
 jobs:
   test-build:
