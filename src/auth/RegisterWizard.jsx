@@ -1,24 +1,65 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Phone, Lock, ShieldCheck, CheckCircle2, AlertCircle, ArrowRight, ArrowLeft, 
-  User, Mail, KeyRound, Sparkles, Send, RefreshCw, Upload, Image, Building, MapPin, CreditCard, Camera
+  User, Mail, KeyRound, Sparkles, Send, RefreshCw, Upload, Image, Building, MapPin, CreditCard, Camera, FileText
 } from 'lucide-react';
 import { authService, otpService, adminService } from '../services/apiService';
 import { useAuth } from '../context/AuthContext';
 
+const INDIAN_STATES = [
+  "BIHAR",
+  "MAHARASHTRA",
+  "UTTAR PRADESH",
+  "DELHI",
+  "WEST BENGAL",
+  "RAJASTHAN",
+  "PUNJAB",
+  "HARYANA",
+  "GUJARAT",
+  "KARNATAKA",
+  "TAMIL NADU",
+  "TELANGANA",
+  "ANDHRA PRADESH",
+  "MADHYA PRADESH",
+  "ODISHA",
+  "JHARKHAND",
+  "CHHATTISGARH",
+  "ASSAM",
+  "KERALA",
+  "UTTARAKHAND",
+  "HIMACHAL PRADESH",
+  "JAMMU AND KASHMIR",
+  "GOA",
+  "MANIPUR",
+  "MEGHALAYA",
+  "MIZORAM",
+  "NAGALAND",
+  "SIKKIM",
+  "TRIPURA",
+  "ARUNACHAL PRADESH",
+  "PUDUCHERRY",
+  "CHANDIGARH",
+  "LADAKH",
+  "ANDAMAN AND NICOBAR ISLANDS",
+  "DADRA AND NAGAR HAVELI AND DAMAN AND DIU",
+  "LAKSHADWEEP"
+];
+
 export default function RegisterWizard() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login: contextLogin } = useAuth();
 
-  const [step, setStep] = useState(1); // 1: Mobile & Auth Info, 2: OTP Verification, 3: PIN & Onboarding & Documents, 4: Auto Approval Success
+  const [step, setStep] = useState(1); // 1: Mobile & Auth Info, 2: OTP Verification, 3: PIN, Business, KYC & Documents, 4: Auto Approval Success
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [otpTimer, setOtpTimer] = useState(60);
 
-  // Form State with Onboarding & Document Uploads
+  // Form State
+  const initialRole = (searchParams.get('role') || 'RETAILER').toUpperCase();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -29,11 +70,13 @@ export default function RegisterWizard() {
     otp: '',
     pin: '',
     confirmPin: '',
-    role: 'RETAILER',
-    state: '',
+    role: ['RETAILER', 'DISTRIBUTOR', 'SUPER_DISTRIBUTOR'].includes(initialRole) ? initialRole : 'RETAILER',
+    state: 'BIHAR',
     city: '',
     pincode: '',
     address: '',
+    shopAddress: '',
+    permanentAddress: '',
     businessName: '',
     businessType: 'Retail Store',
     parentUserId: '',
@@ -48,6 +91,7 @@ export default function RegisterWizard() {
     bankAccountNumber: '',
     bankIfsc: '',
     bankBranch: '',
+    upiId: '',
     photoUrl: '',
     aadhaarPhotoUrl: '',
     aadhaarBackPhotoUrl: '',
@@ -55,6 +99,7 @@ export default function RegisterWizard() {
     shopPhotoUrl: '',
     bankPassbookUrl: '',
     liveSelfieUrl: '',
+    electricityBillUrl: '',
   });
 
   const [parents, setParents] = useState([]);
@@ -79,8 +124,52 @@ export default function RegisterWizard() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
+    // Strict digit formatting for Aadhaar
+    if (name === 'aadhaarNumber') {
+      const digitsOnly = value.replace(/\D/g, '').slice(0, 12);
+      setFormData(prev => ({ ...prev, aadhaarNumber: digitsOnly }));
+      if (error) setError('');
+      return;
+    }
+
+    // Pincode auto-lookup
+    if (name === 'pincode') {
+      const digitsOnly = value.replace(/\D/g, '').slice(0, 6);
+      setFormData(prev => ({ ...prev, pincode: digitsOnly }));
+      if (digitsOnly.length === 6) {
+        fetchPincodeDetails(digitsOnly);
+      }
+      if (error) setError('');
+      return;
+    }
+
     setFormData(prev => ({ ...prev, [name]: value }));
     if (error) setError('');
+  };
+
+  // Pincode Auto-Fill for City & State
+  const fetchPincodeDetails = async (pin) => {
+    try {
+      const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
+      const data = await res.json();
+      if (data && data[0] && data[0].Status === 'Success' && data[0].PostOffice && data[0].PostOffice.length > 0) {
+        const po = data[0].PostOffice[0];
+        const stateName = po.State ? po.State.toUpperCase() : '';
+        const cityName = po.District || po.Block || po.Name || '';
+        
+        // Find matching state in INDIAN_STATES
+        const matchedState = INDIAN_STATES.find(s => s === stateName || stateName.includes(s) || s.includes(stateName));
+
+        setFormData(prev => ({
+          ...prev,
+          city: cityName || prev.city,
+          state: matchedState || prev.state
+        }));
+      }
+    } catch (err) {
+      console.warn('Pincode fetch error:', err);
+    }
   };
 
   const handleFileUpload = (field, e) => {
@@ -176,7 +265,7 @@ export default function RegisterWizard() {
     }
   };
 
-  // STEP 3: Onboarding & PIN Setup -> AUTO APPROVAL REGISTRATION
+  // STEP 3: Onboarding Registration Submission
   const handleCompleteRegistration = async (e) => {
     e.preventDefault();
     setError('');
@@ -187,6 +276,10 @@ export default function RegisterWizard() {
     }
     if (formData.pin !== formData.confirmPin) {
       setError('Login PINs do not match');
+      return;
+    }
+    if (formData.aadhaarNumber && formData.aadhaarNumber.length !== 12) {
+      setError('Aadhaar Number must be exactly 12 digits');
       return;
     }
 
@@ -210,7 +303,9 @@ export default function RegisterWizard() {
         state: formData.state.trim(),
         city: formData.city.trim(),
         pincode: formData.pincode.trim(),
-        address: formData.address.trim(),
+        address: formData.shopAddress.trim() || formData.address.trim(),
+        shopAddress: formData.shopAddress.trim() || formData.address.trim(),
+        permanentAddress: formData.permanentAddress.trim(),
         businessName: formData.businessName.trim(),
         businessType: formData.businessType.trim(),
         parentUserId: formData.parentUserId,
@@ -232,6 +327,7 @@ export default function RegisterWizard() {
         shopPhotoUrl: formData.shopPhotoUrl,
         bankPassbookUrl: formData.bankPassbookUrl,
         liveSelfieUrl: formData.liveSelfieUrl,
+        voterIdUrl: formData.electricityBillUrl || formData.voterIdUrl
       };
 
       await authService.register(payload);
@@ -455,16 +551,29 @@ export default function RegisterWizard() {
                 <label className="block text-[10px] sm:text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
                   Partner Role
                 </label>
-                <select
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-500"
-                >
-                  <option value="RETAILER">Retailer</option>
-                  <option value="DISTRIBUTOR">Distributor</option>
-                  <option value="SUPER_DISTRIBUTOR">Super Distributor</option>
-                </select>
+                <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                  {[
+                    { id: 'RETAILER', label: 'Retailer' },
+                    { id: 'DISTRIBUTOR', label: 'Distributor' },
+                    { id: 'SUPER_DISTRIBUTOR', label: 'Super Distributor' }
+                  ].map(r => {
+                    const isSelected = formData.role === r.id;
+                    return (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, role: r.id }))}
+                        className={`flex-1 py-2 px-1.5 rounded-lg font-bold text-[11px] sm:text-xs transition-all ${
+                          isSelected
+                            ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                            : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                        }`}
+                      >
+                        {r.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div>
@@ -554,11 +663,11 @@ export default function RegisterWizard() {
           </form>
         )}
 
-        {/* STEP 3: SECURITY PIN + ONBOARDING & DOCUMENT UPLOADS */}
+        {/* STEP 3: SECURITY PIN + ONBOARDING DETAILS (BUSINESS, ADDRESS, KYC & DOCUMENTS) */}
         {step === 3 && (
-          <form onSubmit={handleCompleteRegistration} className="space-y-4">
+          <form onSubmit={handleCompleteRegistration} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
             
-            {/* Section A: Security PIN */}
+            {/* Section 1: Security PIN */}
             <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800 space-y-3">
               <div className="flex items-center gap-2 border-b border-slate-800/80 pb-2">
                 <KeyRound className="w-4 h-4 text-emerald-400" />
@@ -598,88 +707,230 @@ export default function RegisterWizard() {
               </div>
             </div>
 
-            {/* Section B: Business & Identity Details */}
+            {/* Section 2: Business & Address Details */}
             <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800 space-y-3">
               <div className="flex items-center gap-2 border-b border-slate-800/80 pb-2">
                 <Building className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider">2. Business & Identity Info</h3>
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">2. Business & Address Details</h3>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Business Name</label>
-                  <input type="text" name="businessName" value={formData.businessName} onChange={handleChange} placeholder="e.g. Rupiksha Store"
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white" />
+                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Shop Name / Business Name *</label>
+                  <input 
+                    type="text" 
+                    name="businessName" 
+                    value={formData.businessName} 
+                    onChange={handleChange} 
+                    placeholder="e.g. Rupiksha Digital Store"
+                    required
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none" 
+                  />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Aadhaar Number</label>
-                  <input type="text" name="aadhaarNumber" maxLength={12} value={formData.aadhaarNumber} onChange={handleChange} placeholder="12 Digit Aadhaar"
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">PAN Card Number</label>
-                  <input type="text" name="panNumber" maxLength={10} value={formData.panNumber} onChange={handleChange} placeholder="10 Digit PAN"
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white uppercase" />
+                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Shop Address *</label>
+                  <input 
+                    type="text" 
+                    name="shopAddress" 
+                    value={formData.shopAddress} 
+                    onChange={handleChange} 
+                    placeholder="e.g. Main Market, Station Road"
+                    required
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none" 
+                  />
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">State</label>
-                  <input type="text" name="state" value={formData.state} onChange={handleChange} placeholder="e.g. Bihar"
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white" />
+                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Permanent Address *</label>
+                  <input 
+                    type="text" 
+                    name="permanentAddress" 
+                    value={formData.permanentAddress} 
+                    onChange={handleChange} 
+                    placeholder="e.g. Village/Town, Post Office"
+                    required
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none" 
+                  />
                 </div>
+
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">City</label>
-                  <input type="text" name="city" value={formData.city} onChange={handleChange} placeholder="e.g. Muzaffarpur"
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white" />
+                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">
+                    Pincode * <span className="text-[9px] text-emerald-400 font-normal">(Auto-fills City & State)</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    name="pincode" 
+                    maxLength={6} 
+                    value={formData.pincode} 
+                    onChange={handleChange} 
+                    placeholder="6 Digit Pincode (e.g. 842001)"
+                    required
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none" 
+                  />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Pincode</label>
-                  <input type="text" name="pincode" maxLength={6} value={formData.pincode} onChange={handleChange} placeholder="6 Digit Pincode"
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white" />
+                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">State * (Auto-Selected / Choose State)</label>
+                  <select 
+                    name="state" 
+                    value={formData.state} 
+                    onChange={handleChange} 
+                    required
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                  >
+                    {INDIAN_STATES.map(st => (
+                      <option key={st} value={st}>{st}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">City / District *</label>
+                  <input 
+                    type="text" 
+                    name="city" 
+                    value={formData.city} 
+                    onChange={handleChange} 
+                    placeholder="e.g. Muzaffarpur"
+                    required
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none" 
+                  />
                 </div>
               </div>
             </div>
 
-            {/* Section C: Bank Details */}
+            {/* Section 3: KYC & Finance */}
             <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800 space-y-3">
               <div className="flex items-center gap-2 border-b border-slate-800/80 pb-2">
                 <CreditCard className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider">3. Bank Account Details</h3>
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">3. KYC & FINANCE</h3>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Bank Name</label>
-                  <input type="text" name="bankName" value={formData.bankName} onChange={handleChange} placeholder="e.g. State Bank of India"
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white" />
+                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">
+                    Aadhaar Number * <span className="text-[9px] text-slate-500">(Exact 12 Digits)</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    name="aadhaarNumber" 
+                    maxLength={12} 
+                    value={formData.aadhaarNumber} 
+                    onChange={handleChange} 
+                    placeholder="12 Digit Aadhaar Number"
+                    required
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono tracking-wider focus:border-emerald-500 focus:outline-none" 
+                  />
                 </div>
+
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Account Number</label>
-                  <input type="text" name="bankAccountNumber" value={formData.bankAccountNumber} onChange={handleChange} placeholder="Account Number"
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white" />
+                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">PAN Card Number *</label>
+                  <input 
+                    type="text" 
+                    name="panNumber" 
+                    maxLength={10} 
+                    value={formData.panNumber} 
+                    onChange={handleChange} 
+                    placeholder="10 Digit PAN (e.g. ABCDE1234F)"
+                    required
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white uppercase font-mono tracking-wider focus:border-emerald-500 focus:outline-none" 
+                  />
                 </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">IFSC Code</label>
-                  <input type="text" name="bankIfsc" value={formData.bankIfsc} onChange={handleChange} placeholder="SBIN0001234"
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white uppercase" />
+              </div>
+
+              {/* Sub-heading for Account Details */}
+              <div className="pt-2 border-t border-slate-900">
+                <p className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider mb-2">Bank Account & Settlement Details</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-2.5">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Account Holder Name *</label>
+                    <input 
+                      type="text" 
+                      name="bankAccountHolder" 
+                      value={formData.bankAccountHolder} 
+                      onChange={handleChange} 
+                      placeholder="Account Holder Name"
+                      required
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none" 
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Account Number *</label>
+                    <input 
+                      type="text" 
+                      name="bankAccountNumber" 
+                      value={formData.bankAccountNumber} 
+                      onChange={handleChange} 
+                      placeholder="Bank Account Number"
+                      required
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-emerald-500 focus:outline-none" 
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Bank Name *</label>
+                    <input 
+                      type="text" 
+                      name="bankName" 
+                      value={formData.bankName} 
+                      onChange={handleChange} 
+                      placeholder="e.g. State Bank of India"
+                      required
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none" 
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">IFSC Code *</label>
+                    <input 
+                      type="text" 
+                      name="bankIfsc" 
+                      value={formData.bankIfsc} 
+                      onChange={handleChange} 
+                      placeholder="e.g. SBIN0001234"
+                      required
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white uppercase font-mono focus:border-emerald-500 focus:outline-none" 
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">UPI ID (Optional)</label>
+                    <input 
+                      type="text" 
+                      name="upiId" 
+                      value={formData.upiId} 
+                      onChange={handleChange} 
+                      placeholder="e.g. username@upi / 9876543210@paytm"
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none" 
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Section D: Upload Registration Photos / Documents */}
+            {/* Section 4: Document & Photo Uploads */}
             <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800 space-y-3">
               <div className="flex items-center gap-2 border-b border-slate-800/80 pb-2">
                 <Camera className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider">4. Upload Documents & Registration Photos</h3>
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">4. DOCUMENT & PHOTO UPLOADS</h3>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 {[
                   { key: 'aadhaarPhotoUrl', label: 'Aadhaar Front' },
                   { key: 'aadhaarBackPhotoUrl', label: 'Aadhaar Back' },
                   { key: 'panPhotoUrl', label: 'PAN Card' },
                   { key: 'bankPassbookUrl', label: 'Bank Passbook / Cheque' },
                   { key: 'shopPhotoUrl', label: 'Shop Photo' },
-                  { key: 'liveSelfieUrl', label: 'Live Selfie / Photo' },
+                  { key: 'liveSelfieUrl', label: 'User Live Selfie' },
+                  { key: 'electricityBillUrl', label: 'Electricity Bill / Utility Doc' },
                 ].map((doc) => (
                   <div key={doc.key} className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 flex flex-col justify-between">
                     <div>
@@ -743,6 +994,10 @@ export default function RegisterWizard() {
               <div className="flex justify-between border-b border-slate-900 pb-1.5">
                 <span className="text-slate-500">Role:</span>
                 <span className="font-semibold text-emerald-400">{formData.role}</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-900 pb-1.5">
+                <span className="text-slate-500">State:</span>
+                <span className="font-semibold text-white">{formData.state}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Account & Onboarding Status:</span>
