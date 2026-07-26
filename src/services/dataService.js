@@ -1,4 +1,4 @@
-﻿import { sendOTPEmail, sendCredentialsEmail } from './emailService';
+import { sendOTPEmail, sendCredentialsEmail } from './emailService';
 import { BACKEND_URL } from './config';
 import { generateUniquePartyCode } from '../database/partyCode';
 import { mockApiService } from '../database/mockApiService';
@@ -303,6 +303,8 @@ export const dataService = {
                 return { success: false, message: 'Invalid credentials.' };
             }
 
+            localStorage.removeItem('rupiksha_imp_token');
+            localStorage.removeItem('rupiksha_imp_user');
             localStorage.setItem('rupiksha_user', JSON.stringify(normalizedUser));
             localStorage.setItem('rupiksha_token', data.accessToken);
             if (data.refreshToken) localStorage.setItem('rupiksha_refresh_token', data.refreshToken);
@@ -313,6 +315,14 @@ export const dataService = {
     },
 
     getCurrentUser: function () {
+        const impToken = localStorage.getItem('rupiksha_imp_token');
+        const impUser = localStorage.getItem('rupiksha_imp_user');
+        const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+        if (impToken && impUser && !isAdminPath) {
+            try {
+                return JSON.parse(impUser);
+            } catch (e) {}
+        }
         const saved = localStorage.getItem('rupiksha_user');
         return saved ? JSON.parse(saved) : null;
     },
@@ -1250,7 +1260,7 @@ export const dataService = {
                 ],
                 loans: [],
                 transactions: [],
-                news: "Welcome to Rupiksha Fintech Admin Panel!",
+                news: "Welcome to Rupiksha Digital Banking Portal!",
                 chartTitle: "Weekly Volume Activity",
                 chartData: [
                     { name: 'Mon', value: 400 }, { name: 'Tue', value: 300 },

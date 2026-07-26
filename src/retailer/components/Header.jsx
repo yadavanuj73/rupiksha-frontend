@@ -41,13 +41,13 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
         return () => window.removeEventListener('dataUpdated', updateData);
     }, []);
 
-    const currentUser = appData.currentUser;
-    const getInitials = () => {
-        if (currentUser?.name) return currentUser.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-        return 'RX';
-    };
+    const currentUser = appData.currentUser || dataService.getCurrentUser();
+    const retailerName = currentUser?.fullName || currentUser?.name || currentUser?.businessName || currentUser?.username || 'Retailer';
 
-    const retailerName = currentUser?.name || currentUser?.businessName || 'Retailer';
+    const getInitials = () => {
+        const displayName = currentUser?.fullName || currentUser?.name || currentUser?.username || 'RX';
+        return displayName.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    };
     const rawKyc = String(currentUser?.kycStatus || currentUser?.profile_kyc_status || '').toUpperCase();
     const kycChip = rawKyc === 'APPROVED' || rawKyc === 'DONE'
         ? { label: 'Approved', className: 'bg-emerald-50 border-emerald-200 text-emerald-700', icon: BadgeCheck }

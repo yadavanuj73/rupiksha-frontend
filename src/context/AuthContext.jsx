@@ -1,4 +1,4 @@
-﻿import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 import { dataService } from "../services/dataService";
 import { BACKEND_URL } from "../services/config";
 
@@ -252,6 +252,8 @@ export function AuthProvider({ children }) {
         if (!normalized) {
           return { success: false, message: "Session normalization failed." };
         }
+        localStorage.removeItem("rupiksha_imp_token");
+        localStorage.removeItem("rupiksha_imp_user");
         localStorage.setItem("rupiksha_user", JSON.stringify(normalized));
         setUser(normalized);
         setPermissions(normalized.permissions || []);

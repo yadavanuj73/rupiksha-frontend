@@ -297,6 +297,8 @@ const Login = () => {
                         const verifiedUser = { ...data.user };
                         if (verifiedUser.role) verifiedUser.role = String(verifiedUser.role).toUpperCase();
 
+                        localStorage.removeItem('rupiksha_imp_token');
+                        localStorage.removeItem('rupiksha_imp_user');
                         localStorage.setItem('rupiksha_user', JSON.stringify(verifiedUser));
                         localStorage.setItem('rupiksha_token', data.token);
                         setUser(verifiedUser);
