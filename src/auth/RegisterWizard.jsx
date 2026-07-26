@@ -3,10 +3,14 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Phone, Lock, ShieldCheck, CheckCircle2, AlertCircle, ArrowRight, ArrowLeft, 
-  User, Mail, KeyRound, Sparkles, Send, RefreshCw, Upload, Image, Building, MapPin, CreditCard, Camera, FileText
+  User, Mail, KeyRound, Sparkles, Send, RefreshCw, Upload, Image as ImageIcon, Building, MapPin, CreditCard, Camera, FileText,
+  ChevronLeft, ChevronRight, Check, Users, Play, Pause
 } from 'lucide-react';
 import { authService, otpService, adminService } from '../services/apiService';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+
+const logo = '/rupiksha logo.jpeg';
 
 const INDIAN_STATES = [
   "BIHAR",
@@ -47,16 +51,64 @@ const INDIAN_STATES = [
   "LAKSHADWEEP"
 ];
 
+const PROMO_SLIDES = [
+  {
+    src: '/aeps_promo.png',
+    title: 'AEPS & Aadhaar Withdrawals',
+    badge: 'BANKING SERVICES',
+    desc: 'Provide instant cash withdrawal, mini-statement & balance inquiry.'
+  },
+  {
+    src: '/AEPS.png',
+    title: 'Instant Cash Payout & Money Transfer',
+    badge: 'INSTANT SETTLEMENT',
+    desc: 'Direct account settlement and 24x7 IMPS money transfer across India.'
+  },
+  {
+    src: '/mobile recharge.png',
+    title: 'Mobile Recharge & BBPS Utility Bills',
+    badge: 'BILL PAYMENTS',
+    desc: 'High commission on mobile, DTH, electricity, water & gas bill payments.'
+  },
+  {
+    src: '/rupiksha logo.jpeg',
+    title: 'Rupiksha Partner Network',
+    badge: 'JOIN 50K+ MERCHANTS',
+    desc: 'Start your digital banking enterprise with instant auto-approval.'
+  }
+];
+
 export default function RegisterWizard() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { login: contextLogin } = useAuth();
+  const { language: lang, setLanguage: setLang } = useLanguage();
 
   const [step, setStep] = useState(1); // 1: Mobile & Auth Info, 2: OTP Verification, 3: PIN, Business, KYC & Documents, 4: Auto Approval Success
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [otpTimer, setOtpTimer] = useState(60);
+
+  // Image Carousel State
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isCarouselPaused, setIsCarouselPaused] = useState(false);
+
+  useEffect(() => {
+    if (isCarouselPaused) return;
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % PROMO_SLIDES.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [isCarouselPaused]);
+
+  const handleNextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % PROMO_SLIDES.length);
+  };
+
+  const handlePrevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + PROMO_SLIDES.length) % PROMO_SLIDES.length);
+  };
 
   // Form State
   const initialRole = (searchParams.get('role') || 'RETAILER').toUpperCase();
@@ -362,660 +414,901 @@ export default function RegisterWizard() {
   };
 
   return (
-    <div className="min-h-screen w-screen bg-slate-950 text-slate-100 flex items-center justify-center p-3 sm:p-6 relative font-sans overflow-y-auto">
-      {/* Ambient Glows */}
-      <div className="fixed top-1/4 left-1/4 w-72 h-72 sm:w-96 sm:h-96 bg-emerald-600/15 rounded-full blur-3xl pointer-events-none animate-pulse" />
-      <div className="fixed bottom-1/4 right-1/4 w-72 h-72 sm:w-96 sm:h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDelay: '1s' }} />
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans relative overflow-x-hidden">
+      
+      {/* ── Top Header Navigation Bar (Matches Image 1) ── */}
+      <header className="w-full bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 md:px-8 py-3 flex items-center justify-between z-30 sticky top-0 shadow-sm">
+        <motion.div 
+          initial={{ opacity: 0, x: -10 }} 
+          animate={{ opacity: 1, x: 0 }}
+          className="flex items-center gap-3 cursor-pointer" 
+          onClick={() => navigate('/login')}
+        >
+          <img src={logo} alt="RUPIKSHA" style={{ height: '40px', width: 'auto' }} className="object-contain" />
+        </motion.div>
 
-      <div className="w-full max-w-2xl bg-slate-900/95 border border-slate-800 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-7 relative z-10 my-6 flex flex-col justify-center">
-        
-        {/* Header */}
-        <div className="text-center mb-4">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 shadow-md shadow-emerald-500/20 mb-2">
-            <ShieldCheck className="w-7 h-7 text-slate-950" />
+        <div className="flex items-center gap-3 md:gap-5">
+          {/* Language Switcher */}
+          <div className="flex items-center bg-slate-100 rounded-full p-0.5 border border-slate-200">
+            <button 
+              type="button"
+              onClick={() => setLang('en')} 
+              className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${lang === 'en' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              EN
+            </button>
+            <button 
+              type="button"
+              onClick={() => setLang('hi')} 
+              className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${lang === 'hi' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              HI
+            </button>
           </div>
-          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white leading-tight">
-            Create Rupiksha Account
-          </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Instant Auto-Approved Partner Registration & Onboarding
-          </p>
+
+          {/* Portal / Login Back Button */}
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => navigate('/login')}
+            className="bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-widest px-3.5 py-1.5 rounded-full border border-blue-100 flex items-center gap-1 hover:bg-blue-100/70 transition-all shadow-sm"
+          >
+            <ChevronLeft size={13} />
+            Retailer Login
+          </motion.button>
+
+          {/* Contacts */}
+          <div className="hidden sm:flex flex-col text-[11px] font-bold text-slate-600 tracking-wide border-l border-slate-200 pl-4 space-y-0.5">
+            <span className="flex items-center gap-1.5 uppercase">
+              <Phone size={13} className="text-blue-600 fill-blue-50" strokeWidth={2.5} /> 0621-4008548 | 7004128310
+            </span>
+            <span className="flex items-center gap-1.5 lowercase">
+              <Mail size={13} className="text-blue-600 fill-blue-50" strokeWidth={2.5} /> customercare@rupiksha.com
+            </span>
+          </div>
         </div>
+      </header>
 
-        {/* Step Indicator */}
-        {step < 4 && (
-          <div className="flex items-center justify-between mb-5 px-4 sm:px-8 relative">
-            <div className="absolute top-1/2 left-8 right-8 h-0.5 bg-slate-800 -translate-y-1/2 z-0" />
-            <div 
-              className="absolute top-1/2 left-8 h-0.5 bg-emerald-500 -translate-y-1/2 z-0 transition-all duration-300"
-              style={{ width: `${((step - 1) / 2) * 80 + 10}%` }}
-            />
-
-            {[
-              { num: 1, label: 'Account Details' },
-              { num: 2, label: 'OTP Verification' },
-              { num: 3, label: 'PIN & Documents' }
-            ].map(s => (
-              <div key={s.num} className="relative z-10 flex flex-col items-center">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-300 ${
-                  step > s.num 
-                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/30' 
-                    : step === s.num 
-                    ? 'bg-emerald-500 text-slate-950 ring-4 ring-emerald-500/20' 
-                    : 'bg-slate-800 text-slate-400'
-                }`}>
-                  {step > s.num ? <CheckCircle2 className="w-4 h-4" /> : s.num}
-                </div>
-                <span className={`text-[10px] sm:text-xs font-semibold mt-1 ${step >= s.num ? 'text-emerald-400' : 'text-slate-500'}`}>
-                  {s.label}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Error Alert */}
-        <AnimatePresence>
-          {error && (
-            <motion.div 
-              initial={{ opacity: 0, y: -6 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              exit={{ opacity: 0 }}
-              className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center gap-2 text-rose-400 text-xs"
-            >
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{error}</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* STEP 1: FIRST NAME, LAST NAME & ACCOUNT INFO */}
-        {step === 1 && (
-          <form onSubmit={handleStep1Continue} className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] sm:text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                  First Name *
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    placeholder="e.g. First Name"
-                    required
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] sm:text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                  Last Name *
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    placeholder="e.g. Last Name"
-                    required
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] sm:text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                  Mobile Number * (10 Digits)
-                </label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="tel"
-                    name="mobile"
-                    maxLength={10}
-                    value={formData.mobile}
-                    onChange={handleChange}
-                    placeholder="e.g. 9876543210"
-                    required
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] sm:text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                  Email Address
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="e.g. name@example.com"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] sm:text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                  Password *
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="••••••••"
-                    required
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] sm:text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                  Confirm Password *
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="password"
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    placeholder="••••••••"
-                    required
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] sm:text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                  Partner Role
-                </label>
-                <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
-                  {[
-                    { id: 'RETAILER', label: 'Retailer' },
-                    { id: 'DISTRIBUTOR', label: 'Distributor' },
-                    { id: 'SUPER_DISTRIBUTOR', label: 'Super Distributor' }
-                  ].map(r => {
-                    const isSelected = formData.role === r.id;
-                    return (
-                      <button
-                        key={r.id}
-                        type="button"
-                        onClick={() => setFormData(prev => ({ ...prev, role: r.id }))}
-                        className={`flex-1 py-2 px-1.5 rounded-lg font-bold text-[11px] sm:text-xs transition-all ${
-                          isSelected
-                            ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                            : 'text-slate-400 hover:text-white hover:bg-slate-900'
-                        }`}
-                      >
-                        {r.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] sm:text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                  Assign Parent (Optional)
-                </label>
-                <select
-                  name="parentUserId"
-                  value={formData.parentUserId}
-                  onChange={handleChange}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-500"
-                >
-                  <option value="">-- Direct Parent --</option>
-                  {parents.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.fullName} ({p.partyCode || p.username}) - {p.role}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full mt-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold py-3 rounded-xl shadow-md shadow-emerald-500/25 flex items-center justify-center gap-2 text-xs sm:text-sm transition-all disabled:opacity-50"
-            >
-              {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <>Continue & Send Mobile OTP <ArrowRight className="w-4 h-4" /></>}
-            </button>
-
-            <p className="text-center text-xs text-slate-400 mt-2">
-              Already registered? <Link to="/login" className="text-emerald-400 hover:underline font-semibold">Login here</Link>
-            </p>
-          </form>
-        )}
-
-        {/* STEP 2: 2FACTOR OTP VERIFICATION */}
-        {step === 2 && (
-          <form onSubmit={handleVerifyOtp} className="space-y-4 text-center py-2">
-            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs sm:text-sm">
-              <Send className="w-6 h-6 mx-auto mb-2 text-emerald-400" />
-              OTP has been sent to <strong>+91 {formData.mobile}</strong> via mobile SMS.
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Enter 6-Digit OTP *
-              </label>
-              <input
-                type="text"
-                name="otp"
-                maxLength={6}
-                value={formData.otp}
-                onChange={handleChange}
-                placeholder="123456"
-                required
-                className="w-full max-w-xs mx-auto bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-center text-2xl font-mono tracking-widest text-emerald-400 focus:outline-none focus:border-emerald-500 shadow-inner"
-              />
-            </div>
-
-            <div className="flex items-center justify-between text-xs text-slate-400 px-2">
-              <button 
-                type="button" 
-                onClick={() => setStep(1)} 
-                className="flex items-center gap-1 hover:text-white"
-              >
-                <ArrowLeft className="w-4 h-4" /> Back to Account Details
-              </button>
-
-              <button
-                type="button"
-                onClick={handleResendOtp}
-                disabled={otpTimer > 0 || loading}
-                className="text-emerald-400 hover:underline disabled:opacity-50 font-semibold"
-              >
-                {otpTimer > 0 ? `Resend OTP in ${otpTimer}s` : 'Resend OTP'}
-              </button>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold py-3.5 rounded-xl shadow-md shadow-emerald-500/25 flex items-center justify-center gap-2 text-sm transition-all disabled:opacity-50"
-            >
-              {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <>Verify OTP & Proceed to Onboarding <ArrowRight className="w-4 h-4" /></>}
-            </button>
-          </form>
-        )}
-
-        {/* STEP 3: SECURITY PIN + ONBOARDING DETAILS (BUSINESS, ADDRESS, KYC & DOCUMENTS) */}
-        {step === 3 && (
-          <form onSubmit={handleCompleteRegistration} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-            
-            {/* Section 1: Security PIN */}
-            <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800 space-y-3">
-              <div className="flex items-center gap-2 border-b border-slate-800/80 pb-2">
-                <KeyRound className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider">1. Create Security Login PIN</h3>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
-                    4-Digit Login PIN *
-                  </label>
-                  <input
-                    type="password"
-                    name="pin"
-                    maxLength={4}
-                    value={formData.pin}
-                    onChange={handleChange}
-                    placeholder="••••"
-                    required
-                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-center text-sm font-mono tracking-widest text-white focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
-                    Confirm Login PIN *
-                  </label>
-                  <input
-                    type="password"
-                    name="confirmPin"
-                    maxLength={4}
-                    value={formData.confirmPin}
-                    onChange={handleChange}
-                    placeholder="••••"
-                    required
-                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-center text-sm font-mono tracking-widest text-white focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Section 2: Business & Address Details */}
-            <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800 space-y-3">
-              <div className="flex items-center gap-2 border-b border-slate-800/80 pb-2">
-                <Building className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider">2. Business & Address Details</h3>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Shop Name / Business Name *</label>
-                  <input 
-                    type="text" 
-                    name="businessName" 
-                    value={formData.businessName} 
-                    onChange={handleChange} 
-                    placeholder="e.g. Rupiksha Digital Store"
-                    required
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Shop Address *</label>
-                  <input 
-                    type="text" 
-                    name="shopAddress" 
-                    value={formData.shopAddress} 
-                    onChange={handleChange} 
-                    placeholder="e.g. Main Market, Station Road"
-                    required
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none" 
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Permanent Address *</label>
-                  <input 
-                    type="text" 
-                    name="permanentAddress" 
-                    value={formData.permanentAddress} 
-                    onChange={handleChange} 
-                    placeholder="e.g. Village/Town, Post Office"
-                    required
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none" 
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">
-                    Pincode * <span className="text-[9px] text-emerald-400 font-normal">(Auto-fills City & State)</span>
-                  </label>
-                  <input 
-                    type="text" 
-                    name="pincode" 
-                    maxLength={6} 
-                    value={formData.pincode} 
-                    onChange={handleChange} 
-                    placeholder="6 Digit Pincode (e.g. 842001)"
-                    required
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none" 
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">State * (Auto-Selected / Choose State)</label>
-                  <select 
-                    name="state" 
-                    value={formData.state} 
-                    onChange={handleChange} 
-                    required
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none"
-                  >
-                    {INDIAN_STATES.map(st => (
-                      <option key={st} value={st}>{st}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">City / District *</label>
-                  <input 
-                    type="text" 
-                    name="city" 
-                    value={formData.city} 
-                    onChange={handleChange} 
-                    placeholder="e.g. Muzaffarpur"
-                    required
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none" 
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Section 3: KYC & Finance */}
-            <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800 space-y-3">
-              <div className="flex items-center gap-2 border-b border-slate-800/80 pb-2">
-                <CreditCard className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider">3. KYC & FINANCE</h3>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">
-                    Aadhaar Number * <span className="text-[9px] text-slate-500">(Exact 12 Digits)</span>
-                  </label>
-                  <input 
-                    type="text" 
-                    name="aadhaarNumber" 
-                    maxLength={12} 
-                    value={formData.aadhaarNumber} 
-                    onChange={handleChange} 
-                    placeholder="12 Digit Aadhaar Number"
-                    required
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono tracking-wider focus:border-emerald-500 focus:outline-none" 
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">PAN Card Number *</label>
-                  <input 
-                    type="text" 
-                    name="panNumber" 
-                    maxLength={10} 
-                    value={formData.panNumber} 
-                    onChange={handleChange} 
-                    placeholder="10 Digit PAN (e.g. ABCDE1234F)"
-                    required
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white uppercase font-mono tracking-wider focus:border-emerald-500 focus:outline-none" 
-                  />
-                </div>
-              </div>
-
-              {/* Sub-heading for Account Details */}
-              <div className="pt-2 border-t border-slate-900">
-                <p className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider mb-2">Bank Account & Settlement Details</p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-2.5">
-                  <div>
-                    <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Account Holder Name *</label>
-                    <input 
-                      type="text" 
-                      name="bankAccountHolder" 
-                      value={formData.bankAccountHolder} 
-                      onChange={handleChange} 
-                      placeholder="Account Holder Name"
-                      required
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none" 
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Account Number *</label>
-                    <input 
-                      type="text" 
-                      name="bankAccountNumber" 
-                      value={formData.bankAccountNumber} 
-                      onChange={handleChange} 
-                      placeholder="Bank Account Number"
-                      required
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-emerald-500 focus:outline-none" 
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Bank Name *</label>
-                    <input 
-                      type="text" 
-                      name="bankName" 
-                      value={formData.bankName} 
-                      onChange={handleChange} 
-                      placeholder="e.g. State Bank of India"
-                      required
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none" 
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div>
-                    <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">IFSC Code *</label>
-                    <input 
-                      type="text" 
-                      name="bankIfsc" 
-                      value={formData.bankIfsc} 
-                      onChange={handleChange} 
-                      placeholder="e.g. SBIN0001234"
-                      required
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white uppercase font-mono focus:border-emerald-500 focus:outline-none" 
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">UPI ID (Optional)</label>
-                    <input 
-                      type="text" 
-                      name="upiId" 
-                      value={formData.upiId} 
-                      onChange={handleChange} 
-                      placeholder="e.g. username@upi / 9876543210@paytm"
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none" 
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Section 4: Document & Photo Uploads */}
-            <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800 space-y-3">
-              <div className="flex items-center gap-2 border-b border-slate-800/80 pb-2">
-                <Camera className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider">4. DOCUMENT & PHOTO UPLOADS</h3>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                {[
-                  { key: 'aadhaarPhotoUrl', label: 'Aadhaar Front' },
-                  { key: 'aadhaarBackPhotoUrl', label: 'Aadhaar Back' },
-                  { key: 'panPhotoUrl', label: 'PAN Card' },
-                  { key: 'bankPassbookUrl', label: 'Bank Passbook / Cheque' },
-                  { key: 'shopPhotoUrl', label: 'Shop Photo' },
-                  { key: 'liveSelfieUrl', label: 'User Live Selfie' },
-                  { key: 'electricityBillUrl', label: 'Electricity Bill / Utility Doc' },
-                ].map((doc) => (
-                  <div key={doc.key} className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 flex flex-col justify-between">
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-300 uppercase tracking-wide truncate mb-1">{doc.label}</p>
-                      {formData[doc.key] ? (
-                        <div className="relative w-full h-16 rounded-lg overflow-hidden border border-emerald-500/40 mb-2">
-                          <img src={formData[doc.key]} alt={doc.label} className="w-full h-full object-cover" />
-                        </div>
-                      ) : (
-                        <div className="w-full h-16 rounded-lg border border-dashed border-slate-700 bg-slate-950 flex flex-col items-center justify-center text-slate-500 mb-2">
-                          <Image className="w-5 h-5 mb-0.5" />
-                          <span className="text-[9px]">No photo</span>
-                        </div>
-                      )}
-                    </div>
-                    <label className="cursor-pointer w-full py-1 px-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[10px] font-semibold text-emerald-400 flex items-center justify-center gap-1 transition-colors">
-                      <Upload className="w-3 h-3" /> Select File
-                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(doc.key, e)} />
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full mt-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 text-sm transition-all disabled:opacity-50"
-            >
-              {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <>Submit & Auto-Approve Registration <Sparkles className="w-4 h-4" /></>}
-            </button>
-          </form>
-        )}
-
-        {/* STEP 4: AUTO APPROVAL SUCCESS & LOGIN */}
-        {step === 4 && (
-          <div className="text-center py-4 space-y-4">
-            <div className="w-16 h-16 rounded-full bg-emerald-500/20 border-2 border-emerald-500 flex items-center justify-center mx-auto text-emerald-400 shadow-xl shadow-emerald-500/30">
-              <CheckCircle2 className="w-10 h-10" />
-            </div>
-
-            <div>
-              <span className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold uppercase tracking-wider">
-                Registration & Onboarding: AUTO APPROVED
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-black text-white mt-2">Welcome to Rupiksha!</h2>
-              <p className="text-xs text-slate-300 mt-1 max-w-md mx-auto">
-                Your account and onboarding are <strong>ACTIVE & APPROVED</strong>. Basic services are enabled. (AEPS, BBPS & Payout are pending Admin activation).
+      {/* ── Main Content Area (Two-Column Layout) ── */}
+      <main className="flex-1 grid grid-cols-1 md:grid-cols-12 min-h-[calc(100vh-65px)]">
+        
+        {/* ── LEFT COLUMN: Registration Form Card ── */}
+        <div className="md:col-span-6 lg:col-span-7 xl:col-span-6 p-4 sm:p-6 lg:p-8 flex flex-col justify-center items-center bg-gradient-to-br from-amber-50/50 via-blue-50/30 to-slate-50 overflow-y-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="w-full max-w-xl space-y-3 sm:space-y-4"
+          >
+            {/* Header Title */}
+            <div className="space-y-1 text-center sm:text-left">
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                Welcome to <span className="text-blue-600">Rupiksha</span>
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-500 font-medium">
+                Create your partner account & complete instant auto-approval onboarding
               </p>
             </div>
 
-            <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 text-left text-xs space-y-2 text-slate-300 max-w-md mx-auto">
-              <div className="flex justify-between border-b border-slate-900 pb-1.5">
-                <span className="text-slate-500">Full Name:</span>
-                <span className="font-semibold text-white">{formData.firstName} {formData.lastName}</span>
+            {/* Main Form White Card */}
+            <div className="bg-white rounded-3xl shadow-2xl shadow-blue-100/70 border border-blue-50 overflow-hidden text-slate-800">
+              
+              {/* Blue Header Pill Banner */}
+              <div className="bg-blue-600 py-3.5 px-4 text-center shadow-sm">
+                <span className="text-white text-xs sm:text-sm font-black uppercase tracking-[0.2em]">
+                  {step === 1 && 'NEW PARTNER REGISTRATION'}
+                  {step === 2 && 'MOBILE OTP VERIFICATION'}
+                  {step === 3 && 'ONBOARDING & KYC DOCUMENTS'}
+                  {step === 4 && 'ACCOUNT REGISTRATION COMPLETED'}
+                </span>
               </div>
-              <div className="flex justify-between border-b border-slate-900 pb-1.5">
-                <span className="text-slate-500">Mobile Number:</span>
-                <span className="font-mono text-white">+91 {formData.mobile}</span>
-              </div>
-              <div className="flex justify-between border-b border-slate-900 pb-1.5">
-                <span className="text-slate-500">Role:</span>
-                <span className="font-semibold text-emerald-400">{formData.role}</span>
-              </div>
-              <div className="flex justify-between border-b border-slate-900 pb-1.5">
-                <span className="text-slate-500">State:</span>
-                <span className="font-semibold text-white">{formData.state}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Account & Onboarding Status:</span>
-                <span className="text-emerald-400 font-bold">APPROVED & ACTIVE</span>
+
+              <div className="p-4 sm:p-6 space-y-4">
+                
+                {/* Step Indicator Bar */}
+                {step < 4 && (
+                  <div className="flex items-center justify-between mb-4 px-2 sm:px-6 relative">
+                    <div className="absolute top-1/2 left-6 right-6 h-0.5 bg-slate-200 -translate-y-1/2 z-0" />
+                    <div 
+                      className="absolute top-1/2 left-6 h-0.5 bg-blue-600 -translate-y-1/2 z-0 transition-all duration-300"
+                      style={{ width: `${((step - 1) / 2) * 80 + 10}%` }}
+                    />
+
+                    {[
+                      { num: 1, label: 'Account Details' },
+                      { num: 2, label: 'OTP Verify' },
+                      { num: 3, label: 'PIN & Documents' }
+                    ].map(s => (
+                      <div key={s.num} className="relative z-10 flex flex-col items-center">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-300 ${
+                          step > s.num 
+                            ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' 
+                            : step === s.num 
+                            ? 'bg-blue-600 text-white ring-4 ring-blue-100 shadow-md' 
+                            : 'bg-slate-100 text-slate-400 border border-slate-200'
+                        }`}>
+                          {step > s.num ? <CheckCircle2 className="w-4 h-4" /> : s.num}
+                        </div>
+                        <span className={`text-[10px] sm:text-xs font-bold mt-1 ${step >= s.num ? 'text-blue-600' : 'text-slate-400'}`}>
+                          {s.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Error Alert */}
+                <AnimatePresence>
+                  {error && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: -6 }} 
+                      animate={{ opacity: 1, y: 0 }} 
+                      exit={{ opacity: 0 }}
+                      className="p-3 rounded-xl bg-rose-50 border border-rose-200 flex items-center gap-2 text-rose-600 text-xs font-semibold"
+                    >
+                      <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+                      <span>{error}</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* ── STEP 1: FIRST NAME, LAST NAME & ACCOUNT INFO ── */}
+                {step === 1 && (
+                  <form onSubmit={handleStep1Continue} className="space-y-3.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                          First Name *
+                        </label>
+                        <div className="relative">
+                          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                          <input
+                            type="text"
+                            name="firstName"
+                            value={formData.firstName}
+                            onChange={handleChange}
+                            placeholder="First Name"
+                            required
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                          Last Name *
+                        </label>
+                        <div className="relative">
+                          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                          <input
+                            type="text"
+                            name="lastName"
+                            value={formData.lastName}
+                            onChange={handleChange}
+                            placeholder="Last Name"
+                            required
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                          Mobile Number * (10 Digits)
+                        </label>
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                          <input
+                            type="tel"
+                            name="mobile"
+                            maxLength={10}
+                            value={formData.mobile}
+                            onChange={handleChange}
+                            placeholder="e.g. 9876543210"
+                            required
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                          Email Address
+                        </label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                          <input
+                            type="email"
+                            name="email"
+                            value={formData.email}
+                            onChange={handleChange}
+                            placeholder="name@example.com"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                          Password *
+                        </label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                          <input
+                            type="password"
+                            name="password"
+                            value={formData.password}
+                            onChange={handleChange}
+                            placeholder="••••••••"
+                            required
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                          Confirm Password *
+                        </label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                          <input
+                            type="password"
+                            name="confirmPassword"
+                            value={formData.confirmPassword}
+                            onChange={handleChange}
+                            placeholder="••••••••"
+                            required
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Role Selector & Parent Option */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                          Partner Role
+                        </label>
+                        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                          {[
+                            { id: 'RETAILER', label: 'Retailer' },
+                            { id: 'DISTRIBUTOR', label: 'Distributor' },
+                            { id: 'SUPER_DISTRIBUTOR', label: 'Super Dist.' }
+                          ].map(r => {
+                            const isSelected = formData.role === r.id;
+                            return (
+                              <button
+                                key={r.id}
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, role: r.id }))}
+                                className={`flex-1 py-2 px-1 rounded-lg font-bold text-[11px] transition-all ${
+                                  isSelected
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                                }`}
+                              >
+                                {r.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                          Assign Parent (Optional)
+                        </label>
+                        <select
+                          name="parentUserId"
+                          value={formData.parentUserId}
+                          onChange={handleChange}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-800 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
+                        >
+                          <option value="">-- Direct Parent --</option>
+                          {parents.map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.fullName} ({p.partyCode || p.username}) - {p.role}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 text-xs sm:text-sm transition-all disabled:opacity-50 active:scale-[0.99]"
+                    >
+                      {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <>Continue & Send Mobile OTP <ArrowRight className="w-4 h-4" /></>}
+                    </button>
+
+                    <div className="pt-2 flex items-center justify-center gap-4 text-xs font-bold uppercase tracking-wider text-slate-500 border-t border-slate-100 mt-3">
+                      <Link to="/login" className="text-blue-600 hover:underline flex items-center gap-1">
+                        <User size={13} /> Already Registered? Login
+                      </Link>
+                    </div>
+                  </form>
+                )}
+
+                {/* ── STEP 2: MOBILE OTP VERIFICATION ── */}
+                {step === 2 && (
+                  <form onSubmit={handleVerifyOtp} className="space-y-4 text-center py-2">
+                    <div className="p-4 rounded-2xl bg-blue-50 border border-blue-100 text-blue-900 text-xs sm:text-sm font-medium">
+                      <Send className="w-6 h-6 mx-auto mb-2 text-blue-600" />
+                      OTP has been sent to <strong>+91 {formData.mobile}</strong> via mobile SMS.
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+                        Enter 6-Digit OTP *
+                      </label>
+                      <input
+                        type="text"
+                        name="otp"
+                        maxLength={6}
+                        value={formData.otp}
+                        onChange={handleChange}
+                        placeholder="123456"
+                        required
+                        className="w-full max-w-xs mx-auto bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-center text-2xl font-mono tracking-widest text-blue-600 focus:outline-none focus:border-blue-600 focus:bg-white shadow-inner"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs text-slate-500 px-2">
+                      <button 
+                        type="button" 
+                        onClick={() => setStep(1)} 
+                        className="flex items-center gap-1 font-semibold hover:text-slate-800"
+                      >
+                        <ArrowLeft className="w-4 h-4" /> Back to Step 1
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleResendOtp}
+                        disabled={otpTimer > 0 || loading}
+                        className="text-blue-600 hover:underline disabled:opacity-50 font-bold"
+                      >
+                        {otpTimer > 0 ? `Resend OTP in ${otpTimer}s` : 'Resend OTP'}
+                      </button>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 text-sm transition-all disabled:opacity-50 active:scale-[0.99]"
+                    >
+                      {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <>Verify OTP & Proceed <ArrowRight className="w-4 h-4" /></>}
+                    </button>
+                  </form>
+                )}
+
+                {/* ── STEP 3: SECURITY PIN + ONBOARDING DETAILS (BUSINESS, ADDRESS, KYC & DOCUMENTS) ── */}
+                {step === 3 && (
+                  <form onSubmit={handleCompleteRegistration} className="space-y-4 max-h-[60vh] overflow-y-auto pr-1 text-left">
+                    
+                    {/* Section 1: Security PIN */}
+                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-3">
+                      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+                        <KeyRound className="w-4 h-4 text-blue-600" />
+                        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">1. Create Security Login PIN</h3>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                            4-Digit Login PIN *
+                          </label>
+                          <input
+                            type="password"
+                            name="pin"
+                            maxLength={4}
+                            value={formData.pin}
+                            onChange={handleChange}
+                            placeholder="••••"
+                            required
+                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-center text-sm font-mono tracking-widest text-slate-900 focus:outline-none focus:border-blue-600 shadow-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                            Confirm Login PIN *
+                          </label>
+                          <input
+                            type="password"
+                            name="confirmPin"
+                            maxLength={4}
+                            value={formData.confirmPin}
+                            onChange={handleChange}
+                            placeholder="••••"
+                            required
+                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-center text-sm font-mono tracking-widest text-slate-900 focus:outline-none focus:border-blue-600 shadow-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section 2: Business & Address Details */}
+                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-3">
+                      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+                        <Building className="w-4 h-4 text-blue-600" />
+                        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">2. Business & Address Details</h3>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Shop / Business Name *</label>
+                          <input 
+                            type="text" 
+                            name="businessName" 
+                            value={formData.businessName} 
+                            onChange={handleChange} 
+                            placeholder="e.g. Rupiksha Store"
+                            required
+                            className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:border-blue-600 focus:outline-none shadow-sm" 
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Shop Address *</label>
+                          <input 
+                            type="text" 
+                            name="shopAddress" 
+                            value={formData.shopAddress} 
+                            onChange={handleChange} 
+                            placeholder="e.g. Main Market, Station Road"
+                            required
+                            className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:border-blue-600 focus:outline-none shadow-sm" 
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Permanent Address *</label>
+                          <input 
+                            type="text" 
+                            name="permanentAddress" 
+                            value={formData.permanentAddress} 
+                            onChange={handleChange} 
+                            placeholder="e.g. Village/Town, Post Office"
+                            required
+                            className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:border-blue-600 focus:outline-none shadow-sm" 
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                            Pincode * <span className="text-[9px] text-blue-600 font-semibold">(Auto-fills City & State)</span>
+                          </label>
+                          <input 
+                            type="text" 
+                            name="pincode" 
+                            maxLength={6} 
+                            value={formData.pincode} 
+                            onChange={handleChange} 
+                            placeholder="6 Digit Pincode (e.g. 842001)"
+                            required
+                            className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:border-blue-600 focus:outline-none shadow-sm" 
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">State *</label>
+                          <select 
+                            name="state" 
+                            value={formData.state} 
+                            onChange={handleChange} 
+                            required
+                            className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:border-blue-600 focus:outline-none shadow-sm"
+                          >
+                            {INDIAN_STATES.map(st => (
+                              <option key={st} value={st}>{st}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">City / District *</label>
+                          <input 
+                            type="text" 
+                            name="city" 
+                            value={formData.city} 
+                            onChange={handleChange} 
+                            placeholder="e.g. Muzaffarpur"
+                            required
+                            className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:border-blue-600 focus:outline-none shadow-sm" 
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section 3: KYC & Banking */}
+                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-3">
+                      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+                        <CreditCard className="w-4 h-4 text-blue-600" />
+                        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">3. KYC & FINANCE DETAILS</h3>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                            Aadhaar Number * <span className="text-[9px] text-slate-400">(12 Digits)</span>
+                          </label>
+                          <input 
+                            type="text" 
+                            name="aadhaarNumber" 
+                            maxLength={12} 
+                            value={formData.aadhaarNumber} 
+                            onChange={handleChange} 
+                            placeholder="12 Digit Aadhaar Number"
+                            required
+                            className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 font-mono tracking-wider focus:border-blue-600 focus:outline-none shadow-sm" 
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">PAN Card Number *</label>
+                          <input 
+                            type="text" 
+                            name="panNumber" 
+                            maxLength={10} 
+                            value={formData.panNumber} 
+                            onChange={handleChange} 
+                            placeholder="10 Digit PAN (e.g. ABCDE1234F)"
+                            required
+                            className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 uppercase font-mono tracking-wider focus:border-blue-600 focus:outline-none shadow-sm" 
+                          />
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-200">
+                        <p className="text-[11px] font-bold text-blue-600 uppercase tracking-wider mb-2">Bank Account & Settlement Details</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-2.5">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Account Holder Name *</label>
+                            <input 
+                              type="text" 
+                              name="bankAccountHolder" 
+                              value={formData.bankAccountHolder} 
+                              onChange={handleChange} 
+                              placeholder="Holder Name"
+                              required
+                              className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:border-blue-600 focus:outline-none shadow-sm" 
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Account Number *</label>
+                            <input 
+                              type="text" 
+                              name="bankAccountNumber" 
+                              value={formData.bankAccountNumber} 
+                              onChange={handleChange} 
+                              placeholder="Account Number"
+                              required
+                              className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 font-mono focus:border-blue-600 focus:outline-none shadow-sm" 
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Bank Name *</label>
+                            <input 
+                              type="text" 
+                              name="bankName" 
+                              value={formData.bankName} 
+                              onChange={handleChange} 
+                              placeholder="e.g. SBI Bank"
+                              required
+                              className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:border-blue-600 focus:outline-none shadow-sm" 
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">IFSC Code *</label>
+                            <input 
+                              type="text" 
+                              name="bankIfsc" 
+                              value={formData.bankIfsc} 
+                              onChange={handleChange} 
+                              placeholder="e.g. SBIN0001234"
+                              required
+                              className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 uppercase font-mono focus:border-blue-600 focus:outline-none shadow-sm" 
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">UPI ID (Optional)</label>
+                            <input 
+                              type="text" 
+                              name="upiId" 
+                              value={formData.upiId} 
+                              onChange={handleChange} 
+                              placeholder="e.g. name@upi"
+                              className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:border-blue-600 focus:outline-none shadow-sm" 
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section 4: Document & Photo Uploads */}
+                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-3">
+                      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+                        <Camera className="w-4 h-4 text-blue-600" />
+                        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">4. DOCUMENT & PHOTO UPLOADS</h3>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                        {[
+                          { key: 'aadhaarPhotoUrl', label: 'Aadhaar Front' },
+                          { key: 'aadhaarBackPhotoUrl', label: 'Aadhaar Back' },
+                          { key: 'panPhotoUrl', label: 'PAN Card' },
+                          { key: 'bankPassbookUrl', label: 'Bank Passbook' },
+                          { key: 'shopPhotoUrl', label: 'Shop Photo' },
+                          { key: 'liveSelfieUrl', label: 'User Live Selfie' },
+                          { key: 'electricityBillUrl', label: 'Electricity Bill' },
+                        ].map((doc) => (
+                          <div key={doc.key} className="bg-white p-2.5 rounded-xl border border-slate-200 flex flex-col justify-between shadow-sm">
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-700 uppercase tracking-wide truncate mb-1">{doc.label}</p>
+                              {formData[doc.key] ? (
+                                <div className="relative w-full h-16 rounded-lg overflow-hidden border border-blue-500 mb-2">
+                                  <img src={formData[doc.key]} alt={doc.label} className="w-full h-full object-cover" />
+                                </div>
+                              ) : (
+                                <div className="w-full h-16 rounded-lg border border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center text-slate-400 mb-2">
+                                  <ImageIcon className="w-5 h-5 mb-0.5" />
+                                  <span className="text-[9px]">No file</span>
+                                </div>
+                              )}
+                            </div>
+                            <label className="cursor-pointer w-full py-1 px-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg text-[10px] font-bold text-blue-600 flex items-center justify-center gap-1 transition-colors">
+                              <Upload className="w-3 h-3" /> Upload
+                              <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(doc.key, e)} />
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 text-sm transition-all disabled:opacity-50 active:scale-[0.99]"
+                    >
+                      {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <>Submit & Auto-Approve Registration <Sparkles className="w-4 h-4" /></>}
+                    </button>
+                  </form>
+                )}
+
+                {/* ── STEP 4: AUTO APPROVAL SUCCESS & LOGIN ── */}
+                {step === 4 && (
+                  <div className="text-center py-4 space-y-4">
+                    <div className="w-16 h-16 rounded-full bg-emerald-100 border-2 border-emerald-500 flex items-center justify-center mx-auto text-emerald-600 shadow-lg shadow-emerald-500/20">
+                      <CheckCircle2 className="w-10 h-10" />
+                    </div>
+
+                    <div>
+                      <span className="px-3.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold uppercase tracking-wider">
+                        STATUS: AUTO APPROVED & ACTIVE
+                      </span>
+                      <h2 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">Welcome to Rupiksha!</h2>
+                      <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                        Your partner account has been successfully registered and <strong>APPROVED</strong>.
+                      </p>
+                    </div>
+
+                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-left text-xs space-y-2 text-slate-700 max-w-md mx-auto">
+                      <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                        <span className="text-slate-400">Full Name:</span>
+                        <span className="font-bold text-slate-900">{formData.firstName} {formData.lastName}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                        <span className="text-slate-400">Mobile Number:</span>
+                        <span className="font-mono font-bold text-slate-900">+91 {formData.mobile}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                        <span className="text-slate-400">Partner Role:</span>
+                        <span className="font-bold text-blue-600">{formData.role}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                        <span className="text-slate-400">State:</span>
+                        <span className="font-bold text-slate-900">{formData.state}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Onboarding Status:</span>
+                        <span className="text-emerald-600 font-bold">APPROVED & ACTIVE</span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleImmediateLogin}
+                      disabled={loading}
+                      className="w-full max-w-md mx-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 text-sm transition-all active:scale-[0.99]"
+                    >
+                      {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <>Login Immediately & Open Dashboard <ArrowRight className="w-5 h-5" /></>}
+                    </button>
+                  </div>
+                )}
+
               </div>
             </div>
+          </motion.div>
+        </div>
 
-            <button
-              onClick={handleImmediateLogin}
-              disabled={loading}
-              className="w-full max-w-md mx-auto bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2 text-sm transition-all"
+        {/* ── RIGHT COLUMN: Empowering Merchant Column & Animated Image Carousel ── */}
+        <div className="hidden md:flex md:col-span-6 lg:col-span-5 xl:col-span-6 bg-blue-50/80 border-l border-blue-100/60 p-6 lg:p-10 flex-col justify-between relative overflow-y-auto min-h-full">
+          
+          {/* Ambient Decorative Blurs */}
+          <div className="absolute top-0 right-0 w-[35rem] h-[35rem] bg-blue-500/5 rounded-full blur-[100px] pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-[25rem] h-[25rem] bg-indigo-500/5 rounded-full blur-[100px] pointer-events-none" />
+
+          <div className="relative z-10 w-full max-w-lg mx-auto space-y-6">
+            
+            {/* Merchant Empower Box (Matches Image 1) */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+              className="bg-white rounded-[2rem] p-6 lg:p-8 shadow-xl shadow-blue-900/5 border border-white space-y-5"
             >
-              {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <>Login Immediately & Open Dashboard <ArrowRight className="w-5 h-5" /></>}
-            </button>
-          </div>
-        )}
+              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20 text-white">
+                <Users size={28} />
+              </div>
 
-      </div>
+              <div className="space-y-2">
+                <h3 className="text-2xl lg:text-3xl font-black text-slate-900 leading-tight">
+                  Empowering Every<br />Merchant Everyday.
+                </h3>
+                <p className="text-slate-500 font-medium text-xs lg:text-sm">
+                  Join 50k+ retailers providing essential digital services across India.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2.5">
+                {[
+                  'AEPS & Aadhaar Withdrawals',
+                  'DMT & Instant Money Transfer',
+                  'Utility Bill Payments (BBPS)',
+                  'Comprehensive Travel Booking'
+                ].map((f, i) => (
+                  <div key={i} className="flex items-center gap-3.5 bg-slate-50 rounded-2xl p-3.5 border border-slate-100 transition-all hover:bg-blue-50/50 hover:border-blue-100">
+                    <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center shrink-0 text-blue-600">
+                      <Check size={14} strokeWidth={3} />
+                    </div>
+                    <span className="text-xs sm:text-sm font-bold text-slate-700">{f}</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* ── ANIMATED IMAGE CAROUSEL / CARD HOLDER SLIDER ── */}
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="space-y-2"
+            >
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-100/60 px-3 py-1 rounded-full flex items-center gap-1.5">
+                  <Sparkles size={11} /> FEATURED SERVICES & PROMOTIONS
+                </span>
+                <span className="text-[10px] text-slate-400 font-bold">
+                  {currentSlide + 1} / {PROMO_SLIDES.length}
+                </span>
+              </div>
+
+              <div 
+                className="relative bg-white rounded-3xl p-3 shadow-xl shadow-blue-900/5 border border-blue-100 overflow-hidden group"
+                onMouseEnter={() => setIsCarouselPaused(true)}
+                onMouseLeave={() => setIsCarouselPaused(false)}
+              >
+                {/* Carousel Image Container */}
+                <div className="relative h-56 lg:h-64 rounded-2xl overflow-hidden bg-slate-900 flex items-center justify-center">
+                  
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={currentSlide}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 1.05 }}
+                      transition={{ duration: 0.5 }}
+                      className="absolute inset-0 flex items-center justify-center bg-slate-950/90"
+                    >
+                      <img 
+                        src={PROMO_SLIDES[currentSlide].src} 
+                        alt={PROMO_SLIDES[currentSlide].title}
+                        className="w-full h-full object-contain p-2"
+                      />
+                    </motion.div>
+                  </AnimatePresence>
+
+                  {/* Gradient Overlay for Title & Badge */}
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent p-4 text-white flex flex-col justify-end z-10">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-blue-400 mb-0.5">
+                      {PROMO_SLIDES[currentSlide].badge}
+                    </span>
+                    <h4 className="text-sm font-bold text-white drop-shadow-sm">
+                      {PROMO_SLIDES[currentSlide].title}
+                    </h4>
+                    <p className="text-xs text-slate-300 font-medium line-clamp-1 mt-0.5">
+                      {PROMO_SLIDES[currentSlide].desc}
+                    </p>
+                  </div>
+
+                  {/* Prev & Next Arrow Buttons */}
+                  <button
+                    type="button"
+                    onClick={handlePrevSlide}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-slate-800 rounded-full p-2 shadow-md opacity-0 group-hover:opacity-100 transition-all z-20"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleNextSlide}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-slate-800 rounded-full p-2 shadow-md opacity-0 group-hover:opacity-100 transition-all z-20"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+
+                {/* Carousel Indicator Dots */}
+                <div className="flex items-center justify-center gap-1.5 mt-3 mb-1">
+                  {PROMO_SLIDES.map((_, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setCurrentSlide(idx)}
+                      className={`transition-all rounded-full ${
+                        idx === currentSlide 
+                          ? 'w-6 h-2 bg-blue-600 shadow-sm' 
+                          : 'w-2 h-2 bg-slate-300 hover:bg-slate-400'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+
+          </div>
+
+          <div className="text-center text-[11px] text-slate-400 font-medium py-2">
+            © RuPiKsha Digital Services Private Limited | All rights reserved.
+          </div>
+        </div>
+
+      </main>
+
+      {/* ── WhatsApp Floating Icon (Matches Image 1) ── */}
+      <a 
+        href="https://wa.me/917004128310" 
+        target="_blank" 
+        rel="noopener noreferrer" 
+        className="fixed bottom-6 right-6 z-[100] group"
+      >
+        <div className="absolute -top-14 right-0 bg-white text-blue-600 px-4 py-2 rounded-lg shadow-2xl text-[10px] font-black whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0 border border-slate-100 uppercase">
+          Chat with Us
+          <div className="absolute bottom-[-6px] right-6 w-3 h-3 bg-white rotate-45 border-r border-b border-slate-100" />
+        </div>
+        <div className="bg-[#25D366] text-white p-4 rounded-full shadow-[0_10px_30px_rgba(37,211,102,0.5)] hover:bg-[#128C7E] hover:scale-110 active:scale-90 transition-all relative flex items-center justify-center">
+          <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.134.298-.348.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.446 4.432-9.877 9.888-9.877 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.446-4.435 9.878-9.89 9.878m8.391-18.332A11.944 11.944 0 0012.05 0C5.41 0 .011 5.399.007 12.04c0 2.123.554 4.197 1.608 6.022L0 24l6.117-1.605a11.947 11.947 0 005.933 1.568h.005c6.637 0 12.036-5.402 12.041-12.042a11.95 11.95 0 00-3.645-8.522" />
+          </svg>
+          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 border-2 border-white rounded-full flex items-center justify-center text-[10px] font-bold animate-bounce shadow">1</span>
+        </div>
+      </a>
+
     </div>
   );
 }
