@@ -202,7 +202,6 @@ const Overview = ({ data = {}, distributors = [], SuperDistributors = [], onNavi
     const pendingApprovals = pendingMembers; // Matches pending approvals
 
     const quickNavigationGroups = [
-        { id: 'Approvals', label: 'KYC Verification', icon: ShieldCheck, desc: 'Review & approve member identity proofs.', badge: pendingKycs > 0 ? `${pendingKycs}` : null },
         { id: 'Wallet-Overview', label: 'Float Ledger', icon: Wallet, desc: 'Credit, debit, or lock member floats.' },
         { id: 'AllMembers', label: 'Member Core', icon: Users, desc: 'Search and audit member directory.' },
         { id: 'ReportsAnalyst', label: 'Analytics Panel', icon: Activity, desc: 'Aggregated reports and analytics.' },
@@ -334,7 +333,7 @@ const Overview = ({ data = {}, distributors = [], SuperDistributors = [], onNavi
             }}>
                 {[
                     { label: 'Total Members', value: totalMembers, desc: `${liveMembers} approved active`, icon: Users, color: '#6366f1', bg: '#eef2ff' },
-                    { label: 'Pending Approvals', value: pendingApprovals, desc: `${pendingKycs} pending documents`, icon: ShieldCheck, color: '#f59e0b', bg: '#fffbeb' },
+                    { label: 'Active Members', value: liveMembers, desc: 'Active platform users', icon: ShieldCheck, color: '#10b981', bg: '#ecfdf5' },
                     { label: 'Wallet Pool Float', value: `₹${fmtCur(walletBalance)}`, desc: 'Aggregated ledger float', icon: Wallet, color: '#10b981', bg: '#ecfdf5', largeVal: true },
                     { label: 'Fraud Alerts', value: liveData.fraudAlerts === 0 ? 'CLEAN' : liveData.fraudAlerts, desc: 'System integrity monitoring', icon: liveData.fraudAlerts === 0 ? Shield : ShieldAlert, color: liveData.fraudAlerts === 0 ? '#10b981' : '#ef4444', bg: liveData.fraudAlerts === 0 ? '#f0fdf4' : '#fef2f2' },
                 ].map((stat, i) => (

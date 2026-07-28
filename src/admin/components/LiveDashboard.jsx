@@ -384,7 +384,6 @@ const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistr
                 <KpiCard title="User Network" icon="👥" accent="#0ea5e9">
                     <StatRow label="Total Registered" value={fmt(liveData.users.total)} accent="#0ea5e9" />
                     <StatRow label="Active / Approved" value={fmt(liveData.users.active)} accent="#10b981" />
-                    <StatRow label="Pending Approval" value={fmt(liveData.users.pending)} accent="#f59e0b" />
                     <StatRow label="Inactive" value={fmt(liveData.users.inactive)} accent="#ef4444" />
                 </KpiCard>
 
