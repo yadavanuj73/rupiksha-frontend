@@ -1,0 +1,16 @@
+[Unit]
+Description=Rupiksha Spring Boot Backend Service
+After=network.target
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/rupiksha/backend
+EnvironmentFile=/etc/rupiksha/backend.env
+ExecStart=/usr/bin/java -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+UseSerialGC -jar /opt/rupiksha/backend/backend-java-0.0.1-SNAPSHOT.jar
+SuccessExitStatus=143
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

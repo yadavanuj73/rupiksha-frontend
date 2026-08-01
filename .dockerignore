@@ -1,0 +1,11 @@
+target/
+backend-java/target/
+*.log
+.git/
+.gitignore
+.idea/
+.vscode/
+*.jar
+node_modules/
+dist/
+.DS_Store

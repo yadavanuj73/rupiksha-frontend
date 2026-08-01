@@ -1,0 +1,13 @@
+target/
+*.log
+.git/
+.gitignore
+.idea/
+.vscode/
+*.jar
+*.war
+node_modules/
+dist/
+.DS_Store
+Dockerrun.aws.json
+docker-compose*.yml
