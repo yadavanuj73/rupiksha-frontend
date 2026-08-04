@@ -73,7 +73,7 @@ const SuperDistributorTopBar = ({ onMenuClick }) => {
                     </div>
                     <div className="hidden sm:block">
                         <p className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-600">Rupiksha Fintech</p>
-                        <p className="text-slate-800 text-[13px] font-black tracking-wide">Super Distributor Command Center</p>
+                        <p className="text-slate-800 text-[13px] font-black tracking-wide">Super Distributor</p>
                     </div>
                 </button>
 
