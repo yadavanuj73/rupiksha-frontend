@@ -189,7 +189,7 @@ spring:
     activate:
       on-profile: prod
   datasource:
-    url: ${DB_URL}
+    url: ${DB_URL:${DATABASE_URL:jdbc:postgresql://localhost:5432/rupiksha}}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
     hikari:
