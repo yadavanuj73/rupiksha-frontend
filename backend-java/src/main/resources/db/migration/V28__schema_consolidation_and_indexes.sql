@@ -82,7 +82,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_ref ON audit_logs(reference_number);
 -- 8. AEPS Agent Profile & Legacy Tables Indexes
 CREATE INDEX IF NOT EXISTS idx_aeps_users_mobile ON aeps_users(mobile);
 CREATE INDEX IF NOT EXISTS idx_agent_profile_mobile ON agent_profile(mobile);
-CREATE INDEX IF NOT EXISTS idx_aeps_kyc_hist_mobile ON aeps_kyc_history(mobile);
-CREATE INDEX IF NOT EXISTS idx_aeps_txn_hist_client ON aeps_transaction_history(client_id);
+CREATE INDEX IF NOT EXISTS idx_aeps_kyc_hist_status ON aeps_kyc_history(status);
+CREATE INDEX IF NOT EXISTS idx_aeps_txn_hist_status ON aeps_transaction_history(status);
 CREATE INDEX IF NOT EXISTS idx_iaepstxn_txnid ON iaepstxn(txnid);
 CREATE INDEX IF NOT EXISTS idx_iaepstxn_mobile ON iaepstxn(mobile);
