@@ -1,10 +1,5 @@
-const _isLocal = typeof window !== 'undefined'
-  && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-const _RENDER = 'https://rupiksha-backend-java.onrender.com/api/v1';
-// Always use Render backend in production (never relative URLs which break CORS)
-export const BACKEND_URL = _isLocal
-  ? ((import.meta.env.VITE_BACKEND_URL || '/api/v1').replace(/\/$/, ''))
-  : _RENDER;
+const GCP_BACKEND = 'https://rupiksha-backend-java-53431955516.asia-south1.run.app/api/v1';
+export const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || GCP_BACKEND).replace(/\/$/, '');
 export const SERVICE_FLAGS = {
   aeps: String(import.meta.env.VITE_SERVICE_AEPS_ENABLED ?? 'true') === 'true',
   bbps: String(import.meta.env.VITE_SERVICE_BBPS_ENABLED ?? 'true') === 'true',

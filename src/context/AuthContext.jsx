@@ -186,7 +186,7 @@ export function AuthProvider({ children }) {
 
   // Keep-alive ping: hits backend every 25s to prevent Render free tier cold starts
   useEffect(() => {
-    const PING_URL = 'https://rupiksha-backend-java.onrender.com/actuator/health';
+    const PING_URL = 'https://rupiksha-backend-java-53431955516.asia-south1.run.app/actuator/health';
     const ping = () => fetch(PING_URL, { method: 'GET', mode: 'no-cors' }).catch(() => {});
     ping();
     const interval = setInterval(ping, 25000);

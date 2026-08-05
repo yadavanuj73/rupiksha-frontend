@@ -1,0 +1,51 @@
+name: Deploy Backend to Google Cloud Run
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'backend-java/**'
+      - '.github/workflows/deploy-gcp-cloudrun.yml'
+
+jobs:
+  deploy:
+    name: Build & Deploy to GCP Cloud Run
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Google Cloud Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Authorize Docker for GCP Artifact Registry
+        run: gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
+
+      - name: Build Docker Image
+        run: |
+          docker build \
+            -t asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/rupiksha-repo/backend-java:${{ github.sha }} \
+            -t asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/rupiksha-repo/backend-java:latest \
+            ./backend-java
+
+      - name: Push Docker Image to GCP Artifact Registry
+        run: |
+          docker push asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/rupiksha-repo/backend-java:${{ github.sha }}
+          docker push asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/rupiksha-repo/backend-java:latest
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy rupiksha-backend-java \
+            --image asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/rupiksha-repo/backend-java:${{ github.sha }} \
+            --region asia-south1 \
+            --platform managed \
+            --allow-unauthenticated \
+            --port 8080 \
+            --set-env-vars "SPRING_PROFILES_ACTIVE=prod,MANAGEMENT_HEALTH_REDIS_ENABLED=false"

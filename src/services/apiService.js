@@ -1,10 +1,6 @@
 // Base API URL
-const _isLocalhost = typeof window !== 'undefined'
-  && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-const RENDER_BACKEND = 'https://rupiksha-backend-java.onrender.com/api/v1';
-const BASE_URL = _isLocalhost
-  ? ((import.meta.env.VITE_API_URL || '/api/v1').replace(/\/$/, ''))
-  : RENDER_BACKEND;
+const GCP_BACKEND = 'https://rupiksha-backend-java-53431955516.asia-south1.run.app/api/v1';
+const BASE_URL = (import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || GCP_BACKEND).replace(/\/$/, '');
 
 // Token helper — admin path always uses admin token, member imp-tab uses imp token
 const getToken = () => {

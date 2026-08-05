@@ -5,10 +5,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const _bDefault = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
-    ? 'https://rupiksha-backend-java.onrender.com/api/v1'
-    : '/api/v1';
-const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL || _bDefault).replace(/\/$/, '');
+const _bDefault = 'https://rupiksha-backend-java-53431955516.asia-south1.run.app/api/v1';
+const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || _bDefault).replace(/\/$/, '');
 const getToken = () => localStorage.getItem('rupiksha_token');
 
 async function authFetch(url, options = {}) {
