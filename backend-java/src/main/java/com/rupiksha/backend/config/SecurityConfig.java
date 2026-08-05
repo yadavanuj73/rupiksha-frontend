@@ -57,11 +57,9 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(publicPaths.toArray(String[]::new)).permitAll()
                         .requestMatchers("/api/v1/aeps/rd/test").hasAnyRole("SUPER_ADMIN", "SYSTEM_ADMIN", "DEVELOPER")
-                        // Hard gate sensitive approval/KYC mutation flows to ADMIN at
-                        // HTTP layer so they remain protected even if method-security
-                        // proxies are bypassed/misconfigured.
                         .requestMatchers(
                                 "/api/v1/admin/approvals/**",
                                 "/api/v1/admin/kyc/**"
@@ -106,22 +104,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Always-allowed origins (hardcoded so they work even if env var is missing/stale)
-        LinkedHashSet<String> origins = new LinkedHashSet<>(Arrays.asList(
-                "http://localhost:5173",
-                "http://localhost:3000",
-                "https://rupiksha-frontend.vercel.app",
-                "https://rupiksha.in",
-                "https://www.rupiksha.in"
-        ));
-        // Merge any extra origins from env var
-        String envAllowed = env.getProperty("app.cors.allowed-origins", "");
-        if (!envAllowed.isBlank()) {
-            Arrays.stream(envAllowed.split(",")).map(String::trim).filter(s -> !s.isBlank()).forEach(origins::add);
-        }
-        configuration.setAllowedOrigins(new ArrayList<>(origins));
+        configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setExposedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
