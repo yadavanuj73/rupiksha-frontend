@@ -245,7 +245,7 @@ export const dataService = {
         }
     },
 
-    loginUser: async function (username, password, location = null, expectedPortalRole = null) {
+    loginUser: async function (username, password, location = null, expectedPortalRole = null, pin = null) {
         const expected = normalizeRoleForClient(expectedPortalRole);
         const isRoleAllowedForPortal = (role) => {
             if (!expectedPortalRole) return true;
@@ -256,24 +256,27 @@ export const dataService = {
             if (expected === 'RETAILER') {
                 return normalized === 'RETAILER';
             }
-            if (expected === 'SUPER_DISTRIBUTOR' || expected === 'SUPER_DISTRIBUTOR') {
+            if (expected === 'SUPER_DISTRIBUTOR') {
                 return normalized === 'SUPER_DISTRIBUTOR';
             }
             return normalized === expected;
         };
 
         try {
+            const bodyPayload = { username, password };
+            if (pin) bodyPayload.pin = pin;
+
             const res = await fetch(`${BACKEND_URL}/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify(bodyPayload)
             });
             const data = await safeJson(res, null);
 
             if (!res.ok || !data) {
                 const serverMessage = data?.message || data?.error;
                 if (res.status === 401 || res.status === 400) {
-                    return { success: false, message: serverMessage || 'Invalid credentials.' };
+                    return { success: false, message: serverMessage || 'Invalid credentials or PIN.' };
                 }
                 return { success: false, message: serverMessage || `Login failed (${res.status}). Please try again.` };
             }
@@ -300,7 +303,7 @@ export const dataService = {
             };
 
             if (!isRoleAllowedForPortal(normalizedUser.role)) {
-                return { success: false, message: 'Invalid credentials.' };
+                return { success: false, message: 'Invalid credentials or unauthorized portal access.' };
             }
 
             localStorage.removeItem('rupiksha_imp_token');
@@ -310,7 +313,7 @@ export const dataService = {
             if (data.refreshToken) localStorage.setItem('rupiksha_refresh_token', data.refreshToken);
             return { success: true, user: normalizedUser, token: data.accessToken };
         } catch (e) {
-            return { success: false, message: "Server connection failed. Please check your internet connection or try again in a moment. (" + (e?.message || 'network error') + ")" };
+            return { success: false, message: "Server connection failed: " + (e?.message || 'network error') };
         }
     },
 

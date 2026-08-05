@@ -49,25 +49,15 @@ const RetailerLogin = ({ onFormModeChange }) => {
         setIsLoading(true);
 
         try {
-            const res = await authService.login(username.trim(), password, pin.trim());
-            if (res && res.accessToken) {
-                const user = res.user;
-                const rolesArr = Array.isArray(user?.roles)
-                    ? user.roles.map((r) => normalizeRole(typeof r === 'string' ? r : r?.name))
-                    : [];
-                const role = normalizeRole(user?.role);
-                const allRoles = Array.from(new Set([...(rolesArr || []), ...(role ? [role] : [])]));
+            // Clear any stale impersonation keys to prevent cross-session bleeding
+            localStorage.removeItem('rupiksha_imp_token');
+            localStorage.removeItem('rupiksha_imp_user');
 
-                if (!allRoles.includes('RETAILER') && !allRoles.includes('ADMIN')) {
-                    setLoginError('Account not authorized for Retailer portal');
-                    setIsLoading(false);
-                    return;
-                }
-
-                login(user, res.accessToken);
+            const res = await login(username.trim(), password, 'RETAILER', pin.trim());
+            if (res && res.success) {
                 navigate('/dashboard');
             } else {
-                setLoginError('Invalid credentials or PIN');
+                setLoginError(res?.message || 'Invalid credentials or PIN');
             }
         } catch (err) {
             setLoginError(err.message || 'Invalid credentials or Login PIN');

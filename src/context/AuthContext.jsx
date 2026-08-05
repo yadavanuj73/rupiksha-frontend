@@ -244,9 +244,9 @@ export function AuthProvider({ children }) {
     };
   }, [user, isLocked]);
 
-  const login = async (username, password, expectedPortalRole = null) => {
+  const login = async (username, password, expectedPortalRole = null, pin = null) => {
     try {
-      const res = await dataService.loginUser(username, password, null, expectedPortalRole);
+      const res = await dataService.loginUser(username, password, null, expectedPortalRole, pin);
       if (res.success) {
         const normalized = normalizeUserSession(res.user);
         if (!normalized) {
@@ -255,15 +255,18 @@ export function AuthProvider({ children }) {
         localStorage.removeItem("rupiksha_imp_token");
         localStorage.removeItem("rupiksha_imp_user");
         localStorage.setItem("rupiksha_user", JSON.stringify(normalized));
+        if (res.token) {
+          localStorage.setItem("rupiksha_token", res.token);
+        }
         setUser(normalized);
         setPermissions(normalized.permissions || []);
 
         // No lock screen for admin/employee roles and Retailers
-        const isExempt = ['ADMIN', 'DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE', 'RETAILER'].includes(normalized.role);
+        const isExempt = ['ADMIN', 'DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE', 'RETAILER'].includes(normalized.role);
         setIsLocked(!isExempt);
 
         localStorage.setItem("last_activity", Date.now().toString());
-        return { success: true };
+        return { success: true, user: normalized };
       } else {
         return { success: false, message: res.message };
       }
