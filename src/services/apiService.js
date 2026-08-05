@@ -1,6 +1,6 @@
 // Base API URL
-const GCP_BACKEND = 'https://rupiksha-backend-java-53431955516.asia-south1.run.app/api/v1';
-const BASE_URL = (import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || GCP_BACKEND).replace(/\/$/, '');
+const rawApiUrl = (import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || GCP_BACKEND).replace(/\/$/, '');
+const BASE_URL = rawApiUrl.endsWith('/api/v1') ? rawApiUrl : `${rawApiUrl}/api/v1`;
 
 // Token helper — admin path always uses admin token, member imp-tab uses imp token
 const getToken = () => {

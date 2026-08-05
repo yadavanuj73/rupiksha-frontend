@@ -1,5 +1,6 @@
 const GCP_BACKEND = 'https://rupiksha-backend-java-53431955516.asia-south1.run.app/api/v1';
-export const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || GCP_BACKEND).replace(/\/$/, '');
+const rawUrl = (import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || GCP_BACKEND).replace(/\/$/, '');
+export const BACKEND_URL = rawUrl.endsWith('/api/v1') ? rawUrl : `${rawUrl}/api/v1`;
 export const SERVICE_FLAGS = {
   aeps: String(import.meta.env.VITE_SERVICE_AEPS_ENABLED ?? 'true') === 'true',
   bbps: String(import.meta.env.VITE_SERVICE_BBPS_ENABLED ?? 'true') === 'true',
