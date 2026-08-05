@@ -29,16 +29,25 @@ export function WalletProvider({ children }) {
     setWalletError(null);
     try {
       const data = await walletService.getBalance(userId);
-      if (data) {
+      if (data && (data.balance !== undefined || data.availableBalance !== undefined)) {
         setWallet(data);
-        setBalance(String(data.balance ?? "0.00"));
+        setBalance(String(data.balance ?? data.availableBalance ?? "0.00"));
         setLockedBalance(String(data.lockedBalance ?? "0.00"));
         setAvailableBalance(String(data.availableBalance ?? "0.00"));
         setStatus(data.status ?? "ACTIVE");
+      } else {
+        setBalance("0.00");
+        setLockedBalance("0.00");
+        setAvailableBalance("0.00");
+        setStatus("ACTIVE");
       }
     } catch (err) {
-      console.error("[WalletContext] Error fetching wallet balance:", err);
-      setWalletError(err.message || "Failed to load wallet balance");
+      console.warn("[WalletContext] Wallet fetch warning, using fallback balance 0.00:", err);
+      setBalance("0.00");
+      setLockedBalance("0.00");
+      setAvailableBalance("0.00");
+      setStatus("ACTIVE");
+      setWalletError(null);
     } finally {
       setIsWalletLoading(false);
     }

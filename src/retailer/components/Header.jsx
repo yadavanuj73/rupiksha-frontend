@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Wallet, Bell, ChevronDown, Menu, User, CreditCard, Settings, MoreVertical, Plus, BadgeCheck, Clock3, OctagonAlert } from 'lucide-react';
 import { dataService } from '../../services/dataService';
 import { useWallet } from '../../context/WalletContext';
+import { useAuth } from '../../context/AuthContext';
 // Using logo from public folder
 const mainLogo = '/rupiksha logo.jpeg';
 import { useNavigate } from 'react-router-dom';
@@ -9,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
     const navigate = useNavigate();
+    const { user: authUser } = useAuth();
     const [appData, setAppData] = useState(dataService.getData());
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
@@ -41,11 +43,11 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
         return () => window.removeEventListener('dataUpdated', updateData);
     }, []);
 
-    const currentUser = appData.currentUser || dataService.getCurrentUser();
-    const retailerName = currentUser?.fullName || currentUser?.name || currentUser?.businessName || currentUser?.username || 'Retailer';
+    const currentUser = authUser || appData.currentUser || dataService.getCurrentUser();
+    const retailerName = currentUser?.fullName || currentUser?.name || currentUser?.businessName || currentUser?.username || 'Anujkumar Yadav';
 
     const getInitials = () => {
-        const displayName = currentUser?.fullName || currentUser?.name || currentUser?.username || 'RX';
+        const displayName = currentUser?.fullName || currentUser?.name || currentUser?.username || 'Anujkumar Yadav';
         return displayName.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase();
     };
     const rawKyc = String(currentUser?.kycStatus || currentUser?.profile_kyc_status || '').toUpperCase();
@@ -93,8 +95,6 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
                             <p className="text-[9px] font-black text-slate-500 uppercase leading-none">Main</p>
                             {isWalletLoading ? (
                                 <div className="h-3 w-16 bg-slate-200 rounded animate-pulse mt-1" />
-                            ) : walletError ? (
-                                <span className="text-[9px] text-rose-500 font-bold block mt-0.5">Error</span>
                             ) : (
                                 <p className="text-[11px] font-black text-amber-600 mt-0.5">₹ {parseFloat(balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                             )}

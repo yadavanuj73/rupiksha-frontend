@@ -9,7 +9,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Wallet, Filter, Send, Settings, ShieldCheck, 
     TrendingUp, Activity, Smartphone, CreditCard, 
-    ArrowUpRight, Landmark, Zap, LayoutGrid, X
+    ArrowUpRight, Landmark, Zap, LayoutGrid, X,
+    Building2, Receipt
 } from 'lucide-react';
 import {
     ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
@@ -50,17 +51,17 @@ const CustomTooltip = ({ active, payload, label }) => {
     return null;
 };
 
-const ServiceItem = ({ label, emoji, color, onClick }) => (
+const ServiceItem = ({ label, icon: Icon, bg, shadow, onClick }) => (
     <motion.div 
         whileHover={{ y: -5, scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={onClick}
         className="group flex flex-col items-center gap-3 cursor-pointer"
     >
-        <div className={`w-16 h-16 rounded-[24px] flex items-center justify-center text-3xl shadow-xl transition-all duration-300 bg-gradient-to-br ${color} group-hover:shadow-[var(--primary-color-20)]`}>
-            <span className="drop-shadow-sm">{emoji}</span>
+        <div className={`w-16 h-16 rounded-[22px] flex items-center justify-center text-white shadow-lg ${shadow} transition-all duration-300 ${bg} group-hover:shadow-2xl group-hover:scale-105`}>
+            {Icon && <Icon size={26} className="text-white drop-shadow-sm" />}
         </div>
-        <span className="text-[10px] font-black text-slate-500 group-hover:text-slate-800 text-center uppercase tracking-tight leading-tight transition-colors">
+        <span className="text-[10px] font-black text-slate-600 group-hover:text-blue-700 text-center uppercase tracking-tight leading-tight transition-colors">
             {label}
         </span>
     </motion.div>
@@ -225,14 +226,16 @@ const RetailerDashboard = () => {
     }, []);
 
     const services = [
-        { id: 'aeps_1', label: 'Fingpay AEPS', emoji: '🏦', color: 'from-indigo-50 to-indigo-100 border border-indigo-200', path: '/aeps-1' },
-        { id: 'aeps_2', label: 'Levin AEPS', emoji: '🏦', color: 'from-blue-50 to-blue-100 border border-blue-200', path: '/aeps-2' },
-        { id: 'dmt', label: 'Money Transfer', emoji: '💸', color: 'from-emerald-50 to-emerald-100 border border-emerald-200', path: '/all-services' },
-        { id: 'matm', label: 'Micro ATM', emoji: '💳', color: 'from-orange-50 to-orange-100 border border-orange-200', path: '/matm' },
-        { id: 'utility', label: 'Recharge', emoji: '📱', color: 'from-purple-50 to-purple-100 border border-purple-200', path: '/utility' },
-        { id: 'bill', label: 'Bill Pay', emoji: '🧾', color: 'from-rose-50 to-rose-100 border border-rose-200', path: '/utility' },
-        { id: 'payout', label: 'Payout', emoji: '🚀', color: 'from-sky-50 to-sky-100 border border-sky-200', path: '/all-services' },
+        { id: 'aeps_1', label: 'Fingpay AEPS', icon: Landmark, bg: 'bg-blue-600', shadow: 'shadow-blue-500/30', path: '/aeps-1' },
+        { id: 'aeps_2', label: 'Levin AEPS', icon: Building2, bg: 'bg-sky-500', shadow: 'shadow-sky-500/30', path: '/aeps-2' },
+        { id: 'dmt', label: 'Money Transfer', icon: Send, bg: 'bg-emerald-500', shadow: 'shadow-emerald-500/30', path: '/all-services' },
+        { id: 'matm', label: 'Micro ATM', icon: CreditCard, bg: 'bg-amber-500', shadow: 'shadow-amber-500/30', path: '/matm' },
+        { id: 'utility', label: 'Recharge', icon: Smartphone, bg: 'bg-purple-600', shadow: 'shadow-purple-500/30', path: '/utility' },
+        { id: 'bill', label: 'Bill Pay', icon: Receipt, bg: 'bg-rose-500', shadow: 'shadow-rose-500/30', path: '/utility' },
+        { id: 'payout', label: 'Payout', icon: Zap, bg: 'bg-indigo-600', shadow: 'shadow-indigo-500/30', path: '/all-services' },
     ];
+
+    const displayName = currentUser?.fullName || currentUser?.name || currentUser?.businessName || currentUser?.username || 'Anujkumar Yadav';
 
     return (
         <div className="min-h-screen bg-[#f7f9fc] p-2 md:p-6 lg:px-10 pb-20 overflow-x-hidden">
@@ -249,7 +252,7 @@ const RetailerDashboard = () => {
                         {/* LEFT GREETING */}
                         <div className="space-y-0.5">
                         <h1 className="text-3xl md:text-4xl font-black tracking-tighter text-slate-900 leading-tight">
-                            Hi {currentUser?.name?.split(' ')[0] || currentUser?.fullName?.split(' ')[0] || currentUser?.username?.split(' ')[0] || currentUser?.businessName?.split(' ')[0] || 'User'}, <span className="text-slate-400">Have a great day!</span>
+                            Hi {displayName}, <span className="text-slate-400">Have a great day!</span>
                         </h1>
                     </div>
 
@@ -312,8 +315,9 @@ const RetailerDashboard = () => {
                             <ServiceItem 
                                 key={idx} 
                                 label={service.label} 
-                                emoji={service.emoji} 
-                                color={service.color} 
+                                icon={service.icon} 
+                                bg={service.bg}
+                                shadow={service.shadow}
                                 onClick={() => navigate(service.path)}
                             />
                         ))}
