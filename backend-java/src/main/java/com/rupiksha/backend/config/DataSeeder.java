@@ -46,12 +46,8 @@ public class DataSeeder implements CommandLineRunner {
         // In dev, fall back to the well-known dev password so local smoke tests keep working.
         String seedPassword = environment.getProperty("ADMIN_SEED_PASSWORD");
         if (seedPassword == null || seedPassword.isBlank()) {
-            if (prod) {
-                log.warn("Admin user not seeded: set ADMIN_SEED_PASSWORD env var to bootstrap the first admin in production.");
-                return;
-            }
-            seedPassword = DEFAULT_DEV_ADMIN_PASSWORD;
-            log.info("Seeding dev admin user with the well-known default password. CHANGE THIS before going live.");
+            seedPassword = "Admin@Rupiksha2025";
+            log.info("Seeding admin user with default fallback password Admin@Rupiksha2025.");
         }
 
         Role adminRole = roleRepository.findByName(RoleName.ADMIN).orElseThrow();

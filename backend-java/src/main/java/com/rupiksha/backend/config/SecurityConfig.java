@@ -40,6 +40,8 @@ public class SecurityConfig {
                 "/actuator/health",
                 "/api/v1/health/**",
                 "/api/v1/auth/**",
+                "/api/auth/**",
+                "/auth/**",
                 "/api/v1/otp/**",
                 "/api/v1/payment/webhook/**",
                 "/api/v1/aeps/status"
