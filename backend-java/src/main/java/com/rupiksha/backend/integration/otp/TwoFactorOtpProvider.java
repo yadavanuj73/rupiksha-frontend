@@ -21,19 +21,19 @@ public class TwoFactorOtpProvider implements OtpProvider {
     private final AppProperties appProperties;
     private final RestTemplateBuilder restTemplateBuilder;
 
-    @Value("${twofactor.api-key:${app.providers.otp.api-key:}}")
+    @Value("${twofactor.api-key:${TWOFACTOR_API_KEY:${OTP_API_KEY:}}}")
     private String envTwoFactorApiKey;
 
-    @Value("${twofactor.sender-id:${app.providers.otp.sender-id:RPRNL}}")
+    @Value("${twofactor.sender-id:${TWOFACTOR_SENDER_ID:${OTP_SENDER_ID:RPRNL}}}")
     private String envSenderId;
 
-    @Value("${twofactor.template-name:${app.providers.otp.template-name:}}")
+    @Value("${twofactor.template-name:${TWOFACTOR_TEMPLATE_NAME:${OTP_TEMPLATE_NAME:}}}")
     private String envTemplateName;
 
-    @Value("${twofactor.peid:${app.providers.otp.peid:}}")
+    @Value("${twofactor.peid:${TWOFACTOR_PEID:${OTP_PEID:}}}")
     private String envPeid;
 
-    @Value("${twofactor.ctid:${app.providers.otp.ctid:}}")
+    @Value("${twofactor.ctid:${TWOFACTOR_CTID:${OTP_CTID:}}}")
     private String envCtid;
 
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -47,10 +47,13 @@ public class TwoFactorOtpProvider implements OtpProvider {
         if (envTwoFactorApiKey != null && !envTwoFactorApiKey.isBlank()) {
             return envTwoFactorApiKey.trim();
         }
-        if (appProperties.providers() != null && appProperties.providers().otp() != null) {
-            return appProperties.providers().otp().apiKey();
+        if (appProperties != null && appProperties.providers() != null && appProperties.providers().otp() != null) {
+            String propKey = appProperties.providers().otp().apiKey();
+            if (propKey != null && !propKey.isBlank()) {
+                return propKey.trim();
+            }
         }
-        return null;
+        return "2f056347-ce8a-11f0-a6b2-0200cd936042";
     }
 
     @Override
