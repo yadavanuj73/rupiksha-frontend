@@ -4,6 +4,7 @@ import jsPDF from 'jspdf';
 import confetti from 'canvas-confetti';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
+import dataService from '../../services/dataService';
 import {
     Wallet, ArrowDownCircle, ArrowUpCircle, FileText,
     Lock, Unlock, Search, RefreshCcw, CheckCircle2,
@@ -52,15 +53,18 @@ const fetchAPI = async (endpoint, opts = {}, explicitKey = undefined) => {
 
 // ─── Shared Form Components ────────────────────────────────────────────────
 
-const UserSelector = ({ users, value, onChange, placeholder, disabled = false }) => {
+const UserSelector = ({ users = [], value, onChange, placeholder, disabled = false }) => {
     const [search, setSearch] = useState('');
     const [open, setOpen] = useState(false);
-    const selected = users.find(u => u.username === value || u.userId == value || u.id == value);
-    const filtered = users.filter(u =>
-        u.name?.toLowerCase().includes(search.toLowerCase()) ||
-        u.username?.toLowerCase().includes(search.toLowerCase()) ||
-        u.mobile?.includes(search)
-    );
+    const selected = (users || []).find(u => u.username === value || u.userId == value || u.id == value || u.mobile === value);
+    const filtered = (users || []).filter(u => {
+        const nameStr = (u.name || u.fullName || '').toLowerCase();
+        const unameStr = (u.username || '').toLowerCase();
+        const mobStr = String(u.mobile || u.phone || '');
+        const pcodeStr = String(u.partyCode || '').toLowerCase();
+        const q = search.trim().toLowerCase();
+        return !q || nameStr.includes(q) || unameStr.includes(q) || mobStr.includes(q) || pcodeStr.includes(q);
+    });
     return (
         <div className="relative user-selector-dropdown">
             <button type="button"
@@ -69,10 +73,10 @@ const UserSelector = ({ users, value, onChange, placeholder, disabled = false })
                 className={`w-full flex items-center justify-between px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-semibold text-slate-700 transition-all outline-none ${disabled ? 'opacity-60 cursor-not-allowed' : 'hover:border-indigo-400'}`}>
                 {selected ? (
                     <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-black">{selected.name?.charAt(0) || 'U'}</div>
-                        <span className="user-selector-selected-text">{selected.name} <span className="user-selector-selected-username text-slate-400 font-normal">({selected.username})</span></span>
+                        <div className="w-6 h-6 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-black">{(selected.name || selected.fullName || 'U').charAt(0).toUpperCase()}</div>
+                        <span className="user-selector-selected-text font-bold text-slate-800">{selected.name || selected.fullName} <span className="user-selector-selected-username text-slate-400 font-normal">({selected.username || selected.mobile})</span></span>
                     </div>
-                ) : <span className="user-selector-placeholder text-slate-400">{placeholder || 'Select user...'}</span>}
+                ) : <span className="user-selector-placeholder text-slate-400">{placeholder || 'Choose a user...'}</span>}
                 <ChevronDown size={16} className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
             </button>
             <AnimatePresence>
@@ -84,20 +88,20 @@ const UserSelector = ({ users, value, onChange, placeholder, disabled = false })
                                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                                 <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
                                     className="user-selector-search-input w-full pl-9 pr-3 py-2 text-xs bg-slate-50 rounded-lg border border-slate-200 outline-none focus:border-indigo-400"
-                                    placeholder="Search name/mobile/username..." />
+                                    placeholder="Search name/mobile/username/party code..." />
                             </div>
                         </div>
                         <div className="max-h-48 overflow-y-auto">
                             {filtered.length === 0 ? (
-                                <p className="text-center text-xs text-slate-400 py-6">No users found</p>
+                                <p className="text-center text-xs text-slate-400 py-6 font-semibold">No users found</p>
                             ) : filtered.map((u, i) => (
-                                <button key={i} type="button"
-                                    onClick={() => { onChange(u.username); setOpen(false); setSearch(''); }}
-                                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-indigo-50 transition-colors text-left">
-                                    <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-black shrink-0">{u.name?.charAt(0) || 'U'}</div>
+                                <button key={u.id || u.username || i} type="button"
+                                    onClick={() => { onChange(u.username || u.id); setOpen(false); setSearch(''); }}
+                                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-indigo-50 transition-colors text-left border-b border-slate-50 last:border-0 cursor-pointer">
+                                    <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-black shrink-0">{(u.name || u.fullName || 'U').charAt(0).toUpperCase()}</div>
                                     <div>
-                                        <p className="user-selector-option-name text-xs font-bold text-slate-800">{u.name}</p>
-                                        <p className="user-selector-option-meta text-[10px] text-slate-400">{u.mobile} · {u.role} · Balance: ₹{(u.balance || u.availableBalance || 0).toLocaleString('en-IN')}</p>
+                                        <p className="user-selector-option-name text-xs font-bold text-slate-800">{u.name || u.fullName || u.username}</p>
+                                        <p className="user-selector-option-meta text-[10px] text-slate-400">{u.mobile || u.username} · {u.role || 'Member'} · Balance: ₹{parseFloat(String(u.balance || u.walletBalance || 0).replace(/,/g, '')).toLocaleString('en-IN')}</p>
                                     </div>
                                 </button>
                             ))}
@@ -106,7 +110,6 @@ const UserSelector = ({ users, value, onChange, placeholder, disabled = false })
                 )}
             </AnimatePresence>
         </div>
-
     );
 };
 
@@ -1462,9 +1465,42 @@ const WalletManager = ({ initialTab }) => {
     const loadWallets = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetchAPI('/wallet');
-            if (res.success) setWallets(res.wallets || []);
-        } catch { } finally { setLoading(false); }
+            let list = [];
+            try {
+                const res = await fetchAPI('/wallet');
+                if (res && res.success && Array.isArray(res.wallets) && res.wallets.length > 0) {
+                    list = res.wallets;
+                }
+            } catch (e) { }
+
+            if (!list || list.length === 0) {
+                try {
+                    const fallback = await dataService.getAllUsers();
+                    if (Array.isArray(fallback) && fallback.length > 0) {
+                        list = fallback;
+                    }
+                } catch (e) { }
+            }
+
+            const normalized = (list || []).map(u => ({
+                ...u,
+                id: u.id || u._id || u.userId || u.username || u.mobile,
+                userId: u.userId || u.id || u._id || u.username,
+                username: u.username || u.mobile || u.id,
+                name: u.name || u.fullName || u.username || 'User',
+                fullName: u.fullName || u.name || u.username || 'User',
+                mobile: u.mobile || u.phone || u.username || '',
+                partyCode: u.partyCode || u.userCode || u.id || '',
+                role: u.role || (Array.isArray(u.roles) ? u.roles[0] : 'RETAILER'),
+                balance: parseFloat(String(u.balance ?? u.walletBalance ?? u.availableBalance ?? 0).replace(/,/g, '')) || 0
+            }));
+
+            setWallets(normalized);
+        } catch (e) {
+            console.error('loadWallets error:', e);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
     useEffect(() => { loadWallets(); }, []);

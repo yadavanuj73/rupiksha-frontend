@@ -545,7 +545,7 @@ const EnhancedMembersTable = () => {
                                         <td className="px-2 py-3 text-center align-top">
                                             <ActionButtons member={member} compact />
                                         </td>
-                                    </motion.tr>
+                                    </tr>
                                 );
                             })}
                         </tbody>
