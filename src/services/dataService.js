@@ -111,7 +111,14 @@ export const dataService = {
                 localData.users.push(newUser);
                 this.saveData(localData);
             }
-            if (typeof window !== 'undefined') window.dispatchEvent(new Event('membersUpdated'));
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('membersUpdated', {
+                    detail: {
+                        name: String(data.name || data.fullName || data.firstName || username || '').trim(),
+                        role: normalizedRole.toUpperCase()
+                    }
+                }));
+            }
             return { success: true, message: "Registration request submitted successfully.", registrationId: newUser.id };
         }
 
@@ -156,7 +163,14 @@ export const dataService = {
                 return { success: false, message: msg };
             }
             // Backend returns UserView directly
-            if (typeof window !== 'undefined') window.dispatchEvent(new Event('membersUpdated'));
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('membersUpdated', {
+                    detail: {
+                        name: String(data.name || data.fullName || data.firstName || username || '').trim(),
+                        role: normalizedRole.toUpperCase()
+                    }
+                }));
+            }
             return {
                 success: true,
                 message: "Registration request submitted successfully. Please wait for admin approval.",

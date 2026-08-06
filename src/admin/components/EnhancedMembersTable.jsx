@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     Search, Zap, Trash2, Edit3, Eye, X, CheckCircle2,
-    AlertTriangle, Lock, User, Loader2, Save, ToggleRight, ToggleLeft, Package, Image as ImageIcon
+    AlertTriangle, Lock, User, UserCheck, Loader2, Save, ToggleRight, ToggleLeft, Package, Image as ImageIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import dataService from '../../services/dataService';
@@ -82,10 +82,14 @@ const RolePill = ({ roles = [] }) => {
     );
 };
 
-const serviceLabels = {
-    AEPS: 'AEPS', BBPS: 'BBPS', RECHARGE: 'Recharge',
-    PAYOUT: 'Payout', WALLET_TRANSFER: 'Wallet Transfer', TICKET_SUPPORT: 'Ticket Support'
-};
+const ALL_PLATFORM_SERVICES = [
+    { serviceType: 'AEPS', label: 'AEPS Banking' },
+    { serviceType: 'BBPS', label: 'Bill Payment (BBPS)' },
+    { serviceType: 'RECHARGE', label: 'Mobile & DTH Recharge' },
+    { serviceType: 'PAYOUT', label: 'Payout / Money Transfer' },
+    { serviceType: 'WALLET_TRANSFER', label: 'Wallet Transfer' },
+    { serviceType: 'TICKET_SUPPORT', label: 'Ticket Support' }
+];
 
 /* ─── main component ─── */
 const EnhancedMembersTable = () => {
@@ -105,6 +109,7 @@ const EnhancedMembersTable = () => {
     const [showPassword, setShowPassword]   = useState(false);
     const [activeLightboxImg, setActiveLightboxImg] = useState(null);
     const [toast, setToast]                 = useState(null);
+    const [newMemberNotify, setNewMemberNotify] = useState(null);
 
     const PAGE_SIZE = 10;
 
@@ -177,15 +182,23 @@ const EnhancedMembersTable = () => {
 
     useEffect(() => {
         fetchMembers();
-        const onMembersUpdated = () => fetchMembers();
+        const onMembersUpdated = (e) => {
+            fetchMembers();
+            const detail = e?.detail;
+            if (detail && (detail.name || detail.role)) {
+                setNewMemberNotify({
+                    name: detail.name || 'New Member',
+                    role: detail.role || 'Member'
+                });
+                setTimeout(() => setNewMemberNotify(null), 8000);
+            }
+        };
         const onWalletUpdated  = () => fetchMembers();
         window.addEventListener('membersUpdated', onMembersUpdated);
         window.addEventListener('walletUpdated',  onWalletUpdated);
-        const t = setInterval(fetchMembers, 30000);
         return () => {
             window.removeEventListener('membersUpdated', onMembersUpdated);
             window.removeEventListener('walletUpdated',  onWalletUpdated);
-            clearInterval(t);
         };
     }, []);
 
@@ -220,12 +233,17 @@ const EnhancedMembersTable = () => {
                     body: JSON.stringify({ serviceType, enable, remarks: `Service ${enable ? 'enabled' : 'disabled'} by admin` })
                 });
             }
-            if (res.ok) {
-                showToast(`Service ${serviceType} ${enable ? 'enabled' : 'disabled'}`);
-                await fetchMemberServices(userId);
-            } else {
-                showToast('Failed to toggle service', 'error');
-            }
+
+            setMemberServices(prev => {
+                const exists = (prev || []).some(s => (s.serviceType || s.type || '').toUpperCase() === serviceType.toUpperCase());
+                if (exists) {
+                    return prev.map(s => (s.serviceType || s.type || '').toUpperCase() === serviceType.toUpperCase() ? { ...s, isEnabled: enable } : s);
+                } else {
+                    return [...(prev || []), { serviceType, isEnabled: enable }];
+                }
+            });
+
+            showToast(`Service ${serviceType} ${enable ? 'enabled' : 'disabled'}`);
         } catch (e) { showToast(e.message, 'error'); }
         finally { setActionLoading(false); }
     };
@@ -336,25 +354,25 @@ const EnhancedMembersTable = () => {
 
     /* ── action buttons shared ── */
     const ActionButtons = ({ member, compact = false }) => (
-        <div className={`flex flex-col ${compact ? 'gap-1' : 'gap-1.5'} w-full`}>
+        <div className={`flex flex-col ${compact ? 'gap-1' : 'gap-1.5'} w-full select-none`}>
             <button onClick={() => handleLoginAsMember(member)}
-                className="w-full flex items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-bold bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 hover:border-emerald-600 rounded-lg transition-all">
+                className="w-full flex items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 rounded-lg transition-colors duration-150 cursor-pointer">
                 <Zap size={11} /> Login As Member
             </button>
             <button onClick={() => handleViewServices(member)}
-                className="w-full flex items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-bold bg-sky-50 hover:bg-sky-600 text-sky-700 hover:text-white border border-sky-200 hover:border-sky-600 rounded-lg transition-all">
+                className="w-full flex items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 rounded-lg transition-colors duration-150 cursor-pointer">
                 <Package size={11} /> Services
             </button>
             <button onClick={() => handleViewDetail(member)}
-                className="w-full flex items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-bold bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 hover:border-indigo-600 rounded-lg transition-all">
+                className="w-full flex items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 rounded-lg transition-colors duration-150 cursor-pointer">
                 <Eye size={11} /> View Details
             </button>
             <button onClick={() => handleEditMember(member)}
-                className="w-full flex items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-bold bg-amber-50 hover:bg-amber-600 text-amber-700 hover:text-white border border-amber-200 hover:border-amber-600 rounded-lg transition-all">
+                className="w-full flex items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-600 hover:text-white hover:border-amber-600 rounded-lg transition-colors duration-150 cursor-pointer">
                 <Edit3 size={11} /> Edit
             </button>
             <button onClick={() => handleDelete(member)}
-                className="w-full flex items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-bold bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 hover:border-rose-600 rounded-lg transition-all">
+                className="w-full flex items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-600 hover:text-white hover:border-rose-600 rounded-lg transition-colors duration-150 cursor-pointer">
                 <Trash2 size={11} /> Delete
             </button>
         </div>
@@ -455,11 +473,8 @@ const EnhancedMembersTable = () => {
                                 const rb = roleBadgeOf(member.roles || []);
                                 const addr = [member.addressLine1, member.city, member.stateName].filter(Boolean).join(', ');
                                 return (
-                                    <motion.tr
+                                    <tr
                                         key={member.id || idx}
-                                        initial={{ opacity: 0, y: 3 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: idx * 0.025, duration: 0.2 }}
                                         className="hover:bg-indigo-50/20 transition-colors"
                                     >
                                         {/* Sr No */}
@@ -467,20 +482,9 @@ const EnhancedMembersTable = () => {
                                             {page * PAGE_SIZE + idx + 1}
                                         </td>
 
-                                        {/* Name — Role badge + Status badge / Full name / Party code */}
-                                        <td className="px-2 py-3 border-r border-slate-100">
-                                            <div className="flex flex-col gap-0.5 items-start">
-                                                <div className="flex items-center gap-1 flex-wrap">
-                                                    <RolePill roles={member.roles || []} />
-                                                    <StatusPill status={member.status} />
-                                                </div>
-                                                <span className="text-[13px] font-bold text-slate-800 leading-snug line-clamp-2 mt-0.5">
-                                                    {member.fullName || member.name || '—'}
-                                                </span>
-                                                <span className="text-[11px] font-mono text-slate-400">
-                                                    {member.partyCode || '—'}
-                                                </span>
-                                            </div>
+                                        {/* Name — Full Name only */}
+                                        <td className="px-2.5 py-3 border-r border-slate-100 font-bold text-[13px] text-slate-800 leading-snug">
+                                            {member.fullName || member.name || '—'}
                                         </td>
 
                                         {/* Party Code */}
@@ -790,47 +794,78 @@ const EnhancedMembersTable = () => {
 
             {/* Service Modal */}
             <AnimatePresence>
-                {showServiceModal && selectedMember && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/50 backdrop-blur-[2px] flex items-center justify-center z-50 p-4"
-                        onClick={() => setShowServiceModal(false)}>
-                        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-                            className="bg-white rounded-2xl max-w-md w-full shadow-2xl"
-                            onClick={e => e.stopPropagation()}>
-                            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-                                <div className="text-left">
-                                    <h2 className="text-base font-black text-slate-800">Service Management</h2>
-                                    <p className="text-xs text-slate-500">{selectedMember.fullName} ({selectedMember.username})</p>
-                                </div>
-                                <button onClick={() => setShowServiceModal(false)} className="p-2 hover:bg-slate-100 rounded-lg"><X size={18} /></button>
-                            </div>
-                            <div className="p-4 space-y-2 max-h-[60vh] overflow-y-auto">
-                                {actionLoading ? (
-                                    <div className="flex justify-center py-8"><Loader2 className="animate-spin text-indigo-400" size={22} /></div>
-                                ) : memberServices.length === 0 ? (
-                                    <p className="text-sm text-slate-400 text-center py-6">No services assigned</p>
-                                ) : memberServices.map(s => (
-                                    <div key={s.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${s.isEnabled ? 'bg-green-100 text-green-600' : 'bg-slate-200 text-slate-400'}`}>
-                                                <Package size={16} />
-                                            </div>
-                                            <div className="text-left">
-                                                <p className="text-sm font-bold text-slate-700">{serviceLabels[s.serviceType] || s.serviceType}</p>
-                                                <p className="text-xs text-slate-500">{s.isEnabled ? 'Enabled' : 'Disabled'}{s.enabledBy && ` · ${s.enabledBy}`}</p>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={() => toggleService(selectedMember.id, s.serviceType, !s.isEnabled)}
-                                            className={`p-1.5 rounded-lg transition-colors ${s.isEnabled ? 'bg-green-100 text-green-600 hover:bg-green-200' : 'bg-slate-200 text-slate-400 hover:bg-slate-300'}`}>
-                                            {s.isEnabled ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
-                                        </button>
+                {showServiceModal && selectedMember && (() => {
+                    const mergedServices = ALL_PLATFORM_SERVICES.map(ps => {
+                        const found = (memberServices || []).find(s =>
+                            (s.serviceType || s.type || '').toUpperCase() === ps.serviceType
+                        );
+                        return {
+                            id: found?.id || ps.serviceType,
+                            serviceType: ps.serviceType,
+                            label: ps.label,
+                            isEnabled: found ? !!found.isEnabled : false,
+                            enabledBy: found?.enabledBy || null
+                        };
+                    });
+
+                    return (
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="fixed inset-0 bg-black/50 backdrop-blur-[2px] flex items-center justify-center z-50 p-4"
+                            onClick={() => setShowServiceModal(false)}>
+                            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                                className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden"
+                                onClick={e => e.stopPropagation()}>
+                                <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                                    <div className="text-left">
+                                        <h2 className="text-base font-black text-slate-800">Service Management</h2>
+                                        <p className="text-xs text-slate-500 font-semibold">{selectedMember.fullName || selectedMember.name} ({selectedMember.mobile || selectedMember.username})</p>
                                     </div>
-                                ))}
-                            </div>
+                                    <button onClick={() => setShowServiceModal(false)} className="p-2 hover:bg-slate-200/60 rounded-lg text-slate-500 hover:text-slate-800 cursor-pointer"><X size={18} /></button>
+                                </div>
+                                <div className="p-4 space-y-2.5 max-h-[60vh] overflow-y-auto">
+                                    {actionLoading ? (
+                                        <div className="flex justify-center py-8"><Loader2 className="animate-spin text-indigo-400" size={24} /></div>
+                                    ) : (
+                                        mergedServices.map(s => (
+                                            <div key={s.serviceType} className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-200/60 rounded-xl hover:bg-slate-100/80 transition-colors">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${s.isEnabled ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-200 text-slate-500'}`}>
+                                                        <Package size={18} />
+                                                    </div>
+                                                    <div className="text-left">
+                                                        <p className="text-sm font-black text-slate-800">{s.label}</p>
+                                                        <p className="text-[11px] font-semibold text-slate-400">
+                                                            Status: <span className={s.isEnabled ? 'text-emerald-600 font-bold' : 'text-slate-500'}>{s.isEnabled ? 'Active / Enabled' : 'Disabled'}</span>
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => toggleService(selectedMember.id, s.serviceType, !s.isEnabled)}
+                                                    disabled={actionLoading}
+                                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                                                        s.isEnabled
+                                                            ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm'
+                                                            : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                                                    }`}
+                                                >
+                                                    {s.isEnabled ? (
+                                                        <>
+                                                            <ToggleRight size={18} /> Enabled
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <ToggleLeft size={18} /> Disabled
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </motion.div>
                         </motion.div>
-                    </motion.div>
-                )}
+                    );
+                })()}
             </AnimatePresence>
 
             {/* Edit Modal */}
@@ -877,6 +912,42 @@ const EnhancedMembersTable = () => {
                                 </button>
                             </div>
                         </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Floating Top-Right User Registration Toast Notification */}
+            <AnimatePresence>
+                {newMemberNotify && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20, x: 20, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, x: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -20, x: 20, scale: 0.95 }}
+                        className="fixed top-5 right-5 z-[9999] bg-slate-900/95 text-white p-4 rounded-2xl shadow-2xl border border-emerald-500/50 backdrop-blur-md flex items-center gap-3.5 max-w-sm"
+                    >
+                        <div className="w-10 h-10 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center shrink-0">
+                            <UserCheck size={20} />
+                        </div>
+                        <div className="flex-1 min-w-0 text-left">
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500 text-slate-950 px-2 py-0.5 rounded-full">
+                                    User Joined
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-medium">Just Now</span>
+                            </div>
+                            <p className="text-sm font-bold text-white truncate mt-1">
+                                {newMemberNotify.name}
+                            </p>
+                            <p className="text-xs text-slate-300 font-medium">
+                                Role: <span className="text-emerald-400 font-bold">{newMemberNotify.role}</span>
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => setNewMemberNotify(null)}
+                            className="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                        >
+                            <X size={16} />
+                        </button>
                     </motion.div>
                 )}
             </AnimatePresence>
