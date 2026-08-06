@@ -4,6 +4,7 @@ import {
     AlertTriangle, Lock, User, Loader2, Save, ToggleRight, ToggleLeft, Package, Image as ImageIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import dataService from '../../services/dataService';
 
 const _bDefault = 'https://rupiksha-backend-java-53431955516.asia-south1.run.app/api/v1';
 const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || _bDefault).replace(/\/$/, '');
@@ -25,6 +26,29 @@ const roleBadgeOf = (roles = []) =>
         : roles.includes('DISTRIBUTOR')
         ? { bg: 'bg-amber-100 text-amber-700 border-amber-200', label: 'Distributor' }
         : { bg: 'bg-emerald-100 text-emerald-700 border-emerald-200', label: 'Retailer' };
+
+const statusBadgeOf = (status) => {
+    const s = String(status || 'PENDING').toUpperCase();
+    if (s === 'APPROVED' || s === 'ACTIVE' || s === 'SUCCESS') {
+        return { bg: 'bg-emerald-100 text-emerald-700 border-emerald-200', label: 'APPROVED' };
+    }
+    if (s === 'PENDING' || s === 'AWAITING') {
+        return { bg: 'bg-amber-100 text-amber-700 border-amber-200', label: 'PENDING' };
+    }
+    if (s === 'REJECTED' || s === 'BLOCKED' || s === 'SUSPENDED' || s === 'INACTIVE') {
+        return { bg: 'bg-rose-100 text-rose-700 border-rose-200', label: s };
+    }
+    return { bg: 'bg-slate-100 text-slate-700 border-slate-200', label: s };
+};
+
+const StatusPill = ({ status }) => {
+    const { bg, label } = statusBadgeOf(status);
+    return (
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black border uppercase tracking-wider whitespace-nowrap ${bg}`}>
+            {label}
+        </span>
+    );
+};
 
 const fmtWallet = (v) => {
     const n = parseFloat(String(v || 0).replace(/,/g, ''));
@@ -88,17 +112,67 @@ const EnhancedMembersTable = () => {
     const fetchMembers = async () => {
         setLoading(true);
         try {
+            let rawList = [];
             const res = await authFetch(`${BACKEND_URL}/admin/users`);
             if (res.ok) {
                 const data = await res.json();
-                const list = (data.users || data.content || []).filter(u => {
-                    const s = (u.status || '').toUpperCase();
-                    return s === 'APPROVED' || s === 'ACTIVE';
-                });
-                setMembers(list);
+                if (Array.isArray(data)) {
+                    rawList = data;
+                } else if (data && typeof data === 'object') {
+                    rawList = data.users || data.content || data.data || data.members || [];
+                }
             }
-        } catch (err) { console.error('fetchMembers:', err); }
-        finally { setLoading(false); }
+
+            if (!rawList || rawList.length === 0) {
+                try {
+                    const fallback = await dataService.getAllUsers();
+                    if (Array.isArray(fallback) && fallback.length > 0) {
+                        rawList = fallback;
+                    }
+                } catch (e) {
+                    console.error('Fallback dataService.getAllUsers error:', e);
+                }
+            }
+
+            const normalizeRole = (r) => {
+                let s = String(r || '').trim().replace(/[\s-]+/g, '_').toUpperCase();
+                if (s.startsWith('ROLE_')) s = s.replace('ROLE_', '');
+                return s;
+            };
+
+            const list = (rawList || []).map(u => {
+                const rawRoles = Array.isArray(u.roles) ? u.roles : [];
+                const rolesArr = rawRoles
+                    .map(r => (typeof r === 'string' ? r : (r?.name || '')))
+                    .filter(Boolean)
+                    .map(r => normalizeRole(r));
+
+                const primaryRole = normalizeRole(u.role) || rolesArr[0] || 'RETAILER';
+                const finalRoles = Array.from(new Set(rolesArr.length ? rolesArr : [primaryRole]));
+
+                return {
+                    ...u,
+                    id: u.id || u._id || u.username || u.mobile,
+                    role: primaryRole,
+                    roles: finalRoles,
+                    fullName: u.fullName || u.name || u.username || '—',
+                    name: u.fullName || u.name || u.username || '—',
+                    mobile: u.mobile || u.phone || u.username || '—',
+                    email: u.email || '—',
+                    partyCode: u.partyCode || u.userCode || u.id || '—',
+                    addressLine1: u.addressLine1 || u.address || '',
+                    stateName: u.stateName || u.state || '',
+                    walletBalance: u.walletBalance ?? u.balance ?? u.wallet?.balance ?? 0,
+                    status: u.status || 'PENDING'
+                };
+            });
+
+            setMembers(list);
+        } catch (err) {
+            console.error('fetchMembers error:', err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
@@ -393,10 +467,13 @@ const EnhancedMembersTable = () => {
                                             {page * PAGE_SIZE + idx + 1}
                                         </td>
 
-                                        {/* Name — Role badge / Full name / Party code */}
+                                        {/* Name — Role badge + Status badge / Full name / Party code */}
                                         <td className="px-2 py-3 border-r border-slate-100">
                                             <div className="flex flex-col gap-0.5 items-start">
-                                                <RolePill roles={member.roles || []} />
+                                                <div className="flex items-center gap-1 flex-wrap">
+                                                    <RolePill roles={member.roles || []} />
+                                                    <StatusPill status={member.status} />
+                                                </div>
                                                 <span className="text-[13px] font-bold text-slate-800 leading-snug line-clamp-2 mt-0.5">
                                                     {member.fullName || member.name || '—'}
                                                 </span>
@@ -432,9 +509,12 @@ const EnhancedMembersTable = () => {
                                             {member.email || '—'}
                                         </td>
 
-                                        {/* Role badge */}
+                                        {/* Role & Status badge */}
                                         <td className="px-2 py-3 border-r border-slate-100 text-center">
-                                            <RolePill roles={member.roles || []} />
+                                            <div className="flex flex-col items-center gap-1">
+                                                <RolePill roles={member.roles || []} />
+                                                <StatusPill status={member.status} />
+                                            </div>
                                         </td>
 
                                         {/* Wallet */}
