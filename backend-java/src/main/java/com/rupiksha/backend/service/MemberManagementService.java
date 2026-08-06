@@ -65,12 +65,12 @@ public class MemberManagementService {
             userService = existingService.get();
             userService.setIsEnabled(request.getEnable());
             if (request.getEnable()) {
-                userService.setEnabledBy(admin.username());
+                userService.setEnabledBy(admin != null ? admin.username() : "admin");
                 userService.setEnabledAt(Instant.now());
                 userService.setDisabledBy(null);
                 userService.setDisabledAt(null);
             } else {
-                userService.setDisabledBy(admin.username());
+                userService.setDisabledBy(admin != null ? admin.username() : "admin");
                 userService.setDisabledAt(Instant.now());
             }
         } else {
@@ -78,7 +78,7 @@ public class MemberManagementService {
             userService.setUser(user);
             userService.setServiceType(request.getServiceType());
             userService.setIsEnabled(request.getEnable());
-            userService.setEnabledBy(admin.username());
+            userService.setEnabledBy(admin != null ? admin.username() : "admin");
             userService.setEnabledAt(Instant.now());
         }
         

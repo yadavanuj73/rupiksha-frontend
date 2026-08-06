@@ -210,6 +210,11 @@ const EnhancedMembersTable = () => {
 
     /* ── service fetch / toggle ── */
     const fetchMemberServices = async (userId) => {
+        // Read local storage overrides first
+        const svcsKey = `rupiksha_services_${userId}`;
+        let localSvcs = {};
+        try { localSvcs = JSON.parse(localStorage.getItem(svcsKey) || '{}'); } catch (_) {}
+
         try {
             let res = await authFetch(`${BACKEND_URL}/admin/members/${userId}/services`);
             if (!res.ok) {
@@ -217,33 +222,73 @@ const EnhancedMembersTable = () => {
             }
             if (res.ok) { 
                 const d = await res.json(); 
-                setMemberServices(Array.isArray(d) ? d : (d.services || [])); 
+                const backendList = Array.isArray(d) ? d : (d.services || []);
+                
+                // Merge backend services list with localStorage overrides
+                const merged = backendList.map(s => {
+                    const st = (s.serviceType || s.type || '').toUpperCase();
+                    if (localSvcs[st] !== undefined) {
+                        return { ...s, isEnabled: localSvcs[st], enabled: localSvcs[st] };
+                    }
+                    return s;
+                });
+
+                // Add any localStorage overrides that are not returned by the backend list
+                Object.entries(localSvcs).forEach(([st, val]) => {
+                    const exists = merged.some(s => (s.serviceType || s.type || '').toUpperCase() === st);
+                    if (!exists) {
+                        merged.push({ serviceType: st, isEnabled: val, enabled: val });
+                    }
+                });
+
+                setMemberServices(merged); 
+                return;
             }
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error('[fetchMemberServices] error:', e);
+        }
+
+        // Fallback: purely localStorage values if backend failed
+        const fallbackList = Object.entries(localSvcs).map(([st, val]) => ({
+            serviceType: st,
+            isEnabled: val,
+            enabled: val
+        }));
+        setMemberServices(fallbackList);
     };
 
     const toggleService = async (userId, serviceType, enable) => {
         setActionLoading(true);
         try {
-            try {
-                let res = await authFetch(`${BACKEND_URL}/admin/members/${userId}/services/toggle`, {
+            const stUpper = serviceType.toUpperCase();
+            
+            // Try POST toggle to member services endpoint
+            let res = await authFetch(`${BACKEND_URL}/admin/members/${userId}/services/toggle`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ serviceType, enable, remarks: `Service ${enable ? 'enabled' : 'disabled'} by admin` })
+            });
+
+            // Fallback to user services endpoint if first failed
+            if (!res.ok) {
+                res = await authFetch(`${BACKEND_URL}/admin/users/${userId}/services/toggle`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ serviceType, enable, remarks: `Service ${enable ? 'enabled' : 'disabled'} by admin` })
                 });
-                if (!res.ok) {
-                    await authFetch(`${BACKEND_URL}/admin/users/${userId}/services/toggle`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ serviceType, enable, remarks: `Service ${enable ? 'enabled' : 'disabled'} by admin` })
-                    });
-                }
-            } catch (e) {
-                console.warn("Backend toggle API error:", e);
             }
 
-            // Store in local user services state so AEPS page immediately unlocks
-            const stUpper = serviceType.toUpperCase();
+            // If both endpoints failed, raise error with backend message
+            if (!res.ok) {
+                let errorMsg = `HTTP ${res.status}`;
+                try {
+                    const d = await res.json();
+                    errorMsg = d.error || d.message || errorMsg;
+                } catch (_) {}
+                throw new Error(`Failed to update service: ${errorMsg}`);
+            }
+
+            // Success — Store in local user services state so AEPS page immediately unlocks
             const svcsKey = `rupiksha_services_${userId}`;
             let curConfig = {};
             try { curConfig = JSON.parse(localStorage.getItem(svcsKey) || '{}'); } catch (_) {}
@@ -264,15 +309,18 @@ const EnhancedMembersTable = () => {
             setMemberServices(prev => {
                 const exists = (prev || []).some(s => (s.serviceType || s.type || '').toUpperCase() === stUpper);
                 if (exists) {
-                    return prev.map(s => (s.serviceType || s.type || '').toUpperCase() === stUpper ? { ...s, isEnabled: enable } : s);
+                    return prev.map(s => (s.serviceType || s.type || '').toUpperCase() === stUpper ? { ...s, isEnabled: enable, enabled: enable } : s);
                 } else {
-                    return [...(prev || []), { serviceType: stUpper, isEnabled: enable }];
+                    return [...(prev || []), { serviceType: stUpper, isEnabled: enable, enabled: enable }];
                 }
             });
 
             showToast(`Service ${serviceType} ${enable ? 'Enabled' : 'Disabled'} successfully`);
-        } catch (e) { showToast(e.message, 'error'); }
-        finally { setActionLoading(false); }
+        } catch (e) {
+            showToast(e.message, 'error');
+        } finally {
+            setActionLoading(false);
+        }
     };
 
     /* ── action handlers ── */
@@ -857,7 +905,7 @@ const EnhancedMembersTable = () => {
                             id: found?.id || ps.serviceType,
                             serviceType: ps.serviceType,
                             label: ps.label,
-                            isEnabled: found ? !!found.isEnabled : false,
+                            isEnabled: found ? (found.isEnabled !== undefined ? !!found.isEnabled : !!found.enabled) : false,
                             enabledBy: found?.enabledBy || null
                         };
                     });
