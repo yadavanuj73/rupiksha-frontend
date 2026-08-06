@@ -210,11 +210,6 @@ const EnhancedMembersTable = () => {
 
     /* ── service fetch / toggle ── */
     const fetchMemberServices = async (userId) => {
-        // Read local storage overrides first
-        const svcsKey = `rupiksha_services_${userId}`;
-        let localSvcs = {};
-        try { localSvcs = JSON.parse(localStorage.getItem(svcsKey) || '{}'); } catch (_) {}
-
         try {
             let res = await authFetch(`${BACKEND_URL}/admin/members/${userId}/services`);
             if (!res.ok) {
@@ -224,21 +219,10 @@ const EnhancedMembersTable = () => {
                 const d = await res.json(); 
                 const backendList = Array.isArray(d) ? d : (d.services || []);
                 
-                // Merge backend services list with localStorage overrides
                 const merged = backendList.map(s => {
                     const st = (s.serviceType || s.type || '').toUpperCase();
-                    if (localSvcs[st] !== undefined) {
-                        return { ...s, isEnabled: localSvcs[st], enabled: localSvcs[st] };
-                    }
-                    return s;
-                });
-
-                // Add any localStorage overrides that are not returned by the backend list
-                Object.entries(localSvcs).forEach(([st, val]) => {
-                    const exists = merged.some(s => (s.serviceType || s.type || '').toUpperCase() === st);
-                    if (!exists) {
-                        merged.push({ serviceType: st, isEnabled: val, enabled: val });
-                    }
+                    const isEnabled = s.isEnabled !== undefined ? !!s.isEnabled : !!s.enabled;
+                    return { ...s, serviceType: st, isEnabled, enabled: isEnabled };
                 });
 
                 setMemberServices(merged); 
@@ -247,14 +231,7 @@ const EnhancedMembersTable = () => {
         } catch (e) {
             console.error('[fetchMemberServices] error:', e);
         }
-
-        // Fallback: purely localStorage values if backend failed
-        const fallbackList = Object.entries(localSvcs).map(([st, val]) => ({
-            serviceType: st,
-            isEnabled: val,
-            enabled: val
-        }));
-        setMemberServices(fallbackList);
+        setMemberServices([]);
     };
 
     const toggleService = async (userId, serviceType, enable) => {
@@ -286,24 +263,6 @@ const EnhancedMembersTable = () => {
                     errorMsg = d.error || d.message || errorMsg;
                 } catch (_) {}
                 throw new Error(`Failed to update service: ${errorMsg}`);
-            }
-
-            // Success — Store in local user services state so AEPS page immediately unlocks
-            const svcsKey = `rupiksha_services_${userId}`;
-            let curConfig = {};
-            try { curConfig = JSON.parse(localStorage.getItem(svcsKey) || '{}'); } catch (_) {}
-            curConfig[stUpper] = enable;
-            if (stUpper === 'AEPS_BANKING' || stUpper === 'AEPS') {
-                curConfig['AEPS'] = enable;
-                curConfig['AEPS_BANKING'] = enable;
-            }
-            localStorage.setItem(svcsKey, JSON.stringify(curConfig));
-
-            if (selectedMember?.mobile) {
-                localStorage.setItem(`rupiksha_services_${selectedMember.mobile}`, JSON.stringify(curConfig));
-            }
-            if (selectedMember?.username) {
-                localStorage.setItem(`rupiksha_services_${selectedMember.username}`, JSON.stringify(curConfig));
             }
 
             setMemberServices(prev => {
