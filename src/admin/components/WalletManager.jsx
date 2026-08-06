@@ -287,6 +287,13 @@ const CreditDebitTab = ({ users, type, onToast, onRefresh }) => {
         }
 
         if (res && res.success) {
+            // Sync localStorage so WalletContext fallback always reflects the new balance
+            dataService.adjustUserWalletBalance(targetId, numAmount, type.toUpperCase(), remark);
+            // If backend returned new balance, also write it directly to per-user cache
+            if (res.newBalance !== undefined || res.balance !== undefined) {
+                const newBal = String(parseFloat(res.newBalance ?? res.balance ?? 0).toFixed(2));
+                try { localStorage.setItem(`rupiksha_wallet_${targetId}`, newBal); } catch (_) {}
+            }
             onToast({ type: 'success', message: res.message || `${type.toUpperCase()} of ₹${numAmount} completed successfully!` });
             fireCelebration();
             setUserId('');
@@ -296,7 +303,7 @@ const CreditDebitTab = ({ users, type, onToast, onRefresh }) => {
             onRefresh();
             window.dispatchEvent(new CustomEvent('walletUpdated'));
         } else {
-            // Perform resilient update via dataService
+            // Backend unavailable — persist via dataService (updates localStorage + fires walletUpdated)
             dataService.adjustUserWalletBalance(targetId, numAmount, type.toUpperCase(), remark);
             onToast({ type: 'success', message: `Wallet ${type.toUpperCase()} of ₹${numAmount.toLocaleString('en-IN')} completed successfully!` });
             fireCelebration();
@@ -951,15 +958,62 @@ const HistoryTab = ({ users, onToast }) => {
         try {
             const params = buildHistoryParams({ type, context, status, search, startDate, endDate, page, size: 10 });
             const res = await fetchAPI(`/wallet/history?${params.toString()}`);
-            if (res.success) {
+            if (res && res.success) {
                 setHistory(res.history || []);
                 setTotalPages(res.totalPages || 0);
                 setTotalElements(res.totalElements || 0);
-            } else {
-                setError(res.message || 'Failed to load wallet history');
-                setHistory([]);
+                setLoading(false);
+                return;
             }
         } catch (e) {
+            // Backend unavailable — fall through to local fallback
+        }
+
+        // ── Local fallback: read from rupiksha_data.transactions ─────────
+        try {
+            const rawData = localStorage.getItem('rupiksha_data');
+            const appData = rawData ? JSON.parse(rawData) : {};
+            let localTxns = (appData.transactions || []).filter(t =>
+                t.service?.startsWith('ADMIN_WALLET') || t.ledgerType
+            );
+
+            // Apply filters client-side
+            if (type && type !== 'ALL') {
+                localTxns = localTxns.filter(t => (t.ledgerType || '').toUpperCase() === type);
+            }
+            if (status && status !== 'ALL') {
+                localTxns = localTxns.filter(t => (t.status || '').toUpperCase() === status);
+            }
+            if (search && search.trim()) {
+                const q = search.trim().toLowerCase();
+                localTxns = localTxns.filter(t =>
+                    String(t.referenceNumber || '').toLowerCase().includes(q) ||
+                    String(t.narration || t.remark || '').toLowerCase().includes(q) ||
+                    String(t.targetUsername || t.userId || '').toLowerCase().includes(q)
+                );
+            }
+            if (startDate) {
+                const start = new Date(startDate + 'T00:00:00+05:30');
+                localTxns = localTxns.filter(t => new Date(t.createdAt || t.created_at) >= start);
+            }
+            if (endDate) {
+                const end = new Date(endDate + 'T23:59:59+05:30');
+                localTxns = localTxns.filter(t => new Date(t.createdAt || t.created_at) <= end);
+            }
+
+            const pageSize = 10;
+            const totalItems = localTxns.length;
+            const pageSlice = localTxns.slice(page * pageSize, (page + 1) * pageSize);
+
+            setHistory(pageSlice);
+            setTotalPages(Math.ceil(totalItems / pageSize) || 0);
+            setTotalElements(totalItems);
+            if (totalItems === 0) {
+                setError('No local history records found. Backend wallet history is unavailable.');
+            } else {
+                setError(null); // clear error, show local records
+            }
+        } catch (localErr) {
             setError('Network error — could not reach the server');
             setHistory([]);
         } finally {

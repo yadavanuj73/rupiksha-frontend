@@ -30,27 +30,82 @@ export function WalletProvider({ children }) {
     try {
       const data = await walletService.getBalance(userId);
       if (data && (data.balance !== undefined || data.availableBalance !== undefined)) {
-        setWallet(data);
-        setBalance(String(data.balance ?? data.availableBalance ?? "0.00"));
-        setLockedBalance(String(data.lockedBalance ?? "0.00"));
-        setAvailableBalance(String(data.availableBalance ?? "0.00"));
-        setStatus(data.status ?? "ACTIVE");
-      } else {
-        setBalance("0.00");
-        setLockedBalance("0.00");
-        setAvailableBalance("0.00");
-        setStatus("ACTIVE");
+        const backendBal = parseFloat(String(data.balance ?? data.availableBalance ?? 0)) || 0;
+        if (backendBal > 0) {
+          // Backend has real data — use it and persist to local cache
+          setWallet(data);
+          setBalance(String(backendBal.toFixed(2)));
+          setLockedBalance(String(data.lockedBalance ?? "0.00"));
+          setAvailableBalance(String(data.availableBalance ?? backendBal.toFixed(2)));
+          setStatus(data.status ?? "ACTIVE");
+          localStorage.setItem(`rupiksha_wallet_${userId}`, String(backendBal.toFixed(2)));
+          setIsWalletLoading(false);
+          return;
+        }
       }
     } catch (err) {
-      console.warn("[WalletContext] Wallet fetch warning, using fallback balance 0.00:", err);
-      setBalance("0.00");
-      setLockedBalance("0.00");
-      setAvailableBalance("0.00");
-      setStatus("ACTIVE");
-      setWalletError(null);
-    } finally {
-      setIsWalletLoading(false);
+      console.warn("[WalletContext] Backend wallet fetch failed, using local fallback:", err?.message || err);
     }
+
+    // ── Local fallback: backend failed or returned 0 ─────────────────────
+    // Priority: per-user cache → session rupiksha_user → rupiksha_data user list
+    try {
+      const cached = localStorage.getItem(`rupiksha_wallet_${userId}`);
+      if (cached && parseFloat(cached) > 0) {
+        const bal = parseFloat(cached).toFixed(2);
+        setBalance(bal);
+        setAvailableBalance(bal);
+        setLockedBalance("0.00");
+        setStatus("ACTIVE");
+        setIsWalletLoading(false);
+        return;
+      }
+
+      // Check rupiksha_user session
+      const sessionRaw = localStorage.getItem('rupiksha_user');
+      if (sessionRaw) {
+        const sessionUser = JSON.parse(sessionRaw);
+        if (sessionUser.id == userId || sessionUser.username == userId || sessionUser.mobile == userId) {
+          const bal = parseFloat(String(sessionUser.balance || sessionUser.walletBalance || 0)) || 0;
+          if (bal > 0) {
+            setBalance(bal.toFixed(2));
+            setAvailableBalance(bal.toFixed(2));
+            setLockedBalance("0.00");
+            setStatus("ACTIVE");
+            setIsWalletLoading(false);
+            return;
+          }
+        }
+      }
+
+      // Check rupiksha_data user list (written by adjustUserWalletBalance)
+      const rawData = localStorage.getItem('rupiksha_data');
+      if (rawData) {
+        const appData = JSON.parse(rawData);
+        const found = (appData.users || []).find(u =>
+          u.id == userId || u._id == userId || u.username == userId || u.mobile == userId || u.userId == userId
+        );
+        if (found) {
+          const bal = parseFloat(String(found.balance || found.walletBalance || 0)) || 0;
+          setBalance(bal.toFixed(2));
+          setAvailableBalance(bal.toFixed(2));
+          setLockedBalance("0.00");
+          setStatus("ACTIVE");
+          setIsWalletLoading(false);
+          return;
+        }
+      }
+    } catch (localErr) {
+      console.warn("[WalletContext] Local fallback read error:", localErr);
+    }
+
+    // Ultimate fallback: 0
+    setBalance("0.00");
+    setLockedBalance("0.00");
+    setAvailableBalance("0.00");
+    setStatus("ACTIVE");
+    setWalletError(null);
+    setIsWalletLoading(false);
   }, []);
 
   const refreshWallet = useCallback(async () => {

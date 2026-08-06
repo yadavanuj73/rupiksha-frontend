@@ -545,10 +545,11 @@ export const dataService = {
             );
 
             const numAmt = parseFloat(amount) || 0;
+            let newBal = '0.00';
             if (userIndex !== -1) {
                 const targetUser = data.users[userIndex];
                 const currentBal = parseFloat(String(targetUser.balance || targetUser.walletBalance || 0).replace(/,/g, '')) || 0;
-                const newBal = (type === 'CREDIT' || type === 'RELEASE' || type === 'COMMISSION' ? currentBal + numAmt : Math.max(0, currentBal - numAmt)).toFixed(2);
+                newBal = (type === 'CREDIT' || type === 'RELEASE' || type === 'COMMISSION' ? currentBal + numAmt : Math.max(0, currentBal - numAmt)).toFixed(2);
                 
                 data.users[userIndex] = {
                     ...targetUser,
@@ -556,29 +557,48 @@ export const dataService = {
                     walletBalance: newBal
                 };
                 this.saveData(data);
+
+                // Write per-user wallet cache — used by WalletContext local fallback
+                try {
+                    localStorage.setItem(`rupiksha_wallet_${userId}`, newBal);
+                    // Also key by username/mobile so WalletContext can match by any identifier
+                    if (targetUser.username) localStorage.setItem(`rupiksha_wallet_${targetUser.username}`, newBal);
+                    if (targetUser.mobile) localStorage.setItem(`rupiksha_wallet_${targetUser.mobile}`, newBal);
+                    if (targetUser.id && String(targetUser.id) !== String(userId)) localStorage.setItem(`rupiksha_wallet_${targetUser.id}`, newBal);
+                } catch (_) {}
                 
-                // If logged in as this user, update session localStorage as well
-                const activeUserRaw = localStorage.getItem('rupiksha_user');
-                if (activeUserRaw) {
+                // Update active session if this user is currently logged in (real session)
+                const updateSessionKey = (key) => {
+                    const raw = localStorage.getItem(key);
+                    if (!raw) return;
                     try {
-                        const activeUser = JSON.parse(activeUserRaw);
-                        if (activeUser.id == userId || activeUser.username === userId || activeUser.mobile === userId) {
-                            localStorage.setItem('rupiksha_user', JSON.stringify({ ...activeUser, balance: newBal, walletBalance: newBal }));
+                        const u = JSON.parse(raw);
+                        if (u.id == userId || u.username === userId || u.mobile === userId || u._id == userId) {
+                            localStorage.setItem(key, JSON.stringify({ ...u, balance: newBal, walletBalance: newBal }));
                         }
                     } catch (_) {}
-                }
+                };
+                updateSessionKey('rupiksha_user');
+                updateSessionKey('rupiksha_imp_user'); // admin impersonation tab
             }
 
             // Log wallet transaction entry
             if (!data.transactions) data.transactions = [];
             data.transactions.unshift({
                 id: Date.now(),
+                referenceNumber: `LOC-${Date.now()}`,
                 userId,
+                ledgerType: type === 'DEBIT' ? 'DEBIT' : 'CREDIT',
+                transactionContext: `ADMIN_WALLET_${type}`,
                 service: `ADMIN_WALLET_${type}`,
                 amount: numAmt,
+                narration: remark || `Admin Wallet ${type}`,
                 remark: remark || `Admin Wallet ${type}`,
                 status: 'SUCCESS',
-                created_at: new Date().toISOString()
+                operatorUsername: 'admin',
+                targetUsername: userId,
+                created_at: new Date().toISOString(),
+                createdAt: new Date().toISOString()
             });
             this.saveData(data);
             window.dispatchEvent(new CustomEvent('walletUpdated'));
