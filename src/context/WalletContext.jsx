@@ -79,6 +79,16 @@ export function WalletProvider({ children }) {
     }
   }, [user?.id, authLoading, fetchWallet]);
 
+  // Auto-refresh wallet balance whenever admin performs a wallet operation
+  // (WalletManager dispatches 'walletUpdated' after every credit/debit/commission)
+  useEffect(() => {
+    const handleWalletUpdated = () => {
+      if (user?.id) fetchWallet(user.id);
+    };
+    window.addEventListener('walletUpdated', handleWalletUpdated);
+    return () => window.removeEventListener('walletUpdated', handleWalletUpdated);
+  }, [user?.id, fetchWallet]);
+
   return (
     <WalletContext.Provider value={{
       wallet,

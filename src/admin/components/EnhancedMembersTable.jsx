@@ -145,7 +145,7 @@ const EnhancedMembersTable = () => {
                 return s;
             };
 
-            const list = (rawList || []).map(u => {
+            const list = (rawList || []).map((u, idx) => {
                 const rawRoles = Array.isArray(u.roles) ? u.roles : [];
                 const rolesArr = rawRoles
                     .map(r => (typeof r === 'string' ? r : (r?.name || '')))
@@ -170,9 +170,9 @@ const EnhancedMembersTable = () => {
                 };
             });
 
-            setMembers(normalized);
+            setMembers(list);
         } catch (e) {
-            setError(e.message || 'Failed to fetch members.');
+            console.error('fetchMembers error:', e);
         } finally {
             setLoading(false);
         }
