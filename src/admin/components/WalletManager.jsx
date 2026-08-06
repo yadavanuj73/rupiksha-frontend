@@ -4,7 +4,7 @@ import jsPDF from 'jspdf';
 import confetti from 'canvas-confetti';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
-import dataService from '../../services/dataService';
+import dataService, { BACKEND_URL } from '../../services/dataService';
 import {
     Wallet, ArrowDownCircle, ArrowUpCircle, FileText,
     Lock, Unlock, Search, RefreshCcw, CheckCircle2,
@@ -12,7 +12,7 @@ import {
     Hash, Building2, ChevronDown, Loader2, X, ShieldCheck, History
 } from 'lucide-react';
 
-const API = '/api/v1';
+const API = BACKEND_URL;
 
 const uuid = () => {
     if (typeof window !== 'undefined' && window.crypto && window.crypto.randomUUID) {
@@ -303,16 +303,7 @@ const CreditDebitTab = ({ users, type, onToast, onRefresh }) => {
             onRefresh();
             window.dispatchEvent(new CustomEvent('walletUpdated'));
         } else {
-            // Backend unavailable — persist via dataService (updates localStorage + fires walletUpdated)
-            dataService.adjustUserWalletBalance(targetId, numAmount, type.toUpperCase(), remark);
-            onToast({ type: 'success', message: `Wallet ${type.toUpperCase()} of ₹${numAmount.toLocaleString('en-IN')} completed successfully!` });
-            fireCelebration();
-            setUserId('');
-            setAmount('');
-            setRemark('');
-            setIdempotencyKey(uuid());
-            onRefresh();
-            window.dispatchEvent(new CustomEvent('walletUpdated'));
+            onToast({ type: 'error', message: res?.message || 'Operation failed. Please check the backend connection and try again.' });
         }
         submittingRef.current = false;
         setSubmitting(false);
