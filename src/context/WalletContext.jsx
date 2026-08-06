@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './AuthContext';
-import { walletService } from '../services/apiService';
+import { walletService, userService } from '../services/apiService';
 
 const WalletContext = createContext({
   wallet: null,
@@ -94,7 +94,46 @@ export function WalletProvider({ children }) {
     setIsWalletLoading(true);
     setWalletError(null);
 
-    // 1. Try backend
+    // 1. Try to fetch the live user profile from the backend to get their database balance
+    try {
+      const profile = await userService.getProfile();
+      if (profile && (profile.balance !== undefined || profile.walletBalance !== undefined || profile.availableBalance !== undefined)) {
+        const liveBal = parseFloat(String(profile.balance ?? profile.walletBalance ?? profile.availableBalance ?? 0).replace(/,/g, '')) || 0;
+        
+        applyBalance(
+          liveBal,
+          profile.lockedBalance ?? profile.lockedAmount ?? 0,
+          profile.availableBalance ?? liveBal,
+          profile.status ?? "ACTIVE"
+        );
+
+        // Synchronize local session storage cache so Header / other parts see the live balance
+        try {
+          localStorage.setItem(`rupiksha_wallet_${userId}`, liveBal.toFixed(2));
+          if (profile.username) localStorage.setItem(`rupiksha_wallet_${profile.username}`, liveBal.toFixed(2));
+          if (profile.mobile) localStorage.setItem(`rupiksha_wallet_${profile.mobile}`, liveBal.toFixed(2));
+          
+          const sessionRaw = localStorage.getItem('rupiksha_user');
+          if (sessionRaw) {
+            const sessionUser = JSON.parse(sessionRaw);
+            if (sessionUser.id == userId || sessionUser.username === profile.username) {
+              localStorage.setItem('rupiksha_user', JSON.stringify({
+                ...sessionUser,
+                balance: liveBal.toFixed(2),
+                walletBalance: liveBal.toFixed(2)
+              }));
+            }
+          }
+        } catch (_) {}
+
+        setIsWalletLoading(false);
+        return;
+      }
+    } catch (err) {
+      console.warn('[WalletContext] Live profile fetch failed, trying backend balance endpoint:', err?.message || err);
+    }
+
+    // 2. Try backend wallet balance endpoint
     try {
       const data = await walletService.getBalance(userId);
       if (data && (data.balance !== undefined || data.availableBalance !== undefined)) {
@@ -102,7 +141,6 @@ export function WalletProvider({ children }) {
         if (backendBal > 0) {
           setWallet(data);
           applyBalance(backendBal, data.lockedBalance, data.availableBalance, data.status);
-          // Persist to local cache so cross-tab fallback has fresh data
           try { localStorage.setItem(`rupiksha_wallet_${userId}`, backendBal.toFixed(2)); } catch (_) {}
           setIsWalletLoading(false);
           return;
@@ -112,7 +150,7 @@ export function WalletProvider({ children }) {
       console.warn('[WalletContext] Backend wallet fetch failed, using local fallback:', err?.message || err);
     }
 
-    // 2. Local fallback — reads all possible identifier keys
+    // 3. Local fallback — reads all possible identifier keys
     const localBal = readLocalBalance(userRef.current);
     applyBalance(localBal ?? 0);
     setIsWalletLoading(false);
