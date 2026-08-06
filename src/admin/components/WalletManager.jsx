@@ -1549,6 +1549,11 @@ const WalletManager = ({ initialTab }) => {
             }));
 
             setWallets(normalized);
+            try {
+                localStorage.setItem('rupiksha_users_cache', JSON.stringify(normalized));
+            } catch (err) {
+                console.error('[WalletManager] Failed to cache users:', err);
+            }
         } catch (e) {
             console.error('loadWallets error:', e);
         } finally {
