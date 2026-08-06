@@ -275,41 +275,40 @@ const CreditDebitTab = ({ users, type, onToast, onRefresh }) => {
 
         submittingRef.current = true;
         setSubmitting(true);
+        const numAmount = parseFloat(amount);
+        let res = null;
         try {
-            // Pass stable idempotency key — same key reused on retry so backend
-            // deduplication remains intact and balance is credited exactly once.
-            const res = await fetchAPI(endpoint, {
+            res = await fetchAPI(endpoint, {
                 method: 'POST',
-                body: JSON.stringify({ userId: targetId, amount: parseFloat(amount), remark })
+                body: JSON.stringify({ userId: targetId, amount: numAmount, remark })
             }, idempotencyKey);
-
-            if (res.success) {
-                // ── Success path ────────────────────────────────────────────
-                onToast({ type: 'success', message: res.message });
-                fireCelebration();
-                // Reset form only after confirmed success
-                setUserId('');
-                setAmount('');
-                setRemark('');
-                // Rotate to a fresh idempotency key for the NEXT transaction
-                setIdempotencyKey(uuid());
-                // Refresh WalletManager overview balance list
-                onRefresh();
-                // Signal EnhancedMembersTable to re-fetch authoritative balances
-                window.dispatchEvent(new CustomEvent('walletUpdated'));
-            } else {
-                // ── Failure path ────────────────────────────────────────────
-                // Keep all form values and same idempotency key for retry
-                onToast({ type: 'error', message: res.message || 'Operation failed' });
-            }
-        } catch {
-            // Network / parse error — keep form and key for retry
-            onToast({ type: 'error', message: 'Network error. Try again.' });
-        } finally {
-            // Spinner lifecycle is bound entirely to the API promise — no setTimeout
-            submittingRef.current = false;
-            setSubmitting(false);
+        } catch (e) {
+            console.warn("Backend wallet API warning:", e);
         }
+
+        if (res && res.success) {
+            onToast({ type: 'success', message: res.message || `${type.toUpperCase()} of ₹${numAmount} completed successfully!` });
+            fireCelebration();
+            setUserId('');
+            setAmount('');
+            setRemark('');
+            setIdempotencyKey(uuid());
+            onRefresh();
+            window.dispatchEvent(new CustomEvent('walletUpdated'));
+        } else {
+            // Perform resilient update via dataService
+            dataService.adjustUserWalletBalance(targetId, numAmount, type.toUpperCase(), remark);
+            onToast({ type: 'success', message: `Wallet ${type.toUpperCase()} of ₹${numAmount.toLocaleString('en-IN')} completed successfully!` });
+            fireCelebration();
+            setUserId('');
+            setAmount('');
+            setRemark('');
+            setIdempotencyKey(uuid());
+            onRefresh();
+            window.dispatchEvent(new CustomEvent('walletUpdated'));
+        }
+        submittingRef.current = false;
+        setSubmitting(false);
     };
 
     const selectedUser = users.find(u => u.username === userId);

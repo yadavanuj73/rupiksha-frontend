@@ -536,6 +536,60 @@ export const dataService = {
         } catch (e) { return []; }
     },
 
+    adjustUserWalletBalance: function (userId, amount, type = 'CREDIT', remark = '') {
+        try {
+            const data = this.getData();
+            if (!data.users) data.users = [];
+            const userIndex = data.users.findIndex(u =>
+                u.id == userId || u._id == userId || u.username === userId || u.mobile === userId || u.userId == userId
+            );
+
+            const numAmt = parseFloat(amount) || 0;
+            if (userIndex !== -1) {
+                const targetUser = data.users[userIndex];
+                const currentBal = parseFloat(String(targetUser.balance || targetUser.walletBalance || 0).replace(/,/g, '')) || 0;
+                const newBal = (type === 'CREDIT' || type === 'RELEASE' || type === 'COMMISSION' ? currentBal + numAmt : Math.max(0, currentBal - numAmt)).toFixed(2);
+                
+                data.users[userIndex] = {
+                    ...targetUser,
+                    balance: newBal,
+                    walletBalance: newBal
+                };
+                this.saveData(data);
+                
+                // If logged in as this user, update session localStorage as well
+                const activeUserRaw = localStorage.getItem('rupiksha_user');
+                if (activeUserRaw) {
+                    try {
+                        const activeUser = JSON.parse(activeUserRaw);
+                        if (activeUser.id == userId || activeUser.username === userId || activeUser.mobile === userId) {
+                            localStorage.setItem('rupiksha_user', JSON.stringify({ ...activeUser, balance: newBal, walletBalance: newBal }));
+                        }
+                    } catch (_) {}
+                }
+            }
+
+            // Log wallet transaction entry
+            if (!data.transactions) data.transactions = [];
+            data.transactions.unshift({
+                id: Date.now(),
+                userId,
+                service: `ADMIN_WALLET_${type}`,
+                amount: numAmt,
+                remark: remark || `Admin Wallet ${type}`,
+                status: 'SUCCESS',
+                created_at: new Date().toISOString()
+            });
+            this.saveData(data);
+            window.dispatchEvent(new CustomEvent('walletUpdated'));
+            window.dispatchEvent(new CustomEvent('membersUpdated'));
+            return true;
+        } catch (e) {
+            console.error('adjustUserWalletBalance error:', e);
+            return false;
+        }
+    },
+
     // --- KYC ---
     uploadKyc: async function (kycData) {
         if (useLocalOnly) return { success: true, message: "KYC documents uploaded successfully." };

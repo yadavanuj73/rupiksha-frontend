@@ -240,7 +240,43 @@ export const transactionService = {
 // ─── USER PROFILE ─────────────────────────────────────────────────────────────
 export const userService = {
   getProfile: () => apiFetch("/user/profile"),
-  getUserServices: () => apiFetch("/user/services"),
+  getUserServices: async () => {
+    try {
+      const rawUser = localStorage.getItem('rupiksha_imp_user') || localStorage.getItem('rupiksha_user');
+      const userObj = rawUser ? JSON.parse(rawUser) : null;
+      const uid = userObj?.id || userObj?._id || userObj?.username || userObj?.mobile;
+
+      let localParsed = {};
+      if (uid) {
+        const localSvcs = localStorage.getItem(`rupiksha_services_${uid}`) || localStorage.getItem(`rupiksha_services_${userObj?.mobile}`) || localStorage.getItem(`rupiksha_services_${userObj?.username}`);
+        if (localSvcs) {
+          try { localParsed = JSON.parse(localSvcs); } catch (_) {}
+        }
+      }
+
+      let res = null;
+      try {
+        res = await apiFetch("/user/services");
+      } catch (_) {}
+
+      const baseSvcs = {
+        AEPS: true,
+        AEPS_BANKING: true,
+        BBPS: true,
+        RECHARGE: true,
+        PAYOUT: true,
+        WALLET_TRANSFER: true,
+        TICKET_SUPPORT: true
+      };
+
+      if (res && typeof res === 'object') {
+        return { ...baseSvcs, ...res, ...localParsed };
+      }
+      return { ...baseSvcs, ...localParsed };
+    } catch (_) {
+      return { AEPS: true, AEPS_BANKING: true, BBPS: true, RECHARGE: true, PAYOUT: true, WALLET_TRANSFER: true, TICKET_SUPPORT: true };
+    }
+  },
   updateProfile: (data) =>
     apiFetch("/user/update-profile", {
       method: "POST",
