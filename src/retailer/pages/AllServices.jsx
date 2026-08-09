@@ -109,7 +109,7 @@ const serviceColorMap = {
     'Levin AEPS': 'from-sky-500 to-blue-700 text-white shadow-sky-500/25',
     'm-ATM Cash': 'from-amber-500 to-orange-600 text-white shadow-amber-500/25',
     'CMS Banking': 'from-purple-600 to-violet-700 text-white shadow-purple-500/25',
-    'Money Transfer': 'from-emerald-500 to-teal-600 text-white shadow-emerald-500/25',
+    'Money Transfer': 'from-blue-600 to-indigo-700 text-white shadow-blue-500/25',
     'Payout Hub': 'from-indigo-600 to-violet-700 text-white shadow-indigo-500/25',
     'Rail E-Ticketing (IRCTC)': 'from-rose-600 to-red-700 text-white shadow-rose-500/25',
     'Hotel Booking': 'from-emerald-500 to-teal-700 text-white shadow-emerald-500/25',
@@ -272,12 +272,12 @@ const AllServices = ({ readOnly = false, embedded = false }) => {
                     </div>
                 </div>
                 <div className="mt-5 relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-indigo-200" />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
                         value={searchQuery}
                         onChange={(event) => setSearchQuery(event.target.value)}
                         placeholder="Search services..."
-                        className="w-full pl-11 pr-4 py-3 rounded-xl border border-white/20 bg-white/10 text-white placeholder:text-indigo-200 outline-none focus:ring-2 focus:ring-indigo-300/60"
+                        className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-800 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-blue-500/60 shadow-sm"
                     />
                 </div>
             </div>
@@ -287,7 +287,7 @@ const AllServices = ({ readOnly = false, embedded = false }) => {
                     <section key={section.key}>
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-3">
-                                <span className={`h-8 w-1.5 rounded-full bg-gradient-to-b ${section.color}`} />
+                                <span className="h-8 w-2 rounded-full bg-blue-600" />
                                 <h2 className="text-xl md:text-2xl font-black text-slate-800">{section.title}</h2>
                             </div>
                             <span className="text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-slate-500">
