@@ -46,7 +46,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/admin")
+@RequestMapping({"/api/admin", "/api/v1/admin"})
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('ADMIN','SUPER_DISTRIBUTOR','DISTRIBUTOR')")
 public class AdminController {
@@ -74,7 +74,7 @@ public class AdminController {
      * primary `role` string field the legacy frontend expects.
      * Wallet balances are batch-loaded in ONE query to avoid N+1.
      */
-    @GetMapping("/users")
+    @GetMapping({"/users", "/members"})
     public Map<String, Object> listUsers() {
         List<User> users = userRepository.findAll();
 
@@ -149,7 +149,7 @@ public class AdminController {
         return toAdminDto(saved);
     }
 
-    @GetMapping("/users/{identifier}/services")
+    @GetMapping({"/users/{identifier}/services", "/members/{identifier}/services"})
     public List<Map<String, Object>> getUserServicesAdmin(@PathVariable String identifier) {
         User u = resolveUser(identifier);
         if (u == null) return List.of();
@@ -181,7 +181,7 @@ public class AdminController {
         }).toList();
     }
 
-    @PostMapping("/users/{identifier}/services/toggle")
+    @PostMapping({"/users/{identifier}/services/toggle", "/members/{identifier}/services/toggle"})
     @PreAuthorize("hasRole('ADMIN')")
     public Map<String, Object> toggleUserServiceAdmin(
             @PathVariable String identifier,
@@ -570,6 +570,45 @@ public class AdminController {
                 "kycPendingUsers", kycPending,
                 "kycApprovedUsers", kycApproved
         );
+    }
+
+    @GetMapping("/reports/top-merchants")
+    public Map<String, Object> topMerchantsReport(
+            @RequestParam(defaultValue = "month") String timeframe,
+            @RequestParam(defaultValue = "All States") String state) {
+        List<User> users = userRepository.findAll();
+        if (state != null && !"All States".equalsIgnoreCase(state.trim())) {
+            String targetState = state.trim().toLowerCase();
+            users = users.stream()
+                    .filter(u -> (u.getStateName() != null && u.getStateName().toLowerCase().contains(targetState)) ||
+                                 (u.getShopState() != null && u.getShopState().toLowerCase().contains(targetState)))
+                    .toList();
+        }
+
+        List<UUID> userIds = users.stream().map(User::getId).toList();
+        Map<UUID, BigDecimal> walletMap = walletRepository.findByUserIdIn(userIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        w -> w.getUser().getId(),
+                        Wallet::getBalance,
+                        (a, b) -> a
+                ));
+
+        List<Map<String, Object>> merchants = users.stream().map(u -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", u.getId().toString());
+            m.put("name", u.getFullName() != null ? u.getFullName() : u.getUsername());
+            m.put("business_name", u.getBusinessName() != null ? u.getBusinessName() : "N/A");
+            m.put("mobile", u.getMobile());
+            m.put("state", u.getStateName() != null ? u.getStateName() : (u.getShopState() != null ? u.getShopState() : "N/A"));
+            BigDecimal bal = walletMap.getOrDefault(u.getId(), BigDecimal.ZERO);
+            m.put("wallet_balance", bal);
+            m.put("total_volume", bal);
+            m.put("transaction_count", 0);
+            return m;
+        }).toList();
+
+        return Map.of("success", true, "merchants", merchants);
     }
 
     private String asString(Object o) {

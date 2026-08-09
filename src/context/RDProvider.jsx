@@ -51,6 +51,12 @@ export function RDProvider({ children }) {
     }, []);
 
     useEffect(() => {
+        // Prevent unnecessary 127.0.0.1 RD service diagnostic warnings on Admin pages
+        if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) {
+            setCaptureState(RD_STATES.IDLE);
+            setStatus('RD Service Standby (Admin Portal)');
+            return;
+        }
         health();
     }, [health]);
 
