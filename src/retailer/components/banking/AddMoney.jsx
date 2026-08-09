@@ -39,6 +39,17 @@ const AddMoney = ({ mode = 'add-money' }) => {
 
         setIsLoading(true);
         try {
+            // Load Razorpay script dynamically on demand
+            if (!window.Razorpay) {
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+                    script.onload = resolve;
+                    script.onerror = () => reject(new Error('Failed to load Razorpay SDK'));
+                    document.body.appendChild(script);
+                });
+            }
+
             // Updated to use Razorpay
             const result = await paymentGatewayService.createOrder({
                 amount: parseFloat(amount),
