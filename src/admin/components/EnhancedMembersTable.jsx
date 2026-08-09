@@ -211,10 +211,7 @@ const EnhancedMembersTable = () => {
     /* ── service fetch / toggle ── */
     const fetchMemberServices = async (userId) => {
         try {
-            let res = await authFetch(`${BACKEND_URL}/admin/members/${userId}/services`);
-            if (!res.ok) {
-                res = await authFetch(`${BACKEND_URL}/admin/users/${userId}/services`);
-            }
+            const res = await authFetch(`${BACKEND_URL}/admin/members/${userId}/services`);
             if (res.ok) { 
                 const d = await res.json(); 
                 const backendList = Array.isArray(d) ? d : (d.services || []);
@@ -239,23 +236,12 @@ const EnhancedMembersTable = () => {
         try {
             const stUpper = serviceType.toUpperCase();
             
-            // Try POST toggle to member services endpoint
-            let res = await authFetch(`${BACKEND_URL}/admin/members/${userId}/services/toggle`, {
+            const res = await authFetch(`${BACKEND_URL}/admin/members/${userId}/services/toggle`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ serviceType, enable, remarks: `Service ${enable ? 'enabled' : 'disabled'} by admin` })
             });
 
-            // Fallback to user services endpoint if first failed
-            if (!res.ok) {
-                res = await authFetch(`${BACKEND_URL}/admin/users/${userId}/services/toggle`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ serviceType, enable, remarks: `Service ${enable ? 'enabled' : 'disabled'} by admin` })
-                });
-            }
-
-            // If both endpoints failed, raise error with backend message
             if (!res.ok) {
                 let errorMsg = `HTTP ${res.status}`;
                 try {
