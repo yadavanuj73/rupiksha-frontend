@@ -35,8 +35,8 @@ const SERVICE_SECTIONS = [
         title: 'Banking & Finance',
         color: 'from-indigo-500 to-blue-500',
         services: dedupeServices([
-            { id: 'aeps_services_1', title: 'Fingpay AEPS', icon: Landmark },
-            { id: 'aeps_services_2', title: 'Levin AEPS', icon: Landmark },
+            { id: 'aeps_services_1', title: 'Fingpay AEPS - AEPS 1', icon: Landmark },
+            { id: 'aeps_services_2', title: 'Levin AEPS - AEPS 2', icon: Landmark },
             { id: 'matm_cash', title: 'm-ATM Cash', icon: Banknote },
             { id: 'cms', title: 'CMS Banking', icon: Building2 },
             { id: 'dmt', title: 'Money Transfer', icon: Send },
@@ -105,8 +105,8 @@ function PhoneIcon(props) {
 }
 
 const serviceColorMap = {
-    'Fingpay AEPS': 'from-blue-600 to-indigo-700',
-    'Levin AEPS': 'from-sky-500 to-blue-700',
+    'Fingpay AEPS - AEPS 1': 'from-blue-600 to-indigo-700',
+    'Levin AEPS - AEPS 2': 'from-sky-500 to-blue-700',
     'm-ATM Cash': 'from-amber-500 to-orange-600',
     'CMS Banking': 'from-purple-600 to-violet-700',
     'Money Transfer': 'from-sky-500 to-blue-700',
