@@ -349,7 +349,8 @@ export const dataService = {
     logoutUser: function () {
         localStorage.removeItem('rupiksha_user');
         localStorage.removeItem('rupiksha_token');
-        window.location.href = '/';
+        const isLocal = window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1');
+        window.location.href = isLocal ? '/portal/retailer' : 'https://www.rupiksha.in/portal/retailer';
     },
 
     refreshData: async function () {
