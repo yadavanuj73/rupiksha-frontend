@@ -256,8 +256,30 @@ const AllServices = ({ readOnly = false, embedded = false }) => {
 
     return (
         <div className={embedded ? "" : "p-4 md:p-7 lg:p-10 max-w-[1600px] mx-auto min-h-screen"}>
-            <div className="rounded-3xl border border-slate-200 bg-gradient-to-r from-slate-900 via-indigo-900 to-slate-900 text-white px-5 md:px-8 py-6 md:py-7 shadow-[0_22px_45px_rgba(15,23,42,0.35)]">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="rounded-3xl border border-slate-200 bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-5 md:px-8 py-6 md:py-7 shadow-[0_22px_45px_rgba(15,23,42,0.35)] relative overflow-hidden">
+                {/* Floating Bubble Particles inside the banner */}
+                <motion.div
+                    animate={{ y: [0, -15, 0], x: [0, 10, 0], scale: [1, 1.2, 1] }}
+                    transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+                    className="pointer-events-none absolute -bottom-10 -left-10 w-48 h-48 rounded-full bg-white/10 blur-2xl"
+                />
+                <motion.div
+                    animate={{ y: [0, -25, 0], x: [0, -15, 0], scale: [1, 1.1, 1] }}
+                    transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
+                    className="pointer-events-none absolute -top-12 right-12 w-64 h-64 rounded-full bg-indigo-500/25 blur-3xl"
+                />
+                <motion.div
+                    animate={{ y: [0, 12, 0], scale: [1, 1.15, 1] }}
+                    transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+                    className="pointer-events-none absolute top-10 left-1/3 w-16 h-16 rounded-full bg-white/5 blur-[2px]"
+                />
+                <motion.div
+                    animate={{ y: [0, -12, 0], scale: [1, 1.25, 1] }}
+                    transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut', delay: 3 }}
+                    className="pointer-events-none absolute bottom-4 right-1/4 w-24 h-24 rounded-full bg-white/5 blur-[1px]"
+                />
+
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 relative z-10">
                     <div>
                         <p className="text-[11px] uppercase tracking-[0.2em] font-bold text-indigo-200">Service Hub</p>
                         <h1 className="text-2xl md:text-3xl font-black mt-1">All Services</h1>
@@ -272,13 +294,13 @@ const AllServices = ({ readOnly = false, embedded = false }) => {
                         </span>
                     </div>
                 </div>
-                <div className="mt-5 relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <div className="mt-5 relative z-10">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-black" />
                     <input
                         value={searchQuery}
                         onChange={(event) => setSearchQuery(event.target.value)}
                         placeholder="Search services..."
-                        className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-800 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-blue-500/60 shadow-sm"
+                        className="w-full pl-11 pr-4 py-3 rounded-xl border border-black bg-white text-black placeholder:text-black/60 outline-none focus:ring-2 focus:ring-blue-500/60 shadow-sm"
                     />
                 </div>
             </div>
