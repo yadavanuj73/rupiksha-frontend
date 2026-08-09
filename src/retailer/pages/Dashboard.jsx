@@ -12,6 +12,7 @@ import {
     ArrowUpRight, Landmark, Zap, LayoutGrid, X,
     Building2, Receipt
 } from 'lucide-react';
+import AllServices from './AllServices';
 import {
     ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
     CartesianGrid, Tooltip
@@ -129,7 +130,6 @@ const RetailerDashboard = () => {
     const [activeWallet, setActiveWallet] = useState(null);
     const { balance } = useWallet();
     const [transactions, setTransactions] = useState([]);
-    const [isServicesExpanded, setIsServicesExpanded] = useState(false);
 
     useEffect(() => {
         // Wait for AuthContext to rehydrate; ProtectedRoute already gates this
@@ -225,15 +225,7 @@ const RetailerDashboard = () => {
         return () => clearInterval(id);
     }, []);
 
-    const services = [
-        { id: 'aeps_1', label: 'Fingpay AEPS', icon: Landmark, bg: 'bg-blue-600', shadow: 'shadow-blue-500/30', path: '/aeps-1' },
-        { id: 'aeps_2', label: 'Levin AEPS', icon: Building2, bg: 'bg-sky-500', shadow: 'shadow-sky-500/30', path: '/aeps-2' },
-        { id: 'dmt', label: 'Money Transfer', icon: Send, bg: 'bg-emerald-500', shadow: 'shadow-emerald-500/30', path: '/all-services' },
-        { id: 'matm', label: 'Micro ATM', icon: CreditCard, bg: 'bg-amber-500', shadow: 'shadow-amber-500/30', path: '/matm' },
-        { id: 'utility', label: 'Recharge', icon: Smartphone, bg: 'bg-purple-600', shadow: 'shadow-purple-500/30', path: '/utility' },
-        { id: 'bill', label: 'Bill Pay', icon: Receipt, bg: 'bg-rose-500', shadow: 'shadow-rose-500/30', path: '/utility' },
-        { id: 'payout', label: 'Payout', icon: Zap, bg: 'bg-indigo-600', shadow: 'shadow-indigo-500/30', path: '/all-services' },
-    ];
+
 
     const displayName = currentUser?.fullName || currentUser?.name || currentUser?.businessName || currentUser?.username || 'Anujkumar Yadav';
 
@@ -282,105 +274,8 @@ const RetailerDashboard = () => {
                     </motion.div>
                 )}
 
-                {/* Core Services: Now expands downwards rather than opening a modal */}
-                <motion.div 
-                    layout
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="border border-slate-100 p-8 lg:p-12 rounded-[48px] shadow-sm relative z-10 overflow-hidden transition-colors duration-500"
-                    style={{ backgroundColor: 'var(--primary-color-10)' }}
-                >
-                    <div className="flex justify-between items-center mb-6">
-                        <div className="space-y-1 -mt-4 -ml-2">
-                            <h3 className="text-xl font-black tracking-tight text-slate-800">Core Services</h3>
-                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em]">Integrated Financial Infrastructure</p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest hidden sm:block">
-                                {isServicesExpanded ? '12 Active Hubs' : '7 Active Hubs'}
-                            </span>
-                            <div className="h-4 w-[1px] bg-slate-100 hidden sm:block" />
-                            <button 
-                                onClick={() => setIsServicesExpanded(!isServicesExpanded)}
-                                className="text-[9px] font-black uppercase tracking-widest hover:underline"
-                                style={{ color: 'var(--primary-color)' }}
-                            >
-                                {isServicesExpanded ? 'Collapse View' : 'Full Catalog'}
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-4 md:grid-cols-7 lg:grid-cols-7 gap-6 md:gap-6">
-                        {services.map((service, idx) => (
-                            <ServiceItem 
-                                key={idx} 
-                                label={service.label} 
-                                icon={service.icon} 
-                                bg={service.bg}
-                                shadow={service.shadow}
-                                onClick={() => navigate(service.path)}
-                            />
-                        ))}
-                        
-                        {/* TOGGLE BUTTON: Now positioned relative to first row */}
-                        <motion.div 
-                            whileHover={{ y: -5, scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => setIsServicesExpanded(!isServicesExpanded)}
-                            className="group flex flex-col items-center gap-3 cursor-pointer"
-                        >
-                            <div className="w-16 h-16 rounded-[24px] flex items-center justify-center shadow-xl bg-white border border-slate-100 text-slate-800 transition-all duration-300" style={{ backgroundColor: isServicesExpanded ? 'var(--primary-color)' : undefined, color: isServicesExpanded ? '#fff' : undefined }}>
-                                <motion.div animate={{ rotate: isServicesExpanded ? 180 : 0 }} className="grid grid-cols-3 gap-1">
-                                    {[...Array(9)].map((_, i) => (
-                                        <div key={i} className="w-1 h-1 rounded-full bg-current" />
-                                    ))}
-                                </motion.div>
-                            </div>
-                            <span className="text-[10px] font-black text-slate-500 group-hover:text-slate-800 text-center uppercase tracking-tight leading-tight transition-colors">
-                                {isServicesExpanded ? 'See Less' : 'All Services'}
-                            </span>
-                        </motion.div>
-                    </div>
-
-                    {/* SMOOTH EXPANSION AREA */}
-                    <AnimatePresence transition={{ duration: 0.5 }}>
-                        {isServicesExpanded && (
-                            <motion.div 
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: 'auto', opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                transition={{ duration: 0.5, ease: [0.04, 0.62, 0.23, 0.98] }}
-                                className="overflow-hidden"
-                            >
-                                <div className="grid grid-cols-4 md:grid-cols-7 lg:grid-cols-7 gap-6 md:gap-6 pt-8 border-t border-slate-50 mt-8">
-                                    {[
-                                        { id: 'cms', label: 'CMS Hub', emoji: '🏢', color: 'from-cyan-50 to-cyan-100 border border-cyan-200', path: '/cms' },
-                                        { id: 'travel', label: 'Travel Hub', emoji: '✈️', color: 'from-amber-50 to-amber-100 border border-amber-200', path: '/travel' },
-                                        { id: 'loans', label: 'Loan Segment', emoji: '💰', color: 'from-indigo-50 to-indigo-100 border border-indigo-200', path: '/loans' },
-                                        { id: 'plans', label: 'My Plans', emoji: '🏷️', color: 'from-pink-50 to-pink-100 border border-pink-200', path: '/plans' },
-                                        { id: 'reports', label: 'Sale Reports', emoji: '📊', color: 'from-slate-50 to-slate-100 border border-slate-200', path: '/reports/sale-report' },
-                                        { id: 'add-money', label: 'Add Money', emoji: '📥', color: 'from-emerald-50 to-emerald-100 border border-emerald-200', path: '/add-money' },
-                                        { id: 'ledger', label: 'Ledger', emoji: '📓', color: 'from-slate-50 to-slate-100 border border-slate-200', path: '/reports/consolidated-ledger' },
-                                        { id: 'audit', label: 'Audit Log', emoji: '📝', color: 'from-slate-50 to-slate-100 border border-slate-200', path: '/reports/audit-report' },
-                                        { id: 'profile', label: 'My Account', emoji: '👤', color: 'from-slate-50 to-slate-100 border border-slate-200', path: '/profile' },
-                                        { id: 'wallet-h', label: 'Wallet Feed', emoji: '👛', color: 'from-blue-50 to-blue-100 border border-blue-200', path: '/reports' },
-                                        { id: 'matm-p', label: 'MATM Mini', emoji: '📠', color: 'from-orange-50 to-orange-100 border border-orange-200', path: '/matm' },
-                                        { id: 'support', label: 'Support', emoji: '🎧', color: 'from-rose-50 to-rose-100 border border-rose-200', path: '/profile' },
-                                        { id: 'kyc', label: 'KYC Center', emoji: '🆔', color: 'from-emerald-50 to-emerald-100 border border-emerald-200', path: '/kyc-verification' },
-                                    ].map((service, idx) => (
-                                        <ServiceItem 
-                                            key={`expanded-${idx}`} 
-                                            label={service.label} 
-                                            emoji={service.emoji} 
-                                            color={service.color} 
-                                            onClick={() => navigate(service.path)}
-                                        />
-                                    ))}
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </motion.div>
+                {/* All Catalog Services (replacing Core Services) */}
+                <AllServices embedded={true} />
 
                 {/* Main Content Grid: Restored full-width alignment */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">

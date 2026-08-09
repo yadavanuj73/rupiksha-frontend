@@ -152,7 +152,7 @@ const RetailerLayout = () => {
             'travelhub': '/travel',
             'bharat_connect': '/bharat-connect',
             'payout': '/payout-hub',
-            'all_services': '/all-services',
+            'all_services': '/dashboard',
             'reports': '/reports',
             'plans': '/plans',
             'matm': '/matm',
@@ -168,7 +168,7 @@ const RetailerLayout = () => {
             'gst_certification': '/profile?tab=gst_certification',
             'tds_certificate': '/profile?tab=tds_certificate'
         };
-        navigate(routes[tab] || '/all-services');
+        navigate(routes[tab] || '/dashboard');
         setShowMobileSidebar(false);
     };
 

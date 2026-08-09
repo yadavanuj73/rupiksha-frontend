@@ -117,7 +117,6 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
             iconColor: 'bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-200',
             hasSubmenu: true,
             subItems: [
-                { id: 'all_services', label: 'All Catalog' },
                 { id: 'aeps_services_1', label: 'Fingpay AEPS' },
                 { id: 'aeps_services_2', label: 'Levin AEPS' },
                 { id: 'matm', label: 'Micro ATM (m-ATM)' },

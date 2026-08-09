@@ -231,7 +231,7 @@ function App() {
                 <Route path="/aeps-2" element={<AEPS />} />
                 <Route path="/aeps-device-test" element={<ProtectedRoute role="DIAGNOSTIC_ALLOWED"><AepsDeviceTest /></ProtectedRoute>} />
                 <Route path="/cms" element={<CMS />} />
-                <Route path="/all-services" element={<AllServices />} />
+                <Route path="/all-services" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/plans" element={<Plans />} />
                 <Route path="/matm" element={<MATM />} />
                 <Route path="/add-money" element={<AddMoneyComponent />} />

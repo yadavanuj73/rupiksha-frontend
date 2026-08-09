@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
     ArrowRight, Banknote, Bus, Building2, Cable, Car, CreditCard, Droplets,
     FileText, Fuel, Globe, HeartPulse, Hotel, Landmark, Search, ShieldCheck,
-    Smartphone, Tv, Wallet, Wifi, Zap
+    Smartphone, Tv, Wallet, Wifi, Zap, Send
 } from 'lucide-react';
 import irctcLogo from '../../assets/service-logos/irctc.svg';
 
@@ -15,6 +15,8 @@ const routeMap = {
     travel: '/travel',
     utility: '/utility',
     matm_cash: '/matm',
+    payout_hub: '/payout-hub',
+    dmt: '/dashboard',
 };
 
 const dedupeServices = (services) => {
@@ -37,6 +39,8 @@ const SERVICE_SECTIONS = [
             { id: 'aeps_services_2', title: 'Levin AEPS', icon: Landmark },
             { id: 'matm_cash', title: 'm-ATM Cash', icon: Banknote },
             { id: 'cms', title: 'CMS Banking', icon: Building2 },
+            { id: 'dmt', title: 'Money Transfer', icon: Send },
+            { id: 'payout_hub', title: 'Payout Hub', icon: Zap },
         ]),
     },
     {
@@ -105,6 +109,8 @@ const serviceColorMap = {
     'Levin AEPS': 'from-sky-500 to-blue-700 text-white shadow-sky-500/25',
     'm-ATM Cash': 'from-amber-500 to-orange-600 text-white shadow-amber-500/25',
     'CMS Banking': 'from-purple-600 to-violet-700 text-white shadow-purple-500/25',
+    'Money Transfer': 'from-emerald-500 to-teal-600 text-white shadow-emerald-500/25',
+    'Payout Hub': 'from-indigo-600 to-violet-700 text-white shadow-indigo-500/25',
     'Rail E-Ticketing (IRCTC)': 'from-rose-600 to-red-700 text-white shadow-rose-500/25',
     'Hotel Booking': 'from-emerald-500 to-teal-700 text-white shadow-emerald-500/25',
     'Bus Ticketing': 'from-cyan-500 to-blue-600 text-white shadow-cyan-500/25',
@@ -224,7 +230,7 @@ const ServiceCard = ({ service, readOnly, onClick, index }) => {
     );
 };
 
-const AllServices = ({ readOnly = false }) => {
+const AllServices = ({ readOnly = false, embedded = false }) => {
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -248,7 +254,7 @@ const AllServices = ({ readOnly = false }) => {
     };
 
     return (
-        <div className="p-4 md:p-7 lg:p-10 max-w-[1600px] mx-auto min-h-screen">
+        <div className={embedded ? "" : "p-4 md:p-7 lg:p-10 max-w-[1600px] mx-auto min-h-screen"}>
             <div className="rounded-3xl border border-slate-200 bg-gradient-to-r from-slate-900 via-indigo-900 to-slate-900 text-white px-5 md:px-8 py-6 md:py-7 shadow-[0_22px_45px_rgba(15,23,42,0.35)]">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div>
