@@ -46,7 +46,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @RestController
-@RequestMapping({"/api/admin", "/api/v1/admin"})
+@RequestMapping({"/admin", "/api/admin", "/api/v1/admin"})
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('ADMIN','SUPER_DISTRIBUTOR','DISTRIBUTOR')")
 public class AdminController {

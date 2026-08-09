@@ -17,7 +17,7 @@ import java.util.UUID;
 
 @Slf4j
 @RestController
-@RequestMapping({"/api/admin/members", "/api/v1/admin/members"})
+@RequestMapping({"/admin/members", "/api/admin/members", "/api/v1/admin/members"})
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_DISTRIBUTOR', 'DISTRIBUTOR')")
 @CrossOrigin(origins = {"http://localhost:5173", "https://your-frontend.vercel.app"})
