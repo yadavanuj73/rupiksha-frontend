@@ -46,7 +46,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @RestController
-@RequestMapping({"/admin", "/api/admin", "/api/v1/admin"})
+@RequestMapping("/api/v1/admin")
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('ADMIN','SUPER_DISTRIBUTOR','DISTRIBUTOR')")
 public class AdminController {
@@ -150,7 +150,7 @@ public class AdminController {
         return toAdminDto(saved);
     }
 
-    @GetMapping({"/users/{identifier}/services", "/members/{identifier}/services"})
+    @GetMapping("/users/{identifier}/services")
     public List<Map<String, Object>> getUserServicesAdmin(@PathVariable String identifier) {
         User u = resolveUser(identifier);
         if (u == null) return List.of();
@@ -182,7 +182,7 @@ public class AdminController {
         }).toList();
     }
 
-    @PostMapping({"/users/{identifier}/services/toggle", "/members/{identifier}/services/toggle"})
+    @PostMapping("/users/{identifier}/services/toggle")
     @PreAuthorize("hasRole('ADMIN')")
     public Map<String, Object> toggleUserServiceAdmin(
             @PathVariable String identifier,
