@@ -105,42 +105,42 @@ function PhoneIcon(props) {
 }
 
 const serviceColorMap = {
-    'Fingpay AEPS': 'from-blue-600 to-indigo-700 text-white shadow-blue-500/25',
-    'Levin AEPS': 'from-sky-500 to-blue-700 text-white shadow-sky-500/25',
-    'm-ATM Cash': 'from-amber-500 to-orange-600 text-white shadow-amber-500/25',
-    'CMS Banking': 'from-purple-600 to-violet-700 text-white shadow-purple-500/25',
-    'Money Transfer': 'from-blue-600 to-indigo-700 text-white shadow-blue-500/25',
-    'Payout Hub': 'from-indigo-600 to-violet-700 text-white shadow-indigo-500/25',
-    'Rail E-Ticketing (IRCTC)': 'from-rose-600 to-red-700 text-white shadow-rose-500/25',
-    'Hotel Booking': 'from-emerald-500 to-teal-700 text-white shadow-emerald-500/25',
-    'Bus Ticketing': 'from-cyan-500 to-blue-600 text-white shadow-cyan-500/25',
-    'Air Ticketing': 'from-indigo-500 to-purple-600 text-white shadow-indigo-500/25',
-    'Bill Pay': 'from-blue-500 to-indigo-600 text-white shadow-blue-500/25',
-    'Loan Payments': 'from-emerald-600 to-teal-700 text-white shadow-emerald-500/25',
-    'Electricity Bill': 'from-amber-400 to-amber-600 text-white shadow-amber-500/25',
-    'Gas Bill': 'from-orange-500 to-red-600 text-white shadow-orange-500/25',
-    'Water Bill': 'from-cyan-400 to-blue-600 text-white shadow-cyan-500/25',
-    'FASTag Payments': 'from-purple-500 to-indigo-600 text-white shadow-purple-500/25',
-    'DTH': 'from-pink-500 to-rose-600 text-white shadow-pink-500/25',
-    'Broadband': 'from-teal-500 to-emerald-600 text-white shadow-teal-500/25',
-    'Landline Postpaid': 'from-blue-600 to-slate-700 text-white shadow-blue-500/25',
-    'Mobile Postpaid': 'from-violet-600 to-purple-700 text-white shadow-violet-500/25',
-    'Insurance Premium': 'from-emerald-500 to-green-700 text-white shadow-emerald-500/25',
-    'Credit Card Bill': 'from-amber-500 to-yellow-600 text-white shadow-amber-500/25',
-    'Municipal Taxes': 'from-indigo-600 to-blue-800 text-white shadow-indigo-500/25',
-    'Hospital Bill': 'from-rose-500 to-red-600 text-white shadow-rose-500/25',
-    'Education Bill': 'from-blue-600 to-indigo-700 text-white shadow-blue-500/25',
-    'Mobile Recharge': 'from-blue-500 to-indigo-600 text-white shadow-blue-500/25',
-    'DTH Recharge': 'from-fuchsia-500 to-pink-600 text-white shadow-fuchsia-500/25',
-    'Collection': 'from-emerald-600 to-teal-700 text-white shadow-emerald-500/25',
-    'PAN Card': 'from-amber-500 to-orange-600 text-white shadow-amber-500/25',
-    'Ayushpay Subscription': 'from-rose-500 to-pink-600 text-white shadow-rose-500/25',
-    'Digital Wallet Top-up': 'from-cyan-500 to-blue-600 text-white shadow-cyan-500/25',
-    'Vouchers': 'from-purple-500 to-indigo-600 text-white shadow-purple-500/25',
-    'HDFC BF': 'from-blue-700 to-indigo-900 text-white shadow-blue-500/25',
-    'Recharge OTT': 'from-red-500 to-rose-700 text-white shadow-red-500/25',
-    'Digi Gold': 'from-yellow-400 to-amber-600 text-white shadow-yellow-500/25',
-    'ITR Filing': 'from-teal-600 to-emerald-700 text-white shadow-teal-500/25',
+    'Fingpay AEPS': 'from-blue-600 to-indigo-700',
+    'Levin AEPS': 'from-sky-500 to-blue-700',
+    'm-ATM Cash': 'from-amber-500 to-orange-600',
+    'CMS Banking': 'from-purple-600 to-violet-700',
+    'Money Transfer': 'from-sky-500 to-blue-700',
+    'Payout Hub': 'from-indigo-600 to-violet-700',
+    'Rail E-Ticketing (IRCTC)': 'from-rose-600 to-red-700',
+    'Hotel Booking': 'from-emerald-500 to-teal-700',
+    'Bus Ticketing': 'from-cyan-500 to-blue-600',
+    'Air Ticketing': 'from-indigo-500 to-purple-600',
+    'Bill Pay': 'from-blue-500 to-indigo-600',
+    'Loan Payments': 'from-emerald-600 to-teal-700',
+    'Electricity Bill': 'from-amber-400 to-amber-600',
+    'Gas Bill': 'from-orange-500 to-red-600',
+    'Water Bill': 'from-cyan-400 to-blue-600',
+    'FASTag Payments': 'from-purple-500 to-indigo-600',
+    'DTH': 'from-pink-500 to-rose-600',
+    'Broadband': 'from-teal-500 to-emerald-600',
+    'Landline Postpaid': 'from-blue-600 to-slate-700',
+    'Mobile Postpaid': 'from-violet-600 to-purple-700',
+    'Insurance Premium': 'from-emerald-500 to-green-700',
+    'Credit Card Bill': 'from-amber-500 to-yellow-600',
+    'Municipal Taxes': 'from-indigo-600 to-blue-800',
+    'Hospital Bill': 'from-rose-500 to-red-600',
+    'Education Bill': 'from-blue-600 to-indigo-700',
+    'Mobile Recharge': 'from-blue-500 to-indigo-600',
+    'DTH Recharge': 'from-fuchsia-500 to-pink-600',
+    'Collection': 'from-emerald-600 to-teal-700',
+    'PAN Card': 'from-amber-500 to-orange-600',
+    'Ayushpay Subscription': 'from-rose-500 to-pink-600',
+    'Digital Wallet Top-up': 'from-cyan-500 to-blue-600',
+    'Vouchers': 'from-purple-500 to-indigo-600',
+    'HDFC BF': 'from-blue-700 to-indigo-900',
+    'Recharge OTT': 'from-red-500 to-rose-700',
+    'Digi Gold': 'from-yellow-400 to-amber-600',
+    'ITR Filing': 'from-teal-600 to-emerald-700',
 };
 
 const ServiceIcon = ({ service }) => {
@@ -153,16 +153,17 @@ const ServiceIcon = ({ service }) => {
     }
 
     const Icon = service.icon || Wallet;
-    const colorClass = serviceColorMap[service.title] || 'from-indigo-500 to-blue-600 text-white shadow-indigo-500/25';
+    const gradient = serviceColorMap[service.title] || 'from-indigo-500 to-blue-600';
+    const shadowColor = gradient.split(' ')[0].replace('from-', '');
     return (
-        <div className={`relative z-10 h-14 w-14 rounded-2xl bg-gradient-to-br ${colorClass} shadow-lg flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
+        <div className={`relative z-10 h-14 w-14 rounded-2xl bg-gradient-to-br ${gradient} text-white shadow-lg shadow-${shadowColor}/25 flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
             <Icon className="h-7 w-7 drop-shadow-sm" />
         </div>
     );
 };
 
 const ServiceCard = ({ service, readOnly, onClick, index }) => {
-    const gradient = serviceColorMap[service.title] || 'from-indigo-500 to-blue-600 text-white shadow-indigo-500/25';
+    const gradient = serviceColorMap[service.title] || 'from-indigo-500 to-blue-600';
     
     return (
         <motion.button
