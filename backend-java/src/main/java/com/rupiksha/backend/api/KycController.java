@@ -24,6 +24,32 @@ public class KycController {
     private final UserRepository userRepository;
     private final UserServiceRepository userServiceRepository;
 
+    @GetMapping("/profile")
+    public Map<String, Object> getProfile(@AuthenticationPrincipal JwtPrincipal principal) {
+        if (principal == null) throw new IllegalArgumentException("Unauthorized");
+        User user = userRepository.findById(UUID.fromString(principal.userId()))
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        String primaryRole = user.getRoles().stream()
+                .map(r -> r.getName().name())
+                .findFirst()
+                .orElse("RETAILER");
+
+        Map<String, Object> profile = new HashMap<>();
+        profile.put("id", user.getId().toString());
+        profile.put("username", user.getUsername());
+        profile.put("fullName", user.getFullName());
+        profile.put("email", user.getEmail());
+        profile.put("mobile", user.getMobile());
+        profile.put("role", primaryRole);
+        profile.put("status", user.getStatus() != null ? user.getStatus().name() : "PENDING");
+        profile.put("kycStatus", user.getKycStatus() != null ? user.getKycStatus().name() : "NOT_SUBMITTED");
+        profile.put("partyCode", user.getPartyCode());
+        profile.put("businessName", user.getBusinessName());
+        profile.put("createdAt", user.getCreatedAt());
+        return Map.of("success", true, "user", profile);
+    }
+
     @GetMapping("/services")
     public Map<String, Boolean> getUserServices(@AuthenticationPrincipal JwtPrincipal principal) {
         if (principal == null) throw new IllegalArgumentException("Unauthorized");

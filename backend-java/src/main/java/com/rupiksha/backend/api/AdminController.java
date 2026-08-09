@@ -82,9 +82,10 @@ public class AdminController {
         List<UUID> userIds = users.stream().map(User::getId).collect(Collectors.toList());
         Map<UUID, BigDecimal> walletMap = walletRepository.findByUserIdIn(userIds)
                 .stream()
+                .filter(w -> w != null && w.getUser() != null && w.getUser().getId() != null)
                 .collect(Collectors.toMap(
                         w -> w.getUser().getId(),
-                        Wallet::getBalance,
+                        w -> w.getBalance() != null ? w.getBalance() : BigDecimal.ZERO,
                         (a, b) -> a  // keep first on duplicate (edge case)
                 ));
 
