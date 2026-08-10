@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Eye, EyeOff, RefreshCcw, Smartphone, Mail, User,
     Building2, MapPin, ChevronDown, ArrowRight, ArrowLeft,
-    CheckCircle2, Clock, Lock, Globe, Users
+    CheckCircle2, Clock, Lock, Globe, Users, KeyRound
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
@@ -33,6 +33,8 @@ const SuperDistributorLogin = ({ onFormModeChange }) => {
     // ── Login state ──
     const [loginForm, setLoginForm] = useState({ username: '', password: '' });
     const [showPassword, setShowPassword] = useState(false);
+    const [pin, setPin] = useState('');
+    const [showPin, setShowPin] = useState(false);
     const [loginError, setLoginError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [loginMethod, setLoginMethod] = useState('password'); // 'password' | 'otp'
@@ -106,7 +108,7 @@ const SuperDistributorLogin = ({ onFormModeChange }) => {
             } else {
                 // Password Login via AuthContext
                 // Triggers the safety PIN flow for SuperDistributors
-                const result = await login(loginForm.username, loginForm.password, 'SUPER_DISTRIBUTOR');
+                const result = await login(loginForm.username, loginForm.password, 'SUPER_DISTRIBUTOR', pin.trim());
                 if (result.success) {
                     const userStr = localStorage.getItem('rupiksha_user');
                     if (userStr) {
@@ -467,6 +469,28 @@ const SuperDistributorLogin = ({ onFormModeChange }) => {
                             <button type="button" onClick={() => setShowPassword(!showPassword)}
                                 className="absolute right-0 top-0 bottom-0 w-12 flex items-center justify-center text-slate-400 hover:text-indigo-600">
                                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                        </div>
+
+                        {/* Login PIN */}
+                        <div className="relative group">
+                            <div className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center text-slate-400 border-r border-slate-200 bg-slate-50/50 rounded-l-2xl group-focus-within:text-indigo-600 group-focus-within:bg-indigo-50 transition-colors">
+                                <KeyRound size={18} />
+                            </div>
+                            <input
+                                type={showPin ? 'text' : 'password'}
+                                maxLength={6}
+                                placeholder="Login PIN (Default 4 Digits)"
+                                value={pin}
+                                onChange={e => setPin(e.target.value.replace(/\D/g, ''))}
+                                className="w-full pl-14 pr-12 py-4 bg-white border-2 border-slate-100 rounded-2xl focus:border-indigo-500 outline-none text-sm font-bold text-slate-900 transition-all font-mono tracking-widest"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPin(!showPin)}
+                                className="absolute right-0 top-0 bottom-0 w-12 flex items-center justify-center text-slate-400 hover:text-indigo-600"
+                            >
+                                {showPin ? <EyeOff size={18} /> : <Eye size={18} />}
                             </button>
                         </div>
                     </>
