@@ -488,7 +488,7 @@ const DistributorLogin = ({ onFormModeChange }) => {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                    <button type="button" onClick={() => setMode('register')}
+                    <button type="button" onClick={() => navigate('/register?role=distributor')}
                         className="border-2 border-blue-100 hover:bg-blue-50 text-blue-600 font-black py-3 rounded-2xl text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2">
                         <Users size={14} /> Register
                     </button>

@@ -450,11 +450,11 @@ export default function RegisterWizard() {
           <motion.button
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            onClick={() => navigate('/login')}
+            onClick={() => navigate(formData.role === 'DISTRIBUTOR' ? '/portal/distributor' : '/portal/retailer')}
             className="bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-blue-100 flex items-center gap-1 hover:bg-blue-100/70 transition-all shadow-sm"
           >
             <ChevronLeft size={12} />
-            Retailer Login
+            {formData.role === 'DISTRIBUTOR' ? 'Distributor Login' : 'Retailer Login'}
           </motion.button>
 
           {/* Contacts */}
@@ -669,7 +669,7 @@ export default function RegisterWizard() {
                       </div>
                     </div>
 
-                    {/* Role Fixed to RETAILER & Parent Option */}
+                    {/* Role Fixed & Parent Option */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-[11px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
@@ -677,7 +677,7 @@ export default function RegisterWizard() {
                         </label>
                         <div className="w-full bg-blue-50/80 border border-blue-200 rounded-xl px-3.5 py-2 sm:py-2.5 flex items-center justify-between shadow-sm">
                           <span className="text-xs sm:text-sm font-black text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
-                            <ShieldCheck className="w-4 h-4 text-blue-600" /> RETAILER
+                            <ShieldCheck className="w-4 h-4 text-blue-600" /> {formData.role}
                           </span>
                           <span className="text-[10px] font-bold text-blue-600 bg-blue-100/80 px-2 py-0.5 rounded-full uppercase tracking-widest">Default</span>
                         </div>
@@ -712,7 +712,7 @@ export default function RegisterWizard() {
                     </button>
 
                     <div className="pt-1.5 flex items-center justify-center gap-4 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-t border-slate-100 mt-2">
-                      <Link to="/login" className="text-blue-600 hover:underline flex items-center gap-1">
+                      <Link to={formData.role === 'DISTRIBUTOR' ? '/portal/distributor' : '/portal/retailer'} className="text-blue-600 hover:underline flex items-center gap-1">
                         <User size={13} /> Already Registered? Login
                       </Link>
                     </div>
