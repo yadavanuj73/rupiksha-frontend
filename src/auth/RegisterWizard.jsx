@@ -334,6 +334,26 @@ export default function RegisterWizard() {
       setError('Aadhaar Number must be exactly 12 digits');
       return;
     }
+    if (!formData.aadhaarPhotoUrl) {
+      setError('Aadhaar Front image is required');
+      return;
+    }
+    if (!formData.aadhaarBackPhotoUrl) {
+      setError('Aadhaar Back image is required');
+      return;
+    }
+    if (!formData.panPhotoUrl) {
+      setError('PAN Card image is required');
+      return;
+    }
+    if (!formData.shopPhotoUrl) {
+      setError('Shop Photo is required');
+      return;
+    }
+    if (!formData.liveSelfieUrl) {
+      setError('User Live Selfie image is required');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -1032,17 +1052,19 @@ export default function RegisterWizard() {
 
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {[
-                          { key: 'aadhaarPhotoUrl', label: 'Aadhaar Front' },
-                          { key: 'aadhaarBackPhotoUrl', label: 'Aadhaar Back' },
-                          { key: 'panPhotoUrl', label: 'PAN Card' },
-                          { key: 'bankPassbookUrl', label: 'Bank Passbook' },
-                          { key: 'shopPhotoUrl', label: 'Shop Photo' },
-                          { key: 'liveSelfieUrl', label: 'User Live Selfie' },
-                          { key: 'electricityBillUrl', label: 'Electricity Bill' },
+                          { key: 'aadhaarPhotoUrl', label: 'Aadhaar Front', required: true },
+                          { key: 'aadhaarBackPhotoUrl', label: 'Aadhaar Back', required: true },
+                          { key: 'panPhotoUrl', label: 'PAN Card', required: true },
+                          { key: 'bankPassbookUrl', label: 'Bank Passbook', required: false },
+                          { key: 'shopPhotoUrl', label: 'Shop Photo', required: true },
+                          { key: 'liveSelfieUrl', label: 'User Live Selfie', required: true },
+                          { key: 'electricityBillUrl', label: 'Electricity Bill', required: false },
                         ].map((doc) => (
                           <div key={doc.key} className="bg-white p-2 rounded-xl border border-slate-200 flex flex-col justify-between shadow-sm">
                             <div>
-                              <p className="text-[9px] font-bold text-slate-700 uppercase tracking-wide truncate mb-1">{doc.label}</p>
+                              <p className="text-[9px] font-bold text-slate-700 uppercase tracking-wide truncate mb-1">
+                                {doc.label} {doc.required && <span className="text-rose-500">*</span>}
+                              </p>
                               {formData[doc.key] ? (
                                 <div className="relative w-full h-14 rounded-lg overflow-hidden border border-blue-500 mb-1.5">
                                   <img src={formData[doc.key]} alt={doc.label} className="w-full h-full object-cover" />
