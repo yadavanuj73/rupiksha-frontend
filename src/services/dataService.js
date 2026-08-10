@@ -281,6 +281,7 @@ export const dataService = {
         try {
             const bodyPayload = { username, password };
             if (pin) bodyPayload.pin = pin;
+            if (expectedPortalRole) bodyPayload.role = expectedPortalRole;
 
             const res = await fetch(`${BACKEND_URL}/auth/login`, {
                 method: 'POST',

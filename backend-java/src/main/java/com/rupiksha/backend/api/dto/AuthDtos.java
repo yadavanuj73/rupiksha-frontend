@@ -10,7 +10,8 @@ public class AuthDtos {
     public record LoginRequest(
             @NotBlank String username,
             @NotBlank String password,
-            String pin
+            String pin,
+            String role
     ) {}
 
     public record RefreshRequest(@NotBlank String refreshToken) {}

@@ -43,10 +43,19 @@ public class AuthServiceImpl implements AuthService {
     public AuthDtos.AuthResponse login(AuthDtos.LoginRequest request) {
         String identifier = request.username() == null ? "" : request.username().trim();
 
-        User user = userRepository.findByUsername(identifier)
-                .or(() -> userRepository.findByMobile(identifier))
-                .or(() -> userRepository.findByEmail(identifier))
-                .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
+        User user;
+        if (request.role() != null && !request.role().isBlank()) {
+            RoleName roleName = resolveSelfRegistrationRole(request.role());
+            user = userRepository.findByUsernameAndRole(identifier, roleName)
+                    .or(() -> userRepository.findByMobileAndRole(identifier, roleName))
+                    .or(() -> userRepository.findByEmailAndRole(identifier, roleName))
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
+        } else {
+            user = userRepository.findByUsername(identifier)
+                    .or(() -> userRepository.findByMobile(identifier))
+                    .or(() -> userRepository.findByEmail(identifier))
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
+        }
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new IllegalArgumentException("Invalid credentials");
@@ -82,22 +91,27 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthDtos.UserView register(AuthDtos.RegisterRequest request) {
-        if (userRepository.findByUsername(request.username()).isPresent()) {
-            throw new IllegalArgumentException("Username already exists");
-        }
-        if (userRepository.findByMobile(request.mobile()).isPresent()) {
-            throw new IllegalArgumentException("Mobile number already registered");
-        }
-        if (userRepository.findByEmail(request.email()).isPresent()) {
-            throw new IllegalArgumentException("Email already exists");
-        }
-
         RoleName roleName = resolveSelfRegistrationRole(request.role());
         Role role = roleRepository.findByName(roleName)
                 .orElseThrow(() -> new IllegalArgumentException("Role seed missing: " + roleName));
 
+        if (userRepository.findByMobileAndRole(request.mobile().trim(), roleName).isPresent()) {
+            throw new IllegalArgumentException("Mobile number already registered for " + roleName.name().toLowerCase() + " role");
+        }
+        if (userRepository.findByEmailAndRole(request.email().trim(), roleName).isPresent()) {
+            throw new IllegalArgumentException("Email already registered for " + roleName.name().toLowerCase() + " role");
+        }
+
+        String targetUsername = request.username().trim();
+        if (userRepository.findByUsername(targetUsername).isPresent()) {
+            targetUsername = targetUsername + "_" + roleName.name();
+            if (userRepository.findByUsername(targetUsername).isPresent()) {
+                throw new IllegalArgumentException("Username already exists");
+            }
+        }
+
         User user = new User();
-        user.setUsername(request.username().trim());
+        user.setUsername(targetUsername);
         user.setMobile(request.mobile().trim());
         user.setEmail(request.email().trim());
         user.setFullName(request.fullName().trim());
