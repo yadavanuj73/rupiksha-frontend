@@ -92,48 +92,48 @@ app:
       key-id: ${PAYMENT_KEY_ID:}
       key-secret: ${PAYMENT_KEY_SECRET:}
       webhook-secret: ${PAYMENT_WEBHOOK_SECRET:}
-    recharge:
-      provider: ${RECHARGE_PROVIDER:mock}
-      base-url: ${RECHARGE_BASE_URL:}
-      api-key: ${RECHARGE_API_KEY:}
-      api-secret: ${RECHARGE_API_SECRET:}
-    venus-recharge:
-      base-url: ${VENUS_RECHARGE_BASE_URL:http://api.venusrecharge.com/V2}
-      auth-key: ${VENUS_RECHARGE_AUTH_KEY:}
-      auth-pass: ${VENUS_RECHARGE_AUTH_PASS:}
-      operators:
-        - name: "Airtel Live"
-          operatorCode: "ACL"
-          commission: 0.60
-        - name: "AIRTEL"
-          operatorCode: "ATL"
-          commission: 1.50
-        - name: "BSNL TOPUP"
-          operatorCode: "BNT"
-          commission: 3.90
-        - name: "BSNL VALIDITY"
-          operatorCode: "BNV"
-          commission: 0.00
-        - name: "JIO RECHARGE"
-          operatorCode: "JRE"
-          commission: 0.75
-        - name: "JIO TOPUP"
-          operatorCode: "JTU"
-          commission: 0.00
-        - name: "VIDEOCON TOPUP"
-          operatorCode: "VCT"
-          commission: 0.00
-        - name: "VIDEOCON VALIDITY"
-          operatorCode: "VCV"
-          commission: 0.00
-        - name: "VODAFONE"
-          operatorCode: "VDF"
-          commission: 3.80
-    bbps:
-      provider: ${BBPS_PROVIDER:mock}
-      base-url: ${BBPS_BASE_URL:}
-      api-key: ${BBPS_API_KEY:}
-      api-secret: ${BBPS_API_SECRET:}
+  recharge:
+    provider: ${RECHARGE_PROVIDER:mock}
+    base-url: ${RECHARGE_BASE_URL:}
+    api-key: ${RECHARGE_API_KEY:}
+    api-secret: ${RECHARGE_API_SECRET:}
+  venus-recharge:
+    base-url: ${VENUS_RECHARGE_BASE_URL:http://api.venusrecharge.com/V2}
+    auth-key: ${VENUS_RECHARGE_AUTH_KEY:}
+    auth-pass: ${VENUS_RECHARGE_AUTH_PASS:}
+    operators:
+      - name: "Airtel Live"
+        operatorCode: "ACL"
+        commission: 0.60
+      - name: "AIRTEL"
+        operatorCode: "ATL"
+        commission: 1.50
+      - name: "BSNL TOPUP"
+        operatorCode: "BNT"
+        commission: 3.90
+      - name: "BSNL VALIDITY"
+        operatorCode: "BNV"
+        commission: 0.00
+      - name: "JIO RECHARGE"
+        operatorCode: "JRE"
+        commission: 0.75
+      - name: "JIO TOPUP"
+        operatorCode: "JTU"
+        commission: 0.00
+      - name: "VIDEOCON TOPUP"
+        operatorCode: "VCT"
+        commission: 0.00
+      - name: "VIDEOCON VALIDITY"
+        operatorCode: "VCV"
+        commission: 0.00
+      - name: "VODAFONE"
+        operatorCode: "VDF"
+        commission: 3.80
+  bbps:
+    provider: ${BBPS_PROVIDER:mock}
+    base-url: ${BBPS_BASE_URL:}
+    api-key: ${BBPS_API_KEY:}
+    api-secret: ${BBPS_API_SECRET:}
   services:
     # Note: Legacy AEPS provider config removed. Using Levin AEPS only.
     aeps-enabled: ${SERVICE_AEPS_ENABLED:true}

@@ -36,6 +36,9 @@ public class ProviderTxnController {
 
     @GetMapping("/recharge/operators")
     public java.util.List<com.rupiksha.backend.config.AppProperties.VenusOperator> getOperators() {
+        if (appProperties.venusRecharge() == null) {
+            return java.util.Collections.emptyList();
+        }
         return appProperties.venusRecharge().operators();
     }
 

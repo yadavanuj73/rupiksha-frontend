@@ -12,12 +12,12 @@ public class RechargeProviderRouter {
     private final RechargeTransferProvider selected;
 
     public RechargeProviderRouter(List<RechargeTransferProvider> providers, AppProperties appProperties, Environment environment) {
-        String configured = appProperties.recharge().provider() == null
+        String configured = appProperties.recharge() == null || appProperties.recharge().provider() == null
                 ? "mock"
                 : appProperties.recharge().provider().trim().toLowerCase();
         boolean productionProfile = List.of(environment.getActiveProfiles()).contains("prod");
         if (productionProfile && "mock".equals(configured)
-                && !appProperties.environment().allowMockProvidersInProduction()) {
+                && (appProperties.environment() == null || !appProperties.environment().allowMockProvidersInProduction())) {
             throw new IllegalStateException(
                     "Mock recharge provider is blocked in production profile. Set RECHARGE_PROVIDER to a real provider.");
         }
