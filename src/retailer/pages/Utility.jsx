@@ -366,8 +366,8 @@ function MobileTab({ location }) {
                 setStatus({ type: 'error', message: `❌ ${errMessage}` });
             }
         } catch (e) {
-            announceError('कनेक्शन एरर。 बैकएंड से कनेक्ट नहीं हो पाया。');
-            setStatus({ type: 'error', message: '❌ Connection error. Try again.' });
+            announceError('कनेक्शन एरर। बैकएंड से कनेक्ट नहीं हो पाया।');
+            setStatus({ type: 'error', message: `❌ ${e.message || 'Connection error. Try again.'}` });
         } finally {
             setLoading(false);
         }

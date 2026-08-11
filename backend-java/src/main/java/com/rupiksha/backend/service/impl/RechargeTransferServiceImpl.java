@@ -164,17 +164,60 @@ public class RechargeTransferServiceImpl implements RechargeTransferService {
         }
 
         // 6. Call the provider (VenusRecharge)
-        RechargeTransferProvider provider = providerRouter.current();
-        log.info("Calling provider strategy: {} for merchantRefNo: {}", provider.providerName(), merchantRefNo);
+        RechargeTransferProvider.ProviderTxnResponse providerRes;
+        String statusStr;
+        try {
+            RechargeTransferProvider provider = providerRouter.current();
+            log.info("Calling provider strategy: {} for merchantRefNo: {}", provider.providerName(), merchantRefNo);
 
-        RechargeTransferProvider.ProviderTxnResponse providerRes = provider.recharge(
-                merchantRefNo,
-                request.mobile(),
-                request.operator(),
-                request.amount()
-        );
+            providerRes = provider.recharge(
+                    merchantRefNo,
+                    request.mobile(),
+                    request.operator(),
+                    request.amount()
+            );
+            statusStr = providerRes.raw() != null ? String.valueOf(providerRes.raw().getOrDefault("status", "PENDING")) : "PENDING";
+        } catch (Exception e) {
+            log.error("Exception calling provider recharge for Ref: {}", txn.getId(), e);
+            // Safe idempotent refund
+            try {
+                walletService.refundForService(
+                        user.getId(),
+                        request.amount(),
+                        "Recharge provider error refund",
+                        txn.getId().toString(),
+                        com.rupiksha.backend.domain.WalletTransactionContext.REVERSAL,
+                        "RECHARGE",
+                        "127.0.0.1",
+                        txn.getId().toString() + "-refund"
+                );
+            } catch (Exception re) {
+                log.error("CRITICAL: Failed to execute wallet refund after provider error. Ref: {}", txn.getId(), re);
+            }
 
-        String statusStr = String.valueOf(providerRes.raw().getOrDefault("status", "PENDING"));
+            txn.setStatus(TransactionStatus.FAILED);
+            txnRepository.save(txn);
+
+            recharge.setStatus(TransactionStatus.FAILED);
+            recharge.setDescription("Provider call failed: " + e.getMessage());
+            rechargeRepository.save(recharge);
+
+            return new ProviderTxnDtos.TxnResponse(
+                    false,
+                    txn.getId().toString(),
+                    "Provider communication failed: " + e.getMessage(),
+                    "FAILED",
+                    merchantRefNo,
+                    request.mobile(),
+                    request.amount(),
+                    null,
+                    null,
+                    openingBalance,
+                    openingBalance, // Restored
+                    openingBalance, // Restored
+                    Map.of("status", "FAILED", "error", e.getMessage())
+            );
+        }
 
         // 7. Process provider results (SUCCESS / FAILED / PENDING)
         if (providerRes.success() || "SUCCESS".equalsIgnoreCase(statusStr)) {
