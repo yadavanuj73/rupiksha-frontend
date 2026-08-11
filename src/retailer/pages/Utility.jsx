@@ -538,7 +538,7 @@ function MobileTab({ location }) {
                             <div className="flex justify-between text-sm border-t border-slate-100 pt-2 mt-1">
                                 <span className="text-slate-500">Pay via</span>
                                 <span className="font-black text-xs" style={{ color: paymentMethod === 'wallet' ? '#059669' : '#2563eb' }}>
-                                    {paymentMethod === 'wallet' ? '💰 Venus Wallet' : '💳 Payment Gateway'}
+                                    {paymentMethod === 'wallet' ? '💰 Wallet' : '💳 Payment Gateway'}
                                 </span>
                             </div>
                         </div>
