@@ -7,6 +7,7 @@ import com.rupiksha.backend.domain.TransactionStatus;
 import com.rupiksha.backend.domain.Txn;
 import com.rupiksha.backend.repository.TxnRepository;
 import com.rupiksha.backend.repository.WalletEntryRepository;
+import com.rupiksha.backend.repository.RechargeRepository;
 import com.rupiksha.backend.service.history.BaseHistoryProvider;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -28,11 +29,14 @@ import java.util.stream.Collectors;
 public class RechargeHistoryProvider extends BaseHistoryProvider {
 
     private final TxnRepository txnRepository;
+    private final RechargeRepository rechargeRepository;
 
     public RechargeHistoryProvider(WalletEntryRepository walletEntryRepository,
-                                   TxnRepository txnRepository) {
+                                   TxnRepository txnRepository,
+                                   RechargeRepository rechargeRepository) {
         super(walletEntryRepository);
         this.txnRepository = txnRepository;
+        this.rechargeRepository = rechargeRepository;
     }
 
     @Override
@@ -114,11 +118,26 @@ public class RechargeHistoryProvider extends BaseHistoryProvider {
 
     private TransactionHistoryResponseDto mapToDto(Txn txn) {
         WalletBalances balances = getBalancesAndCommission(txn.getId().toString());
+        
+        String remarks = "Mobile/DTH Recharge";
+        String providerRef = txn.getProviderRef();
+        String bankRef = txn.getProviderRef();
+
+        if (txn.getIdempotencyKey() != null) {
+            var rechargeOpt = rechargeRepository.findByMerchantRefNo(txn.getIdempotencyKey());
+            if (rechargeOpt.isPresent()) {
+                var recharge = rechargeOpt.get();
+                remarks = "MOBILE RECHARGE: " + recharge.getMobileNo() + " (" + recharge.getOperatorCode() + ")";
+                providerRef = recharge.getOperatorTxnId();
+                bankRef = recharge.getOrderNo();
+            }
+        }
+
         return TransactionHistoryResponseDto.builder()
                 .transactionId(txn.getId().toString())
-                .providerReference(txn.getProviderRef())
+                .providerReference(providerRef)
                 .providerTransactionId(txn.getIdempotencyKey())
-                .bankReference(txn.getProviderRef())
+                .bankReference(bankRef)
                 .retailerId(txn.getUser().getId().toString())
                 .serviceType(txn.getServiceType())
                 .provider("RECHARGE")
@@ -127,7 +146,7 @@ public class RechargeHistoryProvider extends BaseHistoryProvider {
                 .openingBalance(balances.openingBalance)
                 .closingBalance(balances.closingBalance)
                 .status(txn.getStatus().name())
-                .remarks("Mobile/DTH Recharge")
+                .remarks(remarks)
                 .createdAt(LocalDateTime.ofInstant(txn.getCreatedAt(), ZoneId.systemDefault()))
                 .updatedAt(LocalDateTime.ofInstant(txn.getCreatedAt(), ZoneId.systemDefault()))
                 .build();

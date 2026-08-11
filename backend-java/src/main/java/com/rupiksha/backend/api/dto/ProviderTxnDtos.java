@@ -25,6 +25,24 @@ public class ProviderTxnDtos {
             String idempotencyKey
     ) {}
 
-    public record TxnResponse(boolean success, String txnId, String message, Map<String, Object> raw) {}
+    public record TxnResponse(
+            boolean success,
+            String txnId,
+            String message,
+            String status,
+            String merchantRefNo,
+            String mobileNo,
+            java.math.BigDecimal amount,
+            String operatorTxnId,
+            String orderNo,
+            java.math.BigDecimal openingBalance,
+            java.math.BigDecimal closingBalance,
+            java.math.BigDecimal newBalance,
+            Map<String, Object> raw
+    ) {
+        public TxnResponse(boolean success, String txnId, String message, Map<String, Object> raw) {
+            this(success, txnId, message, null, null, null, null, null, null, null, null, null, raw);
+        }
+    }
 }
 

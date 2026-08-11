@@ -97,6 +97,15 @@ app:
       base-url: ${RECHARGE_BASE_URL:}
       api-key: ${RECHARGE_API_KEY:}
       api-secret: ${RECHARGE_API_SECRET:}
+    venus-recharge:
+      base-url: ${VENUS_RECHARGE_BASE_URL:http://api.venusrecharge.com/V2}
+      auth-key: ${VENUS_RECHARGE_AUTH_KEY:}
+      auth-pass: ${VENUS_RECHARGE_AUTH_PASS:}
+      operator-mappings:
+        ATL: ${VENUS_OP_AIRTEL:ATL}
+        JRE: ${VENUS_OP_JIO:JRE}
+        VDF: ${VENUS_OP_VI:VDF}
+        BNT: ${VENUS_OP_BSNL:BNT}
     bbps:
       provider: ${BBPS_PROVIDER:mock}
       base-url: ${BBPS_BASE_URL:}

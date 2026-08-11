@@ -218,18 +218,19 @@ function MobileTab({ location }) {
     const [showSuccess, setShowSuccess] = useState(false);
     const [txid, setTxid] = useState('');
     const [paymentMethod, setPaymentMethod] = useState('wallet'); // 'wallet' | 'gateway'
-    const [walletBalance, setWalletBalance] = useState(null);
+    const [successTitle, setSuccessTitle] = useState('Recharge Successful! 🎉');
+    const [successSubtitle, setSuccessSubtitle] = useState('');
 
-    // Fetch fresh wallet balance on mount
-    useEffect(() => {
-        const user = dataService.getCurrentUser();
-        if (user) {
-            dataService.getWalletBalance(user.id || user.username).then(bal => {
-                setWalletBalance(parseFloat(bal));
-                localStorage.setItem('rupiksha_user', JSON.stringify({ ...user, balance: bal }));
-            }).catch(() => setWalletBalance(parseFloat(user.balance || 0)));
-        }
-    }, []);
+    const { availableBalance, refreshWallet } = useWallet();
+    const currentBalance = parseFloat(availableBalance || 0);
+
+    const PLAN_FILTERS = ['All', 'Data', 'All-in-1', 'Annual', '5G', 'Weekly', 'Daily'];
+    const filteredPlans = filter === 'All' ? plans : plans.filter(p => p.type === filter);
+
+    const OP_COLORS = { Airtel: '#e40000', Jio: '#003087', Vi: '#c300ff', BSNL: '#ff8800' };
+    const OP_CODES = { Airtel: 'ATL', Jio: 'JRE', Vi: 'VDF', BSNL: 'BNT' };
+    const opColor = OP_COLORS[operator] || NAVY;
+    const opCode = OP_CODES[operator] || operator;
 
     const detect = (num) => {
         if (num.length < 4) { setOperator(''); setCircle(''); setPlans([]); return; }
@@ -240,26 +241,21 @@ function MobileTab({ location }) {
             setCircle(info.circle);
             setPlans(OPERATOR_PLANS[info.op] || []);
         } else if (num.length >= 4) {
-            // Comprehensive fallback detection by first 2-3 digits
             const d2 = num.slice(0, 2);
             const d3 = num.slice(0, 3);
             let detectedOp = '', detectedCircle = 'All India';
 
-            // 6-series: Mostly Jio, some BSNL (944x, 945x etc are allocated via portability)
             if (d2 === '60' || d2 === '61' || d2 === '62' || d2 === '63' || d2 === '64') { detectedOp = 'Jio'; }
             else if (d2 === '65' || d2 === '66' || d2 === '67' || d2 === '68' || d2 === '69') { detectedOp = 'Jio'; }
-            // 7-series: Jio (700x-710x), Airtel (720x-739x), Vi (740x-759x), Jio/BSNL (760x+)
             else if (d3 === '700' || d3 === '701' || d3 === '702' || d3 === '703' || d3 === '704' || d3 === '705' || d3 === '706' || d3 === '707' || d3 === '708' || d3 === '709' || d3 === '710' || d3 === '711') { detectedOp = 'Jio'; }
             else if (d3 === '720' || d3 === '721' || d3 === '722' || d3 === '723' || d3 === '724' || d3 === '725' || d3 === '726' || d3 === '727' || d3 === '728' || d3 === '729' || d3 === '730' || d3 === '731' || d3 === '732' || d3 === '733' || d3 === '734' || d3 === '735' || d3 === '736' || d3 === '737' || d3 === '738' || d3 === '739') { detectedOp = 'Airtel'; }
             else if (d3 === '740' || d3 === '741' || d3 === '742' || d3 === '743' || d3 === '744' || d3 === '745' || d3 === '746' || d3 === '747' || d3 === '748' || d3 === '749' || d3 === '750' || d3 === '751' || d3 === '752' || d3 === '753' || d3 === '754' || d3 === '755' || d3 === '756') { detectedOp = 'Vi'; }
             else if (d3 === '760' || d3 === '761' || d3 === '762' || d3 === '763' || d3 === '764' || d3 === '765' || d3 === '766' || d3 === '767' || d3 === '768') { detectedOp = 'BSNL'; }
             else if (d2 === '77' || d2 === '78' || d2 === '79') { detectedOp = 'Jio'; }
-            // 8-series: Airtel (800-829), Jio (830-859), Vi (860-879), BSNL (880-899)
             else if (['800', '801', '802', '803', '804', '805', '806', '807', '808', '809', '810', '811', '812', '813', '814', '815', '816', '817', '818', '819', '820', '821', '822', '823', '824', '825', '826', '827', '828', '829'].includes(d3)) { detectedOp = 'Airtel'; }
             else if (['830', '831', '832', '833', '834', '835', '836', '837', '838', '839', '840', '841', '842', '843', '844', '845', '846', '847', '848', '849', '850', '851', '852', '853', '854', '855', '856', '857', '858', '859'].includes(d3)) { detectedOp = 'Jio'; }
             else if (['860', '861', '862', '863', '864', '865', '866', '867', '868', '869', '870', '871', '872', '873', '874', '875', '876', '877', '878', '879'].includes(d3)) { detectedOp = 'Vi'; }
             else if (['880', '881', '882', '883', '884', '885', '886', '887', '888', '889', '890', '891', '892', '893', '894', '895', '896', '897', '898', '899'].includes(d3)) { detectedOp = 'BSNL'; }
-            // 9-series: Mixed — Airtel dominant, Vi/Jio/BSNL scattered
             else if (['900', '901', '902', '903', '904', '905', '906', '907', '908', '909'].includes(d3)) { detectedOp = 'Jio'; }
             else if (d2 === '91' || d2 === '92') { detectedOp = 'Jio'; }
             else if (d2 === '93') { detectedOp = 'Vi'; }
@@ -280,34 +276,16 @@ function MobileTab({ location }) {
         }
     };
 
-    const PLAN_FILTERS = ['All', 'Data', 'All-in-1', 'Annual', '5G', 'Weekly', 'Daily'];
-    const filteredPlans = filter === 'All' ? plans : plans.filter(p => p.type === filter);
-
-    const OP_COLORS = { Airtel: '#e40000', Jio: '#003087', Vi: '#c300ff', BSNL: '#ff8800' };
-    const OP_CODES = { Airtel: 'ATL', Jio: 'JRE', Vi: 'VDF', BSNL: 'BNT' };
-    const opColor = OP_COLORS[operator] || NAVY;
-    const opCode = OP_CODES[operator] || operator;
-
     const handleRecharge = async () => {
         const amount = selectedPlan ? selectedPlan.amount : customAmount;
         if (!/^\d{10}$/.test(mobile)) { announceWarning('सही 10 अंकों का मोबाइल नंबर'); setStatus({ type: 'error', message: '⚠️ Enter a valid 10-digit mobile number' }); return; }
         if (!operator) { announceWarning('ऑपरेटर पहचाना नहीं गया'); setStatus({ type: 'error', message: '⚠️ Operator not detected. Enter valid number.' }); return; }
         if (!amount || Number(amount) < 1) { announceWarning('राशि या प्लान चुनें'); setStatus({ type: 'error', message: '⚠️ Please select a plan or enter amount' }); return; }
 
-        const user = dataService.getCurrentUser();
-
         if (paymentMethod === 'wallet') {
-            // Fetch fresh balance from backend
-            try {
-                const freshBal = await dataService.getWalletBalance(user.id || user.username);
-                user.balance = freshBal;
-                setWalletBalance(parseFloat(freshBal));
-                localStorage.setItem('rupiksha_user', JSON.stringify({ ...user, balance: freshBal }));
-            } catch (e) { /* use cached balance as fallback */ }
-
-            if (parseFloat(user.balance || 0) < parseFloat(amount)) {
+            if (currentBalance < parseFloat(amount)) {
                 announceWarning('अपर्याप्त बैलेंस');
-                setStatus({ type: 'error', message: `⚠️ Insufficient wallet balance (₹${parseFloat(user.balance || 0).toFixed(2)}). Add funds first.` });
+                setStatus({ type: 'error', message: `⚠️ Insufficient wallet balance (₹${currentBalance.toFixed(2)}). Please add money to continue.` });
                 return;
             }
         }
@@ -315,51 +293,67 @@ function MobileTab({ location }) {
         setLoading(true); setStatus(null);
         try {
             initSpeech(); announceProcessing("रिचार्ज प्रोसेस हो रहा है।");
+            const user = dataService.getCurrentUser();
             const result = await providerTxnService.recharge({
                 userId: user.id,
                 mobile,
                 operator: opCode,
                 amount: Number(amount)
             });
-            if (result.success) {
-                // Update local wallet balance
-                if (result.newBalance) {
-                    setWalletBalance(parseFloat(result.newBalance));
-                    localStorage.setItem('rupiksha_user', JSON.stringify({ ...user, balance: result.newBalance }));
-                }
 
-                announceGrandSuccess(
-                    `आपका ₹${amount} का ${operator} रिचार्ज सफल हो गया।`,
-                    `मोबाइल नंबर ${mobile} पर ${operator} ${circle} की सेवा सक्रिय हो गई।`
-                );
-                try {
-                    const { default: confetti } = await import('canvas-confetti');
-                    confetti({ particleCount: 180, spread: 80, origin: { y: 0.5 }, colors: ['#10b981', '#0f2557', '#fbbf24', '#a78bfa', '#38bdf8'] });
-                } catch (e) { }
-                setTxid(result.txid || result.txnId || `TXN${Date.now()}`);
-                setShowSuccess(true);
+            await refreshWallet();
+            window.dispatchEvent(new CustomEvent('walletUpdated'));
+
+            if (result.success) {
+                if (result.status === 'PENDING') {
+                    announceSuccess('आपका रिचार्ज पेंडिंग है।');
+                    setSuccessTitle('Recharge Pending ⏳');
+                    setSuccessSubtitle('We are processing your request. Please wait.');
+                    setTxid(result.merchantRefNo || result.txnId || `TXN${Date.now()}`);
+                    setShowSuccess(true);
+                } else {
+                    announceGrandSuccess(
+                        `आपका ₹${amount} का ${operator} रिचार्ज सफल हो गया।`,
+                        `मोबाइल नंबर ${mobile} पर ${operator} ${circle} की सेवा सक्रिय हो गई।`
+                    );
+                    try {
+                        const { default: confetti } = await import('canvas-confetti');
+                        confetti({ particleCount: 180, spread: 80, origin: { y: 0.5 }, colors: ['#10b981', '#0f2557', '#fbbf24', '#a78bfa', '#38bdf8'] });
+                    } catch (e) { }
+                    setSuccessTitle('Recharge Successful! 🎉');
+                    setSuccessSubtitle(`${operator} — ${circle}`);
+                    setTxid(result.operatorTxnId || result.txnId || `TXN${Date.now()}`);
+                    setShowSuccess(true);
+                }
             } else {
                 announceError(result.message || 'रिचार्ज फेल हो गया');
-                setStatus({ type: 'error', message: `❌ ${result.message || 'Recharge failed'}` });
+                let errMessage = result.message || 'Recharge failed';
+                if (result.status === 'SERVICE_DISABLED') {
+                    errMessage = 'Mobile Recharge service is disabled by administrator';
+                } else if (result.status === 'INSUFFICIENT_BALANCE') {
+                    errMessage = 'Insufficient wallet balance. Please add money to continue.';
+                }
+                setStatus({ type: 'error', message: `❌ ${errMessage}` });
             }
-        } catch {
+        } catch (e) {
             announceError('कनेक्शन एरर। बैकएंड से कनेक्ट नहीं हो पाया।');
             setStatus({ type: 'error', message: '❌ Connection error. Try again.' });
+        } finally {
+            setLoading(false);
         }
-        finally { setLoading(false); }
     };
 
     if (showSuccess) return (
         <GrandSuccessScreen
-            title="Recharge Successful! 🎉"
-            subtitle={`${operator} — ${circle}`}
+            title={successTitle}
+            subtitle={successSubtitle}
             details={[
                 { label: 'Mobile Number', value: mobile },
                 { label: 'Operator', value: `${operator} (${circle})` },
-                { label: 'Amount Paid', value: `₹${selectedPlan?.amount || customAmount}`, highlight: true },
+                { label: 'Amount Paid', value: `₹${parseFloat(selectedPlan?.amount || customAmount || 0).toFixed(2)}`, highlight: true },
                 { label: 'Plan', value: selectedPlan?.desc || 'Custom Recharge' },
                 { label: 'Validity', value: selectedPlan?.validity || '—' },
-                { label: 'Transaction ID', value: txid },
+                { label: 'Transaction ID / Ref', value: txid },
             ]}
             onReset={() => { setShowSuccess(false); setMobile(''); setOperator(''); setCircle(''); setSelectedPlan(null); setCustomAmount(''); setPlans([]); }}
             resetLabel="+ New Recharge"
@@ -371,9 +365,14 @@ function MobileTab({ location }) {
             {/* LEFT: Input */}
             <div className="space-y-4">
                 <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
-                    <h3 className="font-black text-slate-800 text-sm flex items-center gap-2">
-                        <Icon3D icon={Smartphone} color="#0f2557" size={32} /> Enter Details
-                    </h3>
+                    <div className="flex justify-between items-center">
+                        <h3 className="font-black text-slate-800 text-sm flex items-center gap-2">
+                            <Icon3D icon={Smartphone} color="#0f2557" size={32} /> Enter Details
+                        </h3>
+                        <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
+                            <Wallet size={12} /> Balance: ₹{currentBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </span>
+                    </div>
 
                     {/* Mobile input */}
                     <div>
@@ -466,13 +465,27 @@ function MobileTab({ location }) {
                         <div className="rounded-xl p-4 space-y-2 border" style={{ background: `${NAVY}06`, borderColor: `${NAVY}20` }}>
                             <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Summary</p>
                             <div className="flex justify-between text-sm">
-                                <span className="text-slate-600">Amount</span>
-                                <span className="font-black" style={{ color: NAVY }}>₹{selectedPlan?.amount || customAmount}</span>
+                                <span className="text-slate-600">Recharge Amount</span>
+                                <span className="font-black" style={{ color: NAVY }}>₹{parseFloat(selectedPlan?.amount || customAmount || 0).toFixed(2)}</span>
                             </div>
                             {selectedPlan && <>
                                 <div className="flex justify-between text-sm"><span className="text-slate-500">Data</span><b>{selectedPlan.data}</b></div>
                                 <div className="flex justify-between text-sm"><span className="text-slate-500">Validity</span><b>{selectedPlan.validity}</b></div>
                             </>}
+                            {paymentMethod === 'wallet' && (
+                                <>
+                                    <div className="flex justify-between text-sm border-t border-slate-100 pt-2 mt-1">
+                                        <span className="text-slate-500">Wallet Balance</span>
+                                        <span className="font-black text-slate-700">₹{currentBalance.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-slate-500">Remaining Balance</span>
+                                        <span className={`font-black ${(currentBalance - parseFloat(selectedPlan?.amount || customAmount || 0)) < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                            ₹{(currentBalance - parseFloat(selectedPlan?.amount || customAmount || 0)).toFixed(2)}
+                                        </span>
+                                    </div>
+                                </>
+                            )}
                             <div className="flex justify-between text-sm border-t border-slate-100 pt-2 mt-1">
                                 <span className="text-slate-500">Pay via</span>
                                 <span className="font-black text-xs" style={{ color: paymentMethod === 'wallet' ? '#059669' : '#2563eb' }}>
@@ -508,11 +521,11 @@ function MobileTab({ location }) {
                             <span className="text-[10px] font-bold text-slate-400">{filteredPlans.length} plans</span>
                         </div>
                         {/* Type filter */}
-                        <div className="flex gap-2 flex-wrap">
-                            {['All', 'Data', 'All-in-1', 'Annual'].map(f => (
+                        <div className="flex gap-1 overflow-x-auto pb-2 scrollbar-none">
+                            {PLAN_FILTERS.map(f => (
                                 <button key={f} onClick={() => setFilter(f)}
-                                    className="px-3 py-1.5 rounded-full text-[10px] font-black border-2 transition-all"
-                                    style={filter === f ? { background: NAVY, color: '#fff', borderColor: NAVY } : { background: 'white', color: '#64748b', borderColor: '#e2e8f0' }}>
+                                    className="px-4 py-1.5 rounded-full text-xs font-black border-2 whitespace-nowrap transition-all"
+                                    style={filter === f ? { background: opColor, color: 'white', borderColor: opColor } : { background: 'white', color: '#64748b', borderColor: '#e2e8f0' }}>
                                     {f}
                                 </button>
                             ))}

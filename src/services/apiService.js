@@ -371,6 +371,14 @@ export const providerTxnService = {
       method: "POST",
       body: JSON.stringify({ userId, beneficiaryName, accountNumber, ifsc, amount, idempotencyKey: makeIdempotencyKey() }),
     }),
+
+  getProviderBalance: () =>
+    apiFetch("/recharge/provider-balance"),
+
+  reconcileStatus: (merchantRefNo) =>
+    apiFetch(`/recharge/status/${encodeURIComponent(merchantRefNo)}`, {
+      method: "POST",
+    }),
 };
 
 // ─── PAYOUT SERVICE ────────────────────────────────────────────────────────────
