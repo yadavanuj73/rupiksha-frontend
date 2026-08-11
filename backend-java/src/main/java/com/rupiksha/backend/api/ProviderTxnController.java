@@ -42,6 +42,17 @@ public class ProviderTxnController {
         return appProperties.venusRecharge().operators();
     }
 
+    @GetMapping("/recharge/my-ip")
+    public java.util.Map<String, String> getMyIp() {
+        try {
+            org.springframework.web.client.RestTemplate rt = new org.springframework.web.client.RestTemplate();
+            String ip = rt.getForObject("https://api.ipify.org", String.class);
+            return java.util.Map.of("outboundIp", ip != null ? ip.trim() : "unknown");
+        } catch (Exception e) {
+            return java.util.Map.of("error", e.getMessage());
+        }
+    }
+
     @PostMapping("/recharge")
     public ProviderTxnDtos.TxnResponse recharge(
             @AuthenticationPrincipal JwtPrincipal principal,
