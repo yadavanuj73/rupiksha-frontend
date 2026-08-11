@@ -93,7 +93,7 @@ app:
       key-secret: ${PAYMENT_KEY_SECRET:}
       webhook-secret: ${PAYMENT_WEBHOOK_SECRET:}
   recharge:
-    provider: ${RECHARGE_PROVIDER:mock}
+    provider: ${RECHARGE_PROVIDER:venus}
     base-url: ${RECHARGE_BASE_URL:}
     api-key: ${RECHARGE_API_KEY:}
     api-secret: ${RECHARGE_API_SECRET:}
