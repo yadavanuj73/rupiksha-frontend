@@ -447,7 +447,7 @@ function MobileTab({ location }) {
                                 <option value="">Select</option>
                                 {backendOperators.map(o => (
                                     <option key={o.operatorCode} value={o.operatorCode}>
-                                        {o.name} {o.commission > 0 ? `(${o.commission}%)` : ''}
+                                        {o.name}
                                     </option>
                                 ))}
                             </select>
@@ -464,10 +464,19 @@ function MobileTab({ location }) {
                         <label className="text-[12px] font-black text-slate-400 uppercase tracking-widest block mb-2">Or Enter Amount Manually</label>
                         <div className="relative">
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black text-slate-300">₹</span>
-                            <input type="number" value={customAmount}
-                                onChange={e => { setCustomAmount(e.target.value); setSelectedPlan(null); }}
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                value={customAmount}
+                                onChange={e => {
+                                    const val = e.target.value.replace(/\D/g, '');
+                                    setCustomAmount(val);
+                                    setSelectedPlan(null);
+                                }}
                                 placeholder="Enter amount"
-                                className="w-full pl-10 pr-4 py-5 rounded-2xl border-2 border-slate-200 text-slate-900 font-black text-2xl outline-none focus:border-blue-500 bg-slate-50 focus:bg-white" />
+                                className="w-full pl-10 pr-4 py-5 rounded-2xl border-2 border-slate-200 text-slate-900 font-black text-2xl outline-none focus:border-blue-500 bg-slate-50 focus:bg-white"
+                            />
                         </div>
                     </div>
 
