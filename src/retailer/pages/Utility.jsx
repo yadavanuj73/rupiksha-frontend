@@ -220,6 +220,7 @@ function MobileTab({ location }) {
     const [paymentMethod, setPaymentMethod] = useState('wallet'); // 'wallet' | 'gateway'
     const [successTitle, setSuccessTitle] = useState('Recharge Successful! 🎉');
     const [successSubtitle, setSuccessSubtitle] = useState('');
+    const [backendOperators, setBackendOperators] = useState([]);
 
     const { availableBalance, refreshWallet } = useWallet();
     const currentBalance = parseFloat(availableBalance || 0);
@@ -227,17 +228,45 @@ function MobileTab({ location }) {
     const PLAN_FILTERS = ['All', 'Data', 'All-in-1', 'Annual', '5G', 'Weekly', 'Daily'];
     const filteredPlans = filter === 'All' ? plans : plans.filter(p => p.type === filter);
 
+    useEffect(() => {
+        providerTxnService.getOperators()
+            .then(res => {
+                if (Array.isArray(res)) {
+                    setBackendOperators(res);
+                }
+            })
+            .catch(err => console.error("Failed to load operators from backend:", err));
+    }, []);
+
+    const getOperatorBrand = (code) => {
+        if (!code) return "";
+        if (code.startsWith("AT") || code.startsWith("AC")) return "Airtel";
+        if (code.startsWith("JR") || code.startsWith("JT")) return "Jio";
+        if (code.startsWith("VD") || code.startsWith("VC")) return "Vi";
+        if (code.startsWith("BN")) return "BSNL";
+        return "";
+    };
+
+    const findCodeForBrand = (brand) => {
+        if (brand === "Airtel") return backendOperators.find(o => o.operatorCode === "ATL")?.operatorCode || "ATL";
+        if (brand === "Jio") return backendOperators.find(o => o.operatorCode === "JRE")?.operatorCode || "JRE";
+        if (brand === "Vi") return backendOperators.find(o => o.operatorCode === "VDF")?.operatorCode || "VDF";
+        if (brand === "BSNL") return backendOperators.find(o => o.operatorCode === "BNT")?.operatorCode || "BNT";
+        return "";
+    };
+
     const OP_COLORS = { Airtel: '#e40000', Jio: '#003087', Vi: '#c300ff', BSNL: '#ff8800' };
-    const OP_CODES = { Airtel: 'ATL', Jio: 'JRE', Vi: 'VDF', BSNL: 'BNT' };
-    const opColor = OP_COLORS[operator] || NAVY;
-    const opCode = OP_CODES[operator] || operator;
+    const brandName = getOperatorBrand(operator);
+    const opColor = OP_COLORS[brandName] || NAVY;
+    const opDisplayName = backendOperators.find(o => o.operatorCode === operator)?.name || operator;
 
     const detect = (num) => {
         if (num.length < 4) { setOperator(''); setCircle(''); setPlans([]); return; }
         const prefix = num.slice(0, 4);
         const info = PREFIX_DB[prefix];
         if (info) {
-            setOperator(info.op);
+            const code = findCodeForBrand(info.op);
+            setOperator(code);
             setCircle(info.circle);
             setPlans(OPERATOR_PLANS[info.op] || []);
         } else if (num.length >= 4) {
@@ -267,7 +296,8 @@ function MobileTab({ location }) {
             else if (d2 === '99') { detectedOp = 'Vi'; }
 
             if (detectedOp) {
-                setOperator(detectedOp);
+                const code = findCodeForBrand(detectedOp);
+                setOperator(code);
                 setCircle(detectedCircle);
                 setPlans(OPERATOR_PLANS[detectedOp] || []);
             } else {
@@ -297,7 +327,7 @@ function MobileTab({ location }) {
             const result = await providerTxnService.recharge({
                 userId: user.id,
                 mobile,
-                operator: opCode,
+                operator: operator, // Pass official code directly
                 amount: Number(amount)
             });
 
@@ -313,15 +343,15 @@ function MobileTab({ location }) {
                     setShowSuccess(true);
                 } else {
                     announceGrandSuccess(
-                        `आपका ₹${amount} का ${operator} रिचार्ज सफल हो गया।`,
-                        `मोबाइल नंबर ${mobile} पर ${operator} ${circle} की सेवा सक्रिय हो गई।`
+                        `आपका ₹${amount} का ${opDisplayName} रिचार्ज सफल हो गया।`,
+                        `मोबाइल नंबर ${mobile} पर ${opDisplayName} ${circle} की सेवा सक्रिय हो गई。`
                     );
                     try {
                         const { default: confetti } = await import('canvas-confetti');
                         confetti({ particleCount: 180, spread: 80, origin: { y: 0.5 }, colors: ['#10b981', '#0f2557', '#fbbf24', '#a78bfa', '#38bdf8'] });
                     } catch (e) { }
                     setSuccessTitle('Recharge Successful! 🎉');
-                    setSuccessSubtitle(`${operator} — ${circle}`);
+                    setSuccessSubtitle(`${opDisplayName} — ${circle}`);
                     setTxid(result.operatorTxnId || result.txnId || `TXN${Date.now()}`);
                     setShowSuccess(true);
                 }
@@ -336,7 +366,7 @@ function MobileTab({ location }) {
                 setStatus({ type: 'error', message: `❌ ${errMessage}` });
             }
         } catch (e) {
-            announceError('कनेक्शन एरर। बैकएंड से कनेक्ट नहीं हो पाया।');
+            announceError('कनेक्शन एरर。 बैकएंड से कनेक्ट नहीं हो पाया。');
             setStatus({ type: 'error', message: '❌ Connection error. Try again.' });
         } finally {
             setLoading(false);
@@ -349,7 +379,7 @@ function MobileTab({ location }) {
             subtitle={successSubtitle}
             details={[
                 { label: 'Mobile Number', value: mobile },
-                { label: 'Operator', value: `${operator} (${circle})` },
+                { label: 'Operator', value: `${opDisplayName} (${circle})` },
                 { label: 'Amount Paid', value: `₹${parseFloat(selectedPlan?.amount || customAmount || 0).toFixed(2)}`, highlight: true },
                 { label: 'Plan', value: selectedPlan?.desc || 'Custom Recharge' },
                 { label: 'Validity', value: selectedPlan?.validity || '—' },
@@ -392,10 +422,10 @@ function MobileTab({ location }) {
                         <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
                             className="flex items-center gap-3 p-3 rounded-xl border" style={{ background: `${opColor}08`, borderColor: `${opColor}30` }}>
                             <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-black text-sm" style={{ background: opColor }}>
-                                {operator[0]}
+                                {(opDisplayName || '')[0]}
                             </div>
                             <div>
-                                <p className="text-sm font-black text-slate-800">{operator}</p>
+                                <p className="text-sm font-black text-slate-800">{opDisplayName}</p>
                                 <p className="text-[10px] font-bold text-slate-400">{circle}</p>
                             </div>
                             <span className="ml-auto text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Auto detected ✓</span>
@@ -406,10 +436,20 @@ function MobileTab({ location }) {
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="text-[12px] font-black text-slate-400 uppercase tracking-widest block mb-2">Operator</label>
-                            <select value={operator} onChange={e => { setOperator(e.target.value); setPlans(OPERATOR_PLANS[e.target.value] || []); setSelectedPlan(null); }}
+                            <select value={operator} onChange={e => {
+                                const code = e.target.value;
+                                setOperator(code);
+                                const brand = getOperatorBrand(code);
+                                setPlans(OPERATOR_PLANS[brand] || []);
+                                setSelectedPlan(null);
+                            }}
                                 className="w-full py-4 px-4 rounded-xl border-2 border-slate-200 text-slate-800 font-bold text-base outline-none focus:border-blue-500 bg-slate-50">
                                 <option value="">Select</option>
-                                {['Airtel', 'Jio', 'Vi', 'BSNL'].map(o => <option key={o} value={o}>{o}</option>)}
+                                {backendOperators.map(o => (
+                                    <option key={o.operatorCode} value={o.operatorCode}>
+                                        {o.name} {o.commission > 0 ? `(${o.commission}%)` : ''}
+                                    </option>
+                                ))}
                             </select>
                         </div>
                         <div>

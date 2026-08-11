@@ -23,7 +23,8 @@ public record AppProperties(
     public record OtpProvider(String name, String baseUrl, String apiKey, String senderId) {}
     public record PaymentProvider(String name, String baseUrl, String keyId, String keySecret, String webhookSecret) {}
     public record Recharge(String provider, String baseUrl, String apiKey, String apiSecret) {}
-    public record VenusRecharge(String baseUrl, String authKey, String authPass, java.util.Map<String, String> operatorMappings) {}
+    public record VenusRecharge(String baseUrl, String authKey, String authPass, java.util.List<VenusOperator> operators) {}
+    public record VenusOperator(String name, String operatorCode, java.math.BigDecimal commission) {}
     public record Bbps(String provider, String baseUrl, String apiKey, String apiSecret) {}
     public record Services(boolean aepsEnabled, boolean bbpsEnabled, boolean ticketsEnabled, boolean rechargeEnabled, boolean payoutEnabled) {}
     public record Environment(boolean allowMockProvidersInProduction) {}

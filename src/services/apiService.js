@@ -379,6 +379,9 @@ export const providerTxnService = {
     apiFetch(`/recharge/status/${encodeURIComponent(merchantRefNo)}`, {
       method: "POST",
     }),
+
+  getOperators: () =>
+    apiFetch("/recharge/operators"),
 };
 
 // ─── PAYOUT SERVICE ────────────────────────────────────────────────────────────

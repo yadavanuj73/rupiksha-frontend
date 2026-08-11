@@ -101,11 +101,34 @@ app:
       base-url: ${VENUS_RECHARGE_BASE_URL:http://api.venusrecharge.com/V2}
       auth-key: ${VENUS_RECHARGE_AUTH_KEY:}
       auth-pass: ${VENUS_RECHARGE_AUTH_PASS:}
-      operator-mappings:
-        ATL: ${VENUS_OP_AIRTEL:ATL}
-        JRE: ${VENUS_OP_JIO:JRE}
-        VDF: ${VENUS_OP_VI:VDF}
-        BNT: ${VENUS_OP_BSNL:BNT}
+      operators:
+        - name: "Airtel Live"
+          operatorCode: "ACL"
+          commission: 0.60
+        - name: "AIRTEL"
+          operatorCode: "ATL"
+          commission: 1.50
+        - name: "BSNL TOPUP"
+          operatorCode: "BNT"
+          commission: 3.90
+        - name: "BSNL VALIDITY"
+          operatorCode: "BNV"
+          commission: 0.00
+        - name: "JIO RECHARGE"
+          operatorCode: "JRE"
+          commission: 0.75
+        - name: "JIO TOPUP"
+          operatorCode: "JTU"
+          commission: 0.00
+        - name: "VIDEOCON TOPUP"
+          operatorCode: "VCT"
+          commission: 0.00
+        - name: "VIDEOCON VALIDITY"
+          operatorCode: "VCV"
+          commission: 0.00
+        - name: "VODAFONE"
+          operatorCode: "VDF"
+          commission: 3.80
     bbps:
       provider: ${BBPS_PROVIDER:mock}
       base-url: ${BBPS_BASE_URL:}

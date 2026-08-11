@@ -34,6 +34,11 @@ public class ProviderTxnController {
     private final WalletService walletService;
     private final VenusRechargeProvider venusRechargeProvider;
 
+    @GetMapping("/recharge/operators")
+    public java.util.List<com.rupiksha.backend.config.AppProperties.VenusOperator> getOperators() {
+        return appProperties.venusRecharge().operators();
+    }
+
     @PostMapping("/recharge")
     public ProviderTxnDtos.TxnResponse recharge(
             @AuthenticationPrincipal JwtPrincipal principal,

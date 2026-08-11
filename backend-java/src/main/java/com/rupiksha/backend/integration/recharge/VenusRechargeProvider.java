@@ -40,16 +40,18 @@ public class VenusRechargeProvider implements RechargeTransferProvider {
             return new ProviderTxnResponse(false, null, "VenusRecharge provider not fully configured", Map.of("status", "FAILED"));
         }
 
-        // Validate operator using configurable mapping
-        Map<String, String> mappings = appProperties.venusRecharge().operatorMappings();
-        if (mappings == null || mappings.isEmpty()) {
-            log.warn("CRITICAL: The official Venus operator list is still required and not present! Using empty mappings.");
-            return new ProviderTxnResponse(false, null, "Official Venus operator list is still required and not configured.", Map.of("status", "FAILED"));
+        // Validate operator using configurable list
+        java.util.List<com.rupiksha.backend.config.AppProperties.VenusOperator> operators = appProperties.venusRecharge().operators();
+        if (operators == null || operators.isEmpty()) {
+            log.warn("CRITICAL: The official Venus operator list is not present in configuration!");
+            return new ProviderTxnResponse(false, null, "Official Venus operator list is not configured.", Map.of("status", "FAILED"));
         }
 
-        String mappedOperator = mappings.get(operator);
-        if (mappedOperator == null) {
-            log.error("Unsupported operator code sent to VenusRecharge: {}. Valid mappings: {}", operator, mappings.keySet());
+        boolean isValid = operators.stream()
+                .anyMatch(op -> op.operatorCode().equalsIgnoreCase(operator));
+        if (!isValid) {
+            log.error("Unsupported operator code sent to VenusRecharge: {}. Valid codes: {}",
+                    operator, operators.stream().map(com.rupiksha.backend.config.AppProperties.VenusOperator::operatorCode).toList());
             return new ProviderTxnResponse(false, null, "Unsupported operator code: " + operator, Map.of("status", "FAILED"));
         }
 
@@ -67,7 +69,7 @@ public class VenusRechargeProvider implements RechargeTransferProvider {
 
         Map<String, Object> req = new HashMap<>();
         req.put("mobileNo", mobile);
-        req.put("operatorCode", mappedOperator);
+        req.put("operatorCode", operator);
         req.put("merchantRefNo", userRef); // Generates 14-char reference on backend
         req.put("serviceType", "MR");
         req.put("amount", amount.toString());
