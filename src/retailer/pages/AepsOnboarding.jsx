@@ -91,10 +91,6 @@ export default function AepsOnboarding() {
         }
     }, []);
 
-    if (serviceDisabled) {
-        return <DisabledServiceBanner serviceName="AEPS" />;
-    }
-
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({
@@ -103,171 +99,72 @@ export default function AepsOnboarding() {
         }));
     };
 
-    const handleFileRead = (e, fieldName) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        if (file.size > 10 * 1024 * 1024) {
-            setError(`Selected file exceeds maximum allowed size of 10MB.`);
-            return;
-        }
-
-        setError('');
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            let res = reader.result;
-            if (typeof res === 'string' && res.includes(',')) {
-                res = res.split(',')[1]; // Clean raw Base64 without Data URI prefix
-            }
-            setFormData(prev => ({
-                ...prev,
-                [fieldName]: res
-            }));
-        };
-        reader.readAsDataURL(file);
-    };
-
-    const recordVideoKyc = async () => {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            setError("Camera recording is not supported in your browser. Please select a recorded video file instead.");
-            return;
-        }
-
-        setError('');
-        setRecordingVideo(true);
-        setVideoTimer(5);
-
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-            const recorder = new MediaRecorder(stream);
-            const chunks = [];
-
-            recorder.ondataavailable = (e) => {
-                if (e.data.size > 0) chunks.push(e.data);
-            };
-
-            recorder.onstop = () => {
-                const blob = new Blob(chunks, { type: 'video/webm' });
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    let res = reader.result;
-                    if (typeof res === 'string' && res.includes(',')) {
-                        res = res.split(',')[1]; // Raw Base64 string
-                    }
-                    setFormData(prev => ({
-                        ...prev,
-                        videoKycData: res
-                    }));
-                };
-                reader.readAsDataURL(blob);
-
-                stream.getTracks().forEach(track => track.stop());
-                setRecordingVideo(false);
-            };
-
-            recorder.start();
-
-            let secondsLeft = 5;
-            const interval = setInterval(() => {
-                secondsLeft -= 1;
-                setVideoTimer(secondsLeft);
-                if (secondsLeft <= 0) {
-                    clearInterval(interval);
-                    if (recorder.state !== 'inactive') {
-                        recorder.stop();
-                    }
-                }
-            }, 1000);
-
-        } catch (err) {
-            console.error("Camera access error", err);
-            setError("Failed to access camera. Please grant camera permissions or upload a video file.");
-            setRecordingVideo(false);
-        }
-    };
-
     const detectLocation = () => {
         if (!navigator.geolocation) {
-            setError("Geolocation is not supported by your browser.");
+            setError('Browser does not support automatic Geolocation.');
             return;
         }
-
         setDetectingGps(true);
         setError('');
-
         navigator.geolocation.getCurrentPosition(
-            (position) => {
+            (pos) => {
                 setFormData(prev => ({
                     ...prev,
-                    latitude: position.coords.latitude.toFixed(6),
-                    longitude: position.coords.longitude.toFixed(6)
+                    latitude: String(pos.coords.latitude),
+                    longitude: String(pos.coords.longitude)
                 }));
                 setDetectingGps(false);
+                setSuccessMsg('Location captured successfully via GPS.');
+                setTimeout(() => setSuccessMsg(''), 4000);
             },
             (err) => {
-                console.error("Geolocation error", err);
-                setError("Unable to retrieve GPS coordinates automatically. Please input manually or grant location access permissions.");
                 setDetectingGps(false);
+                setError('GPS capture failed: ' + err.message + '. Please enter manually or allow location access.');
             },
-            { enableHighAccuracy: true, timeout: 10000 }
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
     };
 
     const validateStep1 = () => {
         if (!formData.fname.trim()) return "First name is required";
         if (!formData.lname.trim()) return "Last name is required";
-
         const panPattern = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
-        if (!panPattern.test(formData.panCard.toUpperCase())) {
-            return "Invalid PAN card format (Must match standard e.g. ABCDE1234F)";
-        }
-
+        if (!panPattern.test(formData.panCard.toUpperCase())) return "Invalid PAN card format";
         const aadhaarPattern = /^\d{12}$/;
-        if (!aadhaarPattern.test(formData.aadharNumber)) {
-            return "Aadhaar number must be exactly 12 digits";
-        }
-
+        if (!aadhaarPattern.test(formData.aadharNumber)) return "Aadhaar number must be 12 digits";
         const mobilePattern = /^[6-9]\d{9}$/;
-        if (!mobilePattern.test(formData.aepsMobile)) {
-            return "Mobile number must be exactly 10 digits starting with 6-9";
-        }
-
-        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailPattern.test(formData.email)) {
-            return "Invalid email address format";
-        }
-
+        if (!mobilePattern.test(formData.aepsMobile)) return "Mobile number must be 10 digits";
         return null;
     };
 
     const validateStep2 = () => {
         if (!formData.shopName.trim()) return "Shop name is required";
-        if (!formData.address.trim()) return "Shop address is required";
-
-        const pinPattern = /^\d{6}$/;
-        if (!pinPattern.test(formData.pinCode)) {
-            return "Pincode must be exactly 6 digits";
-        }
-
-        if (!formData.city.trim()) return "City is required";
-        if (!formData.state) return "Please select your state";
-
+        if (!formData.address.trim()) return "Address is required";
+        if (!/^\d{6}$/.test(formData.pinCode)) return "Invalid Pincode";
+        if (!formData.city.trim() || !formData.state) return "City and State are required";
         return null;
     };
 
     const validateStep3 = () => {
         if (provider === 'fingpay') {
-            if (!formData.panImage && !formData.shopImage) {
-                return "Shop & PAN Image is required";
+            if (!formData.bankAccountName || !formData.bankAccountName.trim()) {
+                return "Account holder name is required for bank settlement";
             }
-            if (!formData.tradeBusinessProof) {
-                return "Trade Business Proof is required";
+            if (!formData.bankAccountNumber || !formData.bankAccountNumber.trim()) {
+                return "Bank account number is required for settlement";
             }
-            if (!formData.cancelledCheque) {
-                return "Cancelled Cheque / Bank Proof is required";
+            if (!/^\d{9,18}$/.test(formData.bankAccountNumber.trim())) {
+                return "Bank account number must be between 9 and 18 digits";
             }
-            if (!formData.videoKycData) {
-                return "Video KYC recording or video file is required";
+            if (!formData.ifscCode || !formData.ifscCode.trim()) {
+                return "Bank IFSC code is required";
+            }
+            const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/i;
+            if (!ifscRegex.test(formData.ifscCode.trim())) {
+                return "Invalid IFSC code format (e.g. IDIB000P107)";
+            }
+            if (!formData.bankName || !formData.bankName.trim()) {
+                return "Bank name is required";
             }
         }
         return null;
@@ -277,252 +174,189 @@ export default function AepsOnboarding() {
         e.preventDefault();
         setError('');
         if (step === 1) {
-            const step1Err = validateStep1();
-            if (step1Err) {
-                setError(step1Err);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                return;
-            }
+            const err = validateStep1();
+            if (err) return setError(err);
             setStep(2);
         } else if (step === 2) {
-            const step2Err = validateStep2();
-            if (step2Err) {
-                setError(step2Err);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                return;
-            }
-            if (provider === 'fingpay') {
-                setStep(3);
-            } else {
-                handleSubmit(e);
-                return;
-            }
+            const err = validateStep2();
+            if (err) return setError(err);
+            if (provider === 'fingpay') setStep(3);
+            else handleSubmit(e);
         }
-        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
         setSuccessMsg('');
-
         if (step === 3 || provider !== 'fingpay') {
-            const step3Err = validateStep3();
-            if (step3Err) {
-                setError(step3Err);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                return;
-            }
+            const err = validateStep3();
+            if (err) return setError(err);
         }
-
         setLoading(true);
         try {
             const correlationId = `corr_${Date.now()}`;
             const payload = {
                 ...formData,
                 panCard: formData.panCard.toUpperCase(),
+                ifscCode: formData.ifscCode.toUpperCase(),
                 provider,
                 correlationId,
                 timestamp: Date.now()
             };
-
             await aepsService.onboard(payload);
-
-            setSuccessMsg("Merchant Onboarding completed successfully! Agent profile registered. Proceeding to Biometric KYC...");
+            setSuccessMsg('Fingpay Onboarding completed successfully! Redirecting to Biometric KYC...');
             setTimeout(() => {
-                navigate(`/aeps-kyc?mobile=${formData.aepsMobile}&provider=${provider}`);
-            }, 2500);
+                navigate(`/aeps-kyc?mobile=${encodeURIComponent(formData.aepsMobile)}&provider=${encodeURIComponent(provider)}`);
+            }, 1500);
         } catch (err) {
-            console.error("Onboarding submission failed", err);
-            setError(err.message || "Onboarding execution failed. Please verify credentials and network parameters.");
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            console.error("Onboarding submission error:", err);
+            const msg = err.response?.data?.message || err.message || 'Onboarding failed. Please try again.';
+            setError(msg);
         } finally {
             setLoading(false);
         }
     };
 
+    if (serviceDisabled) {
+        return (
+            <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
+                <DisabledServiceBanner serviceName="AEPS Services" />
+            </div>
+        );
+    }
+
     return (
-        <div className="min-h-screen bg-[#f8fafc] py-12 px-4 flex justify-center items-center font-['Inter',sans-serif]">
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white border border-slate-100 shadow-[0_15px_40px_rgb(0,0,0,0.03)] rounded-3xl w-full max-w-4xl overflow-hidden relative"
-            >
-                <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-500 to-indigo-600" />
+        <div className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-4xl mx-auto">
+                <div className="mb-6 flex items-center justify-between">
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="flex items-center gap-2 text-slate-600 hover:text-blue-600 text-xs font-bold uppercase tracking-wider transition cursor-pointer"
+                    >
+                        <ArrowLeft size={16} /> Back
+                    </button>
+                    <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 text-blue-700 px-3 py-1.5 rounded-full text-xs font-bold">
+                        <Sparkles size={14} /> AEPS Onboarding Gateway
+                    </div>
+                </div>
 
-                {/* Main Content Area */}
-                <div className="p-8 md:p-12">
-                    {/* Header */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                        <div>
-                            <button
-                                onClick={() => navigate(-1)}
-                                className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-slate-600 transition mb-3 cursor-pointer"
-                            >
-                                <ArrowLeft size={14} />
-                                Go Back
-                            </button>
-                            <h1 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
-                                <Landmark className="text-blue-600" size={32} />
-                                AEPS Merchant Onboarding ({provider.toUpperCase()})
-                            </h1>
-                            <p className="text-slate-500 text-sm mt-1.5 font-medium leading-relaxed">
-                                Register your retail merchant account under Super Merchant ID 1407.
-                            </p>
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden"
+                >
+                    <div className="bg-slate-900 text-white p-6 sm:p-8">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h1 className="text-xl sm:text-2xl font-black tracking-tight flex items-center gap-2.5">
+                                    <Landmark className="text-blue-400" size={24} />
+                                    Fingpay Merchant Onboarding
+                                </h1>
+                                <p className="text-slate-400 text-xs mt-1">
+                                    Complete merchant registration & bank settlement details for AEPS 1 transactions
+                                </p>
+                            </div>
+                            <span className="hidden sm:inline-block px-3 py-1 bg-blue-500/20 text-blue-300 border border-blue-400/30 rounded-full text-[11px] font-extrabold uppercase tracking-wider">
+                                Provider: {provider.toUpperCase()}
+                            </span>
+                        </div>
+
+                        <div className="mt-8 flex items-center justify-between max-w-lg mx-auto">
+                            <div className="flex items-center gap-2">
+                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300 ${step === 1 ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-emerald-100 text-emerald-700 font-bold'}`}>
+                                    {step > 1 ? '✓' : '1'}
+                                </span>
+                                <span className={`text-xs font-bold uppercase tracking-wider ${step === 1 ? 'text-slate-700' : 'text-slate-400'}`}>Personal Details</span>
+                            </div>
+                            <div className="flex-1 h-0.5 bg-slate-800 mx-3 overflow-hidden">
+                                <div className={`h-full bg-blue-600 transition-all duration-500 ${step >= 2 ? 'w-full' : 'w-0'}`} />
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300 ${step === 2 ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : step > 2 ? 'bg-emerald-100 text-emerald-700 font-bold' : 'bg-slate-100 text-slate-400'}`}>
+                                    {step > 2 ? '✓' : '2'}
+                                </span>
+                                <span className={`text-xs font-bold uppercase tracking-wider ${step === 2 ? 'text-slate-700' : 'text-slate-400'}`}>Shop & Location</span>
+                            </div>
+                            {provider === 'fingpay' && (
+                                <>
+                                    <div className="flex-1 h-0.5 bg-slate-800 mx-3 overflow-hidden">
+                                        <div className={`h-full bg-blue-600 transition-all duration-500 ${step === 3 ? 'w-full' : 'w-0'}`} />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300 ${step === 3 ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-slate-100 text-slate-400'}`}>
+                                            3
+                                        </span>
+                                        <span className={`text-xs font-bold uppercase tracking-wider ${step === 3 ? 'text-slate-700' : 'text-slate-400'}`}>Settlement Bank</span>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
 
-                    {/* Step Progress Indicator */}
-                    <div className="flex items-center justify-between gap-2 mb-8 bg-slate-50 border border-slate-100/80 rounded-2xl p-4">
-                        <div className="flex items-center gap-2">
-                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300 ${step === 1 ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-emerald-100 text-emerald-700 font-bold'}`}>
-                                {step > 1 ? '✓' : '1'}
-                            </span>
-                            <span className={`text-xs font-bold uppercase tracking-wider ${step === 1 ? 'text-slate-700' : 'text-slate-400'}`}>Personal Details</span>
-                        </div>
-                        <div className="flex-1 h-0.5 bg-slate-200 mx-2 rounded-full overflow-hidden">
-                            <div className={`h-full bg-blue-600 transition-all duration-500 ${step >= 2 ? 'w-full' : 'w-0'}`} />
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300 ${step === 2 ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : step > 2 ? 'bg-emerald-100 text-emerald-700 font-bold' : 'bg-slate-100 text-slate-400'}`}>
-                                {step > 2 ? '✓' : '2'}
-                            </span>
-                            <span className={`text-xs font-bold uppercase tracking-wider ${step === 2 ? 'text-slate-700' : 'text-slate-400'}`}>Shop & Location</span>
-                        </div>
-                        {provider === 'fingpay' && (
-                            <>
-                                <div className="flex-1 h-0.5 bg-slate-200 mx-2 rounded-full overflow-hidden">
-                                    <div className={`h-full bg-blue-600 transition-all duration-500 ${step === 3 ? 'w-full' : 'w-0'}`} />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300 ${step === 3 ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-slate-100 text-slate-400'}`}>
-                                        3
-                                    </span>
-                                    <span className={`text-xs font-bold uppercase tracking-wider ${step === 3 ? 'text-slate-700' : 'text-slate-400'}`}>KYC & Documents</span>
-                                </div>
-                            </>
-                        )}
-                    </div>
+                    <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-6">
+                        <AnimatePresence mode="wait">
+                            {error && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    className="p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs font-bold flex items-center gap-2"
+                                >
+                                    <AlertCircle size={16} className="shrink-0" />
+                                    {error}
+                                </motion.div>
+                            )}
+                            {successMsg && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-2xl text-xs font-bold flex items-center gap-2"
+                                >
+                                    <CheckCircle2 size={16} className="shrink-0" />
+                                    {successMsg}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
-                    {/* Messages Banners */}
-                    <AnimatePresence>
-                        {error && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                className="bg-rose-50 border border-rose-100 text-rose-700 px-5 py-4 rounded-2xl flex items-start gap-3.5 mb-6 text-sm font-semibold shadow-sm"
-                            >
-                                <AlertCircle className="text-rose-500 shrink-0 mt-0.5" size={18} />
-                                <div>{error}</div>
-                            </motion.div>
-                        )}
-                        {successMsg && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="bg-emerald-50 border border-emerald-100 text-emerald-700 px-5 py-4 rounded-2xl flex items-start gap-3.5 mb-6 text-sm font-semibold shadow-sm"
-                            >
-                                <CheckCircle2 className="text-emerald-500 shrink-0 mt-0.5" size={18} />
-                                <div>{successMsg}</div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    {/* Onboarding Form */}
-                    <form onSubmit={handleSubmit} className="space-y-8">
                         {step === 1 && (
                             <div className="space-y-6">
                                 <h3 className="text-xs font-black uppercase tracking-widest text-blue-600 mb-4 border-b border-slate-100 pb-2">
-                                    01. Personal Identity Details
+                                    01. Retailer Personal Details
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                     <div>
                                         <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">First Name *</label>
-                                        <input
-                                            type="text"
-                                            name="fname"
-                                            value={formData.fname}
-                                            onChange={handleChange}
-                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
-                                            placeholder="Enter First Name"
-                                            disabled={loading}
-                                        />
+                                        <input type="text" name="fname" value={formData.fname} onChange={handleChange} className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition" placeholder="First Name" disabled={loading} />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Middle Name</label>
-                                        <input
-                                            type="text"
-                                            name="middlename"
-                                            value={formData.middlename}
-                                            onChange={handleChange}
-                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
-                                            placeholder="Optional"
-                                            disabled={loading}
-                                        />
+                                        <input type="text" name="middlename" value={formData.middlename} onChange={handleChange} className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition" placeholder="Middle Name (Optional)" disabled={loading} />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Last Name *</label>
-                                        <input
-                                            type="text"
-                                            name="lname"
-                                            value={formData.lname}
-                                            onChange={handleChange}
-                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
-                                            placeholder="Enter Last Name"
-                                            disabled={loading}
-                                        />
+                                        <input type="text" name="lname" value={formData.lname} onChange={handleChange} className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition" placeholder="Last Name" disabled={loading} />
                                     </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div>
                                         <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">PAN Card Number *</label>
-                                        <input
-                                            type="text"
-                                            name="panCard"
-                                            value={formData.panCard}
-                                            onChange={handleChange}
-                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none uppercase transition"
-                                            placeholder="E.g. ABCDE1234F"
-                                            maxLength={10}
-                                            disabled={loading}
-                                        />
+                                        <input type="text" name="panCard" value={formData.panCard} onChange={handleChange} className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none uppercase transition" placeholder="ABCDE1234F" maxLength={10} disabled={loading} />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Aadhaar Number *</label>
-                                        <input
-                                            type="text"
-                                            name="aadharNumber"
-                                            value={formData.aadharNumber}
-                                            onChange={handleChange}
-                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
-                                            placeholder="12 Digit Aadhaar"
-                                            maxLength={12}
-                                            disabled={loading}
-                                        />
+                                        <input type="text" name="aadharNumber" value={formData.aadharNumber} onChange={handleChange} className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition" placeholder="12 Digit Aadhaar Number" maxLength={12} disabled={loading} />
                                     </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div>
                                         <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">AEPS Mobile Number *</label>
-                                        <input
-                                            type="text"
-                                            name="aepsMobile"
-                                            value={formData.aepsMobile}
-                                            onChange={handleChange}
-                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
-                                            placeholder="10 Digit Mobile"
-                                            maxLength={10}
-                                            disabled={loading}
-                                        />
+                                        <input type="text" name="aepsMobile" value={formData.aepsMobile} onChange={handleChange} className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition" placeholder="10 Digit Registered Mobile" maxLength={10} disabled={loading} />
                                     </div>
-                                    <div className="md:col-span-3">
+                                    <div>
                                         <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email Address *</label>
-                                        <input
-                                            type="email"
-                                            name="email"
-                                            value={formData.email}
-                                            onChange={handleChange}
-                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
-                                            placeholder="E.g. agent@rupiksha.com"
-                                            disabled={loading}
-                                        />
+                                        <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition" placeholder="email@example.com" disabled={loading} />
                                     </div>
                                 </div>
                             </div>
@@ -531,150 +365,81 @@ export default function AepsOnboarding() {
                         {step === 2 && (
                             <div className="space-y-6">
                                 <h3 className="text-xs font-black uppercase tracking-widest text-blue-600 mb-4 border-b border-slate-100 pb-2">
-                                    02. Shop & Geographic Location
+                                    02. Shop & Location Details
                                 </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <div className="md:col-span-2">
-                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Shop Name *</label>
-                                        <input
-                                            type="text"
-                                            name="shopName"
-                                            value={formData.shopName}
-                                            onChange={handleChange}
-                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
-                                            placeholder="E.g. Shreenath Digital Hub"
-                                            disabled={loading}
-                                        />
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Shop Full Address *</label>
-                                        <textarea
-                                            name="address"
-                                            value={formData.address}
-                                            onChange={handleChange}
-                                            rows={2}
-                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none resize-none transition"
-                                            placeholder="Shop No, Complex, Street Name, Landmark"
-                                            disabled={loading}
-                                        />
-                                    </div>
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Shop / Business Legal Name *</label>
+                                    <input type="text" name="shopName" value={formData.shopName} onChange={handleChange} className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition" placeholder="Shop / Enterprise Name" disabled={loading} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Shop Full Address *</label>
+                                    <textarea name="address" value={formData.address} onChange={handleChange} rows={2} className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition" placeholder="Complete outlet address..." disabled={loading} />
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                     <div>
                                         <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Pincode *</label>
-                                        <input
-                                            type="text"
-                                            name="pinCode"
-                                            value={formData.pinCode}
-                                            onChange={handleChange}
-                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
-                                            placeholder="6 Digit PIN Code"
-                                            maxLength={6}
-                                            disabled={loading}
-                                        />
+                                        <input type="text" name="pinCode" value={formData.pinCode} onChange={handleChange} className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition" placeholder="6 Digit Pincode" maxLength={6} disabled={loading} />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">City *</label>
-                                        <input
-                                            type="text"
-                                            name="city"
-                                            value={formData.city}
-                                            onChange={handleChange}
-                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
-                                            placeholder="E.g. Patna"
-                                            disabled={loading}
-                                        />
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">City / District *</label>
+                                        <input type="text" name="city" value={formData.city} onChange={handleChange} className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition" placeholder="City" disabled={loading} />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">State *</label>
-                                        <select
-                                            name="state"
-                                            value={formData.state}
-                                            onChange={handleChange}
-                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition bg-white"
-                                            disabled={loading}
-                                        >
-                                            <option value="">— Select State —</option>
-                                            <option value="AN">Andaman & Nicobar Islands</option>
-                                            <option value="AP">Andhra Pradesh</option>
-                                            <option value="AR">Arunachal Pradesh</option>
-                                            <option value="AS">Assam</option>
-                                            <option value="BR">Bihar</option>
-                                            <option value="CG">Chhattisgarh</option>
-                                            <option value="CH">Chandigarh</option>
-                                            <option value="DN">Dadra & Nagar Haveli</option>
-                                            <option value="DD">Daman & Diu</option>
-                                            <option value="DL">Delhi</option>
-                                            <option value="GA">Goa</option>
-                                            <option value="GJ">Gujarat</option>
-                                            <option value="HR">Haryana</option>
-                                            <option value="HP">Himachal Pradesh</option>
-                                            <option value="JK">Jammu & Kashmir</option>
-                                            <option value="JH">Jharkhand</option>
-                                            <option value="KA">Karnataka</option>
-                                            <option value="KL">Kerala</option>
-                                            <option value="LA">Ladakh</option>
-                                            <option value="LD">Lakshadweep</option>
-                                            <option value="MP">Madhya Pradesh</option>
-                                            <option value="MH">Maharashtra</option>
-                                            <option value="MN">Manipur</option>
-                                            <option value="ML">Meghalaya</option>
-                                            <option value="MZ">Mizoram</option>
-                                            <option value="NL">Nagaland</option>
-                                            <option value="OR">Odisha</option>
-                                            <option value="PY">Puducherry</option>
-                                            <option value="PB">Punjab</option>
-                                            <option value="RJ">Rajasthan</option>
-                                            <option value="SK">Sikkim</option>
-                                            <option value="TN">Tamil Nadu</option>
-                                            <option value="TG">Telangana</option>
-                                            <option value="TR">Tripura</option>
-                                            <option value="UK">Uttarakhand</option>
-                                            <option value="UP">Uttar Pradesh</option>
-                                            <option value="WB">West Bengal</option>
+                                        <select name="state" value={formData.state} onChange={handleChange} className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition bg-white" disabled={loading}>
+                                            <option value="">Select State</option>
+                                            <option value="ANDAMAN AND NICOBAR ISLANDS">Andaman and Nicobar Islands</option>
+                                            <option value="ANDHRA PRADESH">Andhra Pradesh</option>
+                                            <option value="ARUNACHAL PRADESH">Arunachal Pradesh</option>
+                                            <option value="ASSAM">Assam</option>
+                                            <option value="BIHAR">Bihar</option>
+                                            <option value="CHANDIGARH">Chandigarh</option>
+                                            <option value="CHHATTISGARH">Chhattisgarh</option>
+                                            <option value="DADRA AND NAGAR HAVELI">Dadra and Nagar Haveli</option>
+                                            <option value="DELHI">Delhi</option>
+                                            <option value="GOA">Goa</option>
+                                            <option value="GUJARAT">Gujarat</option>
+                                            <option value="HARYANA">Haryana</option>
+                                            <option value="HIMACHAL PRADESH">Himachal Pradesh</option>
+                                            <option value="JAMMU AND KASHMIR">Jammu and Kashmir</option>
+                                            <option value="JHARKHAND">Jharkhand</option>
+                                            <option value="KARNATAKA">Karnataka</option>
+                                            <option value="KERALA">Kerala</option>
+                                            <option value="LAKSHADWEEP">Lakshadweep</option>
+                                            <option value="MADHYA PRADESH">Madhya Pradesh</option>
+                                            <option value="MAHARASHTRA">Maharashtra</option>
+                                            <option value="MANIPUR">Manipur</option>
+                                            <option value="MEGHALAYA">Meghalaya</option>
+                                            <option value="MIZORAM">Mizoram</option>
+                                            <option value="NAGALAND">Nagaland</option>
+                                            <option value="ODISHA">Odisha</option>
+                                            <option value="PUDUCHERRY">Puducherry</option>
+                                            <option value="PUNJAB">Punjab</option>
+                                            <option value="RAJASTHAN">Rajasthan</option>
+                                            <option value="SIKKIM">Sikkim</option>
+                                            <option value="TAMIL NADU">Tamil Nadu</option>
+                                            <option value="TELANGANA">Telangana</option>
+                                            <option value="TRIPURA">Tripura</option>
+                                            <option value="UTTAR PRADESH">Uttar Pradesh</option>
+                                            <option value="UTTARAKHAND">Uttarakhand</option>
+                                            <option value="WEST BENGAL">West Bengal</option>
                                         </select>
                                     </div>
-
-                                    {/* Geographic GPS Coordinates */}
-                                    <div className="border border-dashed border-slate-200 bg-slate-50/50 p-4 rounded-2xl flex flex-col justify-center">
-                                        <div className="flex items-center justify-between mb-3">
-                                            <div className="flex items-center gap-2">
-                                                <MapPin className="text-slate-400" size={16} />
-                                                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">GPS Verification</span>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={detectLocation}
-                                                disabled={detectingGps || loading}
-                                                className="px-3.5 py-1.5 bg-blue-50 border border-blue-100 hover:bg-blue-100 text-blue-600 font-bold text-[10px] uppercase tracking-wider rounded-xl transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                                            >
-                                                <Compass className={`animate-spin ${detectingGps ? 'opacity-100' : 'hidden'}`} size={12} />
-                                                {detectingGps ? 'Detecting...' : 'Detect GPS'}
-                                            </button>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-3.5">
-                                            <div>
-                                                <input
-                                                    type="text"
-                                                    name="latitude"
-                                                    value={formData.latitude}
-                                                    onChange={handleChange}
-                                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-600 text-xs outline-none focus:border-blue-500 transition"
-                                                    placeholder="Latitude"
-                                                    disabled={loading}
-                                                />
-                                            </div>
-                                            <div>
-                                                <input
-                                                    type="text"
-                                                    name="longitude"
-                                                    value={formData.longitude}
-                                                    onChange={handleChange}
-                                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-600 text-xs outline-none focus:border-blue-500 transition"
-                                                    placeholder="Longitude"
-                                                    disabled={loading}
-                                                />
-                                            </div>
-                                        </div>
+                                </div>
+                                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                                            <Compass size={14} className="text-blue-600" /> GPS Geolocation (Latitude / Longitude)
+                                        </label>
+                                        <p className="text-[11px] text-slate-500 mt-0.5">
+                                            {formData.latitude && formData.longitude
+                                                ? `Lat: ${formData.latitude}, Long: ${formData.longitude}`
+                                                : 'Auto-detect coordinates for Fingpay outlet verification'}
+                                        </p>
                                     </div>
+                                    <button type="button" onClick={detectLocation} disabled={detectingGps || loading} className="px-4 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer">
+                                        {detectingGps ? 'Detecting...' : 'Detect GPS Coordinates'}
+                                    </button>
                                 </div>
                             </div>
                         )}
@@ -682,259 +447,73 @@ export default function AepsOnboarding() {
                         {step === 3 && provider === 'fingpay' && (
                             <div className="space-y-6">
                                 <h3 className="text-xs font-black uppercase tracking-widest text-blue-600 mb-4 border-b border-slate-100 pb-2">
-                                    03. Retailer KYC Verification & Documents
+                                    03. Settlement Bank Account Details
                                 </h3>
-
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div>
-                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Business Entity Type *</label>
-                                        <select
-                                            name="companyType"
-                                            value={formData.companyType}
-                                            onChange={handleChange}
-                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition bg-white"
-                                            disabled={loading}
-                                        >
-                                            <option value={2}>Individual Retailer / Sole Proprietor (Default)</option>
-                                            <option value={1}>Corporate / Private Limited Company</option>
-                                        </select>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Account Holder Name *</label>
+                                        <input type="text" name="bankAccountName" value={formData.bankAccountName} onChange={handleChange} className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition" placeholder="Account Holder Full Name" disabled={loading} />
                                     </div>
-
-                                    {formData.companyType === 1 && (
-                                        <div>
-                                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">GSTIN Number *</label>
-                                            <input
-                                                type="text"
-                                                name="gstinNumber"
-                                                value={formData.gstinNumber}
-                                                onChange={handleChange}
-                                                className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none uppercase transition"
-                                                placeholder="15 Digit GSTIN"
-                                                maxLength={15}
-                                                disabled={loading}
-                                            />
-                                        </div>
-                                    )}
-
-                                    {/* Shop & PAN Image */}
-                                    <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
-                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                                            Shop & PAN Image *
-                                        </label>
-                                        <p className="text-[11px] text-slate-500 mb-3">Upload photo of PAN card or Shop front</p>
-                                        <input
-                                            type="file"
-                                            accept="image/jpeg,image/png,image/jpg"
-                                            onChange={(e) => handleFileRead(e, 'panImage')}
-                                            className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
-                                            disabled={loading}
-                                        />
-                                        {formData.panImage && (
-                                            <div className="mt-2 text-xs font-bold text-emerald-600 flex items-center gap-1">
-                                                <CheckCircle2 size={14} /> Document Uploaded
-                                            </div>
-                                        )}
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Bank Account Number *</label>
+                                        <input type="text" name="bankAccountNumber" value={formData.bankAccountNumber} onChange={handleChange} className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition" placeholder="9 to 18 Digit Account Number" maxLength={18} disabled={loading} />
                                     </div>
-
-                                    {/* Business Proof */}
-                                    <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
-                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                                            Business Proof *
-                                        </label>
-                                        <p className="text-[11px] text-slate-500 mb-3">Upload Shop License, Udyam, or Electricity Bill</p>
-                                        <input
-                                            type="file"
-                                            accept="image/jpeg,image/png,image/jpg,application/pdf"
-                                            onChange={(e) => handleFileRead(e, 'tradeBusinessProof')}
-                                            className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
-                                            disabled={loading}
-                                        />
-                                        {formData.tradeBusinessProof && (
-                                            <div className="mt-2 text-xs font-bold text-emerald-600 flex items-center gap-1">
-                                                <CheckCircle2 size={14} /> Document Uploaded
-                                            </div>
-                                        )}
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Bank Name *</label>
+                                        <input type="text" name="bankName" value={formData.bankName} onChange={handleChange} className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition" placeholder="e.g. Indian Bank, HDFC Bank" disabled={loading} />
                                     </div>
-
-                                    {/* Cancelled Cheque / Bank Proof */}
-                                    <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
-                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                                            Cancelled Cheque / Bank Proof *
-                                        </label>
-                                        <p className="text-[11px] text-slate-500 mb-3">Upload bank cheque or passbook front page</p>
-                                        <input
-                                            type="file"
-                                            accept="image/jpeg,image/png,image/jpg,application/pdf"
-                                            onChange={(e) => handleFileRead(e, 'cancelledCheque')}
-                                            className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
-                                            disabled={loading}
-                                        />
-                                        {formData.cancelledCheque && (
-                                            <div className="mt-2 text-xs font-bold text-emerald-600 flex items-center gap-1">
-                                                <CheckCircle2 size={14} /> Document Uploaded
-                                            </div>
-                                        )}
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Bank IFSC Code *</label>
+                                        <input type="text" name="ifscCode" value={formData.ifscCode} onChange={handleChange} className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none uppercase transition" placeholder="11 Digit IFSC (e.g. IDIB000P107)" maxLength={11} disabled={loading} />
                                     </div>
-
-                                    {/* Physical Verification Image */}
-                                    <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
-                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                                            Physical Verification Photo (Optional)
-                                        </label>
-                                        <p className="text-[11px] text-slate-500 mb-3">Upload photo of outlet site verification</p>
-                                        <input
-                                            type="file"
-                                            accept="image/jpeg,image/png,image/jpg"
-                                            onChange={(e) => handleFileRead(e, 'physicalVerificationImage')}
-                                            className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
-                                            disabled={loading}
-                                        />
-                                        {formData.physicalVerificationImage && (
-                                            <div className="mt-2 text-xs font-bold text-emerald-600 flex items-center gap-1">
-                                                <CheckCircle2 size={14} /> Photo Uploaded
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Video KYC Verification */}
-                                    <div className="md:col-span-2 border border-blue-200 bg-blue-50/30 rounded-2xl p-5">
-                                        <label className="block text-xs font-bold uppercase tracking-wider text-blue-800 mb-1">
-                                            Video KYC Verification *
-                                        </label>
-                                        <p className="text-xs text-slate-600 mb-4">Record a short 5-second video selfie or upload recorded Video KYC clip.</p>
-                                        <div className="flex flex-col sm:flex-row gap-4 items-center">
-                                            <button
-                                                type="button"
-                                                onClick={recordVideoKyc}
-                                                disabled={recordingVideo || loading}
-                                                className="w-full sm:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
-                                            >
-                                                {recordingVideo ? (
-                                                    <>
-                                                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                                        Recording ({videoTimer}s)...
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Camera size={14} />
-                                                        Record 5s Video Selfie
-                                                    </>
-                                                )}
-                                            </button>
-
-                                            <span className="text-xs font-bold text-slate-400">OR</span>
-
-                                            <input
-                                                type="file"
-                                                accept="video/webm,video/mp4,video/*"
-                                                onChange={(e) => handleFileRead(e, 'videoKycData')}
-                                                className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
-                                                disabled={loading || recordingVideo}
-                                            />
-                                        </div>
-                                        {formData.videoKycData && (
-                                            <div className="mt-3 text-xs font-bold text-emerald-600 flex items-center gap-1">
-                                                <CheckCircle2 size={14} /> Video KYC Recording Captured
-                                            </div>
-                                        )}
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">GSTIN Number (Optional)</label>
+                                        <input type="text" name="gstinNumber" value={formData.gstinNumber} onChange={handleChange} className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none uppercase transition" placeholder="15 Digit GSTIN (Optional for Individual Retailer)" maxLength={15} disabled={loading} />
                                     </div>
                                 </div>
                             </div>
                         )}
 
-                        {/* Submit Actions */}
                         {step === 1 && (
-                            <div className="flex gap-4 pt-6 border-t border-slate-100">
-                                <button
-                                    type="button"
-                                    onClick={() => navigate(-1)}
-                                    className="flex-1 py-3.5 border border-slate-200 text-slate-500 rounded-2xl font-bold uppercase tracking-wider text-xs hover:bg-slate-50 transition cursor-pointer"
-                                    disabled={loading}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleNext}
-                                    className="flex-2 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold uppercase tracking-wider text-xs shadow-lg shadow-blue-500/20 transition flex items-center justify-center gap-2 cursor-pointer"
-                                >
+                            <div className="flex justify-end pt-6 border-t border-slate-100">
+                                <button type="button" onClick={handleNext} className="px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold uppercase tracking-wider text-xs shadow-lg shadow-blue-500/20 transition cursor-pointer">
                                     Next Step
                                 </button>
                             </div>
                         )}
-
                         {step === 2 && (
                             <div className="flex gap-4 pt-6 border-t border-slate-100">
-                                <button
-                                    type="button"
-                                    onClick={() => setStep(1)}
-                                    className="flex-1 py-3.5 border border-slate-200 text-slate-500 rounded-2xl font-bold uppercase tracking-wider text-xs hover:bg-slate-50 transition cursor-pointer"
-                                    disabled={loading}
-                                >
+                                <button type="button" onClick={() => setStep(1)} className="flex-1 py-3.5 border border-slate-200 text-slate-500 rounded-2xl font-bold uppercase tracking-wider text-xs hover:bg-slate-50 transition cursor-pointer">
                                     Back
                                 </button>
                                 {provider === 'fingpay' ? (
-                                    <button
-                                        type="button"
-                                        onClick={handleNext}
-                                        className="flex-2 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold uppercase tracking-wider text-xs shadow-lg shadow-blue-500/20 transition flex items-center justify-center gap-2 cursor-pointer"
-                                    >
-                                        Next Step (Upload Documents)
+                                    <button type="button" onClick={handleNext} className="flex-2 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold uppercase tracking-wider text-xs shadow-lg shadow-blue-500/20 transition flex items-center justify-center gap-2 cursor-pointer">
+                                        Next Step (Settlement Bank Details)
                                     </button>
                                 ) : (
-                                    <button
-                                        type="submit"
-                                        className="flex-2 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold uppercase tracking-wider text-xs shadow-lg shadow-blue-500/20 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
-                                        disabled={loading}
-                                    >
-                                        {loading ? (
-                                            <>
-                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                                Submitting Onboarding...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <UserCheck size={16} />
-                                                Complete Onboarding
-                                            </>
-                                        )}
+                                    <button type="submit" className="flex-2 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold uppercase tracking-wider text-xs shadow-lg shadow-blue-500/20 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75" disabled={loading}>
+                                        {loading ? <>Submitting...</> : <>Complete Onboarding</>}
                                     </button>
                                 )}
                             </div>
                         )}
-
                         {step === 3 && provider === 'fingpay' && (
                             <div className="flex gap-4 pt-6 border-t border-slate-100">
-                                <button
-                                    type="button"
-                                    onClick={() => setStep(2)}
-                                    className="flex-1 py-3.5 border border-slate-200 text-slate-500 rounded-2xl font-bold uppercase tracking-wider text-xs hover:bg-slate-50 transition cursor-pointer"
-                                    disabled={loading}
-                                >
+                                <button type="button" onClick={() => setStep(2)} className="flex-1 py-3.5 border border-slate-200 text-slate-500 rounded-2xl font-bold uppercase tracking-wider text-xs hover:bg-slate-50 transition cursor-pointer">
                                     Back
                                 </button>
-                                <button
-                                    type="submit"
-                                    className="flex-2 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold uppercase tracking-wider text-xs shadow-lg shadow-blue-500/20 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
-                                    disabled={loading}
-                                >
-                                    {loading ? (
-                                        <>
-                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                            Submitting Onboarding...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <UserCheck size={16} />
-                                            Complete Onboarding
-                                        </>
-                                    )}
+                                <button type="submit" className="flex-2 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold uppercase tracking-wider text-xs shadow-lg shadow-blue-500/20 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75" disabled={loading}>
+                                    {loading ? <>Submitting...</> : <>Complete Onboarding</>}
                                 </button>
                             </div>
                         )}
                     </form>
-                </div>
-            </motion.div>
+                </motion.div>
+            </div>
         </div>
     );
 }

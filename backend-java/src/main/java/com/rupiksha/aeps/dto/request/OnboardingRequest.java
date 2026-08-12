@@ -50,7 +50,13 @@ public class OnboardingRequest extends BaseRequest {
 
     private String provider;
 
-    // KYC Document Payloads (Base64 strings)
+    // Bank Settlement Details
+    private String bankAccountNumber;
+    private String ifscCode;
+    private String bankName;
+    private String bankAccountName;
+
+    // KYC Document Payloads / Optional Metadata
     private Integer companyType;
     private String gstinNumber;
     private String panImage;

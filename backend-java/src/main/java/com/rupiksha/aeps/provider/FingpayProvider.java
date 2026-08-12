@@ -84,11 +84,33 @@ public class FingpayProvider implements AepsProvider {
     public OnboardingResponse onboard(OnboardingRequest request) {
         log.info("FingpayProvider initiating merchant onboarding for mobile: {}", request.getAepsMobile());
 
+        com.rupiksha.backend.domain.User mainUserOpt = mainUserRepository.findByMobile(request.getAepsMobile()).orElse(null);
+        String merchantLoginId;
+        if (mainUserOpt != null && mainUserOpt.getAepsAgentId() != null && !mainUserOpt.getAepsAgentId().isBlank()) {
+            merchantLoginId = mainUserOpt.getAepsAgentId();
+        } else if (mainUserOpt != null && mainUserOpt.getPartyCode() != null && !mainUserOpt.getPartyCode().isBlank()) {
+            merchantLoginId = mainUserOpt.getPartyCode();
+        } else if (mainUserOpt != null) {
+            String hexId = mainUserOpt.getId().toString().replace("-", "").toUpperCase();
+            merchantLoginId = "RUP" + (hexId.length() >= 13 ? hexId.substring(0, 13) : hexId);
+        } else {
+            merchantLoginId = request.getAepsMobile();
+        }
+
+        String merchantLoginPin = "1234";
+        if (mainUserOpt != null) {
+            long uidLong = mainUserOpt.getId().getMostSignificantBits() & Long.MAX_VALUE;
+            Optional<AepsKyc> kycExisting = aepsKycRepo.findByUid(uidLong);
+            if (kycExisting.isPresent() && kycExisting.get().getMpin() != null && !kycExisting.get().getMpin().isBlank()) {
+                merchantLoginPin = kycExisting.get().getMpin();
+            }
+        }
+
         OnboardRequestDTO dto = new OnboardRequestDTO();
         
         MerchantDTO merchant = new MerchantDTO();
-        merchant.setMerchantLoginId(request.getAepsMobile());
-        merchant.setMerchantLoginPin("1234"); // default PIN
+        merchant.setMerchantLoginId(merchantLoginId);
+        merchant.setMerchantLoginPin(merchantLoginPin);
         merchant.setFirstName(request.getFname());
         merchant.setLastName(request.getLname() != null ? request.getLname() : "");
         merchant.setMiddleName(request.getMiddlename() != null ? request.getMiddlename() : "");
@@ -129,26 +151,14 @@ public class FingpayProvider implements AepsProvider {
         merchant.setKyc(kyc);
         
         SettlementDTO settlement = new SettlementDTO();
-        if (request.getBankAccountNumber() != null && !request.getBankAccountNumber().isBlank()) {
-            settlement.setCompanyBankAccountNumber(request.getBankAccountNumber().trim());
-        } else {
-            settlement.setCompanyBankAccountNumber("1234567890");
-        }
+        settlement.setCompanyBankAccountNumber(request.getBankAccountNumber() != null ? request.getBankAccountNumber().trim() : "");
+        settlement.setBankIfscCode(request.getIfscCode() != null ? request.getIfscCode().trim() : "");
+        settlement.setCompanyBankName(request.getBankName() != null ? request.getBankName().trim() : "");
 
-        if (request.getIfscCode() != null && !request.getIfscCode().isBlank()) {
-            settlement.setBankIfscCode(request.getIfscCode().trim());
-        } else {
-            settlement.setBankIfscCode("IDIB000P107");
-        }
-
-        if (request.getBankName() != null && !request.getBankName().isBlank()) {
-            settlement.setCompanyBankName(request.getBankName().trim());
-        } else {
-            settlement.setCompanyBankName("Indian Bank");
-        }
-
-        String fullName = (request.getFname() + " " + (request.getLname() != null ? request.getLname() : "")).trim();
-        settlement.setBankAccountName(fullName.isBlank() ? "Retailer" : fullName);
+        String fullName = (request.getBankAccountName() != null && !request.getBankAccountName().isBlank())
+                ? request.getBankAccountName().trim()
+                : (request.getFname() + " " + (request.getLname() != null ? request.getLname() : "")).trim();
+        settlement.setBankAccountName(fullName);
         merchant.setSettlementV1(settlement);
         
         // Exact boolean flags matching verified working PHP request
@@ -199,16 +209,12 @@ public class FingpayProvider implements AepsProvider {
             response.setStatus(isSuccess ? "SUCCESS" : "FAILED");
             response.setStatusId(isSuccess ? 1 : 0);
             response.setMessage(isSuccess ? message : errorMessage);
-            response.setAgentId(request.getAepsMobile());
-            response.setMerchantId(merchantId.isEmpty() ? request.getAepsMobile() : merchantId);
+            response.setAgentId(merchantLoginId);
+            response.setMerchantId(merchantId.isEmpty() ? merchantLoginId : merchantId);
             response.setCorrelationId(node.path("correlationId").asText(""));
 
-            if (isSuccess) {
-                // Populate Fingpay mappings locally
-                com.rupiksha.backend.domain.User mainUser = mainUserRepository.findByMobile(request.getAepsMobile())
-                        .orElseThrow(() -> new ProviderException("Core user profile not found for mobile: " + request.getAepsMobile()));
-                
-                long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
+            if (isSuccess && mainUserOpt != null) {
+                long uidLong = mainUserOpt.getId().getMostSignificantBits() & Long.MAX_VALUE;
 
                 // Create AepsKyc entry
                 AepsKyc aepsKyc = aepsKycRepo.findByUid(uidLong).orElse(new AepsKyc());
