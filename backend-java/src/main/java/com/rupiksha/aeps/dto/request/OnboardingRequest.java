@@ -49,4 +49,15 @@ public class OnboardingRequest extends BaseRequest {
     private String longitude;
 
     private String provider;
+
+    // KYC Document Payloads (Base64 strings)
+    private Integer companyType;
+    private String gstinNumber;
+    private String panImage;
+    private String shopImage;
+    private String tradeBusinessProof;
+    private String cancelledCheque;
+    private String physicalVerificationImage;
+    private String videoKycData;
 }
+

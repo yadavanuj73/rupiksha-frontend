@@ -158,7 +158,6 @@ export default function AepsOnboarding() {
 
         if (!formData.city.trim()) return "City is required";
         if (!formData.state) return "Please select your state";
-        // GPS coordinates are optional — backend defaults to central India if not provided
 
         return null;
     };
@@ -595,3 +594,4 @@ export default function AepsOnboarding() {
         </div>
     );
 }
+

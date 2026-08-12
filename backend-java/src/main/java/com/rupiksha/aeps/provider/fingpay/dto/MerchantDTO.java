@@ -24,9 +24,9 @@ public class MerchantDTO {
     private SettlementDTO settlementV1;
 
     private String tradeBusinessProof;
-    private String termsConditionCheck;
+    private Object termsConditionCheck;
     private String cancelledChequeImages;
-    private String physicalVerification;
+    private Object physicalVerification;
     private String videoKycWithLatLongData;
 
     private MerchantShopDTO merchantKycAddressData;

@@ -84,6 +84,12 @@ public class FingpayProvider implements AepsProvider {
     public OnboardingResponse onboard(OnboardingRequest request) {
         log.info("FingpayProvider initiating merchant onboarding for mobile: {}", request.getAepsMobile());
 
+        String panImg = cleanBase64(request.getPanImage());
+        String shopImg = cleanBase64(request.getShopImage());
+        String tradeProof = cleanBase64(request.getTradeBusinessProof());
+        String chequeImg = cleanBase64(request.getCancelledCheque());
+        String videoKyc = cleanBase64(request.getVideoKycData());
+
         OnboardRequestDTO dto = new OnboardRequestDTO();
         
         MerchantDTO merchant = new MerchantDTO();
@@ -105,11 +111,21 @@ public class FingpayProvider implements AepsProvider {
         merchant.setMerchantAddress(address);
         
         merchant.setCompanyLegalName(request.getShopName());
-        merchant.setCompanyType(1); // Individual/Proprietorship
+        // companyType = 2 for Individual Retailer / Sole Proprietor
+        int compType = (request.getCompanyType() != null && request.getCompanyType() > 0) ? request.getCompanyType() : 2;
+        merchant.setCompanyType(compType);
         
         KycDTO kyc = new KycDTO();
         kyc.setAadhaarNumber(request.getAadharNumber());
         kyc.setUserPan(request.getPanCard());
+        if (request.getGstinNumber() != null && !request.getGstinNumber().isBlank()) {
+            kyc.setGstinNumber(request.getGstinNumber().trim());
+        } else {
+            kyc.setGstinNumber("");
+        }
+
+        String combinedShopPanImage = shopImg != null ? shopImg : (panImg != null ? panImg : "");
+        kyc.setShopAndPanImage(combinedShopPanImage);
         merchant.setKyc(kyc);
         
         SettlementDTO settlement = new SettlementDTO();
@@ -119,25 +135,20 @@ public class FingpayProvider implements AepsProvider {
         settlement.setBankAccountName(request.getFname() + " " + request.getLname());
         merchant.setSettlementV1(settlement);
         
-        // Fingpay v2 requires 'Yes'/'No' (not 'Y'/'N')
-        merchant.setTermsConditionCheck("Yes");
-        merchant.setPhysicalVerification("Yes");
+        // Verified Fingpay contract boolean representation
+        merchant.setTermsConditionCheck(true);
 
-        // Fingpay v2 requires video KYC with lat/long coordinates
+        String physVerificationImg = cleanBase64(request.getPhysicalVerificationImage());
+        merchant.setPhysicalVerification(physVerificationImg != null ? physVerificationImg : true);
+
+        merchant.setVideoKycWithLatLongData(videoKyc != null ? videoKyc : "");
+        merchant.setCancelledChequeImages(chequeImg != null ? chequeImg : "");
+        merchant.setTradeBusinessProof(tradeProof != null ? tradeProof : "");
+
         double lat = parseCoordinate(request.getLatitude(), 20.5937);
         double lon = parseCoordinate(request.getLongitude(), 78.9629);
-        merchant.setVideoKycWithLatLongData(lat + "," + lon);
-
-        // Fingpay v2 requires image fields — use 1x1 transparent PNG as placeholder
-        // (Rupiksha performs own KYC; these satisfy Fingpay's API field validation)
-        final String PLACEHOLDER_IMG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
-        merchant.setCancelledChequeImages(PLACEHOLDER_IMG);
-        merchant.setTradeBusinessProof(PLACEHOLDER_IMG);
-        kyc.setShopAndPanImage(PLACEHOLDER_IMG);
-        merchant.setKyc(kyc);
 
         // merchantKycAddressData is required by Fingpay v2 — must include shop lat/lon
-        // Compose a full valid address: "address, city - pincode"
         String fullAddress = request.getAddress() + ", " + request.getCity() + " - " + request.getPinCode();
         MerchantShopDTO shopData = new MerchantShopDTO();
         shopData.setShopAddress(fullAddress);
@@ -149,7 +160,7 @@ public class FingpayProvider implements AepsProvider {
         shopData.setShopLongitude(lon);
         merchant.setMerchantKycAddressData(shopData);
 
-        // Also set main merchant address with full address string
+        // Set main merchant address with full address string
         address.setMerchantAddress1(fullAddress);
 
         dto.setMerchant(merchant);
@@ -743,6 +754,18 @@ public class FingpayProvider implements AepsProvider {
         stateMap.put("UP", 9);  // Uttar Pradesh
         stateMap.put("WB", 19); // West Bengal
         return stateMap.getOrDefault(stateCode.toUpperCase().trim(), 27); // default to Maharashtra
+    }
+
+    /**
+     * Safely strips data URI scheme prefix (e.g. data:image/png;base64,...) from Base64 string if present.
+     */
+    private String cleanBase64(String val) {
+        if (val == null || val.isBlank()) return null;
+        val = val.trim();
+        if (val.contains(",")) {
+            val = val.substring(val.indexOf(",") + 1).trim();
+        }
+        return val.isEmpty() ? null : val;
     }
 
     /**
