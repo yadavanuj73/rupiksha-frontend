@@ -57,6 +57,9 @@ public class AdminController {
     private final WalletRepository walletRepository;
     private final com.rupiksha.backend.repository.UserServiceRepository userServiceRepository;
 
+    @jakarta.persistence.PersistenceContext
+    private final jakarta.persistence.EntityManager entityManager;
+
     @GetMapping("/approvals")
     public Map<String, Object> approvals() {
         List<Map<String, Object>> users = userRepository.findAll().stream()
@@ -126,42 +129,129 @@ public class AdminController {
             return Map.of("success", false, "error", "Refusing to delete an ADMIN account.");
         }
 
+        UUID userId = u.getId();
+        String userIdStr = userId.toString();
+        String username = u.getUsername();
+
         try {
-            // Unlink any child users referencing this user as parent
-            List<User> children = userRepository.findAll().stream()
-                    .filter(child -> child.getParentUser() != null && child.getParentUser().getId().equals(u.getId()))
-                    .toList();
-            for (User child : children) {
-                child.setParentUser(null);
-                userRepository.save(child);
-            }
+            // 1. Unlink any child users referencing this user as parent
+            try {
+                entityManager.createNativeQuery("UPDATE users SET parent_user_id = NULL WHERE parent_user_id = :uid")
+                        .setParameter("uid", userId)
+                        .executeUpdate();
+            } catch (Exception e) { log.warn("Unlink parent_user_id warn", e); }
 
-            // Remove associated user services
-            List<com.rupiksha.backend.domain.UserService> services = userServiceRepository.findByUserId(u.getId());
-            if (!services.isEmpty()) {
-                userServiceRepository.deleteAll(services);
-            }
+            // 2. Clear user_roles join table
+            try {
+                entityManager.createNativeQuery("DELETE FROM user_roles WHERE user_id = :uid")
+                        .setParameter("uid", userId)
+                        .executeUpdate();
+            } catch (Exception e) { log.warn("Delete user_roles warn", e); }
 
-            // Remove associated wallet
-            walletRepository.findByUserId(u.getId()).ifPresent(wallet -> {
-                try {
-                    walletRepository.delete(wallet);
-                } catch (Exception e) {
-                    log.warn("Failed to delete wallet for user {}", u.getId(), e);
-                }
-            });
+            // 3. Clear user_services
+            try {
+                entityManager.createNativeQuery("DELETE FROM user_services WHERE user_id = :uid")
+                        .setParameter("uid", userId)
+                        .executeUpdate();
+            } catch (Exception e) { log.warn("Delete user_services warn", e); }
 
-            // Clear roles
-            u.getRoles().clear();
-            userRepository.save(u);
+            // 4. Clear transactions
+            try {
+                entityManager.createNativeQuery("DELETE FROM transactions WHERE user_id = :uid")
+                        .setParameter("uid", userId)
+                        .executeUpdate();
+            } catch (Exception e) { log.warn("Delete transactions warn", e); }
 
-            // Delete user
-            userRepository.delete(u);
+            // 5. Clear recharges
+            try {
+                entityManager.createNativeQuery("DELETE FROM recharges WHERE user_id = :uid")
+                        .setParameter("uid", userId)
+                        .executeUpdate();
+            } catch (Exception e) { log.warn("Delete recharges warn", e); }
+
+            // 6. Clear tickets
+            try {
+                entityManager.createNativeQuery("DELETE FROM tickets WHERE user_id = :uid")
+                        .setParameter("uid", userId)
+                        .executeUpdate();
+            } catch (Exception e) { log.warn("Delete tickets warn", e); }
+
+            // 7. Clear fund_requests
+            try {
+                entityManager.createNativeQuery("DELETE FROM fund_requests WHERE user_id = :uid")
+                        .setParameter("uid", userId)
+                        .executeUpdate();
+            } catch (Exception e) { log.warn("Delete fund_requests warn", e); }
+
+            // 8. Clear payout_transactions
+            try {
+                entityManager.createNativeQuery("DELETE FROM payout_transactions WHERE user_id = :uidStr OR user_id = :uname")
+                        .setParameter("uidStr", userIdStr)
+                        .setParameter("uname", username)
+                        .executeUpdate();
+            } catch (Exception e) { log.warn("Delete payout_transactions warn", e); }
+
+            // 9. Clear aeps_transaction_engine
+            try {
+                entityManager.createNativeQuery("DELETE FROM aeps_transaction_engine WHERE user_id = :uid")
+                        .setParameter("uid", userId)
+                        .executeUpdate();
+            } catch (Exception e) { log.warn("Delete aeps_transaction_engine warn", e); }
+
+            // 10. Clear aeps_kyc_history
+            try {
+                entityManager.createNativeQuery("DELETE FROM aeps_kyc_history WHERE user_id = :uid")
+                        .setParameter("uid", userId)
+                        .executeUpdate();
+            } catch (Exception e) { log.warn("Delete aeps_kyc_history warn", e); }
+
+            // 11. Clear fingpay_2fa_txn
+            try {
+                entityManager.createNativeQuery("DELETE FROM fingpay_2fa_txn WHERE user_id = :uid")
+                        .setParameter("uid", userId)
+                        .executeUpdate();
+            } catch (Exception e) { log.warn("Delete fingpay_2fa_txn warn", e); }
+
+            // 12. Clear refresh_tokens
+            try {
+                entityManager.createNativeQuery("DELETE FROM refresh_tokens WHERE user_id = :uid")
+                        .setParameter("uid", userId)
+                        .executeUpdate();
+            } catch (Exception e) { log.warn("Delete refresh_tokens warn", e); }
+
+            // 13. Null out operator_id in wallet_entries and delete wallet_entries for user's wallet
+            try {
+                entityManager.createNativeQuery("UPDATE wallet_entries SET operator_id = NULL WHERE operator_id = :uid")
+                        .setParameter("uid", userId)
+                        .executeUpdate();
+                entityManager.createNativeQuery("DELETE FROM wallet_entries WHERE wallet_id IN (SELECT id FROM wallets WHERE user_id = :uid)")
+                        .setParameter("uid", userId)
+                        .executeUpdate();
+            } catch (Exception e) { log.warn("Delete wallet_entries warn", e); }
+
+            // 14. Clear wallets
+            try {
+                entityManager.createNativeQuery("DELETE FROM wallets WHERE user_id = :uid")
+                        .setParameter("uid", userId)
+                        .executeUpdate();
+            } catch (Exception e) { log.warn("Delete wallets warn", e); }
+
+            // 15. Clear audit_logs
+            try {
+                entityManager.createNativeQuery("DELETE FROM audit_logs WHERE target_user_id = :uid OR actor_user_id = :uid")
+                        .setParameter("uid", userId)
+                        .executeUpdate();
+            } catch (Exception e) { log.warn("Delete audit_logs warn", e); }
+
+            // 16. Delete user entity
+            entityManager.createNativeQuery("DELETE FROM users WHERE id = :uid")
+                    .setParameter("uid", userId)
+                    .executeUpdate();
 
             return Map.of(
                     "success", true,
                     "message", "User deleted",
-                    "id", u.getId().toString()
+                    "id", userIdStr
             );
         } catch (Exception e) {
             log.error("Failed to delete user {}", identifier, e);
