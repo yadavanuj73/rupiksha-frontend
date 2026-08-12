@@ -4,10 +4,7 @@ import {
     AlertTriangle, Lock, User, UserCheck, Loader2, Save, ToggleRight, ToggleLeft, Package, Image as ImageIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import dataService from '../../services/dataService';
-
-const _bDefault = 'https://rupiksha-backend-java-53431955516.asia-south1.run.app/api/v1';
-const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || _bDefault).replace(/\/$/, '');
+import dataService, { BACKEND_URL } from '../../services/dataService';
 const getToken = () => localStorage.getItem('rupiksha_token');
 
 async function authFetch(url, options = {}) {
@@ -380,11 +377,14 @@ const EnhancedMembersTable = () => {
     const handleDelete = async (member) => {
         if (!window.confirm(`Permanently delete ${member.fullName || member.username}? This cannot be undone.`)) return;
         try {
-            const res = await authFetch(`${BACKEND_URL}/admin/users/${member.id}`, { method: 'DELETE' });
-            if (res.ok) { showToast(`${member.fullName || member.username} deleted`); fetchMembers(); return; }
-            let msg = 'Delete failed';
-            try { const d = await res.json(); msg = d?.error || d?.message || msg; } catch (_) {}
-            showToast(msg, 'error');
+            const targetId = member.id || member._id || member.username;
+            const res = await dataService.deleteUser(targetId);
+            if (res && (res.success || res.status === 200)) {
+                showToast(`${member.fullName || member.username} deleted successfully`);
+                fetchMembers();
+                return;
+            }
+            showToast(res?.error || res?.message || 'Delete failed', 'error');
         } catch (e) { showToast(e.message, 'error'); }
     };
 

@@ -46,7 +46,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/admin")
+@RequestMapping({"/api/v1/admin", "/api/admin", "/admin"})
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('ADMIN','SUPER_DISTRIBUTOR','DISTRIBUTOR')")
 public class AdminController {
@@ -114,7 +114,8 @@ public class AdminController {
      * Delete a user by UUID, username, or mobile.
      * Protected — only ADMIN can delete.
      */
-    @DeleteMapping("/users/{identifier}")
+    @DeleteMapping({"/users/{identifier}", "/members/{identifier}"})
+    @org.springframework.transaction.annotation.Transactional
     @PreAuthorize("hasRole('ADMIN')")
     public Map<String, Object> deleteUser(@PathVariable String identifier) {
         User u = resolveUser(identifier);
@@ -124,12 +125,48 @@ public class AdminController {
         if (u.getRoles().stream().anyMatch(r -> r.getName() == RoleName.ADMIN)) {
             return Map.of("success", false, "error", "Refusing to delete an ADMIN account.");
         }
-        userRepository.delete(u);
-        return Map.of(
-                "success", true,
-                "message", "User deleted",
-                "id", u.getId().toString()
-        );
+
+        try {
+            // Unlink any child users referencing this user as parent
+            List<User> children = userRepository.findAll().stream()
+                    .filter(child -> child.getParentUser() != null && child.getParentUser().getId().equals(u.getId()))
+                    .toList();
+            for (User child : children) {
+                child.setParentUser(null);
+                userRepository.save(child);
+            }
+
+            // Remove associated user services
+            List<com.rupiksha.backend.domain.UserService> services = userServiceRepository.findByUserId(u.getId());
+            if (!services.isEmpty()) {
+                userServiceRepository.deleteAll(services);
+            }
+
+            // Remove associated wallet
+            walletRepository.findByUserId(u.getId()).ifPresent(wallet -> {
+                try {
+                    walletRepository.delete(wallet);
+                } catch (Exception e) {
+                    log.warn("Failed to delete wallet for user {}", u.getId(), e);
+                }
+            });
+
+            // Clear roles
+            u.getRoles().clear();
+            userRepository.save(u);
+
+            // Delete user
+            userRepository.delete(u);
+
+            return Map.of(
+                    "success", true,
+                    "message", "User deleted",
+                    "id", u.getId().toString()
+            );
+        } catch (Exception e) {
+            log.error("Failed to delete user {}", identifier, e);
+            return Map.of("success", false, "error", "Failed to delete user: " + e.getMessage());
+        }
     }
 
     @PatchMapping("/users/{identifier}")
