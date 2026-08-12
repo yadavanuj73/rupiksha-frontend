@@ -5,7 +5,7 @@ import { TimeoutError, CaptureCancelledError, RDServiceError } from './errors';
 
 /**
  * Initiates the fingerprint biometric scan capture from the Mantra device.
- * Posts standard PidOptions XML to the discovered CAPTURE endpoint path.
+ * Posts standard PidOptions XML to the discovered CAPTURE endpoint path using CAPTURE method.
  */
 export async function captureBiometric(serviceConfig, customPidOptions = null) {
     if (!serviceConfig || !serviceConfig.baseUrl) {
@@ -20,7 +20,7 @@ export async function captureBiometric(serviceConfig, customPidOptions = null) {
 
     try {
         const response = await fetch(url, {
-            method: 'POST',
+            method: 'CAPTURE',
             headers: {
                 'Content-Type': 'text/xml'
             },
@@ -40,6 +40,9 @@ export async function captureBiometric(serviceConfig, customPidOptions = null) {
         }
         if (parsed.errCode === '720') {
             throw new CaptureCancelledError();
+        }
+        if (parsed.errCode === '-1509' || parsed.errCode === '1509') {
+            throw new RDServiceError('Mantra scanner is still initializing. Please wait a few seconds and try again.', 'DEVICE_NOT_READY');
         }
         if (parsed.errCode !== '0') {
             throw new RDServiceError(`Biometric capture failed (Code ${parsed.errCode}): ${parsed.errInfo}`, 'CAPTURE_FAILED');

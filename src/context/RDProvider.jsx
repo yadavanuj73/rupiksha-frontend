@@ -29,6 +29,15 @@ export function RDProvider({ children }) {
             setStatus('Checking connected biometric devices...');
             const info = await getDeviceInfo(config);
             setDevice(info);
+
+            // Respect the driver RDService readiness status
+            if (config.status && config.status.toUpperCase() !== 'READY') {
+                setCaptureState(RD_STATES.SERVICE_FOUND);
+                setStatus('Mantra Scanner Initializing');
+                setError('Mantra scanner is initializing or not ready. Please wait a few seconds.');
+                return;
+            }
+
             setCaptureState(RD_STATES.READY);
             setStatus('Capture Ready');
         } catch (err) {
@@ -114,6 +123,9 @@ export function RDProvider({ children }) {
             } else if (err.code === 'CAPTURE_CANCELLED') {
                 setStatus('Capture Cancelled');
                 setError('Capture cancelled. Ready to retry.');
+            } else if (err.code === 'DEVICE_NOT_READY') {
+                setStatus('Scanner Initializing');
+                setError(err.message || 'Mantra scanner is still initializing. Please wait a few seconds and try again.');
             } else if (err.code === 'VALIDATION_FAILED') {
                 setStatus('Validation Failed');
                 setError(err.message);

@@ -15,9 +15,9 @@ export async function getDeviceInfo(serviceConfig) {
     const url = `${serviceConfig.baseUrl}${endpoint}`;
     
     try {
-        // Mantra spec accepts standard GET requests
+        // Mantra spec accepts DEVICEINFO custom HTTP method for MFS110
         const response = await fetch(url, {
-            method: 'GET'
+            method: 'DEVICEINFO'
         });
         
         if (!response.ok) {
