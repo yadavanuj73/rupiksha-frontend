@@ -84,84 +84,92 @@ public class FingpayProvider implements AepsProvider {
     public OnboardingResponse onboard(OnboardingRequest request) {
         log.info("FingpayProvider initiating merchant onboarding for mobile: {}", request.getAepsMobile());
 
-        String panImg = cleanBase64(request.getPanImage());
-        String shopImg = cleanBase64(request.getShopImage());
-        String tradeProof = cleanBase64(request.getTradeBusinessProof());
-        String chequeImg = cleanBase64(request.getCancelledCheque());
-        String videoKyc = cleanBase64(request.getVideoKycData());
-
         OnboardRequestDTO dto = new OnboardRequestDTO();
         
         MerchantDTO merchant = new MerchantDTO();
         merchant.setMerchantLoginId(request.getAepsMobile());
         merchant.setMerchantLoginPin("1234"); // default PIN
         merchant.setFirstName(request.getFname());
-        merchant.setLastName(request.getLname());
+        merchant.setLastName(request.getLname() != null ? request.getLname() : "");
         merchant.setMiddleName(request.getMiddlename() != null ? request.getMiddlename() : "");
         merchant.setMerchantPhoneNumber(request.getAepsMobile());
         merchant.setEmailId(request.getEmail());
         
+        String fullAddress = (request.getAddress() != null ? request.getAddress() : "")
+                + (request.getCity() != null && !request.getCity().isBlank() ? ", " + request.getCity() : "")
+                + (request.getPinCode() != null && !request.getPinCode().isBlank() ? ", " + request.getPinCode() : "");
+        if (fullAddress.startsWith(", ")) fullAddress = fullAddress.substring(2);
+
+        String stateCode = String.valueOf(resolveStateCode(request.getState()));
+
         MerchantAddressDTO address = new MerchantAddressDTO();
-        address.setMerchantAddress1(request.getAddress());
-        address.setMerchantAddress2("");
+        address.setMerchantAddress1(fullAddress);
+        address.setMerchantAddress2(fullAddress);
         address.setMerchantCityName(request.getCity());
         address.setMerchantDistrictName(request.getCity());
-        address.setMerchantState(resolveStateCode(request.getState()));
+        address.setMerchantState(stateCode);
         address.setMerchantPinCode(request.getPinCode());
         merchant.setMerchantAddress(address);
         
-        merchant.setCompanyLegalName(request.getShopName());
-        // companyType = 2 for Individual Retailer / Sole Proprietor
-        int compType = (request.getCompanyType() != null && request.getCompanyType() > 0) ? request.getCompanyType() : 2;
-        merchant.setCompanyType(compType);
+        merchant.setCompanyLegalName(request.getShopName() != null && !request.getShopName().isBlank() ? request.getShopName() : (request.getFname() + " Enterprise"));
         
+        // Exact companyType "4816" matching verified working PHP request
+        String compType = (request.getCompanyType() != null && request.getCompanyType() > 0)
+                ? String.valueOf(request.getCompanyType())
+                : "4816";
+        merchant.setCompanyType(compType);
+        merchant.setCertificateOfIncorporationImage(false);
+
         KycDTO kyc = new KycDTO();
         kyc.setAadhaarNumber(request.getAadharNumber());
         kyc.setUserPan(request.getPanCard());
-        if (request.getGstinNumber() != null && !request.getGstinNumber().isBlank()) {
-            kyc.setGstinNumber(request.getGstinNumber().trim());
-        } else {
-            kyc.setGstinNumber("");
-        }
-
-        String combinedShopPanImage = shopImg != null ? shopImg : (panImg != null ? panImg : "");
-        kyc.setShopAndPanImage(combinedShopPanImage);
+        kyc.setGstinNumber(request.getGstinNumber() != null && !request.getGstinNumber().isBlank() ? request.getGstinNumber().trim() : null);
+        kyc.setCompanyOrShopPan(null);
+        kyc.setShopAndPanImage(false);
         merchant.setKyc(kyc);
         
         SettlementDTO settlement = new SettlementDTO();
-        settlement.setCompanyBankAccountNumber("1234567890");
-        settlement.setBankIfscCode("UTIB0000001");
-        settlement.setCompanyBankName("AXIS BANK");
-        settlement.setBankAccountName(request.getFname() + " " + request.getLname());
+        if (request.getBankAccountNumber() != null && !request.getBankAccountNumber().isBlank()) {
+            settlement.setCompanyBankAccountNumber(request.getBankAccountNumber().trim());
+        } else {
+            settlement.setCompanyBankAccountNumber("1234567890");
+        }
+
+        if (request.getIfscCode() != null && !request.getIfscCode().isBlank()) {
+            settlement.setBankIfscCode(request.getIfscCode().trim());
+        } else {
+            settlement.setBankIfscCode("IDIB000P107");
+        }
+
+        if (request.getBankName() != null && !request.getBankName().isBlank()) {
+            settlement.setCompanyBankName(request.getBankName().trim());
+        } else {
+            settlement.setCompanyBankName("Indian Bank");
+        }
+
+        String fullName = (request.getFname() + " " + (request.getLname() != null ? request.getLname() : "")).trim();
+        settlement.setBankAccountName(fullName.isBlank() ? "Retailer" : fullName);
         merchant.setSettlementV1(settlement);
         
-        // Verified Fingpay contract boolean representation
+        // Exact boolean flags matching verified working PHP request
+        merchant.setTradeBusinessProof(true);
         merchant.setTermsConditionCheck(true);
+        merchant.setCancelledChequeImages(false);
+        merchant.setPhysicalVerification(false);
+        merchant.setVideoKycWithLatLongData(true);
 
-        String physVerificationImg = cleanBase64(request.getPhysicalVerificationImage());
-        merchant.setPhysicalVerification(physVerificationImg != null ? physVerificationImg : true);
+        double lat = parseCoordinate(request.getLatitude(), 26.0959202);
+        double lon = parseCoordinate(request.getLongitude(), 85.2636774);
 
-        merchant.setVideoKycWithLatLongData(videoKyc != null ? videoKyc : "");
-        merchant.setCancelledChequeImages(chequeImg != null ? chequeImg : "");
-        merchant.setTradeBusinessProof(tradeProof != null ? tradeProof : "");
-
-        double lat = parseCoordinate(request.getLatitude(), 20.5937);
-        double lon = parseCoordinate(request.getLongitude(), 78.9629);
-
-        // merchantKycAddressData is required by Fingpay v2 — must include shop lat/lon
-        String fullAddress = request.getAddress() + ", " + request.getCity() + " - " + request.getPinCode();
         MerchantShopDTO shopData = new MerchantShopDTO();
         shopData.setShopAddress(fullAddress);
         shopData.setShopCity(request.getCity());
         shopData.setShopDistrict(request.getCity());
-        shopData.setShopState(resolveStateCode(request.getState()));
+        shopData.setShopState(stateCode);
         shopData.setShopPincode(request.getPinCode());
-        shopData.setShopLatitude(lat);
-        shopData.setShopLongitude(lon);
+        shopData.setShopLatitude(String.format(Locale.ROOT, "%.7f", lat));
+        shopData.setShopLongitude(String.format(Locale.ROOT, "%.7f", lon));
         merchant.setMerchantKycAddressData(shopData);
-
-        // Set main merchant address with full address string
-        address.setMerchantAddress1(fullAddress);
 
         dto.setMerchant(merchant);
         dto.setLatitude(lat);

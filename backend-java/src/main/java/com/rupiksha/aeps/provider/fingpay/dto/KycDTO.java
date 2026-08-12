@@ -9,5 +9,5 @@ public class KycDTO {
     private String aadhaarNumber;
     private String gstinNumber;
     private String companyOrShopPan;
-    private String shopAndPanImage;
+    private Object shopAndPanImage;
 }

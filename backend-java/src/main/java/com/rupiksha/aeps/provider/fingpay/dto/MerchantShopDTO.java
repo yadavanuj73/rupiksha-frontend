@@ -8,8 +8,8 @@ public class MerchantShopDTO {
     private String shopAddress;
     private String shopCity;
     private String shopDistrict;
-    private Integer shopState;
+    private Object shopState;
     private String shopPincode;
-    private Double shopLatitude;
-    private Double shopLongitude;
+    private Object shopLatitude;
+    private Object shopLongitude;
 }

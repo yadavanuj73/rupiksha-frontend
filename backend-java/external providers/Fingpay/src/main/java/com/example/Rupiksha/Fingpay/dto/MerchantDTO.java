@@ -14,20 +14,20 @@ public class MerchantDTO {
     private MerchantAddressDTO merchantAddress;
 
     private String companyLegalName;
-    private Integer companyType;
+    private Object companyType;
     private String emailId;
 
-    private String certificateOfIncorporationImage;
+    private Object certificateOfIncorporationImage;
 
     private KycDTO kyc;
 
     private SettlementDTO settlementV1;
 
-    private String tradeBusinessProof;
-    private String termsConditionCheck;
-    private String cancelledChequeImages;
-    private String physicalVerification;
-    private String videoKycWithLatLongData;
+    private Object tradeBusinessProof;
+    private Object termsConditionCheck;
+    private Object cancelledChequeImages;
+    private Object physicalVerification;
+    private Object videoKycWithLatLongData;
 
     private MerchantShopDTO merchantKycAddressData;
 }
