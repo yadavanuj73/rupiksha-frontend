@@ -100,7 +100,7 @@ public class FingpayProvider implements AepsProvider {
         address.setMerchantAddress2("");
         address.setMerchantCityName(request.getCity());
         address.setMerchantDistrictName(request.getCity());
-        address.setMerchantState(1);
+        address.setMerchantState(resolveStateCode(request.getState()));
         address.setMerchantPinCode(request.getPinCode());
         merchant.setMerchantAddress(address);
         
@@ -661,6 +661,54 @@ public class FingpayProvider implements AepsProvider {
         }
         
         return map;
+    }
+
+    /**
+     * Maps standard Indian 2-letter state abbreviations to Fingpay integer state codes.
+     * Fingpay uses numeric IDs that correspond to Indian state numbering.
+     */
+    private int resolveStateCode(String stateCode) {
+        if (stateCode == null) return 1;
+        Map<String, Integer> stateMap = new HashMap<>();
+        stateMap.put("AN", 35); // Andaman and Nicobar Islands
+        stateMap.put("AP", 37); // Andhra Pradesh
+        stateMap.put("AR", 12); // Arunachal Pradesh
+        stateMap.put("AS", 18); // Assam
+        stateMap.put("BR", 10); // Bihar
+        stateMap.put("CG", 22); // Chhattisgarh
+        stateMap.put("CH", 4);  // Chandigarh
+        stateMap.put("DD", 26); // Daman and Diu
+        stateMap.put("DL", 7);  // Delhi
+        stateMap.put("DN", 26); // Dadra and Nagar Haveli
+        stateMap.put("GA", 30); // Goa
+        stateMap.put("GJ", 24); // Gujarat
+        stateMap.put("HP", 2);  // Himachal Pradesh
+        stateMap.put("HR", 6);  // Haryana
+        stateMap.put("JH", 20); // Jharkhand
+        stateMap.put("JK", 1);  // Jammu and Kashmir
+        stateMap.put("KA", 29); // Karnataka
+        stateMap.put("KL", 32); // Kerala
+        stateMap.put("LA", 38); // Ladakh
+        stateMap.put("LD", 31); // Lakshadweep
+        stateMap.put("MH", 27); // Maharashtra
+        stateMap.put("ML", 17); // Meghalaya
+        stateMap.put("MN", 14); // Manipur
+        stateMap.put("MP", 23); // Madhya Pradesh
+        stateMap.put("MZ", 15); // Mizoram
+        stateMap.put("NL", 13); // Nagaland
+        stateMap.put("OD", 21); // Odisha
+        stateMap.put("OR", 21); // Odisha (alternate)
+        stateMap.put("PB", 3);  // Punjab
+        stateMap.put("PY", 34); // Puducherry
+        stateMap.put("RJ", 8);  // Rajasthan
+        stateMap.put("SK", 11); // Sikkim
+        stateMap.put("TG", 36); // Telangana
+        stateMap.put("TN", 33); // Tamil Nadu
+        stateMap.put("TR", 16); // Tripura
+        stateMap.put("UK", 5);  // Uttarakhand
+        stateMap.put("UP", 9);  // Uttar Pradesh
+        stateMap.put("WB", 19); // West Bengal
+        return stateMap.getOrDefault(stateCode.toUpperCase().trim(), 27); // default to Maharashtra
     }
 
     private AepsProperties.ProviderConfig getFingpayConfig() {

@@ -106,7 +106,8 @@ public class OnboardService {
             txn.setUpdatedAt(LocalDateTime.now());
             repo.save(txn);
 
-            throw new FingpayException("Onboarding Failed");
+            log.error("Fingpay onboarding failed. Cause: {}", e.getMessage(), e);
+            throw new FingpayException("Onboarding Failed: " + e.getMessage());
         }
     }
 }

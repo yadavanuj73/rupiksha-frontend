@@ -139,7 +139,7 @@ export default function AepsOnboarding() {
         }
 
         if (!formData.city.trim()) return "City is required";
-        if (!formData.state.trim()) return "State code is required (e.g. BR, MH, UP)";
+        if (!formData.state) return "Please select your state";
         if (!formData.latitude.trim() || !formData.longitude.trim()) {
             return "GPS Coordinates are required. Please click 'Detect GPS'.";
         }
@@ -428,16 +428,53 @@ export default function AepsOnboarding() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">State Code *</label>
-                                        <input
-                                            type="text"
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">State *</label>
+                                        <select
                                             name="state"
                                             value={formData.state}
                                             onChange={handleChange}
-                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition"
-                                            placeholder="State (E.g. BR, MH, UP)"
+                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition bg-white"
                                             disabled={loading}
-                                        />
+                                        >
+                                            <option value="">— Select State —</option>
+                                            <option value="AN">Andaman & Nicobar Islands</option>
+                                            <option value="AP">Andhra Pradesh</option>
+                                            <option value="AR">Arunachal Pradesh</option>
+                                            <option value="AS">Assam</option>
+                                            <option value="BR">Bihar</option>
+                                            <option value="CG">Chhattisgarh</option>
+                                            <option value="CH">Chandigarh</option>
+                                            <option value="DN">Dadra & Nagar Haveli</option>
+                                            <option value="DD">Daman & Diu</option>
+                                            <option value="DL">Delhi</option>
+                                            <option value="GA">Goa</option>
+                                            <option value="GJ">Gujarat</option>
+                                            <option value="HR">Haryana</option>
+                                            <option value="HP">Himachal Pradesh</option>
+                                            <option value="JK">Jammu & Kashmir</option>
+                                            <option value="JH">Jharkhand</option>
+                                            <option value="KA">Karnataka</option>
+                                            <option value="KL">Kerala</option>
+                                            <option value="LA">Ladakh</option>
+                                            <option value="LD">Lakshadweep</option>
+                                            <option value="MP">Madhya Pradesh</option>
+                                            <option value="MH">Maharashtra</option>
+                                            <option value="MN">Manipur</option>
+                                            <option value="ML">Meghalaya</option>
+                                            <option value="MZ">Mizoram</option>
+                                            <option value="NL">Nagaland</option>
+                                            <option value="OR">Odisha</option>
+                                            <option value="PY">Puducherry</option>
+                                            <option value="PB">Punjab</option>
+                                            <option value="RJ">Rajasthan</option>
+                                            <option value="SK">Sikkim</option>
+                                            <option value="TN">Tamil Nadu</option>
+                                            <option value="TG">Telangana</option>
+                                            <option value="TR">Tripura</option>
+                                            <option value="UK">Uttarakhand</option>
+                                            <option value="UP">Uttar Pradesh</option>
+                                            <option value="WB">West Bengal</option>
+                                        </select>
                                     </div>
 
                                     {/* Geographic GPS Coordinates */}
