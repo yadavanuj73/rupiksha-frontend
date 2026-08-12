@@ -114,7 +114,6 @@ public class AadhaarPayService {
             payload.put("captureResponse", captureResponse);
 
             String plainJson = objectMapper.writeValueAsString(payload);
-            log.debug("AP plain JSON: {}", plainJson);
 
             // Encrypt
             SecretKey sessionKey = encryptionUtil.generateSessionKey();
@@ -132,7 +131,6 @@ public class AadhaarPayService {
             HttpEntity<String> entity = new HttpEntity<>(encryptedBody, headers);
             ResponseEntity<String> httpResp = restTemplate.exchange(
                     apUrl, HttpMethod.POST, entity, String.class);
-            log.debug("AP raw response: {}", httpResp.getBody());
 
             JsonNode root = objectMapper.readTree(httpResp.getBody());
             JsonNode data = root.path("data");

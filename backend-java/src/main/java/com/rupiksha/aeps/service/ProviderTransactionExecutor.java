@@ -23,14 +23,16 @@ public class ProviderTransactionExecutor {
      * Resolves the active AEPS provider and executes the transaction.
      */
     public TransactionResult execute(TransactionContext context) {
-        AepsProvider provider = getActiveProvider();
+        AepsProvider provider = getActiveProvider(context.getProvider());
         log.info("Resolved active provider: [{}] for transaction", provider.getProviderName());
         context.setProvider(provider.getProviderName());
         return provider.executeTransaction(context);
     }
 
-    private AepsProvider getActiveProvider() {
-        String activeName = aepsProperties.getActiveProvider();
+    private AepsProvider getActiveProvider(String requestedProvider) {
+        String activeName = (requestedProvider != null && !requestedProvider.isBlank())
+                ? requestedProvider
+                : aepsProperties.getActiveProvider();
         return providers.stream()
                 .filter(p -> p.getProviderName().equalsIgnoreCase(activeName))
                 .findFirst()

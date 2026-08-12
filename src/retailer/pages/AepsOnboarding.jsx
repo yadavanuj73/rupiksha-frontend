@@ -178,6 +178,7 @@ export default function AepsOnboarding() {
             const payload = {
                 ...formData,
                 panCard: formData.panCard.toUpperCase(),
+                provider,
                 correlationId,
                 timestamp: Date.now()
             };

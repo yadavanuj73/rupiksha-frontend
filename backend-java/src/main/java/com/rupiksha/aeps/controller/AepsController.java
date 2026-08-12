@@ -31,6 +31,21 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.time.LocalDateTime;
+import com.rupiksha.aeps.provider.fingpay.repository.FingBankRepository;
+import com.rupiksha.aeps.provider.fingpay.entity.FingBank;
+import com.rupiksha.aeps.provider.fingpay.service.CdStatusService;
+import com.rupiksha.aeps.provider.fingpay.dto.CdStatusRequest;
+import com.rupiksha.aeps.provider.fingpay.dto.CdStatusResponse;
+import com.rupiksha.aeps.provider.fingpay.repository.FingpayTransactionRepository;
+import com.rupiksha.aeps.provider.fingpay.entity.FingpayTransaction;
+import com.rupiksha.aeps.repository.AepsTransactionEngineRepository;
+import com.rupiksha.aeps.entity.AepsTransactionEngine;
+import com.rupiksha.backend.service.WalletService;
+import com.rupiksha.backend.domain.WalletTransactionContext;
 
 @Slf4j
 @RestController
@@ -42,6 +57,11 @@ public class AepsController {
     private final AepsService aepsService;
     private final TransactionService transactionService;
     private final com.rupiksha.aeps.provider.fingpay.service.BankSyncService bankSyncService;
+    private final FingBankRepository bankRepo;
+    private final AepsTransactionEngineRepository engineTxnRepo;
+    private final FingpayTransactionRepository txnRepo;
+    private final CdStatusService cdStatusService;
+    private final WalletService walletService;
 
 
     /**
@@ -292,8 +312,118 @@ public class AepsController {
 
 
     @PostMapping("/transaction-status")
-    public ResponseEntity<ApiResponse<String>> getTransactionStatus() {
-        return ResponseEntity.ok(ApiResponse.success("AEPS Transaction status query endpoint active (Placeholder). Implementation pending."));
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getTransactionStatus(@RequestBody Map<String, String> reqBody) {
+        String transactionId = reqBody.get("transactionId");
+        log.info("REST request to reconcile transaction status for: {}", transactionId);
+        
+        AepsTransactionEngine engineTxn = engineTxnRepo.findByTransactionId(transactionId)
+                .orElseThrow(() -> new RuntimeException("Transaction not found for ID: " + transactionId));
+        
+        String provider = engineTxn.getProvider() != null ? engineTxn.getProvider().toLowerCase() : "levin";
+        String serviceType = engineTxn.getServiceType() != null ? engineTxn.getServiceType().toUpperCase() : "";
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("transactionId", transactionId);
+        result.put("serviceType", serviceType);
+        result.put("provider", provider);
+        
+        if ("fingpay".equals(provider)) {
+            long uidLong = engineTxn.getUserId().getMostSignificantBits() & Long.MAX_VALUE;
+            
+            if ("CASH_DEPOSIT".equals(serviceType)) {
+                CdStatusRequest request = new CdStatusRequest();
+                request.setUid(uidLong);
+                request.setMerchantTranId(transactionId);
+                
+                CdStatusResponse resp = cdStatusService.checkStatus(request);
+                result.put("status", resp.getTransactionStatus());
+                result.put("message", resp.getTransactionStatusMessage());
+                result.put("rrn", resp.getBankRRN());
+                result.put("fpTxnId", resp.getFingpayTransactionId());
+                result.put("amount", resp.getTransactionAmount());
+                
+                reconcileCdStatus(engineTxn, resp);
+            } else {
+                result.put("status", engineTxn.getStatus());
+                result.put("message", engineTxn.getProviderMessage());
+            }
+        } else {
+            result.put("status", engineTxn.getStatus());
+            result.put("message", engineTxn.getProviderMessage());
+        }
+        
+        result.put("reconciledStatus", engineTxn.getStatus());
+        return ResponseEntity.ok(ApiResponse.success("Status reconciled successfully", result));
+    }
+
+    private void reconcileCdStatus(AepsTransactionEngine engineTxn, CdStatusResponse resp) {
+        String currentStatus = engineTxn.getStatus();
+        String providerStatus = resp.getTransactionStatus();
+        
+        if ("SUCCESS".equalsIgnoreCase(providerStatus) || "00".equals(resp.getTransactionStatusCode())) {
+            if (!"SUCCESS".equalsIgnoreCase(currentStatus)) {
+                engineTxn.setStatus("SUCCESS");
+                engineTxn.setWorkflowState("SUCCESS");
+                engineTxn.setProviderReference(resp.getFingpayTransactionId());
+                engineTxn.setProviderStatus("SUCCESS");
+                engineTxn.setProviderMessage(resp.getTransactionStatusMessage() != null ? resp.getTransactionStatusMessage() : "Approved");
+                engineTxn.setCompletedAt(LocalDateTime.now());
+                engineTxnRepo.save(engineTxn);
+                
+                txnRepo.findByTxnid(engineTxn.getTransactionId()).ifPresent(t -> {
+                    t.setStatus("SUCCESS");
+                    t.setMessage(resp.getTransactionStatusMessage());
+                    t.setRrn(resp.getBankRRN());
+                    t.setFtxnin(resp.getFingpayTransactionId());
+                    txnRepo.save(t);
+                });
+            }
+        } else if ("FAILED".equalsIgnoreCase(providerStatus) || "FAILURE".equalsIgnoreCase(providerStatus) ||
+                   ("00".equals(resp.getTransactionStatusCode()) == false && "FP009".equalsIgnoreCase(resp.getTransactionStatusCode()) == false && resp.getTransactionStatusCode() != null && !resp.getTransactionStatusCode().isEmpty() && !resp.getTransactionStatusCode().equalsIgnoreCase("null"))) {
+            if (!"FAILED".equalsIgnoreCase(currentStatus)) {
+                engineTxn.setStatus("FAILED");
+                engineTxn.setWorkflowState("FAILED");
+                engineTxn.setProviderReference(resp.getFingpayTransactionId());
+                engineTxn.setProviderStatus("FAILED");
+                engineTxn.setProviderMessage(resp.getTransactionStatusMessage() != null ? resp.getTransactionStatusMessage() : "Failed");
+                engineTxn.setCompletedAt(LocalDateTime.now());
+                engineTxnRepo.save(engineTxn);
+                
+                txnRepo.findByTxnid(engineTxn.getTransactionId()).ifPresent(t -> {
+                    t.setStatus("FAILED");
+                    t.setMessage(resp.getTransactionStatusMessage());
+                    txnRepo.save(t);
+                });
+
+                try {
+                    log.info("Refunding wallet for failed AEPS Cash Deposit (reconciliation): {}, user: {}, amount: {}", 
+                            engineTxn.getTransactionId(), engineTxn.getUserId(), engineTxn.getAmount());
+                    walletService.refundForService(
+                            engineTxn.getUserId(),
+                            engineTxn.getAmount(),
+                            "AEPS Cash Deposit Reversal - " + engineTxn.getTransactionId(),
+                            engineTxn.getTransactionId(),
+                            WalletTransactionContext.REVERSAL,
+                            "AEPS",
+                            engineTxn.getIpAddress() != null ? engineTxn.getIpAddress() : "127.0.0.1",
+                            "REF-" + engineTxn.getTransactionId()
+                    );
+                    log.info("Successfully refunded wallet for failed AEPS Cash Deposit (reconciliation): {}", engineTxn.getTransactionId());
+                } catch (Exception e) {
+                    log.error("Failed to refund wallet during reconciliation for {}: {}", engineTxn.getTransactionId(), e.getMessage());
+                }
+            }
+        }
+    }
+
+    /**
+     * Retrieves the list of Fingpay banks.
+     */
+    @GetMapping("/banks")
+    public ResponseEntity<ApiResponse<List<FingBank>>> getBanks() {
+        log.info("REST request to fetch Fingpay banks list.");
+        List<FingBank> banks = bankRepo.findAll();
+        return ResponseEntity.ok(ApiResponse.success("Banks retrieved successfully", banks));
     }
 
     @GetMapping("/sync-banks")

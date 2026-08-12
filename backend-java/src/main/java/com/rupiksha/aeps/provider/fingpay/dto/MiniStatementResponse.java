@@ -12,5 +12,6 @@ public class MiniStatementResponse {
     private String bankRRN;
     private Double balanceAmount;
     private String maskedAadhaar;
+    private String responseCode;
     private List<MiniStatementEntry> miniStatement;
 }

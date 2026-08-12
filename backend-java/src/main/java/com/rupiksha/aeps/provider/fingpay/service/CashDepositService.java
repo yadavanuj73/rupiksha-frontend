@@ -1,7 +1,7 @@
 package com.rupiksha.aeps.provider.fingpay.service;
 
-import com.rupiksha.aeps.provider.fingpay.dto.CashWithdrawalRequest;
-import com.rupiksha.aeps.provider.fingpay.dto.CashWithdrawalResponse;
+import com.rupiksha.aeps.provider.fingpay.dto.CashDepositRequest;
+import com.rupiksha.aeps.provider.fingpay.dto.CashDepositResponse;
 import com.rupiksha.aeps.provider.fingpay.entity.*;
 import com.rupiksha.aeps.provider.fingpay.repository.*;
 import com.rupiksha.aeps.provider.fingpay.util.FingpayEncryptionUtil;
@@ -23,7 +23,7 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class CashWithdrawalService {
+public class CashDepositService {
 
     private final FingpayEncryptionUtil encryptionUtil;
     private final FingpayTransactionRepository txnRepo;
@@ -33,8 +33,8 @@ public class CashWithdrawalService {
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
 
-    @Value("${fingpay.cw.url}")
-    private String cwUrl;
+    @Value("${fingpay.cd.url}")
+    private String cdUrl;
 
     @Value("${fingpay.device.imei}")
     private String deviceImei;
@@ -42,18 +42,18 @@ public class CashWithdrawalService {
     @Value("${fingpay.supermerchant.id}")
     private String superMerchantId;
 
-    public CashWithdrawalResponse process(CashWithdrawalRequest req) {
+    @Value("${fingpay.security.key}")
+    private String securityKey;
 
-        String txnId = "CW" + System.currentTimeMillis();
-        String maskedAadhaar = "XXXXXXXX" + req.getAadhar()
-                .substring(req.getAadhar().length() - 4);
+    public CashDepositResponse process(CashDepositRequest req, String transactionId) {
+        String maskedAadhaar = "XXXXXXXX" + req.getAadhar().substring(req.getAadhar().length() - 4);
 
         try {
             // 1. Bank IIN resolve
             FingBank bank = bankRepo.findById(req.getBankId())
                     .orElseThrow(() -> new RuntimeException("INVALID BANK CODE"));
 
-            // 2. Merchant outlet + pin resolve (PHP jaisa)
+            // 2. Merchant outlet + pin resolve
             AepsKyc kyc = aepsKycRepo.findByUid(req.getUid())
                     .orElseThrow(() -> new RuntimeException("AepsKyc not found for uid: " + req.getUid()));
 
@@ -64,7 +64,7 @@ public class CashWithdrawalService {
                     .orElseThrow(() -> new RuntimeException("FingUser not found"))
                     .getPin();
 
-            // 3. captureResponse — as-is from RD service, kuch mat badlo
+            // 3. captureResponse (sensitive biometrics - do not log or store)
             Map<String, Object> captureResponse = new LinkedHashMap<>();
             captureResponse.put("errCode", req.getErrorCode());
             captureResponse.put("errInfo", req.getErrorInfo());
@@ -88,24 +88,31 @@ public class CashWithdrawalService {
             captureResponse.put("PidDatatype", req.getPidType());
             captureResponse.put("Piddata", req.getPidData());
 
-            // 4. cardnumberORUID
+            // 4. cardnumberORUID (handling VID automatically)
             Map<String, Object> cardOrUID = new LinkedHashMap<>();
-            cardOrUID.put("nationalBankIdentificationNumber", bank.getIinno());
-            cardOrUID.put("indicatorforUID", "0");
-            cardOrUID.put("adhaarNumber", req.getAadhar());
+            if (req.getAadhar().length() == 16) {
+                cardOrUID.put("nationalBankIdentificationNumber", bank.getIinno());
+                cardOrUID.put("indicatorforUID", "2");
+                cardOrUID.put("adhaarNumber", "999999999999");
+                cardOrUID.put("virtualId", req.getAadhar());
+            } else {
+                cardOrUID.put("nationalBankIdentificationNumber", bank.getIinno());
+                cardOrUID.put("indicatorforUID", "0");
+                cardOrUID.put("adhaarNumber", req.getAadhar());
+            }
 
             // 5. Main payload
             Map<String, Object> payload = new LinkedHashMap<>();
-            payload.put("merchantTranId", txnId);
+            payload.put("merchantTranId", transactionId);
             payload.put("languageCode", "en");
             payload.put("latitude", req.getLat());
             payload.put("longitude", req.getLog());
             payload.put("mobileNumber", req.getMobile());
             payload.put("paymentType", "B");
-            payload.put("requestRemarks", "CW");
+            payload.put("requestRemarks", "CD");
             payload.put("transactionAmount", req.getAmount());
             payload.put("timestamp", encryptionUtil.timestamp());
-            payload.put("transactionType", "CW");
+            payload.put("transactionType", "CD");
             payload.put("merchantUserName", merchantUserName);
             payload.put("merchantPin", md5(rawPin));
             payload.put("subMerchantId", "");
@@ -115,11 +122,13 @@ public class CashWithdrawalService {
 
             String plainJson = objectMapper.writeValueAsString(payload);
 
-            // 6. Encrypt — Java endpoint requires full encryption
+            // 6. Encrypt (sensitive session keys and payloads are not written to application logs)
             SecretKey sessionKey = encryptionUtil.generateSessionKey();
             String eskey = encryptionUtil.encryptSessionKey(sessionKey);
             String encryptedBody = encryptionUtil.encryptBody(plainJson, sessionKey);
-            String hash = encryptionUtil.generateHash(plainJson);
+            
+            // Hash calculation: Base64(SHA256(JSON + securityKey))
+            String hash = encryptionUtil.generateHash(plainJson + securityKey);
 
             // 7. Headers
             HttpHeaders headers = new HttpHeaders();
@@ -132,33 +141,58 @@ public class CashWithdrawalService {
             // 8. API call
             HttpEntity<String> entity = new HttpEntity<>(encryptedBody, headers);
             ResponseEntity<String> httpResp = restTemplate.exchange(
-                    cwUrl, HttpMethod.POST, entity, String.class);
+                    cdUrl, HttpMethod.POST, entity, String.class);
 
             // 9. Parse response
             JsonNode root = objectMapper.readTree(httpResp.getBody());
             JsonNode data = root.path("data");
 
-            // 10. Success condition — API docs: bankRRN present AND responseCode == "00"
+            // 10. Success condition
             boolean success = isSuccess(root, data);
 
-            // 11. Save transaction
-            FingpayTransaction txn = buildTxn(req, txnId, maskedAadhaar, plainJson,
-                    httpResp.getBody(), success, root, data);
+            // 11. Save transaction to iaepstxn table (sensitive/biometric request details are excluded)
+            FingpayTransaction txn = buildTxn(req, transactionId, maskedAadhaar, success, root, data);
             txnRepo.save(txn);
 
-            // 12. Build response
-            return buildResponse(success, txnId, maskedAadhaar, root, data, txn);
+            // 12. Build sanitized response
+            return buildResponse(success, transactionId, maskedAadhaar, root, data, txn);
 
+        } catch (org.springframework.web.client.ResourceAccessException e) {
+            log.error("CD timeout/network exception uid={} txnId={} msg={}", req.getUid(), transactionId, e.getMessage(), e);
+            CashDepositResponse resp = new CashDepositResponse();
+            resp.setStatus("PENDING");
+            resp.setMessage("Network timeout / Ambiguous provider response. Check transaction status. Ref: " + transactionId);
+            resp.setTxnId(transactionId);
+            resp.setResponseCode("FP_TIMEOUT");
+            return resp;
+        } catch (org.springframework.web.client.HttpStatusCodeException e) {
+            if (e.getStatusCode().is5xxServerError()) {
+                log.error("CD server 5xx exception uid={} txnId={} msg={}", req.getUid(), transactionId, e.getMessage(), e);
+                CashDepositResponse resp = new CashDepositResponse();
+                resp.setStatus("PENDING");
+                resp.setMessage("Server error / Ambiguous response. Check transaction status. Ref: " + transactionId);
+                resp.setTxnId(transactionId);
+                resp.setResponseCode("FP_SERVER_ERROR");
+                return resp;
+            } else {
+                log.error("CD client error uid={} txnId={} msg={}", req.getUid(), transactionId, e.getMessage(), e);
+                CashDepositResponse resp = new CashDepositResponse();
+                resp.setStatus("FAILED");
+                resp.setMessage("Client request failed. Ref: " + transactionId);
+                resp.setTxnId(transactionId);
+                resp.setResponseCode("FP_CLIENT_ERROR");
+                return resp;
+            }
         } catch (Exception e) {
-            log.error("CW error uid={} txnId={} msg={}", req.getUid(), txnId, e.getMessage(), e);
-            CashWithdrawalResponse resp = new CashWithdrawalResponse();
-            resp.setStatus("ERROR");
-            resp.setMessage("Internal error. Ref: " + txnId);
+            log.error("CD error uid={} txnId={} msg={}", req.getUid(), transactionId, e.getMessage(), e);
+            CashDepositResponse resp = new CashDepositResponse();
+            resp.setStatus("FAILED");
+            resp.setMessage("Internal error. Ref: " + transactionId);
+            resp.setTxnId(transactionId);
             return resp;
         }
     }
 
-    // API docs note: success only when bankRRN present AND responseCode == "00"
     private boolean isSuccess(JsonNode root, JsonNode data) {
         String s = root.path("status").asText("");
         boolean statusFlag = "true".equalsIgnoreCase(s)
@@ -172,19 +206,16 @@ public class CashWithdrawalService {
         return !rrn.isEmpty() && "00".equals(rc);
     }
 
-    private FingpayTransaction buildTxn(CashWithdrawalRequest req, String txnId,
-                                     String maskedAadhaar, String plainJson, String rawResponse,
-                                     boolean success, JsonNode root, JsonNode data) {
-
+    private FingpayTransaction buildTxn(CashDepositRequest req, String txnId,
+                                         String maskedAadhaar, boolean success, JsonNode root, JsonNode data) {
         FingpayTransaction txn = new FingpayTransaction();
         txn.setUid(req.getUid());
-        txn.setType("CW");
+        txn.setType("CD");
         txn.setAadhar(maskedAadhaar);
         txn.setMobile(req.getMobile());
         txn.setBank(req.getBankId());
         txn.setTxnamount(req.getAmount());
-        txn.setRequest(plainJson);
-        txn.setResponse(rawResponse);
+        txn.setCreatedAt(java.time.LocalDateTime.now());
 
         if (success) {
             txn.setTxnid(data.path("merchantTransactionId").asText(txnId));
@@ -200,15 +231,20 @@ public class CashWithdrawalService {
             txn.setAmount(0.0);
             txn.setRrn("TEMP" + (long) (Math.random() * 9000000000L + 1000000000L));
             txn.setStatus("FAILED");
-            txn.setMessage(root.path("message").asText("Transaction Failed"));
+            
+            // Check if there is an inner error message or response message
+            String errMsg = data.path("responseMessage").asText("");
+            if (errMsg.isEmpty()) {
+                errMsg = root.path("message").asText("Transaction Failed");
+            }
+            txn.setMessage(errMsg);
         }
         return txn;
     }
 
-    private CashWithdrawalResponse buildResponse(boolean success, String txnId,
-                                                 String maskedAadhaar, JsonNode root, JsonNode data, FingpayTransaction txn) {
-
-        CashWithdrawalResponse resp = new CashWithdrawalResponse();
+    private CashDepositResponse buildResponse(boolean success, String txnId,
+                                              String maskedAadhaar, JsonNode root, JsonNode data, FingpayTransaction txn) {
+        CashDepositResponse resp = new CashDepositResponse();
         resp.setMaskedAadhaar(maskedAadhaar);
 
         if (success) {
@@ -224,6 +260,7 @@ public class CashWithdrawalService {
             resp.setStatus("FAILED");
             resp.setMessage(txn.getMessage());
             resp.setTxnId(txnId);
+            resp.setResponseCode(data.path("responseCode").asText("FP009"));
         }
         return resp;
     }

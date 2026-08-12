@@ -32,6 +32,7 @@ public class TransactionServiceImpl implements TransactionService {
     private final TransactionEngine transactionEngine;
     private final ApplicationEventPublisher eventPublisher;
     private final AepsProperties aepsProperties;
+    private final com.rupiksha.backend.service.WalletService walletService;
 
     @org.springframework.beans.factory.annotation.Autowired
     public TransactionServiceImpl(
@@ -40,7 +41,8 @@ public class TransactionServiceImpl implements TransactionService {
             AepsTransactionEngineRepository transactionRepository,
             TransactionEngine transactionEngine,
             ApplicationEventPublisher eventPublisher,
-            AepsProperties aepsProperties
+            AepsProperties aepsProperties,
+            com.rupiksha.backend.service.WalletService walletService
     ) {
         this.aepsUserRepository = aepsUserRepository;
         this.mainUserRepository = mainUserRepository;
@@ -48,6 +50,7 @@ public class TransactionServiceImpl implements TransactionService {
         this.transactionEngine = transactionEngine;
         this.eventPublisher = eventPublisher;
         this.aepsProperties = aepsProperties;
+        this.walletService = walletService;
     }
 
 
@@ -107,17 +110,30 @@ public class TransactionServiceImpl implements TransactionService {
                 .orElseThrow(() -> new ValidationException("Core merchant profile not found."));
 
         // 4. Perform security checks
-        performSecurityChecks(mainUser, aepsUser);
+        performSecurityChecks(mainUser, aepsUser, request.getServiceType());
+
+        // Check wallet balance for CASH_DEPOSIT
+        if ("CASH_DEPOSIT".equalsIgnoreCase(request.getServiceType())) {
+            var wallet = walletService.getBalance(mainUser.getId().toString());
+            if (wallet.balance().compareTo(request.getAmount()) < 0) {
+                throw new ValidationException("Insufficient wallet balance for AEPS Cash Deposit.");
+            }
+        }
 
         // 5. Setup unique IDs and Correlation ID
         String correlationId = "CORR" + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase();
         String referenceNumber = "REF" + System.currentTimeMillis() + (System.nanoTime() % 1000);
 
         // 6. Persist initial transaction record in DB
+        String reqProvider = request.getProvider();
+        String activeProvider = (reqProvider != null && !reqProvider.isBlank()) 
+                ? reqProvider.toLowerCase() 
+                : aepsProperties.getActiveProvider().toLowerCase();
+
         AepsTransactionEngine transaction = AepsTransactionEngine.builder()
                 .transactionId(request.getTransactionId())
                 .referenceNumber(referenceNumber)
-                .provider(aepsProperties.getActiveProvider().toLowerCase())
+                .provider(activeProvider)
                 .serviceType(request.getServiceType().toUpperCase())
                 .merchantId(aepsUser.getAepsMerchantId())
                 .userId(mainUser.getId())
@@ -143,6 +159,7 @@ public class TransactionServiceImpl implements TransactionService {
                 .user(mainUser)
                 .merchant(aepsUser)
                 .request(request)
+                .provider(activeProvider)
                 .workflowState(TransactionWorkflowState.STARTED)
                 .correlationId(correlationId)
                 .timestamp(LocalDateTime.now())
@@ -181,7 +198,8 @@ public class TransactionServiceImpl implements TransactionService {
         // Reject unsupported service types at validation step (optional but ensures clean gates)
         String type = request.getServiceType().toUpperCase();
         if (!type.equals("CASH_WITHDRAWAL") && !type.equals("BALANCE_INQUIRY") && 
-            !type.equals("MINI_STATEMENT") && !type.equals("AADHAAR_PAY")) {
+            !type.equals("MINI_STATEMENT") && !type.equals("AADHAAR_PAY") &&
+            !type.equals("CASH_DEPOSIT")) {
             throw new ValidationException("Unsupported AEPS service type: " + request.getServiceType());
         }
 
@@ -195,7 +213,7 @@ public class TransactionServiceImpl implements TransactionService {
         }
     }
 
-    private void performSecurityChecks(com.rupiksha.backend.domain.User mainUser, com.rupiksha.aeps.entity.User aepsUser) {
+    private void performSecurityChecks(com.rupiksha.backend.domain.User mainUser, com.rupiksha.aeps.entity.User aepsUser, String serviceType) {
         // Main Core User Active Gate
         if (mainUser.getStatus() == null || !mainUser.getStatus().name().equalsIgnoreCase("ACTIVE")) {
             throw new ValidationException("Merchant account is inactive or pending approval.");
@@ -211,13 +229,24 @@ public class TransactionServiceImpl implements TransactionService {
             throw new ValidationException("Merchant biometric KYC is not complete.");
         }
 
-        // Daily 2FA Session Gate
+        // Daily 2FA Session Gate (Isolate standard AEPS vs Aadhaar Pay contexts)
         boolean hasValidSession = false;
-        if (aepsUser.getAeps2faSessionId() != null && aepsUser.getAeps2faAuthenticatedAt() != null) {
-            java.time.LocalDate authenticatedDate = aepsUser.getAeps2faAuthenticatedAt().toLocalDate();
-            java.time.LocalDate today = java.time.LocalDate.now();
-            hasValidSession = authenticatedDate.isEqual(today);
+        boolean isAadhaarPay = "AADHAAR_PAY".equalsIgnoreCase(serviceType);
+
+        if (isAadhaarPay) {
+            if (aepsUser.getAepsAp2faSessionId() != null && aepsUser.getAepsAp2faAuthenticatedAt() != null) {
+                java.time.LocalDate authenticatedDate = aepsUser.getAepsAp2faAuthenticatedAt().toLocalDate();
+                java.time.LocalDate today = java.time.LocalDate.now();
+                hasValidSession = authenticatedDate.isEqual(today);
+            }
+        } else {
+            if (aepsUser.getAeps2faSessionId() != null && aepsUser.getAeps2faAuthenticatedAt() != null) {
+                java.time.LocalDate authenticatedDate = aepsUser.getAeps2faAuthenticatedAt().toLocalDate();
+                java.time.LocalDate today = java.time.LocalDate.now();
+                hasValidSession = authenticatedDate.isEqual(today);
+            }
         }
+
         if (!hasValidSession) {
             throw new ValidationException("Merchant Daily 2FA session is not authenticated for today.");
         }

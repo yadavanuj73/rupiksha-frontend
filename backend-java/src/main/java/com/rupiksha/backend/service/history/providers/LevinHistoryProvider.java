@@ -45,8 +45,14 @@ public class LevinHistoryProvider extends BaseHistoryProvider {
         
         String serviceType = getServiceType(reportType);
         Pageable translated = translatePageable(pageable);
+        
+        String providerFilter = "levin";
+        if (reportType == TransactionReportType.AEPS_CASH_DEPOSIT) {
+            providerFilter = "fingpay";
+        }
+        
         Page<AepsTransactionEngine> txns = transactionRepository.findWithFilters(
-                userId, serviceType, status, "levin", fromDate, toDate, search, translated);
+                userId, serviceType, status, providerFilter, fromDate, toDate, search, translated);
         
         return txns.map(this::mapToDto);
     }
@@ -59,8 +65,14 @@ public class LevinHistoryProvider extends BaseHistoryProvider {
         
         String serviceType = getServiceType(reportType);
         Sort translated = translateSort(sort);
+        
+        String providerFilter = "levin";
+        if (reportType == TransactionReportType.AEPS_CASH_DEPOSIT) {
+            providerFilter = "fingpay";
+        }
+        
         List<AepsTransactionEngine> txns = transactionRepository.findAllWithFilters(
-                userId, serviceType, status, "levin", fromDate, toDate, search, translated);
+                userId, serviceType, status, providerFilter, fromDate, toDate, search, translated);
         
         return txns.stream().map(this::mapToDto).collect(Collectors.toList());
     }
@@ -93,8 +105,14 @@ public class LevinHistoryProvider extends BaseHistoryProvider {
             LocalDateTime fromDate, LocalDateTime toDate) {
         
         String serviceType = getServiceType(reportType);
+        
+        String providerFilter = "levin";
+        if (reportType == TransactionReportType.AEPS_CASH_DEPOSIT) {
+            providerFilter = "fingpay";
+        }
+        
         List<AepsTransactionEngine> all = transactionRepository.findAllWithFilters(
-                userId, serviceType, status, "levin", fromDate, toDate, search, Sort.unsorted());
+                userId, serviceType, status, providerFilter, fromDate, toDate, search, Sort.unsorted());
 
         long total = all.size();
         long success = all.stream().filter(t -> "SUCCESS".equalsIgnoreCase(t.getStatus()) || "APPROVED".equalsIgnoreCase(t.getStatus())).count();
@@ -135,7 +153,7 @@ public class LevinHistoryProvider extends BaseHistoryProvider {
                 .bankReference(txn.getProviderReference())
                 .retailerId(txn.getUserId().toString())
                 .serviceType(txn.getServiceType())
-                .provider("LEVIN")
+                .provider(txn.getProvider() != null ? txn.getProvider().toUpperCase() : "LEVIN")
                 .amount(txn.getAmount())
                 .commission(balances.commission)
                 .openingBalance(balances.openingBalance)

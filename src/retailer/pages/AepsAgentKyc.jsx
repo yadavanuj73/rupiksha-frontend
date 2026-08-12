@@ -56,7 +56,7 @@ export default function AepsAgentKyc() {
         setKycResponse(null);
 
         try {
-            const res = await kycWorkflowService.submitBiometricKyc(captureResult.pidXml, 'FMR');
+            const res = await kycWorkflowService.submitBiometricKyc(captureResult.pidXml, 'FMR', provider);
             setKycResponse(res.data);
         } catch (err) {
             console.error("Biometric KYC submission failed", err);
@@ -76,7 +76,7 @@ export default function AepsAgentKyc() {
         setOtpError('');
 
         try {
-            const res = await otpVerificationService.verifyKycOtp(otpCode);
+            const res = await otpVerificationService.verifyKycOtp(otpCode, provider);
             setKycResponse(res.data);
         } catch (err) {
             console.error("OTP verification failed", err);

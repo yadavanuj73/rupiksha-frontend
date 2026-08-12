@@ -462,13 +462,24 @@ export const aepsService = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
-  verifyOtp: (otp) =>
+  verifyOtp: (otp, provider) =>
     apiFetch("/aeps/otp-verify", {
       method: "POST",
-      body: JSON.stringify({ otp }),
+      body: JSON.stringify({ otp, provider }),
     }),
   dailyAuthenticate: (payload) =>
     apiFetch("/aeps/daily-authenticate", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  getBanks: () => apiFetch("/aeps/banks"),
+  getTransactionStatus: (transactionId) =>
+    apiFetch("/aeps/transaction-status", {
+      method: "POST",
+      body: JSON.stringify({ transactionId }),
+    }),
+  transact: (payload) =>
+    apiFetch("/aeps/transaction", {
       method: "POST",
       body: JSON.stringify(payload),
     }),

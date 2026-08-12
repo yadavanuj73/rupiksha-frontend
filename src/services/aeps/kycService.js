@@ -7,7 +7,7 @@ export const kycWorkflowService = {
     /**
      * Submits the captured PID XML block and biometric type to the backend.
      */
-    submitBiometricKyc: async (pidXml, biometricType = 'FMR') => {
+    submitBiometricKyc: async (pidXml, biometricType = 'FMR', provider) => {
         if (!pidXml) {
             throw new Error("Biometric XML is required for KYC submission.");
         }
@@ -15,7 +15,8 @@ export const kycWorkflowService = {
         try {
             const payload = {
                 pidXml,
-                biometricType
+                biometricType,
+                provider
             };
             const response = await aepsService.submitKyc(payload);
             return response; // Contains: success, otpRequired, message, referenceId

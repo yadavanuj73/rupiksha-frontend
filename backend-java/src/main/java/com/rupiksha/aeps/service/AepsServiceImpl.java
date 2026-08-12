@@ -85,6 +85,10 @@ public class AepsServiceImpl implements AepsService {
             if (coreUser.getAeps2faAuthenticatedAt() != null) {
                 aepsUser.setAeps2faAuthenticatedAt(java.time.LocalDateTime.ofInstant(coreUser.getAeps2faAuthenticatedAt(), java.time.ZoneId.systemDefault()));
             }
+            aepsUser.setAepsAp2faSessionId(coreUser.getAepsAp2faSessionId());
+            if (coreUser.getAepsAp2faAuthenticatedAt() != null) {
+                aepsUser.setAepsAp2faAuthenticatedAt(java.time.LocalDateTime.ofInstant(coreUser.getAepsAp2faAuthenticatedAt(), java.time.ZoneId.systemDefault()));
+            }
             log.info("Synchronizing core user to AEPS registry for mobile: {}", mobile);
             return aepsUserRepository.save(aepsUser);
         }
@@ -114,10 +118,18 @@ public class AepsServiceImpl implements AepsService {
                     hasValidSession = authenticatedDate.isEqual(today);
                 }
 
+                boolean hasValidApSession = false;
+                if (coreUser.getAepsAp2faSessionId() != null && coreUser.getAepsAp2faSessionId().startsWith("FGP") && coreUser.getAepsAp2faAuthenticatedAt() != null) {
+                    java.time.LocalDate authenticatedDate = coreUser.getAepsAp2faAuthenticatedAt().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+                    java.time.LocalDate today = java.time.LocalDate.now();
+                    hasValidApSession = authenticatedDate.isEqual(today);
+                }
+
                 return StatusResponse.builder()
                         .onboarded(true)
                         .kycDone(kyc.getKycDone() != null && kyc.getKycDone())
                         .aeps2faDone(hasValidSession)
+                        .ap2faDone(hasValidApSession)
                         .agentId(kyc.getOutlet())
                         .merchantId(kyc.getMerchantId() != null ? kyc.getMerchantId() : kyc.getOutlet())
                         .build();
@@ -126,6 +138,7 @@ public class AepsServiceImpl implements AepsService {
                         .onboarded(false)
                         .kycDone(false)
                         .aeps2faDone(false)
+                        .ap2faDone(false)
                         .build();
             }
         } else {
@@ -139,10 +152,18 @@ public class AepsServiceImpl implements AepsService {
                     hasValidSession = authenticatedDate.isEqual(today);
                 }
 
+                boolean hasValidApSession = false;
+                if (user.getAepsAp2faSessionId() != null && !user.getAepsAp2faSessionId().startsWith("FGP") && user.getAepsAp2faAuthenticatedAt() != null) {
+                    java.time.LocalDate authenticatedDate = user.getAepsAp2faAuthenticatedAt().toLocalDate();
+                    java.time.LocalDate today = java.time.LocalDate.now();
+                    hasValidApSession = authenticatedDate.isEqual(today);
+                }
+
                 return StatusResponse.builder()
                         .onboarded(user.getAepsOnboarded() != null && user.getAepsOnboarded())
                         .kycDone(user.getAepsKycDone() != null && user.getAepsKycDone())
                         .aeps2faDone(hasValidSession)
+                        .ap2faDone(hasValidApSession)
                         .agentId(user.getAepsAgentId())
                         .merchantId(user.getAepsMerchantId())
                         .build();
@@ -151,6 +172,7 @@ public class AepsServiceImpl implements AepsService {
                     .onboarded(false)
                     .kycDone(false)
                     .aeps2faDone(false)
+                    .ap2faDone(false)
                     .build();
         }
     }
@@ -171,7 +193,7 @@ public class AepsServiceImpl implements AepsService {
     @Transactional
     public OnboardingResponse onboard(OnboardingRequest request) {
         log.info("Executing transactional onboarding via service layers...");
-        AepsProvider activeProvider = getActiveProvider();
+        AepsProvider activeProvider = getActiveProvider(request.getProvider());
         OnboardingResponse response = activeProvider.onboard(request);
         
         boolean isSuccess = (response.getStatusId() != null && response.getStatusId() == 1) ||
@@ -220,7 +242,7 @@ public class AepsServiceImpl implements AepsService {
     @Transactional
     public KycResponse kyc(KycRequest request, String mobile) {
         log.info("Initiating biometric KYC submission flow for mobile: {}", mobile);
-        AepsProvider activeProvider = getActiveProvider();
+        AepsProvider activeProvider = getActiveProvider(request.getProvider());
 
         // 1. Fetch and validate AEPS User record
         User aepsUser = getOrSyncAepsUser(mobile);
@@ -388,7 +410,7 @@ public class AepsServiceImpl implements AepsService {
     @Transactional
     public KycResponse verifyOtp(OtpVerifyRequest request, String mobile) {
         log.info("Initiating OTP verification flow for mobile: {}", mobile);
-        AepsProvider activeProvider = getActiveProvider();
+        AepsProvider activeProvider = getActiveProvider(request.getProvider());
 
         // 1. Fetch and validate AEPS User record
         User aepsUser = getOrSyncAepsUser(mobile);
@@ -521,7 +543,7 @@ public class AepsServiceImpl implements AepsService {
     @Transactional
     public KycResponse dailyAuthenticate(DailyAuthRequest request, String mobile) {
         log.info("Initiating Daily 2FA authentication flow for mobile: {}", mobile);
-        AepsProvider activeProvider = getActiveProvider();
+        AepsProvider activeProvider = getActiveProvider(request.getProvider());
 
         // 1. Fetch and validate AEPS User record
         User aepsUser = getOrSyncAepsUser(mobile);
@@ -536,19 +558,28 @@ public class AepsServiceImpl implements AepsService {
         }
 
         // Check if session is already active today (same calendar day)
+        boolean isAp = "AadhaarPay".equalsIgnoreCase(request.getServiceType()) || "AP".equalsIgnoreCase(request.getServiceType());
         boolean hasValidSession = false;
-        if (aepsUser.getAeps2faSessionId() != null && aepsUser.getAeps2faAuthenticatedAt() != null) {
-            java.time.LocalDate authenticatedDate = aepsUser.getAeps2faAuthenticatedAt().toLocalDate();
-            java.time.LocalDate today = java.time.LocalDate.now();
-            hasValidSession = authenticatedDate.isEqual(today);
+        if (isAp) {
+            if (aepsUser.getAepsAp2faSessionId() != null && aepsUser.getAepsAp2faAuthenticatedAt() != null) {
+                java.time.LocalDate authenticatedDate = aepsUser.getAepsAp2faAuthenticatedAt().toLocalDate();
+                java.time.LocalDate today = java.time.LocalDate.now();
+                hasValidSession = authenticatedDate.isEqual(today);
+            }
+        } else {
+            if (aepsUser.getAeps2faSessionId() != null && aepsUser.getAeps2faAuthenticatedAt() != null) {
+                java.time.LocalDate authenticatedDate = aepsUser.getAeps2faAuthenticatedAt().toLocalDate();
+                java.time.LocalDate today = java.time.LocalDate.now();
+                hasValidSession = authenticatedDate.isEqual(today);
+            }
         }
         if (hasValidSession) {
-            log.info("Daily session already active for merchant: {}. Skipping API call.", mobile);
+            log.info("Daily session already active for merchant: {}, serviceType: {}. Skipping API call.", mobile, request.getServiceType());
             return KycResponse.builder()
                     .success(true)
                     .workflowState(AepsWorkflowState.READY_FOR_TRANSACTIONS.name())
                     .message("Daily 2FA session is already active.")
-                    .providerReference(aepsUser.getAeps2faSessionId())
+                    .providerReference(isAp ? aepsUser.getAepsAp2faSessionId() : aepsUser.getAeps2faSessionId())
                     .provider(activeProvider.getProviderName().toUpperCase())
                     .build();
         }
@@ -567,7 +598,7 @@ public class AepsServiceImpl implements AepsService {
                 .merchantId(aepsUser.getAepsMerchantId())
                 .workflowState(AepsWorkflowState.READY_FOR_DAILY_2FA.name())
                 .status("DAILY_AUTH_STARTED")
-                .remarks("Merchant initiated Daily 2FA session capture.")
+                .remarks("Merchant initiated Daily 2FA session capture for " + (isAp ? "AadhaarPay" : "AEPS"))
                 .createdBy(mainUser.getUsername())
                 .build();
         history = aepsKycHistoryRepository.save(history);
@@ -581,6 +612,7 @@ public class AepsServiceImpl implements AepsService {
                 .latitude(request.getLatitude())
                 .longitude(request.getLongitude())
                 .biometricType(request.getBiometricType())
+                .serviceType(request.getServiceType())
                 .build();
 
         ProviderKycResult providerResult;
@@ -612,15 +644,27 @@ public class AepsServiceImpl implements AepsService {
                     ? String.valueOf(providerResult.getProviderTxnId()) 
                     : String.valueOf(System.currentTimeMillis());
 
-            // Update AEPS user
-            aepsUser.setAeps2faSessionId(sessionRef);
-            aepsUser.setAeps2faAuthenticatedAt(java.time.LocalDateTime.now());
-            aepsUserRepository.save(aepsUser);
+            if (isAp) {
+                // Update AEPS user
+                aepsUser.setAepsAp2faSessionId(sessionRef);
+                aepsUser.setAepsAp2faAuthenticatedAt(java.time.LocalDateTime.now());
+                aepsUserRepository.save(aepsUser);
 
-            // Update main core user
-            mainUser.setAeps2faSessionId(sessionRef);
-            mainUser.setAeps2faAuthenticatedAt(java.time.Instant.now());
-            mainUserRepository.save(mainUser);
+                // Update main core user
+                mainUser.setAepsAp2faSessionId(sessionRef);
+                mainUser.setAepsAp2faAuthenticatedAt(java.time.Instant.now());
+                mainUserRepository.save(mainUser);
+            } else {
+                // Update AEPS user
+                aepsUser.setAeps2faSessionId(sessionRef);
+                aepsUser.setAeps2faAuthenticatedAt(java.time.LocalDateTime.now());
+                aepsUserRepository.save(aepsUser);
+
+                // Update main core user
+                mainUser.setAeps2faSessionId(sessionRef);
+                mainUser.setAeps2faAuthenticatedAt(java.time.Instant.now());
+                mainUserRepository.save(mainUser);
+            }
 
             // Update audit history log
             history.setWorkflowState(AepsWorkflowState.READY_FOR_TRANSACTIONS.name());
@@ -673,7 +717,13 @@ public class AepsServiceImpl implements AepsService {
      * Resolves the active AEPS provider dynamically using configurations.
      */
     private AepsProvider getActiveProvider() {
-        String activeName = aepsProperties.getActiveProvider();
+        return getActiveProvider(null);
+    }
+
+    private AepsProvider getActiveProvider(String requestedProvider) {
+        String activeName = (requestedProvider != null && !requestedProvider.isBlank()) 
+                ? requestedProvider 
+                : aepsProperties.getActiveProvider();
         return providers.stream()
                 .filter(p -> p.getProviderName().equalsIgnoreCase(activeName))
                 .findFirst()

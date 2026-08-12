@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { aepsService, userService } from '../../services/apiService';
 import DailyAuthentication from '../../components/DailyAuthentication';
 import DisabledServiceBanner from '../../components/shared/DisabledServiceBanner';
+import BankingTerminal from '../components/banking/BankingTerminal';
 
 export default function AEPS() {
     const navigate = useNavigate();
@@ -176,46 +177,14 @@ export default function AEPS() {
                 ) : !status.aeps2faDone ? (
                     /* Step 3: Daily 2FA Session Verification */
                     <DailyAuthentication
+                        provider={provider}
+                        serviceType="AEPS"
                         onSuccess={() => setStatus(prev => ({ ...prev, aeps2faDone: true }))}
                         onBack={() => navigate('/dashboard')}
                     />
                 ) : (
                     /* Step 4: Fully Active Services */
-                    <>
-                        <div className="flex justify-center mb-6">
-                            <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
-                                <CheckCircle2 size={32} />
-                            </div>
-                        </div>
-                        <span className="inline-block px-3 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-wider rounded-full mb-3">
-                            Service Active
-                        </span>
-                        <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight mb-2">
-                            AEPS Portal Activated
-                        </h2>
-                        <p className="text-slate-500 text-xs mb-5 font-semibold leading-relaxed">
-                            Welcome! Your agent profile is active. Transaction processing interfaces are currently undergoing upgrades.
-                        </p>
-                        <div className="bg-slate-50/80 rounded-2xl p-4 mb-6 border border-slate-100 text-left text-xs font-semibold text-slate-600 space-y-2">
-                            <div>✔ <span className="font-bold text-slate-700">Merchant ID:</span> {status.merchantId}</div>
-                            <div>✔ <span className="font-bold text-slate-700">Agent ID:</span> {status.agentId}</div>
-                            <div>✔ <span className="font-bold text-slate-700">KYC Status:</span> Verified</div>
-                        </div>
-                        <div className="flex gap-4">
-                            <button
-                                onClick={() => navigate('/dashboard')}
-                                className="flex-1 py-3.5 border border-slate-200 text-slate-600 rounded-2xl font-bold uppercase tracking-wider text-xs hover:bg-slate-50 transition"
-                            >
-                                Back
-                            </button>
-                            <button
-                                onClick={() => navigate('/dashboard')}
-                                className="flex-1 py-3.5 bg-blue-600 text-white rounded-2xl font-bold uppercase tracking-wider text-xs hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition"
-                            >
-                                Open Wallet
-                            </button>
-                        </div>
-                    </>
+                    <BankingTerminal provider={provider} status={status} setStatus={setStatus} />
                 )}
             </motion.div>
         </div>

@@ -9,4 +9,6 @@ public class KycRequest {
     private String pidXml;
 
     private String biometricType = "FMR";
+
+    private String provider;
 }

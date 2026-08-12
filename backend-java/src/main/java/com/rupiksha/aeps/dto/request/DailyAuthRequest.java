@@ -15,4 +15,8 @@ public class DailyAuthRequest {
     private String longitude;
 
     private String biometricType = "FMR";
+
+    private String provider;
+
+    private String serviceType = "AEPS";
 }

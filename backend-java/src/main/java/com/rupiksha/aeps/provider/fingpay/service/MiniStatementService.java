@@ -119,7 +119,6 @@ public class MiniStatementService {
             payload.put("captureResponse", captureResponse);
 
             String plainJson = objectMapper.writeValueAsString(payload);
-            log.debug("MS plain JSON: {}", plainJson);
 
             // Encrypt
             SecretKey sessionKey = encryptionUtil.generateSessionKey();
@@ -137,7 +136,6 @@ public class MiniStatementService {
             HttpEntity<String> entity = new HttpEntity<>(encryptedBody, headers);
             ResponseEntity<String> httpResp = restTemplate.exchange(
                     msUrl, HttpMethod.POST, entity, String.class);
-            log.debug("MS raw response: {}", httpResp.getBody());
 
             JsonNode root = objectMapper.readTree(httpResp.getBody());
             JsonNode data = root.path("data");
@@ -179,6 +177,7 @@ public class MiniStatementService {
                 resp.setBankRRN(txn.getRrn());
                 resp.setBalanceAmount(txn.getAmount());
                 resp.setMiniStatement(entries);
+                resp.setResponseCode(data.path("responseCode").asText("00"));
 
             } else {
                 txn.setTxnid(txnId);
@@ -193,6 +192,7 @@ public class MiniStatementService {
                 resp.setMessage(txn.getMessage());
                 resp.setTxnId(txnId);
                 resp.setMiniStatement(new ArrayList<>());
+                resp.setResponseCode(data.path("responseCode").asText(""));
             }
 
             return resp;

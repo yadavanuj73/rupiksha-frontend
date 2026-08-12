@@ -65,7 +65,6 @@ public class CwStatusService {
             payload.put("hash", hash);
 
             String plainJson = objectMapper.writeValueAsString(payload);
-            log.debug("CW status request JSON: {}", plainJson);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -73,8 +72,6 @@ public class CwStatusService {
             HttpEntity<String> entity = new HttpEntity<>(plainJson, headers);
             ResponseEntity<String> httpResp = restTemplate.exchange(
                     cwStatusUrl, HttpMethod.POST, entity, String.class);
-
-            log.debug("CW status response: {}", httpResp.getBody());
 
             return objectMapper.readValue(httpResp.getBody(), CwStatusResponse.class);
 

@@ -113,7 +113,6 @@ public class BalanceInquiryService {
             payload.put("captureResponse", captureResponse);
 
             String plainJson = objectMapper.writeValueAsString(payload);
-            log.debug("BI plain JSON: {}", plainJson);
 
             // Encrypt
             SecretKey sessionKey = encryptionUtil.generateSessionKey();
@@ -131,7 +130,6 @@ public class BalanceInquiryService {
             HttpEntity<String> entity = new HttpEntity<>(encryptedBody, headers);
             ResponseEntity<String> httpResp = restTemplate.exchange(
                     biUrl, HttpMethod.POST, entity, String.class);
-            log.debug("BI raw response: {}", httpResp.getBody());
 
             JsonNode root = objectMapper.readTree(httpResp.getBody());
             JsonNode data = root.path("data");

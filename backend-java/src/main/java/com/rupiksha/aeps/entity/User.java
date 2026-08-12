@@ -42,6 +42,12 @@ public class User {
     @Column(name = "aeps_2fa_authenticated_at")
     private LocalDateTime aeps2faAuthenticatedAt;
 
+    @Column(name = "aeps_ap_2fa_session_id")
+    private String aepsAp2faSessionId;
+
+    @Column(name = "aeps_ap_2fa_authenticated_at")
+    private LocalDateTime aepsAp2faAuthenticatedAt;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

@@ -212,6 +212,14 @@ fingpay:
     url: ${FINGPAY_AP_URL:}
     status:
       url: ${FINGPAY_AP_STATUS_URL:}
+  cd:
+    url: ${FINGPAY_CD_URL:https://fingpayap.tapits.in/fpaepsservice/api/CashDeposit/merchant/deposit}
+    status:
+      url: ${FINGPAY_CD_STATUS_URL:https://fingpayap.tapits.in/fpaepsweb/api/auth/merchantInfo/statusCheckV2/merchantLoginId/cashDeposit}
+  daily-auth:
+    url: ${FINGPAY_DAILY_AUTH_URL:https://fpuat.tapits.in/fpaepsservice/auth/tfauth/merchant/validate/aadhar}
+  security:
+    key: ${FINGPAY_SECURITY_KEY:}
 
 ---
 # Production profile overrides. Activated with SPRING_PROFILES_ACTIVE=prod.

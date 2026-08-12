@@ -9,7 +9,7 @@ import CaptureError from './CaptureError';
 import CaptureSuccess from './CaptureSuccess';
 import { daily2faService } from '../services/aeps/daily2faService';
 
-export default function DailyAuthentication({ onSuccess, onBack }) {
+export default function DailyAuthentication({ provider, serviceType = 'AEPS', onSuccess, onBack }) {
     const { captureResult, device } = useRD();
 
     const [location, setLocation] = useState(null);
@@ -72,7 +72,9 @@ export default function DailyAuthentication({ onSuccess, onBack }) {
                 captureResult.pidXml,
                 location.latitude,
                 location.longitude,
-                'FMR'
+                'FMR',
+                provider,
+                serviceType
             );
             setAuthResponse(res.data);
         } catch (err) {
@@ -92,13 +94,13 @@ export default function DailyAuthentication({ onSuccess, onBack }) {
                     {/* Header */}
                     <div>
                         <span className="inline-block px-3 py-1 bg-amber-50 text-amber-700 text-[10px] font-black uppercase tracking-wider rounded-full mb-2">
-                            Daily Session Validation
+                            Daily Session Validation ({serviceType === 'AadhaarPay' ? 'Aadhaar Pay' : 'AEPS'})
                         </span>
                         <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight mb-2">
-                            Daily 2FA Required
+                            {serviceType === 'AadhaarPay' ? 'Aadhaar Pay 2FA' : 'Daily 2FA Required'}
                         </h2>
                         <p className="text-slate-500 text-xs font-semibold leading-relaxed">
-                            Under banking guidelines, you must authenticate your biometrics once daily to process AEPS transactions.
+                            Under banking guidelines, you must authenticate your biometrics once daily to process {serviceType === 'AadhaarPay' ? 'Aadhaar Pay' : 'AEPS'} transactions.
                         </p>
                     </div>
 

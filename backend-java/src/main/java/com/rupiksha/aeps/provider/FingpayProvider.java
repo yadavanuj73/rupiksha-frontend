@@ -21,6 +21,8 @@ import com.rupiksha.aeps.provider.fingpay.entity.*;
 import com.rupiksha.aeps.provider.fingpay.repository.*;
 import com.rupiksha.aeps.provider.fingpay.service.*;
 import com.rupiksha.aeps.provider.fingpay.util.FingpayEncryptionUtil;
+import com.rupiksha.aeps.repository.AepsUserRepository;
+import com.rupiksha.aeps.provider.fingpay.service.FpDailyAuthService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +52,7 @@ public class FingpayProvider implements AepsProvider {
     private final BalanceInquiryService balanceInquiryService;
     private final MiniStatementService miniStatementService;
     private final AadhaarPayService aadhaarPayService;
+    private final CashDepositService cashDepositService;
 
     private final EkycTxnRepo ekycTxnRepo;
     private final AepsKycRepository aepsKycRepo;
@@ -59,6 +62,8 @@ public class FingpayProvider implements AepsProvider {
     private final AepsProperties aepsProperties;
     private final ObjectMapper objectMapper;
     private final com.rupiksha.backend.repository.UserRepository mainUserRepository;
+    private final FpDailyAuthService fpDailyAuthService;
+    private final AepsUserRepository aepsUserRepository;
 
     @Override
     public String getProviderName() {
@@ -312,13 +317,8 @@ public class FingpayProvider implements AepsProvider {
 
     @Override
     public ProviderKycResult dailyAuthenticate(AepsDailyAuthRequest request) {
-        log.info("FingpayProvider simulating successful Daily 2FA authentication.");
-        return ProviderKycResult.builder()
-                .workflowState(AepsWorkflowState.READY_FOR_DAILY_2FA)
-                .providerTxnId("FGP2FA" + System.currentTimeMillis())
-                .providerReference("FGPREF" + System.currentTimeMillis())
-                .message("Fingpay Daily 2FA verified (Simulated).")
-                .build();
+        log.info("FingpayProvider executing real Daily 2FA authentication.");
+        return fpDailyAuthService.authenticate(request);
     }
 
     @Override
@@ -352,6 +352,7 @@ public class FingpayProvider implements AepsProvider {
             throw new ProviderException("Failed to parse biometric XML: " + e.getMessage());
         }
 
+        TransactionResult result;
         if (serviceType.equals("CASH_WITHDRAWAL")) {
             CashWithdrawalRequest req = new CashWithdrawalRequest();
             req.setUid(uidLong);
@@ -367,12 +368,41 @@ public class FingpayProvider implements AepsProvider {
             CashWithdrawalResponse resp = cashWithdrawalService.process(req);
             boolean success = "SUCCESS".equalsIgnoreCase(resp.getStatus());
 
-            return TransactionResult.builder()
+            result = TransactionResult.builder()
                     .transactionId(context.getRequest().getTransactionId())
                     .referenceNumber(context.getCorrelationId())
                     .providerReference(resp.getFpTxnId())
                     .status(success ? "SUCCESS" : "FAILED")
                     .workflowState(success ? TransactionWorkflowState.SUCCESS : TransactionWorkflowState.FAILED)
+                    .responseCode(resp.getResponseCode())
+                    .responseMessage(resp.getMessage())
+                    .amount(BigDecimal.valueOf(resp.getTransactionAmount() != null ? resp.getTransactionAmount() : 0.0))
+                    .providerName("fingpay")
+                    .completedTime(LocalDateTime.now())
+                    .build();
+
+        } else if (serviceType.equals("CASH_DEPOSIT")) {
+            CashDepositRequest req = new CashDepositRequest();
+            req.setUid(uidLong);
+            req.setMobile(context.getMerchant().getMobile());
+            req.setAadhar(context.getRequest().getAdhaarNumber());
+            req.setLat(context.getRequest().getLatitude() != null ? context.getRequest().getLatitude() : "28.6139");
+            req.setLog(context.getRequest().getLongitude() != null ? context.getRequest().getLongitude() : "77.2090");
+            req.setAmount(context.getRequest().getAmount().doubleValue());
+            req.setBankId(bank.getId());
+
+            populateBiometricsCD(req, parsed);
+
+            CashDepositResponse resp = cashDepositService.process(req, context.getRequest().getTransactionId());
+            boolean success = "SUCCESS".equalsIgnoreCase(resp.getStatus());
+            boolean pending = "PENDING".equalsIgnoreCase(resp.getStatus());
+
+            result = TransactionResult.builder()
+                    .transactionId(context.getRequest().getTransactionId())
+                    .referenceNumber(context.getCorrelationId())
+                    .providerReference(resp.getFpTxnId())
+                    .status(pending ? "PENDING" : (success ? "SUCCESS" : "FAILED"))
+                    .workflowState(pending ? TransactionWorkflowState.PENDING : (success ? TransactionWorkflowState.SUCCESS : TransactionWorkflowState.FAILED))
                     .responseCode(resp.getResponseCode())
                     .responseMessage(resp.getMessage())
                     .amount(BigDecimal.valueOf(resp.getTransactionAmount() != null ? resp.getTransactionAmount() : 0.0))
@@ -394,7 +424,7 @@ public class FingpayProvider implements AepsProvider {
             BalanceInquiryResponse resp = balanceInquiryService.process(req);
             boolean success = "SUCCESS".equalsIgnoreCase(resp.getStatus());
 
-            return TransactionResult.builder()
+            result = TransactionResult.builder()
                     .transactionId(context.getRequest().getTransactionId())
                     .referenceNumber(context.getCorrelationId())
                     .providerReference(resp.getFpTxnId())
@@ -421,13 +451,13 @@ public class FingpayProvider implements AepsProvider {
             MiniStatementResponse resp = miniStatementService.process(req);
             boolean success = "SUCCESS".equalsIgnoreCase(resp.getStatus());
 
-            return TransactionResult.builder()
+            result = TransactionResult.builder()
                     .transactionId(context.getRequest().getTransactionId())
                     .referenceNumber(context.getCorrelationId())
                     .providerReference(resp.getFpTxnId())
                     .status(success ? "SUCCESS" : "FAILED")
                     .workflowState(success ? TransactionWorkflowState.SUCCESS : TransactionWorkflowState.FAILED)
-                    .responseCode("00")
+                    .responseCode(resp.getResponseCode() != null && !resp.getResponseCode().isEmpty() ? resp.getResponseCode() : (success ? "00" : "99"))
                     .responseMessage(resp.getMessage())
                     .amount(BigDecimal.ZERO)
                     .providerName("fingpay")
@@ -449,7 +479,7 @@ public class FingpayProvider implements AepsProvider {
             AadhaarPayResponse resp = aadhaarPayService.process(req);
             boolean success = "SUCCESS".equalsIgnoreCase(resp.getStatus());
 
-            return TransactionResult.builder()
+            result = TransactionResult.builder()
                     .transactionId(context.getRequest().getTransactionId())
                     .referenceNumber(context.getCorrelationId())
                     .providerReference(resp.getFpTxnId())
@@ -464,6 +494,13 @@ public class FingpayProvider implements AepsProvider {
         } else {
             throw new AepsException("Unsupported service type for Fingpay: " + serviceType);
         }
+
+        if (result != null && "FP069".equals(result.getResponseCode())) {
+            boolean isAp = "AADHAAR_PAY".equalsIgnoreCase(serviceType);
+            log.warn("Fingpay returned FP069 (2FA Required) for service: {}. Invalidating session.", serviceType);
+            invalidate2faSession(context.getMerchant().getMobile(), isAp);
+        }
+        return result;
     }
 
     private void populateBiometrics(CashWithdrawalRequest req, Map<String, String> parsed) {
@@ -487,6 +524,26 @@ public class FingpayProvider implements AepsProvider {
     }
 
     private void populateBiometricsBI(BalanceInquiryRequest req, Map<String, String> parsed) {
+        req.setErrorCode(parsed.get("errCode"));
+        req.setErrorInfo(parsed.get("errInfo"));
+        req.setFCount(parsed.get("fCount"));
+        req.setFType(parsed.get("fType"));
+        req.setNmPoints(parsed.getOrDefault("nmPoints", "0"));
+        req.setQScore(parsed.getOrDefault("qScore", "0"));
+        req.setDpId(parsed.get("dpID"));
+        req.setRdsId(parsed.get("rdsID"));
+        req.setRdsVer(parsed.get("rdsVer"));
+        req.setDc(parsed.get("dc"));
+        req.setMi(parsed.get("mi"));
+        req.setMc(parsed.get("mc"));
+        req.setCi(parsed.get("ci"));
+        req.setSessionKey(parsed.get("sessionKey"));
+        req.setHmac(parsed.get("hmac"));
+        req.setPidType(parsed.get("PidDatatype"));
+        req.setPidData(parsed.get("Piddata"));
+    }
+
+    private void populateBiometricsCD(CashDepositRequest req, Map<String, String> parsed) {
         req.setErrorCode(parsed.get("errCode"));
         req.setErrorInfo(parsed.get("errInfo"));
         req.setFCount(parsed.get("fCount"));
@@ -612,5 +669,36 @@ public class FingpayProvider implements AepsProvider {
             throw new AepsException("Fingpay AEPS provider configuration is missing or incomplete.");
         }
         return config;
+    }
+
+    private void invalidate2faSession(String mobile, boolean isAp) {
+        try {
+            Optional<com.rupiksha.aeps.entity.User> aepsUserOpt = aepsUserRepository.findByMobile(mobile)
+                    .or(() -> aepsUserRepository.findByUsername(mobile));
+            if (aepsUserOpt.isPresent()) {
+                com.rupiksha.aeps.entity.User aepsUser = aepsUserOpt.get();
+                if (isAp) {
+                    aepsUser.setAepsAp2faSessionId(null);
+                    aepsUser.setAepsAp2faAuthenticatedAt(null);
+                } else {
+                    aepsUser.setAeps2faSessionId(null);
+                    aepsUser.setAeps2faAuthenticatedAt(null);
+                }
+                aepsUserRepository.save(aepsUser);
+            }
+            mainUserRepository.findByMobile(mobile).ifPresent(mu -> {
+                if (isAp) {
+                    mu.setAepsAp2faSessionId(null);
+                    mu.setAepsAp2faAuthenticatedAt(null);
+                } else {
+                    mu.setAeps2faSessionId(null);
+                    mu.setAeps2faAuthenticatedAt(null);
+                }
+                mainUserRepository.save(mu);
+            });
+            log.info("Successfully invalidated daily 2FA session for mobile: {} (AadhaarPay={})", mobile, isAp);
+        } catch (Exception e) {
+            log.error("Failed to invalidate daily 2FA session: {}", e.getMessage(), e);
+        }
     }
 }

@@ -9,6 +9,7 @@ public class StatusResponse {
     private boolean onboarded;
     private boolean kycDone;
     private boolean aeps2faDone;
+    private boolean ap2faDone;
     private String agentId;
     private String merchantId;
 }

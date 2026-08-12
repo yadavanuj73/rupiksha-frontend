@@ -7,7 +7,7 @@ export const daily2faService = {
     /**
      * Submits captured biometric data and coordinates for daily 2FA verification.
      */
-    authenticate: async (pidXml, latitude, longitude, biometricType = 'FMR') => {
+    authenticate: async (pidXml, latitude, longitude, biometricType = 'FMR', provider, serviceType = 'AEPS') => {
         if (!pidXml) {
             throw new Error("Fingerprint biometric PID data is required.");
         }
@@ -20,7 +20,9 @@ export const daily2faService = {
                 pidXml,
                 latitude: String(latitude),
                 longitude: String(longitude),
-                biometricType
+                biometricType,
+                provider,
+                serviceType
             });
             return response; // Contains: success, workflowState, message, providerReference, provider
         } catch (error) {

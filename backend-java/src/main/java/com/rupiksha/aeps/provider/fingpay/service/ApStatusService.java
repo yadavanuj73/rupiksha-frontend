@@ -62,7 +62,6 @@ public class ApStatusService {
             payload.put("hash", hash);
 
             String plainJson = objectMapper.writeValueAsString(payload);
-            log.debug("AP status request JSON: {}", plainJson);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -70,7 +69,6 @@ public class ApStatusService {
             HttpEntity<String> entity = new HttpEntity<>(plainJson, headers);
             ResponseEntity<String> httpResp = restTemplate.exchange(
                     apStatusUrl, HttpMethod.POST, entity, String.class);
-            log.debug("AP status response: {}", httpResp.getBody());
 
             return objectMapper.readValue(httpResp.getBody(), ApStatusResponse.class);
 

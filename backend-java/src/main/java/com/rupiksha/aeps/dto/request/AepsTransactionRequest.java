@@ -42,4 +42,6 @@ public class AepsTransactionRequest {
     private String ipAddress;
 
     private String transactionId; // Optional: Client-provided reference
+
+    private String provider;
 }

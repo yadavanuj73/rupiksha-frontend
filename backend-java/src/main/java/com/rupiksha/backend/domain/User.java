@@ -103,6 +103,12 @@ public class User {
     @Column(name = "aeps_2fa_authenticated_at")
     private Instant aeps2faAuthenticatedAt;
 
+    @Column(name = "aeps_ap_2fa_session_id", length = 255)
+    private String aepsAp2faSessionId;
+
+    @Column(name = "aeps_ap_2fa_authenticated_at")
+    private Instant aepsAp2faAuthenticatedAt;
+
     @Column(name = "added_by_user_ref", length = 64)
     private String addedByUserRef;
 

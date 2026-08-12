@@ -11,6 +11,7 @@ public enum WalletTransactionContext {
     AEPS_MINI_STATEMENT,
     AEPS_AADHAAR_PAY,
     AEPS_REFUND,
+    AEPS_DEPOSIT,
     BBPS_PAYMENT,
     RECHARGE,
     DMT_TRANSFER,

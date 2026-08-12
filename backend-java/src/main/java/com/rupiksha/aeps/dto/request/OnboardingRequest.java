@@ -48,4 +48,6 @@ public class OnboardingRequest extends BaseRequest {
 
     @NotBlank(message = "Longitude is required")
     private String longitude;
+
+    private String provider;
 }
