@@ -207,7 +207,7 @@ export default function AepsOnboarding() {
             await aepsService.onboard(payload);
             setSuccessMsg('Fingpay Onboarding completed successfully! Redirecting to Biometric KYC...');
             setTimeout(() => {
-                navigate(`/aeps-kyc?mobile=${encodeURIComponent(formData.aepsMobile)}&provider=${encodeURIComponent(provider)}`);
+                navigate(`/aeps-agent-kyc?mobile=${encodeURIComponent(formData.aepsMobile)}&provider=${encodeURIComponent(provider)}`);
             }, 1500);
         } catch (err) {
             console.error("Onboarding submission error:", err);
