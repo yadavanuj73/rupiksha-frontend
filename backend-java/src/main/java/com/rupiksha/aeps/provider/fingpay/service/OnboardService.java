@@ -82,7 +82,7 @@ public class OnboardService {
             headers.add("hash", hash);
             headers.add("eskey", eskey);
             headers.add("X-Correlation-ID", txnId);
-            headers.add(HttpHeaders.CONTENT_TYPE, "text/plain");
+            // Content-Type is set by FingpayClient to application/json
 
             String response =
                     client.post(url, encryptedBody, headers);

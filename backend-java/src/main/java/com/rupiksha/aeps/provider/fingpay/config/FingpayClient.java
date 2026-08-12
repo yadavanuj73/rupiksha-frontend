@@ -16,11 +16,7 @@ public class FingpayClient {
 
     public String post(String url, String body, HttpHeaders headers){
 
-        // Only set default Content-Type if caller hasn't already specified one.
-        // Onboarding uses text/plain for AES-encrypted body; do NOT override it.
-        if (!headers.containsKey(HttpHeaders.CONTENT_TYPE)) {
-            headers.setContentType(MediaType.APPLICATION_JSON);
-        }
+        headers.setContentType(MediaType.APPLICATION_JSON);
 
         HttpEntity<String> entity =
                 new HttpEntity<>(body, headers);

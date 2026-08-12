@@ -119,6 +119,21 @@ public class FingpayProvider implements AepsProvider {
         settlement.setBankAccountName(request.getFname() + " " + request.getLname());
         merchant.setSettlementV1(settlement);
         
+        // termsConditionCheck and physicalVerification are required by Fingpay v2
+        merchant.setTermsConditionCheck("Y");
+        merchant.setPhysicalVerification("Y");
+
+        // merchantKycAddressData is required by Fingpay v2 — must include shop lat/lon
+        MerchantShopDTO shopData = new MerchantShopDTO();
+        shopData.setShopAddress(request.getAddress());
+        shopData.setShopCity(request.getCity());
+        shopData.setShopDistrict(request.getCity());
+        shopData.setShopState(resolveStateCode(request.getState()));
+        shopData.setShopPincode(request.getPinCode());
+        shopData.setShopLatitude(parseCoordinate(request.getLatitude(), 20.5937));
+        shopData.setShopLongitude(parseCoordinate(request.getLongitude(), 78.9629));
+        merchant.setMerchantKycAddressData(shopData);
+
         dto.setMerchant(merchant);
         dto.setLatitude(parseCoordinate(request.getLatitude(), 20.5937));
         dto.setLongitude(parseCoordinate(request.getLongitude(), 78.9629));
