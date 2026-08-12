@@ -120,8 +120,8 @@ public class FingpayProvider implements AepsProvider {
         merchant.setSettlementV1(settlement);
         
         dto.setMerchant(merchant);
-        dto.setLatitude(Double.parseDouble(request.getLatitude()));
-        dto.setLongitude(Double.parseDouble(request.getLongitude()));
+        dto.setLatitude(parseCoordinate(request.getLatitude(), 20.5937));
+        dto.setLongitude(parseCoordinate(request.getLongitude(), 78.9629));
 
         try {
             String rawResponse = onboardService.onboard(dto);
@@ -709,6 +709,19 @@ public class FingpayProvider implements AepsProvider {
         stateMap.put("UP", 9);  // Uttar Pradesh
         stateMap.put("WB", 19); // West Bengal
         return stateMap.getOrDefault(stateCode.toUpperCase().trim(), 27); // default to Maharashtra
+    }
+
+    /**
+     * Safely parses a coordinate string, returning the defaultValue if null/blank/invalid.
+     */
+    private double parseCoordinate(String value, double defaultValue) {
+        if (value == null || value.isBlank()) return defaultValue;
+        try {
+            return Double.parseDouble(value.trim());
+        } catch (NumberFormatException e) {
+            log.warn("Invalid coordinate value '{}', using default {}", value, defaultValue);
+            return defaultValue;
+        }
     }
 
     private AepsProperties.ProviderConfig getFingpayConfig() {

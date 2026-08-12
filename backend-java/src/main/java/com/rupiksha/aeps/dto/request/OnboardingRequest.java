@@ -43,10 +43,9 @@ public class OnboardingRequest extends BaseRequest {
     @NotBlank(message = "State code is required")
     private String state;
 
-    @NotBlank(message = "Latitude is required")
+    // Optional — GPS coordinates are best-effort from browser geolocation
     private String latitude;
 
-    @NotBlank(message = "Longitude is required")
     private String longitude;
 
     private String provider;

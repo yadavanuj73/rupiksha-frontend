@@ -61,6 +61,24 @@ export default function AepsOnboarding() {
                 console.error("Failed to parse user session metadata", e);
             }
         }
+
+        // Auto-detect GPS silently on page load so user doesn't need to click manually
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    setFormData(prev => ({
+                        ...prev,
+                        latitude: position.coords.latitude.toFixed(6),
+                        longitude: position.coords.longitude.toFixed(6)
+                    }));
+                },
+                () => {
+                    // Silent fallback — GPS is optional, backend will use default coordinates
+                    console.warn("GPS auto-detection failed or denied. User can still submit.");
+                },
+                { enableHighAccuracy: true, timeout: 8000 }
+            );
+        }
     }, []);
 
     if (serviceDisabled) {
@@ -140,9 +158,7 @@ export default function AepsOnboarding() {
 
         if (!formData.city.trim()) return "City is required";
         if (!formData.state) return "Please select your state";
-        if (!formData.latitude.trim() || !formData.longitude.trim()) {
-            return "GPS Coordinates are required. Please click 'Detect GPS'.";
-        }
+        // GPS coordinates are optional — backend defaults to central India if not provided
 
         return null;
     };
