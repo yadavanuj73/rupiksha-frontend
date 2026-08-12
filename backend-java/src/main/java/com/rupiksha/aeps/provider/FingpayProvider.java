@@ -135,10 +135,10 @@ public class FingpayProvider implements AepsProvider {
         
         merchant.setCompanyLegalName(request.getShopName() != null && !request.getShopName().isBlank() ? request.getShopName() : (request.getFname() + " Enterprise"));
         
-        // Exact companyType "4816" matching verified working PHP request
-        String compType = (request.getCompanyType() != null && request.getCompanyType() > 0)
-                ? String.valueOf(request.getCompanyType())
-                : "4816";
+        // CompanyType integer matching verified Fingpay API specification
+        Integer compType = (request.getCompanyType() != null && request.getCompanyType() > 0)
+                ? request.getCompanyType()
+                : 4816;
         merchant.setCompanyType(compType);
         merchant.setCertificateOfIncorporationImage(false);
 
