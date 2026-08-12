@@ -171,18 +171,26 @@ public class FingpayProvider implements AepsProvider {
             String rawResponse = onboardService.onboard(dto);
             JsonNode node = objectMapper.readTree(rawResponse);
             
-            String status = node.path("status").asText("FAILED");
+            boolean statusBool = node.path("status").asBoolean(false);
+            String statusStr = node.path("status").asText("FAILED");
             String message = node.path("message").asText("Onboarding failed");
             Integer statusId = node.path("statusId").asInt(0);
             String merchantId = node.path("merchantId").asText("");
             
-            boolean isSuccess = statusId == 1 || status.equalsIgnoreCase("SUCCESS") || message.toLowerCase().contains("already");
+            boolean isSuccess = statusId == 1 || statusBool || statusStr.equalsIgnoreCase("SUCCESS") || message.toLowerCase().contains("already");
+
+            String errorMessage = message;
+            if (!isSuccess && node.has("data") && node.path("data").has("remarks")) {
+                String remarks = node.path("data").path("remarks").asText("");
+                if (!remarks.isBlank()) {
+                    errorMessage = remarks.trim().replaceAll("\\n", " ");
+                }
+            }
 
             OnboardingResponse response = new OnboardingResponse();
             response.setStatus(isSuccess ? "SUCCESS" : "FAILED");
             response.setStatusId(isSuccess ? 1 : 0);
-            // Include full Fingpay raw response in message for debugging
-            response.setMessage(isSuccess ? message : "Fingpay: " + rawResponse);
+            response.setMessage(isSuccess ? message : errorMessage);
             response.setAgentId(request.getAepsMobile());
             response.setMerchantId(merchantId.isEmpty() ? request.getAepsMobile() : merchantId);
             response.setCorrelationId(node.path("correlationId").asText(""));

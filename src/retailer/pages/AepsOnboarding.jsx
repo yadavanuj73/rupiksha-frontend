@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Landmark, ArrowLeft, Sparkles, UserCheck, AlertCircle, Compass, CheckCircle2, MapPin } from 'lucide-react';
+import { Landmark, ArrowLeft, Sparkles, UserCheck, AlertCircle, Compass, CheckCircle2, MapPin, Upload, Camera, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { aepsService, userService } from '../../services/apiService';
 import DisabledServiceBanner from '../../components/shared/DisabledServiceBanner';
@@ -8,7 +8,7 @@ import DisabledServiceBanner from '../../components/shared/DisabledServiceBanner
 export default function AepsOnboarding() {
     const navigate = useNavigate();
     const query = new URLSearchParams(window.location.search);
-    const provider = query.get('provider') || 'levin';
+    const provider = query.get('provider') || 'fingpay';
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [serviceDisabled, setServiceDisabled] = useState(false);
@@ -30,8 +30,19 @@ export default function AepsOnboarding() {
         city: '',
         state: '',
         latitude: '',
-        longitude: ''
+        longitude: '',
+        companyType: 2, // Default to Individual / Sole Proprietor
+        gstinNumber: '',
+        panImage: '',
+        shopImage: '',
+        tradeBusinessProof: '',
+        cancelledCheque: '',
+        physicalVerificationImage: '',
+        videoKycData: ''
     });
+
+    const [recordingVideo, setRecordingVideo] = useState(false);
+    const [videoTimer, setVideoTimer] = useState(0);
 
     useEffect(() => {
         const checkService = async () => {
@@ -62,7 +73,7 @@ export default function AepsOnboarding() {
             }
         }
 
-        // Auto-detect GPS silently on page load so user doesn't need to click manually
+        // Auto-detect GPS silently on page load
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
@@ -73,8 +84,7 @@ export default function AepsOnboarding() {
                     }));
                 },
                 () => {
-                    // Silent fallback — GPS is optional, backend will use default coordinates
-                    console.warn("GPS auto-detection failed or denied. User can still submit.");
+                    console.warn("GPS auto-detection failed or denied. Default coordinates will be used.");
                 },
                 { enableHighAccuracy: true, timeout: 8000 }
             );
@@ -91,6 +101,89 @@ export default function AepsOnboarding() {
             ...prev,
             [name]: value
         }));
+    };
+
+    const handleFileRead = (e, fieldName) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 10 * 1024 * 1024) {
+            setError(`Selected file exceeds maximum allowed size of 10MB.`);
+            return;
+        }
+
+        setError('');
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            let res = reader.result;
+            if (typeof res === 'string' && res.includes(',')) {
+                res = res.split(',')[1]; // Clean raw Base64 without Data URI prefix
+            }
+            setFormData(prev => ({
+                ...prev,
+                [fieldName]: res
+            }));
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const recordVideoKyc = async () => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            setError("Camera recording is not supported in your browser. Please select a recorded video file instead.");
+            return;
+        }
+
+        setError('');
+        setRecordingVideo(true);
+        setVideoTimer(5);
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            const recorder = new MediaRecorder(stream);
+            const chunks = [];
+
+            recorder.ondataavailable = (e) => {
+                if (e.data.size > 0) chunks.push(e.data);
+            };
+
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    let res = reader.result;
+                    if (typeof res === 'string' && res.includes(',')) {
+                        res = res.split(',')[1]; // Raw Base64 string
+                    }
+                    setFormData(prev => ({
+                        ...prev,
+                        videoKycData: res
+                    }));
+                };
+                reader.readAsDataURL(blob);
+
+                stream.getTracks().forEach(track => track.stop());
+                setRecordingVideo(false);
+            };
+
+            recorder.start();
+
+            let secondsLeft = 5;
+            const interval = setInterval(() => {
+                secondsLeft -= 1;
+                setVideoTimer(secondsLeft);
+                if (secondsLeft <= 0) {
+                    clearInterval(interval);
+                    if (recorder.state !== 'inactive') {
+                        recorder.stop();
+                    }
+                }
+            }, 1000);
+
+        } catch (err) {
+            console.error("Camera access error", err);
+            setError("Failed to access camera. Please grant camera permissions or upload a video file.");
+            setRecordingVideo(false);
+        }
     };
 
     const detectLocation = () => {
@@ -162,16 +255,49 @@ export default function AepsOnboarding() {
         return null;
     };
 
+    const validateStep3 = () => {
+        if (provider === 'fingpay') {
+            if (!formData.panImage && !formData.shopImage) {
+                return "Shop & PAN Image is required";
+            }
+            if (!formData.tradeBusinessProof) {
+                return "Trade Business Proof is required";
+            }
+            if (!formData.cancelledCheque) {
+                return "Cancelled Cheque / Bank Proof is required";
+            }
+            if (!formData.videoKycData) {
+                return "Video KYC recording or video file is required";
+            }
+        }
+        return null;
+    };
+
     const handleNext = (e) => {
         e.preventDefault();
         setError('');
-        const step1Err = validateStep1();
-        if (step1Err) {
-            setError(step1Err);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            return;
+        if (step === 1) {
+            const step1Err = validateStep1();
+            if (step1Err) {
+                setError(step1Err);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                return;
+            }
+            setStep(2);
+        } else if (step === 2) {
+            const step2Err = validateStep2();
+            if (step2Err) {
+                setError(step2Err);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                return;
+            }
+            if (provider === 'fingpay') {
+                setStep(3);
+            } else {
+                handleSubmit(e);
+                return;
+            }
         }
-        setStep(2);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -180,11 +306,13 @@ export default function AepsOnboarding() {
         setError('');
         setSuccessMsg('');
 
-        const step2Err = validateStep2();
-        if (step2Err) {
-            setError(step2Err);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            return;
+        if (step === 3 || provider !== 'fingpay') {
+            const step3Err = validateStep3();
+            if (step3Err) {
+                setError(step3Err);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                return;
+            }
         }
 
         setLoading(true);
@@ -200,10 +328,10 @@ export default function AepsOnboarding() {
 
             await aepsService.onboard(payload);
 
-            setSuccessMsg("Merchant Onboarding completed successfully! Agent profile registered. Redirecting...");
+            setSuccessMsg("Merchant Onboarding completed successfully! Agent profile registered. Proceeding to Biometric KYC...");
             setTimeout(() => {
-                navigate(provider === 'fingpay' ? '/aeps-1' : '/aeps-2');
-            }, 3000);
+                navigate(`/aeps-kyc?mobile=${formData.aepsMobile}&provider=${provider}`);
+            }, 2500);
         } catch (err) {
             console.error("Onboarding submission failed", err);
             setError(err.message || "Onboarding execution failed. Please verify credentials and network parameters.");
@@ -229,17 +357,17 @@ export default function AepsOnboarding() {
                         <div>
                             <button
                                 onClick={() => navigate(-1)}
-                                className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-slate-600 transition mb-3"
+                                className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-slate-600 transition mb-3 cursor-pointer"
                             >
                                 <ArrowLeft size={14} />
                                 Go Back
                             </button>
                             <h1 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
                                 <Landmark className="text-blue-600" size={32} />
-                                AEPS Merchant Onboarding
+                                AEPS Merchant Onboarding ({provider.toUpperCase()})
                             </h1>
                             <p className="text-slate-500 text-sm mt-1.5 font-medium leading-relaxed">
-                                Complete your one-time onboarding form to register your retail merchant account.
+                                Register your retail merchant account under Super Merchant ID 1407.
                             </p>
                         </div>
                     </div>
@@ -252,15 +380,28 @@ export default function AepsOnboarding() {
                             </span>
                             <span className={`text-xs font-bold uppercase tracking-wider ${step === 1 ? 'text-slate-700' : 'text-slate-400'}`}>Personal Details</span>
                         </div>
-                        <div className="flex-1 h-0.5 bg-slate-200 mx-3 rounded-full overflow-hidden">
-                            <div className={`h-full bg-blue-600 transition-all duration-500 ${step === 2 ? 'w-full' : 'w-0'}`} />
+                        <div className="flex-1 h-0.5 bg-slate-200 mx-2 rounded-full overflow-hidden">
+                            <div className={`h-full bg-blue-600 transition-all duration-500 ${step >= 2 ? 'w-full' : 'w-0'}`} />
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300 ${step === 2 ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-slate-100 text-slate-400'}`}>
-                                2
+                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300 ${step === 2 ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : step > 2 ? 'bg-emerald-100 text-emerald-700 font-bold' : 'bg-slate-100 text-slate-400'}`}>
+                                {step > 2 ? '✓' : '2'}
                             </span>
                             <span className={`text-xs font-bold uppercase tracking-wider ${step === 2 ? 'text-slate-700' : 'text-slate-400'}`}>Shop & Location</span>
                         </div>
+                        {provider === 'fingpay' && (
+                            <>
+                                <div className="flex-1 h-0.5 bg-slate-200 mx-2 rounded-full overflow-hidden">
+                                    <div className={`h-full bg-blue-600 transition-all duration-500 ${step === 3 ? 'w-full' : 'w-0'}`} />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300 ${step === 3 ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-slate-100 text-slate-400'}`}>
+                                        3
+                                    </span>
+                                    <span className={`text-xs font-bold uppercase tracking-wider ${step === 3 ? 'text-slate-700' : 'text-slate-400'}`}>KYC & Documents</span>
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     {/* Messages Banners */}
@@ -538,6 +679,169 @@ export default function AepsOnboarding() {
                             </div>
                         )}
 
+                        {step === 3 && provider === 'fingpay' && (
+                            <div className="space-y-6">
+                                <h3 className="text-xs font-black uppercase tracking-widest text-blue-600 mb-4 border-b border-slate-100 pb-2">
+                                    03. Retailer KYC Verification & Documents
+                                </h3>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Business Entity Type *</label>
+                                        <select
+                                            name="companyType"
+                                            value={formData.companyType}
+                                            onChange={handleChange}
+                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none transition bg-white"
+                                            disabled={loading}
+                                        >
+                                            <option value={2}>Individual Retailer / Sole Proprietor (Default)</option>
+                                            <option value={1}>Corporate / Private Limited Company</option>
+                                        </select>
+                                    </div>
+
+                                    {formData.companyType === 1 && (
+                                        <div>
+                                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">GSTIN Number *</label>
+                                            <input
+                                                type="text"
+                                                name="gstinNumber"
+                                                value={formData.gstinNumber}
+                                                onChange={handleChange}
+                                                className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-100 font-semibold text-slate-700 text-sm outline-none uppercase transition"
+                                                placeholder="15 Digit GSTIN"
+                                                maxLength={15}
+                                                disabled={loading}
+                                            />
+                                        </div>
+                                    )}
+
+                                    {/* Shop & PAN Image */}
+                                    <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                                            Shop & PAN Image *
+                                        </label>
+                                        <p className="text-[11px] text-slate-500 mb-3">Upload photo of PAN card or Shop front</p>
+                                        <input
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/jpg"
+                                            onChange={(e) => handleFileRead(e, 'panImage')}
+                                            className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                                            disabled={loading}
+                                        />
+                                        {formData.panImage && (
+                                            <div className="mt-2 text-xs font-bold text-emerald-600 flex items-center gap-1">
+                                                <CheckCircle2 size={14} /> Document Uploaded
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Business Proof */}
+                                    <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                                            Business Proof *
+                                        </label>
+                                        <p className="text-[11px] text-slate-500 mb-3">Upload Shop License, Udyam, or Electricity Bill</p>
+                                        <input
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/jpg,application/pdf"
+                                            onChange={(e) => handleFileRead(e, 'tradeBusinessProof')}
+                                            className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                                            disabled={loading}
+                                        />
+                                        {formData.tradeBusinessProof && (
+                                            <div className="mt-2 text-xs font-bold text-emerald-600 flex items-center gap-1">
+                                                <CheckCircle2 size={14} /> Document Uploaded
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Cancelled Cheque / Bank Proof */}
+                                    <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                                            Cancelled Cheque / Bank Proof *
+                                        </label>
+                                        <p className="text-[11px] text-slate-500 mb-3">Upload bank cheque or passbook front page</p>
+                                        <input
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/jpg,application/pdf"
+                                            onChange={(e) => handleFileRead(e, 'cancelledCheque')}
+                                            className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                                            disabled={loading}
+                                        />
+                                        {formData.cancelledCheque && (
+                                            <div className="mt-2 text-xs font-bold text-emerald-600 flex items-center gap-1">
+                                                <CheckCircle2 size={14} /> Document Uploaded
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Physical Verification Image */}
+                                    <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                                            Physical Verification Photo (Optional)
+                                        </label>
+                                        <p className="text-[11px] text-slate-500 mb-3">Upload photo of outlet site verification</p>
+                                        <input
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/jpg"
+                                            onChange={(e) => handleFileRead(e, 'physicalVerificationImage')}
+                                            className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                                            disabled={loading}
+                                        />
+                                        {formData.physicalVerificationImage && (
+                                            <div className="mt-2 text-xs font-bold text-emerald-600 flex items-center gap-1">
+                                                <CheckCircle2 size={14} /> Photo Uploaded
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Video KYC Verification */}
+                                    <div className="md:col-span-2 border border-blue-200 bg-blue-50/30 rounded-2xl p-5">
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-blue-800 mb-1">
+                                            Video KYC Verification *
+                                        </label>
+                                        <p className="text-xs text-slate-600 mb-4">Record a short 5-second video selfie or upload recorded Video KYC clip.</p>
+                                        <div className="flex flex-col sm:flex-row gap-4 items-center">
+                                            <button
+                                                type="button"
+                                                onClick={recordVideoKyc}
+                                                disabled={recordingVideo || loading}
+                                                className="w-full sm:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
+                                            >
+                                                {recordingVideo ? (
+                                                    <>
+                                                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                        Recording ({videoTimer}s)...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Camera size={14} />
+                                                        Record 5s Video Selfie
+                                                    </>
+                                                )}
+                                            </button>
+
+                                            <span className="text-xs font-bold text-slate-400">OR</span>
+
+                                            <input
+                                                type="file"
+                                                accept="video/webm,video/mp4,video/*"
+                                                onChange={(e) => handleFileRead(e, 'videoKycData')}
+                                                className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                                                disabled={loading || recordingVideo}
+                                            />
+                                        </div>
+                                        {formData.videoKycData && (
+                                            <div className="mt-3 text-xs font-bold text-emerald-600 flex items-center gap-1">
+                                                <CheckCircle2 size={14} /> Video KYC Recording Captured
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Submit Actions */}
                         {step === 1 && (
                             <div className="flex gap-4 pt-6 border-t border-slate-100">
@@ -569,6 +873,46 @@ export default function AepsOnboarding() {
                                 >
                                     Back
                                 </button>
+                                {provider === 'fingpay' ? (
+                                    <button
+                                        type="button"
+                                        onClick={handleNext}
+                                        className="flex-2 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold uppercase tracking-wider text-xs shadow-lg shadow-blue-500/20 transition flex items-center justify-center gap-2 cursor-pointer"
+                                    >
+                                        Next Step (Upload Documents)
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="submit"
+                                        className="flex-2 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold uppercase tracking-wider text-xs shadow-lg shadow-blue-500/20 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
+                                        disabled={loading}
+                                    >
+                                        {loading ? (
+                                            <>
+                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                Submitting Onboarding...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <UserCheck size={16} />
+                                                Complete Onboarding
+                                            </>
+                                        )}
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
+                        {step === 3 && provider === 'fingpay' && (
+                            <div className="flex gap-4 pt-6 border-t border-slate-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setStep(2)}
+                                    className="flex-1 py-3.5 border border-slate-200 text-slate-500 rounded-2xl font-bold uppercase tracking-wider text-xs hover:bg-slate-50 transition cursor-pointer"
+                                    disabled={loading}
+                                >
+                                    Back
+                                </button>
                                 <button
                                     type="submit"
                                     className="flex-2 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold uppercase tracking-wider text-xs shadow-lg shadow-blue-500/20 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
@@ -594,4 +938,3 @@ export default function AepsOnboarding() {
         </div>
     );
 }
-
