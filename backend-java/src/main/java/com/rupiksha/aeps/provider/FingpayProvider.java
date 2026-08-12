@@ -119,24 +119,42 @@ public class FingpayProvider implements AepsProvider {
         settlement.setBankAccountName(request.getFname() + " " + request.getLname());
         merchant.setSettlementV1(settlement);
         
-        // termsConditionCheck and physicalVerification are required by Fingpay v2
-        merchant.setTermsConditionCheck("Y");
-        merchant.setPhysicalVerification("Y");
+        // Fingpay v2 requires 'Yes'/'No' (not 'Y'/'N')
+        merchant.setTermsConditionCheck("Yes");
+        merchant.setPhysicalVerification("Yes");
+
+        // Fingpay v2 requires video KYC with lat/long coordinates
+        double lat = parseCoordinate(request.getLatitude(), 20.5937);
+        double lon = parseCoordinate(request.getLongitude(), 78.9629);
+        merchant.setVideoKycWithLatLongData(lat + "," + lon);
+
+        // Fingpay v2 requires image fields — use 1x1 transparent PNG as placeholder
+        // (Rupiksha performs own KYC; these satisfy Fingpay's API field validation)
+        final String PLACEHOLDER_IMG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+        merchant.setCancelledChequeImages(PLACEHOLDER_IMG);
+        merchant.setTradeBusinessProof(PLACEHOLDER_IMG);
+        kyc.setShopAndPanImage(PLACEHOLDER_IMG);
+        merchant.setKyc(kyc);
 
         // merchantKycAddressData is required by Fingpay v2 — must include shop lat/lon
+        // Compose a full valid address: "address, city - pincode"
+        String fullAddress = request.getAddress() + ", " + request.getCity() + " - " + request.getPinCode();
         MerchantShopDTO shopData = new MerchantShopDTO();
-        shopData.setShopAddress(request.getAddress());
+        shopData.setShopAddress(fullAddress);
         shopData.setShopCity(request.getCity());
         shopData.setShopDistrict(request.getCity());
         shopData.setShopState(resolveStateCode(request.getState()));
         shopData.setShopPincode(request.getPinCode());
-        shopData.setShopLatitude(parseCoordinate(request.getLatitude(), 20.5937));
-        shopData.setShopLongitude(parseCoordinate(request.getLongitude(), 78.9629));
+        shopData.setShopLatitude(lat);
+        shopData.setShopLongitude(lon);
         merchant.setMerchantKycAddressData(shopData);
 
+        // Also set main merchant address with full address string
+        address.setMerchantAddress1(fullAddress);
+
         dto.setMerchant(merchant);
-        dto.setLatitude(parseCoordinate(request.getLatitude(), 20.5937));
-        dto.setLongitude(parseCoordinate(request.getLongitude(), 78.9629));
+        dto.setLatitude(lat);
+        dto.setLongitude(lon);
 
         try {
             String rawResponse = onboardService.onboard(dto);
