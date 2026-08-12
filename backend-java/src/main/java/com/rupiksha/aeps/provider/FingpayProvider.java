@@ -152,7 +152,8 @@ public class FingpayProvider implements AepsProvider {
             OnboardingResponse response = new OnboardingResponse();
             response.setStatus(isSuccess ? "SUCCESS" : "FAILED");
             response.setStatusId(isSuccess ? 1 : 0);
-            response.setMessage(message);
+            // Include full Fingpay raw response in message for debugging
+            response.setMessage(isSuccess ? message : "Fingpay: " + rawResponse);
             response.setAgentId(request.getAepsMobile());
             response.setMerchantId(merchantId.isEmpty() ? request.getAepsMobile() : merchantId);
             response.setCorrelationId(node.path("correlationId").asText(""));
