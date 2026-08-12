@@ -62,6 +62,7 @@ public class OnboardService {
             dto.setIpAddress(ip);
 
             String plainJson = mapper.writeValueAsString(dto);
+            log.info("[FINGPAY ONBOARD] Plain JSON payload before encryption:\n{}", plainJson);
 
             SecretKey sessionKey = encryptionUtil.generateSessionKey();
 
@@ -86,6 +87,8 @@ public class OnboardService {
 
             String response =
                     client.post(url, encryptedBody, headers);
+
+            log.info("[FINGPAY ONBOARD] Raw response from Fingpay: {}", response);
 
             if (response == null || response.isEmpty()) {
                 txn.setStatus("FAILED");
