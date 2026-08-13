@@ -376,12 +376,17 @@ public class FingpayProvider implements AepsProvider {
             BiometricRequestDTO.CaptureResponse capture = new BiometricRequestDTO.CaptureResponse();
             capture.setErrCode(parsed.get("errCode"));
             capture.setErrInfo(parsed.get("errInfo"));
-            capture.setFCount(parsed.get("fCount"));
+            
+            String fCount = parsed.get("fCount");
+            if (fCount == null || fCount.isBlank() || "0".equals(fCount)) {
+                fCount = "1";
+            }
+            capture.setFCount(fCount);
             capture.setFType(fType);
-            capture.setICount(parsed.getOrDefault("iCount", "0"));
-            capture.setIType(parsed.getOrDefault("iType", "0"));
-            capture.setPCount(parsed.getOrDefault("pCount", "0"));
-            capture.setPType(parsed.getOrDefault("pType", "0"));
+            capture.setICount("0");
+            capture.setIType("0");
+            capture.setPCount("0");
+            capture.setPType("0");
             capture.setNmPoints(parsed.getOrDefault("nmPoints", "0"));
             capture.setQScore(parsed.getOrDefault("qScore", "0"));
             capture.setDpID(parsed.get("dpID"));
