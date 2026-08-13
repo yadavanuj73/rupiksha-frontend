@@ -201,9 +201,22 @@ export default function AepsAgentKyc() {
                             </button>
 
                             {otpError && (
-                                <div className="bg-rose-50 border border-rose-100 text-rose-700 text-xs px-4 py-3 rounded-2xl flex items-center gap-2 font-semibold">
-                                    <AlertCircle className="text-rose-500 shrink-0" size={14} />
-                                    <div>{otpError}</div>
+                                <div className="space-y-3">
+                                    <div className="bg-rose-50 border border-rose-100 text-rose-700 text-xs px-4 py-3 rounded-2xl flex items-center gap-2 font-semibold">
+                                        <AlertCircle className="text-rose-500 shrink-0" size={14} />
+                                        <div>{otpError}</div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setKycResponse(null);
+                                            setOtpError('');
+                                            setOtpCode('');
+                                        }}
+                                        className="w-full py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-bold uppercase tracking-wider text-xs transition flex items-center justify-center gap-2 cursor-pointer"
+                                    >
+                                        Re-capture Biometrics & Request New OTP
+                                    </button>
                                 </div>
                             )}
                         </div>
