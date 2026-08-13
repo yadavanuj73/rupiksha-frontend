@@ -378,7 +378,7 @@ public class FingpayProvider implements AepsProvider {
             capture.setErrCode(parsed.get("errCode"));
             capture.setErrInfo(parsed.get("errInfo"));
             capture.setFCount("1");
-            capture.setFType("2");
+            capture.setFType("FMR");
             capture.setICount("0");
             capture.setIType("0");
             capture.setPCount("0");
@@ -738,7 +738,8 @@ public class FingpayProvider implements AepsProvider {
             map.put("errInfo", resp.getAttribute("errInfo"));
             map.put("fCount", resp.getAttribute("fCount"));
             String rawFType = resp.getAttribute("fType");
-            map.put("fType", (rawFType == null || rawFType.isBlank()) ? "2" : rawFType);
+            String normalizedFType = ("1".equals(rawFType) || "FIR".equalsIgnoreCase(rawFType)) ? "FIR" : "FMR";
+            map.put("fType", normalizedFType);
             map.put("iCount", resp.getAttribute("iCount"));
             map.put("iType", resp.getAttribute("iType"));
             map.put("pCount", resp.getAttribute("pCount"));

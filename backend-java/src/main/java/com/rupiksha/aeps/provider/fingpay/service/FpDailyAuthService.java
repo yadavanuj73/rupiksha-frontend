@@ -252,7 +252,8 @@ public class FpDailyAuthService {
             map.put("errInfo", resp.getAttribute("errInfo"));
             map.put("fCount", resp.getAttribute("fCount"));
             String rawFType = resp.getAttribute("fType");
-            map.put("fType", (rawFType == null || rawFType.isBlank()) ? "2" : rawFType);
+            String normalizedFType = ("1".equals(rawFType) || "FIR".equalsIgnoreCase(rawFType)) ? "FIR" : "FMR";
+            map.put("fType", normalizedFType);
             map.put("iCount", resp.getAttribute("iCount"));
             map.put("iType", resp.getAttribute("iType"));
             map.put("pCount", resp.getAttribute("pCount"));
