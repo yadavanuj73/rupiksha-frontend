@@ -383,8 +383,12 @@ public class FingpayProvider implements AepsProvider {
             capture.setMc(parsed.get("mc"));
             capture.setCi(parsed.get("ci"));
             capture.setSessionKey(parsed.get("sessionKey"));
-            capture.setHmac(parsed.get("hmac"));
-            capture.setPidDatatype(parsed.get("PidDatatype"));
+            String pidDataType = parsed.get("PidDatatype");
+            String fType = parsed.get("fType");
+            if ("2".equals(fType) || "raw".equalsIgnoreCase(pidDataType) || "0".equals(pidDataType)) {
+                pidDataType = "FMR";
+            }
+            capture.setPidDatatype(pidDataType);
             capture.setPiddata(parsed.get("Piddata"));
             biometricDto.setCaptureResponse(capture);
 
@@ -757,7 +761,12 @@ public class FingpayProvider implements AepsProvider {
         NodeList dataList = root.getElementsByTagName("Data");
         if (dataList.getLength() > 0) {
             Element data = (Element) dataList.item(0);
-            map.put("PidDatatype", data.getAttribute("type"));
+            String dataType = data.getAttribute("type");
+            String fType = map.get("fType");
+            if ("2".equals(fType) || "raw".equalsIgnoreCase(dataType) || "0".equals(dataType)) {
+                dataType = "FMR";
+            }
+            map.put("PidDatatype", dataType);
             map.put("Piddata", data.getTextContent().trim());
         }
         
