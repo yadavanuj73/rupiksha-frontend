@@ -362,6 +362,7 @@ public class FingpayProvider implements AepsProvider {
             log.info("Complete decoded pidXml from database: {}", rawPidXml);
             log.info("==================================================");
 
+            Map<String, String> parsed = parsePidXml(rawPidXml);
             String fType = parsed.get("fType");
             String pidDataType = parsed.get("PidDatatype");
             if ("1".equals(fType) || "FIR".equalsIgnoreCase(fType) || "FIR".equalsIgnoreCase(pidDataType)) {
