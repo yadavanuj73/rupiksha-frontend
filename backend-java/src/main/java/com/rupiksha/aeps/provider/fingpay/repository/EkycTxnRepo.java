@@ -9,4 +9,6 @@ public interface EkycTxnRepo extends JpaRepository<EkycTxn, Long> {
 
     Optional<EkycTxn> findByMerchantLoginId(String merchantLoginId);
 
+    Optional<EkycTxn> findTopByMerchantLoginIdOrderByIdDesc(String merchantLoginId);
+
 }

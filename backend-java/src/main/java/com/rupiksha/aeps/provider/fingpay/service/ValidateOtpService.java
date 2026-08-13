@@ -47,7 +47,7 @@ public class ValidateOtpService {
 
             // ⭐ DB FETCH (VERY IMPORTANT)
             EkycTxn txn =
-                    repo.findByMerchantLoginId(dto.getMerchantLoginId())
+                    repo.findTopByMerchantLoginIdOrderByIdDesc(dto.getMerchantLoginId())
                             .orElseThrow(() ->
                                     new FingpayException("OTP flow not found"));
 

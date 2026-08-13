@@ -296,7 +296,7 @@ public class FingpayProvider implements AepsProvider {
             }
 
             // Save pidXml securely (Base64 encoded) with 5-minute expiry in ekyc_txn
-            EkycTxn ekycTxn = ekycTxnRepo.findByMerchantLoginId(request.getAepsAgentId())
+            EkycTxn ekycTxn = ekycTxnRepo.findTopByMerchantLoginIdOrderByIdDesc(request.getAepsAgentId())
                     .orElseThrow(() -> new ProviderException("EkycTxn log record not found."));
             
             ekycTxn.setBiometricData(Base64.getEncoder().encodeToString(request.getPidXml().getBytes(StandardCharsets.UTF_8)));
@@ -323,7 +323,7 @@ public class FingpayProvider implements AepsProvider {
     public ProviderKycResult verifyOtp(AepsOtpVerifyRequest request) {
         log.info("FingpayProvider verifying OTP and completing biometric eKYC for agent: {}", request.getAepsAgentId());
 
-        EkycTxn ekycTxn = ekycTxnRepo.findByMerchantLoginId(request.getAepsAgentId())
+        EkycTxn ekycTxn = ekycTxnRepo.findTopByMerchantLoginIdOrderByIdDesc(request.getAepsAgentId())
                 .orElseThrow(() -> new ProviderException("Pending eKYC transaction not found."));
 
         if (ekycTxn.getBiometricDataExpiry() == null || ekycTxn.getBiometricDataExpiry().isBefore(LocalDateTime.now())) {

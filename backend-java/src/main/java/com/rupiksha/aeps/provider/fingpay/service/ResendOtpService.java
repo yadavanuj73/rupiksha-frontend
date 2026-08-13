@@ -46,7 +46,7 @@ public class ResendOtpService {
 
             // ⭐ DB FETCH
             EkycTxn txn =
-                    repo.findByMerchantLoginId(dto.getMerchantLoginId())
+                    repo.findTopByMerchantLoginIdOrderByIdDesc(dto.getMerchantLoginId())
                             .orElseThrow(() ->
                                     new RuntimeException("OTP txn not found"));
 
