@@ -63,6 +63,30 @@ public class BiometricService {
 
             String plainJson = mapper.writeValueAsString(bodyMap);
 
+            log.error("========== FINGPAY BIOMETRIC REQUEST ==========");
+            log.error("merchantLoginId={}", dto.getMerchantLoginId());
+            log.error("primaryKeyId={}", dto.getPrimaryKeyId());
+            log.error("encodeFPTxnId={}", dto.getEncodeFPTxnId());
+
+            if (dto.getCaptureResponse() != null) {
+                log.error("fType={}", dto.getCaptureResponse().getFType());
+                log.error("fCount={}", dto.getCaptureResponse().getFCount());
+                log.error("PidDatatype={}", dto.getCaptureResponse().getPidDatatype());
+                log.error(
+                    "Piddata length={}",
+                    dto.getCaptureResponse().getPiddata() == null
+                        ? 0
+                        : dto.getCaptureResponse().getPiddata().length()
+                );
+            }
+
+            log.error(
+                "Complete request body={}",
+                plainJson
+            );
+
+            log.error("===============================================");
+
             SecretKey sessionKey = encryptionUtil.generateSessionKey();
 
             String encryptedBody =
@@ -87,6 +111,10 @@ public class BiometricService {
 
             String response =
                     client.post(biometricUrl, encryptedBody, headers);
+
+            log.error("========== FINGPAY BIOMETRIC RESPONSE ==========");
+            log.error(response);
+            log.error("===============================================");
 
             if (response == null || response.isEmpty()) {
                 throw new FingpayException("Empty biometric response");
