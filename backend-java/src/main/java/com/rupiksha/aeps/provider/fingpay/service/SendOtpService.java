@@ -88,15 +88,19 @@ public class SendOtpService {
                 throw new FingpayException("Empty response from Fingpay");
             }
 
-            // ⭐ RESPONSE PARSE & VALIDATION
+            // ⭐ RESPONSE PARSE & DIAGNOSTIC LOGGING
             JsonNode node = mapper.readTree(response);
 
-            boolean isSuccess = node.path("status").asBoolean(false)
-                    || node.path("statusId").asInt(0) == 1;
+            // Extract primaryKeyId from top-level or nested data node
+            Long primaryKeyId = node.hasNonNull("primaryKeyId")
+                    ? node.path("primaryKeyId").asLong(0)
+                    : node.path("data").path("primaryKeyId").asLong(0);
 
-            Long primaryKeyId = node.path("primaryKeyId").asLong(0);
-            String encodeTxnId = node.path("encodeFPTxnId").asText("");
-            
+            // Extract encodeFPTxnId from top-level or nested data node
+            String encodeTxnId = node.hasNonNull("encodeFPTxnId")
+                    ? node.path("encodeFPTxnId").asText("")
+                    : node.path("data").path("encodeFPTxnId").asText("");
+
             String message = "Fingpay OTP generation failed";
             if (node.has("message") && !node.path("message").asText().isBlank()) {
                 message = node.path("message").asText().trim();
@@ -106,7 +110,24 @@ public class SendOtpService {
                 message = node.path("data").path("remarks").asText().trim();
             }
 
-            if (!isSuccess || primaryKeyId == 0 || encodeTxnId == null || encodeTxnId.isBlank()) {
+            boolean merchantStatus = node.path("data").path("merchantStatus").asBoolean(false);
+            boolean ekycCompleted = node.path("data").path("ekycCompleted").asBoolean(false);
+            int statusCode = node.path("statusCode").asInt(node.path("statusId").asInt(0));
+
+            log.info("[FINGPAY SEND-OTP DIAGNOSTICS] status={}, statusCode={}, message='{}', merchantStatus={}, primaryKeyId={}, encodeTxnId='{}', ekycCompleted={}",
+                    node.path("status").asBoolean(false), statusCode, message, merchantStatus, primaryKeyId, encodeTxnId, ekycCompleted);
+
+            boolean isRequestCompleted = "Request Completed".equalsIgnoreCase(message)
+                    || message.toLowerCase().contains("request completed")
+                    || message.toLowerCase().contains("otp sent");
+
+            boolean isOtpGenerated = isRequestCompleted
+                    || node.path("status").asBoolean(false)
+                    || node.path("statusId").asInt(0) == 1
+                    || primaryKeyId > 0
+                    || !encodeTxnId.isBlank();
+
+            if (!isOtpGenerated) {
                 log.error("Fingpay Send OTP rejected: {}", message);
                 throw new FingpayException(message);
             }

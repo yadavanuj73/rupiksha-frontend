@@ -260,9 +260,13 @@ public class FingpayProvider implements AepsProvider {
             String rawResponse = sendOtpService.sendOtp(sendOtpDto);
             JsonNode node = objectMapper.readTree(rawResponse);
 
-            boolean isSuccess = node.path("status").asBoolean(false) || node.path("statusId").asInt(0) == 1;
-            String encodeFPTxnId = node.path("encodeFPTxnId").asText("");
-            Long primaryKeyId = node.path("primaryKeyId").asLong(0);
+            Long primaryKeyId = node.hasNonNull("primaryKeyId")
+                    ? node.path("primaryKeyId").asLong(0)
+                    : node.path("data").path("primaryKeyId").asLong(0);
+
+            String encodeFPTxnId = node.hasNonNull("encodeFPTxnId")
+                    ? node.path("encodeFPTxnId").asText("")
+                    : node.path("data").path("encodeFPTxnId").asText("");
 
             String message = "Fingpay KYC OTP initialization failed";
             if (node.has("message") && !node.path("message").asText().isBlank()) {
@@ -271,7 +275,17 @@ public class FingpayProvider implements AepsProvider {
                 message = node.path("remarks").asText().trim();
             }
 
-            if (!isSuccess || primaryKeyId == 0 || encodeFPTxnId.isBlank()) {
+            boolean isRequestCompleted = "Request Completed".equalsIgnoreCase(message)
+                    || message.toLowerCase().contains("request completed")
+                    || message.toLowerCase().contains("otp sent");
+
+            boolean isOtpGenerated = isRequestCompleted
+                    || node.path("status").asBoolean(false)
+                    || node.path("statusId").asInt(0) == 1
+                    || primaryKeyId > 0
+                    || !encodeFPTxnId.isBlank();
+
+            if (!isOtpGenerated) {
                 log.warn("Fingpay KYC OTP initialization rejected by provider: {}", message);
                 return ProviderKycResult.builder()
                         .workflowState(AepsWorkflowState.FAILED)
