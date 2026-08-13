@@ -366,10 +366,10 @@ public class FingpayProvider implements AepsProvider {
             String fType = parsed.get("fType");
             String pidDataType = parsed.get("PidDatatype");
             if ("1".equals(fType) || "FIR".equalsIgnoreCase(fType) || "FIR".equalsIgnoreCase(pidDataType)) {
-                fType = "FIR";
+                fType = "1";
                 pidDataType = "FIR";
             } else {
-                fType = "FMR";
+                fType = "0";
                 pidDataType = "FMR";
             }
 
@@ -737,7 +737,7 @@ public class FingpayProvider implements AepsProvider {
             map.put("errInfo", resp.getAttribute("errInfo"));
             map.put("fCount", resp.getAttribute("fCount"));
             String rawFType = resp.getAttribute("fType");
-            String normalizedFType = ("1".equals(rawFType) || "FIR".equalsIgnoreCase(rawFType)) ? "FIR" : "FMR";
+            String normalizedFType = ("1".equals(rawFType) || "FIR".equalsIgnoreCase(rawFType)) ? "1" : "0";
             map.put("fType", normalizedFType);
             map.put("iCount", resp.getAttribute("iCount"));
             map.put("iType", resp.getAttribute("iType"));
