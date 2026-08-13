@@ -777,13 +777,17 @@ public class FingpayProvider implements AepsProvider {
         if (dataList.getLength() > 0) {
             Element data = (Element) dataList.item(0);
             String dataType = data.getAttribute("type");
-            String fType = map.get("fType");
-            if ("1".equals(fType) || "FIR".equalsIgnoreCase(dataType)) {
-                dataType = "FIR";
+            // Preserve the actual type from the XML:
+            // "X"   = L1 eKYC-encrypted data (Fingpay doc page 34 shows PidDatatype: "X")
+            // "2"   = FMR (unencrypted minutiae, L0 devices)
+            // "1"   = FIR (unencrypted image, L0 devices)
+            if ("X".equalsIgnoreCase(dataType)) {
+                map.put("PidDatatype", "X");
+            } else if ("1".equals(dataType) || "FIR".equalsIgnoreCase(dataType)) {
+                map.put("PidDatatype", "FIR");
             } else {
-                dataType = "FMR";
+                map.put("PidDatatype", "FMR");
             }
-            map.put("PidDatatype", dataType);
             map.put("Piddata", data.getTextContent().trim());
         }
         

@@ -82,7 +82,7 @@ public class BiometricService {
             captureResponseMap.put("ci", cr.getCi());
             captureResponseMap.put("sessionKey", cr.getSessionKey());
             captureResponseMap.put("hmac", cr.getHmac());
-            captureResponseMap.put("PidDatatype", "X");
+            captureResponseMap.put("PidDatatype", cr.getPidDatatype());
             captureResponseMap.put("Piddata", cr.getPiddata());
             bodyMap.put("captureResponse", captureResponseMap);
 
