@@ -383,6 +383,7 @@ public class FingpayProvider implements AepsProvider {
             capture.setMc(parsed.get("mc"));
             capture.setCi(parsed.get("ci"));
             capture.setSessionKey(parsed.get("sessionKey"));
+            capture.setHmac(parsed.get("hmac"));
             String pidDataType = parsed.get("PidDatatype");
             String fType = parsed.get("fType");
             if ("2".equals(fType) || "raw".equalsIgnoreCase(pidDataType) || "0".equals(pidDataType)) {
@@ -391,6 +392,13 @@ public class FingpayProvider implements AepsProvider {
             capture.setPidDatatype(pidDataType);
             capture.setPiddata(parsed.get("Piddata"));
             biometricDto.setCaptureResponse(capture);
+
+            log.info("========== FINGPAY BIOMETRIC CAPTURE DTO PRE-CHECK ==========");
+            log.info("sessionKey length={}", capture.getSessionKey() == null ? 0 : capture.getSessionKey().length());
+            log.info("hmac={}", capture.getHmac());
+            log.info("PidDatatype={}", capture.getPidDatatype());
+            log.info("Piddata length={}", capture.getPiddata() == null ? 0 : capture.getPiddata().length());
+            log.info("=============================================================");
 
             String biometricResponse = biometricService.biometric(biometricDto);
             JsonNode node = objectMapper.readTree(biometricResponse);
