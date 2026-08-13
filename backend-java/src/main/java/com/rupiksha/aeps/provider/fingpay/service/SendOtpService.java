@@ -88,14 +88,28 @@ public class SendOtpService {
                 throw new FingpayException("Empty response from Fingpay");
             }
 
-            // ⭐ RESPONSE PARSE
+            // ⭐ RESPONSE PARSE & VALIDATION
             JsonNode node = mapper.readTree(response);
 
-            Long primaryKeyId =
-                    node.path("primaryKeyId").asLong();
+            boolean isSuccess = node.path("status").asBoolean(false)
+                    || node.path("statusId").asInt(0) == 1;
 
-            String encodeTxnId =
-                    node.path("encodeFPTxnId").asText();
+            Long primaryKeyId = node.path("primaryKeyId").asLong(0);
+            String encodeTxnId = node.path("encodeFPTxnId").asText("");
+            
+            String message = "Fingpay OTP generation failed";
+            if (node.has("message") && !node.path("message").asText().isBlank()) {
+                message = node.path("message").asText().trim();
+            } else if (node.has("remarks") && !node.path("remarks").asText().isBlank()) {
+                message = node.path("remarks").asText().trim();
+            } else if (node.has("data") && node.path("data").has("remarks") && !node.path("data").path("remarks").asText().isBlank()) {
+                message = node.path("data").path("remarks").asText().trim();
+            }
+
+            if (!isSuccess || primaryKeyId == 0 || encodeTxnId == null || encodeTxnId.isBlank()) {
+                log.error("Fingpay Send OTP rejected: {}", message);
+                throw new FingpayException(message);
+            }
 
             // ⭐ DB SAVE
             EkycTxn txn = new EkycTxn();
@@ -113,8 +127,11 @@ public class SendOtpService {
 
             return response;
 
+        } catch (FingpayException fe) {
+            throw fe;
         } catch (Exception e) {
-            throw new FingpayException("Send OTP Failed");
+            log.error("Send OTP execution failed: {}", e.getMessage(), e);
+            throw new FingpayException("Send OTP Failed: " + e.getMessage(), e);
         }
     }
 

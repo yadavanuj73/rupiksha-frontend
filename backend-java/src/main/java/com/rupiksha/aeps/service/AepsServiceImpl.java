@@ -382,7 +382,8 @@ public class AepsServiceImpl implements AepsService {
                     .success(true)
                     .workflowState(workflowState.name())
                     .message(providerResult.getMessage() != null ? providerResult.getMessage() : "OTP sent to registered mobile.")
-                    .providerReference(providerResult.getProviderTxnId())
+                    .providerReference(providerResult.getProviderReference())
+                    .providerTxnId(providerResult.getProviderTxnId())
                     .provider(activeProvider.getProviderName().toUpperCase())
                     .build();
 

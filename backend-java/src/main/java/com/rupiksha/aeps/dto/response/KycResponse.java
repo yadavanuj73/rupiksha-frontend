@@ -10,5 +10,6 @@ public class KycResponse {
     private String workflowState;
     private String message;
     private String providerReference;
+    private String providerTxnId;
     private String provider;
 }

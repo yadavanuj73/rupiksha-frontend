@@ -87,7 +87,22 @@ public class ValidateOtpService {
                     client.post(validateOtpUrl, encryptedBody, headers);
 
             if (response == null || response.isEmpty()) {
-                throw new FingpayException("Empty response");
+                throw new FingpayException("Empty response from Fingpay OTP validation");
+            }
+
+            // ⭐ PARSE AND VALIDATE RESPONSE
+            JsonNode node = mapper.readTree(response);
+            boolean isSuccess = node.path("status").asBoolean(false) || node.path("statusId").asInt(0) == 1;
+
+            if (!isSuccess) {
+                String message = "OTP validation failed";
+                if (node.has("message") && !node.path("message").asText().isBlank()) {
+                    message = node.path("message").asText().trim();
+                } else if (node.has("remarks") && !node.path("remarks").asText().isBlank()) {
+                    message = node.path("remarks").asText().trim();
+                }
+                log.error("Fingpay OTP validation rejected: {}", message);
+                throw new FingpayException(message);
             }
 
             // ⭐ STATUS UPDATE
@@ -97,9 +112,11 @@ public class ValidateOtpService {
 
             return response;
 
+        } catch (FingpayException fe) {
+            throw fe;
         } catch (Exception e) {
-
-            throw new FingpayException("Validate OTP Failed");
+            log.error("Validate OTP execution failed: {}", e.getMessage(), e);
+            throw new FingpayException("Validate OTP Failed: " + e.getMessage(), e);
         }
     }
 }

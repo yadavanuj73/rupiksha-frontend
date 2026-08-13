@@ -259,9 +259,27 @@ public class FingpayProvider implements AepsProvider {
         try {
             String rawResponse = sendOtpService.sendOtp(sendOtpDto);
             JsonNode node = objectMapper.readTree(rawResponse);
-            
-            String encodeFPTxnId = node.path("encodeFPTxnId").asText();
-            Long primaryKeyId = node.path("primaryKeyId").asLong();
+
+            boolean isSuccess = node.path("status").asBoolean(false) || node.path("statusId").asInt(0) == 1;
+            String encodeFPTxnId = node.path("encodeFPTxnId").asText("");
+            Long primaryKeyId = node.path("primaryKeyId").asLong(0);
+
+            String message = "Fingpay KYC OTP initialization failed";
+            if (node.has("message") && !node.path("message").asText().isBlank()) {
+                message = node.path("message").asText().trim();
+            } else if (node.has("remarks") && !node.path("remarks").asText().isBlank()) {
+                message = node.path("remarks").asText().trim();
+            }
+
+            if (!isSuccess || primaryKeyId == 0 || encodeFPTxnId.isBlank()) {
+                log.warn("Fingpay KYC OTP initialization rejected by provider: {}", message);
+                return ProviderKycResult.builder()
+                        .workflowState(AepsWorkflowState.FAILED)
+                        .providerTxnId(encodeFPTxnId)
+                        .providerReference(String.valueOf(primaryKeyId))
+                        .message(message)
+                        .build();
+            }
 
             // Save pidXml securely (Base64 encoded) with 5-minute expiry in ekyc_txn
             EkycTxn ekycTxn = ekycTxnRepo.findByMerchantLoginId(request.getAepsAgentId())
@@ -280,7 +298,10 @@ public class FingpayProvider implements AepsProvider {
 
         } catch (Exception e) {
             log.error("Fingpay KYC OTP initialization failed: {}", e.getMessage(), e);
-            throw new ProviderException("Fingpay KYC initialization failed: " + e.getMessage(), e);
+            return ProviderKycResult.builder()
+                    .workflowState(AepsWorkflowState.FAILED)
+                    .message("Fingpay KYC initialization failed: " + e.getMessage())
+                    .build();
         }
     }
 

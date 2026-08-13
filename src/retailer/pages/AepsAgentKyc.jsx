@@ -168,7 +168,7 @@ export default function AepsAgentKyc() {
                             <div className="bg-blue-50 border border-blue-100 rounded-3xl p-5 text-center">
                                 <h3 className="text-sm font-black text-blue-800 uppercase tracking-wide">OTP Verification Required</h3>
                                 <p className="text-xs text-blue-600 font-semibold mt-1">
-                                    Levin provider has generated OTP validation credentials for Transaction ID: <span className="font-bold text-slate-700">{kycResponse.providerReference}</span>.
+                                    OTP validation credentials have been generated for Transaction ID: <span className="font-bold text-slate-700">{kycResponse?.providerReference || kycResponse?.providerTxnId || "N/A"}</span>.
                                 </p>
                             </div>
 
