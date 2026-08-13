@@ -117,19 +117,12 @@ public class SendOtpService {
             log.info("[FINGPAY SEND-OTP DIAGNOSTICS] status={}, statusCode={}, message='{}', merchantStatus={}, primaryKeyId={}, encodeTxnId='{}', ekycCompleted={}",
                     node.path("status").asBoolean(false), statusCode, message, merchantStatus, primaryKeyId, encodeTxnId, ekycCompleted);
 
-            boolean isRequestCompleted = "Request Completed".equalsIgnoreCase(message)
-                    || message.toLowerCase().contains("request completed")
-                    || message.toLowerCase().contains("otp sent");
-
-            boolean isOtpGenerated = isRequestCompleted
-                    || node.path("status").asBoolean(false)
-                    || node.path("statusId").asInt(0) == 1
-                    || primaryKeyId > 0
-                    || !encodeTxnId.isBlank();
+            boolean isOtpGenerated = primaryKeyId > 0 && !encodeTxnId.isBlank();
 
             if (!isOtpGenerated) {
-                log.error("Fingpay Send OTP rejected: {}", message);
-                throw new FingpayException(message);
+                log.error("[FINGPAY SEND-OTP REJECTED] merchantLoginId={}, primaryKeyId={}, encodeTxnId='{}', merchantStatus={}, message='{}'",
+                        dto.getMerchantLoginId(), primaryKeyId, encodeTxnId, merchantStatus, message);
+                throw new FingpayException("Invalid Fingpay OTP session. Merchant is inactive or transaction was not created (primaryKeyId=" + primaryKeyId + ").");
             }
 
             // ⭐ DB SAVE

@@ -63,7 +63,8 @@ public class BiometricService {
 
             String plainJson = mapper.writeValueAsString(bodyMap);
 
-            log.error("========== FINGPAY BIOMETRIC REQUEST ==========");
+            log.error("========== FINGPAY BIOMETRIC DETAILED DEBUG REQUEST ==========");
+            log.error("superMerchantId={}", superMerchantId);
             log.error("merchantLoginId={}", dto.getMerchantLoginId());
             log.error("primaryKeyId={}", dto.getPrimaryKeyId());
             log.error("encodeFPTxnId={}", dto.getEncodeFPTxnId());
@@ -78,14 +79,26 @@ public class BiometricService {
                         ? 0
                         : dto.getCaptureResponse().getPiddata().length()
                 );
+                log.error(
+                    "sessionKey length={}",
+                    dto.getCaptureResponse().getSessionKey() == null
+                        ? 0
+                        : dto.getCaptureResponse().getSessionKey().length()
+                );
+                log.error(
+                    "hmac length={}",
+                    dto.getCaptureResponse().getHmac() == null
+                        ? 0
+                        : dto.getCaptureResponse().getHmac().length()
+                );
             }
 
             log.error(
-                "Complete request body={}",
+                "Complete unencrypted request body={}",
                 plainJson
             );
 
-            log.error("===============================================");
+            log.error("=============================================================");
 
             SecretKey sessionKey = encryptionUtil.generateSessionKey();
 

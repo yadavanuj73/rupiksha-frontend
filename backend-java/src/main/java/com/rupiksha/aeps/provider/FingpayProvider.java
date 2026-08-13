@@ -275,23 +275,16 @@ public class FingpayProvider implements AepsProvider {
                 message = node.path("remarks").asText().trim();
             }
 
-            boolean isRequestCompleted = "Request Completed".equalsIgnoreCase(message)
-                    || message.toLowerCase().contains("request completed")
-                    || message.toLowerCase().contains("otp sent");
-
-            boolean isOtpGenerated = isRequestCompleted
-                    || node.path("status").asBoolean(false)
-                    || node.path("statusId").asInt(0) == 1
-                    || primaryKeyId > 0
-                    || !encodeFPTxnId.isBlank();
+            boolean isOtpGenerated = primaryKeyId > 0 && !encodeFPTxnId.isBlank();
 
             if (!isOtpGenerated) {
-                log.warn("Fingpay KYC OTP initialization rejected by provider: {}", message);
+                log.warn("[FINGPAY KYC REJECTED] merchantLoginId={}, primaryKeyId={}, encodeFPTxnId='{}', message='{}'",
+                        request.getAepsAgentId(), primaryKeyId, encodeFPTxnId, message);
                 return ProviderKycResult.builder()
                         .workflowState(AepsWorkflowState.FAILED)
                         .providerTxnId(encodeFPTxnId)
                         .providerReference(String.valueOf(primaryKeyId))
-                        .message(message)
+                        .message("Invalid eKYC OTP session. Merchant is inactive or provider session creation failed (primaryKeyId=0).")
                         .build();
             }
 
