@@ -355,6 +355,13 @@ public class FingpayProvider implements AepsProvider {
 
             // Decrypt/decode raw pidXml
             String rawPidXml = new String(Base64.getDecoder().decode(ekycTxn.getBiometricData()), StandardCharsets.UTF_8);
+
+            log.info("==================================================");
+            log.info("RAW & DECODED PID XML FROM DB");
+            log.info("==================================================");
+            log.info("Complete decoded pidXml from database: {}", rawPidXml);
+            log.info("==================================================");
+
             Map<String, String> parsed = parsePidXml(rawPidXml);
 
             BiometricRequestDTO.CaptureResponse capture = new BiometricRequestDTO.CaptureResponse();

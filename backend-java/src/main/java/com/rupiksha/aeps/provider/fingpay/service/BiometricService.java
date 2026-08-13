@@ -63,42 +63,37 @@ public class BiometricService {
 
             String plainJson = mapper.writeValueAsString(bodyMap);
 
-            log.error("========== FINGPAY BIOMETRIC DETAILED DEBUG REQUEST ==========");
-            log.error("superMerchantId={}", superMerchantId);
-            log.error("merchantLoginId={}", dto.getMerchantLoginId());
-            log.error("primaryKeyId={}", dto.getPrimaryKeyId());
-            log.error("encodeFPTxnId={}", dto.getEncodeFPTxnId());
+            log.error("==================================================");
+            log.error("FINAL BIOMETRIC PAYLOAD");
+            log.error("==================================================");
+            log.error("merchantLoginId: {}", dto.getMerchantLoginId());
+            log.error("primaryKeyId: {}", dto.getPrimaryKeyId());
+            log.error("encodeFPTxnId: {}", dto.getEncodeFPTxnId());
+            log.error("Aadhaar number: {}", dto.getCardnumberORUID() != null ? dto.getCardnumberORUID().getAdhaarNumber() : null);
 
             if (dto.getCaptureResponse() != null) {
-                log.error("fType={}", dto.getCaptureResponse().getFType());
-                log.error("fCount={}", dto.getCaptureResponse().getFCount());
-                log.error("PidDatatype={}", dto.getCaptureResponse().getPidDatatype());
-                log.error(
-                    "Piddata length={}",
-                    dto.getCaptureResponse().getPiddata() == null
-                        ? 0
-                        : dto.getCaptureResponse().getPiddata().length()
-                );
-                log.error(
-                    "sessionKey length={}",
-                    dto.getCaptureResponse().getSessionKey() == null
-                        ? 0
-                        : dto.getCaptureResponse().getSessionKey().length()
-                );
-                log.error(
-                    "hmac length={}",
-                    dto.getCaptureResponse().getHmac() == null
-                        ? 0
-                        : dto.getCaptureResponse().getHmac().length()
-                );
+                BiometricRequestDTO.CaptureResponse cr = dto.getCaptureResponse();
+                log.error("captureResponse.errCode: {}", cr.getErrCode());
+                log.error("captureResponse.errInfo: {}", cr.getErrInfo());
+                log.error("captureResponse.fCount: {}", cr.getFCount());
+                log.error("captureResponse.fType: {}", cr.getFType());
+                log.error("captureResponse.iCount: {}", cr.getICount());
+                log.error("captureResponse.iType: {}", cr.getIType());
+                log.error("captureResponse.pCount: {}", cr.getPCount());
+                log.error("captureResponse.pType: {}", cr.getPType());
+                log.error("captureResponse.qScore: {}", cr.getQScore());
+                log.error("captureResponse.dpID: {}", cr.getDpID());
+                log.error("captureResponse.rdsID: {}", cr.getRdsID());
+                log.error("captureResponse.rdsVer: {}", cr.getRdsVer());
+                log.error("captureResponse.ci: {}", cr.getCi());
+                log.error("captureResponse.PidDatatype: {}", cr.getPidDatatype());
+                log.error("captureResponse.sessionKey length: {}", cr.getSessionKey() != null ? cr.getSessionKey().length() : 0);
+                log.error("captureResponse.hmac length: {}", cr.getHmac() != null ? cr.getHmac().length() : 0);
+                log.error("captureResponse.Piddata length: {}", cr.getPiddata() != null ? cr.getPiddata().length() : 0);
             }
 
-            log.error(
-                "Complete unencrypted request body={}",
-                plainJson
-            );
-
-            log.error("=============================================================");
+            log.error("COMPLETE plainJson before encryption: {}", plainJson);
+            log.error("==================================================");
 
             SecretKey sessionKey = encryptionUtil.generateSessionKey();
 
@@ -126,7 +121,18 @@ public class BiometricService {
                     client.post(biometricUrl, encryptedBody, headers);
 
             log.error("========== FINGPAY BIOMETRIC RESPONSE ==========");
-            log.error(response);
+            log.error("1. Complete decrypted Fingpay response: {}", response);
+            if (response != null && !response.isEmpty()) {
+                try {
+                    com.fasterxml.jackson.databind.JsonNode resNode = mapper.readTree(response);
+                    log.error("2. status: {}", resNode.path("status").asText(null));
+                    log.error("3. statusCode: {}", resNode.path("statusCode").asText(null));
+                    log.error("4. message: {}", resNode.path("message").asText(null));
+                    log.error("5. data: {}", resNode.path("data").isMissingNode() ? null : resNode.path("data").toString());
+                } catch (Exception e) {
+                    log.error("Failed to parse Fingpay response JSON for logging", e);
+                }
+            }
             log.error("===============================================");
 
             if (response == null || response.isEmpty()) {

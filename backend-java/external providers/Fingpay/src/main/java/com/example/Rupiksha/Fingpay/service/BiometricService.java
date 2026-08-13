@@ -63,6 +63,27 @@ public class BiometricService {
 
             String plainJson = mapper.writeValueAsString(bodyMap);
 
+            log.error("========== FINGPAY BIOMETRIC DETAILED DEBUG REQUEST ==========");
+            log.error("1. Complete plain biometric request JSON: {}", plainJson);
+            if (dto.getCaptureResponse() != null) {
+                BiometricRequestDTO.CaptureResponse cr = dto.getCaptureResponse();
+                log.error("2. captureResponse.fType: {}", cr.getFType());
+                log.error("3. captureResponse.PidDatatype: {}", cr.getPidDatatype());
+                log.error("4. captureResponse.hmac: {}", cr.getHmac());
+                log.error("5. captureResponse.Piddata length: {}", cr.getPiddata() != null ? cr.getPiddata().length() : 0);
+                log.error("6. captureResponse.sessionKey length: {}", cr.getSessionKey() != null ? cr.getSessionKey().length() : 0);
+                log.error("7. captureResponse.ci: {}", cr.getCi());
+                log.error("8. captureResponse.dpID: {}", cr.getDpID());
+                log.error("9. captureResponse.rdsID: {}", cr.getRdsID());
+                log.error("10. captureResponse.rdsVer: {}", cr.getRdsVer());
+                log.error("11. captureResponse.errCode: {}", cr.getErrCode());
+                log.error("12. captureResponse.qScore: {}", cr.getQScore());
+                log.error("13. captureResponse.fCount: {}", cr.getFCount());
+                log.error("14. captureResponse.iCount: {}", cr.getICount());
+                log.error("15. captureResponse.pCount: {}", cr.getPCount());
+            }
+            log.error("=============================================================");
+
             SecretKey sessionKey = encryptionUtil.generateSessionKey();
 
             String encryptedBody =
@@ -87,6 +108,21 @@ public class BiometricService {
 
             String response =
                     client.post(biometricUrl, encryptedBody, headers);
+
+            log.error("========== FINGPAY BIOMETRIC RESPONSE ==========");
+            log.error("1. Complete decrypted Fingpay response: {}", response);
+            if (response != null && !response.isEmpty()) {
+                try {
+                    com.fasterxml.jackson.databind.JsonNode resNode = mapper.readTree(response);
+                    log.error("2. status: {}", resNode.path("status").asText(null));
+                    log.error("3. statusCode: {}", resNode.path("statusCode").asText(null));
+                    log.error("4. message: {}", resNode.path("message").asText(null));
+                    log.error("5. data: {}", resNode.path("data").isMissingNode() ? null : resNode.path("data").toString());
+                } catch (Exception e) {
+                    log.error("Failed to parse Fingpay response JSON for logging", e);
+                }
+            }
+            log.error("===============================================");
 
             if (response == null || response.isEmpty()) {
                 throw new FingpayException("Empty biometric response");
