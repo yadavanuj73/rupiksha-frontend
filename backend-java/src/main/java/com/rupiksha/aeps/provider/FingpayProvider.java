@@ -362,13 +362,21 @@ public class FingpayProvider implements AepsProvider {
             log.info("Complete decoded pidXml from database: {}", rawPidXml);
             log.info("==================================================");
 
-            Map<String, String> parsed = parsePidXml(rawPidXml);
+            String fType = parsed.get("fType");
+            String pidDataType = parsed.get("PidDatatype");
+            if ("1".equals(fType) || "FIR".equalsIgnoreCase(fType) || "FIR".equalsIgnoreCase(pidDataType)) {
+                fType = "1";
+                pidDataType = "FIR";
+            } else {
+                fType = "0";
+                pidDataType = "FMR";
+            }
 
             BiometricRequestDTO.CaptureResponse capture = new BiometricRequestDTO.CaptureResponse();
             capture.setErrCode(parsed.get("errCode"));
             capture.setErrInfo(parsed.get("errInfo"));
             capture.setFCount(parsed.get("fCount"));
-            capture.setFType(parsed.get("fType"));
+            capture.setFType(fType);
             capture.setICount(parsed.getOrDefault("iCount", "0"));
             capture.setIType(parsed.getOrDefault("iType", "0"));
             capture.setPCount(parsed.getOrDefault("pCount", "0"));
@@ -384,11 +392,6 @@ public class FingpayProvider implements AepsProvider {
             capture.setCi(parsed.get("ci"));
             capture.setSessionKey(parsed.get("sessionKey"));
             capture.setHmac(parsed.get("hmac"));
-            String pidDataType = parsed.get("PidDatatype");
-            String fType = parsed.get("fType");
-            if ("2".equals(fType) || "raw".equalsIgnoreCase(pidDataType) || "0".equals(pidDataType)) {
-                pidDataType = "FMR";
-            }
             capture.setPidDatatype(pidDataType);
             capture.setPiddata(parsed.get("Piddata"));
             biometricDto.setCaptureResponse(capture);
@@ -732,7 +735,9 @@ public class FingpayProvider implements AepsProvider {
             map.put("errCode", resp.getAttribute("errCode"));
             map.put("errInfo", resp.getAttribute("errInfo"));
             map.put("fCount", resp.getAttribute("fCount"));
-            map.put("fType", resp.getAttribute("fType"));
+            String rawFType = resp.getAttribute("fType");
+            String normalizedFType = ("1".equals(rawFType) || "FIR".equalsIgnoreCase(rawFType)) ? "1" : "0";
+            map.put("fType", normalizedFType);
             map.put("iCount", resp.getAttribute("iCount"));
             map.put("iType", resp.getAttribute("iType"));
             map.put("pCount", resp.getAttribute("pCount"));
@@ -771,7 +776,9 @@ public class FingpayProvider implements AepsProvider {
             Element data = (Element) dataList.item(0);
             String dataType = data.getAttribute("type");
             String fType = map.get("fType");
-            if ("2".equals(fType) || "raw".equalsIgnoreCase(dataType) || "0".equals(dataType)) {
+            if ("1".equals(fType) || "FIR".equalsIgnoreCase(dataType)) {
+                dataType = "FIR";
+            } else {
                 dataType = "FMR";
             }
             map.put("PidDatatype", dataType);

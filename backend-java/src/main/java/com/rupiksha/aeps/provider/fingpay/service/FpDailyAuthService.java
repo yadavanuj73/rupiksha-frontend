@@ -251,7 +251,9 @@ public class FpDailyAuthService {
             map.put("errCode", resp.getAttribute("errCode"));
             map.put("errInfo", resp.getAttribute("errInfo"));
             map.put("fCount", resp.getAttribute("fCount"));
-            map.put("fType", resp.getAttribute("fType"));
+            String rawFType = resp.getAttribute("fType");
+            String normalizedFType = ("1".equals(rawFType) || "FIR".equalsIgnoreCase(rawFType)) ? "1" : "0";
+            map.put("fType", normalizedFType);
             map.put("iCount", resp.getAttribute("iCount"));
             map.put("iType", resp.getAttribute("iType"));
             map.put("pCount", resp.getAttribute("pCount"));
@@ -298,7 +300,14 @@ public class FpDailyAuthService {
         NodeList dataList = root.getElementsByTagName("Data");
         if (dataList.getLength() > 0) {
             Element data = (Element) dataList.item(0);
-            map.put("PidDatatype", data.getAttribute("type"));
+            String dataType = data.getAttribute("type");
+            String fType = map.get("fType");
+            if ("1".equals(fType) || "FIR".equalsIgnoreCase(dataType)) {
+                dataType = "FIR";
+            } else {
+                dataType = "FMR";
+            }
+            map.put("PidDatatype", dataType);
             map.put("Piddata", data.getTextContent().trim());
         }
         
