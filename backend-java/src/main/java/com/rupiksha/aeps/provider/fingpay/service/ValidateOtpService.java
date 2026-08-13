@@ -6,6 +6,7 @@ import com.rupiksha.aeps.provider.fingpay.entity.EkycTxn;
 import com.rupiksha.aeps.provider.fingpay.exception.FingpayException;
 import com.rupiksha.aeps.provider.fingpay.repository.EkycTxnRepo;
 import com.rupiksha.aeps.provider.fingpay.util.FingpayEncryptionUtil;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -116,7 +117,7 @@ public class ValidateOtpService {
             throw fe;
         } catch (Exception e) {
             log.error("Validate OTP execution failed: {}", e.getMessage(), e);
-            throw new FingpayException("Validate OTP Failed: " + e.getMessage(), e);
+            throw new FingpayException("Validate OTP Failed: " + e.getMessage());
         }
     }
 }

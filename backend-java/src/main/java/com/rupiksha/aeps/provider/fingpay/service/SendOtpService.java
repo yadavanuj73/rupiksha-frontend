@@ -131,7 +131,7 @@ public class SendOtpService {
             throw fe;
         } catch (Exception e) {
             log.error("Send OTP execution failed: {}", e.getMessage(), e);
-            throw new FingpayException("Send OTP Failed: " + e.getMessage(), e);
+            throw new FingpayException("Send OTP Failed: " + e.getMessage());
         }
     }
 
