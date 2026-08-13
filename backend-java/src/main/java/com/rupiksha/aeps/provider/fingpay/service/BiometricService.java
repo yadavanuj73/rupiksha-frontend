@@ -59,7 +59,32 @@ public class BiometricService {
             bodyMap.put("requestRemarks",
                     dto.getRequestRemarks() != null ? dto.getRequestRemarks() : "WORKING");
             bodyMap.put("cardnumberORUID", dto.getCardnumberORUID());
-            bodyMap.put("captureResponse", dto.getCaptureResponse());
+
+            // Build captureResponse as explicit map so JSON keys are exactly what Fingpay expects
+            BiometricRequestDTO.CaptureResponse cr = dto.getCaptureResponse();
+            Map<String, Object> captureResponseMap = new LinkedHashMap<>();
+            captureResponseMap.put("errCode", cr.getErrCode());
+            captureResponseMap.put("errInfo", cr.getErrInfo());
+            captureResponseMap.put("fCount", cr.getFCount());
+            captureResponseMap.put("fType", cr.getFType());
+            captureResponseMap.put("iCount", cr.getICount());
+            captureResponseMap.put("iType", cr.getIType());
+            captureResponseMap.put("pCount", cr.getPCount());
+            captureResponseMap.put("pType", cr.getPType());
+            captureResponseMap.put("nmPoints", cr.getNmPoints());
+            captureResponseMap.put("qScore", cr.getQScore());
+            captureResponseMap.put("dpID", cr.getDpID());
+            captureResponseMap.put("rdsID", cr.getRdsID());
+            captureResponseMap.put("rdsVer", cr.getRdsVer());
+            captureResponseMap.put("dc", cr.getDc());
+            captureResponseMap.put("mi", cr.getMi());
+            captureResponseMap.put("mc", cr.getMc());
+            captureResponseMap.put("ci", cr.getCi());
+            captureResponseMap.put("sessionKey", cr.getSessionKey());
+            captureResponseMap.put("hmac", cr.getHmac());
+            captureResponseMap.put("PidDatatype", cr.getPidDatatype());
+            captureResponseMap.put("Piddata", cr.getPiddata());
+            bodyMap.put("captureResponse", captureResponseMap);
 
             String plainJson = mapper.writeValueAsString(bodyMap);
 

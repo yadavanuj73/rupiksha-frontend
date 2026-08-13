@@ -1,5 +1,6 @@
 package com.rupiksha.aeps.provider.fingpay.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
@@ -20,6 +21,7 @@ public class BiometricRequestDTO {
     }
 
     @Data
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class CaptureResponse {
         private String errCode;
         private String errInfo;
@@ -31,8 +33,13 @@ public class BiometricRequestDTO {
         private String pType;
         private String nmPoints;
         private String qScore;
+
+        @JsonProperty("dpID")
         private String dpID;
+
+        @JsonProperty("rdsID")
         private String rdsID;
+
         private String rdsVer;
         private String dc;
         private String mi;
@@ -40,8 +47,10 @@ public class BiometricRequestDTO {
         private String ci;
         private String sessionKey;
         private String hmac;
+
         @JsonProperty("PidDatatype")
         private String PidDatatype;
+
         @JsonProperty("Piddata")
         private String Piddata;
     }
