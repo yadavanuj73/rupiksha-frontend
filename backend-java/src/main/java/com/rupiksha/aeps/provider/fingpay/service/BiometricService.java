@@ -96,8 +96,7 @@ public class BiometricService {
             log.error("encodeFPTxnId: {}", dto.getEncodeFPTxnId());
             log.error("Aadhaar number: {}", dto.getCardnumberORUID() != null ? dto.getCardnumberORUID().getAdhaarNumber() : null);
 
-            if (dto.getCaptureResponse() != null) {
-                BiometricRequestDTO.CaptureResponse cr = dto.getCaptureResponse();
+            if (cr != null) {
                 log.error("captureResponse.errCode: {}", cr.getErrCode());
                 log.error("captureResponse.errInfo: {}", cr.getErrInfo());
                 log.error("captureResponse.fCount: {}", cr.getFCount());
