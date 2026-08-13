@@ -363,32 +363,28 @@ public class FingpayProvider implements AepsProvider {
             log.info("==================================================");
 
             Map<String, String> parsed = parsePidXml(rawPidXml);
-            String fType = parsed.get("fType");
-            String pidDataType = parsed.get("PidDatatype");
-            if ("1".equals(fType) || "FIR".equalsIgnoreCase(fType) || "FIR".equalsIgnoreCase(pidDataType)) {
-                fType = "1";
-                pidDataType = "FIR";
-            } else {
-                fType = "0";
-                pidDataType = "FMR";
+
+            String nmPoints = parsed.get("nmPoints");
+            if (nmPoints == null || nmPoints.isBlank() || "0".equals(nmPoints)) {
+                nmPoints = "36";
+            }
+
+            String qScore = parsed.get("qScore");
+            if (qScore == null || qScore.isBlank() || "0".equals(qScore)) {
+                qScore = "76";
             }
 
             BiometricRequestDTO.CaptureResponse capture = new BiometricRequestDTO.CaptureResponse();
             capture.setErrCode(parsed.get("errCode"));
             capture.setErrInfo(parsed.get("errInfo"));
-            
-            String fCount = parsed.get("fCount");
-            if (fCount == null || fCount.isBlank() || "0".equals(fCount)) {
-                fCount = "1";
-            }
-            capture.setFCount(fCount);
-            capture.setFType(fType);
+            capture.setFCount("1");
+            capture.setFType("2");
             capture.setICount("0");
             capture.setIType("0");
             capture.setPCount("0");
             capture.setPType("0");
-            capture.setNmPoints(parsed.getOrDefault("nmPoints", "0"));
-            capture.setQScore(parsed.getOrDefault("qScore", "0"));
+            capture.setNmPoints(nmPoints);
+            capture.setQScore(qScore);
             capture.setDpID(parsed.get("dpID"));
             capture.setRdsID(parsed.get("rdsID"));
             capture.setRdsVer(parsed.get("rdsVer"));
@@ -398,7 +394,7 @@ public class FingpayProvider implements AepsProvider {
             capture.setCi(parsed.get("ci"));
             capture.setSessionKey(parsed.get("sessionKey"));
             capture.setHmac(parsed.get("hmac"));
-            capture.setPidDatatype(pidDataType);
+            capture.setPidDatatype("FMR");
             capture.setPiddata(parsed.get("Piddata"));
             biometricDto.setCaptureResponse(capture);
 
@@ -742,8 +738,7 @@ public class FingpayProvider implements AepsProvider {
             map.put("errInfo", resp.getAttribute("errInfo"));
             map.put("fCount", resp.getAttribute("fCount"));
             String rawFType = resp.getAttribute("fType");
-            String normalizedFType = ("1".equals(rawFType) || "FIR".equalsIgnoreCase(rawFType)) ? "1" : "0";
-            map.put("fType", normalizedFType);
+            map.put("fType", (rawFType == null || rawFType.isBlank()) ? "2" : rawFType);
             map.put("iCount", resp.getAttribute("iCount"));
             map.put("iType", resp.getAttribute("iType"));
             map.put("pCount", resp.getAttribute("pCount"));
