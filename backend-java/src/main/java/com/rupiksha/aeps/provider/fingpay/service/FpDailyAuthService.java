@@ -123,39 +123,33 @@ public class FpDailyAuthService {
             // 4. Construct Aadhaar/VID representation
             Map<String, Object> cardOrUID = new LinkedHashMap<>();
             String rawAadhar = request.getAdharNumber();
+            if (rawAadhar == null || rawAadhar.isBlank()) {
+                rawAadhar = mainUser.getAadhaarNumber();
+            }
             if (rawAadhar != null && rawAadhar.length() == 16) {
                 cardOrUID.put("indicatorforUID", "2");
                 cardOrUID.put("adhaarNumber", "999999999999");
                 cardOrUID.put("virtualId", rawAadhar);
-                cardOrUID.put("nationalBankIdentificationNumber", "");
             } else {
                 cardOrUID.put("indicatorforUID", "0");
                 cardOrUID.put("adhaarNumber", rawAadhar != null ? rawAadhar : "");
-                cardOrUID.put("nationalBankIdentificationNumber", "");
             }
 
             // Resolve target serviceType
             String resolvedServiceType = request.getServiceType() != null ? request.getServiceType() : "AEPS";
-            String trnTimestamp = encryptionUtil.timestamp();
 
-            // 5. Main JSON payload with complete provider parameters
+            // 5. Main JSON payload strictly adhering to 2FA Biometric API v2.1
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("superMerchantId", superMerchantId);
-            payload.put("merchantLoginId", merchantUserName);
             payload.put("merchantUserName", merchantUserName);
-            payload.put("merchantId", merchantUserName);
             payload.put("merchantPin", md5(rawPin));
             payload.put("transactionType", "AUO");
-            payload.put("paymentType", "B");
-            payload.put("languageCode", "en");
-            payload.put("timestamp", trnTimestamp);
-            payload.put("latitude", request.getLatitude());
-            payload.put("longitude", request.getLongitude());
-            payload.put("requestRemarks", "AUO");
+            payload.put("latitude", request.getLatitude() != null && !request.getLatitude().isBlank() ? request.getLatitude() : "28.6139");
+            payload.put("longitude", request.getLongitude() != null && !request.getLongitude().isBlank() ? request.getLongitude() : "77.2090");
+            payload.put("requestRemarks", "Daily 2FA Validation");
             payload.put("merchantTranId", merchantTranId);
             payload.put("serviceType", resolvedServiceType);
             payload.put("mobileNumber", request.getMobileNumber());
-            payload.put("subMerchantId", "");
             payload.put("cardnumberORUID", cardOrUID);
             payload.put("captureResponse", captureResponse);
 
@@ -167,6 +161,7 @@ public class FpDailyAuthService {
             SecretKey sessionKey = encryptionUtil.generateSessionKey();
             String encryptedBody = encryptionUtil.encryptBody(plainJson, sessionKey);
             String eskey = encryptionUtil.encryptSessionKey(sessionKey);
+            String trnTimestamp = encryptionUtil.timestamp();
 
             // Daily 2FA follows the same encrypted-AEPS signing rule as provider sample:
             // Base64(SHA-256(plainJson))
@@ -262,7 +257,8 @@ public class FpDailyAuthService {
             map.put("errCode", resp.getAttribute("errCode"));
             map.put("errInfo", resp.getAttribute("errInfo"));
             map.put("fCount", resp.getAttribute("fCount"));
-            map.put("fType", "2");
+            String fType = resp.getAttribute("fType");
+            map.put("fType", (fType != null && !fType.isBlank()) ? fType : "2");
             map.put("iCount", resp.getAttribute("iCount"));
             map.put("iType", resp.getAttribute("iType"));
             map.put("pCount", resp.getAttribute("pCount"));
@@ -309,11 +305,7 @@ public class FpDailyAuthService {
         NodeList dataList = root.getElementsByTagName("Data");
         if (dataList.getLength() > 0) {
             Element data = (Element) dataList.item(0);
-            String dataType = data.getAttribute("type");
-            if (dataType == null || dataType.isBlank()) {
-                dataType = "X";
-            }
-            map.put("PidDatatype", dataType);
+            map.put("PidDatatype", "FMR");
             map.put("Piddata", data.getTextContent().trim());
         }
         
