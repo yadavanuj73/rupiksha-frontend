@@ -74,12 +74,16 @@ public class FpDailyAuthService {
             AepsKyc kyc = aepsKycRepo.findByUid(uidLong)
                     .orElseThrow(() -> new RuntimeException("Fingpay merchant KYC registry details not found."));
 
-            String merchantUserName = kyc.getOutlet();
+            String merchantUserName = resolveMerchantUserName(mainUser, kyc, request.getMerchantId());
+            if (merchantUserName == null || merchantUserName.isBlank()) {
+                throw new RuntimeException("Fingpay merchant login ID is missing for daily authentication.");
+            }
             String rawPin = (kyc.getMpin() != null)
                     ? kyc.getMpin()
                     : fingUserRepository.findById(uidLong)
                     .orElseThrow(() -> new RuntimeException("Fingpay User PIN details not found"))
                     .getPin();
+            log.info("Daily 2FA merchant identity resolved for mobile={} using merchantUserName='{}'", request.getMobileNumber(), merchantUserName);
 
             // 3. Parse Biometrics XML
             Map<String, String> biometricMap = parsePidXml(request.getPidXml());
@@ -307,6 +311,25 @@ public class FpDailyAuthService {
         }
         
         return map;
+    }
+
+    private String resolveMerchantUserName(com.rupiksha.backend.domain.User mainUser, AepsKyc kyc, String requestMerchantId) {
+        if (mainUser.getAepsAgentId() != null && !mainUser.getAepsAgentId().isBlank()) {
+            return mainUser.getAepsAgentId().trim();
+        }
+        if (kyc.getOutlet() != null && !kyc.getOutlet().isBlank()) {
+            return kyc.getOutlet().trim();
+        }
+        if (requestMerchantId != null && !requestMerchantId.isBlank()) {
+            return requestMerchantId.trim();
+        }
+        if (mainUser.getAepsMerchantId() != null && !mainUser.getAepsMerchantId().isBlank()) {
+            return mainUser.getAepsMerchantId().trim();
+        }
+        if (kyc.getMerchantId() != null && !kyc.getMerchantId().isBlank()) {
+            return kyc.getMerchantId().trim();
+        }
+        return null;
     }
 
     private String md5(String input) throws Exception {
