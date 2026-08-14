@@ -55,6 +55,13 @@ public class AepsServiceImpl implements AepsService {
         this.aepsKycRepository = aepsKycRepository;
     }
 
+    private boolean isFingpayKycCompleted(com.rupiksha.backend.domain.User mainUser) {
+        long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
+        return aepsKycRepository.findByUid(uidLong)
+                .map(AepsKyc::getKycDone)
+                .orElse(false);
+    }
+
     private User getOrSyncAepsUser(String mobile) {
         Optional<User> userOpt = aepsUserRepository.findByMobile(mobile)
                 .or(() -> aepsUserRepository.findByUsername(mobile));
@@ -357,6 +364,18 @@ public class AepsServiceImpl implements AepsService {
                         .orElseThrow(() -> new AepsException("Fingpay merchant profile not found."));
                 aepsKyc.setKycDone(true);
                 aepsKycRepository.save(aepsKyc);
+
+                aepsUser.setAepsKycDone(true);
+                aepsUser.setAepsKycCompletedAt(java.time.LocalDateTime.now());
+                aepsUser.setAepsKycRefId(providerResult.getProviderReference());
+                aepsUser.setAepsKycTxnId(providerResult.getProviderTxnId());
+                aepsUserRepository.save(aepsUser);
+
+                mainUser.setAepsKycDone(true);
+                mainUser.setAepsKycCompletedAt(java.time.Instant.now());
+                mainUser.setAepsKycRefId(providerResult.getProviderReference());
+                mainUser.setAepsKycTxnId(providerResult.getProviderTxnId());
+                mainUserRepository.save(mainUser);
             } else {
                 // Update AEPS user
                 aepsUser.setAepsKycDone(true);
@@ -558,6 +577,14 @@ public class AepsServiceImpl implements AepsService {
                         .orElseThrow(() -> new AepsException("Fingpay merchant profile not found."));
                 aepsKyc.setKycDone(true);
                 aepsKycRepository.save(aepsKyc);
+
+                aepsUser.setAepsKycDone(true);
+                aepsUser.setAepsKycCompletedAt(java.time.LocalDateTime.now());
+                aepsUserRepository.save(aepsUser);
+
+                mainUser.setAepsKycDone(true);
+                mainUser.setAepsKycCompletedAt(java.time.Instant.now());
+                mainUserRepository.save(mainUser);
             } else {
                 // Update AEPS user
                 aepsUser.setAepsKycDone(true);
@@ -617,7 +644,19 @@ public class AepsServiceImpl implements AepsService {
         if (aepsUser.getAepsOnboarded() == null || !aepsUser.getAepsOnboarded()) {
             throw new AepsException("Merchant must complete onboarding before executing Daily 2FA.");
         }
-        if (aepsUser.getAepsKycDone() == null || !aepsUser.getAepsKycDone()) {
+
+        Optional<com.rupiksha.backend.domain.User> mainUserOpt = mainUserRepository.findByMobile(mobile)
+                .or(() -> mainUserRepository.findByUsername(mobile));
+        if (mainUserOpt.isEmpty()) {
+            throw new AepsException("Core user record not found for mobile: " + mobile);
+        }
+        com.rupiksha.backend.domain.User mainUser = mainUserOpt.get();
+
+        boolean hasKycDone = Boolean.TRUE.equals(aepsUser.getAepsKycDone());
+        if ("fingpay".equalsIgnoreCase(activeProvider.getProviderName())) {
+            hasKycDone = hasKycDone || isFingpayKycCompleted(mainUser);
+        }
+        if (!hasKycDone) {
             throw new AepsException("Merchant must complete biometric KYC before executing Daily 2FA.");
         }
 
@@ -649,11 +688,7 @@ public class AepsServiceImpl implements AepsService {
         }
 
         // 2. Fetch and validate Core User record
-        Optional<com.rupiksha.backend.domain.User> mainUserOpt = mainUserRepository.findByMobile(mobile);
-        if (mainUserOpt.isEmpty()) {
-            throw new AepsException("Core user record not found for mobile: " + mobile);
-        }
-        com.rupiksha.backend.domain.User mainUser = mainUserOpt.get();
+        // already resolved above for KYC gate checks
 
         // 3. Initialize dynamic audit history log
         AepsKycHistory history = AepsKycHistory.builder()
