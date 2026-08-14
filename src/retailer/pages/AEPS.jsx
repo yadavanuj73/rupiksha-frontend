@@ -76,6 +76,16 @@ export default function AEPS() {
         return <DisabledServiceBanner serviceName="AEPS" />;
     }
 
+    if (status.onboarded && status.kycDone && status.aeps2faDone) {
+        return (
+            <div className="min-h-screen bg-slate-50/60 py-6 px-3 sm:px-6 lg:px-8 font-['Inter',sans-serif]">
+                <div className="max-w-7xl mx-auto">
+                    <BankingTerminal provider={provider} status={status} setStatus={setStatus} />
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-4 font-['Inter',sans-serif]">
             <motion.div
@@ -174,7 +184,7 @@ export default function AEPS() {
                             </button>
                         </div>
                     </>
-                ) : !status.aeps2faDone ? (
+                ) : (
                     /* Step 3: Daily 2FA Session Verification */
                     <DailyAuthentication
                         provider={provider}
@@ -182,9 +192,6 @@ export default function AEPS() {
                         onSuccess={() => setStatus(prev => ({ ...prev, aeps2faDone: true }))}
                         onBack={() => navigate('/dashboard')}
                     />
-                ) : (
-                    /* Step 4: Fully Active Services */
-                    <BankingTerminal provider={provider} status={status} setStatus={setStatus} />
                 )}
             </motion.div>
         </div>

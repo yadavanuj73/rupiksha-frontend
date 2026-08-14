@@ -125,7 +125,7 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                                 statusUpper === 'PENDING' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
                                 'bg-rose-50 text-rose-700 border border-rose-100'
                             }`}>
-                                {statusUpper === 'SUCCESS' ? 'Deposit Approved' : statusUpper === 'PENDING' ? 'Transaction Pending' : 'Deposit Rejected'}
+                                {statusUpper === 'SUCCESS' ? 'Transaction Approved' : statusUpper === 'PENDING' ? 'Transaction Pending' : 'Transaction Rejected'}
                             </span>
 
                             <div className="text-3xl font-black text-slate-800 tracking-tight">
@@ -140,7 +140,7 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                         <div className="space-y-2.5">
                             <div className="flex justify-between items-center py-2 border-b border-slate-100 text-xs">
                                 <span className="font-semibold text-slate-400">Transaction Type</span>
-                                <span className="font-black text-slate-800 uppercase tracking-wide">AEPS Cash Deposit</span>
+                                <span className="font-black text-slate-800 uppercase tracking-wide">{txnData.serviceLabel || txnData.serviceType || 'AEPS Banking'}</span>
                             </div>
                             <div className="flex justify-between items-center py-2 border-b border-slate-100 text-xs">
                                 <span className="font-semibold text-slate-400">Bank Name</span>
