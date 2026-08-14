@@ -4,7 +4,15 @@
 
 export const MANTRA_PORTS = Array.from({ length: 21 }, (_, i) => 11100 + i); // 11100 to 11120
 
+// Default PidOptions for standard Authentication, Daily 2FA (AUO), and AEPS Transactions (No WADH)
 export const PID_OPTIONS_XML = `
+<PidOptions ver="1.0">
+  <Opts env="P" fCount="1" fType="2" iCount="0" format="0" pidVer="2.0" timeout="15000" posh="UNKNOWN" />
+</PidOptions>
+`.trim();
+
+// Specific PidOptions for Aadhaar Biometric eKYC (With Fingpay eKYC WADH)
+export const PID_OPTIONS_EKYC_XML = `
 <PidOptions ver="1.0">
   <Opts env="P" fCount="1" fType="2" iCount="0" format="0" pidVer="2.0" timeout="15000" wadh="E0jzJ/P8UopUHAieZn8CKqS4WPMi5ZSYXgfnlfkWjrc=" posh="UNKNOWN" />
 </PidOptions>

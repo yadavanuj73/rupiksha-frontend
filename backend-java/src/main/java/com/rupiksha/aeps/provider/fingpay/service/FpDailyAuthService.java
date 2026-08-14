@@ -125,6 +125,9 @@ public class FpDailyAuthService {
             if (rawAadhar == null || rawAadhar.isBlank()) {
                 rawAadhar = mainUser.getAadhaarNumber();
             }
+            if (rawAadhar != null) {
+                rawAadhar = rawAadhar.trim().replace(" ", "").replace("-", "");
+            }
             if (rawAadhar != null && rawAadhar.length() == 16) {
                 cardOrUID.put("indicatorforUID", 2);
                 cardOrUID.put("adhaarNumber", "999999999999");

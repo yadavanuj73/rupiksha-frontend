@@ -3,7 +3,7 @@ import { useRD } from '../hooks/useRD';
 import { RD_STATES } from '../services/rd/constants';
 import { Fingerprint } from 'lucide-react';
 
-export default function CaptureButton({ onCaptureSuccess, onCaptureError }) {
+export default function CaptureButton({ onCaptureSuccess, onCaptureError, customPidOptions = null }) {
     const { captureState, capture, device } = useRD();
     
     const isScanning = captureState === RD_STATES.DISCOVERING || 
@@ -14,7 +14,7 @@ export default function CaptureButton({ onCaptureSuccess, onCaptureError }) {
 
     const handleCapture = async () => {
         try {
-            const result = await capture();
+            const result = await capture(customPidOptions);
             if (result && onCaptureSuccess) {
                 onCaptureSuccess(result);
             }

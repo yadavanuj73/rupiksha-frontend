@@ -11,6 +11,7 @@ import CaptureSuccess from '../../components/CaptureSuccess';
 import { kycWorkflowService } from '../../services/aeps/kycService';
 import { otpVerificationService } from '../../services/aeps/otpVerificationService';
 import { userService } from '../../services/apiService';
+import { PID_OPTIONS_EKYC_XML } from '../../services/rd/constants';
 import DisabledServiceBanner from '../../components/shared/DisabledServiceBanner';
 
 export default function AepsAgentKyc() {
@@ -176,7 +177,7 @@ export default function AepsAgentKyc() {
                                             Place your finger firmly on the Mantra scanner and click the button below to capture your FMR biometric record.
                                         </p>
 
-                                        <CaptureButton />
+                                        <CaptureButton customPidOptions={PID_OPTIONS_EKYC_XML} />
                                         <CaptureLoader />
                                         <CaptureError />
                                         <CaptureSuccess />
