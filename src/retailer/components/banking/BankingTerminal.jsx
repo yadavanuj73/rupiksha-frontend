@@ -19,7 +19,6 @@ import {
     FileText,
     ArrowDownToLine,
     MapPin,
-    Building2,
     Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -365,10 +364,8 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                 Live Session
                             </span>
                         </div>
-                        <p className="text-xs text-slate-500 font-semibold mt-0.5 flex items-center gap-2">
+                        <p className="text-xs text-slate-500 font-semibold mt-0.5">
                             <span>Terminal ID: <strong className="text-slate-700 font-bold uppercase">{status.agentId || 'RPRMH62955'}</strong></span>
-                            <span>•</span>
-                            <span>SuperMerchant ID: <strong className="text-slate-700 font-bold">1407</strong></span>
                         </p>
                     </div>
                 </div>
@@ -380,10 +377,6 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                             <span>GPS: {location.latitude}, {location.longitude}</span>
                         </div>
                     )}
-                    <div className="flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-wider shadow-sm">
-                        <Building2 size={13} />
-                        <span>{provider === 'fingpay' ? 'Fingpay (AEPS 1)' : 'Levin (AEPS 2)'}</span>
-                    </div>
                 </div>
             </div>
 
