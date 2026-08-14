@@ -10,6 +10,7 @@ public class AepsDailyAuthRequest {
     private String adharNumber;
     private String pidXml;
     private String merchantId;
+    private String aepsAgentId;
     private String latitude;
     private String longitude;
     private String biometricType;

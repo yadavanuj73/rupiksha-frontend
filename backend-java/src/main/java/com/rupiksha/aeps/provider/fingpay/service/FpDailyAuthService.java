@@ -127,36 +127,46 @@ public class FpDailyAuthService {
                 cardOrUID.put("indicatorforUID", "2");
                 cardOrUID.put("adhaarNumber", "999999999999");
                 cardOrUID.put("virtualId", rawAadhar);
+                cardOrUID.put("nationalBankIdentificationNumber", "");
             } else {
                 cardOrUID.put("indicatorforUID", "0");
                 cardOrUID.put("adhaarNumber", rawAadhar != null ? rawAadhar : "");
+                cardOrUID.put("nationalBankIdentificationNumber", "");
             }
 
             // Resolve target serviceType
             String resolvedServiceType = request.getServiceType() != null ? request.getServiceType() : "AEPS";
+            String trnTimestamp = encryptionUtil.timestamp();
 
-            // 5. Main JSON payload
+            // 5. Main JSON payload with complete provider parameters
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("superMerchantId", superMerchantId);
+            payload.put("merchantLoginId", merchantUserName);
             payload.put("merchantUserName", merchantUserName);
+            payload.put("merchantId", merchantUserName);
             payload.put("merchantPin", md5(rawPin));
             payload.put("transactionType", "AUO");
+            payload.put("paymentType", "B");
+            payload.put("languageCode", "en");
+            payload.put("timestamp", trnTimestamp);
             payload.put("latitude", request.getLatitude());
             payload.put("longitude", request.getLongitude());
-            payload.put("requestRemarks", "Daily 2FA Validation");
+            payload.put("requestRemarks", "AUO");
             payload.put("merchantTranId", merchantTranId);
             payload.put("serviceType", resolvedServiceType);
             payload.put("mobileNumber", request.getMobileNumber());
+            payload.put("subMerchantId", "");
             payload.put("cardnumberORUID", cardOrUID);
             payload.put("captureResponse", captureResponse);
 
             String plainJson = objectMapper.writeValueAsString(payload);
+            log.info("Daily 2FA plain JSON constructed for merchantUserName='{}', serviceType='{}', tranId='{}'",
+                    merchantUserName, resolvedServiceType, merchantTranId);
 
             // 6. Encrypt body and key
             SecretKey sessionKey = encryptionUtil.generateSessionKey();
             String encryptedBody = encryptionUtil.encryptBody(plainJson, sessionKey);
             String eskey = encryptionUtil.encryptSessionKey(sessionKey);
-            String trnTimestamp = encryptionUtil.timestamp();
 
             // Daily 2FA follows the same encrypted-AEPS signing rule as provider sample:
             // Base64(SHA-256(plainJson))
@@ -300,11 +310,8 @@ public class FpDailyAuthService {
         if (dataList.getLength() > 0) {
             Element data = (Element) dataList.item(0);
             String dataType = data.getAttribute("type");
-            String fType = map.get("fType");
-            if ("1".equals(fType) || "FIR".equalsIgnoreCase(dataType)) {
-                dataType = "FIR";
-            } else {
-                dataType = "FMR";
+            if (dataType == null || dataType.isBlank()) {
+                dataType = "X";
             }
             map.put("PidDatatype", dataType);
             map.put("Piddata", data.getTextContent().trim());
@@ -314,20 +321,20 @@ public class FpDailyAuthService {
     }
 
     private String resolveMerchantUserName(com.rupiksha.backend.domain.User mainUser, AepsKyc kyc, String requestMerchantId) {
-        if (mainUser.getAepsAgentId() != null && !mainUser.getAepsAgentId().isBlank()) {
-            return mainUser.getAepsAgentId().trim();
-        }
         if (kyc.getOutlet() != null && !kyc.getOutlet().isBlank()) {
             return kyc.getOutlet().trim();
+        }
+        if (kyc.getMerchantId() != null && !kyc.getMerchantId().isBlank()) {
+            return kyc.getMerchantId().trim();
         }
         if (requestMerchantId != null && !requestMerchantId.isBlank()) {
             return requestMerchantId.trim();
         }
+        if (mainUser.getAepsAgentId() != null && !mainUser.getAepsAgentId().isBlank()) {
+            return mainUser.getAepsAgentId().trim();
+        }
         if (mainUser.getAepsMerchantId() != null && !mainUser.getAepsMerchantId().isBlank()) {
             return mainUser.getAepsMerchantId().trim();
-        }
-        if (kyc.getMerchantId() != null && !kyc.getMerchantId().isBlank()) {
-            return kyc.getMerchantId().trim();
         }
         return null;
     }

@@ -689,12 +689,27 @@ public class AepsServiceImpl implements AepsService {
 
         // 2. Fetch and validate Core User record
         // already resolved above for KYC gate checks
+        String resolvedAgentId = aepsUser.getAepsAgentId();
+        String resolvedMerchantId = aepsUser.getAepsMerchantId();
+        if ("fingpay".equalsIgnoreCase(activeProvider.getProviderName())) {
+            long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
+            Optional<AepsKyc> aepsKycOpt = aepsKycRepository.findByUid(uidLong);
+            if (aepsKycOpt.isPresent()) {
+                AepsKyc aepsKyc = aepsKycOpt.get();
+                if (aepsKyc.getOutlet() != null && !aepsKyc.getOutlet().isBlank()) {
+                    resolvedAgentId = aepsKyc.getOutlet().trim();
+                }
+                if (aepsKyc.getMerchantId() != null && !aepsKyc.getMerchantId().isBlank()) {
+                    resolvedMerchantId = aepsKyc.getMerchantId().trim();
+                }
+            }
+        }
 
         // 3. Initialize dynamic audit history log
         AepsKycHistory history = AepsKycHistory.builder()
                 .userId(mainUser.getId())
                 .provider(activeProvider.getProviderName().toUpperCase())
-                .merchantId(aepsUser.getAepsMerchantId())
+                .merchantId(resolvedMerchantId != null ? resolvedMerchantId : aepsUser.getAepsMerchantId())
                 .workflowState(AepsWorkflowState.READY_FOR_DAILY_2FA.name())
                 .status("DAILY_AUTH_STARTED")
                 .remarks("Merchant initiated Daily 2FA session capture for " + (isAp ? "AadhaarPay" : "AEPS"))
@@ -707,7 +722,8 @@ public class AepsServiceImpl implements AepsService {
                 .mobileNumber(mobile)
                 .adharNumber(mainUser.getAadhaarNumber() != null ? mainUser.getAadhaarNumber() : "")
                 .pidXml(request.getPidXml())
-                .merchantId(aepsUser.getAepsMerchantId())
+                .merchantId(resolvedMerchantId)
+                .aepsAgentId(resolvedAgentId)
                 .latitude(request.getLatitude())
                 .longitude(request.getLongitude())
                 .biometricType(request.getBiometricType())
