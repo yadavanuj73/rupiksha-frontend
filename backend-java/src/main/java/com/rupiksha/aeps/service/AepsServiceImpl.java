@@ -703,6 +703,12 @@ public class AepsServiceImpl implements AepsService {
                     resolvedMerchantId = aepsKyc.getMerchantId().trim();
                 }
             }
+            if ((resolvedAgentId == null || resolvedAgentId.isBlank()) && mainUser.getPartyCode() != null && !mainUser.getPartyCode().isBlank()) {
+                resolvedAgentId = mainUser.getPartyCode().trim();
+            }
+            if (resolvedMerchantId == null || resolvedMerchantId.isBlank()) {
+                resolvedMerchantId = resolvedAgentId;
+            }
         }
 
         // 3. Initialize dynamic audit history log

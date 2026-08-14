@@ -168,18 +168,18 @@ aeps:
       user-id: ${LEVIN_AEPS_USER_ID:}
       encryption-key: ${LEVIN_AEPS_ENCRYPTION_KEY:}
     fingpay:
-      base-url: ${FINGPAY_AEPS_BASE_URL:https://fpuat.tapits.in}
+      base-url: ${FINGPAY_AEPS_BASE_URL:https://fingpayap.tapits.in}
 
 fingpay:
   base:
-    url: ${FINGPAY_BASE_URL:}
-    url-uat: ${FINGPAY_BASE_URL_UAT:}
+    url: ${FINGPAY_BASE_URL:https://fingpayap.tapits.in}
+    url-uat: ${FINGPAY_BASE_URL_UAT:https://fpuat.tapits.in}
   username: ${FINGPAY_USERNAME:}
   password: ${FINGPAY_PASSWORD:}
   supermerchant:
-    id: ${FINGPAY_SUPERMERCHANT_ID:}
+    id: ${FINGPAY_SUPERMERCHANT_ID:1407}
   device:
-    imei: ${FINGPAY_DEVICE_IMEI:}
+    imei: ${FINGPAY_DEVICE_IMEI:10068311}
   api:
     secret: ${FINGPAY_API_SECRET:}
   public:
@@ -187,37 +187,37 @@ fingpay:
       path: ${FINGPAY_PUBLIC_KEY_PATH:classpath:fingpay.cer}
   ip: ${FINGPAY_IP:}
   onboard:
-    url: ${FINGPAY_ONBOARD_URL:}
+    url: ${FINGPAY_ONBOARD_URL:https://fingpayap.tapits.in/fpaepsweb/api/onboarding/merchant/creation/v2}
   ekyc:
-    url: ${FINGPAY_EKYC_URL:}
+    url: ${FINGPAY_EKYC_URL:https://fpekyc.tapits.in/fpekyc/api/ekyc/merchant/sendotp}
     validate:
-      url: ${FINGPAY_EKYC_VALIDATE_URL:}
+      url: ${FINGPAY_EKYC_VALIDATE_URL:https://fpekyc.tapits.in/fpekyc/api/ekyc/merchant/validateotp}
     resend:
-      url: ${FINGPAY_EKYC_RESEND_URL:}
+      url: ${FINGPAY_EKYC_RESEND_URL:https://fpekyc.tapits.in/fpekyc/api/ekyc/merchant/resendotp}
     biometric:
-      url: ${FINGPAY_EKYC_BIOMETRIC_URL:}
+      url: ${FINGPAY_EKYC_BIOMETRIC_URL:https://fpekyc.tapits.in/fpekyc/api/ekyc/merchant/biometric}
     status:
-      url: ${FINGPAY_EKYC_STATUS_URL:}
+      url: ${FINGPAY_EKYC_STATUS_URL:https://fpekyc.tapits.in/fpekyc/api/ekyc/status/check}
   bank-sync:
-    url: ${FINGPAY_BANK_SYNC_URL:}
+    url: ${FINGPAY_BANK_SYNC_URL:https://fingpayap.tapits.in/fpaepsservice/api/bankdata/bank/details}
   cw:
-    url: ${FINGPAY_CW_URL:}
+    url: ${FINGPAY_CW_URL:https://fingpayap.tapits.in/fpaepsservice/api/cashWithdrawal/merchant/withdrawal}
     status:
-      url: ${FINGPAY_CW_STATUS_URL:}
+      url: ${FINGPAY_CW_STATUS_URL:https://fingpayap.tapits.in/fpaepsweb/api/auth/merchantInfo/statusCheckV2/merchantLoginId/cashWithdrawal/v2}
   bi:
-    url: ${FINGPAY_BI_URL:}
+    url: ${FINGPAY_BI_URL:https://fingpayap.tapits.in/fpaepsservice/api/balanceInquiry/merchant/getBalance}
   ms:
-    url: ${FINGPAY_MS_URL:}
+    url: ${FINGPAY_MS_URL:https://fingpayap.tapits.in/fpaepsservice/api/miniStatement/merchant/statement}
   ap:
-    url: ${FINGPAY_AP_URL:}
+    url: ${FINGPAY_AP_URL:https://fingpayap.tapits.in/fpaepsservice/api/aadhaarPay/merchant/pay}
     status:
-      url: ${FINGPAY_AP_STATUS_URL:}
+      url: ${FINGPAY_AP_STATUS_URL:https://fingpayap.tapits.in/fpaepsweb/api/auth/merchantInfo/statusCheckV3/aadhaarPay/merchantLoginId}
   cd:
     url: ${FINGPAY_CD_URL:https://fingpayap.tapits.in/fpaepsservice/api/CashDeposit/merchant/deposit}
     status:
       url: ${FINGPAY_CD_STATUS_URL:https://fingpayap.tapits.in/fpaepsweb/api/auth/merchantInfo/statusCheckV2/merchantLoginId/cashDeposit}
   daily-auth:
-    url: ${FINGPAY_DAILY_AUTH_URL:https://fpuat.tapits.in/fpaepsservice/auth/tfauth/merchant/validate/aadhar}
+    url: ${FINGPAY_DAILY_AUTH_URL:https://fingpayap.tapits.in/fpaepsservice/auth/tfauth/merchant/validate/aadhar}
   security:
     key: ${FINGPAY_SECURITY_KEY:}
 
