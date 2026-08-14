@@ -58,9 +58,6 @@ public class FpDailyAuthService {
     @Value("${fingpay.daily-auth.url}")
     private String dailyAuthUrl;
 
-    @Value("${fingpay.security.key:}")
-    private String securityKey;
-
     public ProviderKycResult authenticate(AepsDailyAuthRequest request) {
         String merchantTranId = "FGP2FA" + System.currentTimeMillis();
         log.info("FpDailyAuthService starting daily authentication for mobile: {}, tranId: {}, serviceType: {}", 
@@ -157,9 +154,9 @@ public class FpDailyAuthService {
             String eskey = encryptionUtil.encryptSessionKey(sessionKey);
             String trnTimestamp = encryptionUtil.timestamp();
 
-            // Calculate signature hash: Base64(SHA256(JSON + securityKey + trnTimestamp))
-            String dataToHash = plainJson + securityKey + trnTimestamp;
-            String hash = encryptionUtil.generateHash(dataToHash);
+            // Daily 2FA follows the same encrypted-AEPS signing rule as provider sample:
+            // Base64(SHA-256(plainJson))
+            String hash = encryptionUtil.generateHash(plainJson);
 
             // 7. Request Execution
             HttpHeaders headers = new HttpHeaders();
