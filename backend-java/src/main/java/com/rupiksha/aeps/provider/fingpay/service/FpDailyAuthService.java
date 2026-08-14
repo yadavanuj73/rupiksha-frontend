@@ -127,25 +127,50 @@ public class FpDailyAuthService {
                 rawAadhar = mainUser.getAadhaarNumber();
             }
             if (rawAadhar != null && rawAadhar.length() == 16) {
-                cardOrUID.put("indicatorforUID", "2");
+                cardOrUID.put("indicatorforUID", 2);
                 cardOrUID.put("adhaarNumber", "999999999999");
                 cardOrUID.put("virtualId", rawAadhar);
+                cardOrUID.put("nationalBankIdentificationNumber", "");
             } else {
-                cardOrUID.put("indicatorforUID", "0");
+                cardOrUID.put("indicatorforUID", 0);
                 cardOrUID.put("adhaarNumber", rawAadhar != null ? rawAadhar : "");
+                cardOrUID.put("nationalBankIdentificationNumber", "");
             }
 
-            // Resolve target serviceType
-            String resolvedServiceType = request.getServiceType() != null ? request.getServiceType() : "AEPS";
+            // Resolve target serviceType ("AEPS" or "AP" strictly per doc p. 8)
+            String rawService = request.getServiceType();
+            String resolvedServiceType = "AEPS";
+            if (rawService != null && (rawService.equalsIgnoreCase("AP")
+                    || rawService.equalsIgnoreCase("AADHAAR_PAY")
+                    || rawService.equalsIgnoreCase("AADHAARPAY"))) {
+                resolvedServiceType = "AP";
+            }
+
+            // Parse numerical latitude and longitude per official model
+            double lat = 28.6139;
+            try {
+                if (request.getLatitude() != null && !request.getLatitude().isBlank()) {
+                    lat = Double.parseDouble(request.getLatitude().trim());
+                }
+            } catch (Exception ignored) {}
+
+            double lon = 77.2090;
+            try {
+                if (request.getLongitude() != null && !request.getLongitude().isBlank()) {
+                    lon = Double.parseDouble(request.getLongitude().trim());
+                }
+            } catch (Exception ignored) {}
+
+            int superMerchantIdInt = (superMerchantId != null) ? superMerchantId : 2;
 
             // 5. Main JSON payload strictly adhering to 2FA Biometric API v2.1
             Map<String, Object> payload = new LinkedHashMap<>();
-            payload.put("superMerchantId", superMerchantId);
+            payload.put("superMerchantId", superMerchantIdInt);
             payload.put("merchantUserName", merchantUserName);
             payload.put("merchantPin", md5(rawPin));
             payload.put("transactionType", "AUO");
-            payload.put("latitude", request.getLatitude() != null && !request.getLatitude().isBlank() ? request.getLatitude() : "28.6139");
-            payload.put("longitude", request.getLongitude() != null && !request.getLongitude().isBlank() ? request.getLongitude() : "77.2090");
+            payload.put("latitude", lat);
+            payload.put("longitude", lon);
             payload.put("requestRemarks", "Daily 2FA Validation");
             payload.put("merchantTranId", merchantTranId);
             payload.put("serviceType", resolvedServiceType);
@@ -305,7 +330,11 @@ public class FpDailyAuthService {
         NodeList dataList = root.getElementsByTagName("Data");
         if (dataList.getLength() > 0) {
             Element data = (Element) dataList.item(0);
-            map.put("PidDatatype", "FMR");
+            String dataType = data.getAttribute("type");
+            if (dataType == null || dataType.isBlank() || "raw".equalsIgnoreCase(dataType)) {
+                dataType = "FMR";
+            }
+            map.put("PidDatatype", dataType);
             map.put("Piddata", data.getTextContent().trim());
         }
         
