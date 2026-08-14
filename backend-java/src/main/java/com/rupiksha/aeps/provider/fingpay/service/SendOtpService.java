@@ -6,6 +6,7 @@ import com.rupiksha.aeps.provider.fingpay.entity.EkycTxn;
 import com.rupiksha.aeps.provider.fingpay.exception.FingpayException;
 import com.rupiksha.aeps.provider.fingpay.repository.EkycTxnRepo;
 import com.rupiksha.aeps.provider.fingpay.util.FingpayEncryptionUtil;
+import com.rupiksha.aeps.provider.fingpay.util.FingpayKycStatusUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -122,9 +123,17 @@ public class SendOtpService {
             boolean successFlag = node.path("success").asBoolean(false) || (dataNode != null && dataNode.path("success").asBoolean(false));
             boolean statusFlag = node.path("status").asBoolean(false) || (dataNode != null && dataNode.path("status").asBoolean(false));
             int statusCode = node.path("statusCode").asInt(node.path("statusId").asInt(dataNode != null ? dataNode.path("statusCode").asInt(0) : 0));
+            boolean bankEkycAlreadyCompleted = FingpayKycStatusUtil.isBankEkycAlreadyCompleted(message);
+            boolean bankEkycRequired = FingpayKycStatusUtil.isBankEkycRequired(message);
 
-            log.info("[FINGPAY SEND-OTP DIAGNOSTICS] success={}, status={}, statusCode={}, message='{}', merchantStatus={}, primaryKeyId={}, encodeTxnId='{}', ekycCompleted={}",
-                    successFlag, statusFlag, statusCode, message, merchantStatus, primaryKeyId, encodeTxnId, ekycCompleted);
+            log.info("[FINGPAY SEND-OTP DIAGNOSTICS] success={}, status={}, statusCode={}, message='{}', merchantStatus={}, primaryKeyId={}, encodeTxnId='{}', ekycCompleted={}, bankEkycAlreadyCompleted={}, bankEkycRequired={}",
+                    successFlag, statusFlag, statusCode, message, merchantStatus, primaryKeyId, encodeTxnId, ekycCompleted, bankEkycAlreadyCompleted, bankEkycRequired);
+
+            if (bankEkycAlreadyCompleted || bankEkycRequired) {
+                log.info("[FINGPAY SEND-OTP BUSINESS-STATE] merchantLoginId={}, message='{}', bankEkycAlreadyCompleted={}, bankEkycRequired={}",
+                        dto.getMerchantLoginId(), message, bankEkycAlreadyCompleted, bankEkycRequired);
+                return response;
+            }
 
             boolean isOtpGenerated = primaryKeyId > 0 && !encodeTxnId.isBlank() && (successFlag || statusFlag || statusCode == 1 || statusCode == 200);
 

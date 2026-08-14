@@ -21,6 +21,7 @@ import com.rupiksha.aeps.provider.fingpay.entity.*;
 import com.rupiksha.aeps.provider.fingpay.repository.*;
 import com.rupiksha.aeps.provider.fingpay.service.*;
 import com.rupiksha.aeps.provider.fingpay.util.FingpayEncryptionUtil;
+import com.rupiksha.aeps.provider.fingpay.util.FingpayKycStatusUtil;
 import com.rupiksha.aeps.repository.AepsUserRepository;
 import com.rupiksha.aeps.provider.fingpay.service.FpDailyAuthService;
 
@@ -283,6 +284,29 @@ public class FingpayProvider implements AepsProvider {
                     || node.path("data").path("status").asBoolean(false)
                     || node.path("data").path("success").asBoolean(false)
                     || node.path("data").path("statusCode").asInt(0) == 1;
+
+            boolean bankEkycAlreadyCompleted = FingpayKycStatusUtil.isBankEkycAlreadyCompleted(message);
+            boolean bankEkycRequired = FingpayKycStatusUtil.isBankEkycRequired(message);
+
+            if (bankEkycAlreadyCompleted) {
+                log.info("[FINGPAY KYC] Bank eKYC already completed for merchantLoginId={}. Returning READY_FOR_DAILY_2FA.", request.getAepsAgentId());
+                return ProviderKycResult.builder()
+                        .workflowState(AepsWorkflowState.READY_FOR_DAILY_2FA)
+                        .providerTxnId(encodeFPTxnId)
+                        .providerReference(String.valueOf(primaryKeyId))
+                        .message(message)
+                        .build();
+            }
+
+            if (bankEkycRequired) {
+                log.info("[FINGPAY KYC] Bank eKYC required for merchantLoginId={}. Returning BANK_EKYC_REQUIRED.", request.getAepsAgentId());
+                return ProviderKycResult.builder()
+                        .workflowState(AepsWorkflowState.BANK_EKYC_REQUIRED)
+                        .providerTxnId(encodeFPTxnId)
+                        .providerReference(String.valueOf(primaryKeyId))
+                        .message(message)
+                        .build();
+            }
 
             boolean isOtpGenerated = primaryKeyId > 0 && !encodeFPTxnId.isBlank() && statusOk;
 

@@ -346,6 +346,7 @@ public class AepsServiceImpl implements AepsService {
         AepsWorkflowState workflowState = providerResult.getWorkflowState();
         boolean isSuccess = workflowState == AepsWorkflowState.READY_FOR_DAILY_2FA;
         boolean otpRequired = workflowState == AepsWorkflowState.OTP_VERIFICATION_REQUIRED;
+        boolean bankEkycRequired = workflowState == AepsWorkflowState.BANK_EKYC_REQUIRED;
 
         if (isSuccess) {
             log.info("Biometric KYC completed instantly. Updating database records...");
@@ -417,8 +418,23 @@ public class AepsServiceImpl implements AepsService {
                     .provider(activeProvider.getProviderName().toUpperCase())
                     .build();
 
+        } else if (bankEkycRequired) {
+            log.warn("Fingpay KYC is blocked on Bank eKYC requirement: {}", providerResult.getMessage());
+            history.setWorkflowState(AepsWorkflowState.BANK_EKYC_REQUIRED.name());
+            history.setStatus("BANK_EKYC_REQUIRED");
+            history.setProviderReference(providerResult.getProviderTxnId());
+            history.setRemarks(providerResult.getMessage());
+            aepsKycHistoryRepository.save(history);
+
+            return KycResponse.builder()
+                    .success(false)
+                    .workflowState(workflowState.name())
+                    .message(providerResult.getMessage() != null ? providerResult.getMessage() : "Bank eKYC is required before transactions can be enabled.")
+                    .providerReference(providerResult.getProviderTxnId())
+                    .provider(activeProvider.getProviderName().toUpperCase())
+                    .build();
         } else {
-            log.warn("Levin KYC API execution returned failure workflowState: {}", workflowState);
+            log.warn("Fingpay KYC API execution returned failure workflowState: {}", workflowState);
 
             // Update audit history log
             history.setWorkflowState(workflowState.name());

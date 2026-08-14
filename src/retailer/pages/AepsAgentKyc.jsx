@@ -88,6 +88,7 @@ export default function AepsAgentKyc() {
 
     const isKycSuccess = kycResponse && kycResponse.workflowState === 'READY_FOR_DAILY_2FA' && kycResponse.success;
     const isOtpRequired = kycResponse && kycResponse.workflowState === 'OTP_VERIFICATION_REQUIRED';
+    const isBankEkycRequired = kycResponse && kycResponse.workflowState === 'BANK_EKYC_REQUIRED';
 
     // Step calculation for progress indicator
     let currentStep = 1;
@@ -153,7 +154,7 @@ export default function AepsAgentKyc() {
 
                     {/* STEP 1: FINGERPRINT CAPTURE SCREEN */}
                     <AnimatePresence mode="wait">
-                        {!isOtpRequired && !isKycSuccess && (
+                        {!isOtpRequired && !isKycSuccess && !isBankEkycRequired && (
                             <motion.div
                                 key="step1"
                                 initial={{ opacity: 0, x: -10 }}
@@ -209,6 +210,26 @@ export default function AepsAgentKyc() {
                                         <div className="leading-snug">{kycError}</div>
                                     </div>
                                 )}
+                            </motion.div>
+                        )}
+
+                        {isBankEkycRequired && (
+                            <motion.div
+                                key="bank-ekyc-required"
+                                initial={{ opacity: 0, x: 10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -10 }}
+                                className="space-y-6"
+                            >
+                                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-center">
+                                    <div className="w-12 h-12 bg-amber-500 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-md shadow-amber-500/20">
+                                        <AlertCircle size={22} />
+                                    </div>
+                                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide">Bank eKYC Required</h3>
+                                    <p className="text-xs text-slate-600 font-medium mt-2 leading-relaxed">
+                                        {kycResponse?.message || 'Your merchant profile is registered, but Fingpay requires the bank eKYC step to be completed before transactions can be enabled.'}
+                                    </p>
+                                </div>
                             </motion.div>
                         )}
 
