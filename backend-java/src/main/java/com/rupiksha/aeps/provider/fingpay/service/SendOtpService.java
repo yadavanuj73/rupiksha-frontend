@@ -44,6 +44,9 @@ public class SendOtpService {
         String txnId = UUID.randomUUID().toString();
 
         try {
+            if (superMerchantId == null || deviceImei == null || deviceImei.isBlank() || ekycUrl == null || ekycUrl.isBlank()) {
+                throw new FingpayException("Fingpay configuration missing: superMerchantId/deviceIMEI/ekycUrl is not set.");
+            }
 
             Map<String, Object> bodyMap = new LinkedHashMap<>();
 
@@ -128,7 +131,14 @@ public class SendOtpService {
             if (!isOtpGenerated) {
                 log.error("[FINGPAY SEND-OTP REJECTED] merchantLoginId={}, primaryKeyId={}, encodeTxnId='{}', merchantStatus={}, success={}, status={}, statusCode={}, message='{}'",
                         dto.getMerchantLoginId(), primaryKeyId, encodeTxnId, merchantStatus, successFlag, statusFlag, statusCode, message);
-                throw new FingpayException("Invalid Fingpay OTP session. Merchant is inactive or transaction was not created (primaryKeyId=" + primaryKeyId + ").");
+                throw new FingpayException("Fingpay OTP session not created. providerMessage='" + message
+                    + "', merchantLoginId='" + dto.getMerchantLoginId()
+                    + "', merchantStatus=" + merchantStatus
+                    + ", success=" + successFlag
+                    + ", status=" + statusFlag
+                    + ", statusCode=" + statusCode
+                    + ", primaryKeyId=" + primaryKeyId
+                    + ", encodeFPTxnId='" + encodeTxnId + "'.");
             }
 
             // ⭐ DB SAVE

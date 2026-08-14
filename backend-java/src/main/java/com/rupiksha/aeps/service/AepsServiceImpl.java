@@ -266,6 +266,36 @@ public class AepsServiceImpl implements AepsService {
             throw new AepsException("Core Aadhaar number is not registered for user profile.");
         }
 
+        // For Fingpay, resolve merchant identifiers from canonical fingpay profile table.
+        String resolvedAgentId = aepsUser.getAepsAgentId();
+        String resolvedMerchantId = aepsUser.getAepsMerchantId();
+        if ("fingpay".equalsIgnoreCase(activeProvider.getProviderName())) {
+            long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
+            AepsKyc aepsKyc = aepsKycRepository.findByUid(uidLong)
+                    .orElseThrow(() -> new AepsException("Fingpay merchant profile not found."));
+
+            resolvedAgentId = aepsKyc.getOutlet();
+            resolvedMerchantId = (aepsKyc.getMerchantId() != null && !aepsKyc.getMerchantId().isBlank())
+                    ? aepsKyc.getMerchantId()
+                    : aepsKyc.getOutlet();
+
+            if (resolvedAgentId == null || resolvedAgentId.isBlank()) {
+                throw new AepsException("Fingpay merchant login ID is missing. Please complete onboarding again.");
+            }
+
+            // Keep mirrored AEPS/main user IDs aligned to avoid provider ID drift.
+            if (!resolvedAgentId.equals(aepsUser.getAepsAgentId())
+                    || (resolvedMerchantId != null && !resolvedMerchantId.equals(aepsUser.getAepsMerchantId()))) {
+                aepsUser.setAepsAgentId(resolvedAgentId);
+                aepsUser.setAepsMerchantId(resolvedMerchantId);
+                aepsUserRepository.save(aepsUser);
+
+                mainUser.setAepsAgentId(resolvedAgentId);
+                mainUser.setAepsMerchantId(resolvedMerchantId);
+                mainUserRepository.save(mainUser);
+            }
+        }
+
         // Validate basic PID XML elements in request
         String pidXml = request.getPidXml();
         if (pidXml == null || pidXml.isBlank() || !pidXml.contains("<PidData>")) {
@@ -287,8 +317,8 @@ public class AepsServiceImpl implements AepsService {
         // 4. Map and execute active provider biometric submit API
         // Raw pidXml is passed in the providerRequest, decoupling encoding from business layer
         com.rupiksha.aeps.dto.request.AepsKycRequest providerRequest = com.rupiksha.aeps.dto.request.AepsKycRequest.builder()
-                .aepsAgentId(aepsUser.getAepsAgentId())
-                .merchantId(aepsUser.getAepsMerchantId())
+            .aepsAgentId(resolvedAgentId)
+            .merchantId(resolvedMerchantId)
                 .aadharNumber(mainUser.getAadhaarNumber())
                 .pidXml(pidXml)
                 .biometricType(request.getBiometricType())
@@ -441,6 +471,23 @@ public class AepsServiceImpl implements AepsService {
         }
         com.rupiksha.backend.domain.User mainUser = mainUserOpt.get();
 
+        String resolvedAgentId = aepsUser.getAepsAgentId();
+        String resolvedMerchantId = aepsUser.getAepsMerchantId();
+        if ("fingpay".equalsIgnoreCase(activeProvider.getProviderName())) {
+            long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
+            AepsKyc aepsKyc = aepsKycRepository.findByUid(uidLong)
+                    .orElseThrow(() -> new AepsException("Fingpay merchant profile not found."));
+
+            resolvedAgentId = aepsKyc.getOutlet();
+            resolvedMerchantId = (aepsKyc.getMerchantId() != null && !aepsKyc.getMerchantId().isBlank())
+                    ? aepsKyc.getMerchantId()
+                    : aepsKyc.getOutlet();
+
+            if (resolvedAgentId == null || resolvedAgentId.isBlank()) {
+                throw new AepsException("Fingpay merchant login ID is missing. Please complete onboarding again.");
+            }
+        }
+
         // 3. Initialize dynamic audit history log
         AepsKycHistory history = AepsKycHistory.builder()
                 .userId(mainUser.getId())
@@ -461,8 +508,8 @@ public class AepsServiceImpl implements AepsService {
                 .contactNumber(mobile)
                 .kycRefId(aepsUser.getAepsKycTxnId())
                 .clientRefId(aepsUser.getAepsKycRefId())
-                .aepsAgentId(aepsUser.getAepsAgentId())
-                .merchantId(aepsUser.getAepsMerchantId())
+            .aepsAgentId(resolvedAgentId)
+            .merchantId(resolvedMerchantId)
                 .build();
 
         ProviderKycResult providerResult;
