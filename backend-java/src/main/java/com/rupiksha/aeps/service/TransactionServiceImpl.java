@@ -18,13 +18,19 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
 @Service
 public class TransactionServiceImpl implements TransactionService {
+
+    private static final ZoneId IST_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final AepsUserRepository aepsUserRepository;
     private final com.rupiksha.backend.repository.UserRepository mainUserRepository;
@@ -83,6 +89,10 @@ public class TransactionServiceImpl implements TransactionService {
             aepsUser.setAeps2faSessionId(coreUser.getAeps2faSessionId());
             if (coreUser.getAeps2faAuthenticatedAt() != null) {
                 aepsUser.setAeps2faAuthenticatedAt(java.time.LocalDateTime.ofInstant(coreUser.getAeps2faAuthenticatedAt(), java.time.ZoneId.systemDefault()));
+            }
+            aepsUser.setAepsAp2faSessionId(coreUser.getAepsAp2faSessionId());
+            if (coreUser.getAepsAp2faAuthenticatedAt() != null) {
+                aepsUser.setAepsAp2faAuthenticatedAt(java.time.LocalDateTime.ofInstant(coreUser.getAepsAp2faAuthenticatedAt(), java.time.ZoneId.systemDefault()));
             }
             log.info("Synchronizing core user to AEPS registry for mobile: {}", mobile);
             return aepsUserRepository.save(aepsUser);
@@ -213,6 +223,40 @@ public class TransactionServiceImpl implements TransactionService {
         }
     }
 
+    private boolean isSessionValid(Instant authenticatedAt) {
+        if (authenticatedAt == null) {
+            return false;
+        }
+        Instant now = Instant.now();
+        if (authenticatedAt.isAfter(now)) {
+            return false;
+        }
+        long hours = Duration.between(authenticatedAt, now).toHours();
+        if (hours < 24) {
+            return true;
+        }
+        LocalDate authDate = authenticatedAt.atZone(IST_ZONE).toLocalDate();
+        LocalDate today = LocalDate.now(IST_ZONE);
+        return authDate.isEqual(today);
+    }
+
+    private boolean isSessionValid(LocalDateTime authenticatedAt) {
+        if (authenticatedAt == null) {
+            return false;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (authenticatedAt.isAfter(now)) {
+            return false;
+        }
+        long hours = Duration.between(authenticatedAt, now).toHours();
+        if (hours < 24) {
+            return true;
+        }
+        LocalDate authDate = authenticatedAt.toLocalDate();
+        LocalDate today = LocalDate.now();
+        return authDate.isEqual(today);
+    }
+
     private void performSecurityChecks(com.rupiksha.backend.domain.User mainUser, com.rupiksha.aeps.entity.User aepsUser, String serviceType) {
         // Main Core User Active Gate
         if (mainUser.getStatus() == null || !mainUser.getStatus().name().equalsIgnoreCase("ACTIVE")) {
@@ -230,25 +274,17 @@ public class TransactionServiceImpl implements TransactionService {
         }
 
         // Daily 2FA Session Gate (Isolate standard AEPS vs Aadhaar Pay contexts)
-        boolean hasValidSession = false;
         boolean isAadhaarPay = "AADHAAR_PAY".equalsIgnoreCase(serviceType);
+        boolean hasValidSession = false;
 
         if (isAadhaarPay) {
-            if (aepsUser.getAepsAp2faSessionId() != null && aepsUser.getAepsAp2faAuthenticatedAt() != null) {
-                java.time.LocalDate authenticatedDate = aepsUser.getAepsAp2faAuthenticatedAt().toLocalDate();
-                java.time.LocalDate today = java.time.LocalDate.now();
-                hasValidSession = authenticatedDate.isEqual(today);
-            }
+            hasValidSession = isSessionValid(aepsUser.getAepsAp2faAuthenticatedAt()) || isSessionValid(mainUser.getAepsAp2faAuthenticatedAt());
         } else {
-            if (aepsUser.getAeps2faSessionId() != null && aepsUser.getAeps2faAuthenticatedAt() != null) {
-                java.time.LocalDate authenticatedDate = aepsUser.getAeps2faAuthenticatedAt().toLocalDate();
-                java.time.LocalDate today = java.time.LocalDate.now();
-                hasValidSession = authenticatedDate.isEqual(today);
-            }
+            hasValidSession = isSessionValid(aepsUser.getAeps2faAuthenticatedAt()) || isSessionValid(mainUser.getAeps2faAuthenticatedAt());
         }
 
         if (!hasValidSession) {
-            throw new ValidationException("Merchant Daily 2FA session is not authenticated for today.");
+            throw new ValidationException("Merchant Daily 2FA session is expired or not authenticated. Please complete Daily 2FA.");
         }
     }
 }

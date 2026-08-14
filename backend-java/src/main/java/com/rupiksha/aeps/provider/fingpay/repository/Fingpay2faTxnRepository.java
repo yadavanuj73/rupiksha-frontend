@@ -10,4 +10,6 @@ import java.util.UUID;
 @Repository
 public interface Fingpay2faTxnRepository extends JpaRepository<Fingpay2faTxn, Long> {
     Optional<Fingpay2faTxn> findByMerchantTranId(String merchantTranId);
+    Optional<Fingpay2faTxn> findTopByUserIdAndServiceTypeAndResponseCodeOrderByCreatedAtDesc(UUID userId, String serviceType, String responseCode);
+    Optional<Fingpay2faTxn> findTopByMobileNumberAndServiceTypeAndResponseCodeOrderByCreatedAtDesc(String mobileNumber, String serviceType, String responseCode);
 }
