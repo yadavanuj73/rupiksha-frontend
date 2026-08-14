@@ -273,18 +273,27 @@ public class FingpayProvider implements AepsProvider {
                 message = node.path("message").asText().trim();
             } else if (node.has("remarks") && !node.path("remarks").asText().isBlank()) {
                 message = node.path("remarks").asText().trim();
+            } else if (node.has("data") && node.path("data").has("message") && !node.path("data").path("message").asText().isBlank()) {
+                message = node.path("data").path("message").asText().trim();
             }
 
-            boolean isOtpGenerated = primaryKeyId > 0 && !encodeFPTxnId.isBlank();
+            boolean statusOk = node.path("status").asBoolean(false)
+                    || node.path("success").asBoolean(false)
+                    || node.path("statusCode").asInt(0) == 1
+                    || node.path("data").path("status").asBoolean(false)
+                    || node.path("data").path("success").asBoolean(false)
+                    || node.path("data").path("statusCode").asInt(0) == 1;
+
+            boolean isOtpGenerated = primaryKeyId > 0 && !encodeFPTxnId.isBlank() && statusOk;
 
             if (!isOtpGenerated) {
-                log.warn("[FINGPAY KYC REJECTED] merchantLoginId={}, primaryKeyId={}, encodeFPTxnId='{}', message='{}'",
-                        request.getAepsAgentId(), primaryKeyId, encodeFPTxnId, message);
+                log.warn("[FINGPAY KYC REJECTED] merchantLoginId={}, primaryKeyId={}, encodeFPTxnId='{}', statusOk={}, message='{}'",
+                        request.getAepsAgentId(), primaryKeyId, encodeFPTxnId, statusOk, message);
                 return ProviderKycResult.builder()
                         .workflowState(AepsWorkflowState.FAILED)
                         .providerTxnId(encodeFPTxnId)
                         .providerReference(String.valueOf(primaryKeyId))
-                        .message("Invalid eKYC OTP session. Merchant is inactive or provider session creation failed (primaryKeyId=0).")
+                        .message("Invalid eKYC OTP session. Merchant is inactive or provider session creation failed (primaryKeyId=" + primaryKeyId + ").")
                         .build();
             }
 

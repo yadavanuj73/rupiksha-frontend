@@ -6,7 +6,7 @@ export const MANTRA_PORTS = Array.from({ length: 21 }, (_, i) => 11100 + i); // 
 
 export const PID_OPTIONS_XML = `
 <PidOptions ver="1.0">
-  <Opts env="P" fCount="1" fType="1" iCount="0" format="0" pidVer="2.0" timeout="15000" wadh="E0jzJ/P8UopUHAieZn8CKqS4WPMi5ZSYXgnflfKWjrc=" posh="UNKNOWN" />
+  <Opts env="P" fCount="1" fType="2" iCount="0" format="0" pidVer="2.0" timeout="15000" wadh="E0jzJ/P8UopUHAieZn8CKqS4WPMi5ZSYXgfnlfkWjrc=" posh="UNKNOWN" />
 </PidOptions>
 `.trim();
 
