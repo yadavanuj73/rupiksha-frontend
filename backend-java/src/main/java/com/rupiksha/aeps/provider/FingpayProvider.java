@@ -482,21 +482,34 @@ public class FingpayProvider implements AepsProvider {
         // Resolve Bank IIN from name/IIN
         String bankSearch = context.getRequest().getBankName();
         FingBank bank = null;
-        if (bankSearch != null && bankSearch.matches("\\d+")) {
-            bank = bankRepo.findAll().stream()
-                    .filter(b -> b.getIinno().equals(bankSearch))
-                    .findFirst()
-                    .orElse(null);
-        }
-        if (bank == null && bankSearch != null) {
-            bank = bankRepo.findAll().stream()
-                    .filter(b -> b.getBankName().toLowerCase().contains(bankSearch.toLowerCase()))
-                    .findFirst()
-                    .orElse(null);
+        if (bankSearch != null && !bankSearch.isBlank()) {
+            String trimmedSearch = bankSearch.trim();
+            if (trimmedSearch.matches("\\d+")) {
+                bank = bankRepo.findAll().stream()
+                        .filter(b -> b.getIinno() != null && b.getIinno().equals(trimmedSearch))
+                        .findFirst()
+                        .orElse(null);
+            }
+            if (bank == null) {
+                String searchLower = trimmedSearch.toLowerCase();
+                bank = bankRepo.findAll().stream()
+                        .filter(b -> b.getBankName() != null && (
+                                b.getBankName().toLowerCase().equals(searchLower) ||
+                                b.getBankName().toLowerCase().contains(searchLower) ||
+                                searchLower.contains(b.getBankName().toLowerCase())
+                        ))
+                        .findFirst()
+                        .orElse(null);
+            }
+            if (bank == null && trimmedSearch.matches("\\d{6}")) {
+                FingBank dynamicBank = new FingBank();
+                dynamicBank.setIinno(trimmedSearch);
+                dynamicBank.setBankName("Bank (IIN " + trimmedSearch + ")");
+                bank = bankRepo.save(dynamicBank);
+            }
         }
         if (bank == null) {
-            bank = bankRepo.findAll().stream().findFirst()
-                    .orElseThrow(() -> new ProviderException("Fingpay Bank not mapped for parameter: " + bankSearch));
+            throw new ProviderException("Selected bank '" + bankSearch + "' could not be mapped to a valid Fingpay bank IIN. Please select a valid bank from the dropdown.");
         }
 
         // Parse pidXml

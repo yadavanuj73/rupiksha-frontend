@@ -39,14 +39,21 @@ import DailyAuthentication from '../../../components/DailyAuthentication';
 import { validateVerhoeff } from '../../../utils/verhoeff';
 
 const POPULAR_BANKS = [
-    { name: 'State Bank of India', short: 'SBI', iin: '607082' },
-    { name: 'HDFC Bank', short: 'HDFC', iin: '607153' },
-    { name: 'ICICI Bank', short: 'ICICI', iin: '608001' },
+    { name: 'State Bank of India', short: 'SBI', iin: '607094' },
     { name: 'Punjab National Bank', short: 'PNB', iin: '607027' },
     { name: 'Bank of Baroda', short: 'BOB', iin: '606985' },
     { name: 'Canara Bank', short: 'Canara', iin: '607393' },
     { name: 'Union Bank of India', short: 'Union', iin: '607161' },
-    { name: 'Paytm Payments Bank', short: 'Paytm', iin: '608032' }
+    { name: 'HDFC Bank', short: 'HDFC', iin: '607152' },
+    { name: 'ICICI Bank', short: 'ICICI', iin: '508534' },
+    { name: 'Axis Bank', short: 'Axis', iin: '607153' },
+    { name: 'Kotak Mahindra Bank', short: 'Kotak', iin: '607363' },
+    { name: 'Airtel Payments Bank', short: 'Airtel', iin: '990308' },
+    { name: 'Paytm Payments Bank', short: 'Paytm', iin: '608032' },
+    { name: 'Bank of India', short: 'BOI', iin: '607064' },
+    { name: 'Central Bank of India', short: 'Central', iin: '607076' },
+    { name: 'Indian Bank', short: 'Indian', iin: '607105' },
+    { name: 'UCO Bank', short: 'UCO', iin: '607137' }
 ];
 
 const QUICK_AMOUNTS = [500, 1000, 2000, 3000, 5000, 10000];
@@ -327,7 +334,7 @@ export default function BankingTerminal({ provider, status, setStatus }) {
             const payload = {
                 amount: requiresAmount ? parseFloat(formData.amount) : 0,
                 serviceType: activeTab,
-                bankName: formData.bankName || formData.bankIin,
+                bankName: formData.bankIin || formData.bankName,
                 adhaarNumber: formData.aadhar,
                 customerMobile: formData.mobile,
                 mobileNumber: formData.mobile,

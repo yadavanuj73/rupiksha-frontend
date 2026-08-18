@@ -540,6 +540,15 @@ public class AepsController {
     public ResponseEntity<ApiResponse<List<FingBank>>> getBanks() {
         log.info("REST request to fetch Fingpay banks list.");
         List<FingBank> banks = bankRepo.findAll();
+        if (banks.isEmpty() || banks.size() <= 5) {
+            try {
+                int count = bankSyncService.syncBanks();
+                log.info("Auto-synced {} banks from Fingpay live API", count);
+                banks = bankRepo.findAll();
+            } catch (Exception e) {
+                log.warn("Auto sync banks from Fingpay failed: {}", e.getMessage());
+            }
+        }
         return ResponseEntity.ok(ApiResponse.success("Banks retrieved successfully", banks));
     }
 
