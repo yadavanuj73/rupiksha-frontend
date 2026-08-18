@@ -898,16 +898,67 @@ public class AepsServiceImpl implements AepsService {
         } else {
             log.warn("Daily 2FA authentication rejected by provider with state: {}", workflowState);
 
+            String failMsg = providerResult.getMessage();
+
+            // Detect "Invalid Merchant id" — means the merchant KYC record is stale/invalid on Fingpay.
+            // Reset kycDone so the user is forced through biometric KYC again.
+            boolean isInvalidMerchant = failMsg != null && (
+                    failMsg.toLowerCase().contains("invalid merchant") ||
+                    failMsg.toLowerCase().contains("invalid merchantid") ||
+                    failMsg.toLowerCase().contains("merchant id not found") ||
+                    failMsg.toLowerCase().contains("merchant not found"));
+
+            if (isInvalidMerchant) {
+                log.warn("[INVALID_MERCHANT] Resetting KYC status for mobile: {}. Provider says: {}", mobile, failMsg);
+
+                // Reset KYC in AepsKyc table
+                if ("fingpay".equalsIgnoreCase(activeProvider.getProviderName())) {
+                    long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
+                    aepsKycRepository.findByUid(uidLong).ifPresent(kyc -> {
+                        kyc.setKycDone(false);
+                        aepsKycRepository.save(kyc);
+                        log.info("[INVALID_MERCHANT] Reset aepskyc.kyc_done=false for uid={}", uidLong);
+                    });
+                }
+
+                // Reset KYC in aeps_users table
+                aepsUser.setAepsKycDone(false);
+                aepsUser.setAepsKycCompletedAt(null);
+                aepsUser.setAepsKycRefId(null);
+                aepsUser.setAepsKycTxnId(null);
+                aepsUserRepository.save(aepsUser);
+
+                // Reset KYC in core users table
+                mainUser.setAepsKycDone(false);
+                mainUser.setAepsKycCompletedAt(null);
+                mainUser.setAepsKycRefId(null);
+                mainUser.setAepsKycTxnId(null);
+                mainUserRepository.save(mainUser);
+
+                // Update audit history
+                history.setWorkflowState(AepsWorkflowState.KYC_REQUIRED.name());
+                history.setStatus("KYC_RESET_INVALID_MERCHANT");
+                history.setRemarks("Merchant ID rejected by Fingpay: " + failMsg + ". KYC reset required.");
+                aepsKycHistoryRepository.save(history);
+
+                return KycResponse.builder()
+                        .success(false)
+                        .workflowState(AepsWorkflowState.KYC_REQUIRED.name())
+                        .message("Your merchant profile is invalid on the provider. Please complete Biometric KYC again.")
+                        .provider(activeProvider.getProviderName().toUpperCase())
+                        .build();
+            }
+
             // Update audit history log
             history.setWorkflowState(workflowState.name());
             history.setStatus("DAILY_AUTH_FAILED");
-            history.setRemarks(providerResult.getMessage());
+            history.setRemarks(failMsg);
             aepsKycHistoryRepository.save(history);
 
             return KycResponse.builder()
                     .success(false)
                     .workflowState(workflowState.name())
-                    .message(providerResult.getMessage() != null ? providerResult.getMessage() : "Daily 2FA authentication failed.")
+                    .message(failMsg != null ? failMsg : "Daily 2FA authentication failed.")
                     .provider(activeProvider.getProviderName().toUpperCase())
                     .build();
         }

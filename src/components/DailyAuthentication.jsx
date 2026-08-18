@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Fingerprint, CheckCircle2, ShieldCheck, AlertCircle, MapPin, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useRD } from '../hooks/useRD';
@@ -10,6 +11,7 @@ import CaptureSuccess from './CaptureSuccess';
 import { daily2faService } from '../services/aeps/daily2faService';
 
 export default function DailyAuthentication({ provider, serviceType = 'AEPS', onSuccess, onBack }) {
+    const navigate = useNavigate();
     const { captureResult, device } = useRD();
 
     const [location, setLocation] = useState(null);
@@ -18,6 +20,7 @@ export default function DailyAuthentication({ provider, serviceType = 'AEPS', on
     const [submitting, setSubmitting] = useState(false);
     const [authResponse, setAuthResponse] = useState(null);
     const [authError, setAuthError] = useState('');
+    const [kycReset, setKycReset] = useState(false);
 
     const fetchCoordinates = () => {
         if (!navigator.geolocation) {
@@ -66,6 +69,7 @@ export default function DailyAuthentication({ provider, serviceType = 'AEPS', on
         setSubmitting(true);
         setAuthError('');
         setAuthResponse(null);
+        setKycReset(false);
 
         try {
             const res = await daily2faService.authenticate(
@@ -76,7 +80,18 @@ export default function DailyAuthentication({ provider, serviceType = 'AEPS', on
                 provider,
                 serviceType
             );
-            setAuthResponse(res.data);
+            const data = res.data;
+            setAuthResponse(data);
+
+            // If provider says merchant ID is invalid, backend has reset kycDone.
+            // Redirect user to redo KYC.
+            if (data && data.workflowState === 'KYC_REQUIRED' && !data.success) {
+                setKycReset(true);
+                setAuthError(data.message || "Your merchant profile is invalid. You need to redo Biometric KYC.");
+                setTimeout(() => {
+                    navigate(`/aeps-agent-kyc?provider=${provider}`);
+                }, 3000);
+            }
         } catch (err) {
             console.error("Daily 2FA authentication failed", err);
             setAuthError(err.message || "Daily authentication verification failed.");
@@ -176,9 +191,22 @@ export default function DailyAuthentication({ provider, serviceType = 'AEPS', on
                     )}
 
                     {authError && (
-                        <div className="bg-rose-50 border border-rose-100 text-rose-700 text-xs px-4 py-3 rounded-2xl flex items-center gap-2 font-semibold text-left">
-                            <AlertCircle className="text-rose-500 shrink-0" size={14} />
-                            <div>{authError}</div>
+                        <div className={`${kycReset ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-rose-50 border-rose-100 text-rose-700'} border text-xs px-4 py-3 rounded-2xl flex items-start gap-2 font-semibold text-left`}>
+                            <AlertCircle className={`${kycReset ? 'text-amber-500' : 'text-rose-500'} shrink-0 mt-0.5`} size={14} />
+                            <div>
+                                <div>{authError}</div>
+                                {kycReset && (
+                                    <div className="mt-2 text-[11px] font-bold text-amber-700">
+                                        Redirecting to Biometric KYC...{' '}
+                                        <button
+                                            onClick={() => navigate(`/aeps-agent-kyc?provider=${provider}`)}
+                                            className="underline text-blue-600 hover:text-blue-700 cursor-pointer"
+                                        >
+                                            Go now →
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
 
