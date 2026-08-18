@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Landmark, ArrowLeft, Sparkles, Server, UserPlus, Fingerprint, CheckCircle2, ChevronRight, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { aepsService, userService } from '../../services/apiService';
@@ -9,6 +9,7 @@ import BankingTerminal from '../components/banking/BankingTerminal';
 
 export default function AEPS() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [loading, setLoading] = useState(true);
     const [serviceDisabled, setServiceDisabled] = useState(false);
     const [error, setError] = useState('');
@@ -51,6 +52,13 @@ export default function AEPS() {
                     return;
                 }
                 const res = await aepsService.getStatus(mobile, provider);
+                // If KYC was just completed (navigation state from KYC success screen)
+                // but backend status hasn't synced yet, override kycDone to true
+                if (!res.kycDone && res.onboarded && location.state?.kycJustCompleted) {
+                    res.kycDone = true;
+                    // Clear the navigation state so a page refresh re-checks from backend
+                    window.history.replaceState({}, '');
+                }
                 setStatus(res);
             } catch (e) {
                 console.error("Failed to fetch AEPS status", e);

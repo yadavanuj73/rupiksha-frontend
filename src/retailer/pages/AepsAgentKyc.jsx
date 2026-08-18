@@ -348,7 +348,7 @@ export default function AepsAgentKyc() {
                                 </div>
 
                                 <button
-                                    onClick={() => navigate(provider === 'fingpay' ? '/aeps-1' : '/aeps-2')}
+                                    onClick={() => navigate(provider === 'fingpay' ? '/aeps-1' : '/aeps-2', { state: { kycJustCompleted: true } })}
                                     className="w-full py-4 bg-slate-900 hover:bg-black text-white rounded-2xl font-bold uppercase tracking-wider text-xs transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
                                 >
                                     Proceed to AEPS Terminal
