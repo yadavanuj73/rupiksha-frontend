@@ -115,6 +115,7 @@ export default function BankingTerminal({ provider, status, setStatus }) {
     // Receipt Modal state
     const [receiptOpen, setReceiptOpen] = useState(false);
     const [receiptData, setReceiptData] = useState(null);
+    const [show2faModal, setShow2faModal] = useState(false);
 
     // Fetch banks and lock location on mount
     useEffect(() => {
@@ -400,11 +401,32 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                     10: 0
                 });
             } else {
-                setErrorMsg(response.message || "Transaction declined by bank/gateway.");
+                const failData = response.data;
+                const respCode = failData?.responseCode || '';
+                const respMsg = response.message || failData?.responseMessage || '';
+                
+                if (respCode === 'FP069' || respMsg.toLowerCase().includes('2fa')) {
+                    if (setStatus) {
+                        setStatus(prev => ({ ...prev, aeps2faDone: false }));
+                    }
+                    setShow2faModal(true);
+                    setErrorMsg("Daily 2FA authentication is required by Fingpay. Please authenticate your biometric below.");
+                } else {
+                    setErrorMsg(respMsg || "Transaction declined by bank/gateway.");
+                }
             }
         } catch (err) {
             console.error("AEPS Transaction execution failed", err);
-            setErrorMsg(err.message || "Transaction submission failed. Please verify provider connectivity.");
+            const errMsg = err.message || "";
+            if (errMsg.toLowerCase().includes('2fa')) {
+                if (setStatus) {
+                    setStatus(prev => ({ ...prev, aeps2faDone: false }));
+                }
+                setShow2faModal(true);
+                setErrorMsg("Daily 2FA session is required. Please complete biometric authentication.");
+            } else {
+                setErrorMsg(errMsg || "Transaction submission failed. Please verify provider connectivity.");
+            }
         } finally {
             setLoading(false);
         }
@@ -465,6 +487,32 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                     );
                 })}
             </div>
+
+            {/* Daily 2FA Warning Banner for Fingpay (when 2FA session is pending/expired) */}
+            {isFingpay && !status.aeps2faDone && (
+                <div className="bg-amber-50 border border-amber-200/90 rounded-3xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-amber-900 shadow-sm">
+                    <div className="flex items-center gap-3.5">
+                        <div className="w-12 h-12 rounded-2xl bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-700 shrink-0 shadow-sm">
+                            <Fingerprint size={26} />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h4 className="text-xs font-black uppercase tracking-wider text-amber-900">Daily 2FA Authentication Required</h4>
+                                <span className="px-2 py-0.5 bg-amber-200 text-amber-800 text-[10px] font-black uppercase rounded-full">Once / 24 Hours</span>
+                            </div>
+                            <p className="text-xs text-amber-700/90 font-medium mt-0.5">Under NPCI & Fingpay guidelines, retailers must complete merchant biometric 2FA once daily before doing transactions.</p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setShow2faModal(true)}
+                        className="px-5 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-2xl text-xs font-bold uppercase tracking-wider transition cursor-pointer shadow-md shadow-amber-500/25 shrink-0 flex items-center gap-2"
+                    >
+                        <ShieldCheck size={16} />
+                        <span>Authenticate 2FA Now</span>
+                    </button>
+                </div>
+            )}
 
             {/* Step Wizard Progress Header */}
             <div className="bg-white border border-slate-200/80 shadow-sm rounded-3xl p-4 sm:p-5">
@@ -1084,6 +1132,34 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                 onClose={() => setReceiptOpen(false)}
                 txnData={receiptData}
             />
+
+            {/* Daily 2FA Modal Dialog Overlay */}
+            {show2faModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                    <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-100 relative max-h-[90vh] overflow-y-auto">
+                        <button
+                            type="button"
+                            onClick={() => setShow2faModal(false)}
+                            className="absolute right-5 top-5 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition cursor-pointer"
+                        >
+                            <X size={18} />
+                        </button>
+                        <DailyAuthentication
+                            provider={provider}
+                            serviceType={activeTab === 'AADHAAR_PAY' ? 'AadhaarPay' : 'AEPS'}
+                            onSuccess={() => {
+                                setShow2faModal(false);
+                                if (setStatus) {
+                                    setStatus(prev => ({ ...prev, aeps2faDone: true, ap2faDone: true }));
+                                }
+                                setSuccessMsg("Daily 2FA session activated successfully! You can now execute your cash withdrawal.");
+                                setErrorMsg('');
+                            }}
+                            onBack={() => setShow2faModal(false)}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

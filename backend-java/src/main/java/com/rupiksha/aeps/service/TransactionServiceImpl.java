@@ -204,6 +204,26 @@ public class TransactionServiceImpl implements TransactionService {
         // Execute transaction via the engine
         TransactionResult result = transactionEngine.execute(context, transaction);
 
+        // If provider returned 2FA required (FP069), invalidate active session so user is prompted
+        if ("FP069".equalsIgnoreCase(result.getResponseCode()) ||
+            (result.getResponseMessage() != null && result.getResponseMessage().toLowerCase().contains("2fa"))) {
+            log.warn("Provider returned 2FA required ({}: {}). Resetting 2FA session for user: {}",
+                    result.getResponseCode(), result.getResponseMessage(), mainUser.getId());
+            if ("AADHAAR_PAY".equalsIgnoreCase(request.getServiceType())) {
+                mainUser.setAepsAp2faAuthenticatedAt(null);
+                mainUser.setAepsAp2faSessionId(null);
+                aepsUser.setAepsAp2faAuthenticatedAt(null);
+                aepsUser.setAepsAp2faSessionId(null);
+            } else {
+                mainUser.setAeps2faAuthenticatedAt(null);
+                mainUser.setAeps2faSessionId(null);
+                aepsUser.setAeps2faAuthenticatedAt(null);
+                aepsUser.setAeps2faSessionId(null);
+            }
+            mainUserRepository.save(mainUser);
+            aepsUserRepository.save(aepsUser);
+        }
+
         // 8. Publish internal dashboard events
         try {
             log.info("Publishing AepsTransactionEvent for transaction: {}", transaction.getTransactionId());
