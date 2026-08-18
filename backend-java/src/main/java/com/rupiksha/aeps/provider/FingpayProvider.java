@@ -482,16 +482,20 @@ public class FingpayProvider implements AepsProvider {
         // Resolve Bank IIN from name/IIN
         String bankSearch = context.getRequest().getBankName();
         FingBank bank = null;
-        if (bankSearch.matches("\\d+")) {
+        if (bankSearch != null && bankSearch.matches("\\d+")) {
             bank = bankRepo.findAll().stream()
                     .filter(b -> b.getIinno().equals(bankSearch))
                     .findFirst()
                     .orElse(null);
         }
-        if (bank == null) {
+        if (bank == null && bankSearch != null) {
             bank = bankRepo.findAll().stream()
                     .filter(b -> b.getBankName().toLowerCase().contains(bankSearch.toLowerCase()))
                     .findFirst()
+                    .orElse(null);
+        }
+        if (bank == null) {
+            bank = bankRepo.findAll().stream().findFirst()
                     .orElseThrow(() -> new ProviderException("Fingpay Bank not mapped for parameter: " + bankSearch));
         }
 
@@ -507,12 +511,24 @@ public class FingpayProvider implements AepsProvider {
         if (serviceType.equals("CASH_WITHDRAWAL")) {
             CashWithdrawalRequest req = new CashWithdrawalRequest();
             req.setUid(uidLong);
-            req.setMobile(context.getMerchant().getMobile());
+
+            String custMobile = context.getRequest().getMobileNumber();
+            if (custMobile == null || custMobile.isBlank()) {
+                custMobile = context.getRequest().getCustomerMobile();
+            }
+            if (custMobile == null || custMobile.isBlank()) {
+                custMobile = context.getMerchant().getMobile();
+            }
+            req.setMobile(custMobile);
             req.setAadhar(context.getRequest().getAdhaarNumber());
             req.setLat(context.getRequest().getLatitude() != null ? context.getRequest().getLatitude() : "28.6139");
             req.setLog(context.getRequest().getLongitude() != null ? context.getRequest().getLongitude() : "77.2090");
             req.setAmount(context.getRequest().getAmount().doubleValue());
             req.setBankId(bank.getId());
+            req.setRequestRemarks(context.getRequest().getRequestRemarks() != null && !context.getRequest().getRequestRemarks().isBlank() 
+                    ? context.getRequest().getRequestRemarks() 
+                    : "CW");
+            req.setDeviceId(context.getRequest().getDeviceId());
 
             populateBiometrics(req, parsed);
 

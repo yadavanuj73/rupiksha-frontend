@@ -61,7 +61,9 @@ public class AepsController {
     private final AepsTransactionEngineRepository engineTxnRepo;
     private final FingpayTransactionRepository txnRepo;
     private final CdStatusService cdStatusService;
+    private final com.rupiksha.aeps.provider.fingpay.service.CwStatusService cwStatusService;
     private final WalletService walletService;
+
 
 
     /**
@@ -343,6 +345,19 @@ public class AepsController {
                 result.put("amount", resp.getTransactionAmount());
                 
                 reconcileCdStatus(engineTxn, resp);
+            } else if ("CASH_WITHDRAWAL".equals(serviceType)) {
+                com.rupiksha.aeps.provider.fingpay.dto.CwStatusRequest request = new com.rupiksha.aeps.provider.fingpay.dto.CwStatusRequest();
+                request.setUid(uidLong);
+                request.setMerchantTranId(transactionId);
+                
+                com.rupiksha.aeps.provider.fingpay.dto.CwStatusResponse resp = cwStatusService.checkStatus(request);
+                result.put("apiStatus", resp.isApiStatus());
+                result.put("message", resp.getApiStatusMessage());
+                result.put("data", resp.getData());
+                
+                reconcileCwStatus(engineTxn, resp);
+                result.put("status", engineTxn.getStatus());
+                result.put("message", engineTxn.getProviderMessage());
             } else {
                 result.put("status", engineTxn.getStatus());
                 result.put("message", engineTxn.getProviderMessage());
@@ -415,6 +430,108 @@ public class AepsController {
             }
         }
     }
+
+    private void reconcileCwStatus(AepsTransactionEngine engineTxn, com.rupiksha.aeps.provider.fingpay.dto.CwStatusResponse resp) {
+        if (!resp.isApiStatus() || resp.getData() == null) {
+            return;
+        }
+
+        try {
+            boolean isApproved = false;
+            boolean isDeclined = false;
+            String bankRrn = null;
+            String fpTxnId = null;
+            String statusMsg = null;
+
+            if (resp.getData() instanceof java.util.List<?> list && !list.isEmpty()) {
+                Object item = list.get(0);
+                if (item instanceof Map<?, ?> map) {
+                    Object txnStatus = map.get("transactionStatus");
+                    Object code = map.get("transactionStatusCode");
+                    bankRrn = map.get("bankRRN") != null ? String.valueOf(map.get("bankRRN")) : null;
+                    fpTxnId = map.get("fingpayTransactionId") != null ? String.valueOf(map.get("fingpayTransactionId")) : null;
+                    statusMsg = map.get("transactionStatusMessage") != null ? String.valueOf(map.get("transactionStatusMessage")) : null;
+
+                    if (Boolean.TRUE.equals(txnStatus) || "00".equals(code)) {
+                        isApproved = true;
+                    } else if (Boolean.FALSE.equals(txnStatus) || ("FP009".equals(code) == false && code != null)) {
+                        isDeclined = true;
+                    }
+                }
+            } else if (resp.getData() instanceof Map<?, ?> map) {
+                Object txnStatus = map.get("transactionStatus");
+                Object code = map.get("transactionStatusCode");
+                bankRrn = map.get("bankRRN") != null ? String.valueOf(map.get("bankRRN")) : null;
+                fpTxnId = map.get("fingpayTransactionId") != null ? String.valueOf(map.get("fingpayTransactionId")) : null;
+                statusMsg = map.get("transactionStatusMessage") != null ? String.valueOf(map.get("transactionStatusMessage")) : null;
+
+                if (Boolean.TRUE.equals(txnStatus) || "00".equals(code)) {
+                    isApproved = true;
+                } else if (Boolean.FALSE.equals(txnStatus) || ("FP009".equals(code) == false && code != null)) {
+                    isDeclined = true;
+                }
+            }
+
+            String currentStatus = engineTxn.getStatus();
+            if (isApproved && !"SUCCESS".equalsIgnoreCase(currentStatus)) {
+                engineTxn.setStatus("SUCCESS");
+                engineTxn.setWorkflowState("SUCCESS");
+                if (fpTxnId != null) engineTxn.setProviderReference(fpTxnId);
+                engineTxn.setProviderStatus("SUCCESS");
+                engineTxn.setProviderMessage(statusMsg != null ? statusMsg : "Approved");
+                engineTxn.setCompletedAt(LocalDateTime.now());
+                engineTxnRepo.save(engineTxn);
+
+                final String finalRrn = bankRrn;
+                final String finalFpTxnId = fpTxnId;
+                final String finalMsg = statusMsg;
+
+                txnRepo.findByTxnid(engineTxn.getTransactionId()).ifPresent(t -> {
+                    t.setStatus("SUCCESS");
+                    if (finalMsg != null) t.setMessage(finalMsg);
+                    if (finalRrn != null) t.setRrn(finalRrn);
+                    if (finalFpTxnId != null) t.setFtxnin(finalFpTxnId);
+                    txnRepo.save(t);
+                });
+
+                // Credit retailer wallet if not already credited
+                try {
+                    log.info("Crediting wallet for reconciled successful AEPS Cash Withdrawal: {}, user: {}, amount: {}",
+                            engineTxn.getTransactionId(), engineTxn.getUserId(), engineTxn.getAmount());
+                    walletService.creditForService(
+                            engineTxn.getUserId(),
+                            engineTxn.getAmount(),
+                            "AEPS Cash Withdrawal (Reconciled) - " + engineTxn.getTransactionId(),
+                            WalletTransactionContext.AEPS_CASH_WITHDRAWAL,
+                            "AEPS",
+                            engineTxn.getIpAddress() != null ? engineTxn.getIpAddress() : "127.0.0.1",
+                            engineTxn.getTransactionId()
+                    );
+                    log.info("Successfully credited wallet for reconciled AEPS Cash Withdrawal: {}", engineTxn.getTransactionId());
+                } catch (Exception e) {
+                    log.error("Failed to credit wallet during CW reconciliation for {}: {}", engineTxn.getTransactionId(), e.getMessage());
+                }
+            } else if (isDeclined && !"FAILED".equalsIgnoreCase(currentStatus)) {
+                engineTxn.setStatus("FAILED");
+                engineTxn.setWorkflowState("FAILED");
+                if (fpTxnId != null) engineTxn.setProviderReference(fpTxnId);
+                engineTxn.setProviderStatus("FAILED");
+                engineTxn.setProviderMessage(statusMsg != null ? statusMsg : "Failed");
+                engineTxn.setCompletedAt(LocalDateTime.now());
+                engineTxnRepo.save(engineTxn);
+
+                final String finalMsg = statusMsg;
+                txnRepo.findByTxnid(engineTxn.getTransactionId()).ifPresent(t -> {
+                    t.setStatus("FAILED");
+                    if (finalMsg != null) t.setMessage(finalMsg);
+                    txnRepo.save(t);
+                });
+            }
+        } catch (Exception e) {
+            log.error("Failed to reconcile CW status for {}: {}", engineTxn.getTransactionId(), e.getMessage(), e);
+        }
+    }
+
 
     /**
      * Retrieves the list of Fingpay banks.

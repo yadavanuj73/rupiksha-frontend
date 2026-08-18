@@ -37,6 +37,12 @@ public class AepsTransactionRequest {
 
     private String longitude;
 
+    private String mobileNumber;
+
+    private String customerMobile;
+
+    private String requestRemarks;
+
     private String deviceId;
 
     private String ipAddress;
@@ -45,3 +51,4 @@ public class AepsTransactionRequest {
 
     private String provider;
 }
+

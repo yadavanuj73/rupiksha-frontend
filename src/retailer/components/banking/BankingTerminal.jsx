@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
     Landmark, 
     ArrowRight, 
+    ArrowLeft,
     Fingerprint, 
     ShieldCheck, 
     CheckCircle2, 
@@ -19,10 +20,14 @@ import {
     FileText,
     ArrowDownToLine,
     MapPin,
-    Sparkles
+    Sparkles,
+    BadgeCheck,
+    Building2,
+    Edit3
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRD } from '../../../hooks/useRD';
+import { useWallet } from '../../../context/WalletContext';
 import DeviceStatus from '../../../components/DeviceStatus';
 import CaptureButton from '../../../components/CaptureButton';
 import CaptureLoader from '../../../components/CaptureLoader';
@@ -31,6 +36,7 @@ import CaptureSuccess from '../../../components/CaptureSuccess';
 import { aepsService } from '../../../services/apiService';
 import ReceiptModal from './ReceiptModal';
 import DailyAuthentication from '../../../components/DailyAuthentication';
+import { validateVerhoeff } from '../../../utils/verhoeff';
 
 const POPULAR_BANKS = [
     { name: 'State Bank of India', short: 'SBI', iin: '607082' },
@@ -47,6 +53,7 @@ const QUICK_AMOUNTS = [500, 1000, 2000, 3000, 5000, 10000];
 
 export default function BankingTerminal({ provider, status, setStatus }) {
     const { captureState, status: rdStatus, device, error: rdError, captureResult, capture, reset } = useRD();
+    const { refreshWallet } = useWallet();
 
     const isFingpay = provider === 'fingpay';
     const tabs = isFingpay
@@ -65,6 +72,9 @@ export default function BankingTerminal({ provider, status, setStatus }) {
           ];
 
     const [activeTab, setActiveTab] = useState('CASH_WITHDRAWAL');
+    const [currentStep, setCurrentStep] = useState(1); // 1 = Input Details, 2 = Biometric Capture & Confirm
+    const [idType, setIdType] = useState('AADHAAR'); // 'AADHAAR' (12 digits) or 'VID' (16 digits)
+    
     const [banks, setBanks] = useState([]);
     const [filteredBanks, setFilteredBanks] = useState([]);
     const [bankSearch, setBankSearch] = useState('');
@@ -77,7 +87,8 @@ export default function BankingTerminal({ provider, status, setStatus }) {
         bankId: '',
         bankName: '',
         bankIin: '',
-        amount: ''
+        amount: '',
+        remarks: 'Cash Withdrawal'
     });
 
     // GPS location state
@@ -153,10 +164,19 @@ export default function BankingTerminal({ provider, status, setStatus }) {
     // Reset fields on tab change
     const handleTabChange = (tabId) => {
         setActiveTab(tabId);
-        setFormData(prev => ({ ...prev, amount: '' }));
+        setCurrentStep(1);
+        setFormData(prev => ({ 
+            ...prev, 
+            amount: '',
+            remarks: tabId === 'CASH_WITHDRAWAL' ? 'Cash Withdrawal' : 
+                     tabId === 'BALANCE_INQUIRY' ? 'Balance Inquiry' : 
+                     tabId === 'MINI_STATEMENT' ? 'Mini Statement' : 
+                     tabId === 'AADHAAR_PAY' ? 'Aadhaar Pay' : 'Cash Deposit'
+        }));
         setErrorMsg('');
         setSuccessMsg('');
         setBcConsent(false);
+        if (reset) reset();
         setDenominations({
             500: 0,
             200: 0,
@@ -192,10 +212,19 @@ export default function BankingTerminal({ provider, status, setStatus }) {
         if (name === 'mobile') {
             setFormData(prev => ({ ...prev, [name]: value.replace(/\D/g, '').slice(0, 10) }));
         } else if (name === 'aadhar') {
-            setFormData(prev => ({ ...prev, [name]: value.replace(/\D/g, '').slice(0, 16) }));
+            const maxLen = idType === 'VID' ? 16 : 12;
+            setFormData(prev => ({ ...prev, [name]: value.replace(/\D/g, '').slice(0, maxLen) }));
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));
         }
+    };
+
+    const handleIdTypeChange = (newType) => {
+        setIdType(newType);
+        setFormData(prev => ({
+            ...prev,
+            aadhar: prev.aadhar.slice(0, newType === 'VID' ? 16 : 12)
+        }));
     };
 
     const handleSelectBank = (bank) => {
@@ -231,14 +260,20 @@ export default function BankingTerminal({ provider, status, setStatus }) {
         setShowBankDropdown(false);
     };
 
-    const validateForm = () => {
+    const isAadhaarChecksumValid = formData.aadhar.length === (idType === 'VID' ? 16 : 12) && validateVerhoeff(formData.aadhar);
+
+    // Validation for Step 1
+    const validateStep1 = () => {
         if (!formData.mobile || formData.mobile.length !== 10) {
             return "Please enter a valid 10-digit customer mobile number.";
         }
-        if (!formData.aadhar || (formData.aadhar.length !== 12 && formData.aadhar.length !== 16)) {
-            return "Please enter a valid 12-digit Aadhaar number or 16-digit Virtual ID.";
+        const expectedLen = idType === 'VID' ? 16 : 12;
+        if (!formData.aadhar || formData.aadhar.length !== expectedLen) {
+            return idType === 'VID' 
+                ? "Please enter a valid 16-digit Virtual ID (VID)." 
+                : "Please enter a valid 12-digit Aadhaar number.";
         }
-        if (!formData.bankId && !formData.bankName) {
+        if (!formData.bankName && !formData.bankIin) {
             return "Please select a customer bank from the list.";
         }
         if (requiresAmount) {
@@ -246,15 +281,15 @@ export default function BankingTerminal({ provider, status, setStatus }) {
             if (isNaN(amt) || amt <= 0) {
                 return "Please enter a valid transaction amount.";
             }
+            if (amt < 100 || amt > 10000) {
+                return "Transaction amount must be between ₹100 and ₹10,000.";
+            }
             if (isDeposit && amt !== denominationSum) {
-                return `Denomination total (₹${denominationSum}) does not match the entered transaction amount (₹${formData.amount}).`;
+                return `Denomination total (₹${denominationSum}) does not match entered transaction amount (₹${formData.amount}).`;
             }
         }
         if (!bcConsent) {
-            return "Please confirm standard compliance by ticking the BC declaration consent checkbox.";
-        }
-        if (!captureResult || !captureResult.pidXml) {
-            return "Customer fingerprint capture must be completed using the scanner on the right.";
+            return "Please confirm standard compliance by checking the BC declaration consent.";
         }
         if (!location) {
             return "GPS lock is required. Please grant location permissions to continue.";
@@ -262,14 +297,27 @@ export default function BankingTerminal({ provider, status, setStatus }) {
         return null;
     };
 
-    const handleSubmit = async (e) => {
+    // Transition from Step 1 to Step 2
+    const handleProceedToStep2 = (e) => {
         e.preventDefault();
         setErrorMsg('');
         setSuccessMsg('');
+        const err = validateStep1();
+        if (err) {
+            setErrorMsg(err);
+            return;
+        }
+        setCurrentStep(2);
+    };
 
-        const validationError = validateForm();
-        if (validationError) {
-            setErrorMsg(validationError);
+    // Submit Final Transaction (Step 2)
+    const handleFinalSubmit = async (e) => {
+        if (e) e.preventDefault();
+        setErrorMsg('');
+        setSuccessMsg('');
+
+        if (!captureResult || !captureResult.pidXml) {
+            setErrorMsg("Please scan customer fingerprint before submitting.");
             return;
         }
 
@@ -278,13 +326,16 @@ export default function BankingTerminal({ provider, status, setStatus }) {
             const payload = {
                 amount: requiresAmount ? parseFloat(formData.amount) : 0,
                 serviceType: activeTab,
-                bankName: formData.bankName,
+                bankName: formData.bankName || formData.bankIin,
                 adhaarNumber: formData.aadhar,
+                customerMobile: formData.mobile,
+                mobileNumber: formData.mobile,
+                requestRemarks: formData.remarks || (activeTab === 'CASH_WITHDRAWAL' ? 'Cash Withdrawal' : activeTab),
                 pidXml: captureResult.pidXml,
                 biometricType: 'FMR',
-                latitude: location.latitude,
-                longitude: location.longitude,
-                deviceId: device ? (device.serial || device.dpID || 'MANTRA-MFS110') : 'WEB-SCANNER-001',
+                latitude: location?.latitude || "28.6139",
+                longitude: location?.longitude || "77.2090",
+                deviceId: device ? (device.serial || device.dpID || '10068311') : '10068311',
                 ipAddress: '127.0.0.1',
                 provider: provider
             };
@@ -295,19 +346,19 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                 const data = response.data;
                 const activeTabObj = tabs.find(t => t.id === activeTab);
                 
-                // Construct receipt properties
+                // Construct receipt properties according to Fingpay documentation
                 const receipt = {
                     status: data.status || (response.success ? 'SUCCESS' : 'FAILED'),
                     message: response.message || (response.success ? 'Transaction Completed' : 'Transaction Declined'),
-                    txnId: data.transactionId || data.merchantTranId || ('TXN' + Date.now()),
-                    fpTxnId: data.providerReference || data.fingpayTransactionId || 'N/A',
-                    bankRRN: data.bankRrn || data.stan || data.providerReference || 'N/A',
+                    txnId: data.transactionId || data.merchantTxnId || ('TXN' + Date.now()),
+                    fpTxnId: data.providerReference || data.fingpayTransactionId || data.fpTransactionId || 'N/A',
+                    bankRRN: data.bankRrn || data.bankRRN || data.stan || data.providerReference || 'N/A',
                     transactionAmount: requiresAmount ? parseFloat(formData.amount) : 0,
-                    balanceAmount: data.amount || data.balanceAmount || 0,
-                    maskedAadhaar: 'XXXX-XXXX-' + (formData.aadhar.length >= 4 ? formData.aadhar.slice(-4) : 'XXXX'),
+                    balanceAmount: data.balanceAmount !== undefined ? data.balanceAmount : (data.amount || 0),
+                    maskedAadhaar: (idType === 'VID' ? 'VID: ' : 'Aadhaar: ') + 'XXXX-XXXX-' + (formData.aadhar.length >= 4 ? formData.aadhar.slice(-4) : 'XXXX'),
                     mobile: formData.mobile,
                     bankName: formData.bankName,
-                    timestamp: new Date().toLocaleString(),
+                    timestamp: new Date().toLocaleString('en-IN'),
                     agentId: status.agentId || 'BC-TERMINAL',
                     serviceLabel: activeTabObj ? activeTabObj.label : 'AEPS Banking',
                     serviceType: activeTab
@@ -315,19 +366,31 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                 
                 setReceiptData(receipt);
                 setReceiptOpen(true);
-                setSuccessMsg("Transaction processed successfully!");
+                setSuccessMsg("Cash withdrawal transaction approved successfully!");
                 
-                // Reset form fields
+                // Trigger real-time wallet balance sync for retailer
+                try {
+                    if (refreshWallet) refreshWallet();
+                    window.dispatchEvent(new Event('walletUpdated'));
+                    window.dispatchEvent(new Event('dataUpdated'));
+                } catch (we) {
+                    console.warn("Wallet refresh trigger:", we);
+                }
+
+                // Reset form fields and step
                 setFormData({
                     mobile: '',
                     aadhar: '',
                     bankId: '',
                     bankName: '',
                     bankIin: '',
-                    amount: ''
+                    amount: '',
+                    remarks: 'Cash Withdrawal'
                 });
                 setBankSearch('');
                 setBcConsent(false);
+                setCurrentStep(1);
+                if (reset) reset();
                 setDenominations({
                     500: 0,
                     200: 0,
@@ -337,7 +400,7 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                     10: 0
                 });
             } else {
-                setErrorMsg(response.message || "Transaction declined.");
+                setErrorMsg(response.message || "Transaction declined by bank/gateway.");
             }
         } catch (err) {
             console.error("AEPS Transaction execution failed", err);
@@ -349,7 +412,7 @@ export default function BankingTerminal({ provider, status, setStatus }) {
 
     return (
         <div className="w-full text-left font-['Inter',sans-serif] space-y-6">
-            {/* Upper Strategy Routing Header */}
+            {/* Strategy Routing Header */}
             <div className="bg-white border border-slate-200/80 shadow-sm rounded-3xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-sm">
@@ -403,43 +466,105 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                 })}
             </div>
 
-            {/* Main Terminal Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {activeTab === 'AADHAAR_PAY' && isFingpay && !status.ap2faDone ? (
-                    <div className="lg:col-span-3 bg-white border border-slate-200/80 shadow-sm rounded-3xl p-8 text-center max-w-xl mx-auto">
-                        <DailyAuthentication
-                            provider={provider}
-                            serviceType="AadhaarPay"
-                            onSuccess={() => setStatus(prev => ({ ...prev, ap2faDone: true }))}
-                            onBack={() => handleTabChange('CASH_WITHDRAWAL')}
-                        />
+            {/* Step Wizard Progress Header */}
+            <div className="bg-white border border-slate-200/80 shadow-sm rounded-3xl p-4 sm:p-5">
+                <div className="flex items-center justify-between max-w-2xl mx-auto">
+                    {/* Step 1 Pill */}
+                    <div 
+                        onClick={() => currentStep === 2 && setCurrentStep(1)}
+                        className={`flex items-center gap-3 cursor-pointer transition ${
+                            currentStep === 1 ? 'opacity-100' : 'opacity-70 hover:opacity-100'
+                        }`}
+                    >
+                        <div className={`w-9 h-9 rounded-2xl flex items-center justify-center text-xs font-black transition shadow-sm ${
+                            currentStep === 1 
+                                ? 'bg-blue-600 text-white shadow-blue-500/25' 
+                                : 'bg-emerald-600 text-white'
+                        }`}>
+                            {currentStep === 2 ? <Check size={16} /> : "1"}
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Step 1</p>
+                            <p className={`text-xs font-black ${currentStep === 1 ? 'text-slate-800' : 'text-slate-600'}`}>
+                                Customer & Amount
+                            </p>
+                        </div>
                     </div>
-                ) : (
-                    <>
-                        {/* Form Card (2-Columns on large screen) */}
-                        <div className="lg:col-span-2 space-y-6">
-                            <form onSubmit={handleSubmit} className="bg-white border border-slate-200/80 shadow-sm rounded-3xl p-6 sm:p-8 space-y-6">
-                                <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-                                    <div>
-                                        <h2 className="text-base font-black text-slate-800 uppercase tracking-tight">
-                                            {tabs.find(t => t.id === activeTab)?.label}
-                                        </h2>
-                                        <p className="text-xs text-slate-500 font-semibold mt-0.5">
-                                            Enter customer details and transaction parameters
-                                        </p>
-                                    </div>
-                                    <span className="px-3 py-1 bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-wider rounded-full">
-                                        Step 1: Input Data
-                                    </span>
-                                </div>
 
+                    {/* Divider bar */}
+                    <div className="flex-1 mx-4 sm:mx-8 h-1 bg-slate-100 rounded-full overflow-hidden">
+                        <div className={`h-full transition-all duration-300 ${
+                            currentStep === 2 ? 'bg-emerald-500 w-full' : 'bg-blue-600 w-1/2'
+                        }`} />
+                    </div>
+
+                    {/* Step 2 Pill */}
+                    <div className={`flex items-center gap-3 transition ${
+                        currentStep === 2 ? 'opacity-100' : 'opacity-50'
+                    }`}>
+                        <div className={`w-9 h-9 rounded-2xl flex items-center justify-center text-xs font-black transition shadow-sm ${
+                            currentStep === 2 
+                                ? 'bg-blue-600 text-white shadow-blue-500/25' 
+                                : 'bg-slate-100 text-slate-500'
+                        }`}>
+                            2
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Step 2</p>
+                            <p className={`text-xs font-black ${currentStep === 2 ? 'text-slate-800' : 'text-slate-400'}`}>
+                                Biometric Scan & Confirm
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Daily 2FA Gate check for Aadhaar Pay */}
+            {activeTab === 'AADHAAR_PAY' && isFingpay && !status.ap2faDone ? (
+                <div className="bg-white border border-slate-200/80 shadow-sm rounded-3xl p-8 text-center max-w-xl mx-auto">
+                    <DailyAuthentication
+                        provider={provider}
+                        serviceType="AadhaarPay"
+                        onSuccess={() => setStatus(prev => ({ ...prev, ap2faDone: true }))}
+                        onBack={() => handleTabChange('CASH_WITHDRAWAL')}
+                    />
+                </div>
+            ) : (
+                <AnimatePresence mode="wait">
+                    {/* ═════════════════════════════════════════════════════════════════ */}
+                    {/* STEP 1: CUSTOMER DETAILS & PARAMETERS                           */}
+                    {/* ═════════════════════════════════════════════════════════════════ */}
+                    {currentStep === 1 && (
+                        <motion.div
+                            key="step1"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.2 }}
+                            className="bg-white border border-slate-200/80 shadow-sm rounded-3xl p-6 sm:p-8 space-y-6"
+                        >
+                            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                                <div>
+                                    <h2 className="text-base font-black text-slate-800 uppercase tracking-tight">
+                                        {tabs.find(t => t.id === activeTab)?.label}
+                                    </h2>
+                                    <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                                        Step 1: Enter customer details and transaction parameters
+                                    </p>
+                                </div>
+                                <span className="px-3 py-1 bg-blue-50 text-blue-700 text-[10px] font-black uppercase tracking-wider rounded-full border border-blue-100">
+                                    Step 1 of 2
+                                </span>
+                            </div>
+
+                            <form onSubmit={handleProceedToStep2} className="space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     {/* Customer Mobile Number */}
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
                                             <span className="flex items-center gap-1.5">
                                                 <Smartphone size={14} className="text-blue-600" />
-                                                Customer Mobile
+                                                Customer Mobile Number
                                             </span>
                                             <span className="text-[10px] font-semibold text-slate-400">
                                                 {formData.mobile.length}/10
@@ -457,23 +582,41 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                         />
                                     </div>
 
-                                    {/* Customer Aadhaar / VID Number */}
+                                    {/* ID Type & Aadhaar / VID Input */}
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
-                                            <span className="flex items-center gap-1.5">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                                                 <KeyRound size={14} className="text-blue-600" />
-                                                Aadhaar / VID Number
-                                            </span>
-                                            <span className="text-[10px] font-semibold text-slate-400">
-                                                {formData.aadhar.length}/12
-                                            </span>
-                                        </label>
+                                                Customer Identification
+                                            </label>
+                                            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl text-[10px] font-bold">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleIdTypeChange('AADHAAR')}
+                                                    className={`px-2 py-0.5 rounded-lg transition ${
+                                                        idType === 'AADHAAR' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500'
+                                                    }`}
+                                                >
+                                                    Aadhaar (12D)
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleIdTypeChange('VID')}
+                                                    className={`px-2 py-0.5 rounded-lg transition ${
+                                                        idType === 'VID' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500'
+                                                    }`}
+                                                >
+                                                    Virtual ID (16D)
+                                                </button>
+                                            </div>
+                                        </div>
+
                                         <div className="relative">
                                             <input
                                                 type={showAadhaar ? "text" : "password"}
                                                 name="aadhar"
-                                                maxLength="16"
-                                                placeholder="12-digit Aadhaar Number"
+                                                maxLength={idType === 'VID' ? 16 : 12}
+                                                placeholder={idType === 'VID' ? "16-digit Virtual ID" : "12-digit Aadhaar Number"}
                                                 value={formData.aadhar}
                                                 onChange={handleFormChange}
                                                 className="w-full px-4 pr-12 py-3 rounded-2xl border border-slate-200 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition tracking-wider"
@@ -487,6 +630,28 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                                 {showAadhaar ? <EyeOff size={16} /> : <Eye size={16} />}
                                             </button>
                                         </div>
+
+                                        {formData.aadhar.length > 0 && (
+                                            <div className="flex items-center justify-between text-[11px] pt-0.5">
+                                                <span className="text-slate-400">
+                                                    Length: {formData.aadhar.length}/{idType === 'VID' ? 16 : 12}
+                                                </span>
+                                                {formData.aadhar.length === (idType === 'VID' ? 16 : 12) && (
+                                                    <span className={`font-bold flex items-center gap-1 ${
+                                                        isAadhaarChecksumValid ? 'text-emerald-600' : 'text-amber-600'
+                                                    }`}>
+                                                        {isAadhaarChecksumValid ? (
+                                                            <>
+                                                                <BadgeCheck size={12} />
+                                                                <span>Verhoeff Checksum Valid</span>
+                                                            </>
+                                                        ) : (
+                                                            <span>⚠️ Verify checksum</span>
+                                                        )}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -495,13 +660,13 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                     <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
                                         <span className="flex items-center gap-1.5">
                                             <Landmark size={14} className="text-blue-600" />
-                                            Customer Bank
+                                            Customer Bank (IIN)
                                         </span>
                                         {formData.bankName && (
                                             <button
                                                 type="button"
                                                 onClick={clearSelectedBank}
-                                                className="text-[10px] font-bold text-rose-500 hover:text-rose-600 uppercase tracking-wider"
+                                                className="text-[10px] font-bold text-rose-500 hover:text-rose-600 uppercase tracking-wider cursor-pointer"
                                             >
                                                 Change Bank
                                             </button>
@@ -536,7 +701,7 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                             <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                                             <input
                                                 type="text"
-                                                placeholder="Or search bank name or 6-digit IIN..."
+                                                placeholder="Search bank name or 6-digit IIN..."
                                                 value={bankSearch}
                                                 onChange={(e) => {
                                                     setBankSearch(e.target.value);
@@ -582,7 +747,7 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                         <div className="p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl flex items-center justify-between text-xs text-emerald-800 font-bold">
                                             <div className="flex items-center gap-2">
                                                 <CheckCircle2 size={16} className="text-emerald-600" />
-                                                <span>Selected: <strong>{formData.bankName}</strong></span>
+                                                <span>Selected Bank: <strong>{formData.bankName}</strong></span>
                                             </div>
                                             {formData.bankIin && (
                                                 <span className="text-[10px] text-emerald-700 font-mono bg-emerald-100/80 px-2 py-0.5 rounded-md">
@@ -593,7 +758,7 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                     )}
                                 </div>
 
-                                {/* Transaction Amount Section (when required) */}
+                                {/* Transaction Amount Section */}
                                 {requiresAmount && (
                                     <div className="space-y-3 pt-2 border-t border-slate-100">
                                         <div className="space-y-1.5">
@@ -613,10 +778,10 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                                 <input
                                                     type="number"
                                                     name="amount"
-                                                    min="1"
+                                                    min="100"
                                                     max="10000"
                                                     step="1"
-                                                    placeholder="Enter amount"
+                                                    placeholder="Enter withdrawal amount"
                                                     value={formData.amount}
                                                     onChange={handleFormChange}
                                                     className="w-full pl-8 pr-4 py-3 rounded-2xl border border-slate-200 text-sm font-bold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
@@ -645,7 +810,22 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                     </div>
                                 )}
 
-                                {/* Cash Denomination UI - ONLY FOR CASH DEPOSIT */}
+                                {/* Remarks (Optional) */}
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                                        <span>Request Remarks (Optional)</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="remarks"
+                                        placeholder="e.g. Cash Withdrawal"
+                                        value={formData.remarks}
+                                        onChange={handleFormChange}
+                                        className="w-full px-4 py-2.5 rounded-2xl border border-slate-200 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+                                    />
+                                </div>
+
+                                {/* Cash Denomination Breakdown - ONLY FOR CASH DEPOSIT */}
                                 {isDeposit && (
                                     <div className="border border-slate-200 rounded-3xl p-5 bg-slate-50/50 space-y-4">
                                         <div className="flex justify-between items-center">
@@ -678,16 +858,10 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                                 </div>
                                             ))}
                                         </div>
-
-                                        {formData.amount && parseFloat(formData.amount) !== denominationSum && (
-                                            <p className="text-[11px] font-bold text-amber-600">
-                                                ⚠️ Note breakdown (₹{denominationSum}) does not match entered amount (₹{formData.amount}).
-                                            </p>
-                                        )}
                                     </div>
                                 )}
 
-                                {/* BC Declaration consent */}
+                                {/* BC Declaration Consent */}
                                 <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex gap-3 items-start">
                                     <input
                                         type="checkbox"
@@ -697,7 +871,7 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                         className="mt-1 w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                                     />
                                     <label htmlFor="bcConsent" className="text-xs font-semibold leading-relaxed text-slate-600 cursor-pointer">
-                                        I confirm that the customer is physically present at the outlet, customer consent has been obtained, and biometric authentication was conducted as per RBI & NPCI BC guidelines.
+                                        I confirm that the customer is physically present at the outlet, customer consent has been obtained, and biometric authentication will be conducted as per RBI & NPCI BC guidelines.
                                     </label>
                                 </div>
 
@@ -709,102 +883,200 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                     </div>
                                 )}
 
-                                {successMsg && (
-                                    <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs px-4 py-3 rounded-2xl flex items-center gap-2 font-semibold text-left">
-                                        <CheckCircle2 className="text-emerald-500 shrink-0" size={16} />
-                                        <div>{successMsg}</div>
-                                    </div>
-                                )}
-
-                                {locError && (
-                                    <div className="bg-amber-50 border border-amber-200 text-amber-700 text-xs px-4 py-3 rounded-2xl flex items-center gap-2 font-semibold text-left">
-                                        <AlertCircle className="text-amber-500 shrink-0" size={16} />
-                                        <div>{locError}</div>
-                                    </div>
-                                )}
-
-                                {/* Submit Button */}
+                                {/* Proceed to Step 2 Button */}
                                 <button
                                     type="submit"
-                                    disabled={loading || !bcConsent || !captureResult}
+                                    disabled={!bcConsent}
                                     className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold uppercase tracking-wider text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-blue-500/25 disabled:opacity-50"
                                 >
-                                    {loading ? (
-                                        <>
-                                            <RefreshCw className="w-4 h-4 animate-spin" />
-                                            Executing {tabs.find(t => t.id === activeTab)?.label}...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <ShieldCheck size={18} />
-                                            Submit {tabs.find(t => t.id === activeTab)?.label}
-                                        </>
-                                    )}
+                                    <span>Proceed to Biometric Capture</span>
+                                    <ArrowRight size={16} />
                                 </button>
                             </form>
-                        </div>
+                        </motion.div>
+                    )}
 
-                        {/* Device & Biometric Scanner Panel (Right Column) */}
-                        <div className="space-y-6">
-                            <div className="bg-white border border-slate-200/80 shadow-sm rounded-3xl p-6 space-y-6 sticky top-6">
-                                <div>
-                                    <div className="flex items-center justify-between mb-1">
+                    {/* ═════════════════════════════════════════════════════════════════ */}
+                    {/* STEP 2: BIOMETRIC CAPTURE & CONFIRM SUBMISSION                  */}
+                    {/* ═════════════════════════════════════════════════════════════════ */}
+                    {currentStep === 2 && (
+                        <motion.div
+                            key="step2"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.2 }}
+                            className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+                        >
+                            {/* Left Column: Transaction Summary Ticket */}
+                            <div className="lg:col-span-1 space-y-6">
+                                <div className="bg-white border border-slate-200/80 shadow-sm rounded-3xl p-6 space-y-5">
+                                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                                         <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                                            <Fingerprint size={16} className="text-blue-600" />
-                                            Customer Biometric Capture
+                                            <FileText size={15} className="text-blue-600" />
+                                            Transaction Overview
                                         </h3>
-                                        <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-black uppercase rounded-full">
-                                            Step 2
+                                        <button
+                                            type="button"
+                                            onClick={() => setCurrentStep(1)}
+                                            className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
+                                        >
+                                            <Edit3 size={13} />
+                                            <span>Edit Details</span>
+                                        </button>
+                                    </div>
+
+                                    {/* Amount Callout (when required) */}
+                                    {requiresAmount && (
+                                        <div className="p-4 bg-blue-50/70 border border-blue-100 rounded-2xl text-center space-y-1">
+                                            <p className="text-[10px] font-black uppercase tracking-wider text-blue-600">
+                                                Withdrawal Amount
+                                            </p>
+                                            <p className="text-2xl font-black text-slate-800">
+                                                ₹ {parseFloat(formData.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* Parameter list */}
+                                    <div className="space-y-3 text-xs">
+                                        <div className="flex justify-between items-center py-1.5 border-b border-slate-50">
+                                            <span className="text-slate-400 font-semibold">Service Type:</span>
+                                            <strong className="text-slate-700 font-bold uppercase">
+                                                {tabs.find(t => t.id === activeTab)?.label}
+                                            </strong>
+                                        </div>
+
+                                        <div className="flex justify-between items-center py-1.5 border-b border-slate-50">
+                                            <span className="text-slate-400 font-semibold">Customer Mobile:</span>
+                                            <strong className="text-slate-700 font-bold font-mono">
+                                                +91 {formData.mobile}
+                                            </strong>
+                                        </div>
+
+                                        <div className="flex justify-between items-center py-1.5 border-b border-slate-50">
+                                            <span className="text-slate-400 font-semibold">Customer ID:</span>
+                                            <strong className="text-slate-700 font-bold font-mono">
+                                                XXXX-XXXX-{formData.aadhar.slice(-4)} ({idType})
+                                            </strong>
+                                        </div>
+
+                                        <div className="flex justify-between items-center py-1.5 border-b border-slate-50">
+                                            <span className="text-slate-400 font-semibold">Customer Bank:</span>
+                                            <strong className="text-slate-700 font-bold truncate max-w-[150px] text-right">
+                                                {formData.bankName}
+                                            </strong>
+                                        </div>
+
+                                        {formData.bankIin && (
+                                            <div className="flex justify-between items-center py-1.5 border-b border-slate-50">
+                                                <span className="text-slate-400 font-semibold">Bank IIN:</span>
+                                                <span className="font-mono text-[11px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                                                    {formData.bankIin}
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        {formData.remarks && (
+                                            <div className="flex justify-between items-center py-1.5">
+                                                <span className="text-slate-400 font-semibold">Remarks:</span>
+                                                <span className="text-slate-600 font-medium truncate max-w-[140px]">
+                                                    {formData.remarks}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setCurrentStep(1)}
+                                        className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200/80 text-slate-700 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                                    >
+                                        <ArrowLeft size={14} />
+                                        <span>Back to Edit Details</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Right Column: Biometric Capture & Final Execution */}
+                            <div className="lg:col-span-2 space-y-6">
+                                <div className="bg-white border border-slate-200/80 shadow-sm rounded-3xl p-6 sm:p-8 space-y-6">
+                                    <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                                        <div>
+                                            <h3 className="text-base font-black text-slate-800 uppercase tracking-tight flex items-center gap-2">
+                                                <Fingerprint size={20} className="text-blue-600" />
+                                                Step 2: Biometric Authentication
+                                            </h3>
+                                            <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                                                Place customer finger on the scanner and click Capture below
+                                            </p>
+                                        </div>
+                                        <span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-wider rounded-full border border-emerald-100">
+                                            Step 2 of 2
                                         </span>
                                     </div>
-                                    <p className="text-xs text-slate-500 font-semibold leading-relaxed">
-                                        Instruct the customer to place their finger on the Mantra scanner and click Capture below.
-                                    </p>
-                                </div>
 
-                                {/* Scanner Status */}
-                                <DeviceStatus />
+                                    {/* Scanner Device Status */}
+                                    <DeviceStatus />
 
-                                {/* Capture Controls */}
-                                <div className="space-y-3 pt-2 border-t border-slate-100">
-                                    <CaptureButton />
-                                    <CaptureLoader />
-                                    <CaptureError />
-                                    <CaptureSuccess />
-                                </div>
+                                    {/* Capture Controls */}
+                                    <div className="space-y-4 pt-2">
+                                        <CaptureButton />
+                                        <CaptureLoader />
+                                        <CaptureError />
+                                        <CaptureSuccess />
+                                    </div>
 
-                                {/* Checklist / Status Info */}
-                                <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-semibold text-slate-500 space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <span>Customer Mobile:</span>
-                                        <strong className={formData.mobile.length === 10 ? "text-emerald-600" : "text-slate-400"}>
-                                            {formData.mobile.length === 10 ? "✓ Entered" : "Pending"}
-                                        </strong>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <span>Customer Aadhaar:</span>
-                                        <strong className={formData.aadhar.length === 12 ? "text-emerald-600" : "text-slate-400"}>
-                                            {formData.aadhar.length === 12 ? "✓ Entered" : "Pending"}
-                                        </strong>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <span>Selected Bank:</span>
-                                        <strong className={formData.bankName ? "text-emerald-600" : "text-slate-400"}>
-                                            {formData.bankName ? "✓ Selected" : "Pending"}
-                                        </strong>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <span>Biometric Scan:</span>
-                                        <strong className={captureResult ? "text-emerald-600" : "text-amber-500"}>
-                                            {captureResult ? "✓ Scan Ready" : "Awaiting Scan"}
-                                        </strong>
+                                    {/* Alerts */}
+                                    {errorMsg && (
+                                        <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs px-4 py-3 rounded-2xl flex items-center gap-2 font-semibold text-left">
+                                            <AlertCircle className="text-rose-500 shrink-0" size={16} />
+                                            <div>{errorMsg}</div>
+                                        </div>
+                                    )}
+
+                                    {successMsg && (
+                                        <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs px-4 py-3 rounded-2xl flex items-center gap-2 font-semibold text-left">
+                                            <CheckCircle2 className="text-emerald-500 shrink-0" size={16} />
+                                            <div>{successMsg}</div>
+                                        </div>
+                                    )}
+
+                                    {/* Final Submit Button */}
+                                    <div className="pt-2">
+                                        <button
+                                            type="button"
+                                            onClick={handleFinalSubmit}
+                                            disabled={loading || !captureResult || !captureResult.pidXml}
+                                            className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold uppercase tracking-wider text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-emerald-500/25 disabled:opacity-50"
+                                        >
+                                            {loading ? (
+                                                <>
+                                                    <RefreshCw className="w-4 h-4 animate-spin" />
+                                                    Processing Fingpay Cash Withdrawal...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <ShieldCheck size={18} />
+                                                    {requiresAmount 
+                                                        ? `Confirm & Withdraw Cash (₹${formData.amount})` 
+                                                        : `Submit ${tabs.find(t => t.id === activeTab)?.label}`}
+                                                </>
+                                            )}
+                                        </button>
+                                        
+                                        {!captureResult && (
+                                            <p className="text-[11px] text-center text-slate-400 font-semibold mt-2">
+                                                Please capture customer biometric fingerprint to enable withdrawal.
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </>
-                )}
-            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            )}
 
             {/* Receipt Modal Overlay */}
             <ReceiptModal

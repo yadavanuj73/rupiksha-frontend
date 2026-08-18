@@ -11,6 +11,9 @@ public class CashWithdrawalRequest {
     private String log;
     private Double amount;
     private Long bankId;
+    private String requestRemarks;
+    private String deviceId;
+    private String virtualId;
 
     // Biometric — RD service se as-is aata hai
     private String errorCode;
