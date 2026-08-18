@@ -41,6 +41,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(base(HttpStatus.BAD_REQUEST, ex.getMessage()));
     }
 
+    @ExceptionHandler(com.rupiksha.aeps.exception.ValidationException.class)
+    public ResponseEntity<?> handleAepsValidation(com.rupiksha.aeps.exception.ValidationException ex) {
+        return ResponseEntity.badRequest().body(base(HttpStatus.BAD_REQUEST, ex.getMessage()));
+    }
+
+    @ExceptionHandler(com.rupiksha.aeps.exception.AepsException.class)
+    public ResponseEntity<?> handleAepsException(com.rupiksha.aeps.exception.AepsException ex) {
+        return ResponseEntity.badRequest().body(base(HttpStatus.BAD_REQUEST, ex.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleGeneric(Exception ex) {
         // Log full stack trace so Render logs show the real cause

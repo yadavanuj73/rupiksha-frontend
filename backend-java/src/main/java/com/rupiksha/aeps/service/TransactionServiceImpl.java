@@ -9,9 +9,12 @@ import com.rupiksha.aeps.entity.AepsTransactionEngine;
 import com.rupiksha.aeps.enums.TransactionWorkflowState;
 import com.rupiksha.aeps.exception.AepsException;
 import com.rupiksha.aeps.exception.ValidationException;
+import com.rupiksha.aeps.provider.fingpay.entity.AepsKyc;
+import com.rupiksha.aeps.provider.fingpay.entity.Fingpay2faTxn;
+import com.rupiksha.aeps.provider.fingpay.repository.AepsKycRepository;
+import com.rupiksha.aeps.provider.fingpay.repository.Fingpay2faTxnRepository;
 import com.rupiksha.aeps.repository.AepsTransactionEngineRepository;
 import com.rupiksha.aeps.repository.AepsUserRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -39,6 +42,8 @@ public class TransactionServiceImpl implements TransactionService {
     private final ApplicationEventPublisher eventPublisher;
     private final AepsProperties aepsProperties;
     private final com.rupiksha.backend.service.WalletService walletService;
+    private final AepsKycRepository aepsKycRepository;
+    private final Fingpay2faTxnRepository fingpay2faTxnRepository;
 
     @org.springframework.beans.factory.annotation.Autowired
     public TransactionServiceImpl(
@@ -48,7 +53,9 @@ public class TransactionServiceImpl implements TransactionService {
             TransactionEngine transactionEngine,
             ApplicationEventPublisher eventPublisher,
             AepsProperties aepsProperties,
-            com.rupiksha.backend.service.WalletService walletService
+            com.rupiksha.backend.service.WalletService walletService,
+            AepsKycRepository aepsKycRepository,
+            Fingpay2faTxnRepository fingpay2faTxnRepository
     ) {
         this.aepsUserRepository = aepsUserRepository;
         this.mainUserRepository = mainUserRepository;
@@ -57,47 +64,64 @@ public class TransactionServiceImpl implements TransactionService {
         this.eventPublisher = eventPublisher;
         this.aepsProperties = aepsProperties;
         this.walletService = walletService;
+        this.aepsKycRepository = aepsKycRepository;
+        this.fingpay2faTxnRepository = fingpay2faTxnRepository;
     }
 
-
     private com.rupiksha.aeps.entity.User getOrSyncAepsUser(String mobile) {
-        Optional<com.rupiksha.aeps.entity.User> userOpt = aepsUserRepository.findByMobile(mobile)
-                .or(() -> aepsUserRepository.findByUsername(mobile));
-        if (userOpt.isPresent()) {
-            return userOpt.get();
-        }
-
-        // Try syncing from main core user registry
         Optional<com.rupiksha.backend.domain.User> coreUserOpt = mainUserRepository.findByMobile(mobile)
                 .or(() -> mainUserRepository.findByUsername(mobile));
+
+        com.rupiksha.aeps.entity.User aepsUser = aepsUserRepository.findByMobile(mobile)
+                .or(() -> aepsUserRepository.findByUsername(mobile))
+                .orElseGet(com.rupiksha.aeps.entity.User::new);
+
         if (coreUserOpt.isPresent()) {
             com.rupiksha.backend.domain.User coreUser = coreUserOpt.get();
-            com.rupiksha.aeps.entity.User aepsUser = new com.rupiksha.aeps.entity.User();
+            long uidLong = coreUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
+            Optional<AepsKyc> fingKycOpt = aepsKycRepository.findByUid(uidLong);
+
+            boolean kycDone = Boolean.TRUE.equals(coreUser.getAepsKycDone()) ||
+                    Boolean.TRUE.equals(aepsUser.getAepsKycDone()) ||
+                    fingKycOpt.map(k -> Boolean.TRUE.equals(k.getKycDone()) || (k.getOutlet() != null && !k.getOutlet().isBlank())).orElse(false);
+
+            boolean onboarded = Boolean.TRUE.equals(coreUser.getAepsOnboarded()) ||
+                    Boolean.TRUE.equals(aepsUser.getAepsOnboarded()) ||
+                    fingKycOpt.isPresent();
+
             aepsUser.setMobile(coreUser.getMobile());
             aepsUser.setUsername(coreUser.getUsername());
-            aepsUser.setEmail(coreUser.getEmail());
-            aepsUser.setName(coreUser.getFullName());
-            aepsUser.setAepsAgentId(coreUser.getAepsAgentId());
-            aepsUser.setAepsMerchantId(coreUser.getAepsMerchantId());
-            aepsUser.setAepsOnboarded(coreUser.getAepsOnboarded());
-            aepsUser.setAepsKycDone(coreUser.getAepsKycDone());
-            aepsUser.setAepsKycRefId(coreUser.getAepsKycRefId());
-            aepsUser.setAepsKycTxnId(coreUser.getAepsKycTxnId());
+            if (aepsUser.getEmail() == null) aepsUser.setEmail(coreUser.getEmail());
+            if (aepsUser.getName() == null) aepsUser.setName(coreUser.getFullName());
+
+            String agentId = coreUser.getAepsAgentId();
+            if ((agentId == null || agentId.isBlank()) && fingKycOpt.isPresent()) {
+                agentId = fingKycOpt.get().getOutlet();
+            }
+            if (agentId != null && !agentId.isBlank()) {
+                aepsUser.setAepsAgentId(agentId);
+                aepsUser.setAepsMerchantId(agentId);
+            }
+
+            aepsUser.setAepsOnboarded(onboarded);
+            aepsUser.setAepsKycDone(kycDone);
+
+            if (coreUser.getAepsKycRefId() != null) aepsUser.setAepsKycRefId(coreUser.getAepsKycRefId());
+            if (coreUser.getAepsKycTxnId() != null) aepsUser.setAepsKycTxnId(coreUser.getAepsKycTxnId());
             if (coreUser.getAepsKycCompletedAt() != null) {
                 aepsUser.setAepsKycCompletedAt(java.time.LocalDateTime.ofInstant(coreUser.getAepsKycCompletedAt(), java.time.ZoneId.systemDefault()));
             }
-            aepsUser.setAeps2faSessionId(coreUser.getAeps2faSessionId());
             if (coreUser.getAeps2faAuthenticatedAt() != null) {
                 aepsUser.setAeps2faAuthenticatedAt(java.time.LocalDateTime.ofInstant(coreUser.getAeps2faAuthenticatedAt(), java.time.ZoneId.systemDefault()));
             }
-            aepsUser.setAepsAp2faSessionId(coreUser.getAepsAp2faSessionId());
             if (coreUser.getAepsAp2faAuthenticatedAt() != null) {
                 aepsUser.setAepsAp2faAuthenticatedAt(java.time.LocalDateTime.ofInstant(coreUser.getAepsAp2faAuthenticatedAt(), java.time.ZoneId.systemDefault()));
             }
-            log.info("Synchronizing core user to AEPS registry for mobile: {}", mobile);
+
             return aepsUserRepository.save(aepsUser);
         }
-        return null;
+
+        return aepsUser.getId() != null ? aepsUser : null;
     }
 
     @Override
@@ -117,6 +141,7 @@ public class TransactionServiceImpl implements TransactionService {
 
         // 3. Fetch and validate Core User record
         com.rupiksha.backend.domain.User mainUser = mainUserRepository.findByMobile(mobile)
+                .or(() -> mainUserRepository.findByUsername(mobile))
                 .orElseThrow(() -> new ValidationException("Core merchant profile not found."));
 
         // 4. Perform security checks
@@ -175,10 +200,6 @@ public class TransactionServiceImpl implements TransactionService {
                 .timestamp(LocalDateTime.now())
                 .serviceType(request.getServiceType().toUpperCase())
                 .build();
-        
-        // Temporarily hold engine transaction reference in context properties mapping if needed, 
-        // or we can subclass context. Let's add a transactional attribute to context.
-        // We will update context structure to support the database entity.
 
         // Execute transaction via the engine
         TransactionResult result = transactionEngine.execute(context, transaction);
@@ -205,7 +226,6 @@ public class TransactionServiceImpl implements TransactionService {
             throw new ValidationException("Service type is required.");
         }
         
-        // Reject unsupported service types at validation step (optional but ensures clean gates)
         String type = request.getServiceType().toUpperCase();
         if (!type.equals("CASH_WITHDRAWAL") && !type.equals("BALANCE_INQUIRY") && 
             !type.equals("MINI_STATEMENT") && !type.equals("AADHAAR_PAY") &&
@@ -218,7 +238,6 @@ public class TransactionServiceImpl implements TransactionService {
                 throw new ValidationException("Duplicate transaction ID detected: " + request.getTransactionId());
             }
         } else {
-            // Generate a unique ID if not provided
             request.setTransactionId("TXN" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase());
         }
     }
@@ -258,29 +277,62 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     private void performSecurityChecks(com.rupiksha.backend.domain.User mainUser, com.rupiksha.aeps.entity.User aepsUser, String serviceType) {
-        // Main Core User Active Gate
+        // 1. Main Core User Active Gate
         if (mainUser.getStatus() == null || !mainUser.getStatus().name().equalsIgnoreCase("ACTIVE")) {
             throw new ValidationException("Merchant account is inactive or pending approval.");
         }
 
-        // Onboarding Gate
-        if (aepsUser.getAepsOnboarded() == null || !aepsUser.getAepsOnboarded()) {
+        long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
+        Optional<AepsKyc> fingKycOpt = aepsKycRepository.findByUid(uidLong);
+
+        // 2. Onboarding Gate (checks both Levin aeps_users, core users, and Fingpay aepskyc table)
+        boolean isOnboarded = Boolean.TRUE.equals(aepsUser.getAepsOnboarded()) ||
+                Boolean.TRUE.equals(mainUser.getAepsOnboarded()) ||
+                fingKycOpt.isPresent();
+
+        if (!isOnboarded) {
             throw new ValidationException("Merchant is not onboarded with the AEPS provider.");
         }
 
-        // KYC Gate
-        if (aepsUser.getAepsKycDone() == null || !aepsUser.getAepsKycDone()) {
+        // 3. KYC Gate (checks core user, aepsUser, and Fingpay AepsKyc)
+        boolean isKycDone = Boolean.TRUE.equals(aepsUser.getAepsKycDone()) ||
+                Boolean.TRUE.equals(mainUser.getAepsKycDone()) ||
+                fingKycOpt.map(k -> Boolean.TRUE.equals(k.getKycDone()) || (k.getOutlet() != null && !k.getOutlet().isBlank())).orElse(false);
+
+        if (!isKycDone) {
             throw new ValidationException("Merchant biometric KYC is not complete.");
         }
 
-        // Daily 2FA Session Gate (Isolate standard AEPS vs Aadhaar Pay contexts)
+        // 4. Daily 2FA Session Gate (Isolate standard AEPS vs Aadhaar Pay contexts)
         boolean isAadhaarPay = "AADHAAR_PAY".equalsIgnoreCase(serviceType);
         boolean hasValidSession = false;
 
         if (isAadhaarPay) {
             hasValidSession = isSessionValid(aepsUser.getAepsAp2faAuthenticatedAt()) || isSessionValid(mainUser.getAepsAp2faAuthenticatedAt());
+            if (!hasValidSession && fingpay2faTxnRepository != null) {
+                Optional<Fingpay2faTxn> apTxnOpt = fingpay2faTxnRepository
+                        .findTopByUserIdAndServiceTypeAndResponseCodeOrderByCreatedAtDesc(mainUser.getId(), "AP", "00")
+                        .or(() -> fingpay2faTxnRepository.findTopByMobileNumberAndServiceTypeAndResponseCodeOrderByCreatedAtDesc(mainUser.getMobile(), "AP", "00"));
+                
+                if (apTxnOpt.isPresent() && isSessionValid(apTxnOpt.get().getAuthenticatedAt())) {
+                    hasValidSession = true;
+                    mainUser.setAepsAp2faAuthenticatedAt(apTxnOpt.get().getAuthenticatedAt().atZone(IST_ZONE).toInstant());
+                    mainUserRepository.save(mainUser);
+                }
+            }
         } else {
             hasValidSession = isSessionValid(aepsUser.getAeps2faAuthenticatedAt()) || isSessionValid(mainUser.getAeps2faAuthenticatedAt());
+            if (!hasValidSession && fingpay2faTxnRepository != null) {
+                Optional<Fingpay2faTxn> aepsTxnOpt = fingpay2faTxnRepository
+                        .findTopByUserIdAndServiceTypeAndResponseCodeOrderByCreatedAtDesc(mainUser.getId(), "AEPS", "00")
+                        .or(() -> fingpay2faTxnRepository.findTopByMobileNumberAndServiceTypeAndResponseCodeOrderByCreatedAtDesc(mainUser.getMobile(), "AEPS", "00"));
+                
+                if (aepsTxnOpt.isPresent() && isSessionValid(aepsTxnOpt.get().getAuthenticatedAt())) {
+                    hasValidSession = true;
+                    mainUser.setAeps2faAuthenticatedAt(aepsTxnOpt.get().getAuthenticatedAt().atZone(IST_ZONE).toInstant());
+                    mainUserRepository.save(mainUser);
+                }
+            }
         }
 
         if (!hasValidSession) {

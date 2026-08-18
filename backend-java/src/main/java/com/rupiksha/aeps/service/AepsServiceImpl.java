@@ -70,48 +70,64 @@ public class AepsServiceImpl implements AepsService {
     private boolean isFingpayKycCompleted(com.rupiksha.backend.domain.User mainUser) {
         long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
         return aepsKycRepository.findByUid(uidLong)
-                .map(AepsKyc::getKycDone)
+                .map(k -> Boolean.TRUE.equals(k.getKycDone()) || (k.getOutlet() != null && !k.getOutlet().isBlank()))
                 .orElse(false);
     }
 
     private User getOrSyncAepsUser(String mobile) {
-        Optional<User> userOpt = aepsUserRepository.findByMobile(mobile)
-                .or(() -> aepsUserRepository.findByUsername(mobile));
-        if (userOpt.isPresent()) {
-            return userOpt.get();
-        }
-
-        // Try syncing from main core user registry
         Optional<com.rupiksha.backend.domain.User> coreUserOpt = mainUserRepository.findByMobile(mobile)
                 .or(() -> mainUserRepository.findByUsername(mobile));
+
+        User aepsUser = aepsUserRepository.findByMobile(mobile)
+                .or(() -> aepsUserRepository.findByUsername(mobile))
+                .orElseGet(User::new);
+
         if (coreUserOpt.isPresent()) {
             com.rupiksha.backend.domain.User coreUser = coreUserOpt.get();
-            User aepsUser = new User();
+            long uidLong = coreUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
+            Optional<AepsKyc> fingKycOpt = aepsKycRepository.findByUid(uidLong);
+
+            boolean kycDone = Boolean.TRUE.equals(coreUser.getAepsKycDone()) ||
+                    Boolean.TRUE.equals(aepsUser.getAepsKycDone()) ||
+                    fingKycOpt.map(k -> Boolean.TRUE.equals(k.getKycDone()) || (k.getOutlet() != null && !k.getOutlet().isBlank())).orElse(false);
+
+            boolean onboarded = Boolean.TRUE.equals(coreUser.getAepsOnboarded()) ||
+                    Boolean.TRUE.equals(aepsUser.getAepsOnboarded()) ||
+                    fingKycOpt.isPresent();
+
             aepsUser.setMobile(coreUser.getMobile());
             aepsUser.setUsername(coreUser.getUsername());
-            aepsUser.setEmail(coreUser.getEmail());
-            aepsUser.setName(coreUser.getFullName());
-            aepsUser.setAepsAgentId(coreUser.getAepsAgentId());
-            aepsUser.setAepsMerchantId(coreUser.getAepsMerchantId());
-            aepsUser.setAepsOnboarded(coreUser.getAepsOnboarded());
-            aepsUser.setAepsKycDone(coreUser.getAepsKycDone());
-            aepsUser.setAepsKycRefId(coreUser.getAepsKycRefId());
-            aepsUser.setAepsKycTxnId(coreUser.getAepsKycTxnId());
+            if (aepsUser.getEmail() == null) aepsUser.setEmail(coreUser.getEmail());
+            if (aepsUser.getName() == null) aepsUser.setName(coreUser.getFullName());
+
+            String agentId = coreUser.getAepsAgentId();
+            if ((agentId == null || agentId.isBlank()) && fingKycOpt.isPresent()) {
+                agentId = fingKycOpt.get().getOutlet();
+            }
+            if (agentId != null && !agentId.isBlank()) {
+                aepsUser.setAepsAgentId(agentId);
+                aepsUser.setAepsMerchantId(agentId);
+            }
+
+            aepsUser.setAepsOnboarded(onboarded);
+            aepsUser.setAepsKycDone(kycDone);
+
+            if (coreUser.getAepsKycRefId() != null) aepsUser.setAepsKycRefId(coreUser.getAepsKycRefId());
+            if (coreUser.getAepsKycTxnId() != null) aepsUser.setAepsKycTxnId(coreUser.getAepsKycTxnId());
             if (coreUser.getAepsKycCompletedAt() != null) {
                 aepsUser.setAepsKycCompletedAt(java.time.LocalDateTime.ofInstant(coreUser.getAepsKycCompletedAt(), java.time.ZoneId.systemDefault()));
             }
-            aepsUser.setAeps2faSessionId(coreUser.getAeps2faSessionId());
             if (coreUser.getAeps2faAuthenticatedAt() != null) {
                 aepsUser.setAeps2faAuthenticatedAt(java.time.LocalDateTime.ofInstant(coreUser.getAeps2faAuthenticatedAt(), java.time.ZoneId.systemDefault()));
             }
-            aepsUser.setAepsAp2faSessionId(coreUser.getAepsAp2faSessionId());
             if (coreUser.getAepsAp2faAuthenticatedAt() != null) {
                 aepsUser.setAepsAp2faAuthenticatedAt(java.time.LocalDateTime.ofInstant(coreUser.getAepsAp2faAuthenticatedAt(), java.time.ZoneId.systemDefault()));
             }
-            log.info("Synchronizing core user to AEPS registry for mobile: {}", mobile);
+
             return aepsUserRepository.save(aepsUser);
         }
-        return null;
+
+        return aepsUser.getId() != null ? aepsUser : null;
     }
 
     private boolean isSessionValid(Instant authenticatedAt) {
