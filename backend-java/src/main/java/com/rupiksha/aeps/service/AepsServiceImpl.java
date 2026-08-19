@@ -1,5 +1,8 @@
 package com.rupiksha.aeps.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rupiksha.aeps.dto.request.BankEkycRequest;
 import com.rupiksha.aeps.dto.request.KycRequest;
 import com.rupiksha.aeps.dto.request.OtpVerifyRequest;
 import com.rupiksha.aeps.dto.request.DailyAuthRequest;
@@ -16,22 +19,35 @@ import com.rupiksha.aeps.dto.response.OnboardingResponse;
 import com.rupiksha.aeps.dto.response.StatusResponse;
 import com.rupiksha.aeps.exception.AepsException;
 import com.rupiksha.aeps.provider.AepsProvider;
+import com.rupiksha.aeps.provider.fingpay.dto.BiometricRequestDTO;
 import com.rupiksha.aeps.provider.fingpay.entity.AepsKyc;
 import com.rupiksha.aeps.provider.fingpay.entity.Fingpay2faTxn;
 import com.rupiksha.aeps.provider.fingpay.repository.AepsKycRepository;
+import com.rupiksha.aeps.provider.fingpay.repository.EkycTxnRepo;
 import com.rupiksha.aeps.provider.fingpay.repository.Fingpay2faTxnRepository;
+import com.rupiksha.aeps.provider.fingpay.service.BiometricService;
+import com.rupiksha.aeps.provider.fingpay.service.EkycStatusService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
@@ -47,6 +63,10 @@ public class AepsServiceImpl implements AepsService {
     private final AepsKycHistoryRepository aepsKycHistoryRepository;
     private final AepsKycRepository aepsKycRepository;
     private final Fingpay2faTxnRepository fingpay2faTxnRepository;
+    private final EkycStatusService ekycStatusService;
+    private final BiometricService biometricService;
+    private final EkycTxnRepo ekycTxnRepo;
+    private final ObjectMapper objectMapper;
 
     @Autowired
     public AepsServiceImpl(
@@ -56,7 +76,11 @@ public class AepsServiceImpl implements AepsService {
             @Qualifier("userRepository") com.rupiksha.backend.repository.UserRepository mainUserRepository,
             AepsKycHistoryRepository aepsKycHistoryRepository,
             AepsKycRepository aepsKycRepository,
-            Fingpay2faTxnRepository fingpay2faTxnRepository
+            Fingpay2faTxnRepository fingpay2faTxnRepository,
+            EkycStatusService ekycStatusService,
+            BiometricService biometricService,
+            EkycTxnRepo ekycTxnRepo,
+            ObjectMapper objectMapper
     ) {
         this.providers = providers;
         this.aepsProperties = aepsProperties;
@@ -65,6 +89,10 @@ public class AepsServiceImpl implements AepsService {
         this.aepsKycHistoryRepository = aepsKycHistoryRepository;
         this.aepsKycRepository = aepsKycRepository;
         this.fingpay2faTxnRepository = fingpay2faTxnRepository;
+        this.ekycStatusService = ekycStatusService;
+        this.biometricService = biometricService;
+        this.ekycTxnRepo = ekycTxnRepo;
+        this.objectMapper = objectMapper;
     }
 
     private boolean isFingpayKycCompleted(com.rupiksha.backend.domain.User mainUser) {
@@ -231,9 +259,12 @@ public class AepsServiceImpl implements AepsService {
                     aepsKycRepository.save(kyc);
                 }
 
+                boolean isBankEkycDone = Boolean.TRUE.equals(kyc.getBankEkycDone());
+
                 return StatusResponse.builder()
                         .onboarded(true)
                         .kycDone(isKycDone)
+                        .bankEkycDone(isBankEkycDone)
                         .aeps2faDone(hasValidSession)
                         .ap2faDone(hasValidApSession)
                         .agentId(kyc.getOutlet())
@@ -532,6 +563,27 @@ public class AepsServiceImpl implements AepsService {
             history.setProviderReference(providerResult.getProviderTxnId());
             history.setRemarks(providerResult.getMessage());
             aepsKycHistoryRepository.save(history);
+
+            // Save primaryKeyId + encodeFPTxnId on AepsKyc so the Bank eKYC
+            // biometric submission step can retrieve them.
+            if ("fingpay".equalsIgnoreCase(activeProvider.getProviderName())) {
+                long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
+                aepsKycRepository.findByUid(uidLong).ifPresent(kyc -> {
+                    String encodedTxnId = providerResult.getProviderTxnId();
+                    String primaryKeyStr = providerResult.getProviderReference();
+                    if (encodedTxnId != null && !encodedTxnId.isBlank()) {
+                        kyc.setBankEkycEncodeFPTxnId(encodedTxnId);
+                    }
+                    if (primaryKeyStr != null && !primaryKeyStr.isBlank()) {
+                        try {
+                            kyc.setBankEkycPrimaryKeyId(Long.parseLong(primaryKeyStr));
+                        } catch (NumberFormatException ignored) { }
+                    }
+                    aepsKycRepository.save(kyc);
+                    log.info("Saved bank eKYC references: primaryKeyId={}, encodeFPTxnId={}",
+                            kyc.getBankEkycPrimaryKeyId(), kyc.getBankEkycEncodeFPTxnId());
+                });
+            }
 
             return KycResponse.builder()
                     .success(false)
@@ -917,6 +969,313 @@ public class AepsServiceImpl implements AepsService {
                     .workflowState(workflowState.name())
                     .message(failMsg != null ? failMsg : "Daily 2FA authentication failed.")
                     .provider(activeProvider.getProviderName().toUpperCase())
+                    .build();
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // BANK eKYC — Mandatory step for all new merchants per updated Fingpay doc
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Override
+    @Transactional
+    public KycResponse completeBankEkyc(BankEkycRequest request, String mobile) {
+        log.info("[BANK-EKYC] Starting bank eKYC biometric submission for mobile: {}", mobile);
+
+        // 1. Resolve core user
+        com.rupiksha.backend.domain.User mainUser = mainUserRepository.findByMobile(mobile)
+                .or(() -> mainUserRepository.findByUsername(mobile))
+                .orElseThrow(() -> new AepsException("Core user not found for mobile: " + mobile));
+
+        long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
+
+        AepsKyc aepsKyc = aepsKycRepository.findByUid(uidLong)
+                .orElseThrow(() -> new AepsException("Fingpay merchant profile not found. Please complete onboarding."));
+
+        String merchantLoginId = aepsKyc.getOutlet();
+        if (merchantLoginId == null || merchantLoginId.isBlank()) {
+            throw new AepsException("Fingpay merchant login ID is missing. Please complete onboarding again.");
+        }
+
+        // Use stored bank eKYC references (saved when BANK_EKYC_REQUIRED was returned)
+        Long primaryKeyId = aepsKyc.getBankEkycPrimaryKeyId();
+        String encodeFPTxnId = aepsKyc.getBankEkycEncodeFPTxnId();
+
+        if (primaryKeyId == null || primaryKeyId == 0 || encodeFPTxnId == null || encodeFPTxnId.isBlank()) {
+            // If references missing, initiate a fresh sendOTP for bank eKYC first
+            log.info("[BANK-EKYC] No stored bank eKYC references found. Initiating fresh sendOTP...");
+            throw new AepsException("Bank eKYC session references not found. Please restart the eKYC process from Step 1 (fingerprint scan).");
+        }
+
+        String pidXml = request.getPidXml();
+        if (pidXml == null || pidXml.isBlank() || !pidXml.contains("<PidData>")) {
+            throw new AepsException("Biometric XML payload is invalid or empty for bank eKYC submission.");
+        }
+
+        // 2. Parse PID XML to extract biometric fields
+        Map<String, String> parsed;
+        try {
+            parsed = parsePidXml(pidXml);
+        } catch (Exception e) {
+            throw new AepsException("Failed to parse biometric XML for bank eKYC: " + e.getMessage());
+        }
+
+        // 3. Build biometric DTO — same structure as regular eKYC biometric API
+        BiometricRequestDTO biometricDto = new BiometricRequestDTO();
+        biometricDto.setMerchantLoginId(merchantLoginId);
+        biometricDto.setPrimaryKeyId(primaryKeyId.intValue());
+        biometricDto.setEncodeFPTxnId(encodeFPTxnId);
+        biometricDto.setRequestRemarks("Bank eKYC Biometric Verification");
+
+        BiometricRequestDTO.CardnumberORUID card = new BiometricRequestDTO.CardnumberORUID();
+        String aadhaar = mainUser.getAadhaarNumber();
+        if (aadhaar == null || aadhaar.isBlank()) {
+            throw new AepsException("Aadhaar number not found in merchant profile for bank eKYC.");
+        }
+        card.setAdhaarNumber(aadhaar);
+        card.setIndicatorforUID("0");  // Per doc: constant '0' for Aadhaar payment
+        card.setNationalBankIdentificationNumber("");
+        biometricDto.setCardnumberORUID(card);
+
+        // Populate capture response from parsed PID XML
+        String nmPoints = parsed.getOrDefault("nmPoints", "36");
+        if (nmPoints.isBlank() || "0".equals(nmPoints)) nmPoints = "36";
+        String qScore = parsed.getOrDefault("qScore", "76");
+        if (qScore.isBlank() || "0".equals(qScore)) qScore = "76";
+
+        BiometricRequestDTO.CaptureResponse capture = new BiometricRequestDTO.CaptureResponse();
+        capture.setErrCode(parsed.get("errCode"));
+        capture.setErrInfo(parsed.get("errInfo"));
+        capture.setFCount(parsed.getOrDefault("fCount", "1"));
+        capture.setFType("2");
+        capture.setICount(parsed.getOrDefault("iCount", "0"));
+        capture.setIType(parsed.getOrDefault("iType", "0"));
+        capture.setPCount(parsed.getOrDefault("pCount", "0"));
+        capture.setPType(parsed.getOrDefault("pType", "0"));
+        capture.setNmPoints(nmPoints);
+        capture.setQScore(qScore);
+        capture.setDpID(parsed.get("dpID"));
+        capture.setRdsID(parsed.get("rdsID"));
+        capture.setRdsVer(parsed.get("rdsVer"));
+        capture.setDc(parsed.get("dc"));
+        capture.setMi(parsed.get("mi"));
+        capture.setMc(parsed.get("mc"));
+        capture.setCi(parsed.get("ci"));
+        capture.setSessionKey(parsed.get("sessionKey"));
+        capture.setHmac(parsed.get("hmac"));
+        capture.setPidDatatype(parsed.getOrDefault("PidDatatype", "FMR"));
+        capture.setPiddata(parsed.get("Piddata"));
+        biometricDto.setCaptureResponse(capture);
+
+        // 4. Submit biometric to Fingpay bank eKYC endpoint
+        try {
+            String rawResponse = biometricService.biometric(biometricDto);
+            JsonNode node = objectMapper.readTree(rawResponse);
+
+            boolean success = node.path("statusId").asInt(0) == 1
+                    || node.path("status").asText("").equalsIgnoreCase("SUCCESS");
+
+            // Also check kycResponseCode: "0" means success per API doc
+            String kycResponseCode = node.path("data").path("kycResponseCode").asText("");
+            if (!success && "0".equals(kycResponseCode)) {
+                success = true;
+            }
+
+            String responseMessage = node.path("message").asText("");
+            if (responseMessage.isBlank() && node.has("data")) {
+                responseMessage = node.path("data").path("responseMessage").asText("");
+            }
+
+            if (success) {
+                log.info("[BANK-EKYC] Biometric submission succeeded for mobile: {}", mobile);
+
+                // Mark bank eKYC as done
+                aepsKyc.setBankEkycDone(true);
+                // Clear the temporary references
+                aepsKyc.setBankEkycPrimaryKeyId(null);
+                aepsKyc.setBankEkycEncodeFPTxnId(null);
+                aepsKycRepository.save(aepsKyc);
+
+                // Also update main user KYC done flag (bank eKYC implies full KYC completion)
+                mainUser.setAepsKycDone(true);
+                mainUser.setAepsKycCompletedAt(java.time.Instant.now());
+                mainUserRepository.save(mainUser);
+
+                // Audit history
+                AepsKycHistory history = AepsKycHistory.builder()
+                        .userId(mainUser.getId())
+                        .provider("FINGPAY")
+                        .merchantId(merchantLoginId)
+                        .workflowState(AepsWorkflowState.READY_FOR_DAILY_2FA.name())
+                        .status("BANK_EKYC_SUCCESS")
+                        .remarks("Bank eKYC biometric completed successfully.")
+                        .completedAt(LocalDateTime.now())
+                        .createdBy(mainUser.getUsername())
+                        .build();
+                aepsKycHistoryRepository.save(history);
+
+                return KycResponse.builder()
+                        .success(true)
+                        .workflowState(AepsWorkflowState.READY_FOR_DAILY_2FA.name())
+                        .message("Bank eKYC completed successfully. You can now proceed with Daily 2FA.")
+                        .providerReference(encodeFPTxnId)
+                        .provider("FINGPAY")
+                        .build();
+
+            } else {
+                String errMsg = responseMessage.isBlank() ? "Bank eKYC biometric submission failed." : responseMessage;
+                log.warn("[BANK-EKYC] Biometric submission failed for mobile: {}, message: {}", mobile, errMsg);
+
+                return KycResponse.builder()
+                        .success(false)
+                        .workflowState(AepsWorkflowState.BANK_EKYC_REQUIRED.name())
+                        .message(errMsg)
+                        .providerReference(encodeFPTxnId)
+                        .provider("FINGPAY")
+                        .build();
+            }
+
+        } catch (Exception e) {
+            log.error("[BANK-EKYC] Exception during biometric submission for mobile: {}", mobile, e);
+            return KycResponse.builder()
+                    .success(false)
+                    .workflowState(AepsWorkflowState.BANK_EKYC_REQUIRED.name())
+                    .message("Bank eKYC submission failed: " + e.getMessage())
+                    .provider("FINGPAY")
+                    .build();
+        }
+    }
+
+    /**
+     * Parses raw PID XML string into a flat key→value map of biometric fields.
+     * (Shared with FingpayProvider — kept here to avoid circular dependency.)
+     */
+    private Map<String, String> parsePidXml(String pidXml) throws Exception {
+        Map<String, String> result = new HashMap<>();
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        Document doc = builder.parse(new ByteArrayInputStream(pidXml.getBytes(StandardCharsets.UTF_8)));
+        Element root = doc.getDocumentElement();
+
+        extractRespAttributes(root, result);
+        extractDeviceInfo(root, result);
+        extractSkeyHmac(root, result);
+        extractData(root, result);
+
+        return result;
+    }
+
+    private void extractRespAttributes(Element root, Map<String, String> result) {
+        NodeList respList = root.getElementsByTagName("Resp");
+        if (respList.getLength() > 0) {
+            Element resp = (Element) respList.item(0);
+            result.put("errCode", resp.getAttribute("errCode"));
+            result.put("errInfo", resp.getAttribute("errInfo"));
+            result.put("fCount", resp.getAttribute("fCount"));
+            result.put("iCount", resp.getAttribute("iCount"));
+            result.put("pCount", resp.getAttribute("pCount"));
+            result.put("nmPoints", resp.getAttribute("nmPoints"));
+            result.put("qScore", resp.getAttribute("qScore"));
+        }
+    }
+
+    private void extractDeviceInfo(Element root, Map<String, String> result) {
+        NodeList devInfoList = root.getElementsByTagName("DeviceInfo");
+        if (devInfoList.getLength() > 0) {
+            Element devInfo = (Element) devInfoList.item(0);
+            result.put("dpID", devInfo.getAttribute("dpId"));
+            result.put("rdsID", devInfo.getAttribute("rdsId"));
+            result.put("rdsVer", devInfo.getAttribute("rdsVer"));
+            result.put("dc", devInfo.getAttribute("dc"));
+            result.put("mi", devInfo.getAttribute("mi"));
+            result.put("mc", devInfo.getAttribute("mc"));
+            result.put("ci", devInfo.getAttribute("ci"));
+        }
+    }
+
+    private void extractSkeyHmac(Element root, Map<String, String> result) {
+        NodeList skeyList = root.getElementsByTagName("Skey");
+        if (skeyList.getLength() > 0) {
+            result.put("sessionKey", skeyList.item(0).getTextContent().trim());
+        }
+        NodeList hmacList = root.getElementsByTagName("Hmac");
+        if (hmacList.getLength() > 0) {
+            result.put("hmac", hmacList.item(0).getTextContent().trim());
+        }
+    }
+
+    private void extractData(Element root, Map<String, String> result) {
+        NodeList dataList = root.getElementsByTagName("Data");
+        if (dataList.getLength() > 0) {
+            Element dataEl = (Element) dataList.item(0);
+            result.put("PidDatatype", dataEl.getAttribute("type"));
+            result.put("Piddata", dataEl.getTextContent().trim());
+        }
+    }
+
+    @Override
+    public KycResponse checkEkycStatus(String mobile, String kycType) {
+        log.info("[EKYC-STATUS] Checking {} status for mobile: {}", kycType, mobile);
+
+        com.rupiksha.backend.domain.User mainUser = mainUserRepository.findByMobile(mobile)
+                .or(() -> mainUserRepository.findByUsername(mobile))
+                .orElseThrow(() -> new AepsException("Core user not found for mobile: " + mobile));
+
+        long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
+        AepsKyc aepsKyc = aepsKycRepository.findByUid(uidLong)
+                .orElseThrow(() -> new AepsException("Fingpay merchant profile not found."));
+
+        String merchantLoginId = aepsKyc.getOutlet();
+        if (merchantLoginId == null || merchantLoginId.isBlank()) {
+            throw new AepsException("Fingpay merchant login ID not found.");
+        }
+
+        try {
+            String rawResponse;
+            boolean isBeKyc = "BeKYC".equalsIgnoreCase(kycType);
+
+            if (isBeKyc) {
+                rawResponse = ekycStatusService.checkBankEkycStatus(
+                        merchantLoginId,
+                        aepsKyc.getBankEkycPrimaryKeyId(),
+                        aepsKyc.getBankEkycEncodeFPTxnId()
+                );
+            } else {
+                rawResponse = ekycStatusService.checkStatus(merchantLoginId);
+            }
+
+            JsonNode node = objectMapper.readTree(rawResponse);
+            boolean statusOk = node.path("status").asBoolean(false);
+            long statusCode = node.path("statusCode").asLong(0);
+            String message = node.path("message").asText("");
+
+            boolean isDone = statusOk && statusCode == 10000;
+
+            if (isBeKyc && isDone && !Boolean.TRUE.equals(aepsKyc.getBankEkycDone())) {
+                // Sync DB if Fingpay confirms bank eKYC is done
+                aepsKyc.setBankEkycDone(true);
+                aepsKycRepository.save(aepsKyc);
+                mainUser.setAepsKycDone(true);
+                mainUser.setAepsKycCompletedAt(java.time.Instant.now());
+                mainUserRepository.save(mainUser);
+                log.info("[EKYC-STATUS] Bank eKYC confirmed done via status check for mobile: {}", mobile);
+            }
+
+            return KycResponse.builder()
+                    .success(isDone)
+                    .workflowState(isDone ? AepsWorkflowState.READY_FOR_DAILY_2FA.name() : AepsWorkflowState.BANK_EKYC_REQUIRED.name())
+                    .message(message.isBlank() ? (isDone ? "eKYC status verified successfully." : "eKYC not completed yet.") : message)
+                    .provider("FINGPAY")
+                    .build();
+
+        } catch (Exception e) {
+            log.error("[EKYC-STATUS] Exception checking {} status for mobile: {}", kycType, mobile, e);
+            return KycResponse.builder()
+                    .success(false)
+                    .workflowState(AepsWorkflowState.FAILED.name())
+                    .message("eKYC status check failed: " + e.getMessage())
+                    .provider("FINGPAY")
                     .build();
         }
     }

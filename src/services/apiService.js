@@ -483,5 +483,27 @@ export const aepsService = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+
+  /**
+   * Submits biometric fingerprint for the mandatory Bank eKYC step.
+   * Must be called when workflowState === 'BANK_EKYC_REQUIRED'.
+   * @param {string} pidXml  - Raw PID XML from fingerprint scanner
+   * @param {string} provider - Provider name (default "fingpay")
+   */
+  completeBankEkyc: (pidXml, provider = "fingpay") =>
+    apiFetch("/aeps/bank-ekyc", {
+      method: "POST",
+      body: JSON.stringify({ pidXml, provider }),
+    }),
+
+  /**
+   * Checks eKYC status from Fingpay.
+   * @param {string} kycType - "EKYC" for standard eKYC, "BeKYC" for bank eKYC
+   */
+  checkEkycStatus: (kycType = "BeKYC") =>
+    apiFetch("/aeps/ekyc-status", {
+      method: "POST",
+      body: JSON.stringify({ kycType }),
+    }),
 };
 

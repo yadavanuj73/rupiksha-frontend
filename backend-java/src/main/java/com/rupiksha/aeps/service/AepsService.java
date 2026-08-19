@@ -1,5 +1,6 @@
 package com.rupiksha.aeps.service;
 
+import com.rupiksha.aeps.dto.request.BankEkycRequest;
 import com.rupiksha.aeps.dto.request.OnboardingRequest;
 import com.rupiksha.aeps.dto.request.KycRequest;
 import com.rupiksha.aeps.dto.request.OtpVerifyRequest;
@@ -42,4 +43,19 @@ public interface AepsService {
      * Executes merchant Daily 2FA authentication session using the active provider strategy.
      */
     KycResponse dailyAuthenticate(DailyAuthRequest request, String mobile);
+
+    /**
+     * Executes the mandatory Bank eKYC biometric submission step.
+     * Called when Fingpay returns FP097 (BANK_EKYC_REQUIRED).
+     * Uses the same biometric API as regular eKYC but marks the result as BeKYC.
+     */
+    KycResponse completeBankEkyc(BankEkycRequest request, String mobile);
+
+    /**
+     * Checks the eKYC or Bank eKYC (BeKYC) status from Fingpay.
+     *
+     * @param mobile    Merchant's registered mobile number
+     * @param kycType   "EKYC" for onboarding KYC, "BeKYC" for bank eKYC
+     */
+    KycResponse checkEkycStatus(String mobile, String kycType);
 }

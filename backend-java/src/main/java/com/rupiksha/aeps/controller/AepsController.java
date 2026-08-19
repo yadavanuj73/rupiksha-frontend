@@ -1,5 +1,6 @@
 package com.rupiksha.aeps.controller;
 
+import com.rupiksha.aeps.dto.request.BankEkycRequest;
 import com.rupiksha.aeps.dto.request.OtpVerifyRequest;
 import com.rupiksha.aeps.dto.request.DailyAuthRequest;
 import com.rupiksha.aeps.dto.request.KycRequest;
@@ -275,6 +276,61 @@ public class AepsController {
         }
 
         KycResponse response = aepsService.dailyAuthenticate(request, mobile);
+
+        if (response.isSuccess()) {
+            return ResponseEntity.ok(ApiResponse.success(response.getMessage(), response));
+        } else {
+            return ResponseEntity.badRequest().body(ApiResponse.error(response.getMessage(), response));
+        }
+    }
+
+    /**
+     * Submits biometric fingerprint for the mandatory Bank eKYC (BeKYC) step.
+     * Must be called when the merchant's workflow state is BANK_EKYC_REQUIRED.
+     */
+    @PostMapping("/bank-ekyc")
+    public ResponseEntity<ApiResponse<KycResponse>> completeBankEkyc(@RequestBody BankEkycRequest request) {
+        log.info("REST request to submit Bank eKYC biometric.");
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof JwtPrincipal)) {
+            return ResponseEntity.status(401).body(ApiResponse.error("Merchant session is unauthenticated or expired."));
+        }
+        JwtPrincipal principal = (JwtPrincipal) auth.getPrincipal();
+        String mobile = principal.username();
+        if (mobile == null || mobile.isBlank()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to resolve mobile number from auth token."));
+        }
+
+        KycResponse response = aepsService.completeBankEkyc(request, mobile);
+
+        if (response.isSuccess()) {
+            return ResponseEntity.ok(ApiResponse.success(response.getMessage(), response));
+        } else {
+            return ResponseEntity.badRequest().body(ApiResponse.error(response.getMessage(), response));
+        }
+    }
+
+    /**
+     * Checks the eKYC or Bank eKYC status from Fingpay.
+     * kycType = "EKYC" for standard eKYC, "BeKYC" for bank eKYC.
+     */
+    @PostMapping("/ekyc-status")
+    public ResponseEntity<ApiResponse<KycResponse>> checkEkycStatus(@RequestBody Map<String, String> body) {
+        log.info("REST request to check eKYC status.");
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof JwtPrincipal)) {
+            return ResponseEntity.status(401).body(ApiResponse.error("Merchant session is unauthenticated or expired."));
+        }
+        JwtPrincipal principal = (JwtPrincipal) auth.getPrincipal();
+        String mobile = principal.username();
+        if (mobile == null || mobile.isBlank()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to resolve mobile number from auth token."));
+        }
+
+        String kycType = body.getOrDefault("kycType", "EKYC");
+        KycResponse response = aepsService.checkEkycStatus(mobile, kycType);
 
         if (response.isSuccess()) {
             return ResponseEntity.ok(ApiResponse.success(response.getMessage(), response));

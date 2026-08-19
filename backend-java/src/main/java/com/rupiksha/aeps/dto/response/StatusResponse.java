@@ -8,6 +8,7 @@ import lombok.Data;
 public class StatusResponse {
     private boolean onboarded;
     private boolean kycDone;
+    private boolean bankEkycDone;
     private boolean aeps2faDone;
     private boolean ap2faDone;
     private String agentId;
