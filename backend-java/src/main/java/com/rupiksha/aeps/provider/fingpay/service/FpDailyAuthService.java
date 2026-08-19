@@ -58,6 +58,9 @@ public class FpDailyAuthService {
     @Value("${fingpay.daily-auth.url:https://fingpayap.tapits.in/fpaepsservice/auth/tfauth/merchant/validate/aadhar}")
     private String dailyAuthUrl;
 
+    @Value("${fingpay.default-bank-iin:607152}")
+    private String defaultBankIin;
+
     public ProviderKycResult authenticate(AepsDailyAuthRequest request) {
         String merchantTranId = "FGP2FA" + System.currentTimeMillis();
         log.info("FpDailyAuthService starting daily authentication for mobile: {}, tranId: {}, serviceType: {}", 
@@ -125,6 +128,10 @@ public class FpDailyAuthService {
             captureResponse.put("Piddata", biometricMap.get("Piddata"));
 
             // 4. Construct Aadhaar/VID representation
+            String bankIin = (request.getBankIin() != null && !request.getBankIin().isBlank())
+                    ? request.getBankIin().trim()
+                    : (defaultBankIin != null && !defaultBankIin.isBlank() ? defaultBankIin.trim() : "607152");
+
             Map<String, Object> cardOrUID = new LinkedHashMap<>();
             String rawAadhar = request.getAdharNumber();
             if (rawAadhar == null || rawAadhar.isBlank()) {
@@ -134,14 +141,14 @@ public class FpDailyAuthService {
                 rawAadhar = rawAadhar.trim().replace(" ", "").replace("-", "");
             }
             if (rawAadhar != null && rawAadhar.length() == 16) {
-                cardOrUID.put("indicatorforUID", "2");
+                cardOrUID.put("indicatorforUID", 2);
                 cardOrUID.put("adhaarNumber", "999999999999");
                 cardOrUID.put("virtualId", rawAadhar);
-                cardOrUID.put("nationalBankIdentificationNumber", "");
+                cardOrUID.put("nationalBankIdentificationNumber", bankIin);
             } else {
-                cardOrUID.put("indicatorforUID", "0");
+                cardOrUID.put("indicatorforUID", 0);
                 cardOrUID.put("adhaarNumber", rawAadhar != null ? rawAadhar : "");
-                cardOrUID.put("nationalBankIdentificationNumber", "");
+                cardOrUID.put("nationalBankIdentificationNumber", bankIin);
             }
 
             // Resolve target serviceType ("AEPS" or "AP" strictly per doc p. 8)
@@ -172,16 +179,15 @@ public class FpDailyAuthService {
 
             // 5. Main JSON payload strictly adhering to 2FA Biometric API v2.1
             Map<String, Object> payload = new LinkedHashMap<>();
-            payload.put("superMerchantId", superMerchantIdInt);
-            payload.put("merchantUserName", merchantUserName);
-            payload.put("merchantLoginId", merchantUserName);
-            payload.put("subMerchantId", "");
-            payload.put("merchantPin", md5(rawPin));
-            payload.put("transactionType", "AUO");
+            payload.put("merchantTranId", merchantTranId);
             payload.put("latitude", lat);
             payload.put("longitude", lon);
             payload.put("requestRemarks", "Daily 2FA Validation");
-            payload.put("merchantTranId", merchantTranId);
+            payload.put("timestamp", encryptionUtil.timestamp());
+            payload.put("transactionType", "AUO");
+            payload.put("merchantUserName", merchantUserName);
+            payload.put("merchantPin", md5(rawPin));
+            payload.put("superMerchantId", superMerchantIdInt);
             payload.put("serviceType", resolvedServiceType);
             payload.put("mobileNumber", request.getMobileNumber());
             payload.put("cardnumberORUID", cardOrUID);

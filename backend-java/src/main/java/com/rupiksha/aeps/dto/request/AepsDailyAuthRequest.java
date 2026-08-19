@@ -15,4 +15,5 @@ public class AepsDailyAuthRequest {
     private String longitude;
     private String biometricType;
     private String serviceType;
+    private String bankIin;
 }

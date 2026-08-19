@@ -218,6 +218,7 @@ fingpay:
       url: ${FINGPAY_CD_STATUS_URL:https://fingpayap.tapits.in/fpaepsweb/api/auth/merchantInfo/statusCheckV2/merchantLoginId/cashDeposit}
   daily-auth:
     url: ${FINGPAY_DAILY_AUTH_URL:https://fingpayap.tapits.in/fpaepsservice/auth/tfauth/merchant/validate/aadhar}
+  default-bank-iin: ${FINGPAY_DEFAULT_BANK_IIN:607152}
   security:
     key: ${FINGPAY_SECURITY_KEY:}
 

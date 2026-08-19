@@ -889,6 +889,7 @@ public class AepsServiceImpl implements AepsService {
                 .longitude(request.getLongitude())
                 .biometricType(request.getBiometricType())
                 .serviceType(request.getServiceType())
+                .bankIin(request.getBankIin())
                 .build();
 
         ProviderKycResult providerResult;
@@ -1275,16 +1276,20 @@ public class AepsServiceImpl implements AepsService {
             long statusCode = node.path("statusCode").asLong(0);
             String message = node.path("message").asText("");
 
-            boolean isDone = statusOk && statusCode == 10000;
+            boolean isDone = (statusOk && statusCode == 10000) || message.toLowerCase().contains("already");
 
-            if (isBeKyc && isDone && !Boolean.TRUE.equals(aepsKyc.getBankEkycDone())) {
-                // Sync DB if Fingpay confirms bank eKYC is done
-                aepsKyc.setBankEkycDone(true);
-                aepsKycRepository.save(aepsKyc);
-                mainUser.setAepsKycDone(true);
-                mainUser.setAepsKycCompletedAt(java.time.Instant.now());
-                mainUserRepository.save(mainUser);
-                log.info("[EKYC-STATUS] Bank eKYC confirmed done via status check for mobile: {}", mobile);
+            if (isDone) {
+                if (!Boolean.TRUE.equals(aepsKyc.getKycDone()) || !Boolean.TRUE.equals(aepsKyc.getBankEkycDone())) {
+                    aepsKyc.setKycDone(true);
+                    aepsKyc.setBankEkycDone(true);
+                    aepsKycRepository.save(aepsKyc);
+                }
+                if (!Boolean.TRUE.equals(mainUser.getAepsKycDone())) {
+                    mainUser.setAepsKycDone(true);
+                    mainUser.setAepsKycCompletedAt(java.time.Instant.now());
+                    mainUserRepository.save(mainUser);
+                }
+                log.info("[EKYC-STATUS] KYC confirmed completed via status check for mobile: {}", mobile);
             }
 
             return KycResponse.builder()

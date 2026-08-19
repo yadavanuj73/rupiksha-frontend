@@ -19,4 +19,6 @@ public class DailyAuthRequest {
     private String provider;
 
     private String serviceType = "AEPS";
+
+    private String bankIin;
 }
