@@ -66,12 +66,17 @@ public class FpDailyAuthService {
         try {
             // 1. Fetch main user to resolve internal UUID
             com.rupiksha.backend.domain.User mainUser = mainUserRepository.findByMobile(request.getMobileNumber())
+                    .or(() -> mainUserRepository.findByUsername(request.getMobileNumber()))
                     .orElseThrow(() -> new RuntimeException("Merchant core account not found for: " + request.getMobileNumber()));
 
             long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
 
-            // 2. Fetch outlet details & pin
-            AepsKyc kyc = aepsKycRepo.findByUid(uidLong).orElse(null);
+            // 2. Fetch outlet details & pin (try UID, Party Code, Agent ID, and Merchant ID)
+            AepsKyc kyc = aepsKycRepo.findByUid(uidLong)
+                    .or(() -> (mainUser.getPartyCode() != null && !mainUser.getPartyCode().isBlank()) ? aepsKycRepo.findByOutlet(mainUser.getPartyCode().trim()) : Optional.empty())
+                    .or(() -> (mainUser.getAepsAgentId() != null && !mainUser.getAepsAgentId().isBlank()) ? aepsKycRepo.findByOutlet(mainUser.getAepsAgentId().trim()) : Optional.empty())
+                    .or(() -> (mainUser.getAepsMerchantId() != null && !mainUser.getAepsMerchantId().isBlank()) ? aepsKycRepo.findByMerchantId(mainUser.getAepsMerchantId().trim()) : Optional.empty())
+                    .orElse(null);
 
             String merchantUserName = resolveMerchantUserName(mainUser, kyc, request.getMerchantId());
             if (merchantUserName == null || merchantUserName.isBlank()) {
@@ -129,12 +134,12 @@ public class FpDailyAuthService {
                 rawAadhar = rawAadhar.trim().replace(" ", "").replace("-", "");
             }
             if (rawAadhar != null && rawAadhar.length() == 16) {
-                cardOrUID.put("indicatorforUID", 2);
+                cardOrUID.put("indicatorforUID", "2");
                 cardOrUID.put("adhaarNumber", "999999999999");
                 cardOrUID.put("virtualId", rawAadhar);
                 cardOrUID.put("nationalBankIdentificationNumber", "");
             } else {
-                cardOrUID.put("indicatorforUID", 0);
+                cardOrUID.put("indicatorforUID", "0");
                 cardOrUID.put("adhaarNumber", rawAadhar != null ? rawAadhar : "");
                 cardOrUID.put("nationalBankIdentificationNumber", "");
             }
@@ -169,6 +174,8 @@ public class FpDailyAuthService {
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("superMerchantId", superMerchantIdInt);
             payload.put("merchantUserName", merchantUserName);
+            payload.put("merchantLoginId", merchantUserName);
+            payload.put("subMerchantId", "");
             payload.put("merchantPin", md5(rawPin));
             payload.put("transactionType", "AUO");
             payload.put("latitude", lat);

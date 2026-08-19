@@ -98,6 +98,8 @@ public class AepsServiceImpl implements AepsService {
     private boolean isFingpayKycCompleted(com.rupiksha.backend.domain.User mainUser) {
         long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
         return aepsKycRepository.findByUid(uidLong)
+                .or(() -> (mainUser.getPartyCode() != null && !mainUser.getPartyCode().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getPartyCode().trim()) : Optional.empty())
+                .or(() -> (mainUser.getAepsAgentId() != null && !mainUser.getAepsAgentId().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getAepsAgentId().trim()) : Optional.empty())
                 .map(k -> Boolean.TRUE.equals(k.getKycDone()) || (k.getOutlet() != null && !k.getOutlet().isBlank()))
                 .orElse(false);
     }
@@ -113,7 +115,9 @@ public class AepsServiceImpl implements AepsService {
         if (coreUserOpt.isPresent()) {
             com.rupiksha.backend.domain.User coreUser = coreUserOpt.get();
             long uidLong = coreUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
-            Optional<AepsKyc> fingKycOpt = aepsKycRepository.findByUid(uidLong);
+            Optional<AepsKyc> fingKycOpt = aepsKycRepository.findByUid(uidLong)
+                    .or(() -> (coreUser.getPartyCode() != null && !coreUser.getPartyCode().isBlank()) ? aepsKycRepository.findByOutlet(coreUser.getPartyCode().trim()) : Optional.empty())
+                    .or(() -> (coreUser.getAepsAgentId() != null && !coreUser.getAepsAgentId().isBlank()) ? aepsKycRepository.findByOutlet(coreUser.getAepsAgentId().trim()) : Optional.empty());
 
             boolean kycDone = Boolean.TRUE.equals(coreUser.getAepsKycDone()) ||
                     Boolean.TRUE.equals(aepsUser.getAepsKycDone()) ||
@@ -205,7 +209,11 @@ public class AepsServiceImpl implements AepsService {
         long uidLong = coreUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
 
         if ("fingpay".equalsIgnoreCase(provider)) {
-            Optional<AepsKyc> kycOpt = aepsKycRepository.findByUid(uidLong);
+            Optional<AepsKyc> kycOpt = aepsKycRepository.findByUid(uidLong)
+                    .or(() -> (coreUser.getPartyCode() != null && !coreUser.getPartyCode().isBlank()) ? aepsKycRepository.findByOutlet(coreUser.getPartyCode().trim()) : Optional.empty())
+                    .or(() -> (coreUser.getAepsAgentId() != null && !coreUser.getAepsAgentId().isBlank()) ? aepsKycRepository.findByOutlet(coreUser.getAepsAgentId().trim()) : Optional.empty())
+                    .or(() -> (coreUser.getAepsMerchantId() != null && !coreUser.getAepsMerchantId().isBlank()) ? aepsKycRepository.findByMerchantId(coreUser.getAepsMerchantId().trim()) : Optional.empty());
+
             if (kycOpt.isPresent()) {
                 AepsKyc kyc = kycOpt.get();
 
@@ -256,10 +264,15 @@ public class AepsServiceImpl implements AepsService {
                 boolean isKycDone = Boolean.TRUE.equals(kyc.getKycDone()) || Boolean.TRUE.equals(coreUser.getAepsKycDone());
                 if (!Boolean.TRUE.equals(kyc.getKycDone()) && isKycDone) {
                     kyc.setKycDone(true);
+                    kyc.setBankEkycDone(true);
                     aepsKycRepository.save(kyc);
                 }
+                if (!Boolean.TRUE.equals(coreUser.getAepsKycDone()) && isKycDone) {
+                    coreUser.setAepsKycDone(true);
+                    mainUserRepository.save(coreUser);
+                }
 
-                boolean isBankEkycDone = Boolean.TRUE.equals(kyc.getBankEkycDone());
+                boolean isBankEkycDone = Boolean.TRUE.equals(kyc.getBankEkycDone()) || isKycDone;
 
                 return StatusResponse.builder()
                         .onboarded(true)
@@ -267,8 +280,8 @@ public class AepsServiceImpl implements AepsService {
                         .bankEkycDone(isBankEkycDone)
                         .aeps2faDone(hasValidSession)
                         .ap2faDone(hasValidApSession)
-                        .agentId(kyc.getOutlet())
-                        .merchantId(kyc.getMerchantId() != null ? kyc.getMerchantId() : kyc.getOutlet())
+                        .agentId(kyc.getOutlet() != null ? kyc.getOutlet() : coreUser.getPartyCode())
+                        .merchantId(kyc.getMerchantId() != null ? kyc.getMerchantId() : (kyc.getOutlet() != null ? kyc.getOutlet() : coreUser.getPartyCode()))
                         .build();
             } else {
                 return StatusResponse.builder()
@@ -480,8 +493,11 @@ public class AepsServiceImpl implements AepsService {
             if ("fingpay".equalsIgnoreCase(activeProvider.getProviderName())) {
                 long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
                 AepsKyc aepsKyc = aepsKycRepository.findByUid(uidLong)
+                        .or(() -> (mainUser.getPartyCode() != null && !mainUser.getPartyCode().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getPartyCode().trim()) : Optional.empty())
+                        .or(() -> (mainUser.getAepsAgentId() != null && !mainUser.getAepsAgentId().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getAepsAgentId().trim()) : Optional.empty())
                         .orElseThrow(() -> new AepsException("Fingpay merchant profile not found."));
                 aepsKyc.setKycDone(true);
+                aepsKyc.setBankEkycDone(true);
                 aepsKycRepository.save(aepsKyc);
 
                 aepsUser.setAepsKycDone(true);
@@ -714,9 +730,14 @@ public class AepsServiceImpl implements AepsService {
             if ("fingpay".equalsIgnoreCase(activeProvider.getProviderName())) {
                 long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
                 AepsKyc aepsKyc = aepsKycRepository.findByUid(uidLong)
-                        .orElseThrow(() -> new AepsException("Fingpay merchant profile not found."));
-                aepsKyc.setKycDone(true);
-                aepsKycRepository.save(aepsKyc);
+                        .or(() -> (mainUser.getPartyCode() != null && !mainUser.getPartyCode().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getPartyCode().trim()) : Optional.empty())
+                        .or(() -> (mainUser.getAepsAgentId() != null && !mainUser.getAepsAgentId().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getAepsAgentId().trim()) : Optional.empty())
+                        .orElse(null);
+                if (aepsKyc != null) {
+                    aepsKyc.setKycDone(true);
+                    aepsKyc.setBankEkycDone(true);
+                    aepsKycRepository.save(aepsKyc);
+                }
 
                 aepsUser.setAepsKycDone(true);
                 aepsUser.setAepsKycCompletedAt(java.time.LocalDateTime.now());
@@ -823,7 +844,11 @@ public class AepsServiceImpl implements AepsService {
         String resolvedMerchantId = aepsUser.getAepsMerchantId();
         if ("fingpay".equalsIgnoreCase(activeProvider.getProviderName())) {
             long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
-            Optional<AepsKyc> aepsKycOpt = aepsKycRepository.findByUid(uidLong);
+            Optional<AepsKyc> aepsKycOpt = aepsKycRepository.findByUid(uidLong)
+                    .or(() -> (mainUser.getPartyCode() != null && !mainUser.getPartyCode().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getPartyCode().trim()) : Optional.empty())
+                    .or(() -> (mainUser.getAepsAgentId() != null && !mainUser.getAepsAgentId().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getAepsAgentId().trim()) : Optional.empty())
+                    .or(() -> (mainUser.getAepsMerchantId() != null && !mainUser.getAepsMerchantId().isBlank()) ? aepsKycRepository.findByMerchantId(mainUser.getAepsMerchantId().trim()) : Optional.empty());
+
             if (aepsKycOpt.isPresent()) {
                 AepsKyc aepsKyc = aepsKycOpt.get();
                 if (aepsKyc.getOutlet() != null && !aepsKyc.getOutlet().isBlank()) {
