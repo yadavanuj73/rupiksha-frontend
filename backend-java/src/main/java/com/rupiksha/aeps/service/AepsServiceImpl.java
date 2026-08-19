@@ -207,15 +207,14 @@ public class AepsServiceImpl implements AepsService {
         }
         com.rupiksha.backend.domain.User coreUser = coreUserOpt.get();
         long uidLong = coreUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
+        Optional<AepsKyc> fingKycOpt = aepsKycRepository.findByUid(uidLong)
+                .or(() -> (coreUser.getPartyCode() != null && !coreUser.getPartyCode().isBlank()) ? aepsKycRepository.findByOutlet(coreUser.getPartyCode().trim()) : Optional.empty())
+                .or(() -> (coreUser.getAepsAgentId() != null && !coreUser.getAepsAgentId().isBlank()) ? aepsKycRepository.findByOutlet(coreUser.getAepsAgentId().trim()) : Optional.empty())
+                .or(() -> (coreUser.getAepsMerchantId() != null && !coreUser.getAepsMerchantId().isBlank()) ? aepsKycRepository.findByMerchantId(coreUser.getAepsMerchantId().trim()) : Optional.empty());
 
-        if ("fingpay".equalsIgnoreCase(provider)) {
-            Optional<AepsKyc> kycOpt = aepsKycRepository.findByUid(uidLong)
-                    .or(() -> (coreUser.getPartyCode() != null && !coreUser.getPartyCode().isBlank()) ? aepsKycRepository.findByOutlet(coreUser.getPartyCode().trim()) : Optional.empty())
-                    .or(() -> (coreUser.getAepsAgentId() != null && !coreUser.getAepsAgentId().isBlank()) ? aepsKycRepository.findByOutlet(coreUser.getAepsAgentId().trim()) : Optional.empty())
-                    .or(() -> (coreUser.getAepsMerchantId() != null && !coreUser.getAepsMerchantId().isBlank()) ? aepsKycRepository.findByMerchantId(coreUser.getAepsMerchantId().trim()) : Optional.empty());
-
-            if (kycOpt.isPresent()) {
-                AepsKyc kyc = kycOpt.get();
+        if ("fingpay".equalsIgnoreCase(provider) || (provider == null && fingKycOpt.isPresent())) {
+            if (fingKycOpt.isPresent()) {
+                AepsKyc kyc = fingKycOpt.get();
 
                 // 1. Check standard AEPS 2FA validity
                 boolean hasValidSession = isSessionValid(coreUser.getAeps2faAuthenticatedAt());
@@ -261,15 +260,20 @@ public class AepsServiceImpl implements AepsService {
                     }
                 }
 
-                boolean isKycDone = Boolean.TRUE.equals(kyc.getKycDone()) || Boolean.TRUE.equals(coreUser.getAepsKycDone());
-                if (!Boolean.TRUE.equals(kyc.getKycDone()) && isKycDone) {
-                    kyc.setKycDone(true);
-                    kyc.setBankEkycDone(true);
-                    aepsKycRepository.save(kyc);
-                }
-                if (!Boolean.TRUE.equals(coreUser.getAepsKycDone()) && isKycDone) {
-                    coreUser.setAepsKycDone(true);
-                    mainUserRepository.save(coreUser);
+                boolean isKycDone = Boolean.TRUE.equals(kyc.getKycDone()) 
+                        || Boolean.TRUE.equals(coreUser.getAepsKycDone()) 
+                        || Boolean.TRUE.equals(kyc.getBankEkycDone());
+
+                if (isKycDone) {
+                    if (!Boolean.TRUE.equals(kyc.getKycDone()) || !Boolean.TRUE.equals(kyc.getBankEkycDone())) {
+                        kyc.setKycDone(true);
+                        kyc.setBankEkycDone(true);
+                        aepsKycRepository.save(kyc);
+                    }
+                    if (!Boolean.TRUE.equals(coreUser.getAepsKycDone())) {
+                        coreUser.setAepsKycDone(true);
+                        mainUserRepository.save(coreUser);
+                    }
                 }
 
                 boolean isBankEkycDone = Boolean.TRUE.equals(kyc.getBankEkycDone()) || isKycDone;
@@ -280,8 +284,8 @@ public class AepsServiceImpl implements AepsService {
                         .bankEkycDone(isBankEkycDone)
                         .aeps2faDone(hasValidSession)
                         .ap2faDone(hasValidApSession)
-                        .agentId(kyc.getOutlet() != null ? kyc.getOutlet() : coreUser.getPartyCode())
-                        .merchantId(kyc.getMerchantId() != null ? kyc.getMerchantId() : (kyc.getOutlet() != null ? kyc.getOutlet() : coreUser.getPartyCode()))
+                        .agentId(kyc.getOutlet() != null ? kyc.getOutlet().trim().toUpperCase() : (coreUser.getPartyCode() != null ? coreUser.getPartyCode().trim().toUpperCase() : ""))
+                        .merchantId(kyc.getMerchantId() != null ? kyc.getMerchantId().trim().toUpperCase() : (kyc.getOutlet() != null ? kyc.getOutlet().trim().toUpperCase() : (coreUser.getPartyCode() != null ? coreUser.getPartyCode().trim().toUpperCase() : "")))
                         .build();
             } else {
                 return StatusResponse.builder()
@@ -490,42 +494,30 @@ public class AepsServiceImpl implements AepsService {
         if (isSuccess) {
             log.info("Biometric KYC completed instantly. Updating database records...");
             
-            if ("fingpay".equalsIgnoreCase(activeProvider.getProviderName())) {
-                long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
-                AepsKyc aepsKyc = aepsKycRepository.findByUid(uidLong)
-                        .or(() -> (mainUser.getPartyCode() != null && !mainUser.getPartyCode().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getPartyCode().trim()) : Optional.empty())
-                        .or(() -> (mainUser.getAepsAgentId() != null && !mainUser.getAepsAgentId().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getAepsAgentId().trim()) : Optional.empty())
-                        .orElseThrow(() -> new AepsException("Fingpay merchant profile not found."));
+            long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
+            Optional<AepsKyc> aepsKycOpt = aepsKycRepository.findByUid(uidLong)
+                    .or(() -> (mainUser.getPartyCode() != null && !mainUser.getPartyCode().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getPartyCode().trim()) : Optional.empty())
+                    .or(() -> (mainUser.getAepsAgentId() != null && !mainUser.getAepsAgentId().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getAepsAgentId().trim()) : Optional.empty())
+                    .or(() -> (mainUser.getAepsMerchantId() != null && !mainUser.getAepsMerchantId().isBlank()) ? aepsKycRepository.findByMerchantId(mainUser.getAepsMerchantId().trim()) : Optional.empty());
+            
+            if (aepsKycOpt.isPresent()) {
+                AepsKyc aepsKyc = aepsKycOpt.get();
                 aepsKyc.setKycDone(true);
                 aepsKyc.setBankEkycDone(true);
                 aepsKycRepository.save(aepsKyc);
-
-                aepsUser.setAepsKycDone(true);
-                aepsUser.setAepsKycCompletedAt(java.time.LocalDateTime.now());
-                aepsUser.setAepsKycRefId(providerResult.getProviderReference());
-                aepsUser.setAepsKycTxnId(providerResult.getProviderTxnId());
-                aepsUserRepository.save(aepsUser);
-
-                mainUser.setAepsKycDone(true);
-                mainUser.setAepsKycCompletedAt(java.time.Instant.now());
-                mainUser.setAepsKycRefId(providerResult.getProviderReference());
-                mainUser.setAepsKycTxnId(providerResult.getProviderTxnId());
-                mainUserRepository.save(mainUser);
-            } else {
-                // Update AEPS user
-                aepsUser.setAepsKycDone(true);
-                aepsUser.setAepsKycCompletedAt(java.time.LocalDateTime.now());
-                aepsUser.setAepsKycRefId(providerResult.getProviderReference());
-                aepsUser.setAepsKycTxnId(providerResult.getProviderTxnId());
-                aepsUserRepository.save(aepsUser);
-
-                // Update main core user
-                mainUser.setAepsKycDone(true);
-                mainUser.setAepsKycCompletedAt(java.time.Instant.now());
-                mainUser.setAepsKycRefId(providerResult.getProviderReference());
-                mainUser.setAepsKycTxnId(providerResult.getProviderTxnId());
-                mainUserRepository.save(mainUser);
             }
+
+            aepsUser.setAepsKycDone(true);
+            aepsUser.setAepsKycCompletedAt(java.time.LocalDateTime.now());
+            aepsUser.setAepsKycRefId(providerResult.getProviderReference());
+            aepsUser.setAepsKycTxnId(providerResult.getProviderTxnId());
+            aepsUserRepository.save(aepsUser);
+
+            mainUser.setAepsKycDone(true);
+            mainUser.setAepsKycCompletedAt(java.time.Instant.now());
+            mainUser.setAepsKycRefId(providerResult.getProviderReference());
+            mainUser.setAepsKycTxnId(providerResult.getProviderTxnId());
+            mainUserRepository.save(mainUser);
 
             // Update audit history log
             history.setWorkflowState(AepsWorkflowState.READY_FOR_DAILY_2FA.name());

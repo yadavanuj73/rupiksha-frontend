@@ -85,6 +85,7 @@ public class FpDailyAuthService {
             if (merchantUserName == null || merchantUserName.isBlank()) {
                 throw new RuntimeException("Fingpay merchant login ID is missing for daily authentication.");
             }
+            merchantUserName = merchantUserName.trim().toUpperCase();
             String rawPin = (kyc != null && kyc.getMpin() != null && !kyc.getMpin().isBlank())
                     ? kyc.getMpin()
                     : fingUserRepository.findById(uidLong)
@@ -371,22 +372,22 @@ public class FpDailyAuthService {
 
     private String resolveMerchantUserName(com.rupiksha.backend.domain.User mainUser, AepsKyc kyc, String requestMerchantId) {
         if (kyc != null && kyc.getOutlet() != null && !kyc.getOutlet().isBlank()) {
-            return kyc.getOutlet().trim();
+            return kyc.getOutlet().trim().toUpperCase();
         }
         if (kyc != null && kyc.getMerchantId() != null && !kyc.getMerchantId().isBlank()) {
-            return kyc.getMerchantId().trim();
+            return kyc.getMerchantId().trim().toUpperCase();
         }
         if (mainUser.getPartyCode() != null && !mainUser.getPartyCode().isBlank()) {
-            return mainUser.getPartyCode().trim();
+            return mainUser.getPartyCode().trim().toUpperCase();
         }
         if (requestMerchantId != null && !requestMerchantId.isBlank()) {
-            return requestMerchantId.trim();
+            return requestMerchantId.trim().toUpperCase();
         }
         if (mainUser.getAepsAgentId() != null && !mainUser.getAepsAgentId().isBlank()) {
-            return mainUser.getAepsAgentId().trim();
+            return mainUser.getAepsAgentId().trim().toUpperCase();
         }
         if (mainUser.getAepsMerchantId() != null && !mainUser.getAepsMerchantId().isBlank()) {
-            return mainUser.getAepsMerchantId().trim();
+            return mainUser.getAepsMerchantId().trim().toUpperCase();
         }
         if (mainUser.getMobile() != null && !mainUser.getMobile().isBlank()) {
             return mainUser.getMobile().trim();
