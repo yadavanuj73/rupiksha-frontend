@@ -839,7 +839,8 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                                     placeholder="Enter withdrawal amount"
                                                     value={formData.amount}
                                                     onChange={handleFormChange}
-                                                    className="w-full pl-8 pr-4 py-3 rounded-2xl border border-slate-200 text-sm font-bold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+                                                    onWheel={(e) => e.target.blur()}
+                                                    className="w-full pl-8 pr-4 py-3 rounded-2xl border border-slate-200 text-sm font-bold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                     required
                                                 />
                                             </div>
@@ -908,7 +909,8 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                                         placeholder="0"
                                                         value={denominations[denom] || ''}
                                                         onChange={(e) => handleDenominationChange(e.target.value, denom)}
-                                                        className="w-16 text-right text-xs font-black text-slate-800 bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 p-1.5 rounded-lg"
+                                                        onWheel={(e) => e.target.blur()}
+                                                        className="w-16 text-right text-xs font-black text-slate-800 bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 p-1.5 rounded-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                     />
                                                 </div>
                                             ))}
