@@ -375,12 +375,12 @@ export default function BankingTerminal({ provider, status, setStatus }) {
     };
 
     // Submit Final Transaction (Step 2)
-    const handleFinalSubmit = async (e) => {
-        if (e) e.preventDefault();
+    const handleFinalSubmit = async (customResult = null) => {
+        const activeResult = (customResult && customResult.pidXml) ? customResult : captureResult;
         setErrorMsg('');
         setSuccessMsg('');
 
-        if (!captureResult || !captureResult.pidXml) {
+        if (!activeResult || !activeResult.pidXml) {
             setErrorMsg("Please scan customer fingerprint before submitting.");
             return;
         }
@@ -395,7 +395,7 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                 customerMobile: formData.mobile,
                 mobileNumber: formData.mobile,
                 requestRemarks: formData.remarks || (activeTab === 'CASH_WITHDRAWAL' ? 'Cash Withdrawal' : activeTab),
-                pidXml: captureResult.pidXml,
+                pidXml: activeResult.pidXml,
                 biometricType: 'FMR',
                 latitude: location?.latitude || "28.6139",
                 longitude: location?.longitude || "77.2090",
@@ -493,6 +493,13 @@ export default function BankingTerminal({ provider, status, setStatus }) {
             setLoading(false);
         }
     };
+
+    // Auto-proceed transaction immediately when finger capture completes in Step 2
+    useEffect(() => {
+        if (currentStep === 2 && captureResult && captureResult.pidXml && !loading && !receiptOpen) {
+            handleFinalSubmit(captureResult);
+        }
+    }, [captureResult, currentStep]);
 
     const currentTabObj = TAB_CONFIG[activeTab] || TAB_CONFIG.CASH_WITHDRAWAL;
 
@@ -1213,7 +1220,7 @@ export default function BankingTerminal({ provider, status, setStatus }) {
 
                                     {/* Capture Controls */}
                                     <div className="space-y-2">
-                                        <CaptureButton />
+                                        <CaptureButton onCaptureSuccess={handleFinalSubmit} />
                                         <CaptureLoader />
                                         <CaptureError />
                                         <CaptureSuccess />
