@@ -467,6 +467,8 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                 const respCode = failData?.responseCode || '';
                 const respMsg = response.message || failData?.responseMessage || '';
                 
+                if (reset) reset();
+
                 if (respCode === 'FP069' || respMsg.toLowerCase().includes('2fa')) {
                     if (setStatus) {
                         setStatus(prev => ({ ...prev, aeps2faDone: false }));
@@ -479,6 +481,7 @@ export default function BankingTerminal({ provider, status, setStatus }) {
             }
         } catch (err) {
             console.error("AEPS Transaction execution failed", err);
+            if (reset) reset();
             const errMsg = err.message || "";
             if (errMsg.toLowerCase().includes('2fa')) {
                 if (setStatus) {
@@ -1225,60 +1228,39 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                         <CaptureButton onCaptureSuccess={handleFinalSubmit} />
                                         <CaptureLoader />
                                         <CaptureError />
-                                        <CaptureSuccess />
+                                        {!errorMsg && !loading && <CaptureSuccess />}
                                     </div>
 
                                     {/* Alerts */}
                                     {errorMsg && (
-                                        <div className="bg-rose-100 border border-rose-300 text-rose-950 text-xs p-2 rounded-2xl flex items-center gap-2 font-black text-left">
-                                            <AlertCircle className="text-rose-700 shrink-0" size={15} />
-                                            <div className="text-[11px] leading-tight">{errorMsg}</div>
+                                        <div className="bg-rose-100 border border-rose-300 text-rose-950 text-xs p-2.5 rounded-2xl flex items-center gap-2 font-black text-left">
+                                            <AlertCircle className="text-rose-700 shrink-0" size={16} />
+                                            <div className="text-xs leading-tight font-black">{errorMsg}</div>
                                         </div>
                                     )}
 
                                     {successMsg && (
-                                        <div className="bg-emerald-100 border border-emerald-300 text-emerald-950 text-xs p-2 rounded-2xl flex items-center gap-2 font-black text-left">
-                                            <CheckCircle2 className="text-emerald-700 shrink-0" size={15} />
-                                            <div className="text-[11px] leading-tight">{successMsg}</div>
+                                        <div className="bg-emerald-100 border border-emerald-300 text-emerald-950 text-xs p-2.5 rounded-2xl flex items-center gap-2 font-black text-left">
+                                            <CheckCircle2 className="text-emerald-700 shrink-0" size={16} />
+                                            <div className="text-xs leading-tight font-black">{successMsg}</div>
                                         </div>
                                     )}
                                 </div>
 
-                                {/* Final Submit Button */}
+                                {/* Auto-Processing Status Indicator */}
                                 <div>
-                                    <motion.button
-                                        type="button"
-                                        onClick={handleFinalSubmit}
-                                        disabled={loading || !captureResult || !captureResult.pidXml}
-                                        whileHover={{ scale: (!loading && captureResult?.pidXml) ? 1.01 : 1 }}
-                                        whileTap={{ scale: (!loading && captureResult?.pidXml) ? 0.98 : 1 }}
-                                        className={`w-full py-3 px-4 rounded-2xl font-black uppercase tracking-wider text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-md ${
-                                            loading 
-                                                ? 'bg-slate-900 text-white shadow-none cursor-wait' 
-                                                : captureResult?.pidXml 
-                                                ? 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-emerald-700/25' 
-                                                : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
-                                        }`}
-                                    >
-                                        {loading ? (
-                                            <>
-                                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                                Processing AEPS Transaction...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <ShieldCheck size={16} />
-                                                {requiresAmount 
-                                                    ? `Confirm & Execute (₹${formData.amount})` 
-                                                    : `Submit ${currentTabObj.label}`}
-                                            </>
-                                        )}
-                                    </motion.button>
-                                    
-                                    {!captureResult && (
-                                        <p className="text-[10px] text-center text-black font-extrabold mt-1">
-                                            Capture customer biometric fingerprint above to enable execution.
-                                        </p>
+                                    {loading ? (
+                                        <div className="w-full py-3.5 px-4 rounded-2xl font-black uppercase tracking-wider text-xs bg-slate-950 text-white flex items-center justify-center gap-2 shadow-lg animate-pulse">
+                                            <RefreshCw className="w-4 h-4 animate-spin text-blue-400" />
+                                            <span>Processing AEPS Transaction with Bank Gateway...</span>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-2 px-3 bg-slate-100 border border-slate-200 rounded-2xl">
+                                            <p className="text-[11px] text-black font-extrabold flex items-center justify-center gap-1.5">
+                                                <Fingerprint size={14} className="text-blue-700 font-bold" />
+                                                <span>Scan fingerprint above to auto-submit transaction</span>
+                                            </p>
+                                        </div>
                                     )}
                                 </div>
                             </div>
