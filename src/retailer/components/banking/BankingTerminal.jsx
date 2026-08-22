@@ -553,14 +553,16 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                         </div>
                         <div className="flex items-center flex-wrap gap-x-2.5 gap-y-0.5">
                             <h1 className="text-sm sm:text-base font-black text-black tracking-tight uppercase">
-                                AEPS Banking Terminal
+                                {isFingpay ? "AEPS 1 • Fingpay Terminal" : "AEPS 2 • Levin Terminal"}
                             </h1>
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 border border-emerald-300 text-emerald-950 rounded-full text-[9px] font-black uppercase tracking-wider">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping inline-block" />
-                                Live Session
+                                {isFingpay ? "Live Fingpay" : "Live Levin"}
                             </span>
                             <span className="text-xs font-black text-black">
-                                ID: <strong className="text-black font-extrabold uppercase">{status.agentId || 'RPRMH62955'}</strong>
+                                ID: <strong className="text-black font-extrabold uppercase">
+                                    {status.agentId || status.merchantId || (isFingpay ? 'RPRMH62955' : 'LVN7292987918')}
+                                </strong>
                             </span>
                             {location && (
                                 <span className="hidden md:inline-flex items-center gap-1 text-black font-bold text-[10px]">

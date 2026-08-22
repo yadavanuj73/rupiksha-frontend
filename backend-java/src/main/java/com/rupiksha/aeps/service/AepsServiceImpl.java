@@ -304,13 +304,20 @@ public class AepsServiceImpl implements AepsService {
                 boolean hasValidSession = isSessionValid(user.getAeps2faAuthenticatedAt()) || isSessionValid(coreUser.getAeps2faAuthenticatedAt());
                 boolean hasValidApSession = isSessionValid(user.getAepsAp2faAuthenticatedAt()) || isSessionValid(coreUser.getAepsAp2faAuthenticatedAt());
 
+                String levinAgentId = user.getAepsAgentId();
+                if (levinAgentId == null || levinAgentId.isBlank() || (fingKycOpt.isPresent() && levinAgentId.equalsIgnoreCase(fingKycOpt.get().getOutlet()))) {
+                    levinAgentId = (coreUser.getPartyCode() != null && !coreUser.getPartyCode().isBlank()) 
+                            ? coreUser.getPartyCode().trim().toUpperCase() 
+                            : ("LVN" + mobile);
+                }
+
                 return StatusResponse.builder()
-                        .onboarded(Boolean.TRUE.equals(user.getAepsOnboarded()))
-                        .kycDone(Boolean.TRUE.equals(user.getAepsKycDone()))
+                        .onboarded(Boolean.TRUE.equals(user.getAepsOnboarded()) || Boolean.TRUE.equals(coreUser.getAepsOnboarded()))
+                        .kycDone(Boolean.TRUE.equals(user.getAepsKycDone()) || Boolean.TRUE.equals(coreUser.getAepsKycDone()))
                         .aeps2faDone(hasValidSession)
                         .ap2faDone(hasValidApSession)
-                        .agentId(user.getAepsAgentId())
-                        .merchantId(user.getAepsMerchantId())
+                        .agentId(levinAgentId)
+                        .merchantId(levinAgentId)
                         .build();
             }
             return StatusResponse.builder()
