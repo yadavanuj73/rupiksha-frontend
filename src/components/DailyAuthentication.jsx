@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Fingerprint, CheckCircle2, ShieldCheck, AlertCircle, MapPin, Loader2 } from 'lucide-react';
+import { Fingerprint, CheckCircle2, ShieldCheck, AlertCircle, MapPin, Loader2, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useRD } from '../hooks/useRD';
 import DeviceStatus from './DeviceStatus';
@@ -12,7 +12,7 @@ import { daily2faService } from '../services/aeps/daily2faService';
 
 export default function DailyAuthentication({ provider, serviceType = 'AEPS', onSuccess, onBack }) {
     const navigate = useNavigate();
-    const { captureResult, device } = useRD();
+    const { captureResult, device, reset } = useRD();
 
     const [location, setLocation] = useState(null);
     const [locationError, setLocationError] = useState('');
@@ -56,13 +56,14 @@ export default function DailyAuthentication({ provider, serviceType = 'AEPS', on
         fetchCoordinates();
     }, []);
 
-    const handleAuthenticate = async () => {
-        if (!captureResult || !captureResult.pidXml) {
+    const handleAuthenticate = async (customResult = null) => {
+        const activeCapture = (customResult && customResult.pidXml) ? customResult : captureResult;
+        if (!activeCapture || !activeCapture.pidXml) {
             setAuthError("Please capture your fingerprint first.");
             return;
         }
         if (!location) {
-            setAuthError("GPS coordinates are required. Please retry capturing your location.");
+            setAuthError("GPS coordinates are required. Please grant location access.");
             return;
         }
 
@@ -73,7 +74,7 @@ export default function DailyAuthentication({ provider, serviceType = 'AEPS', on
 
         try {
             const res = await daily2faService.authenticate(
-                captureResult.pidXml,
+                activeCapture.pidXml,
                 location.latitude,
                 location.longitude,
                 'FMR',
@@ -83,75 +84,92 @@ export default function DailyAuthentication({ provider, serviceType = 'AEPS', on
             const data = res.data;
             setAuthResponse(data);
 
-            // If provider says merchant ID is invalid, backend has reset kycDone.
-            // Redirect user to redo KYC.
-            if (data && data.workflowState === 'KYC_REQUIRED' && !data.success) {
+            if (data && data.success) {
+                if (reset) reset();
+                if (onSuccess) {
+                    onSuccess();
+                }
+            } else if (data && data.workflowState === 'KYC_REQUIRED' && !data.success) {
+                if (reset) reset();
                 setKycReset(true);
                 setAuthError(data.message || "Your merchant profile is invalid. You need to redo Biometric KYC.");
                 setTimeout(() => {
                     navigate(`/aeps-agent-kyc?provider=${provider}`);
                 }, 3000);
+            } else {
+                if (reset) reset();
+                setAuthError(data?.message || res?.message || "2FA authentication declined by bank gateway.");
             }
         } catch (err) {
             console.error("Daily 2FA authentication failed", err);
+            if (reset) reset();
             setAuthError(err.message || "Daily authentication verification failed.");
         } finally {
             setSubmitting(false);
         }
     };
 
+    // Auto-proceed immediately upon biometric scan completion
+    useEffect(() => {
+        if (captureResult && captureResult.pidXml && !submitting && !authResponse?.success && location) {
+            handleAuthenticate(captureResult);
+        }
+    }, [captureResult, location]);
+
     const isSuccess = authResponse && authResponse.workflowState === 'READY_FOR_TRANSACTIONS' && authResponse.success;
 
     return (
-        <div className="w-full text-center font-['Inter',sans-serif]">
+        <div className="w-full text-center font-['Inter',sans-serif] text-black">
             {!isSuccess ? (
-                <div className="space-y-6">
+                <div className="space-y-3">
                     {/* Header */}
                     <div>
-                        <span className="inline-block px-3 py-1 bg-amber-50 text-amber-700 text-[10px] font-black uppercase tracking-wider rounded-full mb-2">
-                            Daily Session Validation ({serviceType === 'AadhaarPay' ? 'Aadhaar Pay' : 'AEPS'})
-                        </span>
-                        <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight mb-2">
+                        <div className="flex items-center justify-center gap-2 mb-1">
+                            <span className="inline-block px-2.5 py-0.5 bg-amber-100 border border-amber-300 text-amber-950 text-[9px] font-black uppercase tracking-wider rounded-full">
+                                Daily Session Validation ({serviceType === 'AadhaarPay' ? 'Aadhaar Pay' : 'AEPS'})
+                            </span>
+                        </div>
+                        <h2 className="text-lg sm:text-xl font-black text-black uppercase tracking-tight">
                             {serviceType === 'AadhaarPay' ? 'Aadhaar Pay 2FA' : 'Daily 2FA Required'}
                         </h2>
-                        <p className="text-slate-500 text-xs font-semibold leading-relaxed">
-                            Under banking guidelines, you must authenticate your biometrics once daily to process {serviceType === 'AadhaarPay' ? 'Aadhaar Pay' : 'AEPS'} transactions.
+                        <p className="text-slate-600 text-[11px] font-bold mt-0.5">
+                            Authenticate your biometric once daily to unlock AEPS banking operations.
                         </p>
                     </div>
 
                     {/* Geolocation Diagnostic Panel */}
-                    <div className="border border-slate-100 rounded-3xl p-5 text-left space-y-3 bg-slate-50/50">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                                <MapPin size={14} className="text-slate-400" />
-                                Merchant Location Status
+                    <div className="border border-slate-300 rounded-2xl p-2.5 text-left bg-slate-50/80">
+                        <div className="flex items-center justify-between text-[11px] font-black">
+                            <span className="text-black uppercase tracking-wider flex items-center gap-1.5">
+                                <MapPin size={13} className="text-blue-700 font-bold" />
+                                Merchant Location
                             </span>
                             {loadingLocation && (
-                                <Loader2 size={12} className="animate-spin text-blue-500" />
+                                <Loader2 size={12} className="animate-spin text-blue-600" />
                             )}
                         </div>
 
                         {location ? (
-                            <div className="text-xs font-semibold text-slate-600">
-                                <div className="text-emerald-600 font-bold flex items-center gap-1.5 mb-1">
-                                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
-                                    GPS Resolved Successfully
+                            <div className="flex items-center justify-between mt-1 text-[10.5px] font-bold">
+                                <div className="text-emerald-800 font-black flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 bg-emerald-600 rounded-full animate-ping" />
+                                    GPS Resolved
                                 </div>
-                                <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-100/50 text-[10px] font-bold text-slate-400">
-                                    <div>LAT: <span className="text-slate-600 font-black">{location.latitude.toFixed(5)}</span></div>
-                                    <div>LNG: <span className="text-slate-600 font-black">{location.longitude.toFixed(5)}</span></div>
+                                <div className="text-black font-mono font-bold">
+                                    {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
                                 </div>
                             </div>
                         ) : (
-                            <div>
-                                <p className="text-xs font-semibold text-slate-500">
-                                    {locationError || "Waiting for coordinates resolution..."}
+                            <div className="mt-1 flex items-center justify-between">
+                                <p className="text-[10px] font-bold text-slate-600">
+                                    {locationError || "Resolving GPS..."}
                                 </p>
                                 <button
+                                    type="button"
                                     onClick={fetchCoordinates}
-                                    className="mt-2 text-[10px] font-black text-blue-600 hover:text-blue-700 uppercase tracking-wider"
+                                    className="text-[9px] font-black text-blue-700 hover:text-blue-900 uppercase cursor-pointer"
                                 >
-                                    Retry GPS Lock
+                                    Retry GPS
                                 </button>
                             </div>
                         )}
@@ -161,46 +179,39 @@ export default function DailyAuthentication({ provider, serviceType = 'AEPS', on
                     <DeviceStatus />
 
                     {device && (
-                        <div className="border border-slate-100 rounded-3xl p-5 space-y-4">
-                            <CaptureButton />
+                        <div className="border border-slate-300 rounded-2xl p-3 space-y-2 bg-white">
+                            <CaptureButton onCaptureSuccess={handleAuthenticate} />
                             <CaptureLoader />
                             <CaptureError />
-                            <CaptureSuccess />
+                            {!authError && !submitting && <CaptureSuccess />}
 
-                            {captureResult && location && (
-                                <button
-                                    type="button"
-                                    onClick={handleAuthenticate}
-                                    disabled={submitting}
-                                    className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold uppercase tracking-wider text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-blue-500/20 disabled:opacity-50 mt-4"
-                                >
-                                    {submitting ? (
-                                        <>
-                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                            Authenticating daily session...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <ShieldCheck size={16} />
-                                            Verify Daily 2FA
-                                        </>
-                                    )}
-                                </button>
+                            {/* Processing or Instruction Status */}
+                            {submitting ? (
+                                <div className="w-full py-2.5 px-3 bg-slate-950 text-white rounded-xl font-black uppercase tracking-wider text-[11px] flex items-center justify-center gap-2 shadow-md animate-pulse">
+                                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-400" />
+                                    <span>Verifying Daily 2FA Session...</span>
+                                </div>
+                            ) : (
+                                <p className="text-[10px] text-center text-slate-500 font-bold">
+                                    Scan registered fingerprint above — 2FA will automatically verify.
+                                </p>
                             )}
                         </div>
                     )}
 
+                    {/* Error Alerts */}
                     {authError && (
-                        <div className={`${kycReset ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-rose-50 border-rose-100 text-rose-700'} border text-xs px-4 py-3 rounded-2xl flex items-start gap-2 font-semibold text-left`}>
-                            <AlertCircle className={`${kycReset ? 'text-amber-500' : 'text-rose-500'} shrink-0 mt-0.5`} size={14} />
+                        <div className={`${kycReset ? 'bg-amber-100 border-amber-300 text-amber-950' : 'bg-rose-100 border-rose-300 text-rose-950'} border text-xs p-2.5 rounded-2xl flex items-start gap-2 font-black text-left`}>
+                            <AlertCircle className={`${kycReset ? 'text-amber-700' : 'text-rose-700'} shrink-0 mt-0.5`} size={15} />
                             <div>
-                                <div>{authError}</div>
+                                <div className="text-xs font-black leading-tight">{authError}</div>
                                 {kycReset && (
-                                    <div className="mt-2 text-[11px] font-bold text-amber-700">
+                                    <div className="mt-1 text-[10px] font-bold text-amber-900">
                                         Redirecting to Biometric KYC...{' '}
                                         <button
+                                            type="button"
                                             onClick={() => navigate(`/aeps-agent-kyc?provider=${provider}`)}
-                                            className="underline text-blue-600 hover:text-blue-700 cursor-pointer"
+                                            className="underline text-blue-700 hover:text-blue-900 cursor-pointer font-black"
                                         >
                                             Go now →
                                         </button>
@@ -210,29 +221,30 @@ export default function DailyAuthentication({ provider, serviceType = 'AEPS', on
                         </div>
                     )}
 
-                    <div className="flex gap-4">
-                        <button
-                            onClick={onBack}
-                            className="flex-1 py-3.5 border border-slate-200 text-slate-600 rounded-2xl font-bold uppercase tracking-wider text-xs hover:bg-slate-50 transition cursor-pointer"
-                        >
-                            Back
-                        </button>
-                    </div>
+                    {/* Back button */}
+                    <button
+                        type="button"
+                        onClick={onBack}
+                        className="w-full py-2 border-2 border-slate-300 text-black rounded-xl font-black uppercase tracking-wider text-[11px] hover:bg-slate-100 transition cursor-pointer"
+                    >
+                        Back to Dashboard
+                    </button>
                 </div>
             ) : (
-                <div className="space-y-6 py-6">
-                    <div className="w-16 h-16 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-3xl flex items-center justify-center mx-auto shadow-md">
-                        <CheckCircle2 size={32} />
+                <div className="space-y-4 py-4">
+                    <div className="w-12 h-12 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-2xl flex items-center justify-center mx-auto shadow-sm">
+                        <CheckCircle2 size={24} />
                     </div>
                     <div>
-                        <h3 className="text-lg font-black text-slate-800 uppercase tracking-wide">Daily Session Activated</h3>
-                        <p className="text-xs text-slate-500 font-semibold mt-1">
-                            Your merchant daily transaction session has been verified and registered. Terminal is unlocked.
+                        <h3 className="text-base font-black text-black uppercase tracking-wide">Daily Session Activated</h3>
+                        <p className="text-xs text-slate-600 font-bold mt-0.5">
+                            Your merchant 2FA session is active. Terminal is unlocked.
                         </p>
                     </div>
                     <button
+                        type="button"
                         onClick={onSuccess}
-                        className="w-full py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-2xl font-bold uppercase tracking-wider text-xs transition shadow-md cursor-pointer"
+                        className="w-full py-3 bg-black hover:bg-slate-900 text-white rounded-2xl font-black uppercase tracking-wider text-xs transition shadow-md cursor-pointer"
                     >
                         Enter Transaction Terminal
                     </button>

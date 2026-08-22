@@ -95,12 +95,12 @@ export default function AEPS() {
     }
 
     return (
-        <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-4 font-['Inter',sans-serif]">
+        <div className="w-full h-full min-h-[calc(100vh-80px)] bg-slate-50/60 flex flex-col items-center justify-center py-2 px-3 font-['Inter',sans-serif]">
             <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="bg-white p-8 rounded-3xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.02)] max-w-lg w-full text-center relative overflow-hidden"
+                transition={{ duration: 0.3 }}
+                className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-300 shadow-lg max-w-md w-full text-center relative overflow-hidden"
             >
                 {/* Accent blobs */}
                 <div className="absolute -top-12 -left-12 w-24 h-24 bg-blue-50 rounded-full blur-xl" />
