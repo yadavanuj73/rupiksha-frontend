@@ -15,6 +15,14 @@ const RetailerLayout = () => {
     const { user: currentUser, loading: authLoading } = useAuth();
     const [showMobileSidebar, setShowMobileSidebar] = useState(false);
     const [appData, setAppData] = useState(dataService.getData());
+    const [isSidebarLocked, setIsSidebarLocked] = useState(() => {
+        try {
+            return localStorage.getItem('rupiksha_sidebar_locked') !== 'false';
+        } catch (e) {
+            return true;
+        }
+    });
+    const [isSidebarHovered, setIsSidebarHovered] = useState(false);
 
     // Map path to active tab for Sidebar
     const getActiveTab = () => {
@@ -207,9 +215,15 @@ const RetailerLayout = () => {
                 activeTab={activeTab}
                 setActiveTab={handleTabChange}
                 showMobileSidebar={showMobileSidebar}
+                isLocked={isSidebarLocked}
+                setIsLocked={setIsSidebarLocked}
+                isHovered={isSidebarHovered}
+                setIsHovered={setIsSidebarHovered}
             />
 
-            <div className="h-full flex flex-col overflow-hidden relative pt-[76px] lg:ml-64">
+            <div className={`h-full flex flex-col overflow-hidden relative pt-[76px] transition-all duration-300 ${
+                isSidebarLocked ? 'lg:ml-[208px]' : 'lg:ml-[56px]'
+            }`}>
                 {/* pb-16 lg:pb-0 ensures content not hidden behind mobile bottom nav */}
                 <main className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 pb-16 lg:pb-0">
                     <AnimatePresence mode="wait">

@@ -4,15 +4,15 @@ import {
     LayoutGrid, Plane, Smartphone, HandCoins, FileText,
     Fingerprint, Calculator, Zap, Lightbulb, Landmark, Headset,
     FileChartColumn, CreditCard, ScanFace, ChevronRight, ChevronDown,
-    Handshake, Home, Coins, Shield, History
+    Handshake, Home, Coins, Shield, History, Lock, Unlock, Pin, PinOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { dataService } from '../../services/dataService';
 
-// Standalone MenuItem component to avoid unmounting/remounting (fixes blinking issue)
-const MenuItem = ({ item, isActive, onClick, isExpanded, toggleExpand, activeTab, setActiveTab }) => {
+// Standalone MenuItem component with mini/expanded support
+const MenuItem = ({ item, isActive, onClick, isExpanded, toggleExpand, activeTab, setActiveTab, isSidebarOpen }) => {
     return (
-        <div className="px-3">
+        <div className="px-1.5">
             <motion.div
                 whileTap={{ scale: 0.98 }}
                 onClick={() => {
@@ -22,44 +22,49 @@ const MenuItem = ({ item, isActive, onClick, isExpanded, toggleExpand, activeTab
                         onClick();
                     }
                 }}
-                className="flex items-center justify-between px-3 py-2.5 my-1.5 cursor-pointer group transition-all duration-300 rounded-xl relative"
-                style={{ color: isActive ? '#ffffff' : '#334155' }}
+                className={`flex items-center ${isSidebarOpen ? 'justify-between px-2.5' : 'justify-center px-0'} py-2 my-1 cursor-pointer group transition-all duration-200 rounded-xl relative`}
+                title={!isSidebarOpen ? item.label : undefined}
+                style={{ color: isActive ? '#ffffff' : '#000000' }}
             >
                 {isActive && (
-                    <div className="absolute inset-0 bg-blue-600 border border-blue-600 shadow-sm rounded-xl z-0" />
+                    <div className="absolute inset-0 bg-black border border-black shadow-sm rounded-xl z-0" />
                 )}
 
-                <div className="flex items-center space-x-3 relative z-10 w-full">
+                <div className={`flex items-center ${isSidebarOpen ? 'space-x-2.5' : 'justify-center'} relative z-10 w-full min-w-0`}>
                     {item.iconColor ? (
-                        <div className={`p-1.5 rounded-lg transition-all duration-300 ${isActive ? 'bg-white/20 text-white ring-2 ring-white/30' : item.iconColor}`}>
-                            <item.icon size={16} strokeWidth={2.5} />
+                        <div className={`p-1.5 rounded-lg shrink-0 transition-all duration-200 ${isActive ? 'bg-white/20 text-white ring-1 ring-white/30' : item.iconColor}`}>
+                            <item.icon size={15} strokeWidth={2.5} />
                         </div>
                     ) : (
-                        <div className="transition-all duration-300" style={{ color: isActive ? '#ffffff' : '#334155' }}>
-                            <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                        <div className="shrink-0 transition-all duration-200" style={{ color: isActive ? '#ffffff' : '#000000' }}>
+                            <item.icon size={18} strokeWidth={isActive ? 2.5 : 2} />
                         </div>
                     )}
-                    <span className="font-bold text-[13.5px] tracking-tight" style={{ color: isActive ? '#ffffff' : '#334155' }}>
-                        {item.label}
-                    </span>
+                    
+                    {isSidebarOpen && (
+                        <span className="font-extrabold text-xs tracking-tight truncate flex-1 text-black" style={{ color: isActive ? '#ffffff' : '#000000' }}>
+                            {item.label}
+                        </span>
+                    )}
                 </div>
-                <div className="relative z-10">
-                    {item.hasSubmenu ? (
+
+                {isSidebarOpen && item.hasSubmenu && (
+                    <div className="relative z-10 shrink-0 ml-1">
                         <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : 'rotate-0'}`}>
-                            <ChevronDown size={14} style={{ color: isActive ? '#ffffff' : '#94a3b8' }} />
+                            <ChevronDown size={13} style={{ color: isActive ? '#ffffff' : '#475569' }} />
                         </div>
-                    ) : null}
-                </div>
+                    </div>
+                )}
             </motion.div>
 
             {/* Submenu */}
             <AnimatePresence>
-                {item.hasSubmenu && isExpanded && (
+                {isSidebarOpen && item.hasSubmenu && isExpanded && (
                     <motion.div
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        className="ml-9 border-l border-slate-200 overflow-hidden"
+                        className="ml-6 pl-2 border-l-2 border-slate-300 overflow-hidden space-y-0.5"
                     >
                         {item.subItems.map((sub, idx) => {
                             const isSubActive = activeTab === sub.id;
@@ -79,10 +84,10 @@ const MenuItem = ({ item, isActive, onClick, isExpanded, toggleExpand, activeTab
                                             setActiveTab(sub.id);
                                         }
                                     }}
-                                    className="block w-full text-left px-3.5 py-2 text-[11px] font-black uppercase tracking-wider transition-all rounded-lg cursor-pointer hover:bg-slate-100 hover:text-blue-700"
+                                    className="block w-full text-left px-2 py-1.5 text-[10.5px] font-black uppercase tracking-wider transition-all rounded-lg cursor-pointer hover:bg-slate-200 hover:text-black truncate"
                                     style={{ 
-                                        color: isSubActive ? '#1d4ed8' : '#64748b',
-                                        backgroundColor: isSubActive ? '#eff6ff' : undefined
+                                        color: isSubActive ? '#000000' : '#334155',
+                                        backgroundColor: isSubActive ? '#e2e8f0' : undefined
                                     }}
                                 >
                                     {sub.label}
@@ -96,7 +101,7 @@ const MenuItem = ({ item, isActive, onClick, isExpanded, toggleExpand, activeTab
     );
 };
 
-const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
+const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, setIsLocked, isHovered = false, setIsHovered }) => {
     const { t } = useLanguage();
     const [expandedItems, setExpandedItems] = useState({ travel: false, reports: false, all_services: true });
     const [appData, setAppData] = useState(dataService.getData());
@@ -109,12 +114,23 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
 
     const toggleExpand = (id) => setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }));
 
+    const isExpanded = isLocked || isHovered;
+
+    const toggleLock = (e) => {
+        e.stopPropagation();
+        const next = !isLocked;
+        if (setIsLocked) setIsLocked(next);
+        try {
+            localStorage.setItem('rupiksha_sidebar_locked', String(next));
+        } catch (err) {}
+    };
+
     const serviceItems = [
         {
             id: 'all_services',
             label: 'All Services',
             icon: Smartphone,
-            iconColor: 'bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-200',
+            iconColor: 'bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white shadow-sm',
             hasSubmenu: true,
             subItems: [
                 { id: 'aeps_services_1', label: 'AEPS 1' },
@@ -136,7 +152,6 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
             icon: History,
             hasSubmenu: true,
             subItems: [
-                // Requested 17 Subcategories
                 { id: 'aeps_1', label: 'AEPS 1' },
                 { id: 'aeps_2', label: 'AEPS 2' },
                 { id: 'money_transfer', label: 'Money Transfer' },
@@ -175,26 +190,62 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
     };
 
     return (
-        <motion.div
+        <motion.aside
+            onMouseEnter={() => setIsHovered && setIsHovered(true)}
+            onMouseLeave={() => setIsHovered && setIsHovered(false)}
             initial={false}
             animate={{
-                x: typeof window !== 'undefined' && window.innerWidth < 1024 ? (showMobileSidebar ? 0 : -260) : 0
+                width: typeof window !== 'undefined' && window.innerWidth >= 1024 
+                    ? (isExpanded ? 208 : 56) 
+                    : 208,
+                x: typeof window !== 'undefined' && window.innerWidth < 1024 
+                    ? (showMobileSidebar ? 0 : -220) 
+                    : 0
             }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className={`fixed top-0 left-0 w-64 flex-shrink-0 border-r border-slate-200 flex flex-col h-screen font-['Inter',sans-serif] z-50 transition-colors duration-500 lg:top-[76px] lg:h-[calc(100vh-76px)]
-                ${showMobileSidebar ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
-            style={{ backgroundColor: '#f8fafc' }}
+            transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+            className={`fixed top-0 left-0 flex-shrink-0 border-r border-slate-300 flex flex-col h-screen font-['Inter',sans-serif] z-50 transition-colors duration-300 lg:top-[76px] lg:h-[calc(100vh-76px)] bg-slate-50 shadow-md ${
+                !isLocked && isHovered ? 'shadow-2xl ring-1 ring-black/5 z-50' : ''
+            }`}
         >
-            {/* Logo Area */}
-            <div className="px-5 py-4 flex items-center justify-start h-[76px] border-b border-slate-200 lg:h-[64px] lg:mt-0">
-                <div className="flex items-center gap-3">
-                    <span className="text-[11px] font-black tracking-widest uppercase text-blue-700">Navigation</span>
-                </div>
+            {/* Header / Lock Area */}
+            <div className="px-3 py-2 flex items-center justify-between h-[52px] border-b border-slate-200">
+                {isExpanded ? (
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="flex items-center justify-between w-full"
+                    >
+                        <span className="text-[10px] font-black tracking-widest uppercase text-black">Navigation</span>
+                        <button
+                            type="button"
+                            onClick={toggleLock}
+                            className={`p-1 rounded-lg transition cursor-pointer flex items-center gap-1 ${
+                                isLocked 
+                                    ? 'bg-black text-white hover:bg-slate-800' 
+                                    : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                            }`}
+                            title={isLocked ? "Sidebar locked open. Click to enable auto-slide." : "Sidebar slideable. Click to lock open."}
+                        >
+                            {isLocked ? <Lock size={12} /> : <Unlock size={12} />}
+                        </button>
+                    </motion.div>
+                ) : (
+                    <div className="w-full flex justify-center">
+                        <button
+                            type="button"
+                            onClick={toggleLock}
+                            className="p-1.5 rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-300 transition cursor-pointer"
+                            title="Click to lock sidebar open"
+                        >
+                            <Unlock size={13} />
+                        </button>
+                    </div>
+                )}
             </div>
 
-            <div className="flex-1 overflow-y-auto py-2 scrollbar-none">
-                {/* Main Navigation List */}
-                <div className="flex flex-col px-1">
+            {/* Navigation List */}
+            <div className="flex-1 overflow-y-auto py-1 scrollbar-none">
+                <div className="flex flex-col">
                     <MenuItem
                         item={{ id: 'dashboard', label: 'Dashboard', icon: LayoutGrid }}
                         isActive={activeTab === 'dashboard'}
@@ -203,6 +254,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
                         toggleExpand={toggleExpand}
                         activeTab={activeTab}
                         setActiveTab={setActiveTab}
+                        isSidebarOpen={isExpanded}
                     />
                     
                     {serviceItems.map((item) => (
@@ -215,6 +267,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
                             toggleExpand={toggleExpand}
                             activeTab={activeTab}
                             setActiveTab={setActiveTab}
+                            isSidebarOpen={isExpanded}
                         />
                     ))}
 
@@ -228,6 +281,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
                             toggleExpand={toggleExpand}
                             activeTab={activeTab}
                             setActiveTab={setActiveTab}
+                            isSidebarOpen={isExpanded}
                         />
                     ))}
 
@@ -241,30 +295,33 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar }) => {
                             toggleExpand={toggleExpand}
                             activeTab={activeTab}
                             setActiveTab={setActiveTab}
+                            isSidebarOpen={isExpanded}
                         />
                     ))}
                 </div>
             </div>
 
-            <div className="p-4 border-t border-slate-200">
-                <div className="flex items-center justify-between px-2 py-1.5">
-                    <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100 overflow-hidden">
+            {/* Footer Merchant Profile */}
+            <div className="p-2 border-t border-slate-200">
+                <div className={`flex items-center ${isExpanded ? 'justify-between' : 'justify-center'} px-1 py-1`}>
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center border border-slate-300 overflow-hidden shrink-0 shadow-xs">
                             {currentUser?.profilePhoto ? (
                                 <img src={currentUser.profilePhoto} alt="U" className="w-full h-full object-cover" />
                             ) : (
-                                <span className="text-[10px] font-bold text-slate-400">{getInitials()}</span>
+                                <span className="text-[10px] font-black text-black">{getInitials()}</span>
                             )}
                         </div>
-                        <div className="flex flex-col">
-                            <span className="text-xs font-bold text-slate-800 line-clamp-1">{currentUser?.businessName || 'Merchant'}</span>
-                            <span className="text-[10px] text-slate-400 font-medium">Retailer Account</span>
-                        </div>
+                        {isExpanded && (
+                            <div className="flex flex-col min-w-0">
+                                <span className="text-xs font-black text-black truncate">{currentUser?.businessName || 'Merchant'}</span>
+                                <span className="text-[9.5px] text-slate-500 font-bold">Retailer</span>
+                            </div>
+                        )}
                     </div>
-                    <ChevronRight size={14} className="text-slate-300" />
                 </div>
             </div>
-        </motion.div>
+        </motion.aside>
     );
 };
 
