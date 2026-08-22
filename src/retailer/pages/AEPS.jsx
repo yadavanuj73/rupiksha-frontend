@@ -86,8 +86,8 @@ export default function AEPS() {
 
     if (status.onboarded && status.kycDone && status.aeps2faDone) {
         return (
-            <div className="min-h-screen bg-slate-50/60 py-1.5 sm:py-2 px-2 sm:px-3 lg:px-4 font-['Inter',sans-serif]">
-                <div className="max-w-7xl mx-auto">
+            <div className="w-full h-full bg-slate-50/60 py-1 px-2 sm:px-3 lg:px-4 font-['Inter',sans-serif]">
+                <div className="max-w-7xl mx-auto h-full">
                     <BankingTerminal provider={provider} status={status} setStatus={setStatus} />
                 </div>
             </div>
