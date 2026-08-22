@@ -32,7 +32,7 @@ export default function AepsFingpayComingSoon() {
                 <div className="flex justify-center mb-4">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-wider rounded-full">
                         <Sparkles size={10} className="text-indigo-500 animate-spin" />
-                        AEPS Services 1 (Fingpay)
+                        AEPS Services 1
                     </span>
                 </div>
 
@@ -41,7 +41,7 @@ export default function AepsFingpayComingSoon() {
                 </h2>
 
                 <p className="text-slate-500 text-sm leading-relaxed mb-6">
-                    Fingpay AEPS banking operations are currently undergoing integration. Once the API credentials and credentials setup are completed, you will be able to process transactions here.
+                    AEPS banking operations are currently undergoing integration. Once the credentials setup is completed, you will be able to process transactions here.
                 </p>
 
                 <div className="bg-slate-50/80 rounded-2xl p-4 mb-6 border border-slate-100 text-left text-xs font-semibold text-slate-600 space-y-3">
@@ -56,7 +56,7 @@ export default function AepsFingpayComingSoon() {
                         </div>
                         <div className="flex items-center gap-2 text-indigo-600">
                             <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                            Awaiting Fingpay merchant onboarding API credentials
+                            Awaiting gateway API credentials
                         </div>
                         <div className="flex items-center gap-2 text-slate-400">
                             <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />

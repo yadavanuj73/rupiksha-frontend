@@ -302,7 +302,7 @@ export default function Support() {
 
                         <div className="space-y-4 divide-y divide-slate-100">
                             {[
-                                { q: 'What is the refund TAT for failed transactions?', a: 'Levin transfers usually auto-refund within 24 to 72 hours depending on bank nodal reconciliation.' },
+                                { q: 'What is the refund TAT for failed transactions?', a: 'Bank transfers usually auto-refund within 24 to 72 hours depending on bank nodal reconciliation.' },
                                 { q: 'How do I resolve biometric capture errors?', a: 'Ensure Mantra MFS110 drivers are installed. Allow popups on Chrome browser to ensure communication is not blocked.' },
                                 { q: 'How can I do daily 2FA?', a: 'Redirects happen automatically on your first AEPS launch of the calendar day. Simply scan your finger to unlock daily sessions.' }
                             ].map((f, i) => (

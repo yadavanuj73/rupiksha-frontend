@@ -98,7 +98,7 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                                 RUPIKSHA <span className="text-blue-600">FINTECH</span>
                             </h2>
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                Fingpay AEPS Banking Terminal
+                                AEPS Banking Terminal
                             </p>
                         </div>
 
@@ -162,7 +162,7 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                                 <span className="font-mono font-black text-slate-800 select-all">{txnId}</span>
                             </div>
                             <div className="flex justify-between items-center py-2 border-b border-slate-100 text-xs">
-                                <span className="font-semibold text-slate-400">Fingpay Txn ID</span>
+                                <span className="font-semibold text-slate-400">Gateway Txn ID</span>
                                 <span className="font-mono font-black text-slate-800 select-all">{fpTxnId}</span>
                             </div>
                             <div className="flex justify-between items-center py-2 border-b border-slate-100 text-xs">

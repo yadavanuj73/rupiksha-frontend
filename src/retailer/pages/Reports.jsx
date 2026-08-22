@@ -112,12 +112,12 @@ const Reports = () => {
     const [copySuccess, setCopySuccess] = useState('');
 
     const reportConfigs = {
-        aeps_1: { title: "AEPS 1 History", subtitle: "Fingpay Aadhaar Enabled Payment System transaction logs", color: "#2563eb", icon: Fingerprint },
-        aeps_2: { title: "AEPS 2 History", subtitle: "Levin Aadhaar Enabled Payment System transaction logs", color: "#4f46e5", icon: Fingerprint },
+        aeps_1: { title: "AEPS 1 History", subtitle: "Aadhaar Enabled Payment System 1 transaction logs", color: "#2563eb", icon: Fingerprint },
+        aeps_2: { title: "AEPS 2 History", subtitle: "Aadhaar Enabled Payment System 2 transaction logs", color: "#4f46e5", icon: Fingerprint },
         money_transfer: { title: "Money Transfer History", subtitle: "Domestic money remittance transactions", color: "#0d9488", icon: IndianRupee },
         move_to_bank: { title: "Move To Bank Logs", subtitle: "Settlements to registered bank accounts", color: "#0284c7", icon: Landmark },
         airtel_cms: { title: "Airtel CMS History", subtitle: "Airtel Cash Management Services transaction logs", color: "#dc2626", icon: FileText },
-        fingpay_cms: { title: "Fingpay CMS History", subtitle: "Fingpay Cash Management Services transaction logs", color: "#ea580c", icon: FileText },
+        fingpay_cms: { title: "CMS Services History", subtitle: "Cash Management Services transaction logs", color: "#ea580c", icon: FileText },
         bbps_bill_pay: { title: "BBPS Bill Payments", subtitle: "Bharat Bill Payment System transaction logs", color: "#2563eb", icon: RefreshCw },
         wallet: { title: "Wallet Ledger", subtitle: "Wallet deposits, top-ups, and debit logs", color: "#4f46e5", icon: Coins },
         wallet_to_wallet: { title: "Wallet To Wallet", subtitle: "Inter-wallet fund transfer transaction logs", color: "#0891b2", icon: Coins },

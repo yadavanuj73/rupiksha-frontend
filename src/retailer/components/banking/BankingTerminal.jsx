@@ -474,7 +474,7 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                         setStatus(prev => ({ ...prev, aeps2faDone: false }));
                     }
                     setShow2faModal(true);
-                    setErrorMsg("Daily 2FA authentication is required by Fingpay. Please authenticate your biometric below.");
+                    setErrorMsg("Daily 2FA authentication is required. Please authenticate your biometric below.");
                 } else {
                     setErrorMsg(respMsg || "Transaction declined by bank/gateway.");
                 }
@@ -556,11 +556,11 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                         </div>
                         <div className="flex items-center flex-wrap gap-x-2.5 gap-y-0.5">
                             <h1 className="text-sm sm:text-base font-black text-black tracking-tight uppercase">
-                                {isFingpay ? "AEPS 1 • Fingpay Terminal" : "AEPS 2 • Levin Terminal"}
+                                {isFingpay ? "AEPS 1 Terminal" : "AEPS 2 Terminal"}
                             </h1>
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 border border-emerald-300 text-emerald-950 rounded-full text-[9px] font-black uppercase tracking-wider">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping inline-block" />
-                                {isFingpay ? "Live Fingpay" : "Live Levin"}
+                                Live Terminal
                             </span>
                             <span className="text-xs font-black text-black">
                                 ID: <strong className="text-black font-extrabold uppercase">

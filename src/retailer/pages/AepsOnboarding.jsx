@@ -205,7 +205,7 @@ export default function AepsOnboarding() {
                 timestamp: Date.now()
             };
             await aepsService.onboard(payload);
-            setSuccessMsg('Fingpay Onboarding completed successfully! Redirecting to Biometric KYC...');
+            setSuccessMsg('Merchant Onboarding completed successfully! Redirecting to Biometric KYC...');
             setTimeout(() => {
                 navigate(`/aeps-agent-kyc?mobile=${encodeURIComponent(formData.aepsMobile)}&provider=${encodeURIComponent(provider)}`);
             }, 1500);
@@ -251,14 +251,14 @@ export default function AepsOnboarding() {
                             <div>
                                 <h1 className="text-xl sm:text-2xl font-black tracking-tight flex items-center gap-2.5">
                                     <Landmark className="text-blue-400" size={24} />
-                                    Fingpay Merchant Onboarding
+                                    AEPS Merchant Onboarding
                                 </h1>
                                 <p className="text-slate-400 text-xs mt-1">
-                                    Complete merchant registration & bank settlement details for AEPS 1 transactions
+                                    Complete merchant registration & bank settlement details for AEPS banking operations
                                 </p>
                             </div>
                             <span className="hidden sm:inline-block px-3 py-1 bg-blue-500/20 text-blue-300 border border-blue-400/30 rounded-full text-[11px] font-extrabold uppercase tracking-wider">
-                                Provider: {provider.toUpperCase()}
+                                AEPS Registration
                             </span>
                         </div>
 
@@ -434,7 +434,7 @@ export default function AepsOnboarding() {
                                         <p className="text-[11px] text-slate-500 mt-0.5">
                                             {formData.latitude && formData.longitude
                                                 ? `Lat: ${formData.latitude}, Long: ${formData.longitude}`
-                                                : 'Auto-detect coordinates for Fingpay outlet verification'}
+                                                : 'Auto-detect coordinates for AEPS outlet verification'}
                                         </p>
                                     </div>
                                     <button type="button" onClick={detectLocation} disabled={detectingGps || loading} className="px-4 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer">

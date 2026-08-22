@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     ArrowLeft, Fingerprint, CheckCircle2, ShieldCheck, AlertCircle,
@@ -175,7 +175,7 @@ export default function AepsAgentKyc() {
                         </button>
                         <span className="px-3 py-1 bg-blue-50 text-blue-700 border border-blue-100 rounded-full text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5">
                             <Sparkles size={12} />
-                            Fingpay AEPS eKYC
+                            AEPS Biometric eKYC
                         </span>
                     </div>
 
@@ -286,7 +286,7 @@ export default function AepsAgentKyc() {
                                     </div>
                                     <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide">Enter 6-Digit OTP</h3>
                                     <p className="text-xs text-slate-600 font-medium mt-1 leading-relaxed">
-                                        A 6-digit verification code has been sent to your Fingpay registered mobile number.
+                                        A 6-digit verification code has been sent to your registered mobile number.
                                     </p>
                                     {(kycResponse?.providerReference || kycResponse?.providerTxnId) && (
                                         <div className="inline-block mt-2 px-3 py-1 bg-white border border-blue-200 rounded-full text-[11px] font-bold text-blue-700 shadow-xs">
@@ -371,7 +371,7 @@ export default function AepsAgentKyc() {
                                         <div>
                                             <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide">Bank eKYC Required</h3>
                                             <p className="text-xs text-slate-600 font-medium mt-1.5 leading-relaxed">
-                                                {kycResponse?.message || 'Fingpay requires mandatory Bank eKYC verification before enabling AEPS transactions.'}
+                                                {kycResponse?.message || 'Bank requires mandatory eKYC verification before enabling AEPS transactions.'}
                                             </p>
                                         </div>
                                     </div>
@@ -383,70 +383,34 @@ export default function AepsAgentKyc() {
                                     <ul className="text-xs text-slate-600 space-y-1.5 font-medium">
                                         <li className="flex items-start gap-2"><Check size={13} className="text-blue-500 mt-0.5 shrink-0" /> A one-time mandatory biometric verification with your bank account</li>
                                         <li className="flex items-start gap-2"><Check size={13} className="text-blue-500 mt-0.5 shrink-0" /> Required for all new AEPS merchants from FY 2025–26 onwards</li>
-                                        <li className="flex items-start gap-2"><Check size={13} className="text-blue-500 mt-0.5 shrink-0" /> Scan fingerprint once more to complete this step</li>
                                     </ul>
                                 </div>
 
-                                {/* Fingerprint Capture for Bank eKYC */}
-                                {device && (
-                                    <div className="border border-amber-200/80 bg-amber-50/30 rounded-2xl p-5 space-y-4">
-                                        <div className="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wide">
-                                            <Fingerprint size={16} className="text-amber-600" />
-                                            Step 3: Capture Fingerprint for Bank eKYC
-                                        </div>
-                                        <p className="text-xs text-slate-500 leading-relaxed">
-                                            Place your finger on the Mantra RD scanner and click capture, then submit to complete Bank eKYC verification.
-                                        </p>
-
-                                        <CaptureButton customPidOptions={PID_OPTIONS_EKYC_XML} />
-                                        <CaptureLoader />
-                                        <CaptureError />
-                                        <CaptureSuccess />
-
-                                        {captureResult && !isBankEkycDone && (
-                                            <button
-                                                type="button"
-                                                id="bank-ekyc-submit-btn"
-                                                onClick={handleBankEkycSubmit}
-                                                disabled={submittingBankEkyc}
-                                                className="w-full py-4 bg-amber-600 hover:bg-amber-700 text-white rounded-2xl font-bold uppercase tracking-wider text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-amber-600/20 disabled:opacity-50 mt-4"
-                                            >
-                                                {submittingBankEkyc ? (
-                                                    <>
-                                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                                        Submitting Bank eKYC...
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Building2 size={18} />
-                                                        Submit Bank eKYC Biometric
-                                                    </>
-                                                )}
-                                            </button>
-                                        )}
+                                {/* Biometric scan for Bank eKYC */}
+                                <div className="border border-slate-200/80 bg-slate-50/50 rounded-2xl p-5 space-y-4">
+                                    <div className="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wide">
+                                        <Fingerprint size={16} className="text-amber-600" />
+                                        Step 3: Biometric Authentication for Bank eKYC
                                     </div>
-                                )}
+                                    <p className="text-xs text-slate-500 leading-relaxed">
+                                        Scan your finger to complete Bank eKYC and permanently unlock your AEPS terminal.
+                                    </p>
 
-                                {/* Check Status Button */}
-                                <button
-                                    type="button"
-                                    id="bank-ekyc-check-status-btn"
-                                    onClick={handleCheckBankEkycStatus}
-                                    disabled={checkingStatus}
-                                    className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-bold uppercase tracking-wider text-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                                >
-                                    {checkingStatus ? (
-                                        <>
-                                            <div className="w-4 h-4 border-2 border-slate-400/30 border-t-slate-600 rounded-full animate-spin" />
-                                            Checking Status...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Activity size={14} />
-                                            Check Bank eKYC Status
-                                        </>
+                                    <CaptureButton
+                                        customPidOptions={PID_OPTIONS_EKYC_XML}
+                                        onCaptureSuccess={handleBankEkycSubmit}
+                                    />
+                                    <CaptureLoader />
+                                    <CaptureError />
+                                    <CaptureSuccess />
+
+                                    {submittingBankEkyc && (
+                                        <div className="w-full py-4 bg-amber-500 text-white rounded-2xl font-bold uppercase tracking-wider text-xs flex items-center justify-center gap-2 shadow-lg">
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            Submitting Bank eKYC...
+                                        </div>
                                     )}
-                                </button>
+                                </div>
 
                                 {bankEkycError && (
                                     <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs px-4 py-3.5 rounded-2xl flex items-start gap-2.5 font-medium shadow-sm">
@@ -454,19 +418,6 @@ export default function AepsAgentKyc() {
                                         <div className="leading-snug">{bankEkycError}</div>
                                     </div>
                                 )}
-
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setKycResponse(null);
-                                        setBankEkycResponse(null);
-                                        setBankEkycError('');
-                                    }}
-                                    className="w-full py-3 border border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300 rounded-2xl font-bold uppercase tracking-wider text-[11px] transition flex items-center justify-center gap-2 cursor-pointer"
-                                >
-                                    <RefreshCw size={13} />
-                                    Restart KYC from Step 1
-                                </button>
                             </motion.div>
                         )}
 
@@ -488,7 +439,7 @@ export default function AepsAgentKyc() {
                                     <p className="text-xs text-slate-500 font-medium mt-1 max-w-sm mx-auto leading-relaxed">
                                         {isBankEkycDone
                                             ? 'Both your merchant eKYC and mandatory Bank eKYC are now complete. Your AEPS terminal is fully activated.'
-                                            : 'Your Fingpay eKYC merchant authentication is completed. Your AEPS terminal is now active.'}
+                                            : 'Your eKYC merchant authentication is completed. Your AEPS terminal is now active.'}
                                     </p>
                                 </div>
 
@@ -504,8 +455,8 @@ export default function AepsAgentKyc() {
                                         </div>
                                     )}
                                     <div className="flex justify-between text-slate-500">
-                                        <span>Provider</span>
-                                        <span className="font-bold text-slate-700 uppercase">Fingpay AEPS</span>
+                                        <span>Terminal Status</span>
+                                        <span className="font-bold text-emerald-700 uppercase">Active</span>
                                     </div>
                                 </div>
 
