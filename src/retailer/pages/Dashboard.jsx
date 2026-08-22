@@ -234,47 +234,7 @@ const RetailerDashboard = () => {
             <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');`}</style>
             
             <div className="max-w-[1440px] mx-auto space-y-6">
-                
-                {/* Header Section */}
-                <motion.div 
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mt-4"
-                >
-                        {/* LEFT GREETING */}
-                        <div className="space-y-0.5">
-                        <h1 className="text-3xl md:text-4xl font-black tracking-tighter text-slate-900 leading-tight">
-                            Hi {displayName}, <span className="text-slate-400">Have a great day!</span>
-                        </h1>
-                    </div>
-
-                    {/* RIGHT WALLET CLUSTER - MOVED TO TOP HEADER */}
-                    <div className="flex-1"></div>
-                </motion.div>
-
-                {/* News Bar: Admin Editable */}
-                {appData?.news && (
-                    <motion.div 
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="bg-white border-y border-slate-100 py-3 flex items-center gap-4 px-10"
-                    >
-                        <div className="text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest whitespace-nowrap" style={{ backgroundColor: 'var(--primary-color)' }}>
-                            Bulletin
-                        </div>
-                        <div className="flex-1 overflow-hidden">
-                            <motion.p 
-                                animate={{ x: [1000, -1000] }}
-                                transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-                                className="text-sm font-bold text-slate-600 whitespace-nowrap"
-                            >
-                                {appData.news}
-                            </motion.p>
-                        </div>
-                    </motion.div>
-                )}
-
-                {/* All Catalog Services (replacing Core Services) */}
+                {/* All Catalog Services */}
                 <AllServices embedded={true} />
 
                 {/* Main Content Grid: Restored full-width alignment */}
