@@ -172,10 +172,6 @@ public class AepsServiceImpl implements AepsService {
         if (authenticatedAt.isAfter(now)) {
             return false;
         }
-        long hours = Duration.between(authenticatedAt, now).toHours();
-        if (hours < 24) {
-            return true;
-        }
         LocalDate authDate = authenticatedAt.atZone(IST_ZONE).toLocalDate();
         LocalDate today = LocalDate.now(IST_ZONE);
         return authDate.isEqual(today);
@@ -185,16 +181,8 @@ public class AepsServiceImpl implements AepsService {
         if (authenticatedAt == null) {
             return false;
         }
-        LocalDateTime now = LocalDateTime.now();
-        if (authenticatedAt.isAfter(now)) {
-            return false;
-        }
-        long hours = Duration.between(authenticatedAt, now).toHours();
-        if (hours < 24) {
-            return true;
-        }
         LocalDate authDate = authenticatedAt.toLocalDate();
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(IST_ZONE);
         return authDate.isEqual(today);
     }
 

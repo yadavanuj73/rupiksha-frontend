@@ -7,8 +7,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Wallet, Filter, Send, Settings, ShieldCheck, 
-    TrendingUp, Activity, Smartphone, CreditCard, 
+    Wallet, Filter, Send, Settings, ShieldCheck,
+    TrendingUp, Activity, Smartphone, CreditCard,
     ArrowUpRight, Landmark, Zap, LayoutGrid, X,
     Building2, Receipt
 } from 'lucide-react';
@@ -53,7 +53,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 const ServiceItem = ({ label, icon: Icon, bg, shadow, onClick }) => (
-    <motion.div 
+    <motion.div
         whileHover={{ y: -5, scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={onClick}
@@ -84,7 +84,7 @@ const NewsCarousel = ({ banners = [], showDots = true }) => {
     return (
         <div className="relative w-full h-[180px] md:h-[260px] lg:h-[300px] overflow-hidden rounded-[48px] shadow-sm border border-slate-100 bg-gradient-to-br from-white to-blue-50 group">
             <AnimatePresence mode="wait">
-                <motion.div 
+                <motion.div
                     key={idx}
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -92,7 +92,7 @@ const NewsCarousel = ({ banners = [], showDots = true }) => {
                     transition={{ duration: 0.8, ease: "easeOut" }}
                     className="w-full h-full flex items-center justify-center p-12"
                 >
-                    <img 
+                    <img
                         src={displayBanners[idx]}
                         className="max-w-full max-h-full object-contain drop-shadow-2xl transition-transform duration-[2000ms] group-hover:scale-105"
                         alt="Rupiksha Poster"
@@ -101,15 +101,15 @@ const NewsCarousel = ({ banners = [], showDots = true }) => {
                 </motion.div>
             </AnimatePresence>
             <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
-            
+
             {/* Dots */}
             {showDots && displayBanners.length > 1 && (
                 <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-3 z-10">
                     {displayBanners.map((_, i) => (
-                        <div 
-                            key={i} 
+                        <div
+                            key={i}
                             onClick={() => setIdx(i)}
-                            className={`h-1.5 rounded-full transition-all duration-700 cursor-pointer ${i === idx ? 'w-10 bg-white' : 'w-2 bg-white/30 hover:bg-white/50'}`} 
+                            className={`h-1.5 rounded-full transition-all duration-700 cursor-pointer ${i === idx ? 'w-10 bg-white' : 'w-2 bg-white/30 hover:bg-white/50'}`}
                         />
                     ))}
                 </div>
@@ -180,7 +180,7 @@ const RetailerDashboard = () => {
                 else if (s.includes('UPI')) category = 'UPI Pay';
                 else if (s.includes('DMT') || s.includes('MATM') || s.includes('PAYOUT')) category = 'Transfers';
                 else if (s.includes('RECHARGE') || s.includes('BILL')) category = 'Utility';
-                
+
                 acc[category] = (acc[category] || 0) + parseFloat(tx.amount || 0);
                 return acc;
             }, {});
@@ -190,9 +190,9 @@ const RetailerDashboard = () => {
                     method: name,
                     value: totalVolume > 0 ? Math.round((val / totalVolume) * 100) : 0,
                     amount: val,
-                    color: name === 'AEPS Hub' ? 'bg-blue-600' : 
-                          name === 'UPI Pay' ? 'bg-emerald-500' : 
-                          name === 'Transfers' ? 'bg-indigo-500' : 'bg-slate-300'
+                    color: name === 'AEPS Hub' ? 'bg-blue-600' :
+                        name === 'UPI Pay' ? 'bg-emerald-500' :
+                            name === 'Transfers' ? 'bg-indigo-500' : 'bg-slate-300'
                 }))
                 .sort((a, b) => b.amount - a.amount);
 
@@ -232,14 +232,14 @@ const RetailerDashboard = () => {
     return (
         <div className="min-h-screen bg-[#f7f9fc] p-2 md:p-6 lg:px-10 pb-20 overflow-x-hidden">
             <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');`}</style>
-            
+
             <div className="max-w-[1440px] mx-auto space-y-6">
                 {/* All Catalog Services */}
                 <AllServices embedded={true} />
 
                 {/* Main Content Grid: Restored full-width alignment */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                    
+
                     {/* LEFT PANEL: Trends & Recent Activity */}
                     <div className="lg:col-span-8 space-y-10">
 
@@ -257,7 +257,7 @@ const RetailerDashboard = () => {
                             </div>
                             <div className="h-[220px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart 
+                                    <AreaChart
                                         data={transactions.length > 0 ? transactions.slice(0, 15).reverse().map(t => ({
                                             t: new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                                             v: parseFloat(t.amount || 0)
@@ -265,8 +265,8 @@ const RetailerDashboard = () => {
                                     >
                                         <defs>
                                             <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1} />
+                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                                             </linearGradient>
                                         </defs>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -298,7 +298,7 @@ const RetailerDashboard = () => {
                                             </div>
                                             <div>
                                                 <p className="text-xs font-black text-slate-800 uppercase tracking-tight">
-                                                    {tx.service?.replace(/_/g, ' ')} 
+                                                    {tx.service?.replace(/_/g, ' ')}
                                                     <span className="ml-2 text-blue-600 opacity-60">#{tx.number || tx.operator || tx.id?.toString().slice(-4)}</span>
                                                 </p>
                                                 <p className="text-[9px] font-bold text-slate-400 tracking-widest uppercase">{new Date(tx.created_at).toLocaleDateString()} • {new Date(tx.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
@@ -321,13 +321,13 @@ const RetailerDashboard = () => {
 
                     {/* RIGHT PANEL: Transactions & Payments */}
                     <div className="lg:col-span-4 space-y-10">
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, x: 20 }}
                             animate={{ opacity: 1, x: 0 }}
                             className="bg-white border border-slate-100 p-8 rounded-[48px] shadow-xl shadow-slate-200/50 relative overflow-hidden group"
                         >
                             <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-blue-50 rounded-full blur-[80px] opacity-50 transition-transform group-hover:scale-125 duration-700" />
-                            
+
                             <div className="relative z-10">
                                 <div className="flex flex-col gap-6 mb-8">
                                     <div className="space-y-1">
@@ -336,8 +336,8 @@ const RetailerDashboard = () => {
                                     </div>
                                     <div className="flex gap-1 p-1 bg-slate-50 rounded-xl border border-slate-100 self-start">
                                         {['Daily', 'Weekly', 'Monthly'].map((period) => (
-                                            <button 
-                                                key={period} 
+                                            <button
+                                                key={period}
                                                 onClick={() => setSelectedPeriod(period)}
                                                 className={`px-3 py-1.5 text-[8px] font-black uppercase tracking-widest rounded-lg transition-all ${selectedPeriod === period ? 'bg-white text-blue-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
                                             >
@@ -393,7 +393,7 @@ const RetailerDashboard = () => {
                                                     <span className="text-xs font-black text-slate-800">{item.value}%</span>
                                                 </div>
                                                 <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                                                    <motion.div 
+                                                    <motion.div
                                                         initial={{ width: 0 }}
                                                         animate={{ width: `${item.value}%` }}
                                                         className={`h-full ${item.color} rounded-full`}
