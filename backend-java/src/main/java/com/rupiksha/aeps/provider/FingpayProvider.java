@@ -542,6 +542,8 @@ public class FingpayProvider implements AepsProvider {
                     ? context.getRequest().getRequestRemarks() 
                     : "CW");
             req.setDeviceId(context.getRequest().getDeviceId());
+            req.setTxnOtpRequestId(context.getRequest().getTxnOtpRequestId());
+            req.setOtp(context.getRequest().getOtp());
 
             populateBiometrics(req, parsed);
 
@@ -653,6 +655,8 @@ public class FingpayProvider implements AepsProvider {
             req.setLog(context.getRequest().getLongitude() != null ? context.getRequest().getLongitude() : "77.2090");
             req.setAmount(context.getRequest().getAmount().doubleValue());
             req.setBankId(bank.getId());
+            req.setTxnOtpRequestId(context.getRequest().getTxnOtpRequestId());
+            req.setOtp(context.getRequest().getOtp());
 
             populateBiometricsAP(req, parsed);
 

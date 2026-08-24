@@ -339,6 +339,32 @@ public class AepsController {
         }
     }
 
+    /**
+     * Generates customer Aadhaar OTP for CW / AP transactions with amount > 5000.
+     */
+    @PostMapping("/send-txn-otp")
+    public ResponseEntity<ApiResponse<com.rupiksha.aeps.dto.response.AepsTxnOtpResponse>> sendTxnOtp(@Valid @RequestBody com.rupiksha.aeps.dto.request.AepsTxnOtpRequest request) {
+        log.info("REST request to send transaction OTP for amount > 5000: amount={}, service={}", request.getAmount(), request.getServiceType());
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof JwtPrincipal)) {
+            return ResponseEntity.status(401).body(ApiResponse.error("Merchant session is unauthenticated or expired."));
+        }
+        JwtPrincipal principal = (JwtPrincipal) auth.getPrincipal();
+        String mobile = principal.username();
+        if (mobile == null || mobile.isBlank()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to resolve mobile number from auth token."));
+        }
+
+        com.rupiksha.aeps.dto.response.AepsTxnOtpResponse response = aepsService.sendTxnOtp(request, mobile);
+
+        if (response.isSuccess()) {
+            return ResponseEntity.ok(ApiResponse.success(response.getMessage(), response));
+        } else {
+            return ResponseEntity.badRequest().body(ApiResponse.error(response.getMessage(), response));
+        }
+    }
+
     @PostMapping("/transaction")
     public ResponseEntity<ApiResponse<TransactionResult>> transact(@Valid @RequestBody AepsTransactionRequest request) {
         log.info("REST request to execute AEPS transaction.");

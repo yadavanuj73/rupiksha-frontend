@@ -110,6 +110,9 @@ public class AadhaarPayService {
             payload.put("merchantUserName", merchantUserName);
             payload.put("merchantPin", md5(rawPin));
             payload.put("superMerchantId", superMerchantId);
+            if (req.getTxnOtpRequestId() != null && !req.getTxnOtpRequestId().isBlank()) {
+                payload.put("txnOtpRequestId", req.getTxnOtpRequestId().trim());
+            }
             payload.put("cardnumberORUID", cardOrUID);
             payload.put("captureResponse", captureResponse);
 

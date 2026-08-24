@@ -50,5 +50,9 @@ public class AepsTransactionRequest {
     private String transactionId; // Optional: Client-provided reference
 
     private String provider;
+
+    private String txnOtpRequestId; // Fingpay fpTransactionId from OTP generation API (> 5000)
+
+    private String otp; // Aadhaar OTP entered by customer
 }
 

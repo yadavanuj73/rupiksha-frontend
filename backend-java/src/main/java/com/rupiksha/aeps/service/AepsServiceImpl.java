@@ -67,6 +67,7 @@ public class AepsServiceImpl implements AepsService {
     private final BiometricService biometricService;
     private final EkycTxnRepo ekycTxnRepo;
     private final ObjectMapper objectMapper;
+    private final com.rupiksha.aeps.provider.fingpay.service.FingpayTxnOtpService fingpayTxnOtpService;
 
     @Autowired
     public AepsServiceImpl(
@@ -80,7 +81,8 @@ public class AepsServiceImpl implements AepsService {
             EkycStatusService ekycStatusService,
             BiometricService biometricService,
             EkycTxnRepo ekycTxnRepo,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            com.rupiksha.aeps.provider.fingpay.service.FingpayTxnOtpService fingpayTxnOtpService
     ) {
         this.providers = providers;
         this.aepsProperties = aepsProperties;
@@ -93,6 +95,7 @@ public class AepsServiceImpl implements AepsService {
         this.biometricService = biometricService;
         this.ekycTxnRepo = ekycTxnRepo;
         this.objectMapper = objectMapper;
+        this.fingpayTxnOtpService = fingpayTxnOtpService;
     }
 
     private boolean isFingpayKycCompleted(com.rupiksha.backend.domain.User mainUser) {
@@ -1274,6 +1277,78 @@ public class AepsServiceImpl implements AepsService {
                     .success(false)
                     .workflowState(AepsWorkflowState.FAILED.name())
                     .message("eKYC status check failed: " + e.getMessage())
+                    .provider("FINGPAY")
+                    .build();
+        }
+    }
+
+    @Override
+    public com.rupiksha.aeps.dto.response.AepsTxnOtpResponse sendTxnOtp(com.rupiksha.aeps.dto.request.AepsTxnOtpRequest request, String mobile) {
+        log.info("Sending transaction OTP for mobile: {}, amount: {}, service: {}", mobile, request.getAmount(), request.getServiceType());
+        try {
+            Optional<com.rupiksha.backend.domain.User> coreUserOpt = mainUserRepository.findByMobile(mobile)
+                    .or(() -> mainUserRepository.findByUsername(mobile));
+            if (coreUserOpt.isEmpty()) {
+                throw new AepsException("Merchant core profile not found for mobile: " + mobile);
+            }
+            com.rupiksha.backend.domain.User coreUser = coreUserOpt.get();
+            long uidLong = coreUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
+
+            Double lat = 28.6139;
+            Double lng = 77.2090;
+            if (request.getLatitude() != null && !request.getLatitude().isBlank()) {
+                try {
+                    lat = Double.parseDouble(request.getLatitude().trim());
+                } catch (Exception ignored) {}
+            }
+            if (request.getLongitude() != null && !request.getLongitude().isBlank()) {
+                try {
+                    lng = Double.parseDouble(request.getLongitude().trim());
+                } catch (Exception ignored) {}
+            }
+
+            String custMobile = request.getCustomerMobile();
+            if (custMobile == null || custMobile.isBlank()) {
+                custMobile = request.getMobileNumber();
+            }
+            if (custMobile == null || custMobile.isBlank()) {
+                custMobile = mobile;
+            }
+
+            com.rupiksha.aeps.provider.fingpay.dto.FingpayTxnOtpRequestDTO otpDto = com.rupiksha.aeps.provider.fingpay.dto.FingpayTxnOtpRequestDTO.builder()
+                    .uid(uidLong)
+                    .serviceType(request.getServiceType())
+                    .transactionType("AADHAAR_PAY".equalsIgnoreCase(request.getServiceType()) || "AP".equalsIgnoreCase(request.getServiceType()) ? "MO" : "CO")
+                    .mobileNumber(custMobile)
+                    .latitude(lat)
+                    .longitude(lng)
+                    .requestRemarks(request.getRequestRemarks())
+                    .paymentType("AEPS")
+                    .transactionAmount(request.getAmount() != null ? request.getAmount().doubleValue() : 0.0)
+                    .bankId(request.getBankName())
+                    .adhaarNumber(request.getAdhaarNumber())
+                    .deviceId(request.getDeviceId())
+                    .build();
+
+            com.rupiksha.aeps.provider.fingpay.dto.FingpayTxnOtpResponseDTO dtoResp = fingpayTxnOtpService.sendOtp(otpDto);
+
+            return com.rupiksha.aeps.dto.response.AepsTxnOtpResponse.builder()
+                    .success(dtoResp.isStatus())
+                    .message(dtoResp.getMessage())
+                    .statusCode(dtoResp.getStatusCode())
+                    .fpTransactionId(dtoResp.getFpTransactionId())
+                    .merchantTxnId(dtoResp.getMerchantTxnId())
+                    .transactionTimestamp(dtoResp.getTransactionTimestamp())
+                    .transactionAmount(dtoResp.getTransactionAmount())
+                    .provider("FINGPAY")
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Exception in sendTxnOtp for mobile: {}", mobile, e);
+            return com.rupiksha.aeps.dto.response.AepsTxnOtpResponse.builder()
+                    .success(false)
+                    .message("Failed to initiate OTP request: " + e.getMessage())
+                    .statusCode(10001L)
                     .provider("FINGPAY")
                     .build();
         }

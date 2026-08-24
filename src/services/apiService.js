@@ -483,6 +483,11 @@ export const aepsService = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  sendTxnOtp: (payload) =>
+    apiFetch("/aeps/send-txn-otp", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 
   /**
    * Submits biometric fingerprint for the mandatory Bank eKYC step.

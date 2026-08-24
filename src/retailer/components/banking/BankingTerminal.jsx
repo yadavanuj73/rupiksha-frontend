@@ -34,6 +34,7 @@ import CaptureError from '../../../components/CaptureError';
 import CaptureSuccess from '../../../components/CaptureSuccess';
 import { aepsService } from '../../../services/apiService';
 import ReceiptModal from './ReceiptModal';
+import AadhaarOtpModal from './AadhaarOtpModal';
 import DailyAuthentication from '../../../components/DailyAuthentication';
 import { validateVerhoeff } from '../../../utils/verhoeff';
 
@@ -180,6 +181,12 @@ export default function BankingTerminal({ provider, status, setStatus }) {
     const [receiptData, setReceiptData] = useState(null);
     const [show2faModal, setShow2faModal] = useState(false);
 
+    // Aadhaar OTP Verification State for Amount > ₹5,000 (Fingpay NPCI Mandate)
+    const [showOtpModal, setShowOtpModal] = useState(false);
+    const [otpLoading, setOtpLoading] = useState(false);
+    const [otpError, setOtpError] = useState('');
+    const [txnOtpData, setTxnOtpData] = useState({ otp: '', fpTransactionId: '' });
+
     // Fetch banks and lock location on mount
     useEffect(() => {
         const loadBanks = async () => {
@@ -240,6 +247,9 @@ export default function BankingTerminal({ provider, status, setStatus }) {
         setErrorMsg('');
         setSuccessMsg('');
         setBcConsent(false);
+        setShowOtpModal(false);
+        setOtpError('');
+        setTxnOtpData({ otp: '', fpTransactionId: '' });
         if (reset) reset();
         setDenominations({
             500: 0,
@@ -361,6 +371,41 @@ export default function BankingTerminal({ provider, status, setStatus }) {
         return null;
     };
 
+    // Trigger Aadhaar OTP generation for transactions > 5000 (Fingpay Cash Withdrawal & Aadhaar Pay)
+    const triggerSendTxnOtp = async () => {
+        setOtpLoading(true);
+        setOtpError('');
+        try {
+            const payload = {
+                amount: parseFloat(formData.amount),
+                serviceType: activeTab,
+                bankName: formData.bankIin || formData.bankName,
+                adhaarNumber: formData.aadhar,
+                customerMobile: formData.mobile,
+                mobileNumber: formData.mobile,
+                requestRemarks: formData.remarks || (activeTab === 'CASH_WITHDRAWAL' ? 'Cash Withdrawal OTP request' : 'AadhaarPay OTP request'),
+                latitude: location?.latitude || "28.6139",
+                longitude: location?.longitude || "77.2090",
+                deviceId: device ? (device.serial || device.dpID || '10068311') : '10068311',
+                provider: provider
+            };
+            const res = await aepsService.sendTxnOtp(payload);
+            if (res.success && res.data) {
+                setTxnOtpData(prev => ({
+                    ...prev,
+                    fpTransactionId: res.data.fpTransactionId || res.data.merchantTxnId
+                }));
+            } else {
+                setOtpError(res.message || "Failed to generate Aadhaar OTP. Please check details or retry.");
+            }
+        } catch (err) {
+            console.error("sendTxnOtp error", err);
+            setOtpError(err.message || "Failed to send OTP to Aadhaar linked mobile.");
+        } finally {
+            setOtpLoading(false);
+        }
+    };
+
     // Transition from Step 1 to Step 2
     const handleProceedToStep2 = (e) => {
         e.preventDefault();
@@ -371,7 +416,16 @@ export default function BankingTerminal({ provider, status, setStatus }) {
             setErrorMsg(err);
             return;
         }
-        setCurrentStep(2);
+
+        // Check if Amount > 5000 for Cash Withdrawal or Aadhaar Pay (NPCI Mandate)
+        const isEligibleForOtp = (activeTab === 'CASH_WITHDRAWAL' || activeTab === 'AADHAAR_PAY') && parseFloat(formData.amount) > 5000;
+        if (isEligibleForOtp) {
+            setShowOtpModal(true);
+            triggerSendTxnOtp();
+        } else {
+            setTxnOtpData({ otp: '', fpTransactionId: '' });
+            setCurrentStep(2);
+        }
     };
 
     // Submit Final Transaction (Step 2)
@@ -401,7 +455,9 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                 longitude: location?.longitude || "77.2090",
                 deviceId: device ? (device.serial || device.dpID || '10068311') : '10068311',
                 ipAddress: '127.0.0.1',
-                provider: provider
+                provider: provider,
+                txnOtpRequestId: txnOtpData.fpTransactionId || null,
+                otp: txnOtpData.otp || null
             };
 
             const response = await aepsService.transact(payload);
@@ -452,6 +508,7 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                 });
                 setBankSearch('');
                 setBcConsent(false);
+                setTxnOtpData({ otp: '', fpTransactionId: '' });
                 setCurrentStep(1);
                 if (reset) reset();
                 setDenominations({
@@ -1189,6 +1246,16 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                                 </span>
                                             </div>
                                         )}
+
+                                        {txnOtpData.otp && (
+                                            <div className="flex justify-between items-center py-1 border-t border-slate-200">
+                                                <span className="text-slate-700 font-bold text-[11px]">Aadhaar OTP:</span>
+                                                <span className="font-mono text-[10px] font-black bg-blue-100 text-blue-950 px-2 py-0.5 rounded border border-blue-300 flex items-center gap-1">
+                                                    <Check size={10} className="text-blue-700" />
+                                                    Verified (• • • • • •)
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -1225,7 +1292,14 @@ export default function BankingTerminal({ provider, status, setStatus }) {
 
                                     {/* Capture Controls */}
                                     <div className="space-y-2">
-                                        <CaptureButton onCaptureSuccess={handleFinalSubmit} />
+                                        <CaptureButton 
+                                            onCaptureSuccess={handleFinalSubmit} 
+                                            customPidOptions={
+                                                txnOtpData.otp ? 
+                                                `<PidOptions ver='1.0'> <Opts fCount='1' fType='2' iCount='0' iType='0' indicatorforUID='0' pCount='0' pType='0' format='0' pidVer='2.0' env='P' timeout='15000' otp='${txnOtpData.otp}' wadh='' posh='UNKNOWN'/> <Demo></Demo> <CustOpts> <Param name='' value=''/> </CustOpts> </PidOptions>`
+                                                : null
+                                            }
+                                        />
                                         <CaptureLoader />
                                         <CaptureError />
                                         {!errorMsg && !loading && <CaptureSuccess />}
@@ -1268,6 +1342,28 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                     )}
                 </AnimatePresence>
             )}
+
+            {/* Aadhaar OTP Verification Modal for Transactions > ₹5,000 */}
+            <AadhaarOtpModal
+                isOpen={showOtpModal}
+                onClose={() => setShowOtpModal(false)}
+                onVerifySuccess={(enteredOtp) => {
+                    setTxnOtpData(prev => ({ ...prev, otp: enteredOtp }));
+                    setShowOtpModal(false);
+                    setCurrentStep(2);
+                }}
+                onResendOtp={triggerSendTxnOtp}
+                txnDetails={{
+                    amount: formData.amount,
+                    mobile: formData.mobile,
+                    aadhar: formData.aadhar,
+                    bankName: formData.bankName,
+                    serviceType: activeTab
+                }}
+                loading={otpLoading}
+                error={otpError}
+                fpTransactionId={txnOtpData.fpTransactionId}
+            />
 
             {/* Receipt Modal Overlay */}
             <ReceiptModal

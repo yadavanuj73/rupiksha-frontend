@@ -58,4 +58,9 @@ public interface AepsService {
      * @param kycType   "EKYC" for onboarding KYC, "BeKYC" for bank eKYC
      */
     KycResponse checkEkycStatus(String mobile, String kycType);
+
+    /**
+     * Generates customer Aadhaar OTP for CW / AP transactions with amount > 5000.
+     */
+    com.rupiksha.aeps.dto.response.AepsTxnOtpResponse sendTxnOtp(com.rupiksha.aeps.dto.request.AepsTxnOtpRequest request, String mobile);
 }
