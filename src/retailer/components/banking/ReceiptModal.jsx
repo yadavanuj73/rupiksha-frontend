@@ -66,6 +66,8 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
     };
 
     const statusUpper = status.toUpperCase();
+    const isBalanceInquiry = txnData.serviceType === 'BALANCE_INQUIRY' || (txnData.serviceLabel && txnData.serviceLabel.toLowerCase().includes('balance'));
+    const isMiniStatement = txnData.serviceType === 'MINI_STATEMENT' || (txnData.serviceLabel && txnData.serviceLabel.toLowerCase().includes('statement'));
 
     return (
         <AnimatePresence>
@@ -80,7 +82,7 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                     <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
                         <span className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                             <ShieldCheck size={14} className="text-emerald-500" />
-                            Secure Transaction E-Receipt
+                            {isBalanceInquiry ? 'Account Balance Statement' : 'Secure Transaction E-Receipt'}
                         </span>
                         <button
                             onClick={onClose}
@@ -125,12 +127,22 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                                 statusUpper === 'PENDING' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
                                 'bg-rose-50 text-rose-700 border border-rose-100'
                             }`}>
-                                {statusUpper === 'SUCCESS' ? 'Transaction Approved' : statusUpper === 'PENDING' ? 'Transaction Pending' : 'Transaction Rejected'}
+                                {statusUpper === 'SUCCESS' ? (isBalanceInquiry ? 'Balance Fetched Successfully' : 'Transaction Approved') : statusUpper === 'PENDING' ? 'Transaction Pending' : 'Transaction Rejected'}
                             </span>
 
-                            <div className="text-3xl font-black text-slate-800 tracking-tight">
-                                ₹{transactionAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                            </div>
+                            {isBalanceInquiry ? (
+                                <div className="space-y-0.5">
+                                    <p className="text-[11px] font-black uppercase tracking-wider text-slate-500">Available Account Balance</p>
+                                    <div className="text-3xl font-black text-emerald-600 tracking-tight">
+                                        ₹ {balanceAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-3xl font-black text-slate-800 tracking-tight">
+                                    ₹ {transactionAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                </div>
+                            )}
+
                             <p className="text-[10px] font-semibold text-slate-400 mt-1 leading-normal">
                                 {message}
                             </p>
@@ -169,7 +181,7 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                                 <span className="font-semibold text-slate-400">Bank RRN</span>
                                 <span className="font-mono font-black text-slate-800 select-all">{bankRRN}</span>
                             </div>
-                            {statusUpper === 'SUCCESS' && balanceAmount > 0 && (
+                            {statusUpper === 'SUCCESS' && !isBalanceInquiry && balanceAmount > 0 && (
                                 <div className="flex justify-between items-center py-2 border-b border-slate-100 text-xs">
                                     <span className="font-semibold text-slate-400">Remaining Ledger Balance</span>
                                     <span className="font-black text-slate-800">₹{balanceAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>

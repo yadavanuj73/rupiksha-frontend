@@ -12,4 +12,6 @@ public class BalanceInquiryResponse {
     private Double balanceAmount;
     private String maskedAadhaar;
     private String responseCode;
+    private String terminalId;
+    private String requestTransactionTime;
 }

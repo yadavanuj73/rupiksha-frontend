@@ -236,12 +236,6 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     private void validateRequest(AepsTransactionRequest request) {
-        if (request.getAmount() == null) {
-            throw new ValidationException("Transaction amount is required.");
-        }
-        if (request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new ValidationException("Transaction amount must be positive and non-zero.");
-        }
         if (request.getServiceType() == null || request.getServiceType().isBlank()) {
             throw new ValidationException("Service type is required.");
         }
@@ -251,6 +245,19 @@ public class TransactionServiceImpl implements TransactionService {
             !type.equals("MINI_STATEMENT") && !type.equals("AADHAAR_PAY") &&
             !type.equals("CASH_DEPOSIT")) {
             throw new ValidationException("Unsupported AEPS service type: " + request.getServiceType());
+        }
+
+        if (!type.equals("BALANCE_INQUIRY") && !type.equals("MINI_STATEMENT")) {
+            if (request.getAmount() == null) {
+                throw new ValidationException("Transaction amount is required.");
+            }
+            if (request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new ValidationException("Transaction amount must be positive and non-zero.");
+            }
+        } else {
+            if (request.getAmount() == null) {
+                request.setAmount(BigDecimal.ZERO);
+            }
         }
 
         if (request.getTransactionId() != null && !request.getTransactionId().isBlank()) {

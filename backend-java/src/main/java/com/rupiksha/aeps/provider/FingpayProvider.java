@@ -595,11 +595,23 @@ public class FingpayProvider implements AepsProvider {
         } else if (serviceType.equals("BALANCE_INQUIRY")) {
             BalanceInquiryRequest req = new BalanceInquiryRequest();
             req.setUid(uidLong);
-            req.setMobile(context.getMerchant().getMobile());
+
+            String custMobile = context.getRequest().getMobileNumber();
+            if (custMobile == null || custMobile.isBlank()) {
+                custMobile = context.getRequest().getCustomerMobile();
+            }
+            if (custMobile == null || custMobile.isBlank()) {
+                custMobile = context.getMerchant().getMobile();
+            }
+            req.setMobile(custMobile);
             req.setAadhar(context.getRequest().getAdhaarNumber());
             req.setLat(context.getRequest().getLatitude() != null ? context.getRequest().getLatitude() : "28.6139");
             req.setLog(context.getRequest().getLongitude() != null ? context.getRequest().getLongitude() : "77.2090");
             req.setBankId(bank.getId());
+            req.setRequestRemarks(context.getRequest().getRequestRemarks() != null && !context.getRequest().getRequestRemarks().isBlank()
+                    ? context.getRequest().getRequestRemarks()
+                    : "BE");
+            req.setDeviceId(context.getRequest().getDeviceId());
 
             populateBiometricsBI(req, parsed);
 
@@ -612,9 +624,13 @@ public class FingpayProvider implements AepsProvider {
                     .providerReference(resp.getFpTxnId())
                     .status(success ? "SUCCESS" : "FAILED")
                     .workflowState(success ? TransactionWorkflowState.SUCCESS : TransactionWorkflowState.FAILED)
-                    .responseCode(resp.getResponseCode())
+                    .responseCode(resp.getResponseCode() != null && !resp.getResponseCode().isEmpty() ? resp.getResponseCode() : (success ? "00" : "99"))
                     .responseMessage(resp.getMessage())
                     .amount(BigDecimal.ZERO)
+                    .balanceAmount(BigDecimal.valueOf(resp.getBalanceAmount() != null ? resp.getBalanceAmount() : 0.0))
+                    .bankRrn(resp.getBankRRN())
+                    .maskedAadhaar(resp.getMaskedAadhaar())
+                    .bankName(bank.getBankName())
                     .providerName("fingpay")
                     .completedTime(LocalDateTime.now())
                     .build();

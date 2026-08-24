@@ -22,6 +22,10 @@ public class TransactionResult {
     private String responseCode;
     private String responseMessage;
     private BigDecimal amount;
+    private BigDecimal balanceAmount;
+    private String bankRrn;
+    private String maskedAadhaar;
+    private String bankName;
     private String providerName;
     private LocalDateTime completedTime;
 }

@@ -11,6 +11,10 @@ public class BalanceInquiryRequest {
     private String log;
     private Long bankId;
 
+    private String deviceId;
+    private String requestRemarks;
+    private String virtualId;
+
     // Biometric — RD service se as-is
     private String errorCode;
     private String errorInfo;
