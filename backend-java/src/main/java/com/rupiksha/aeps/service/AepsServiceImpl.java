@@ -254,7 +254,6 @@ public class AepsServiceImpl implements AepsService {
                 }
 
                 boolean isKycDone = Boolean.TRUE.equals(kyc.getKycDone()) 
-                        || Boolean.TRUE.equals(coreUser.getAepsKycDone()) 
                         || Boolean.TRUE.equals(kyc.getBankEkycDone());
 
                 if (isKycDone) {
@@ -262,10 +261,6 @@ public class AepsServiceImpl implements AepsService {
                         kyc.setKycDone(true);
                         kyc.setBankEkycDone(true);
                         aepsKycRepository.save(kyc);
-                    }
-                    if (!Boolean.TRUE.equals(coreUser.getAepsKycDone())) {
-                        coreUser.setAepsKycDone(true);
-                        mainUserRepository.save(coreUser);
                     }
                 }
 
@@ -289,22 +284,23 @@ public class AepsServiceImpl implements AepsService {
                         .build();
             }
         } else {
-            // Default to Levin
+            // Dedicated Levin Status Resolution (AEPS 2) - Strict isolation from Fingpay
             User user = getOrSyncAepsUser(mobile);
             if (user != null) {
-                boolean hasValidSession = isSessionValid(user.getAeps2faAuthenticatedAt()) || isSessionValid(coreUser.getAeps2faAuthenticatedAt());
-                boolean hasValidApSession = isSessionValid(user.getAepsAp2faAuthenticatedAt()) || isSessionValid(coreUser.getAepsAp2faAuthenticatedAt());
+                boolean hasValidSession = isSessionValid(user.getAeps2faAuthenticatedAt());
+                boolean hasValidApSession = isSessionValid(user.getAepsAp2faAuthenticatedAt());
+
+                boolean isLevinOnboarded = Boolean.TRUE.equals(user.getAepsOnboarded());
+                boolean isLevinKycDone = Boolean.TRUE.equals(user.getAepsKycDone());
 
                 String levinAgentId = user.getAepsAgentId();
-                if (levinAgentId == null || levinAgentId.isBlank() || (fingKycOpt.isPresent() && levinAgentId.equalsIgnoreCase(fingKycOpt.get().getOutlet()))) {
-                    levinAgentId = (coreUser.getPartyCode() != null && !coreUser.getPartyCode().isBlank()) 
-                            ? coreUser.getPartyCode().trim().toUpperCase() 
-                            : ("LVN" + mobile);
+                if (levinAgentId == null || levinAgentId.isBlank()) {
+                    levinAgentId = "LVN" + mobile;
                 }
 
                 return StatusResponse.builder()
-                        .onboarded(Boolean.TRUE.equals(user.getAepsOnboarded()) || Boolean.TRUE.equals(coreUser.getAepsOnboarded()))
-                        .kycDone(Boolean.TRUE.equals(user.getAepsKycDone()) || Boolean.TRUE.equals(coreUser.getAepsKycDone()))
+                        .onboarded(isLevinOnboarded)
+                        .kycDone(isLevinKycDone)
                         .aeps2faDone(hasValidSession)
                         .ap2faDone(hasValidApSession)
                         .agentId(levinAgentId)
@@ -494,30 +490,28 @@ public class AepsServiceImpl implements AepsService {
         if (isSuccess) {
             log.info("Biometric KYC completed instantly. Updating database records...");
             
-            long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
-            Optional<AepsKyc> aepsKycOpt = aepsKycRepository.findByUid(uidLong)
-                    .or(() -> (mainUser.getPartyCode() != null && !mainUser.getPartyCode().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getPartyCode().trim()) : Optional.empty())
-                    .or(() -> (mainUser.getAepsAgentId() != null && !mainUser.getAepsAgentId().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getAepsAgentId().trim()) : Optional.empty())
-                    .or(() -> (mainUser.getAepsMerchantId() != null && !mainUser.getAepsMerchantId().isBlank()) ? aepsKycRepository.findByMerchantId(mainUser.getAepsMerchantId().trim()) : Optional.empty());
-            
-            if (aepsKycOpt.isPresent()) {
-                AepsKyc aepsKyc = aepsKycOpt.get();
-                aepsKyc.setKycDone(true);
-                aepsKyc.setBankEkycDone(true);
-                aepsKycRepository.save(aepsKyc);
+            boolean isFingpay = "fingpay".equalsIgnoreCase(activeProvider.getProviderName());
+            if (isFingpay) {
+                long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
+                Optional<AepsKyc> aepsKycOpt = aepsKycRepository.findByUid(uidLong)
+                        .or(() -> (mainUser.getPartyCode() != null && !mainUser.getPartyCode().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getPartyCode().trim()) : Optional.empty())
+                        .or(() -> (mainUser.getAepsAgentId() != null && !mainUser.getAepsAgentId().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getAepsAgentId().trim()) : Optional.empty())
+                        .or(() -> (mainUser.getAepsMerchantId() != null && !mainUser.getAepsMerchantId().isBlank()) ? aepsKycRepository.findByMerchantId(mainUser.getAepsMerchantId().trim()) : Optional.empty());
+                
+                if (aepsKycOpt.isPresent()) {
+                    AepsKyc aepsKyc = aepsKycOpt.get();
+                    aepsKyc.setKycDone(true);
+                    aepsKyc.setBankEkycDone(true);
+                    aepsKycRepository.save(aepsKyc);
+                }
+            } else {
+                // Levin KYC
+                aepsUser.setAepsKycDone(true);
+                aepsUser.setAepsKycCompletedAt(java.time.LocalDateTime.now());
+                aepsUser.setAepsKycRefId(providerResult.getProviderReference());
+                aepsUser.setAepsKycTxnId(providerResult.getProviderTxnId());
+                aepsUserRepository.save(aepsUser);
             }
-
-            aepsUser.setAepsKycDone(true);
-            aepsUser.setAepsKycCompletedAt(java.time.LocalDateTime.now());
-            aepsUser.setAepsKycRefId(providerResult.getProviderReference());
-            aepsUser.setAepsKycTxnId(providerResult.getProviderTxnId());
-            aepsUserRepository.save(aepsUser);
-
-            mainUser.setAepsKycDone(true);
-            mainUser.setAepsKycCompletedAt(java.time.Instant.now());
-            mainUser.setAepsKycRefId(providerResult.getProviderReference());
-            mainUser.setAepsKycTxnId(providerResult.getProviderTxnId());
-            mainUserRepository.save(mainUser);
 
             // Update audit history log
             history.setWorkflowState(AepsWorkflowState.READY_FOR_DAILY_2FA.name());
@@ -710,25 +704,25 @@ public class AepsServiceImpl implements AepsService {
         if (isSuccess) {
             log.info("OTP verified successfully. Updating database records to active KYC status...");
 
-            long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
-            AepsKyc aepsKyc = aepsKycRepository.findByUid(uidLong)
-                    .or(() -> (mainUser.getPartyCode() != null && !mainUser.getPartyCode().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getPartyCode().trim()) : Optional.empty())
-                    .or(() -> (mainUser.getAepsAgentId() != null && !mainUser.getAepsAgentId().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getAepsAgentId().trim()) : Optional.empty())
-                    .or(() -> (mainUser.getAepsMerchantId() != null && !mainUser.getAepsMerchantId().isBlank()) ? aepsKycRepository.findByMerchantId(mainUser.getAepsMerchantId().trim()) : Optional.empty())
-                    .orElse(null);
-            if (aepsKyc != null) {
-                aepsKyc.setKycDone(true);
-                aepsKyc.setBankEkycDone(true);
-                aepsKycRepository.save(aepsKyc);
+            boolean isFingpay = "fingpay".equalsIgnoreCase(activeProvider.getProviderName());
+            if (isFingpay) {
+                long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
+                AepsKyc aepsKyc = aepsKycRepository.findByUid(uidLong)
+                        .or(() -> (mainUser.getPartyCode() != null && !mainUser.getPartyCode().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getPartyCode().trim()) : Optional.empty())
+                        .or(() -> (mainUser.getAepsAgentId() != null && !mainUser.getAepsAgentId().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getAepsAgentId().trim()) : Optional.empty())
+                        .or(() -> (mainUser.getAepsMerchantId() != null && !mainUser.getAepsMerchantId().isBlank()) ? aepsKycRepository.findByMerchantId(mainUser.getAepsMerchantId().trim()) : Optional.empty())
+                        .orElse(null);
+                if (aepsKyc != null) {
+                    aepsKyc.setKycDone(true);
+                    aepsKyc.setBankEkycDone(true);
+                    aepsKycRepository.save(aepsKyc);
+                }
+            } else {
+                // Levin KYC OTP verified
+                aepsUser.setAepsKycDone(true);
+                aepsUser.setAepsKycCompletedAt(java.time.LocalDateTime.now());
+                aepsUserRepository.save(aepsUser);
             }
-
-            aepsUser.setAepsKycDone(true);
-            aepsUser.setAepsKycCompletedAt(java.time.LocalDateTime.now());
-            aepsUserRepository.save(aepsUser);
-
-            mainUser.setAepsKycDone(true);
-            mainUser.setAepsKycCompletedAt(java.time.Instant.now());
-            mainUserRepository.save(mainUser);
 
             // Update audit history log
             history.setWorkflowState(AepsWorkflowState.READY_FOR_DAILY_2FA.name());

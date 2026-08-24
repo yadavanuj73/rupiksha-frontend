@@ -144,8 +144,14 @@ public class TransactionServiceImpl implements TransactionService {
                 .or(() -> mainUserRepository.findByUsername(mobile))
                 .orElseThrow(() -> new ValidationException("Core merchant profile not found."));
 
-        // 4. Perform security checks
-        performSecurityChecks(mainUser, aepsUser, request.getServiceType());
+        // 4. Resolve Active Provider
+        String reqProvider = request.getProvider();
+        String activeProvider = (reqProvider != null && !reqProvider.isBlank()) 
+                ? reqProvider.toLowerCase() 
+                : aepsProperties.getActiveProvider().toLowerCase();
+
+        // 5. Perform security checks strictly isolated per provider
+        performSecurityChecks(mainUser, aepsUser, request.getServiceType(), activeProvider);
 
         // Check wallet balance for CASH_DEPOSIT
         if ("CASH_DEPOSIT".equalsIgnoreCase(request.getServiceType())) {
@@ -155,15 +161,11 @@ public class TransactionServiceImpl implements TransactionService {
             }
         }
 
-        // 5. Setup unique IDs and Correlation ID
+        // 6. Setup unique IDs and Correlation ID
         String correlationId = "CORR" + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase();
         String referenceNumber = "REF" + System.currentTimeMillis() + (System.nanoTime() % 1000);
 
-        // 6. Persist initial transaction record in DB
-        String reqProvider = request.getProvider();
-        String activeProvider = (reqProvider != null && !reqProvider.isBlank()) 
-                ? reqProvider.toLowerCase() 
-                : aepsProperties.getActiveProvider().toLowerCase();
+        // 7. Persist initial transaction record in DB
 
         AepsTransactionEngine transaction = AepsTransactionEngine.builder()
                 .transactionId(request.getTransactionId())
@@ -291,67 +293,87 @@ public class TransactionServiceImpl implements TransactionService {
         return authDate.isEqual(today);
     }
 
-    private void performSecurityChecks(com.rupiksha.backend.domain.User mainUser, com.rupiksha.aeps.entity.User aepsUser, String serviceType) {
+    private void performSecurityChecks(com.rupiksha.backend.domain.User mainUser, com.rupiksha.aeps.entity.User aepsUser, String serviceType, String activeProvider) {
         // 1. Main Core User Active Gate
         if (mainUser.getStatus() == null || !mainUser.getStatus().name().equalsIgnoreCase("ACTIVE")) {
             throw new ValidationException("Merchant account is inactive or pending approval.");
         }
 
-        long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
-        Optional<AepsKyc> fingKycOpt = aepsKycRepository.findByUid(uidLong);
+        boolean isFingpay = "fingpay".equalsIgnoreCase(activeProvider);
 
-        // 2. Onboarding Gate (checks both Levin aeps_users, core users, and Fingpay aepskyc table)
-        boolean isOnboarded = Boolean.TRUE.equals(aepsUser.getAepsOnboarded()) ||
-                Boolean.TRUE.equals(mainUser.getAepsOnboarded()) ||
-                fingKycOpt.isPresent();
+        if (isFingpay) {
+            long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
+            Optional<AepsKyc> fingKycOpt = aepsKycRepository.findByUid(uidLong)
+                    .or(() -> (mainUser.getPartyCode() != null && !mainUser.getPartyCode().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getPartyCode().trim()) : Optional.empty())
+                    .or(() -> (mainUser.getAepsAgentId() != null && !mainUser.getAepsAgentId().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getAepsAgentId().trim()) : Optional.empty());
 
-        if (!isOnboarded) {
-            throw new ValidationException("Merchant is not onboarded with the AEPS provider.");
-        }
+            // Fingpay Onboarding Gate
+            boolean isOnboarded = fingKycOpt.isPresent() || (mainUser.getPartyCode() != null && !mainUser.getPartyCode().isBlank());
+            if (!isOnboarded) {
+                throw new ValidationException("Merchant is not onboarded with Fingpay AEPS. Please complete Fingpay onboarding first.");
+            }
 
-        // 3. KYC Gate (checks core user, aepsUser, and Fingpay AepsKyc)
-        boolean isKycDone = Boolean.TRUE.equals(aepsUser.getAepsKycDone()) ||
-                Boolean.TRUE.equals(mainUser.getAepsKycDone()) ||
-                fingKycOpt.map(k -> Boolean.TRUE.equals(k.getKycDone()) || (k.getOutlet() != null && !k.getOutlet().isBlank())).orElse(false);
+            // Fingpay KYC Gate
+            boolean isKycDone = fingKycOpt.map(k -> Boolean.TRUE.equals(k.getKycDone()) || Boolean.TRUE.equals(k.getBankEkycDone()) || (k.getOutlet() != null && !k.getOutlet().isBlank())).orElse(false);
+            if (!isKycDone) {
+                throw new ValidationException("Merchant biometric KYC is not complete for Fingpay AEPS.");
+            }
 
-        if (!isKycDone) {
-            throw new ValidationException("Merchant biometric KYC is not complete.");
-        }
+            // Fingpay Daily 2FA Gate
+            boolean isAadhaarPay = "AADHAAR_PAY".equalsIgnoreCase(serviceType);
+            boolean hasValidSession = false;
 
-        // 4. Daily 2FA Session Gate (Isolate standard AEPS vs Aadhaar Pay contexts)
-        boolean isAadhaarPay = "AADHAAR_PAY".equalsIgnoreCase(serviceType);
-        boolean hasValidSession = false;
-
-        if (isAadhaarPay) {
-            hasValidSession = isSessionValid(aepsUser.getAepsAp2faAuthenticatedAt()) || isSessionValid(mainUser.getAepsAp2faAuthenticatedAt());
-            if (!hasValidSession && fingpay2faTxnRepository != null) {
-                Optional<Fingpay2faTxn> apTxnOpt = fingpay2faTxnRepository
-                        .findTopByUserIdAndServiceTypeAndResponseCodeOrderByCreatedAtDesc(mainUser.getId(), "AP", "00")
-                        .or(() -> fingpay2faTxnRepository.findTopByMobileNumberAndServiceTypeAndResponseCodeOrderByCreatedAtDesc(mainUser.getMobile(), "AP", "00"));
-                
-                if (apTxnOpt.isPresent() && isSessionValid(apTxnOpt.get().getAuthenticatedAt())) {
-                    hasValidSession = true;
-                    mainUser.setAepsAp2faAuthenticatedAt(apTxnOpt.get().getAuthenticatedAt().atZone(IST_ZONE).toInstant());
-                    mainUserRepository.save(mainUser);
+            if (isAadhaarPay) {
+                hasValidSession = isSessionValid(mainUser.getAepsAp2faAuthenticatedAt());
+                if (!hasValidSession && fingpay2faTxnRepository != null) {
+                    Optional<Fingpay2faTxn> apTxnOpt = fingpay2faTxnRepository
+                            .findTopByUserIdAndServiceTypeAndResponseCodeOrderByCreatedAtDesc(mainUser.getId(), "AP", "00")
+                            .or(() -> fingpay2faTxnRepository.findTopByMobileNumberAndServiceTypeAndResponseCodeOrderByCreatedAtDesc(mainUser.getMobile(), "AP", "00"));
+                    
+                    if (apTxnOpt.isPresent() && isSessionValid(apTxnOpt.get().getAuthenticatedAt())) {
+                        hasValidSession = true;
+                        mainUser.setAepsAp2faAuthenticatedAt(apTxnOpt.get().getAuthenticatedAt().atZone(IST_ZONE).toInstant());
+                        mainUserRepository.save(mainUser);
+                    }
                 }
+            } else {
+                hasValidSession = isSessionValid(mainUser.getAeps2faAuthenticatedAt());
+                if (!hasValidSession && fingpay2faTxnRepository != null) {
+                    Optional<Fingpay2faTxn> aepsTxnOpt = fingpay2faTxnRepository
+                            .findTopByUserIdAndServiceTypeAndResponseCodeOrderByCreatedAtDesc(mainUser.getId(), "AEPS", "00")
+                            .or(() -> fingpay2faTxnRepository.findTopByMobileNumberAndServiceTypeAndResponseCodeOrderByCreatedAtDesc(mainUser.getMobile(), "AEPS", "00"));
+                    
+                    if (aepsTxnOpt.isPresent() && isSessionValid(aepsTxnOpt.get().getAuthenticatedAt())) {
+                        hasValidSession = true;
+                        mainUser.setAeps2faAuthenticatedAt(aepsTxnOpt.get().getAuthenticatedAt().atZone(IST_ZONE).toInstant());
+                        mainUserRepository.save(mainUser);
+                    }
+                }
+            }
+
+            if (!hasValidSession) {
+                throw new ValidationException("Merchant Daily 2FA session is expired or not authenticated for Fingpay. Please complete Daily 2FA.");
             }
         } else {
-            hasValidSession = isSessionValid(aepsUser.getAeps2faAuthenticatedAt()) || isSessionValid(mainUser.getAeps2faAuthenticatedAt());
-            if (!hasValidSession && fingpay2faTxnRepository != null) {
-                Optional<Fingpay2faTxn> aepsTxnOpt = fingpay2faTxnRepository
-                        .findTopByUserIdAndServiceTypeAndResponseCodeOrderByCreatedAtDesc(mainUser.getId(), "AEPS", "00")
-                        .or(() -> fingpay2faTxnRepository.findTopByMobileNumberAndServiceTypeAndResponseCodeOrderByCreatedAtDesc(mainUser.getMobile(), "AEPS", "00"));
-                
-                if (aepsTxnOpt.isPresent() && isSessionValid(aepsTxnOpt.get().getAuthenticatedAt())) {
-                    hasValidSession = true;
-                    mainUser.setAeps2faAuthenticatedAt(aepsTxnOpt.get().getAuthenticatedAt().atZone(IST_ZONE).toInstant());
-                    mainUserRepository.save(mainUser);
-                }
+            // Levin AEPS (AEPS 2)
+            boolean isLevinOnboarded = aepsUser != null && Boolean.TRUE.equals(aepsUser.getAepsOnboarded());
+            if (!isLevinOnboarded) {
+                throw new ValidationException("Merchant is not onboarded with Levin AEPS. Please complete Levin onboarding first.");
             }
-        }
 
-        if (!hasValidSession) {
-            throw new ValidationException("Merchant Daily 2FA session is expired or not authenticated. Please complete Daily 2FA.");
+            boolean isLevinKycDone = aepsUser != null && Boolean.TRUE.equals(aepsUser.getAepsKycDone());
+            if (!isLevinKycDone) {
+                throw new ValidationException("Merchant biometric KYC is not complete for Levin AEPS. Please complete Levin KYC first.");
+            }
+
+            boolean isAadhaarPay = "AADHAAR_PAY".equalsIgnoreCase(serviceType);
+            boolean hasValidSession = aepsUser != null && (isAadhaarPay 
+                    ? isSessionValid(aepsUser.getAepsAp2faAuthenticatedAt())
+                    : isSessionValid(aepsUser.getAeps2faAuthenticatedAt()));
+
+            if (!hasValidSession) {
+                throw new ValidationException("Merchant Daily 2FA session is expired or not authenticated for Levin. Please complete Daily 2FA.");
+            }
         }
     }
 }
