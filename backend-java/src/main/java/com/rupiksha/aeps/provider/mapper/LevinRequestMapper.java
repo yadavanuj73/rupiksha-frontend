@@ -89,9 +89,9 @@ public class LevinRequestMapper {
         payload.put("pidData", base64PidXml);
         payload.put("biometricType", context.getRequest().getBiometricType());
         
-        // Method: 152 = Balance Inquiry, 188 = Cash Withdrawal, 177 = Mini Statement
+        // Method: 152 = Balance Inquiry, 188 = Cash Withdrawal / Aadhaar Pay, 177 = Mini Statement
         String method = "152";
-        if ("CASH_WITHDRAWAL".equalsIgnoreCase(context.getServiceType())) {
+        if ("CASH_WITHDRAWAL".equalsIgnoreCase(context.getServiceType()) || "AADHAAR_PAY".equalsIgnoreCase(context.getServiceType())) {
             method = "188";
         } else if ("MINI_STATEMENT".equalsIgnoreCase(context.getServiceType())) {
             method = "177";
@@ -99,6 +99,9 @@ public class LevinRequestMapper {
             method = "152";
         }
         payload.put("method", method);
+        payload.put("service_type", context.getServiceType());
+        payload.put("client_ref_id", context.getRequest().getTransactionId());
+        payload.put("RdpiData", base64PidXml);
         payload.put("latitude", context.getRequest().getLatitude());
         payload.put("longitude", context.getRequest().getLongitude());
         payload.put("device_id", context.getRequest().getDeviceId());

@@ -417,8 +417,8 @@ export default function BankingTerminal({ provider, status, setStatus }) {
             return;
         }
 
-        // Check if Amount > 5000 for Cash Withdrawal or Aadhaar Pay (NPCI Mandate)
-        const isEligibleForOtp = (activeTab === 'CASH_WITHDRAWAL' || activeTab === 'AADHAAR_PAY') && parseFloat(formData.amount) > 5000;
+        // Check if Amount > 5000 for Cash Withdrawal or Aadhaar Pay (NPCI Mandate for Fingpay)
+        const isEligibleForOtp = isFingpay && (activeTab === 'CASH_WITHDRAWAL' || activeTab === 'AADHAAR_PAY') && parseFloat(formData.amount) > 5000;
         if (isEligibleForOtp) {
             setShowOtpModal(true);
             triggerSendTxnOtp();

@@ -236,7 +236,6 @@ public class LevinProvider implements AepsProvider {
         
         AepsProperties.ProviderConfig config = getLevinConfig();
         
-        // Even though we simulate, map request to verify payload structure
         Map<String, Object> payload = com.rupiksha.aeps.provider.mapper.LevinRequestMapper.mapToTransactionPayload(
                 context, config.getApiToken(), config.getUserId()
         );
@@ -244,17 +243,62 @@ public class LevinProvider implements AepsProvider {
         String maskedPayload = com.rupiksha.aeps.util.AepsUtil.maskSensitiveData(payload.toString());
         log.info("LevinProvider mapped transaction payload (masked): {}", maskedPayload);
         
-        // Simulate Levin API transaction response
-        com.rupiksha.aeps.dto.response.AepsKycResponse simulatedResponse = new com.rupiksha.aeps.dto.response.AepsKycResponse();
-        simulatedResponse.setStatusId(1); // 1 = Success
-        simulatedResponse.setMessage("Transaction approved successfully");
-        simulatedResponse.setTxnid("LVTXN" + (System.currentTimeMillis() % 10000000));
-        simulatedResponse.setRefid("LVREF" + (System.currentTimeMillis() % 10000000));
-        
-        log.info("LevinProvider simulated response statusId: [{}], message: [{}], txnid: [{}]",
-                simulatedResponse.getStatusId(), simulatedResponse.getMessage(), simulatedResponse.getTxnid());
-        
-        return com.rupiksha.aeps.provider.mapper.LevinResponseMapper.mapToTransactionResult(simulatedResponse, context);
+        String url = config.getBaseUrl() + "/aeps-transaction";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+
+        try {
+            @SuppressWarnings("rawtypes")
+            ResponseEntity<Map> response = aepsClient.post(
+                    url, payload, headers, Map.class
+            );
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> body = (Map<String, Object>) response.getBody();
+            if (body == null) {
+                throw new ProviderException("Empty response body from Levin transaction API");
+            }
+
+            log.info("LevinProvider transaction response: {}", body);
+            return com.rupiksha.aeps.provider.mapper.LevinResponseMapper.mapMapToTransactionResult(body, context);
+        } catch (org.springframework.web.client.HttpStatusCodeException ex) {
+            log.warn("LevinProvider HTTP exception [{}]: {}", ex.getStatusCode(), ex.getResponseBodyAsString());
+            try {
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                @SuppressWarnings("unchecked")
+                Map<String, Object> errorMap = mapper.readValue(ex.getResponseBodyAsString(), Map.class);
+                if (errorMap != null && !errorMap.isEmpty()) {
+                    return com.rupiksha.aeps.provider.mapper.LevinResponseMapper.mapMapToTransactionResult(errorMap, context);
+                }
+            } catch (Exception parseEx) {
+                log.warn("Failed to parse Levin error response JSON: {}", parseEx.getMessage());
+            }
+            return TransactionResult.builder()
+                    .transactionId(context.getRequest().getTransactionId())
+                    .referenceNumber(context.getCorrelationId())
+                    .status("FAILED")
+                    .workflowState(com.rupiksha.aeps.enums.TransactionWorkflowState.FAILED)
+                    .responseCode(String.valueOf(ex.getStatusCode().value()))
+                    .responseMessage(ex.getStatusText() != null && !ex.getStatusText().isBlank() ? ex.getStatusText() : "Transaction failed at provider")
+                    .amount(context.getRequest().getAmount())
+                    .providerName("levin")
+                    .completedTime(java.time.LocalDateTime.now())
+                    .build();
+        } catch (Exception e) {
+            log.error("LevinProvider transaction execution failed: {}", e.getMessage(), e);
+            return TransactionResult.builder()
+                    .transactionId(context.getRequest().getTransactionId())
+                    .referenceNumber(context.getCorrelationId())
+                    .status("FAILED")
+                    .workflowState(com.rupiksha.aeps.enums.TransactionWorkflowState.FAILED)
+                    .responseCode("99")
+                    .responseMessage(e.getMessage() != null ? e.getMessage() : "Levin transaction execution failed")
+                    .amount(context.getRequest().getAmount())
+                    .providerName("levin")
+                    .completedTime(java.time.LocalDateTime.now())
+                    .build();
+        }
     }
 
     private AepsProperties.ProviderConfig getLevinConfig() {
