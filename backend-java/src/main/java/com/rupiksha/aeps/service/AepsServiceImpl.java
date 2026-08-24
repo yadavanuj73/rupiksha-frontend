@@ -118,47 +118,32 @@ public class AepsServiceImpl implements AepsService {
 
         if (coreUserOpt.isPresent()) {
             com.rupiksha.backend.domain.User coreUser = coreUserOpt.get();
-            long uidLong = coreUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
-            Optional<AepsKyc> fingKycOpt = aepsKycRepository.findByUid(uidLong)
-                    .or(() -> (coreUser.getPartyCode() != null && !coreUser.getPartyCode().isBlank()) ? aepsKycRepository.findByOutlet(coreUser.getPartyCode().trim()) : Optional.empty())
-                    .or(() -> (coreUser.getAepsAgentId() != null && !coreUser.getAepsAgentId().isBlank()) ? aepsKycRepository.findByOutlet(coreUser.getAepsAgentId().trim()) : Optional.empty())
-                    .or(() -> (coreUser.getAepsMerchantId() != null && !coreUser.getAepsMerchantId().isBlank()) ? aepsKycRepository.findByMerchantId(coreUser.getAepsMerchantId().trim()) : Optional.empty());
-
-            boolean kycDone = Boolean.TRUE.equals(coreUser.getAepsKycDone()) ||
-                    Boolean.TRUE.equals(aepsUser.getAepsKycDone()) ||
-                    fingKycOpt.map(k -> Boolean.TRUE.equals(k.getKycDone()) && Boolean.TRUE.equals(k.getBankEkycDone())).orElse(false);
-
-            boolean onboarded = Boolean.TRUE.equals(coreUser.getAepsOnboarded()) ||
-                    Boolean.TRUE.equals(aepsUser.getAepsOnboarded()) ||
-                    fingKycOpt.isPresent();
 
             aepsUser.setMobile(coreUser.getMobile());
             aepsUser.setUsername(coreUser.getUsername());
             if (aepsUser.getEmail() == null) aepsUser.setEmail(coreUser.getEmail());
             if (aepsUser.getName() == null) aepsUser.setName(coreUser.getFullName());
 
-            String agentId = coreUser.getAepsAgentId();
-            if ((agentId == null || agentId.isBlank()) && fingKycOpt.isPresent()) {
-                agentId = fingKycOpt.get().getOutlet();
+            // If aepsUser was never explicitly onboarded on Levin, ensure defaults are false
+            if (aepsUser.getAepsOnboarded() == null) {
+                aepsUser.setAepsOnboarded(false);
             }
-            if (agentId != null && !agentId.isBlank()) {
-                aepsUser.setAepsAgentId(agentId);
-                aepsUser.setAepsMerchantId(agentId);
+            if (aepsUser.getAepsKycDone() == null) {
+                aepsUser.setAepsKycDone(false);
             }
 
-            aepsUser.setAepsOnboarded(onboarded);
-            aepsUser.setAepsKycDone(kycDone);
-
-            if (coreUser.getAepsKycRefId() != null) aepsUser.setAepsKycRefId(coreUser.getAepsKycRefId());
-            if (coreUser.getAepsKycTxnId() != null) aepsUser.setAepsKycTxnId(coreUser.getAepsKycTxnId());
-            if (coreUser.getAepsKycCompletedAt() != null) {
-                aepsUser.setAepsKycCompletedAt(java.time.LocalDateTime.ofInstant(coreUser.getAepsKycCompletedAt(), java.time.ZoneId.systemDefault()));
-            }
-            if (coreUser.getAeps2faAuthenticatedAt() != null) {
-                aepsUser.setAeps2faAuthenticatedAt(java.time.LocalDateTime.ofInstant(coreUser.getAeps2faAuthenticatedAt(), java.time.ZoneId.systemDefault()));
-            }
-            if (coreUser.getAepsAp2faAuthenticatedAt() != null) {
-                aepsUser.setAepsAp2faAuthenticatedAt(java.time.LocalDateTime.ofInstant(coreUser.getAepsAp2faAuthenticatedAt(), java.time.ZoneId.systemDefault()));
+            // If aepsAgentId was contaminated with Fingpay outlet / partyCode, purge Fingpay data from Levin record
+            if (aepsUser.getAepsAgentId() != null && coreUser.getPartyCode() != null &&
+                    (aepsUser.getAepsAgentId().equalsIgnoreCase(coreUser.getPartyCode().trim()) ||
+                     aepsUser.getAepsAgentId().toUpperCase().startsWith("RPR"))) {
+                aepsUser.setAepsAgentId(null);
+                aepsUser.setAepsMerchantId(null);
+                aepsUser.setAepsOnboarded(false);
+                aepsUser.setAepsKycDone(false);
+                aepsUser.setAeps2faAuthenticatedAt(null);
+                aepsUser.setAepsAp2faAuthenticatedAt(null);
+                aepsUser.setAepsKycTxnId(null);
+                aepsUser.setAepsKycRefId(null);
             }
 
             return aepsUserRepository.save(aepsUser);
