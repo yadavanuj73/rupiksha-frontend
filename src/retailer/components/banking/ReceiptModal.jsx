@@ -55,11 +55,11 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                 <table class="statement-table">
                     <thead>
                         <tr>
-                            <th style="width: 30px; text-align: center;">#</th>
-                            <th style="width: 95px;">Date</th>
-                            <th style="width: 110px; text-align: center;">Txn Type</th>
-                            <th style="width: 105px; text-align: right;">Amount</th>
-                            <th>Narration / Details</th>
+                            <th style="width: 55px; text-align: center;">SL.NO</th>
+                            <th style="width: 95px;">DATE</th>
+                            <th style="width: 110px; text-align: center;">TXN TYPE</th>
+                            <th style="width: 105px; text-align: right;">AMOUNT</th>
+                            <th>NARRATION / DETAILS</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -145,14 +145,15 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                     }
                     .receipt-badge {
                         display: inline-block;
-                        background: #000000;
-                        color: #ffffff;
+                        background: #fef2f2;
+                        color: #dc2626;
+                        border: 2px solid #dc2626;
                         font-size: 11px;
                         font-weight: 900;
                         padding: 4px 10px;
                         border-radius: 6px;
                         text-transform: uppercase;
-                        letter-spacing: 0.5px;
+                        letter-spacing: 0.8px;
                     }
                     .header-date {
                         font-size: 11px;
@@ -267,19 +268,19 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                         font-size: 11px;
                     }
                     .statement-table th {
-                        background: #000000;
-                        color: #ffffff;
+                        background: #fef2f2;
+                        color: #dc2626;
                         font-weight: 900;
                         text-transform: uppercase;
-                        font-size: 10px;
+                        font-size: 10.5px;
                         letter-spacing: 0.5px;
                         padding: 8px 10px;
-                        border: 1px solid #000000;
+                        border: 1.5px solid #dc2626;
                         text-align: left;
                     }
                     .statement-table td {
                         padding: 7px 10px;
-                        border: 1px solid #94a3b8;
+                        border: 1px solid #cbd5e1;
                         font-size: 11px;
                     }
                     .statement-table tr:nth-child(even) td {
@@ -351,7 +352,7 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                             </div>
                         </div>
                         <div class="header-right">
-                            <div class="receipt-badge">Official E-Receipt</div>
+                            <div class="receipt-badge">OFFICIAL E-RECEIPT</div>
                             <div class="header-date">${timestamp}</div>
                         </div>
                     </div>
@@ -556,7 +557,8 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                                         <div className="max-h-40 overflow-y-auto">
                                             <table className="w-full text-left text-xs border-collapse">
                                                 <thead>
-                                                    <tr className="border-b border-slate-300 text-[10px] font-black uppercase text-black bg-slate-100 sticky top-0">
+                                                    <tr className="border-b border-red-200 text-[10px] font-black uppercase text-red-600 bg-red-50 sticky top-0">
+                                                        <th className="py-1.5 px-1.5 text-center">SL.NO</th>
                                                         <th className="py-1.5 px-1.5">Date</th>
                                                         <th className="py-1.5 px-1 text-center">Type</th>
                                                         <th className="py-1.5 px-1 text-right">Amount</th>
@@ -568,6 +570,9 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                                                         const isCr = (entry.txnType || '').toLowerCase().startsWith('c');
                                                         return (
                                                             <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                                                <td className="py-1.5 px-1.5 text-[11px] text-center whitespace-nowrap text-black font-extrabold">
+                                                                    {idx + 1}
+                                                                </td>
                                                                 <td className="py-1.5 px-1.5 text-[11px] whitespace-nowrap text-black font-extrabold">
                                                                     {entry.date}
                                                                 </td>
