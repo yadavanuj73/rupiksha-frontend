@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { X, Printer, Download, CheckCircle2, XCircle, AlertTriangle, ShieldCheck, Landmark, FileText, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -37,15 +37,15 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                 const isCr = (entry.txnType || '').toLowerCase().startsWith('c');
                 return `
                     <tr>
-                        <td style="text-align: center; color: #64748b;">${idx + 1}</td>
-                        <td style="font-weight: 600;">${entry.date || 'N/A'}</td>
+                        <td style="text-align: center; font-weight: 800; color: #000000;">${idx + 1}</td>
+                        <td style="font-weight: 800; color: #000000;">${entry.date || 'N/A'}</td>
                         <td style="text-align: center;">
                             <span class="${isCr ? 'badge-cr' : 'badge-dr'}">${isCr ? 'CR (Deposit)' : 'DR (Withdraw)'}</span>
                         </td>
-                        <td style="text-align: right; font-weight: 700; color: ${isCr ? '#166534' : '#1e293b'};">
+                        <td style="text-align: right; font-weight: 900; color: ${isCr ? '#14532d' : '#000000'}; font-size: 11px;">
                             ₹${parseFloat(entry.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </td>
-                        <td style="color: #475569; font-size: 11px;">${entry.narration || 'N/A'}</td>
+                        <td style="color: #000000; font-weight: 700; font-size: 11px;">${entry.narration || 'N/A'}</td>
                     </tr>
                 `;
             }).join('');
@@ -56,9 +56,9 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                     <thead>
                         <tr>
                             <th style="width: 30px; text-align: center;">#</th>
-                            <th style="width: 90px;">Date</th>
+                            <th style="width: 95px;">Date</th>
                             <th style="width: 110px; text-align: center;">Txn Type</th>
-                            <th style="width: 100px; text-align: right;">Amount</th>
+                            <th style="width: 105px; text-align: right;">Amount</th>
                             <th>Narration / Details</th>
                         </tr>
                     </thead>
@@ -72,7 +72,7 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
         const formattedBalance = parseFloat(balanceAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
         const formattedAmount = parseFloat(transactionAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
 
-        const printWindow = window.open('', '_blank', 'width=800,height=900');
+        const printWindow = window.open('', '_blank', 'width=850,height=900');
         if (!printWindow) {
             alert('Please allow popups to print receipt.');
             return;
@@ -89,16 +89,16 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                     body {
                         font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
                         background: #f8fafc;
-                        color: #1e293b;
+                        color: #000000;
                         padding: 24px;
                         font-size: 12px;
                         line-height: 1.4;
                     }
                     .receipt-container {
-                        max-width: 620px;
+                        max-width: 650px;
                         margin: 0 auto;
                         background: #ffffff;
-                        border: 1px solid #cbd5e1;
+                        border: 2px solid #000000;
                         border-radius: 12px;
                         padding: 24px;
                         box-shadow: 0 4px 12px rgba(0,0,0,0.05);
@@ -108,7 +108,7 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                         align-items: center;
                         justify-content: space-between;
                         padding-bottom: 16px;
-                        border-bottom: 2px dashed #cbd5e1;
+                        border-bottom: 2px solid #000000;
                     }
                     .header-left {
                         display: flex;
@@ -116,26 +116,26 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                         gap: 12px;
                     }
                     .logo-img {
-                        height: 52px;
+                        height: 54px;
                         width: auto;
                         object-fit: contain;
                         border-radius: 8px;
-                        border: 1px solid #e2e8f0;
+                        border: 1px solid #cbd5e1;
                     }
                     .brand-name {
-                        font-size: 20px;
+                        font-size: 22px;
                         font-weight: 900;
-                        color: #0f172a;
+                        color: #000000;
                         letter-spacing: -0.5px;
                         line-height: 1.1;
                     }
                     .brand-name span {
-                        color: #2563eb;
+                        color: #1d4ed8;
                     }
                     .brand-sub {
-                        font-size: 10px;
-                        font-weight: 700;
-                        color: #64748b;
+                        font-size: 11px;
+                        font-weight: 800;
+                        color: #000000;
                         text-transform: uppercase;
                         letter-spacing: 0.8px;
                         margin-top: 3px;
@@ -145,20 +145,20 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                     }
                     .receipt-badge {
                         display: inline-block;
-                        background: #eff6ff;
-                        color: #1d4ed8;
-                        border: 1px solid #bfdbfe;
-                        font-size: 10px;
-                        font-weight: 800;
-                        padding: 3px 8px;
+                        background: #000000;
+                        color: #ffffff;
+                        font-size: 11px;
+                        font-weight: 900;
+                        padding: 4px 10px;
                         border-radius: 6px;
                         text-transform: uppercase;
+                        letter-spacing: 0.5px;
                     }
                     .header-date {
-                        font-size: 10px;
-                        color: #64748b;
+                        font-size: 11px;
+                        color: #000000;
                         margin-top: 4px;
-                        font-weight: 600;
+                        font-weight: 800;
                     }
                     .status-banner {
                         margin: 16px 0;
@@ -170,33 +170,32 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                     }
                     .status-success {
                         background: #f0fdf4;
-                        border: 1px solid #86efac;
-                        color: #15803d;
+                        border: 2px solid #16a34a;
+                        color: #14532d;
                     }
                     .status-failed {
                         background: #fef2f2;
-                        border: 1px solid #fca5a5;
-                        color: #b91c1c;
+                        border: 2px solid #dc2626;
+                        color: #7f1d1d;
                     }
                     .status-pending {
                         background: #fffbeb;
-                        border: 1px solid #fde68a;
-                        color: #b45309;
+                        border: 2px solid #d97706;
+                        color: #78350f;
                     }
                     .status-title {
-                        font-size: 13px;
-                        font-weight: 800;
+                        font-size: 14px;
+                        font-weight: 900;
                         text-transform: uppercase;
                         letter-spacing: 0.5px;
                     }
                     .status-desc {
-                        font-size: 11px;
-                        font-weight: 600;
-                        opacity: 0.9;
+                        font-size: 11.5px;
+                        font-weight: 700;
                     }
                     .amount-card {
                         background: #f8fafc;
-                        border: 1px solid #e2e8f0;
+                        border: 2px solid #000000;
                         border-radius: 8px;
                         padding: 12px 16px;
                         margin-bottom: 16px;
@@ -205,28 +204,28 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                         justify-content: space-between;
                     }
                     .amount-label {
-                        font-size: 11px;
-                        font-weight: 700;
-                        color: #64748b;
+                        font-size: 12px;
+                        font-weight: 900;
+                        color: #000000;
                         text-transform: uppercase;
                     }
                     .amount-value {
-                        font-size: 22px;
+                        font-size: 24px;
                         font-weight: 900;
-                        color: #0f172a;
+                        color: #000000;
                     }
                     .amount-success {
                         color: #15803d;
                     }
                     .section-title {
-                        font-size: 11px;
-                        font-weight: 800;
+                        font-size: 12px;
+                        font-weight: 900;
                         text-transform: uppercase;
-                        color: #475569;
+                        color: #000000;
                         letter-spacing: 0.5px;
                         margin: 14px 0 8px 0;
                         padding-bottom: 4px;
-                        border-bottom: 1px solid #e2e8f0;
+                        border-bottom: 2px solid #000000;
                     }
                     .details-grid {
                         width: 100%;
@@ -234,29 +233,30 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                         margin-bottom: 14px;
                     }
                     .details-grid td {
-                        padding: 7px 8px;
-                        border-bottom: 1px solid #f1f5f9;
-                        font-size: 11px;
+                        padding: 8px 10px;
+                        border-bottom: 1px solid #cbd5e1;
+                        font-size: 12px;
                     }
                     .details-grid tr:nth-child(even) {
-                        background: #f8fafc;
+                        background: #f1f5f9;
                     }
                     .label-cell {
-                        color: #64748b;
-                        font-weight: 700;
-                        width: 32%;
+                        color: #000000;
+                        font-weight: 900;
+                        width: 35%;
                         text-transform: uppercase;
-                        font-size: 10px;
-                        letter-spacing: 0.3px;
+                        font-size: 11px;
+                        letter-spacing: 0.4px;
                     }
                     .value-cell {
-                        color: #0f172a;
-                        font-weight: 700;
+                        color: #000000;
+                        font-weight: 900;
                         text-align: right;
+                        font-size: 12px;
                     }
                     .mono-val {
                         font-family: 'Courier New', Courier, monospace;
-                        font-weight: 800;
+                        font-weight: 900;
                         letter-spacing: 0.5px;
                     }
                     .statement-table {
@@ -267,52 +267,53 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                         font-size: 11px;
                     }
                     .statement-table th {
-                        background: #f1f5f9;
-                        color: #334155;
-                        font-weight: 800;
+                        background: #000000;
+                        color: #ffffff;
+                        font-weight: 900;
                         text-transform: uppercase;
-                        font-size: 9.5px;
+                        font-size: 10px;
                         letter-spacing: 0.5px;
-                        padding: 7px 8px;
-                        border: 1px solid #e2e8f0;
+                        padding: 8px 10px;
+                        border: 1px solid #000000;
                         text-align: left;
                     }
                     .statement-table td {
-                        padding: 6px 8px;
-                        border: 1px solid #e2e8f0;
-                        font-size: 10.5px;
+                        padding: 7px 10px;
+                        border: 1px solid #94a3b8;
+                        font-size: 11px;
                     }
                     .statement-table tr:nth-child(even) td {
-                        background: #fafafa;
+                        background: #f8fafc;
                     }
                     .badge-cr {
                         background: #dcfce7;
-                        color: #15803d;
-                        border: 1px solid #bbf7d0;
-                        padding: 2px 6px;
+                        color: #14532d;
+                        border: 1.5px solid #16a34a;
+                        padding: 3px 7px;
                         border-radius: 4px;
-                        font-size: 9px;
-                        font-weight: 800;
+                        font-size: 10px;
+                        font-weight: 900;
                         display: inline-block;
                     }
                     .badge-dr {
                         background: #fee2e2;
-                        color: #b91c1c;
-                        border: 1px solid #fecaca;
-                        padding: 2px 6px;
+                        color: #7f1d1d;
+                        border: 1.5px solid #dc2626;
+                        padding: 3px 7px;
                         border-radius: 4px;
-                        font-size: 9px;
-                        font-weight: 800;
+                        font-size: 10px;
+                        font-weight: 900;
                         display: inline-block;
                     }
                     .footer-note {
                         background: #f8fafc;
-                        border: 1px solid #e2e8f0;
+                        border: 1.5px solid #000000;
                         border-radius: 8px;
                         padding: 10px 12px;
                         margin-top: 16px;
-                        font-size: 9.5px;
-                        color: #64748b;
+                        font-size: 10.5px;
+                        font-weight: 700;
+                        color: #000000;
                         line-height: 1.5;
                         text-align: center;
                     }
@@ -325,15 +326,15 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                     .sign-box {
                         text-align: center;
                         width: 180px;
-                        border-top: 1px dashed #94a3b8;
+                        border-top: 1.5px dashed #000000;
                         padding-top: 6px;
-                        font-size: 10px;
-                        font-weight: 700;
-                        color: #475569;
+                        font-size: 11px;
+                        font-weight: 900;
+                        color: #000000;
                     }
                     @media print {
                         body { background: #ffffff; padding: 0; }
-                        .receipt-container { border: none; box-shadow: none; padding: 10px; max-width: 100%; }
+                        .receipt-container { border: 1.5px solid #000000; box-shadow: none; padding: 10px; max-width: 100%; }
                         @page { margin: 8mm 12mm; }
                     }
                 </style>
@@ -380,7 +381,7 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                     <div class="section-title">Transaction Information</div>
                     <table class="details-grid">
                         <tr>
-                            <td class="label-cell">Service Type</td>
+                            <td class="label-cell">Transaction Type</td>
                             <td class="value-cell" style="text-transform: uppercase;">${serviceTitle}</td>
                         </tr>
                         <tr>
@@ -414,7 +415,7 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                         ${!isBalanceInquiry && !isMiniStatement && isSuccess && balanceAmount > 0 ? `
                         <tr>
                             <td class="label-cell">Remaining Ledger Balance</td>
-                            <td class="value-cell" style="color: #15803d; font-weight: 800;">₹ ${formattedBalance}</td>
+                            <td class="value-cell" style="color: #15803d; font-weight: 900;">₹ ${formattedBalance}</td>
                         </tr>
                         ` : ''}
                         <tr>
@@ -457,218 +458,286 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
 
     return (
         <AnimatePresence>
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm font-['Inter',sans-serif] overflow-y-auto">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 md:p-6 bg-slate-950/75 backdrop-blur-sm font-['Inter',sans-serif] overflow-y-auto">
                 <motion.div
                     initial={{ opacity: 0, scale: 0.96, y: 10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.96, y: 10 }}
-                    className="relative bg-white border border-slate-200/90 shadow-[0_25px_60px_rgba(0,0,0,0.25)] rounded-2xl w-full max-w-lg overflow-hidden flex flex-col my-auto max-h-[92vh]"
+                    className="relative bg-white border border-slate-300 shadow-[0_25px_70px_rgba(0,0,0,0.3)] rounded-2xl md:rounded-3xl w-full max-w-4xl overflow-hidden flex flex-col my-auto max-h-[92vh]"
                 >
-                    {/* Header Bar with prominent Close (X) Cut Button */}
-                    <div className="px-4 sm:px-5 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between shrink-0">
-                        <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-slate-600">
-                            <ShieldCheck size={15} className="text-emerald-600" />
+                    {/* Top Bar with title & prominent Close (X) Cut Button */}
+                    <div className="px-4 sm:px-6 py-2.5 bg-slate-100 border-b border-slate-300 flex items-center justify-between shrink-0">
+                        <div className="flex items-center gap-2 text-xs sm:text-sm font-black uppercase tracking-wide text-black">
+                            <ShieldCheck size={17} className="text-emerald-600 shrink-0" />
                             <span>{isBalanceInquiry ? 'Account Balance Statement' : isMiniStatement ? 'Account Mini Statement' : 'Transaction E-Receipt'}</span>
                         </div>
                         <button
                             type="button"
                             onClick={onClose}
                             title="Close Receipt"
-                            className="p-1.5 text-slate-500 hover:text-slate-900 bg-white hover:bg-slate-200 border border-slate-200 rounded-full transition-all cursor-pointer shadow-sm hover:scale-105"
+                            className="p-1.5 text-black hover:text-white bg-white hover:bg-slate-900 border border-slate-300 rounded-full transition-all cursor-pointer shadow-sm hover:scale-105"
                         >
-                            <X size={16} strokeWidth={2.5} />
+                            <X size={17} strokeWidth={3} />
                         </button>
                     </div>
 
-                    {/* Receipt Body (Clean, compact, no awkward scroll for normal receipts) */}
-                    <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-3">
-                        {/* Company Logo & Brand Header */}
-                        <div className="flex items-center justify-center gap-3 pb-2.5 border-b border-dashed border-slate-200">
-                            <img
-                                src="/rupiksha logo.jpeg"
-                                alt="Rupiksha Logo"
-                                className="h-10 w-10 object-contain rounded-xl shadow-xs border border-slate-200/70 p-0.5 bg-white shrink-0"
-                            />
-                            <div className="text-left">
-                                <h2 className="text-lg font-black tracking-tight text-slate-900 leading-none">
-                                    RUPIKSHA <span className="text-blue-600">FINTECH</span>
-                                </h2>
-                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-0.5">
-                                    AEPS Banking Terminal
-                                </p>
-                            </div>
-                        </div>
+                    {/* Responsive 2-Part Split Layout Body */}
+                    <div className="p-4 sm:p-5 md:p-6 overflow-y-auto flex-1">
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 items-start">
+                            
+                            {/* ══ LEFT PART (COL 1 to 5): Branding, Status, Amount & Statement ══ */}
+                            <div className="md:col-span-5 flex flex-col space-y-3.5">
+                                {/* Branding Header */}
+                                <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-300 rounded-2xl shadow-2xs">
+                                    <img
+                                        src="/rupiksha logo.jpeg"
+                                        alt="Rupiksha Logo"
+                                        className="h-11 w-11 object-contain rounded-xl border border-slate-300 p-0.5 bg-white shrink-0 shadow-xs"
+                                    />
+                                    <div className="text-left">
+                                        <h2 className="text-base sm:text-lg font-black tracking-tight text-black leading-none">
+                                            RUPIKSHA <span className="text-blue-700">FINTECH</span>
+                                        </h2>
+                                        <p className="text-[10px] sm:text-[11px] font-black text-slate-800 uppercase tracking-wider mt-1">
+                                            AEPS Banking Terminal
+                                        </p>
+                                    </div>
+                                </div>
 
-                        {/* Status Graphic & Amount Banner */}
-                        <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-3 text-center">
-                            <div className="flex items-center justify-center gap-2 mb-1.5">
-                                {isSuccess ? (
-                                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full text-[10px] font-black uppercase tracking-wider">
-                                        <CheckCircle2 size={13} className="text-emerald-700" />
-                                        <span>
-                                            {isBalanceInquiry ? 'Balance Fetched' : isMiniStatement ? 'Mini Statement Fetched' : 'Transaction Approved'}
-                                        </span>
+                                {/* Status Box */}
+                                <div className="bg-slate-50 border border-slate-300 rounded-2xl p-3.5 text-center shadow-2xs">
+                                    <div className="flex items-center justify-center mb-2">
+                                        {isSuccess ? (
+                                            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-950 border-2 border-emerald-400 rounded-full text-xs font-black uppercase tracking-wide">
+                                                <CheckCircle2 size={15} className="text-emerald-700 shrink-0" />
+                                                <span>
+                                                    {isBalanceInquiry ? 'Balance Fetched' : isMiniStatement ? 'Statement Fetched' : 'Transaction Approved'}
+                                                </span>
+                                            </div>
+                                        ) : isPending ? (
+                                            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-950 border-2 border-amber-400 rounded-full text-xs font-black uppercase tracking-wide">
+                                                <AlertTriangle size={15} className="text-amber-700 shrink-0" />
+                                                <span>Transaction Pending</span>
+                                            </div>
+                                        ) : (
+                                            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-100 text-rose-950 border-2 border-rose-400 rounded-full text-xs font-black uppercase tracking-wide">
+                                                <XCircle size={15} className="text-rose-700 shrink-0" />
+                                                <span>Transaction Declined</span>
+                                            </div>
+                                        )}
                                     </div>
-                                ) : isPending ? (
-                                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-amber-100 text-amber-800 border border-amber-300 rounded-full text-[10px] font-black uppercase tracking-wider">
-                                        <AlertTriangle size={13} className="text-amber-700" />
-                                        <span>Transaction Pending</span>
+
+                                    {/* Prominent Amount / Balance Display */}
+                                    <div className="py-1">
+                                        <p className="text-[11px] font-black uppercase tracking-wider text-slate-800">
+                                            {isBalanceInquiry || isMiniStatement ? 'Available Account Balance' : 'Transaction Amount'}
+                                        </p>
+                                        <div className={`text-2xl sm:text-3xl font-black tracking-tight mt-0.5 ${isSuccess ? 'text-emerald-700' : 'text-black'}`}>
+                                            ₹ {isBalanceInquiry || isMiniStatement ? balanceAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : transactionAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                        </div>
                                     </div>
-                                ) : (
-                                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-rose-100 text-rose-800 border border-rose-300 rounded-full text-[10px] font-black uppercase tracking-wider">
-                                        <XCircle size={13} className="text-rose-700" />
-                                        <span>Transaction Declined</span>
+
+                                    {message && (
+                                        <p className="text-[11px] font-bold text-slate-800 mt-1 leading-snug">
+                                            {message}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Mini Statement (if available) */}
+                                {isMiniStatement && isSuccess && miniStatement && miniStatement.length > 0 && (
+                                    <div className="border border-slate-300 rounded-2xl p-3 bg-white shadow-xs">
+                                        <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-200">
+                                            <span className="text-xs font-black text-black uppercase tracking-wider flex items-center gap-1.5">
+                                                <FileText size={14} className="text-blue-700" />
+                                                Recent Statement ({miniStatement.length})
+                                            </span>
+                                        </div>
+                                        <div className="max-h-40 overflow-y-auto">
+                                            <table className="w-full text-left text-xs border-collapse">
+                                                <thead>
+                                                    <tr className="border-b border-slate-300 text-[10px] font-black uppercase text-black bg-slate-100 sticky top-0">
+                                                        <th className="py-1.5 px-1.5">Date</th>
+                                                        <th className="py-1.5 px-1 text-center">Type</th>
+                                                        <th className="py-1.5 px-1 text-right">Amount</th>
+                                                        <th className="py-1.5 px-2">Narration</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-200 font-bold text-black">
+                                                    {miniStatement.map((entry, idx) => {
+                                                        const isCr = (entry.txnType || '').toLowerCase().startsWith('c');
+                                                        return (
+                                                            <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                                                <td className="py-1.5 px-1.5 text-[11px] whitespace-nowrap text-black font-extrabold">
+                                                                    {entry.date}
+                                                                </td>
+                                                                <td className="py-1.5 px-1 text-center whitespace-nowrap">
+                                                                    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
+                                                                        isCr ? 'bg-emerald-100 text-emerald-950 border border-emerald-300' : 'bg-rose-100 text-rose-950 border border-rose-300'
+                                                                    }`}>
+                                                                        {isCr ? <ArrowDownLeft size={10} /> : <ArrowUpRight size={10} />}
+                                                                        {isCr ? 'CR' : 'DR'}
+                                                                    </span>
+                                                                </td>
+                                                                <td className={`py-1.5 px-1 text-right text-[11px] font-black whitespace-nowrap ${
+                                                                    isCr ? 'text-emerald-700' : 'text-black'
+                                                                }`}>
+                                                                    ₹{entry.amount}
+                                                                </td>
+                                                                <td className="py-1.5 px-2 text-[10px] text-black truncate max-w-[120px] font-bold" title={entry.narration}>
+                                                                    {entry.narration}
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
                                 )}
                             </div>
 
-                            {/* Prominent Amount / Balance Display */}
-                            {isBalanceInquiry || isMiniStatement ? (
-                                <div>
-                                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Available Account Balance</p>
-                                    <div className="text-2xl font-black text-emerald-600 tracking-tight">
-                                        ₹ {balanceAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            {/* ══ RIGHT PART (COL 6 to 12): All Transaction Details in Crisp Dark Black ══ */}
+                            <div className="md:col-span-7 flex flex-col space-y-3">
+                                <div className="border border-slate-300 rounded-2xl p-3 sm:p-4 bg-slate-50/90 shadow-2xs">
+                                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-300">
+                                        <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-black flex items-center gap-1.5">
+                                            <FileText size={15} className="text-blue-700" />
+                                            Transaction Details
+                                        </span>
+                                        <span className="text-[10px] font-black uppercase tracking-wider bg-black text-white px-2 py-0.5 rounded-md">
+                                            Verified
+                                        </span>
+                                    </div>
+
+                                    {/* 2-Column Details Grid with Dark Black & Enlarged Text */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5">
+                                        <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                                            <span className="block text-[10.5px] font-black text-black uppercase tracking-wider">
+                                                Transaction Type
+                                            </span>
+                                            <span className="block text-xs sm:text-[13px] font-black text-black mt-0.5 truncate">
+                                                {serviceTitle}
+                                            </span>
+                                        </div>
+
+                                        <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                                            <span className="block text-[10.5px] font-black text-black uppercase tracking-wider">
+                                                Bank Name
+                                            </span>
+                                            <span className="block text-xs sm:text-[13px] font-black text-black mt-0.5 truncate flex items-center gap-1">
+                                                <Landmark size={13} className="text-blue-700 shrink-0" />
+                                                {bankName}
+                                            </span>
+                                        </div>
+
+                                        <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                                            <span className="block text-[10.5px] font-black text-black uppercase tracking-wider">
+                                                Customer Mobile
+                                            </span>
+                                            <span className="block text-xs sm:text-[13px] font-black text-black mt-0.5">
+                                                {mobile}
+                                            </span>
+                                        </div>
+
+                                        <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                                            <span className="block text-[10.5px] font-black text-black uppercase tracking-wider">
+                                                Aadhaar / VID Number
+                                            </span>
+                                            <span className="block text-xs sm:text-[13px] font-mono font-black text-black mt-0.5">
+                                                {maskedAadhaar}
+                                            </span>
+                                        </div>
+
+                                        <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                                            <span className="block text-[10.5px] font-black text-black uppercase tracking-wider">
+                                                Bank RRN
+                                            </span>
+                                            <span className="block text-xs sm:text-[13px] font-mono font-black text-black mt-0.5 truncate select-all">
+                                                {bankRRN}
+                                            </span>
+                                        </div>
+
+                                        <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                                            <span className="block text-[10.5px] font-black text-black uppercase tracking-wider">
+                                                Merchant Txn ID
+                                            </span>
+                                            <span className="block text-xs sm:text-[13px] font-mono font-black text-black mt-0.5 truncate select-all">
+                                                {txnId}
+                                            </span>
+                                        </div>
+
+                                        <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                                            <span className="block text-[10.5px] font-black text-black uppercase tracking-wider">
+                                                Gateway Txn ID
+                                            </span>
+                                            <span className="block text-xs sm:text-[13px] font-mono font-black text-black mt-0.5 truncate select-all">
+                                                {fpTxnId}
+                                            </span>
+                                        </div>
+
+                                        <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                                            <span className="block text-[10.5px] font-black text-black uppercase tracking-wider">
+                                                Retailer Terminal ID
+                                            </span>
+                                            <span className="block text-xs sm:text-[13px] font-black text-black mt-0.5 uppercase">
+                                                {agentId}
+                                            </span>
+                                        </div>
+
+                                        {isSuccess && !isBalanceInquiry && !isMiniStatement && balanceAmount > 0 && (
+                                            <div className="bg-emerald-50 p-2.5 rounded-xl border border-emerald-300 sm:col-span-2">
+                                                <span className="block text-[10.5px] font-black text-emerald-950 uppercase tracking-wider">
+                                                    Remaining Ledger Balance
+                                                </span>
+                                                <span className="block text-sm font-black text-emerald-800 mt-0.5">
+                                                    ₹ {balanceAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        <div className="bg-white p-2.5 rounded-xl border border-slate-200 sm:col-span-2">
+                                            <span className="block text-[10.5px] font-black text-black uppercase tracking-wider">
+                                                Transaction Date & Time
+                                            </span>
+                                            <span className="block text-xs sm:text-[13px] font-black text-black mt-0.5">
+                                                {timestamp}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
-                            ) : (
-                                <div>
-                                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Transaction Amount</p>
-                                    <div className="text-2xl font-black text-slate-900 tracking-tight">
-                                        ₹ {transactionAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                    </div>
-                                </div>
-                            )}
 
-                            {message && (
-                                <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate" title={message}>
-                                    {message}
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Mini Statement Table Section (if available) */}
-                        {isMiniStatement && isSuccess && miniStatement && miniStatement.length > 0 && (
-                            <div className="border border-slate-200 rounded-xl p-2.5 bg-white shadow-xs">
-                                <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-100">
-                                    <span className="text-[10.5px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1">
-                                        <FileText size={12} className="text-blue-600" />
-                                        Recent Statement ({miniStatement.length} Transactions)
-                                    </span>
-                                </div>
-                                <div className="max-h-36 overflow-y-auto">
-                                    <table className="w-full text-left text-xs border-collapse">
-                                        <thead>
-                                            <tr className="border-b border-slate-200 text-[9px] font-black uppercase text-slate-500 bg-slate-50 sticky top-0">
-                                                <th className="py-1 px-1">Date</th>
-                                                <th className="py-1 px-1 text-center">Type</th>
-                                                <th className="py-1 px-1 text-right">Amount</th>
-                                                <th className="py-1 px-1.5">Narration</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                                            {miniStatement.map((entry, idx) => {
-                                                const isCr = (entry.txnType || '').toLowerCase().startsWith('c');
-                                                return (
-                                                    <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                                                        <td className="py-1 px-1 text-[10px] whitespace-nowrap text-slate-600 font-bold">
-                                                            {entry.date}
-                                                        </td>
-                                                        <td className="py-1 px-1 text-center whitespace-nowrap">
-                                                            <span className={`inline-flex items-center gap-0.5 px-1 py-0.2 rounded text-[8.5px] font-black uppercase ${
-                                                                isCr ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                                                            }`}>
-                                                                {isCr ? <ArrowDownLeft size={9} /> : <ArrowUpRight size={9} />}
-                                                                {isCr ? 'CR' : 'DR'}
-                                                            </span>
-                                                        </td>
-                                                        <td className={`py-1 px-1 text-right text-[10px] font-black whitespace-nowrap ${
-                                                            isCr ? 'text-emerald-700' : 'text-slate-800'
-                                                        }`}>
-                                                            ₹{entry.amount}
-                                                        </td>
-                                                        <td className="py-1 px-1.5 text-[9.5px] text-slate-600 truncate max-w-[130px] font-medium" title={entry.narration}>
-                                                            {entry.narration}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
+                                {/* SOP / Biometric Compliance Disclaimer */}
+                                <div className="p-2.5 bg-slate-100 border border-slate-300 rounded-xl text-[10.5px] font-bold text-black text-center leading-snug">
+                                    System generated e-receipt • Biometrically verified via UIDAI Aadhaar • Rupiksha Licensed BC
                                 </div>
                             </div>
-                        )}
 
-                        {/* Compact 2-Column Details Grid */}
-                        <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 bg-slate-50/80 p-2.5 rounded-xl border border-slate-200/80 text-[11px]">
-                            <div className="flex flex-col">
-                                <span className="text-[9.5px] font-bold text-slate-400 uppercase">Transaction Type</span>
-                                <span className="font-extrabold text-slate-800 truncate">{serviceTitle}</span>
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="text-[9.5px] font-bold text-slate-400 uppercase">Bank Name</span>
-                                <span className="font-extrabold text-slate-800 truncate flex items-center gap-1">
-                                    <Landmark size={11} className="text-slate-400 shrink-0" />
-                                    {bankName}
-                                </span>
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="text-[9.5px] font-bold text-slate-400 uppercase">Customer Mobile</span>
-                                <span className="font-bold text-slate-800">{mobile}</span>
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="text-[9.5px] font-bold text-slate-400 uppercase">Aadhaar / VID</span>
-                                <span className="font-mono font-bold text-slate-800">{maskedAadhaar}</span>
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="text-[9.5px] font-bold text-slate-400 uppercase">Bank RRN</span>
-                                <span className="font-mono font-black text-slate-800 truncate select-all">{bankRRN}</span>
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="text-[9.5px] font-bold text-slate-400 uppercase">Merchant Txn ID</span>
-                                <span className="font-mono font-bold text-slate-700 truncate select-all">{txnId}</span>
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="text-[9.5px] font-bold text-slate-400 uppercase">Gateway Txn ID</span>
-                                <span className="font-mono font-bold text-slate-700 truncate select-all">{fpTxnId}</span>
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="text-[9.5px] font-bold text-slate-400 uppercase">Terminal ID</span>
-                                <span className="font-bold text-slate-800 uppercase">{agentId}</span>
-                            </div>
-                            <div className="flex flex-col col-span-2 pt-1 border-t border-slate-200/60">
-                                <span className="text-[9.5px] font-bold text-slate-400 uppercase">Date & Time</span>
-                                <span className="font-semibold text-slate-600">{timestamp}</span>
-                            </div>
-                        </div>
-
-                        {/* SOP / Biometric Compliance Disclaimer */}
-                        <div className="text-[9.5px] font-medium text-slate-400 text-center leading-tight">
-                            System generated e-receipt • Biometrically verified via UIDAI • Rupiksha Licensed BC
                         </div>
                     </div>
 
-                    {/* Bottom Action buttons */}
-                    <div className="px-4 sm:px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center gap-2 shrink-0">
+                    {/* Bottom Action buttons (Always visible) */}
+                    <div className="px-4 sm:px-6 py-3 bg-slate-100 border-t border-slate-300 flex items-center justify-end gap-2.5 shrink-0">
                         <button
                             type="button"
                             onClick={handlePrint}
-                            className="flex-1 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm hover:shadow"
+                            className="flex-1 sm:flex-initial py-2.5 px-5 bg-black hover:bg-slate-800 text-white rounded-xl font-black uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm hover:scale-[1.02]"
                         >
-                            <Printer size={14} />
+                            <Printer size={15} />
                             <span>Print Receipt</span>
                         </button>
                         <button
                             type="button"
                             onClick={handlePrint}
-                            className="py-2.5 px-3.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 rounded-xl font-bold uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                            className="py-2.5 px-4 bg-blue-50 hover:bg-blue-100 border-2 border-blue-300 text-blue-900 rounded-xl font-black uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:scale-[1.02]"
                         >
-                            <Download size={14} />
+                            <Download size={15} />
                             <span>PDF</span>
                         </button>
                         <button
                             type="button"
                             onClick={onClose}
-                            className="py-2.5 px-3.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 rounded-xl font-bold uppercase tracking-wider text-xs transition-all cursor-pointer"
+                            className="py-2.5 px-4 bg-white hover:bg-slate-200 border-2 border-slate-300 text-black rounded-xl font-black uppercase tracking-wider text-xs transition-all cursor-pointer hover:scale-[1.02]"
                         >
                             Close
                         </button>
