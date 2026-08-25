@@ -480,7 +480,8 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                     timestamp: new Date().toLocaleString('en-IN'),
                     agentId: status.agentId || 'BC-TERMINAL',
                     serviceLabel: activeTabObj ? activeTabObj.label : 'AEPS Banking',
-                    serviceType: activeTab
+                    serviceType: activeTab,
+                    miniStatement: data.miniStatement || []
                 };
                 
                 setReceiptData(receipt);

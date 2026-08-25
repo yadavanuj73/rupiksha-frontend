@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -28,4 +29,5 @@ public class TransactionResult {
     private String bankName;
     private String providerName;
     private LocalDateTime completedTime;
+    private List<?> miniStatement;
 }

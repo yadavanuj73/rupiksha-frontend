@@ -10,6 +10,11 @@ public class MiniStatementRequest {
     private String lat;
     private String log;
     private Long bankId;
+    private String merchantUserName;
+    private String merchantPin;
+    private String virtualId;
+    private String deviceId;
+    private String requestRemarks;
 
     // Biometric — RD service se as-is
     private String errorCode;

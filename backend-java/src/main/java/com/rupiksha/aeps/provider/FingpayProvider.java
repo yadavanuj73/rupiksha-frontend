@@ -668,11 +668,17 @@ public class FingpayProvider implements AepsProvider {
         } else if (serviceType.equals("MINI_STATEMENT")) {
             MiniStatementRequest req = new MiniStatementRequest();
             req.setUid(uidLong);
-            req.setMobile(context.getMerchant().getMobile());
+            req.setMerchantUserName(resolvedMerchantUserName);
+            req.setMerchantPin(resolvedPin);
+            req.setMobile(context.getRequest().getCustomerMobile() != null && !context.getRequest().getCustomerMobile().isBlank()
+                    ? context.getRequest().getCustomerMobile()
+                    : (context.getRequest().getMobileNumber() != null ? context.getRequest().getMobileNumber() : context.getMerchant().getMobile()));
             req.setAadhar(context.getRequest().getAdhaarNumber());
             req.setLat(context.getRequest().getLatitude() != null ? context.getRequest().getLatitude() : "28.6139");
             req.setLog(context.getRequest().getLongitude() != null ? context.getRequest().getLongitude() : "77.2090");
             req.setBankId(bank.getId());
+            req.setDeviceId(context.getRequest().getDeviceId());
+            req.setRequestRemarks(context.getRequest().getRequestRemarks() != null ? context.getRequest().getRequestRemarks() : "MS");
 
             populateBiometricsMS(req, parsed);
 
@@ -688,6 +694,11 @@ public class FingpayProvider implements AepsProvider {
                     .responseCode(resp.getResponseCode() != null && !resp.getResponseCode().isEmpty() ? resp.getResponseCode() : (success ? "00" : "99"))
                     .responseMessage(resp.getMessage())
                     .amount(BigDecimal.ZERO)
+                    .balanceAmount(BigDecimal.valueOf(resp.getBalanceAmount() != null ? resp.getBalanceAmount() : 0.0))
+                    .bankRrn(resp.getBankRRN())
+                    .maskedAadhaar(resp.getMaskedAadhaar())
+                    .bankName(bank.getBankName())
+                    .miniStatement(resp.getMiniStatement())
                     .providerName("fingpay")
                     .completedTime(LocalDateTime.now())
                     .build();
