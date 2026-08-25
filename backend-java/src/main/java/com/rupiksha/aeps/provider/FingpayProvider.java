@@ -520,10 +520,38 @@ public class FingpayProvider implements AepsProvider {
             throw new ProviderException("Failed to parse biometric XML: " + e.getMessage());
         }
 
+        // Resolve merchant username and pin for Fingpay
+        String resolvedMerchantUserName = null;
+        String resolvedPin = null;
+        Optional<AepsKyc> fingKycOpt = aepsKycRepo.findByUid(uidLong)
+                .or(() -> (context.getUser().getPartyCode() != null && !context.getUser().getPartyCode().isBlank()) ? aepsKycRepo.findByOutlet(context.getUser().getPartyCode().trim()) : Optional.empty())
+                .or(() -> (context.getUser().getAepsAgentId() != null && !context.getUser().getAepsAgentId().isBlank()) ? aepsKycRepo.findByOutlet(context.getUser().getAepsAgentId().trim()) : Optional.empty())
+                .or(() -> (context.getUser().getAepsMerchantId() != null && !context.getUser().getAepsMerchantId().isBlank()) ? aepsKycRepo.findByMerchantId(context.getUser().getAepsMerchantId().trim()) : Optional.empty());
+
+        if (fingKycOpt.isPresent()) {
+            AepsKyc kyc = fingKycOpt.get();
+            if (kyc.getOutlet() != null && !kyc.getOutlet().isBlank()) {
+                resolvedMerchantUserName = kyc.getOutlet().trim().toUpperCase();
+            } else if (kyc.getMerchantId() != null && !kyc.getMerchantId().isBlank()) {
+                resolvedMerchantUserName = kyc.getMerchantId().trim().toUpperCase();
+            }
+            if (kyc.getMpin() != null && !kyc.getMpin().isBlank()) {
+                resolvedPin = kyc.getMpin().trim();
+            }
+        }
+        if ((resolvedMerchantUserName == null || resolvedMerchantUserName.isBlank()) && context.getUser().getPartyCode() != null && !context.getUser().getPartyCode().isBlank()) {
+            resolvedMerchantUserName = context.getUser().getPartyCode().trim().toUpperCase();
+        }
+        if ((resolvedMerchantUserName == null || resolvedMerchantUserName.isBlank()) && context.getUser().getAepsAgentId() != null && !context.getUser().getAepsAgentId().isBlank()) {
+            resolvedMerchantUserName = context.getUser().getAepsAgentId().trim().toUpperCase();
+        }
+
         TransactionResult result;
         if (serviceType.equals("CASH_WITHDRAWAL")) {
             CashWithdrawalRequest req = new CashWithdrawalRequest();
             req.setUid(uidLong);
+            req.setMerchantUserName(resolvedMerchantUserName);
+            req.setMerchantPin(resolvedPin);
 
             String custMobile = context.getRequest().getMobileNumber();
             if (custMobile == null || custMobile.isBlank()) {
@@ -595,6 +623,8 @@ public class FingpayProvider implements AepsProvider {
         } else if (serviceType.equals("BALANCE_INQUIRY")) {
             BalanceInquiryRequest req = new BalanceInquiryRequest();
             req.setUid(uidLong);
+            req.setMerchantUserName(resolvedMerchantUserName);
+            req.setMerchantPin(resolvedPin);
 
             String custMobile = context.getRequest().getMobileNumber();
             if (custMobile == null || custMobile.isBlank()) {
@@ -665,6 +695,8 @@ public class FingpayProvider implements AepsProvider {
         } else if (serviceType.equals("AADHAAR_PAY")) {
             AadhaarPayRequest req = new AadhaarPayRequest();
             req.setUid(uidLong);
+            req.setMerchantUserName(resolvedMerchantUserName);
+            req.setMerchantPin(resolvedPin);
             req.setMobile(context.getMerchant().getMobile());
             req.setAadhar(context.getRequest().getAdhaarNumber());
             req.setLat(context.getRequest().getLatitude() != null ? context.getRequest().getLatitude() : "28.6139");

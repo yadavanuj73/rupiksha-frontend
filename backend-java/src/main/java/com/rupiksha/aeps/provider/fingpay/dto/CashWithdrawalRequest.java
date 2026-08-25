@@ -16,6 +16,8 @@ public class CashWithdrawalRequest {
     private String virtualId;
     private String txnOtpRequestId;
     private String otp;
+    private String merchantUserName;
+    private String merchantPin;
 
     // Biometric — RD service se as-is aata hai
     private String errorCode;

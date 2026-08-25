@@ -14,6 +14,8 @@ public class AadhaarPayRequest {
     private String txnOtpRequestId;
     private String otp;
     private String virtualId;
+    private String merchantUserName;
+    private String merchantPin;
 
     // Biometric — RD service se as-is
     private String errorCode;

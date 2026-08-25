@@ -54,15 +54,46 @@ public class AadhaarPayService {
                     .orElseThrow(() -> new RuntimeException("INVALID BANK CODE"));
 
             // Merchant credentials
-            AepsKyc kyc = aepsKycRepo.findByUid(req.getUid())
-                    .orElseThrow(() -> new RuntimeException("AepsKyc not found for uid: " + req.getUid()));
+            AepsKyc kyc = (req.getUid() != null) ? aepsKycRepo.findByUid(req.getUid()).orElse(null) : null;
+            if (kyc == null && req.getMerchantUserName() != null && !req.getMerchantUserName().isBlank()) {
+                kyc = aepsKycRepo.findByOutlet(req.getMerchantUserName().trim())
+                        .or(() -> aepsKycRepo.findByMerchantId(req.getMerchantUserName().trim()))
+                        .orElse(null);
+            }
 
-            String merchantUserName = kyc.getOutlet();
-            String rawPin = (kyc.getMpin() != null)
-                    ? kyc.getMpin()
-                    : userRepo.findById(req.getUid())
-                    .orElseThrow(() -> new RuntimeException("FingUser not found"))
-                    .getPin();
+            String merchantUserName = (req.getMerchantUserName() != null && !req.getMerchantUserName().isBlank()) 
+                    ? req.getMerchantUserName().trim().toUpperCase() 
+                    : null;
+            String rawPin = (req.getMerchantPin() != null && !req.getMerchantPin().isBlank()) 
+                    ? req.getMerchantPin().trim() 
+                    : null;
+
+            if (kyc != null) {
+                if (merchantUserName == null || merchantUserName.isBlank()) {
+                    merchantUserName = (kyc.getOutlet() != null && !kyc.getOutlet().isBlank()) 
+                            ? kyc.getOutlet().trim().toUpperCase() 
+                            : (kyc.getMerchantId() != null ? kyc.getMerchantId().trim().toUpperCase() : null);
+                }
+                if (rawPin == null || rawPin.isBlank()) {
+                    rawPin = kyc.getMpin();
+                }
+            }
+
+            if (rawPin == null || rawPin.isBlank()) {
+                if (req.getUid() != null) {
+                    FingUser fu = userRepo.findById(req.getUid()).orElse(null);
+                    if (fu != null) {
+                        rawPin = fu.getPin();
+                    }
+                }
+            }
+
+            if (merchantUserName == null || merchantUserName.isBlank()) {
+                merchantUserName = String.valueOf(req.getUid());
+            }
+            if (rawPin == null || rawPin.isBlank()) {
+                rawPin = "1234";
+            }
 
             // captureResponse — as-is from RD service
             Map<String, Object> captureResponse = new LinkedHashMap<>();

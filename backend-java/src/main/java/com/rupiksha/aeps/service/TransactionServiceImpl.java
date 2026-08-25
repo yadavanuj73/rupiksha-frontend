@@ -149,18 +149,50 @@ public class TransactionServiceImpl implements TransactionService {
             }
         }
 
-        // 6. Setup unique IDs and Correlation ID
+        // 6. Resolve Canonical Merchant ID per Provider
+        String resolvedMerchantId = aepsUser.getAepsMerchantId();
+        if ("fingpay".equalsIgnoreCase(activeProvider)) {
+            long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
+            Optional<AepsKyc> fingKycOpt = aepsKycRepository.findByUid(uidLong)
+                    .or(() -> (mainUser.getPartyCode() != null && !mainUser.getPartyCode().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getPartyCode().trim()) : Optional.empty())
+                    .or(() -> (mainUser.getAepsAgentId() != null && !mainUser.getAepsAgentId().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getAepsAgentId().trim()) : Optional.empty())
+                    .or(() -> (mainUser.getAepsMerchantId() != null && !mainUser.getAepsMerchantId().isBlank()) ? aepsKycRepository.findByMerchantId(mainUser.getAepsMerchantId().trim()) : Optional.empty());
+
+            if (fingKycOpt.isPresent()) {
+                AepsKyc kyc = fingKycOpt.get();
+                if (kyc.getMerchantId() != null && !kyc.getMerchantId().isBlank()) {
+                    resolvedMerchantId = kyc.getMerchantId().trim().toUpperCase();
+                } else if (kyc.getOutlet() != null && !kyc.getOutlet().isBlank()) {
+                    resolvedMerchantId = kyc.getOutlet().trim().toUpperCase();
+                }
+            }
+            if ((resolvedMerchantId == null || resolvedMerchantId.isBlank()) && mainUser.getPartyCode() != null && !mainUser.getPartyCode().isBlank()) {
+                resolvedMerchantId = mainUser.getPartyCode().trim().toUpperCase();
+            }
+            if ((resolvedMerchantId == null || resolvedMerchantId.isBlank()) && mainUser.getAepsAgentId() != null && !mainUser.getAepsAgentId().isBlank()) {
+                resolvedMerchantId = mainUser.getAepsAgentId().trim().toUpperCase();
+            }
+            if ((resolvedMerchantId == null || resolvedMerchantId.isBlank()) && mainUser.getAepsMerchantId() != null && !mainUser.getAepsMerchantId().isBlank()) {
+                resolvedMerchantId = mainUser.getAepsMerchantId().trim().toUpperCase();
+            }
+        }
+        if (resolvedMerchantId == null || resolvedMerchantId.isBlank()) {
+            resolvedMerchantId = (aepsUser.getAepsMerchantId() != null && !aepsUser.getAepsMerchantId().isBlank())
+                    ? aepsUser.getAepsMerchantId()
+                    : ("MER" + mobile);
+        }
+
+        // 7. Setup unique IDs and Correlation ID
         String correlationId = "CORR" + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase();
         String referenceNumber = "REF" + System.currentTimeMillis() + (System.nanoTime() % 1000);
 
-        // 7. Persist initial transaction record in DB
-
+        // 8. Persist initial transaction record in DB
         AepsTransactionEngine transaction = AepsTransactionEngine.builder()
                 .transactionId(request.getTransactionId())
                 .referenceNumber(referenceNumber)
                 .provider(activeProvider)
                 .serviceType(request.getServiceType().toUpperCase())
-                .merchantId(aepsUser.getAepsMerchantId())
+                .merchantId(resolvedMerchantId)
                 .userId(mainUser.getId())
                 .amount(request.getAmount())
                 .status("STARTED")

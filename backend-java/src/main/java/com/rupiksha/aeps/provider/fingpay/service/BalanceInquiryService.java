@@ -55,19 +55,37 @@ public class BalanceInquiryService {
                     .orElseThrow(() -> new RuntimeException("INVALID BANK CODE: " + req.getBankId()));
 
             // 2. Merchant credentials
-            AepsKyc kyc = aepsKycRepo.findByUid(req.getUid()).orElse(null);
-            String merchantUserName = null;
-            String rawPin = null;
+            AepsKyc kyc = (req.getUid() != null) ? aepsKycRepo.findByUid(req.getUid()).orElse(null) : null;
+            if (kyc == null && req.getMerchantUserName() != null && !req.getMerchantUserName().isBlank()) {
+                kyc = aepsKycRepo.findByOutlet(req.getMerchantUserName().trim())
+                        .or(() -> aepsKycRepo.findByMerchantId(req.getMerchantUserName().trim()))
+                        .orElse(null);
+            }
 
-            if (kyc != null && kyc.getOutlet() != null && !kyc.getOutlet().isBlank()) {
-                merchantUserName = kyc.getOutlet();
-                rawPin = kyc.getMpin();
+            String merchantUserName = (req.getMerchantUserName() != null && !req.getMerchantUserName().isBlank()) 
+                    ? req.getMerchantUserName().trim().toUpperCase() 
+                    : null;
+            String rawPin = (req.getMerchantPin() != null && !req.getMerchantPin().isBlank()) 
+                    ? req.getMerchantPin().trim() 
+                    : null;
+
+            if (kyc != null) {
+                if (merchantUserName == null || merchantUserName.isBlank()) {
+                    merchantUserName = (kyc.getOutlet() != null && !kyc.getOutlet().isBlank()) 
+                            ? kyc.getOutlet().trim().toUpperCase() 
+                            : (kyc.getMerchantId() != null ? kyc.getMerchantId().trim().toUpperCase() : null);
+                }
+                if (rawPin == null || rawPin.isBlank()) {
+                    rawPin = kyc.getMpin();
+                }
             }
 
             if (rawPin == null || rawPin.isBlank()) {
-                FingUser fu = userRepo.findById(req.getUid()).orElse(null);
-                if (fu != null) {
-                    rawPin = fu.getPin();
+                if (req.getUid() != null) {
+                    FingUser fu = userRepo.findById(req.getUid()).orElse(null);
+                    if (fu != null) {
+                        rawPin = fu.getPin();
+                    }
                 }
             }
 

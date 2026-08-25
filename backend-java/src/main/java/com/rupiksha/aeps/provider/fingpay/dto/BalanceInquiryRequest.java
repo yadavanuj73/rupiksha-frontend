@@ -14,6 +14,8 @@ public class BalanceInquiryRequest {
     private String deviceId;
     private String requestRemarks;
     private String virtualId;
+    private String merchantUserName;
+    private String merchantPin;
 
     // Biometric — RD service se as-is
     private String errorCode;
