@@ -98,13 +98,24 @@ public class AepsServiceImpl implements AepsService {
         this.fingpayTxnOtpService = fingpayTxnOtpService;
     }
 
-    private boolean isFingpayKycCompleted(com.rupiksha.backend.domain.User mainUser) {
+    private boolean isFingpayOnboarded(com.rupiksha.backend.domain.User mainUser) {
+        if (mainUser == null) return false;
         long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
         return aepsKycRepository.findByUid(uidLong)
                 .or(() -> (mainUser.getPartyCode() != null && !mainUser.getPartyCode().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getPartyCode().trim()) : Optional.empty())
                 .or(() -> (mainUser.getAepsAgentId() != null && !mainUser.getAepsAgentId().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getAepsAgentId().trim()) : Optional.empty())
                 .or(() -> (mainUser.getAepsMerchantId() != null && !mainUser.getAepsMerchantId().isBlank()) ? aepsKycRepository.findByMerchantId(mainUser.getAepsMerchantId().trim()) : Optional.empty())
-                .map(k -> Boolean.TRUE.equals(k.getKycDone()) && Boolean.TRUE.equals(k.getBankEkycDone()))
+                .isPresent() || (mainUser.getPartyCode() != null && !mainUser.getPartyCode().isBlank());
+    }
+
+    private boolean isFingpayKycCompleted(com.rupiksha.backend.domain.User mainUser) {
+        if (mainUser == null) return false;
+        long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
+        return aepsKycRepository.findByUid(uidLong)
+                .or(() -> (mainUser.getPartyCode() != null && !mainUser.getPartyCode().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getPartyCode().trim()) : Optional.empty())
+                .or(() -> (mainUser.getAepsAgentId() != null && !mainUser.getAepsAgentId().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getAepsAgentId().trim()) : Optional.empty())
+                .or(() -> (mainUser.getAepsMerchantId() != null && !mainUser.getAepsMerchantId().isBlank()) ? aepsKycRepository.findByMerchantId(mainUser.getAepsMerchantId().trim()) : Optional.empty())
+                .map(k -> Boolean.TRUE.equals(k.getKycDone()) || Boolean.TRUE.equals(k.getBankEkycDone()) || (k.getOutlet() != null && !k.getOutlet().isBlank()))
                 .orElse(false);
     }
 
@@ -368,26 +379,32 @@ public class AepsServiceImpl implements AepsService {
         log.info("Initiating biometric KYC submission flow for mobile: {}", mobile);
         AepsProvider activeProvider = getActiveProvider(request.getProvider());
 
-        // 1. Fetch and validate AEPS User record
-        User aepsUser = getOrSyncAepsUser(mobile);
-        if (aepsUser == null) {
-            throw new AepsException("Merchant record not found in AEPS registry for mobile: " + mobile);
-        }
-        if (aepsUser.getAepsOnboarded() == null || !aepsUser.getAepsOnboarded()) {
-            throw new AepsException("Merchant must complete onboarding before initiating KYC.");
-        }
-        if (aepsUser.getAepsAgentId() == null || aepsUser.getAepsMerchantId() == null) {
-            throw new AepsException("Merchant registration properties are missing in database.");
-        }
-
-        // 2. Fetch and validate Core User record
-        Optional<com.rupiksha.backend.domain.User> mainUserOpt = mainUserRepository.findByMobile(mobile);
+        // 1. Fetch Core and AEPS User records
+        Optional<com.rupiksha.backend.domain.User> mainUserOpt = mainUserRepository.findByMobile(mobile)
+                .or(() -> mainUserRepository.findByUsername(mobile));
         if (mainUserOpt.isEmpty()) {
             throw new AepsException("Core user record not found for mobile: " + mobile);
         }
         com.rupiksha.backend.domain.User mainUser = mainUserOpt.get();
         if (mainUser.getAadhaarNumber() == null || mainUser.getAadhaarNumber().isBlank()) {
             throw new AepsException("Core Aadhaar number is not registered for user profile.");
+        }
+
+        User aepsUser = getOrSyncAepsUser(mobile);
+        if (aepsUser == null) {
+            throw new AepsException("Merchant record not found in AEPS registry for mobile: " + mobile);
+        }
+
+        boolean isFingpay = "fingpay".equalsIgnoreCase(activeProvider.getProviderName());
+        boolean isOnboarded = Boolean.TRUE.equals(aepsUser.getAepsOnboarded());
+        if (isFingpay) {
+            isOnboarded = isOnboarded || isFingpayOnboarded(mainUser);
+        }
+        if (!isOnboarded) {
+            throw new AepsException("Merchant must complete onboarding before initiating KYC.");
+        }
+        if (!isFingpay && (aepsUser.getAepsAgentId() == null || aepsUser.getAepsMerchantId() == null)) {
+            throw new AepsException("Merchant registration properties are missing in database.");
         }
 
         // For Fingpay, resolve merchant identifiers from canonical fingpay profile table.
@@ -475,7 +492,6 @@ public class AepsServiceImpl implements AepsService {
         if (isSuccess) {
             log.info("Biometric KYC completed instantly. Updating database records...");
             
-            boolean isFingpay = "fingpay".equalsIgnoreCase(activeProvider.getProviderName());
             if (isFingpay) {
                 long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
                 Optional<AepsKyc> aepsKycOpt = aepsKycRepository.findByUid(uidLong)
@@ -605,24 +621,30 @@ public class AepsServiceImpl implements AepsService {
         log.info("Initiating OTP verification flow for mobile: {}", mobile);
         AepsProvider activeProvider = getActiveProvider(request.getProvider());
 
-        // 1. Fetch and validate AEPS User record
-        User aepsUser = getOrSyncAepsUser(mobile);
-        if (aepsUser == null) {
-            throw new AepsException("Merchant record not found in AEPS registry for mobile: " + mobile);
-        }
-        if (aepsUser.getAepsOnboarded() == null || !aepsUser.getAepsOnboarded()) {
-            throw new AepsException("Merchant must complete onboarding before verifying OTP.");
-        }
-        if (aepsUser.getAepsKycRefId() == null || aepsUser.getAepsKycTxnId() == null) {
-            throw new AepsException("No pending KYC references found. Biometric capture must be completed first.");
-        }
-
-        // 2. Fetch and validate Core User record
-        Optional<com.rupiksha.backend.domain.User> mainUserOpt = mainUserRepository.findByMobile(mobile);
+        // 1. Fetch Core and AEPS User records
+        Optional<com.rupiksha.backend.domain.User> mainUserOpt = mainUserRepository.findByMobile(mobile)
+                .or(() -> mainUserRepository.findByUsername(mobile));
         if (mainUserOpt.isEmpty()) {
             throw new AepsException("Core user record not found for mobile: " + mobile);
         }
         com.rupiksha.backend.domain.User mainUser = mainUserOpt.get();
+
+        User aepsUser = getOrSyncAepsUser(mobile);
+        if (aepsUser == null) {
+            throw new AepsException("Merchant record not found in AEPS registry for mobile: " + mobile);
+        }
+
+        boolean isFingpay = "fingpay".equalsIgnoreCase(activeProvider.getProviderName());
+        boolean isOnboarded = Boolean.TRUE.equals(aepsUser.getAepsOnboarded());
+        if (isFingpay) {
+            isOnboarded = isOnboarded || isFingpayOnboarded(mainUser);
+        }
+        if (!isOnboarded) {
+            throw new AepsException("Merchant must complete onboarding before verifying OTP.");
+        }
+        if (!isFingpay && (aepsUser.getAepsKycRefId() == null || aepsUser.getAepsKycTxnId() == null)) {
+            throw new AepsException("No pending KYC references found. Biometric capture must be completed first.");
+        }
 
         String resolvedAgentId = aepsUser.getAepsAgentId();
         String resolvedMerchantId = aepsUser.getAepsMerchantId();
@@ -689,7 +711,6 @@ public class AepsServiceImpl implements AepsService {
         if (isSuccess) {
             log.info("OTP verified successfully. Updating database records to active KYC status...");
 
-            boolean isFingpay = "fingpay".equalsIgnoreCase(activeProvider.getProviderName());
             if (isFingpay) {
                 long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
                 AepsKyc aepsKyc = aepsKycRepository.findByUid(uidLong)
@@ -748,15 +769,7 @@ public class AepsServiceImpl implements AepsService {
         log.info("Initiating Daily 2FA authentication flow for mobile: {}", mobile);
         AepsProvider activeProvider = getActiveProvider(request.getProvider());
 
-        // 1. Fetch and validate AEPS User record
-        User aepsUser = getOrSyncAepsUser(mobile);
-        if (aepsUser == null) {
-            throw new AepsException("Merchant record not found in AEPS registry for mobile: " + mobile);
-        }
-        if (aepsUser.getAepsOnboarded() == null || !aepsUser.getAepsOnboarded()) {
-            throw new AepsException("Merchant must complete onboarding before executing Daily 2FA.");
-        }
-
+        // 1. Fetch Core and AEPS User records
         Optional<com.rupiksha.backend.domain.User> mainUserOpt = mainUserRepository.findByMobile(mobile)
                 .or(() -> mainUserRepository.findByUsername(mobile));
         if (mainUserOpt.isEmpty()) {
@@ -764,8 +777,25 @@ public class AepsServiceImpl implements AepsService {
         }
         com.rupiksha.backend.domain.User mainUser = mainUserOpt.get();
 
+        User aepsUser = getOrSyncAepsUser(mobile);
+        if (aepsUser == null) {
+            throw new AepsException("Merchant record not found in AEPS registry for mobile: " + mobile);
+        }
+
+        boolean isFingpay = "fingpay".equalsIgnoreCase(activeProvider.getProviderName());
+
+        // Validate Onboarding
+        boolean isOnboarded = Boolean.TRUE.equals(aepsUser.getAepsOnboarded());
+        if (isFingpay) {
+            isOnboarded = isOnboarded || isFingpayOnboarded(mainUser);
+        }
+        if (!isOnboarded) {
+            throw new AepsException("Merchant must complete onboarding before executing Daily 2FA.");
+        }
+
+        // Validate Biometric KYC
         boolean hasKycDone = Boolean.TRUE.equals(aepsUser.getAepsKycDone());
-        if ("fingpay".equalsIgnoreCase(activeProvider.getProviderName())) {
+        if (isFingpay) {
             hasKycDone = hasKycDone || isFingpayKycCompleted(mainUser);
         }
         if (!hasKycDone) {
@@ -913,7 +943,7 @@ public class AepsServiceImpl implements AepsService {
             AepsKycHistory sessionHistory = AepsKycHistory.builder()
                     .userId(mainUser.getId())
                     .provider(activeProvider.getProviderName().toUpperCase())
-                    .merchantId(aepsUser.getAepsMerchantId())
+                    .merchantId(resolvedMerchantId != null ? resolvedMerchantId : aepsUser.getAepsMerchantId())
                     .providerReference(sessionRef)
                     .workflowState(AepsWorkflowState.READY_FOR_TRANSACTIONS.name())
                     .status("SESSION_CREATED")
