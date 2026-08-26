@@ -62,15 +62,55 @@ public class BusttoCryptoUtil {
             } catch (Exception ignored) {}
         }
 
-        // 3. Try Base64 decoding — only relevant when the key is the Base64-ENCODED form of the real key
-        //    e.g. 44 chars (with optional '=' padding) representing 32 raw bytes.
-        //    This path is NOT taken for normal 32-char ASCII keys.
-        if (cleanKey.endsWith("=") || cleanKey.length() == 44) {
+        // 3. Try Base64 decoding — for 44-char (padded) or 43-char (unpadded) keys.
+        //    BuckBox portal may provide the AES key as standard Base64, URL-safe Base64,
+        //    or unpadded Base64 — we try all three decoders.
+        //    Standard:  uses '+' and '/', ends with '='
+        //    URL-safe:  uses '-' and '_', may or may not have '=' padding
+        //    Unpadded:  no trailing '=' characters
+        boolean looksLikeBase64 = cleanKey.endsWith("=")
+            || cleanKey.length() == 44
+            || cleanKey.length() == 43;
+        if (looksLikeBase64) {
+            // Attempt A: Standard Base64
             try {
                 byte[] decoded = Base64.getDecoder().decode(cleanKey);
                 if (decoded.length == 32 || decoded.length == 16 || decoded.length == 24) {
-                    log.info("[BusttoCrypto] Resolved AES key via Base64 decoding ({} bytes)", decoded.length);
+                    log.info("[BusttoCrypto] Resolved AES key via Standard Base64 ({} bytes)", decoded.length);
                     return decoded;
+                }
+                if (decoded.length == 33) {
+                    // 44-char unpadded Base64 with no '=' → 33 bytes; use first 32 for AES-256
+                    log.info("[BusttoCrypto] Resolved AES key via Standard Base64 (33→32 bytes, first 32 used)");
+                    return Arrays.copyOf(decoded, 32);
+                }
+            } catch (Exception ignored) {}
+
+            // Attempt B: URL-safe Base64 (uses '-' and '_' instead of '+' and '/')
+            try {
+                byte[] decoded = Base64.getUrlDecoder().decode(cleanKey);
+                if (decoded.length == 32 || decoded.length == 16 || decoded.length == 24) {
+                    log.info("[BusttoCrypto] Resolved AES key via URL-safe Base64 ({} bytes)", decoded.length);
+                    return decoded;
+                }
+                if (decoded.length == 33) {
+                    log.info("[BusttoCrypto] Resolved AES key via URL-safe Base64 (33→32 bytes, first 32 used)");
+                    return Arrays.copyOf(decoded, 32);
+                }
+            } catch (Exception ignored) {}
+
+            // Attempt C: Unpadded Base64 — add '=' padding and retry standard decoder
+            try {
+                String padded = cleanKey;
+                while (padded.length() % 4 != 0) padded += "=";
+                byte[] decoded = Base64.getDecoder().decode(padded);
+                if (decoded.length == 32 || decoded.length == 16 || decoded.length == 24) {
+                    log.info("[BusttoCrypto] Resolved AES key via Unpadded Base64 (padded→{} bytes)", decoded.length);
+                    return decoded;
+                }
+                if (decoded.length == 33) {
+                    log.info("[BusttoCrypto] Resolved AES key via Unpadded Base64 (33→32 bytes, first 32 used)");
+                    return Arrays.copyOf(decoded, 32);
                 }
             } catch (Exception ignored) {}
         }
@@ -82,6 +122,7 @@ public class BusttoCryptoUtil {
                  "Verify the exact key value in your BuckBox merchant portal.", utfBytes.length);
         return Arrays.copyOf(utfBytes, 32);
     }
+
 
     private static byte[] pad(byte[] data, int blockSize) {
         int padLen = blockSize - (data.length % blockSize);
