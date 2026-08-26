@@ -11,7 +11,9 @@ import com.rupiksha.aeps.entity.PayoutTransaction;
 import com.rupiksha.aeps.repository.PayoutTransactionRepository;
 import com.rupiksha.aeps.util.BusttoCryptoUtil;
 import com.rupiksha.aeps.util.BusttoJwtUtil;
+import com.rupiksha.backend.domain.User;
 import com.rupiksha.backend.domain.WalletTransactionContext;
+import com.rupiksha.backend.repository.UserRepository;
 import com.rupiksha.backend.service.WalletService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
@@ -35,17 +37,20 @@ public class PayoutService {
     private final PayoutProperties payoutProperties;
     private final PayoutTransactionRepository payoutTransactionRepository;
     private final WalletService walletService;
+    private final UserRepository userRepository;
 
     public PayoutService(
             ObjectMapper objectMapper,
             PayoutProperties payoutProperties,
             PayoutTransactionRepository payoutTransactionRepository,
-            WalletService walletService
+            WalletService walletService,
+            UserRepository userRepository
     ) {
         this.objectMapper = objectMapper;
         this.payoutProperties = payoutProperties;
         this.payoutTransactionRepository = payoutTransactionRepository;
         this.walletService = walletService;
+        this.userRepository = userRepository;
 
         // Dedicated RestTemplate for Payout with standard HTTP error propagation and timeouts
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
@@ -120,7 +125,20 @@ public class PayoutService {
         }
 
         String mobile = request.getMobileNumber() != null && !request.getMobileNumber().isBlank()
-                ? request.getMobileNumber().replaceAll("[^0-9]", "") : "9876543210";
+                ? request.getMobileNumber().replaceAll("[^0-9]", "") : "";
+        if (mobile.length() != 10) {
+            try {
+                User user = userRepository.findById(userUuid).orElse(null);
+                if (user != null && user.getMobile() != null && !user.getMobile().isBlank()) {
+                    String userMobile = user.getMobile().replaceAll("[^0-9]", "");
+                    if (userMobile.length() >= 10) {
+                        mobile = userMobile.substring(userMobile.length() - 10);
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Failed to fetch retailer mobile number from DB for user {}: {}", userUuid, e.getMessage());
+            }
+        }
         if (mobile.length() != 10) {
             mobile = "9876543210";
         }
