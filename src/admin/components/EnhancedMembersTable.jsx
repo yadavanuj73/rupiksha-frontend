@@ -165,7 +165,7 @@ const EnhancedMembersTable = () => {
                     walletBalance: parseFloat(String(u.walletBalance ?? u.balance ?? u.wallet?.balance ?? 0).replace(/,/g, '')) || 0,
                     createdAt: u.createdAt || u.created_at || new Date().toISOString()
                 };
-            });
+            }).filter(u => !(u.roles || []).includes('ADMIN') && u.username !== 'admin' && String(u.role).toUpperCase() !== 'ADMIN');
 
             setMembers(list);
         } catch (e) {
