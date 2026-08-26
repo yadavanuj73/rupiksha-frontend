@@ -23,6 +23,8 @@ import java.util.UUID;
 public class KycController {
     private final UserRepository userRepository;
     private final UserServiceRepository userServiceRepository;
+    private final com.rupiksha.backend.repository.WalletRepository walletRepository;
+    private final com.rupiksha.backend.repository.WalletEntryRepository walletEntryRepository;
 
     @GetMapping("/profile")
     public Map<String, Object> getProfile(@AuthenticationPrincipal JwtPrincipal principal) {
@@ -48,6 +50,45 @@ public class KycController {
         profile.put("businessName", user.getBusinessName());
         profile.put("createdAt", user.getCreatedAt());
         return Map.of("success", true, "user", profile);
+    }
+
+    @GetMapping("/debug-wallet/{userId}")
+    public Map<String, Object> debugWallet(@PathVariable String userId) {
+        UUID uuid = UUID.fromString(userId);
+        var userOpt = userRepository.findById(uuid);
+        if (userOpt.isEmpty()) {
+            return Map.of("error", "User not found");
+        }
+        var walletOpt = walletRepository.findByUserId(uuid);
+        Map<String, Object> debug = new HashMap<>();
+        debug.put("user_exists", true);
+        debug.put("username", userOpt.get().getUsername());
+        if (walletOpt.isEmpty()) {
+            debug.put("wallet_exists", false);
+            debug.put("wallet_balance", "N/A");
+        } else {
+            var w = walletOpt.get();
+            debug.put("wallet_exists", true);
+            debug.put("wallet_id", w.getId().toString());
+            debug.put("wallet_balance", w.getBalance());
+            debug.put("wallet_locked", w.getLockedBalance());
+            debug.put("wallet_status", w.getStatus() != null ? w.getStatus().name() : "null");
+            
+            var entries = walletEntryRepository.findByWalletId(w.getId());
+            List<Map<String, Object>> entryDtos = entries.stream().map(e -> {
+                Map<String, Object> m = new HashMap<>();
+                m.put("amount", e.getAmount());
+                m.put("type", e.getEntryType());
+                m.put("ref", e.getReferenceId());
+                m.put("narration", e.getNarration());
+                m.put("opening", e.getOpeningBalance());
+                m.put("closing", e.getClosingBalance());
+                m.put("status", e.getStatus() != null ? e.getStatus().name() : "null");
+                return m;
+            }).toList();
+            debug.put("wallet_entries", entryDtos);
+        }
+        return debug;
     }
 
     @GetMapping("/services")

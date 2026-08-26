@@ -16,6 +16,7 @@ import java.util.UUID;
 
 public interface WalletEntryRepository extends JpaRepository<WalletEntry, UUID> {
     Optional<WalletEntry> findByIdempotencyKey(String idempotencyKey);
+    java.util.List<WalletEntry> findByWalletId(UUID walletId);
 
     @Query("select coalesce(sum(e.tds), 0) from WalletEntry e where :userId is null or e.wallet.user.id = :userId")
     BigDecimal sumTdsByUserId(UUID userId);
