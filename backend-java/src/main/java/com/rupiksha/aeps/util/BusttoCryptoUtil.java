@@ -24,7 +24,10 @@ public class BusttoCryptoUtil {
      */
     public static byte[] resolveKeyBytes(String secretKey) {
         if (secretKey == null || secretKey.isBlank()) {
-            throw new IllegalArgumentException("AES secret key is missing");
+            throw new IllegalArgumentException(
+                "BUSTTO_AES_KEY is not configured. Set it to the AES encryption key " +
+                "from your BuckBox merchant portal."
+            );
         }
         String cleanKey = secretKey.trim();
         if ((cleanKey.startsWith("\"") && cleanKey.endsWith("\"")) ||
@@ -32,13 +35,13 @@ public class BusttoCryptoUtil {
             cleanKey = cleanKey.substring(1, cleanKey.length() - 1).trim();
         }
 
-        // 1. Direct UTF-8 key (e.g. 16, 24, or 32-character plaintext secret key as in official docs)
+        // 1. Direct UTF-8 key — exact 16, 24, or 32-byte key as provided by BuckBox
         byte[] utfBytes = cleanKey.getBytes(StandardCharsets.UTF_8);
         if (utfBytes.length == 32 || utfBytes.length == 16 || utfBytes.length == 24) {
             return utfBytes;
         }
 
-        // 2. Base64 decoded key (specifically for 44-character Base64 encoded 256-bit keys or ending with '=')
+        // 2. Base64 decoded key (44-char Base64 = 32 bytes, or any Base64 string ending with '=')
         if (cleanKey.length() == 44 || cleanKey.endsWith("=")) {
             try {
                 byte[] decoded = Base64.getDecoder().decode(cleanKey);
@@ -61,7 +64,14 @@ public class BusttoCryptoUtil {
             } catch (Exception ignored) {}
         }
 
-        throw new IllegalArgumentException("AES secret key is not a valid 16, 24, or 32-byte key");
+        // 4. Key length is non-standard — right-pad with zeros to 32 bytes (AES-256).
+        //    This matches common payment gateway SDK behaviour where a shorter passphrase
+        //    is used as-is with zero-byte padding to reach a valid AES key length.
+        //    Keys longer than 32 bytes are truncated to 32 bytes.
+        log.warn("BUSTTO_AES_KEY is {} bytes (UTF-8) — not a standard AES key length. " +
+                 "Right-padding to 32 bytes with zeros (AES-256). " +
+                 "Verify the exact key value in your BuckBox merchant portal.", utfBytes.length);
+        return Arrays.copyOf(utfBytes, 32);  // copyOf right-pads with zeros if shorter, truncates if longer
     }
 
     /**

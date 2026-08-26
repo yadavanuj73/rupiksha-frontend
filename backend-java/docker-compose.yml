@@ -32,6 +32,13 @@ services:
       BBPS_PROVIDER: ${BBPS_PROVIDER:-mock}
       ALLOW_MOCK_PROVIDERS_IN_PRODUCTION: ${ALLOW_MOCK_PROVIDERS_IN_PRODUCTION:-false}
       ADMIN_SEED_PASSWORD: ${ADMIN_SEED_PASSWORD:-}
+      # BuckBox / Bustto Payout — get these from your BuckBox merchant portal
+      BUSTTO_AES_KEY: ${BUSTTO_AES_KEY:-}
+      BUSTTO_API_KEY: ${BUSTTO_API_KEY:-}
+      BUSTTO_JWT_SECRET: ${BUSTTO_JWT_SECRET:-}
+      BUSTTO_MERCHANT_ID: ${BUSTTO_MERCHANT_ID:-}
+      BUSTTO_MERCHANT_NAME: ${BUSTTO_MERCHANT_NAME:-}
+      BUSTTO_MERCHANT_EMAIL: ${BUSTTO_MERCHANT_EMAIL:-}
     depends_on:
       - postgres
       - redis
