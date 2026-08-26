@@ -1,5 +1,7 @@
 package com.rupiksha.aeps.controller;
 
+import com.rupiksha.aeps.dto.BankVerificationRequest;
+import com.rupiksha.aeps.dto.BankVerificationResponse;
 import com.rupiksha.aeps.dto.PayoutRequest;
 import com.rupiksha.aeps.dto.PayoutResponse;
 import com.rupiksha.aeps.entity.PayoutTransaction;
@@ -7,12 +9,10 @@ import com.rupiksha.aeps.service.PayoutService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,17 +26,43 @@ public class PayoutController {
     private final PayoutService payoutService;
 
     /**
-     * Initiate a payout transaction
+     * Initiate instant payout transaction
      */
     @PostMapping("/initiate")
     public ResponseEntity<PayoutResponse> initiatePayout(
-        @Valid @RequestBody PayoutRequest request,
-        Authentication authentication
+            @Valid @RequestBody PayoutRequest request,
+            Authentication authentication
     ) {
         String userId = authentication.getName();
-        log.info("Payout request received for OrderId: {} by user: {}", request.getOrderId(), userId);
-        
+        log.info("Initiating payout for user: {}, amount: ₹{}, beneficiary: {}", userId, request.getAmount(), request.getBeneficiaryName());
         PayoutResponse response = payoutService.initiatePayout(request, userId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Penny-less / Penny-drop bank account verification
+     */
+    @PostMapping("/verify-account")
+    public ResponseEntity<BankVerificationResponse> verifyAccount(
+            @Valid @RequestBody BankVerificationRequest request,
+            Authentication authentication
+    ) {
+        String userId = authentication.getName();
+        log.info("Bank account verification request for IFSC: {} by user: {}", request.getIfsc(), userId);
+        BankVerificationResponse response = payoutService.verifyBankAccount(request, userId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Real-time payout status check
+     */
+    @GetMapping("/status/{orderId}")
+    public ResponseEntity<PayoutResponse> checkStatus(
+            @PathVariable String orderId,
+            Authentication authentication
+    ) {
+        String userId = authentication.getName();
+        PayoutResponse response = payoutService.checkPayoutStatus(orderId, userId);
         return ResponseEntity.ok(response);
     }
 
@@ -45,17 +71,14 @@ public class PayoutController {
      */
     @GetMapping("/transaction/{orderId}")
     public ResponseEntity<PayoutTransaction> getTransaction(
-        @PathVariable String orderId,
-        Authentication authentication
+            @PathVariable String orderId,
+            Authentication authentication
     ) {
         String userId = authentication.getName();
         PayoutTransaction transaction = payoutService.getTransactionByOrderId(orderId);
-        
-        // Verify user owns this transaction
         if (!transaction.getUserId().equals(userId)) {
             return ResponseEntity.status(403).build();
         }
-        
         return ResponseEntity.ok(transaction);
     }
 
@@ -64,37 +87,10 @@ public class PayoutController {
      */
     @GetMapping("/transactions")
     public ResponseEntity<List<PayoutTransaction>> getUserTransactions(
-        Authentication authentication
+            Authentication authentication
     ) {
         String userId = authentication.getName();
         List<PayoutTransaction> transactions = payoutService.getUserTransactions(userId);
-        return ResponseEntity.ok(transactions);
-    }
-
-    /**
-     * Get transactions by status
-     */
-    @GetMapping("/transactions/status/{status}")
-    public ResponseEntity<List<PayoutTransaction>> getTransactionsByStatus(
-        @PathVariable String status,
-        Authentication authentication
-    ) {
-        String userId = authentication.getName();
-        List<PayoutTransaction> transactions = payoutService.getUserTransactionsByStatus(userId, status);
-        return ResponseEntity.ok(transactions);
-    }
-
-    /**
-     * Get transactions within date range
-     */
-    @GetMapping("/transactions/date-range")
-    public ResponseEntity<List<PayoutTransaction>> getTransactionsByDateRange(
-        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
-        Authentication authentication
-    ) {
-        String userId = authentication.getName();
-        List<PayoutTransaction> transactions = payoutService.getUserTransactionsByDateRange(userId, startDate, endDate);
         return ResponseEntity.ok(transactions);
     }
 
@@ -105,10 +101,8 @@ public class PayoutController {
     public ResponseEntity<Map<String, String>> generateOrderId(Authentication authentication) {
         String userId = authentication.getName();
         String orderId = payoutService.generateOrderId(userId);
-        
         Map<String, String> response = new HashMap<>();
         response.put("orderId", orderId);
-        
         return ResponseEntity.ok(response);
     }
 
@@ -119,9 +113,7 @@ public class PayoutController {
     public ResponseEntity<Map<String, String>> health() {
         Map<String, String> response = new HashMap<>();
         response.put("status", "UP");
-        response.put("service", "Payout Service");
+        response.put("service", "Payout Hub Service");
         return ResponseEntity.ok(response);
     }
 }
-
-// Made with Bob

@@ -12,15 +12,7 @@ dist
 dist-ssr
 *.local
 
-# Editor directories and files
-.vscode/
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+
 
 # Security: never commit Spring Boot build artifacts or secrets into the web bundle
 public/BOOT-INF/

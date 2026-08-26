@@ -108,8 +108,8 @@ const RetailerLayout = () => {
             'cons_comm_receipt', 'tds_report', 'payment_req_history', 
             'emi_reports', 'qr_txn_report',
             
-            // 17 Transaction History Subcategories
-            'aeps_1', 'aeps_2', 'money_transfer', 'move_to_bank',
+            // 18 Transaction History Subcategories
+            'aeps_1', 'aeps_2', 'payout_hub', 'money_transfer', 'move_to_bank',
             'airtel_cms', 'fingpay_cms', 'bbps_bill_pay', 'wallet',
             'wallet_to_wallet', 'mobile_dth_recharge', 'aeps_cash_deposit',
             'micro_atm_transactions', 'aadhaar_pay', 'payment_gateway',

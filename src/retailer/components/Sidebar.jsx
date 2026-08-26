@@ -154,6 +154,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
             subItems: [
                 { id: 'aeps_1', label: 'AEPS 1' },
                 { id: 'aeps_2', label: 'AEPS 2' },
+                { id: 'payout_hub', label: 'Payout Hub' },
                 { id: 'money_transfer', label: 'Money Transfer' },
                 { id: 'move_to_bank', label: 'Move To Bank' },
                 { id: 'airtel_cms', label: 'Airtel CMS' },

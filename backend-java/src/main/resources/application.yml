@@ -145,12 +145,21 @@ app:
 twofactor:
   api-key: ${TWOFACTOR_API_KEY:${OTP_API_KEY:2f056347-ce8a-11f0-a6b2-0200cd936042}}
 
-# QuickZaps Payout Configuration
-quickzaps:
+# Bustto / BuckBox Payout Configuration
+bustto:
   payout:
-    base-url: ${QUICKZAPS_BASE_URL:http://login.quickzaps.io}
-    api-key: ${QUICKZAPS_API_KEY:f43a15b7-1048-4ce8-b1d1-5fcb70c80230}
-    payout-url: ${QUICKZAPS_PAYOUT_URL:https://login.quickzaps.io/api/PayoutApi/Payoutinitiate}
+    base-url: ${BUSTTO_BASE_URL:https://admin.bustto.com}
+    api-key: ${BUSTTO_API_KEY:${QUICKZAPS_API_KEY:}}
+    jwt-secret: ${BUSTTO_JWT_SECRET:}
+    aes-key: ${BUSTTO_AES_KEY:}
+    merchant-id: ${BUSTTO_MERCHANT_ID:}
+    merchant-name: ${BUSTTO_MERCHANT_NAME:}
+    merchant-email: ${BUSTTO_MERCHANT_EMAIL:}
+    payout-url: ${BUSTTO_PAYOUT_URL:/api/merchant/external/payout/}
+    status-url: ${BUSTTO_STATUS_URL:/api/merchant/external/payout-status/}
+    penny-less-url: ${BUSTTO_PENNY_LESS_URL:/api/merchant/external/v1/bank-verification/penny-less}
+    penny-drop-url: ${BUSTTO_PENNY_DROP_URL:/api/merchant/external/v1/bank-verification/penny-drop}
+    enabled: ${SERVICE_PAYOUT_ENABLED:true}
 
 # AEPS Enterprise Foundation Configuration
 aeps:

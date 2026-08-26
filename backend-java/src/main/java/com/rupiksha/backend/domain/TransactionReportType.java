@@ -5,6 +5,7 @@ public enum TransactionReportType {
     AEPS_LEVIN,
     MONEY_TRANSFER,
     MOVE_TO_BANK,
+    PAYOUT,
     CMS_AIRTEL,
     CMS_FINGPAY,
     BBPS,

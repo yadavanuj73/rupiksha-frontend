@@ -33,7 +33,7 @@ public class PayoutHistoryProvider extends BaseHistoryProvider {
 
     @Override
     public boolean supports(TransactionReportType reportType) {
-        return reportType == TransactionReportType.MOVE_TO_BANK;
+        return reportType == TransactionReportType.MOVE_TO_BANK || reportType == TransactionReportType.PAYOUT;
     }
 
     @Override
@@ -69,8 +69,8 @@ public class PayoutHistoryProvider extends BaseHistoryProvider {
         List<TransactionHistoryResponseDto> all = fetchAllHistory(reportType, userId, search, status, provider, fromDate, toDate, Sort.unsorted());
 
         long total = all.size();
-        long success = all.stream().filter(t -> "SUCCESS".equalsIgnoreCase(t.getStatus())).count();
-        long failed = all.stream().filter(t -> "FAILED".equalsIgnoreCase(t.getStatus())).count();
+        long success = all.stream().filter(t -> "SUCCESS".equalsIgnoreCase(t.getStatus()) || "SUCCESSFUL".equalsIgnoreCase(t.getStatus())).count();
+        long failed = all.stream().filter(t -> "FAILED".equalsIgnoreCase(t.getStatus()) || "FAILURE".equalsIgnoreCase(t.getStatus())).count();
         long pending = total - success - failed;
 
         BigDecimal totalVolume = all.stream()
@@ -100,13 +100,13 @@ public class PayoutHistoryProvider extends BaseHistoryProvider {
                 .bankReference(txn.getUtr())
                 .retailerId(txn.getUserId())
                 .serviceType("PAYOUT")
-                .provider("INTERNAL")
+                .provider("PAYOUT_HUB")
                 .amount(txn.getAmount())
                 .commission(balances.commission)
                 .openingBalance(balances.openingBalance)
                 .closingBalance(balances.closingBalance)
                 .status(txn.getStatus())
-                .remarks(txn.getRemarks() != null ? txn.getRemarks() : "Payout to " + txn.getBeneficiaryName())
+                .remarks(txn.getRemarks() != null ? txn.getRemarks() : "Payout to " + txn.getBeneficiaryName() + " (" + txn.getAccountNumber() + ")")
                 .createdAt(txn.getCreatedAt())
                 .updatedAt(txn.getUpdatedAt() != null ? txn.getUpdatedAt() : txn.getCreatedAt())
                 .build();

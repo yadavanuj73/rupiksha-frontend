@@ -1,23 +1,30 @@
 package com.rupiksha.aeps.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rupiksha.aeps.config.PayoutProperties;
+import com.rupiksha.aeps.dto.BankVerificationRequest;
+import com.rupiksha.aeps.dto.BankVerificationResponse;
 import com.rupiksha.aeps.dto.PayoutRequest;
 import com.rupiksha.aeps.dto.PayoutResponse;
 import com.rupiksha.aeps.entity.PayoutTransaction;
 import com.rupiksha.aeps.repository.PayoutTransactionRepository;
-import com.rupiksha.aeps.util.SignatureUtil;
+import com.rupiksha.aeps.util.BusttoCryptoUtil;
+import com.rupiksha.aeps.util.BusttoJwtUtil;
+import com.rupiksha.backend.domain.WalletTransactionContext;
 import com.rupiksha.backend.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -31,228 +38,457 @@ public class PayoutService {
     private final WalletService walletService;
 
     /**
-     * Initiate a payout transaction
+     * Initiates an instant payout transfer to beneficiary bank account.
+     * Enforces atomic wallet balance check and deduction, encrypted API communication,
+     * duplicate submission prevention, and instant auto-refund on failure.
      */
-    public PayoutResponse initiatePayout(PayoutRequest payoutRequest, String userId) {
-        try {
-            // Check if orderId already exists
-            if (payoutTransactionRepository.existsByOrderId(payoutRequest.getOrderId())) {
-                throw new IllegalArgumentException("OrderId already exists: " + payoutRequest.getOrderId());
-            }
+    public PayoutResponse initiatePayout(PayoutRequest request, String userId) {
+        String orderId = request.getOrderId();
+        if (orderId == null || orderId.isBlank()) {
+            orderId = generateOrderId(userId);
+        }
 
-            // Create transaction record
-            PayoutTransaction transaction = PayoutTransaction.builder()
-                .orderId(payoutRequest.getOrderId())
+        // 1. Guard against duplicate orderId
+        if (payoutTransactionRepository.existsByOrderId(orderId)) {
+            throw new IllegalArgumentException("Duplicate transaction orderId: " + orderId);
+        }
+
+        BigDecimal amount = request.getAmount();
+        if (amount == null || amount.compareTo(BigDecimal.ONE) < 0) {
+            throw new IllegalArgumentException("Payout amount must be at least ₹1.00");
+        }
+
+        // 2. Persist initial PENDING transaction record
+        PayoutTransaction transaction = PayoutTransaction.builder()
+                .orderId(orderId)
                 .userId(userId)
-                .amount(java.math.BigDecimal.valueOf(payoutRequest.getAmount()))
-                .beneficiaryName(payoutRequest.getBeneficiaryName())
-                .accountNumber(payoutRequest.getAccountNumber())
-                .ifsc(payoutRequest.getIfsc())
-                .bankName(payoutRequest.getBankName())
-                .transferMode(payoutRequest.getTransferMode())
-                .remarks(payoutRequest.getRemarks())
-                .mobileNumber(payoutRequest.getMobileNumber())
-                .accountType(payoutRequest.getAccountType())
+                .amount(amount)
+                .beneficiaryName(request.getBeneficiaryName())
+                .accountNumber(request.getAccountNumber())
+                .ifsc(request.getIfsc().toUpperCase().trim())
+                .bankName(request.getBankName())
+                .transferMode(request.getTransferMode() != null ? request.getTransferMode() : "IMPS")
+                .remarks(request.getRemarks())
+                .mobileNumber(request.getMobileNumber())
                 .status("PENDING")
                 .build();
 
-            payoutTransactionRepository.save(transaction);
+        payoutTransactionRepository.save(transaction);
 
-            // 1. Debit the retailer's wallet first
+        // 3. Atomically debit user's wallet
+        try {
             walletService.debitForService(
-                UUID.fromString(userId),
-                transaction.getAmount(),
-                "Payout initiated: " + transaction.getOrderId(),
-                com.rupiksha.backend.domain.WalletTransactionContext.PAYOUT,
-                "PAYOUT",
-                "127.0.0.1",
-                transaction.getOrderId()
-            );
-
-            String apiKey = payoutProperties.getApiKey();
-            String payoutUrl = payoutProperties.getPayoutUrl();
-
-            // Step 1: Convert DTO to compact JSON
-            String compactJson = objectMapper.writeValueAsString(payoutRequest);
-
-            // Step 2: Generate timestamp
-            String timestamp = SignatureUtil.getCurrentTimestamp();
-
-            // Step 3: Generate signature
-            String signature = SignatureUtil.generateSignature(apiKey, timestamp, compactJson);
-
-            // Debug logs
-            log.info("========= QUICKZAPS PAYOUT DEBUG =========");
-            log.info("API Key      : {}", apiKey);
-            log.info("Timestamp    : {}", timestamp);
-            log.info("Compact JSON : {}", compactJson);
-            log.info("Signature    : {}", signature);
-            log.info("==========================================");
-
-            // Step 4: Set headers
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("x-api-key", apiKey);
-            headers.set("x-signature", signature);
-            headers.set("x-timestamp", timestamp);
-
-            // Step 5: Make API call
-            HttpEntity<String> entity = new HttpEntity<>(compactJson, headers);
-
-            ResponseEntity<String> response = restTemplate.exchange(
-                payoutUrl,
-                HttpMethod.POST,
-                entity,
-                String.class
-            );
-
-            log.info("QuickZaps Response Status : {}", response.getStatusCode());
-            log.info("QuickZaps Response Body   : {}", response.getBody());
-
-            PayoutResponse payoutResponse = objectMapper.readValue(response.getBody(), PayoutResponse.class);
-
-            // Update transaction with response
-            transaction.setStatusCode(payoutResponse.getStatusCode());
-            transaction.setResponseMessage(payoutResponse.getMessage());
-            transaction.setResponseData(response.getBody());
-            
-            if ("200".equals(payoutResponse.getStatusCode()) || "SUCCESS".equalsIgnoreCase(payoutResponse.getStatus())) {
-                transaction.setStatus("SUCCESS");
-            } else {
-                transaction.setStatus("FAILED");
-                // 2. Refund the wallet if the provider indicates failure
-                walletService.refundForService(
                     UUID.fromString(userId),
-                    transaction.getAmount(),
-                    transaction.getOrderId(),
-                    "Payout failed: " + payoutResponse.getMessage(),
-                    com.rupiksha.backend.domain.WalletTransactionContext.PAYOUT_REFUND,
+                    amount,
+                    "Payout to " + request.getBeneficiaryName() + " (" + request.getAccountNumber() + ")",
+                    WalletTransactionContext.PAYOUT,
                     "PAYOUT",
                     "127.0.0.1",
-                    transaction.getOrderId() + "_REFUND"
-                );
+                    orderId
+            );
+        } catch (Exception e) {
+            log.error("Wallet debit failed for payout order {}: {}", orderId, e.getMessage());
+            transaction.setStatus("FAILED");
+            transaction.setResponseMessage(e.getMessage());
+            payoutTransactionRepository.save(transaction);
+            return PayoutResponse.builder()
+                    .success(false)
+                    .statusCode("WALLET_DEBIT_FAILED")
+                    .status("FAILED")
+                    .message(e.getMessage() != null && e.getMessage().contains("Insufficient")
+                            ? "Insufficient wallet balance for payout"
+                            : "Could not process wallet deduction: " + e.getMessage())
+                    .orderId(orderId)
+                    .amount(amount)
+                    .build();
+        }
+
+        // 4. Call Provider Payout API with encryption and JWT auth
+        try {
+            Map<String, Object> rawPayload = new HashMap<>();
+            rawPayload.put("amount", amount);
+            rawPayload.put("external_order_id", orderId);
+            rawPayload.put("bene_name", request.getBeneficiaryName().trim());
+            rawPayload.put("bene_account_number", request.getAccountNumber().trim());
+            rawPayload.put("bene_mobile", request.getMobileNumber() != null && !request.getMobileNumber().isBlank()
+                    ? request.getMobileNumber() : "9876543210");
+            rawPayload.put("bene_ifsc", request.getIfsc().toUpperCase().trim());
+            rawPayload.put("bank_name", request.getBankName() != null && !request.getBankName().isBlank()
+                    ? request.getBankName() : "Bank");
+            rawPayload.put("branch_name", request.getBranchName() != null && !request.getBranchName().isBlank()
+                    ? request.getBranchName() : "Branch");
+            rawPayload.put("payment_mode", request.getTransferMode() != null ? request.getTransferMode() : "IMPS");
+            rawPayload.put("bene_address", request.getAddress() != null && !request.getAddress().isBlank()
+                    ? request.getAddress() : "India");
+            rawPayload.put("trn_rmks", request.getRemarks() != null && !request.getRemarks().isBlank()
+                    ? request.getRemarks() : "Payout transfer");
+
+            String rawJson = objectMapper.writeValueAsString(rawPayload);
+            String encryptedBody = BusttoCryptoUtil.encrypt(payoutProperties.getAesKey(), rawJson);
+
+            Map<String, String> requestBody = Map.of("request", encryptedBody);
+
+            HttpHeaders headers = createAuthHeaders();
+            HttpEntity<Map<String, String>> entity = new HttpEntity<>(requestBody, headers);
+
+            String payoutUrl = payoutProperties.getFullPayoutUrl();
+            log.info("Sending encrypted payout request to {} for orderId {}", payoutUrl, orderId);
+
+            ResponseEntity<String> response = restTemplate.exchange(payoutUrl, HttpMethod.POST, entity, String.class);
+            String decryptedResponse = decryptResponseBody(response.getBody());
+
+            log.info("Payout decrypted response for orderId {}: {}", orderId, decryptedResponse);
+
+            JsonNode root = objectMapper.readTree(decryptedResponse);
+            int statusCode = root.path("bbStatusCode").asInt(-1);
+            String statusMsg = root.path("bbStatusMsg").asText("UNKNOWN");
+            JsonNode txnData = root.path("TransactionData");
+
+            String bbTxnId = txnData.path("bbTransactionId").asText("");
+            String bbTxnStatus = txnData.path("bbTransactionStatus").asText("");
+            String bbReason = txnData.path("bbReason").asText(statusMsg);
+            String utr = txnData.path("bbUtrNumber").asText(txnData.path("utr").asText(""));
+
+            transaction.setStatusCode(String.valueOf(statusCode));
+            transaction.setResponseData(decryptedResponse);
+            transaction.setUtr(utr);
+
+            if (statusCode == 0 || "INITIATED".equalsIgnoreCase(bbTxnStatus) || "SUCCESS".equalsIgnoreCase(bbTxnStatus)) {
+                transaction.setStatus("SUCCESS");
+                transaction.setResponseMessage(bbReason != null && !bbReason.isBlank() ? bbReason : "Transfer initiated successfully");
+                payoutTransactionRepository.save(transaction);
+
+                return PayoutResponse.builder()
+                        .success(true)
+                        .statusCode(String.valueOf(statusCode))
+                        .status("SUCCESS")
+                        .message("Payout transferred successfully")
+                        .orderId(orderId)
+                        .transactionId(bbTxnId)
+                        .utr(utr)
+                        .amount(amount)
+                        .beneficiaryName(request.getBeneficiaryName())
+                        .accountNumber(request.getAccountNumber())
+                        .ifsc(request.getIfsc())
+                        .bankName(request.getBankName())
+                        .transferMode(request.getTransferMode())
+                        .timestamp(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
+                        .build();
+            } else {
+                // Provider rejected transaction -> trigger immediate refund
+                String errorDetail = extractErrorMessage(root);
+                log.warn("Payout rejected by provider for orderId {}: {}", orderId, errorDetail);
+
+                transaction.setStatus("FAILED");
+                transaction.setResponseMessage(errorDetail);
+                payoutTransactionRepository.save(transaction);
+
+                executeRefund(userId, amount, orderId, "Payout rejected: " + errorDetail);
+
+                return PayoutResponse.builder()
+                        .success(false)
+                        .statusCode(String.valueOf(statusCode))
+                        .status("FAILED")
+                        .message(errorDetail)
+                        .orderId(orderId)
+                        .amount(amount)
+                        .build();
             }
-            
+
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            String errorBody = e.getResponseBodyAsString();
+            String decryptedError = decryptResponseBody(errorBody);
+            log.error("Payout HTTP error {} for orderId {}: {}", e.getStatusCode(), orderId, decryptedError);
+
+            String errorMsg = "Transfer failed with banking rail";
+            try {
+                JsonNode errRoot = objectMapper.readTree(decryptedError);
+                errorMsg = extractErrorMessage(errRoot);
+            } catch (Exception ignored) {}
+
+            transaction.setStatus("FAILED");
+            transaction.setStatusCode(String.valueOf(e.getStatusCode().value()));
+            transaction.setResponseMessage(errorMsg);
             payoutTransactionRepository.save(transaction);
 
-            return payoutResponse;
-
-        } catch (HttpClientErrorException e) {
-            log.error("QuickZaps Error Status : {}", e.getStatusCode());
-            log.error("QuickZaps Error Body   : {}", e.getResponseBodyAsString());
-            
-            // Update transaction status
-            updateTransactionStatus(payoutRequest.getOrderId(), "FAILED", 
-                String.valueOf(e.getStatusCode().value()), e.getResponseBodyAsString());
-            
-            // 3. Refund the wallet if exception occurs
-            try {
-                walletService.refundForService(
-                    UUID.fromString(userId),
-                    java.math.BigDecimal.valueOf(payoutRequest.getAmount()),
-                    payoutRequest.getOrderId(),
-                    "Payout failed (ClientError): " + e.getResponseBodyAsString(),
-                    com.rupiksha.backend.domain.WalletTransactionContext.PAYOUT_REFUND,
-                    "PAYOUT",
-                    "127.0.0.1",
-                    payoutRequest.getOrderId() + "_REFUND"
-                );
-            } catch (Exception ex) {
-                log.error("Refund failed for payout {}: {}", payoutRequest.getOrderId(), ex.getMessage());
-            }
-
-            try {
-                return objectMapper.readValue(e.getResponseBodyAsString(), PayoutResponse.class);
-            } catch (Exception ex) {
-                return PayoutResponse.builder()
-                    .statusCode(String.valueOf(e.getStatusCode().value()))
-                    .message(e.getResponseBodyAsString())
-                    .build();
-            }
-        } catch (Exception e) {
-            log.error("Payout failed: {}", e.getMessage(), e);
-            
-            // Update transaction status
-            updateTransactionStatus(payoutRequest.getOrderId(), "FAILED", "500", e.getMessage());
-            
-            // 4. Refund the wallet if general exception occurs
-            try {
-                walletService.refundForService(
-                    UUID.fromString(userId),
-                    java.math.BigDecimal.valueOf(payoutRequest.getAmount()),
-                    payoutRequest.getOrderId(),
-                    "Payout failed (ServerError): " + e.getMessage(),
-                    com.rupiksha.backend.domain.WalletTransactionContext.PAYOUT_REFUND,
-                    "PAYOUT",
-                    "127.0.0.1",
-                    payoutRequest.getOrderId() + "_REFUND"
-                );
-            } catch (Exception ex) {
-                log.error("Refund failed for payout {}: {}", payoutRequest.getOrderId(), ex.getMessage());
-            }
+            executeRefund(userId, amount, orderId, "Payout failed: " + errorMsg);
 
             return PayoutResponse.builder()
-                .statusCode("500")
-                .message("Payout failed: " + e.getMessage())
-                .build();
+                    .success(false)
+                    .statusCode(String.valueOf(e.getStatusCode().value()))
+                    .status("FAILED")
+                    .message(errorMsg)
+                    .orderId(orderId)
+                    .amount(amount)
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Payout unexpected exception for orderId {}: {}", orderId, e.getMessage(), e);
+
+            transaction.setStatus("FAILED");
+            transaction.setStatusCode("500");
+            transaction.setResponseMessage(e.getMessage());
+            payoutTransactionRepository.save(transaction);
+
+            executeRefund(userId, amount, orderId, "Payout error: " + e.getMessage());
+
+            return PayoutResponse.builder()
+                    .success(false)
+                    .statusCode("500")
+                    .status("FAILED")
+                    .message("Payout request encountered an error. Debited amount has been refunded.")
+                    .orderId(orderId)
+                    .amount(amount)
+                    .build();
         }
     }
 
     /**
-     * Get payout transaction by orderId
+     * Bank Account Verification (Penny-less).
+     * Validates if the bank account exists and returns the legal Name At Bank.
      */
-    public PayoutTransaction getTransactionByOrderId(String orderId) {
-        return payoutTransactionRepository.findByOrderId(orderId)
-            .orElseThrow(() -> new IllegalArgumentException("Transaction not found: " + orderId));
+    public BankVerificationResponse verifyBankAccount(BankVerificationRequest request, String userId) {
+        try {
+            Map<String, Object> rawPayload = new HashMap<>();
+            rawPayload.put("account_number", request.getAccountNumber().trim());
+            rawPayload.put("ifsc_code", request.getIfsc().toUpperCase().trim());
+
+            String rawJson = objectMapper.writeValueAsString(rawPayload);
+            String encryptedBody = BusttoCryptoUtil.encrypt(payoutProperties.getAesKey(), rawJson);
+
+            Map<String, String> requestBody = Map.of("request", encryptedBody);
+            HttpHeaders headers = createAuthHeaders();
+            HttpEntity<Map<String, String>> entity = new HttpEntity<>(requestBody, headers);
+
+            String url = "penny-drop".equalsIgnoreCase(request.getMethod())
+                    ? payoutProperties.getFullPennyDropUrl()
+                    : payoutProperties.getFullPennyLessUrl();
+
+            log.info("Verifying bank account with {} for ifsc {}", url, request.getIfsc());
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+            String decryptedResponse = decryptResponseBody(response.getBody());
+
+            log.info("Bank verification response: {}", decryptedResponse);
+
+            JsonNode root = objectMapper.readTree(decryptedResponse);
+            int statusCode = root.path("bbStatusCode").asInt(-1);
+            JsonNode txnData = root.path("TransactionData");
+
+            if (statusCode == 0) {
+                String nameAtBank = txnData.path("nameAtBank").asText("");
+                String acValidationStatus = txnData.path("acValidationStatus").asText("ACCOUNT_VALID");
+                String verificationId = txnData.path("verification_id").asText("");
+                String utr = txnData.path("utr").asText("");
+
+                return BankVerificationResponse.builder()
+                        .success(true)
+                        .statusCode("0")
+                        .status("SUCCESS")
+                        .message("Bank account verified successfully")
+                        .nameAtBank(nameAtBank)
+                        .acValidationStatus(acValidationStatus)
+                        .verificationId(verificationId)
+                        .custAcctNo(request.getAccountNumber())
+                        .custIfsc(request.getIfsc())
+                        .utr(utr)
+                        .build();
+            } else {
+                String errorMsg = extractErrorMessage(root);
+                return BankVerificationResponse.builder()
+                        .success(false)
+                        .statusCode(String.valueOf(statusCode))
+                        .status("FAILED")
+                        .message(errorMsg != null && !errorMsg.isBlank() ? errorMsg : "Account verification failed")
+                        .build();
+            }
+
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            String decryptedError = decryptResponseBody(e.getResponseBodyAsString());
+            log.error("Bank verification error: {}", decryptedError);
+            String errorMsg = "Account verification failed";
+            try {
+                JsonNode errRoot = objectMapper.readTree(decryptedError);
+                errorMsg = extractErrorMessage(errRoot);
+            } catch (Exception ignored) {}
+
+            return BankVerificationResponse.builder()
+                    .success(false)
+                    .statusCode(String.valueOf(e.getStatusCode().value()))
+                    .status("FAILED")
+                    .message(errorMsg)
+                    .build();
+        } catch (Exception e) {
+            log.error("Bank verification unexpected error: {}", e.getMessage(), e);
+            return BankVerificationResponse.builder()
+                    .success(false)
+                    .statusCode("500")
+                    .status("FAILED")
+                    .message("Failed to verify bank account: " + e.getMessage())
+                    .build();
+        }
     }
 
     /**
-     * Get all transactions for a user
+     * Checks real-time status of payout transaction.
      */
+    public PayoutResponse checkPayoutStatus(String orderId, String userId) {
+        PayoutTransaction txn = payoutTransactionRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Transaction not found: " + orderId));
+
+        if (!txn.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("Unauthorized transaction access");
+        }
+
+        try {
+            HttpHeaders headers = createAuthHeaders();
+            HttpEntity<String> entity = new HttpEntity<>("{}", headers);
+
+            String statusUrl = payoutProperties.getFullStatusUrl(txn.getOrderId());
+            ResponseEntity<String> response = restTemplate.exchange(statusUrl, HttpMethod.GET, entity, String.class);
+            String decryptedResponse = decryptResponseBody(response.getBody());
+
+            JsonNode root = objectMapper.readTree(decryptedResponse);
+            int statusCode = root.path("bbStatusCode").asInt(-1);
+            JsonNode txnData = root.path("TransactionData");
+
+            String bbStatus = txnData.path("bbTransactionStatus").asText("");
+            String utr = txnData.path("bbUtrNumber").asText(txnData.path("utr").asText(""));
+
+            if (statusCode == 0 && ("Successful".equalsIgnoreCase(bbStatus) || "SUCCESS".equalsIgnoreCase(bbStatus))) {
+                txn.setStatus("SUCCESS");
+                if (utr != null && !utr.isBlank()) txn.setUtr(utr);
+                payoutTransactionRepository.save(txn);
+            } else if ("Failed".equalsIgnoreCase(bbStatus) || "FAILED".equalsIgnoreCase(bbStatus)) {
+                if (!"FAILED".equalsIgnoreCase(txn.getStatus())) {
+                    txn.setStatus("FAILED");
+                    payoutTransactionRepository.save(txn);
+                    executeRefund(userId, txn.getAmount(), orderId, "Status check returned failed");
+                }
+            }
+
+            return PayoutResponse.builder()
+                    .success("SUCCESS".equalsIgnoreCase(txn.getStatus()))
+                    .statusCode(String.valueOf(statusCode))
+                    .status(txn.getStatus())
+                    .message("Status: " + txn.getStatus())
+                    .orderId(txn.getOrderId())
+                    .utr(txn.getUtr())
+                    .amount(txn.getAmount())
+                    .beneficiaryName(txn.getBeneficiaryName())
+                    .accountNumber(txn.getAccountNumber())
+                    .ifsc(txn.getIfsc())
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Failed to query status for payout {}: {}", orderId, e.getMessage());
+            return PayoutResponse.builder()
+                    .success("SUCCESS".equalsIgnoreCase(txn.getStatus()))
+                    .status(txn.getStatus())
+                    .message("Current stored status: " + txn.getStatus())
+                    .orderId(txn.getOrderId())
+                    .utr(txn.getUtr())
+                    .amount(txn.getAmount())
+                    .build();
+        }
+    }
+
     public List<PayoutTransaction> getUserTransactions(String userId) {
         return payoutTransactionRepository.findByUserId(userId);
     }
 
-    /**
-     * Get transactions by status for a user
-     */
-    public List<PayoutTransaction> getUserTransactionsByStatus(String userId, String status) {
-        return payoutTransactionRepository.findByUserIdAndStatus(userId, status);
+    public PayoutTransaction getTransactionByOrderId(String orderId) {
+        return payoutTransactionRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Transaction not found: " + orderId));
     }
 
-    /**
-     * Get transactions within date range
-     */
-    public List<PayoutTransaction> getUserTransactionsByDateRange(
-        String userId, 
-        LocalDateTime startDate, 
-        LocalDateTime endDate
-    ) {
-        return payoutTransactionRepository.findByUserIdAndCreatedAtBetween(userId, startDate, endDate);
-    }
-
-    /**
-     * Generate unique order ID
-     */
     public String generateOrderId(String userId) {
-        return "PO" + System.currentTimeMillis() + "_" + userId.substring(0, Math.min(4, userId.length()));
+        String dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        String randStr = UUID.randomUUID().toString().replace("-", "").substring(0, 4).toUpperCase();
+        return "PO_" + dateStr + "_" + randStr;
     }
 
-    /**
-     * Update transaction status
-     */
-    private void updateTransactionStatus(String orderId, String status, String statusCode, String message) {
+    private HttpHeaders createAuthHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+        headers.set("Api-Key", payoutProperties.getApiKey());
+
+        String jwtToken = BusttoJwtUtil.generateOrGetToken(
+                payoutProperties.getJwtSecret(),
+                payoutProperties.getMerchantId(),
+                payoutProperties.getMerchantName(),
+                payoutProperties.getMerchantEmail()
+        );
+        headers.set("Authorization", "Bearer " + jwtToken);
+        return headers;
+    }
+
+    private String decryptResponseBody(String body) {
+        if (body == null || body.isBlank()) return "{}";
         try {
-            payoutTransactionRepository.findByOrderId(orderId).ifPresent(transaction -> {
-                transaction.setStatus(status);
-                transaction.setStatusCode(statusCode);
-                transaction.setResponseMessage(message);
-                payoutTransactionRepository.save(transaction);
-            });
+            // Check if body is a JSON object with encrypted_payload or request or direct string
+            if (body.trim().startsWith("{")) {
+                JsonNode node = objectMapper.readTree(body);
+                if (node.has("encrypted_payload")) {
+                    return BusttoCryptoUtil.decrypt(payoutProperties.getAesKey(), node.get("encrypted_payload").asText());
+                }
+                if (node.has("request")) {
+                    return BusttoCryptoUtil.decrypt(payoutProperties.getAesKey(), node.get("request").asText());
+                }
+                if (node.has("bbStatusCode")) {
+                    return body; // Already plaintext JSON
+                }
+            }
+            // Try decrypting as raw base64 string
+            return BusttoCryptoUtil.decrypt(payoutProperties.getAesKey(), body);
         } catch (Exception e) {
-            log.error("Failed to update transaction status: {}", e.getMessage());
+            log.debug("Payload is not encrypted or decryption skipped: {}", e.getMessage());
+            return body;
+        }
+    }
+
+    private String extractErrorMessage(JsonNode root) {
+        if (root == null) return "Transaction could not be processed";
+        JsonNode errNode = root.path("bbErrorMsg");
+        if (errNode.isTextual() && !errNode.asText().isBlank()) {
+            return errNode.asText();
+        }
+        if (errNode.isObject()) {
+            List<String> errors = new ArrayList<>();
+            errNode.fieldNames().forEachRemaining(field -> {
+                JsonNode val = errNode.get(field);
+                if (val.isArray() && val.size() > 0) {
+                    errors.add(val.get(0).asText());
+                } else {
+                    errors.add(field + ": " + val.asText());
+                }
+            });
+            if (!errors.isEmpty()) {
+                return String.join(", ", errors);
+            }
+        }
+        String statusMsg = root.path("bbStatusMsg").asText();
+        if (!statusMsg.isBlank() && !"SUCCESS".equalsIgnoreCase(statusMsg)) {
+            return statusMsg;
+        }
+        return "Transaction failed with banking rail";
+    }
+
+    private void executeRefund(String userId, BigDecimal amount, String orderId, String reason) {
+        try {
+            walletService.refundForService(
+                    UUID.fromString(userId),
+                    amount,
+                    reason,
+                    orderId,
+                    WalletTransactionContext.PAYOUT_REFUND,
+                    "PAYOUT",
+                    "127.0.0.1",
+                    orderId + "_REFUND"
+            );
+            log.info("Successfully refunded ₹{} for payout order {}", amount, orderId);
+        } catch (Exception e) {
+            log.error("Automatic refund failed for order {}: {}", orderId, e.getMessage(), e);
         }
     }
 }
-
-// Made with Bob

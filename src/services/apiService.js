@@ -393,6 +393,17 @@ export const payoutService = {
       body: JSON.stringify(payoutData),
     }),
 
+  // Verify bank account (Penny-less / Penny-drop)
+  verifyAccount: (verifyData) =>
+    apiFetch("/payout/verify-account", {
+      method: "POST",
+      body: JSON.stringify(verifyData),
+    }),
+
+  // Check status of a payout transaction
+  checkStatus: (orderId) =>
+    apiFetch(`/payout/status/${encodeURIComponent(orderId)}`),
+
   // Get transaction by orderId
   getTransaction: (orderId) =>
     apiFetch(`/payout/transaction/${encodeURIComponent(orderId)}`),

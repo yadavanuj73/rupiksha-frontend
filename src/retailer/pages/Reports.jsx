@@ -19,6 +19,7 @@ const getReportEnum = (type) => {
     const mapping = {
         aeps_1: 'AEPS_FINGPAY',
         aeps_2: 'AEPS_LEVIN',
+        payout_hub: 'PAYOUT',
         money_transfer: 'MONEY_TRANSFER',
         move_to_bank: 'MOVE_TO_BANK',
         airtel_cms: 'CMS_AIRTEL',
@@ -114,6 +115,7 @@ const Reports = () => {
     const reportConfigs = {
         aeps_1: { title: "AEPS 1 History", subtitle: "Aadhaar Enabled Payment System 1 transaction logs", color: "#2563eb", icon: Fingerprint },
         aeps_2: { title: "AEPS 2 History", subtitle: "Aadhaar Enabled Payment System 2 transaction logs", color: "#4f46e5", icon: Fingerprint },
+        payout_hub: { title: "Payout Hub History", subtitle: "Instant bank transfer transaction logs and statuses", color: "#6366f1", icon: Landmark },
         money_transfer: { title: "Money Transfer History", subtitle: "Domestic money remittance transactions", color: "#0d9488", icon: IndianRupee },
         move_to_bank: { title: "Move To Bank Logs", subtitle: "Settlements to registered bank accounts", color: "#0284c7", icon: Landmark },
         airtel_cms: { title: "Airtel CMS History", subtitle: "Airtel Cash Management Services transaction logs", color: "#dc2626", icon: FileText },
