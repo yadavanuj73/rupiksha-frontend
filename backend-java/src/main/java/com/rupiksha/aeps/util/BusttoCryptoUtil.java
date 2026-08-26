@@ -15,8 +15,12 @@ import java.util.Base64;
 @Slf4j
 public class BusttoCryptoUtil {
 
-    private static final int IV_LENGTH = 16;
+    // AES-GCM standard IV: 12 bytes (96 bits) per NIST SP 800-38D.
+    // Using 16 bytes causes GCM counter block derivation to differ from the provider's expectation,
+    // producing a MAC check failure even with the correct key.
+    private static final int IV_LENGTH = 12;
     private static final int TAG_LENGTH_BIT = 128;
+
 
     /**
      * Resolves the AES secret key into a valid 16, 24, or 32-byte binary key.
