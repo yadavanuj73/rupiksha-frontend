@@ -8,7 +8,6 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
@@ -62,22 +61,15 @@ public class BusttoCryptoUtil {
             } catch (Exception ignored) {}
         }
 
-        // 4. Fallback: derive 32-byte key via SHA-256
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            return md.digest(utfBytes);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to derive 256-bit AES key", e);
-        }
+        throw new IllegalArgumentException("AES secret key is not a valid 16, 24, or 32-byte key");
     }
 
     /**
      * Encrypts the raw JSON payload with the merchant AES secret key.
      * Complies 100% with Python/PHP/Node.js/Java documentation specification:
-     * - Applies 16-byte PKCS7 block padding
      * - Uses a 16-byte random IV
      * - Encrypts with AES-GCM stream cipher
-     * - Returns Base64-encoded [IV (16 bytes) + Ciphertext (padded length)]
+     * - Returns Base64-encoded [IV (16 bytes) + Ciphertext + Tag (16 bytes)]
      */
     public static String encrypt(String secretKey, String payload) throws Exception {
         if (payload == null) {
@@ -91,21 +83,16 @@ public class BusttoCryptoUtil {
         SecureRandom random = new SecureRandom();
         random.nextBytes(iv);
 
-        // Apply 16-byte PKCS7 block padding
         byte[] rawBytes = payload.getBytes(StandardCharsets.UTF_8);
-        byte[] paddedBytes = pad(rawBytes);
 
         // Java GCM encryption
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
         cipher.init(Cipher.ENCRYPT_MODE, keySpec, new GCMParameterSpec(TAG_LENGTH_BIT, iv));
-        byte[] encryptedWithTag = cipher.doFinal(paddedBytes);
+        byte[] encryptedWithTag = cipher.doFinal(rawBytes);
 
-        // Extract ciphertext matching Python enc = cipher.encrypt(pad(payload))
-        byte[] ciphertextOnly = Arrays.copyOfRange(encryptedWithTag, 0, paddedBytes.length);
-
-        ByteBuffer combined = ByteBuffer.allocate(iv.length + ciphertextOnly.length);
+        ByteBuffer combined = ByteBuffer.allocate(iv.length + encryptedWithTag.length);
         combined.put(iv);
-        combined.put(ciphertextOnly);
+        combined.put(encryptedWithTag);
 
         return Base64.getEncoder().encodeToString(combined.array());
     }
@@ -135,7 +122,7 @@ public class BusttoCryptoUtil {
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
             cipher.init(Cipher.DECRYPT_MODE, keySpec, new GCMParameterSpec(TAG_LENGTH_BIT, iv));
             byte[] decrypted = cipher.doFinal(cipherBytes);
-            return unpadString(decrypted);
+            return new String(decrypted, StandardCharsets.UTF_8);
         } catch (Exception e1) {
             log.debug("GCM 128-bit decryption failed: {}, trying CTR/CBC fallbacks", e1.getMessage());
         }
@@ -169,17 +156,6 @@ public class BusttoCryptoUtil {
         } catch (Exception e4) {
             throw new RuntimeException("All decryption modes failed for payload", e4);
         }
-    }
-
-    private static byte[] pad(byte[] data) {
-        int blockSize = 16;
-        int padLen = blockSize - (data.length % blockSize);
-        byte[] padded = new byte[data.length + padLen];
-        System.arraycopy(data, 0, padded, 0, data.length);
-        for (int i = data.length; i < padded.length; i++) {
-            padded[i] = (byte) padLen;
-        }
-        return padded;
     }
 
     private static String unpadString(byte[] data) {
