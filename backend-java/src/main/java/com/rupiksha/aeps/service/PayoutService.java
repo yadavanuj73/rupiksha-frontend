@@ -13,9 +13,9 @@ import com.rupiksha.aeps.util.BusttoCryptoUtil;
 import com.rupiksha.aeps.util.BusttoJwtUtil;
 import com.rupiksha.backend.domain.WalletTransactionContext;
 import com.rupiksha.backend.service.WalletService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
@@ -28,7 +28,6 @@ import java.util.*;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class PayoutService {
 
     private final RestTemplate restTemplate;
@@ -36,6 +35,24 @@ public class PayoutService {
     private final PayoutProperties payoutProperties;
     private final PayoutTransactionRepository payoutTransactionRepository;
     private final WalletService walletService;
+
+    public PayoutService(
+            ObjectMapper objectMapper,
+            PayoutProperties payoutProperties,
+            PayoutTransactionRepository payoutTransactionRepository,
+            WalletService walletService
+    ) {
+        this.objectMapper = objectMapper;
+        this.payoutProperties = payoutProperties;
+        this.payoutTransactionRepository = payoutTransactionRepository;
+        this.walletService = walletService;
+
+        // Dedicated RestTemplate for Payout with standard HTTP error propagation and timeouts
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(15000);
+        factory.setReadTimeout(30000);
+        this.restTemplate = new RestTemplate(factory);
+    }
 
     private String cleanUserIdString(String raw) {
         if (raw == null || raw.isBlank()) {
@@ -82,18 +99,44 @@ public class PayoutService {
             throw new IllegalArgumentException("Payout amount must be at least ₹1.00");
         }
 
+        String rawAcc = request.getAccountNumber() != null ? request.getAccountNumber().trim() : "";
+        String cleanAcc = rawAcc.replaceAll("[^0-9]", "");
+        String rawIfsc = request.getIfsc() != null ? request.getIfsc().toUpperCase().trim() : "";
+
+        // Length validation as specified in Bustto documentation (bank_name max 20, bene_address max 54)
+        String bankName = request.getBankName() != null && !request.getBankName().isBlank()
+                ? request.getBankName().trim() : "Bank Transfer";
+        if (bankName.length() > 20) {
+            bankName = bankName.substring(0, 20);
+        }
+
+        String branchName = request.getBranchName() != null && !request.getBranchName().isBlank()
+                ? request.getBranchName().trim() : "Branch";
+
+        String beneAddress = request.getAddress() != null && !request.getAddress().isBlank()
+                ? request.getAddress().trim() : "India";
+        if (beneAddress.length() > 54) {
+            beneAddress = beneAddress.substring(0, 54);
+        }
+
+        String mobile = request.getMobileNumber() != null && !request.getMobileNumber().isBlank()
+                ? request.getMobileNumber().replaceAll("[^0-9]", "") : "9876543210";
+        if (mobile.length() != 10) {
+            mobile = "9876543210";
+        }
+
         // 2. Persist initial PENDING transaction record
         PayoutTransaction transaction = PayoutTransaction.builder()
                 .orderId(orderId)
                 .userId(cleanUserId)
                 .amount(amount)
                 .beneficiaryName(request.getBeneficiaryName())
-                .accountNumber(request.getAccountNumber())
-                .ifsc(request.getIfsc().toUpperCase().trim())
-                .bankName(request.getBankName())
+                .accountNumber(cleanAcc)
+                .ifsc(rawIfsc)
+                .bankName(bankName)
                 .transferMode(request.getTransferMode() != null ? request.getTransferMode() : "IMPS")
                 .remarks(request.getRemarks())
-                .mobileNumber(request.getMobileNumber())
+                .mobileNumber(mobile)
                 .status("PENDING")
                 .build();
 
@@ -104,7 +147,7 @@ public class PayoutService {
             walletService.debitForService(
                     userUuid,
                     amount,
-                    "Payout to " + request.getBeneficiaryName() + " (" + request.getAccountNumber() + ")",
+                    "Payout to " + request.getBeneficiaryName() + " (" + cleanAcc + ")",
                     WalletTransactionContext.PAYOUT,
                     "PAYOUT",
                     "127.0.0.1",
@@ -127,39 +170,32 @@ public class PayoutService {
                     .build();
         }
 
-        // 4. Call Provider Payout API with encryption and JWT auth
+        // 4. Call Provider Payout API with encrypted request body
         try {
             Map<String, Object> rawPayload = new HashMap<>();
             rawPayload.put("amount", amount);
             rawPayload.put("external_order_id", orderId);
             rawPayload.put("bene_name", request.getBeneficiaryName().trim());
-            rawPayload.put("bene_account_number", request.getAccountNumber().trim());
-            rawPayload.put("bene_mobile", request.getMobileNumber() != null && !request.getMobileNumber().isBlank()
-                    ? request.getMobileNumber() : "9876543210");
-            rawPayload.put("bene_ifsc", request.getIfsc().toUpperCase().trim());
-            rawPayload.put("bank_name", request.getBankName() != null && !request.getBankName().isBlank()
-                    ? request.getBankName() : "Bank");
-            rawPayload.put("branch_name", request.getBranchName() != null && !request.getBranchName().isBlank()
-                    ? request.getBranchName() : "Branch");
+            rawPayload.put("bene_account_number", cleanAcc);
+            rawPayload.put("bene_mobile", mobile);
+            rawPayload.put("bene_ifsc", rawIfsc);
+            rawPayload.put("bank_name", bankName);
+            rawPayload.put("branch_name", branchName);
             rawPayload.put("payment_mode", request.getTransferMode() != null ? request.getTransferMode() : "IMPS");
-            rawPayload.put("bene_address", request.getAddress() != null && !request.getAddress().isBlank()
-                    ? request.getAddress() : "India");
+            rawPayload.put("bene_address", beneAddress);
             rawPayload.put("trn_rmks", request.getRemarks() != null && !request.getRemarks().isBlank()
                     ? request.getRemarks() : "Payout transfer");
 
             String rawJson = objectMapper.writeValueAsString(rawPayload);
             String encryptedBody = BusttoCryptoUtil.encrypt(payoutProperties.getAesKey(), rawJson);
 
-            // Populate both encrypted and structured keys for complete gateway compatibility
-            Map<String, Object> requestBody = new HashMap<>(rawPayload);
-            requestBody.put("request", encryptedBody);
-            requestBody.put("encrypted_payload", encryptedBody);
+            Map<String, String> requestBody = Map.of("request", encryptedBody);
 
             HttpHeaders headers = createAuthHeaders();
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+            HttpEntity<Map<String, String>> entity = new HttpEntity<>(requestBody, headers);
 
             String payoutUrl = payoutProperties.getFullPayoutUrl();
-            log.info("Sending payout request to {} for orderId {}", payoutUrl, orderId);
+            log.info("Sending encrypted payout request to {} for orderId {}", payoutUrl, orderId);
 
             ResponseEntity<String> response = restTemplate.exchange(payoutUrl, HttpMethod.POST, entity, String.class);
             String decryptedResponse = decryptResponseBody(response.getBody());
@@ -201,9 +237,9 @@ public class PayoutService {
                         .utr(utr)
                         .amount(amount)
                         .beneficiaryName(request.getBeneficiaryName())
-                        .accountNumber(request.getAccountNumber())
-                        .ifsc(request.getIfsc())
-                        .bankName(request.getBankName())
+                        .accountNumber(cleanAcc)
+                        .ifsc(rawIfsc)
+                        .bankName(bankName)
                         .transferMode(request.getTransferMode())
                         .timestamp(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
                         .build();
@@ -288,13 +324,10 @@ public class PayoutService {
             String rawJson = objectMapper.writeValueAsString(rawPayload);
             String encryptedBody = BusttoCryptoUtil.encrypt(payoutProperties.getAesKey(), rawJson);
 
-            // Send payload with direct fields + encrypted fallback to ensure full compatibility
-            Map<String, Object> requestBody = new HashMap<>(rawPayload);
-            requestBody.put("request", encryptedBody);
-            requestBody.put("encrypted_payload", encryptedBody);
+            Map<String, String> requestBody = Map.of("request", encryptedBody);
 
             HttpHeaders headers = createAuthHeaders();
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+            HttpEntity<Map<String, String>> entity = new HttpEntity<>(requestBody, headers);
 
             String url = "penny-drop".equalsIgnoreCase(request.getMethod())
                     ? payoutProperties.getFullPennyDropUrl()
@@ -580,7 +613,7 @@ public class PayoutService {
             return rawBody;
         }
 
-        return "Bank verification rejected by provider";
+        return "Transaction rejected by provider";
     }
 
     private void executeRefund(String rawUserId, BigDecimal amount, String orderId, String reason) {
