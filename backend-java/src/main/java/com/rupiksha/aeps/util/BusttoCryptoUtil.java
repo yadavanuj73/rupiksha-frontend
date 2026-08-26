@@ -16,8 +16,6 @@ import java.util.Base64;
 @Slf4j
 public class BusttoCryptoUtil {
 
-    private static final String ALGO_GCM = "AES/GCM/NoPadding";
-    private static final String ALGO_GCM_PKCS5 = "AES/GCM/PKCS5Padding";
     private static final int IV_LENGTH = 16;
     private static final int TAG_LENGTH_BIT = 128;
 
@@ -87,16 +85,22 @@ public class BusttoCryptoUtil {
         SecureRandom random = new SecureRandom();
         random.nextBytes(iv);
 
-        Cipher cipher;
+        byte[] encrypted;
         try {
-            cipher = Cipher.getInstance(ALGO_GCM_PKCS5);
+            Cipher cipher = Cipher.getInstance("AES/GCM/PKCS5Padding");
             cipher.init(Cipher.ENCRYPT_MODE, keySpec, new IvParameterSpec(iv));
+            encrypted = cipher.doFinal(payload.getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
-            cipher = Cipher.getInstance(ALGO_GCM);
-            cipher.init(Cipher.ENCRYPT_MODE, keySpec, new GCMParameterSpec(TAG_LENGTH_BIT, iv));
+            try {
+                Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+                cipher.init(Cipher.ENCRYPT_MODE, keySpec, new GCMParameterSpec(TAG_LENGTH_BIT, iv));
+                encrypted = cipher.doFinal(payload.getBytes(StandardCharsets.UTF_8));
+            } catch (Exception ex) {
+                Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+                cipher.init(Cipher.ENCRYPT_MODE, keySpec, new IvParameterSpec(iv));
+                encrypted = cipher.doFinal(payload.getBytes(StandardCharsets.UTF_8));
+            }
         }
-
-        byte[] encrypted = cipher.doFinal(payload.getBytes(StandardCharsets.UTF_8));
 
         ByteBuffer combined = ByteBuffer.allocate(iv.length + encrypted.length);
         combined.put(iv);
@@ -124,16 +128,23 @@ public class BusttoCryptoUtil {
         byte[] keyBytes = resolveKeyBytes(secretKey);
         SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "AES");
 
-        Cipher cipher;
+        byte[] decrypted;
         try {
-            cipher = Cipher.getInstance(ALGO_GCM_PKCS5);
+            Cipher cipher = Cipher.getInstance("AES/GCM/PKCS5Padding");
             cipher.init(Cipher.DECRYPT_MODE, keySpec, new IvParameterSpec(iv));
+            decrypted = cipher.doFinal(cipherBytes);
         } catch (Exception e) {
-            cipher = Cipher.getInstance(ALGO_GCM);
-            cipher.init(Cipher.DECRYPT_MODE, keySpec, new GCMParameterSpec(TAG_LENGTH_BIT, iv));
+            try {
+                Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+                cipher.init(Cipher.DECRYPT_MODE, keySpec, new GCMParameterSpec(TAG_LENGTH_BIT, iv));
+                decrypted = cipher.doFinal(cipherBytes);
+            } catch (Exception ex) {
+                Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+                cipher.init(Cipher.DECRYPT_MODE, keySpec, new IvParameterSpec(iv));
+                decrypted = cipher.doFinal(cipherBytes);
+            }
         }
 
-        byte[] decrypted = cipher.doFinal(cipherBytes);
         return new String(decrypted, StandardCharsets.UTF_8);
     }
 }

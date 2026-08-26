@@ -17,8 +17,8 @@ public class PayoutProperties {
     private String merchantEmail;
     private String payoutUrl = "/api/merchant/external/payout/";
     private String statusUrl = "/api/merchant/external/payout-status/";
-    private String pennyLessUrl = "/api/merchant/external/v1/bank-verification/penny-less";
-    private String pennyDropUrl = "/api/merchant/external/v1/bank-verification/penny-drop";
+    private String pennyLessUrl = "/api/merchant/external/v1/bank-verification/penny-less/";
+    private String pennyDropUrl = "/api/merchant/external/v1/bank-verification/penny-drop/";
     private String verificationStatusUrl = "/api/merchant/external/v1/bank-verification/";
     private String walletBalanceUrl = "/api/merchant/external/merchant-wallet-balance/";
     private boolean enabled = true;
