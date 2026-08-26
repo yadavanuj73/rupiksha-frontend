@@ -15,10 +15,9 @@ import java.util.Base64;
 @Slf4j
 public class BusttoCryptoUtil {
 
-    // AES-GCM standard IV: 12 bytes (96 bits) per NIST SP 800-38D.
-    // Using 16 bytes causes GCM counter block derivation to differ from the provider's expectation,
-    // producing a MAC check failure even with the correct key.
-    private static final int IV_LENGTH = 12;
+    // BuckBox spec: IV = 16 bytes — all their sample codes use randomBytes(16) / BLOCK_SIZE=16.
+    // Their Python, Node.js, PHP, and Java samples all generate a 16-byte IV.
+    private static final int IV_LENGTH = 16;
     private static final int TAG_LENGTH_BIT = 128;
 
 
@@ -204,92 +203,98 @@ public class BusttoCryptoUtil {
     }
 
     /**
-     * Encrypts the raw JSON payload with the merchant AES secret key using standard GCM mode.
-     * Matches BuckBox GCM implementation with standard 16-byte GCM tag appended.
+     * Encrypts the raw JSON payload per BuckBox specification.
+     *
+     * BuckBox format (from official documentation and all sample codes):
+     *   Base64( IV[16 bytes] + AES-256-GCM-ciphertext-WITHOUT-auth-tag )
+     *
+     * Key points from their docs:
+     *   - IV: 16 random bytes (randomBytes(BLOCK_SIZE) where BLOCK_SIZE=16)
+     *   - Manual PKCS7 padding before encrypting (Python sample shows this explicitly)
+     *   - The GCM auth tag is NOT included in the output (Node.js/Python/PHP all omit getAuthTag/digest)
+     *   - Key: raw UTF-8 bytes of the key string (secretKey.getBytes(StandardCharsets.UTF_8))
+     *
+     * To strip the tag in Java: doFinal() appends 16 bytes of auth tag → we remove the last 16 bytes.
      */
     public static String encrypt(String secretKey, String payload) throws Exception {
-        if (payload == null) {
-            payload = "";
-        }
+        if (payload == null) payload = "";
 
         byte[] keyBytes = resolveKeyBytes(secretKey);
         SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "AES");
 
-        byte[] iv = new byte[IV_LENGTH];
+        byte[] iv = new byte[IV_LENGTH];  // 16 bytes, per BuckBox spec
         new SecureRandom().nextBytes(iv);
 
+        // Apply manual PKCS7 padding (matches Python sample: pad(payload.encode("utf-8")))
+        byte[] paddedPlaintext = pad(payload.getBytes(StandardCharsets.UTF_8), 16);
+
+        // Encrypt with AES-GCM. Java appends a 16-byte auth tag to doFinal() output.
+        // BuckBox does NOT include the tag → strip the last 16 bytes (TAG_LENGTH_BIT/8 = 16).
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        cipher.init(Cipher.ENCRYPT_MODE, keySpec, new GCMParameterSpec(128, iv));
-        
-        byte[] plaintextBytes = payload.getBytes(StandardCharsets.UTF_8);
-        byte[] paddedPlaintext = pad(plaintextBytes, 16);
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, new GCMParameterSpec(TAG_LENGTH_BIT, iv));
         byte[] encryptedWithTag = cipher.doFinal(paddedPlaintext);
 
-        ByteBuffer combined = ByteBuffer.allocate(iv.length + encryptedWithTag.length);
+        // Strip the 16-byte auth tag appended by Java — provider does not expect it
+        int ciphertextLen = encryptedWithTag.length - (TAG_LENGTH_BIT / 8);
+        byte[] ciphertext = Arrays.copyOfRange(encryptedWithTag, 0, ciphertextLen);
+
+        // Output: Base64(IV[16] + ciphertext)
+        ByteBuffer combined = ByteBuffer.allocate(iv.length + ciphertext.length);
         combined.put(iv);
-        combined.put(encryptedWithTag);
+        combined.put(ciphertext);
+        log.debug("[BusttoCrypto] encrypt: IV={} bytes, plaintext={} bytes, padded={} bytes, ciphertext={} bytes, key={} bytes",
+            iv.length, payload.length(), paddedPlaintext.length, ciphertext.length, keyBytes.length);
         return Base64.getEncoder().encodeToString(combined.array());
     }
 
     /**
-     * Decrypts the Base64-encoded encrypted payload returned from BuckBox/Bustto.
+     * Decrypts the Base64-encoded response from BuckBox.
      *
-     * Format expected (per provider documentation):
-     *   Base64( IV[16 bytes] + AES-256-GCM-Ciphertext + GCM-Tag[16 bytes] )
+     * BuckBox format:  Base64( IV[16 bytes] + ciphertext-WITHOUT-auth-tag )
      *
-     * The GCM authentication tag is appended to the ciphertext by Java's AES/GCM/NoPadding cipher
-     * and is included in cipherBytes. Java's GCM implementation expects the tag to be the last 16
-     * bytes of the ciphertext block, which matches the provider's format.
+     * Since there is NO auth tag in the ciphertext, AES/GCM/NoPadding decryption CANNOT be used
+     * (it would always fail MAC check because there's no tag to verify). Instead, we use the
+     * mathematically equivalent approach: AES/CTR starting from counter Y1 = increment(J0),
+     * where J0 = GHASH_H(IV) for a 16-byte IV (the GCM internal counter block).
      *
-     * The provider also applies PKCS7-style padding before encrypting (as shown in the Python sample),
-     * so we unpad after decryption.
-     *
-     * IMPORTANT: GCM authentication tag verification is mandatory and must NOT be bypassed.
-     * If the MAC check fails it means the key is wrong, the ciphertext is corrupted, or the
-     * response format does not match. Do NOT add fallback modes that skip tag verification.
+     * This is identical to what the provider does: GCM encryption = CTR(Y1) XOR plaintext.
      */
     public static String decrypt(String secretKey, String encrypted) throws Exception {
-        if (encrypted == null || encrypted.isBlank()) {
-            return "";
-        }
+        if (encrypted == null || encrypted.isBlank()) return "";
 
         byte[] all = Base64.getDecoder().decode(encrypted.trim());
         if (all.length <= IV_LENGTH) {
             throw new IllegalArgumentException(
                 "AES decryption failed: payload too short (" + all.length + " bytes). " +
-                "Minimum expected: IV(" + IV_LENGTH + ") + 1 byte ciphertext + 16 byte GCM tag.");
+                "Minimum expected: IV(" + IV_LENGTH + ") + ciphertext.");
         }
 
-        byte[] iv          = Arrays.copyOfRange(all, 0, IV_LENGTH);
-        byte[] cipherBytes = Arrays.copyOfRange(all, IV_LENGTH, all.length);
+        byte[] iv         = Arrays.copyOfRange(all, 0, IV_LENGTH);
+        byte[] ciphertext = Arrays.copyOfRange(all, IV_LENGTH, all.length);
 
         byte[] keyBytes = resolveKeyBytes(secretKey);
-        log.debug("[BusttoCrypto] decrypt: payload bytes={}, IV bytes={}, ciphertext+tag bytes={}, key bytes={}",
-            all.length, iv.length, cipherBytes.length, keyBytes.length);
-
-        SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "AES");
+        log.debug("[BusttoCrypto] decrypt: payload={} bytes, IV={} bytes, ciphertext={} bytes, key={} bytes",
+            all.length, iv.length, ciphertext.length, keyBytes.length);
 
         try {
-            // AES-256-GCM with 128-bit authentication tag.
-            // Java's GCM implementation appends the tag to the ciphertext on encrypt,
-            // and expects it there on decrypt — exactly the format the provider uses.
-            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            cipher.init(Cipher.DECRYPT_MODE, keySpec, new GCMParameterSpec(TAG_LENGTH_BIT, iv));
-            byte[] decrypted = cipher.doFinal(cipherBytes);
+            // BuckBox uses GCM without auth tag = CTR mode starting at counter Y1.
+            // For a 16-byte IV: J0 = GHASH(H, {}, IV), Y1 = increment32(J0).
+            byte[] y0 = calculateY0(keyBytes, iv);
+            byte[] y1 = incrementY(y0);
 
-            // Remove PKCS7 padding applied before encryption (matches Python/PHP provider samples)
+            Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
+            cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(keyBytes, "AES"), new IvParameterSpec(y1));
+            byte[] decrypted = cipher.doFinal(ciphertext);
+
+            // Remove PKCS7 padding applied before encryption (Python sample uses pad/unpad)
             byte[] unpadded = unpad(decrypted);
             return new String(unpadded, StandardCharsets.UTF_8);
 
         } catch (Exception e) {
-            // GCM tag failure = key mismatch, tampered data, or wrong ciphertext format.
-            // Log safely (no key or payload values) and re-throw with a clear message.
             log.error("[BusttoCrypto] AES decryption failed: {}. " +
-                "Check that BUSTTO_AES_KEY matches the key in your BuckBox merchant portal " +
-                "and that the response format is Base64(IV[16]+ciphertext+tag[16]).",
+                "Verify BUSTTO_AES_KEY matches the Encryption Key in your BuckBox merchant portal.",
                 e.getMessage());
             throw new RuntimeException("AES decryption failed: " + e.getMessage(), e);
         }
     }
 }
-

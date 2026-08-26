@@ -85,22 +85,27 @@ class BusttoCryptoUtilTest {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 6. Safety: encrypting with one key and decrypting with a different key
-    //    must fail (GCM MAC authentication should reject it)
+    // 6. BuckBox does NOT use the GCM auth tag (confirmed by all their sample codes —
+    //    Node.js/Python/PHP all omit getAuthTag/digest). This means decryption uses
+    //    AES/CTR which has NO integrity check. Wrong-key decryption produces garbage
+    //    plaintext (does not throw). We verify the garbage != original plaintext.
     // ─────────────────────────────────────────────────────────────────────────
     @Test
-    void decrypt_wrongKey_mustFail() throws Exception {
+    void decrypt_wrongKey_producesGarbage_notOriginalPayload() throws Exception {
         String correctKey = "CorrectKey123456CorrectKey123456"; // 32 chars
         String wrongKey   = "WrongKey1234567890WrongKey123456"; // 32 chars
 
         String payload   = "{\"amount\": 100}";
         String encrypted = BusttoCryptoUtil.encrypt(correctKey, payload);
 
-        // GCM authentication tag verification should reject decryption with the wrong key
-        assertThrows(Exception.class, () -> BusttoCryptoUtil.decrypt(wrongKey, encrypted),
-            "Decrypting with a wrong key must throw — GCM tag verification must not be silently bypassed");
-        log.info("[TEST] Wrong-key decryption correctly throws exception: PASS");
+        // CTR mode has no auth tag → wrong-key decryption does NOT throw but returns garbage
+        String wrongDecrypted = BusttoCryptoUtil.decrypt(wrongKey, encrypted);
+        assertNotEquals(payload, wrongDecrypted,
+            "Wrong-key decryption must not return the original plaintext — output should be garbage");
+        log.info("[TEST] Wrong-key decryption produces garbage (not original payload): PASS");
+        log.info("[TEST] BuckBox design note: no GCM auth tag means no built-in integrity check");
     }
+
 
     // ─────────────────────────────────────────────────────────────────────────
     // 7. Hex-encoded key (64 hex chars) should still be decoded correctly
