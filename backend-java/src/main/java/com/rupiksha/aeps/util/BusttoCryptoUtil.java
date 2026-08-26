@@ -21,11 +21,11 @@ public class BusttoCryptoUtil {
 
     /**
      * Resolves the AES secret key into a valid 16, 24, or 32-byte binary key.
-     * Handles:
-     * - Base64 encoded keys (e.g. 44 characters for a 32-byte / 256-bit key)
-     * - Hex encoded keys (e.g. 64 characters)
-     * - Raw UTF-8 string keys
-     * - SHA-256 fallback derivation to guarantee a valid 256-bit key
+     * Order of precedence:
+     * 1. Direct UTF-8 string bytes if length is already 16, 24, or 32 bytes (as in Python, Node.js, PHP, Java docs)
+     * 2. Base64 decoded bytes if length is 44 characters (Base64-encoded 256-bit key)
+     * 3. Hex decoded bytes if 64 characters
+     * 4. SHA-256 hash fallback
      */
     public static byte[] resolveKeyBytes(String secretKey) {
         if (secretKey == null || secretKey.isBlank()) {
@@ -33,16 +33,24 @@ public class BusttoCryptoUtil {
         }
         String cleanKey = secretKey.trim();
 
-        // 1. Try Base64 decoding (e.g. 44-character Base64 string -> 32 bytes)
-        try {
-            byte[] decoded = Base64.getDecoder().decode(cleanKey);
-            if (decoded.length == 16 || decoded.length == 24 || decoded.length == 32) {
-                return decoded;
-            }
-        } catch (Exception ignored) {}
+        // 1. Direct UTF-8 key (e.g. 16, 24, or 32-character plaintext secret key)
+        byte[] utfBytes = cleanKey.getBytes(StandardCharsets.UTF_8);
+        if (utfBytes.length == 32 || utfBytes.length == 16 || utfBytes.length == 24) {
+            return utfBytes;
+        }
 
-        // 2. Try Hex decoding (e.g. 64 hex chars -> 32 bytes, 32 hex chars -> 16 bytes)
-        if (cleanKey.matches("^[0-9a-fA-F]+$") && (cleanKey.length() == 32 || cleanKey.length() == 48 || cleanKey.length() == 64)) {
+        // 2. Base64 decoded key (specifically for 44-character Base64 encoded 256-bit keys or ending with '=')
+        if (cleanKey.length() == 44 || cleanKey.endsWith("=")) {
+            try {
+                byte[] decoded = Base64.getDecoder().decode(cleanKey);
+                if (decoded.length == 32 || decoded.length == 16 || decoded.length == 24) {
+                    return decoded;
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // 3. Hex decoded key (64 hex chars -> 32 bytes, 32 hex chars -> 16 bytes)
+        if (cleanKey.matches("^[0-9a-fA-F]+$") && (cleanKey.length() == 64 || cleanKey.length() == 32)) {
             try {
                 int len = cleanKey.length();
                 byte[] data = new byte[len / 2];
@@ -54,13 +62,7 @@ public class BusttoCryptoUtil {
             } catch (Exception ignored) {}
         }
 
-        // 3. Check direct UTF-8 string bytes
-        byte[] utfBytes = cleanKey.getBytes(StandardCharsets.UTF_8);
-        if (utfBytes.length == 16 || utfBytes.length == 24 || utfBytes.length == 32) {
-            return utfBytes;
-        }
-
-        // 4. SHA-256 fallback derivation to guarantee 32 bytes (256-bit AES)
+        // 4. Fallback: derive 32-byte key via SHA-256
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             return md.digest(utfBytes);
@@ -71,7 +73,7 @@ public class BusttoCryptoUtil {
 
     /**
      * Encrypts the raw JSON payload with the merchant AES secret key.
-     * Uses a 16-byte random IV, prepends IV to ciphertext, and Base64-encodes the result.
+     * Uses a 16-byte random IV, prepends IV to ciphertext, appends 16-byte GCM authentication tag, and Base64-encodes the result.
      */
     public static String encrypt(String secretKey, String payload) throws Exception {
         if (payload == null) {
@@ -80,27 +82,14 @@ public class BusttoCryptoUtil {
 
         byte[] keyBytes = resolveKeyBytes(secretKey);
         SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "AES");
-        
+
         byte[] iv = new byte[IV_LENGTH];
         SecureRandom random = new SecureRandom();
         random.nextBytes(iv);
 
-        byte[] encrypted;
-        try {
-            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            cipher.init(Cipher.ENCRYPT_MODE, keySpec, new GCMParameterSpec(TAG_LENGTH_BIT, iv));
-            encrypted = cipher.doFinal(payload.getBytes(StandardCharsets.UTF_8));
-        } catch (Exception e) {
-            try {
-                Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-                cipher.init(Cipher.ENCRYPT_MODE, keySpec, new IvParameterSpec(iv));
-                encrypted = cipher.doFinal(payload.getBytes(StandardCharsets.UTF_8));
-            } catch (Exception ex) {
-                Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
-                cipher.init(Cipher.ENCRYPT_MODE, keySpec, new IvParameterSpec(iv));
-                encrypted = cipher.doFinal(payload.getBytes(StandardCharsets.UTF_8));
-            }
-        }
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, new GCMParameterSpec(TAG_LENGTH_BIT, iv));
+        byte[] encrypted = cipher.doFinal(payload.getBytes(StandardCharsets.UTF_8));
 
         ByteBuffer combined = ByteBuffer.allocate(iv.length + encrypted.length);
         combined.put(iv);
@@ -111,7 +100,7 @@ public class BusttoCryptoUtil {
 
     /**
      * Decrypts the Base64-encoded encrypted payload returned from the API.
-     * Supports standard GCM with tag, Python GCM without tag (CTR mode), and CBC.
+     * Supports standard AES-GCM (128-bit MAC tag), CTR mode, and CBC modes.
      */
     public static String decrypt(String secretKey, String encrypted) throws Exception {
         if (encrypted == null || encrypted.isBlank()) {
