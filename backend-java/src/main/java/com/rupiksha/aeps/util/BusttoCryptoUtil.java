@@ -35,24 +35,7 @@ public class BusttoCryptoUtil {
             cleanKey = cleanKey.substring(1, cleanKey.length() - 1).trim();
         }
 
-        // 1. Direct UTF-8 key — exact 16, 24, or 32-byte key as provided by BuckBox
-        byte[] utfBytes = cleanKey.getBytes(StandardCharsets.UTF_8);
-        log.info("[BusttoCrypto] AES key length = {} bytes (UTF-8). Valid AES sizes: 16, 24, 32.", utfBytes.length);
-        if (utfBytes.length == 32 || utfBytes.length == 16 || utfBytes.length == 24) {
-            return utfBytes;
-        }
-
-        // 2. Base64 decoded key (44-char Base64 = 32 bytes, or any Base64 string ending with '=')
-        if (cleanKey.length() == 44 || cleanKey.endsWith("=")) {
-            try {
-                byte[] decoded = Base64.getDecoder().decode(cleanKey);
-                if (decoded.length == 32 || decoded.length == 16 || decoded.length == 24) {
-                    return decoded;
-                }
-            } catch (Exception ignored) {}
-        }
-
-        // 3. Hex decoded key (64 hex chars -> 32 bytes, 32 hex chars -> 16 bytes)
+        // 1. Try Hex decoding first (64 hex chars -> 32 bytes, 32 hex chars -> 16 bytes)
         if (cleanKey.matches("^[0-9a-fA-F]+$") && (cleanKey.length() == 64 || cleanKey.length() == 32)) {
             try {
                 int len = cleanKey.length();
@@ -61,8 +44,27 @@ public class BusttoCryptoUtil {
                     data[i / 2] = (byte) ((Character.digit(cleanKey.charAt(i), 16) << 4)
                             + Character.digit(cleanKey.charAt(i + 1), 16));
                 }
+                log.info("[BusttoCrypto] Resolved AES key via Hex decoding ({} bytes)", data.length);
                 return data;
             } catch (Exception ignored) {}
+        }
+
+        // 2. Try Base64 decoding next (e.g. 44 chars -> 32 bytes, or ends with '=')
+        if (cleanKey.length() == 44 || cleanKey.endsWith("=") || cleanKey.length() == 32 || cleanKey.length() == 24) {
+            try {
+                byte[] decoded = Base64.getDecoder().decode(cleanKey);
+                if (decoded.length == 32 || decoded.length == 16 || decoded.length == 24) {
+                    log.info("[BusttoCrypto] Resolved AES key via Base64 decoding ({} bytes)", decoded.length);
+                    return decoded;
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // 3. Fallback to direct UTF-8 key — exact 16, 24, or 32-byte key as provided by BuckBox
+        byte[] utfBytes = cleanKey.getBytes(StandardCharsets.UTF_8);
+        log.info("[BusttoCrypto] AES key length = {} bytes (UTF-8 direct key). Valid AES sizes: 16, 24, 32.", utfBytes.length);
+        if (utfBytes.length == 32 || utfBytes.length == 16 || utfBytes.length == 24) {
+            return utfBytes;
         }
 
         // 4. Key length is non-standard — right-pad with zeros to 32 bytes (AES-256).
