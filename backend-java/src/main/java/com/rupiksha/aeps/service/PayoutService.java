@@ -512,7 +512,9 @@ public class PayoutService {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setAccept(List.of(MediaType.APPLICATION_JSON));
-        headers.set("Api-Key", payoutProperties.getApiKey());
+        
+        String apiKey = payoutProperties.getApiKey() != null ? payoutProperties.getApiKey().trim() : "";
+        headers.set("Api-Key", apiKey);
 
         String jwtToken = BusttoJwtUtil.generateOrGetToken(
                 payoutProperties.getJwtSecret(),
