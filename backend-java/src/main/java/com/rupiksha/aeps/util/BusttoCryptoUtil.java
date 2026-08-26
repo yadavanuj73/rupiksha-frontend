@@ -21,19 +21,19 @@ public class BusttoCryptoUtil {
 
     /**
      * Resolves the AES secret key into a valid 16, 24, or 32-byte binary key.
-     * Order of precedence:
-     * 1. Direct UTF-8 string bytes if length is already 16, 24, or 32 bytes (as in Python, Node.js, PHP, Java docs)
-     * 2. Base64 decoded bytes if length is 44 characters (Base64-encoded 256-bit key)
-     * 3. Hex decoded bytes if 64 characters
-     * 4. SHA-256 hash fallback
+     * Sanitizes quotes and whitespace.
      */
     public static byte[] resolveKeyBytes(String secretKey) {
         if (secretKey == null || secretKey.isBlank()) {
             throw new IllegalArgumentException("AES secret key is missing");
         }
         String cleanKey = secretKey.trim();
+        if ((cleanKey.startsWith("\"") && cleanKey.endsWith("\"")) ||
+            (cleanKey.startsWith("'") && cleanKey.endsWith("'"))) {
+            cleanKey = cleanKey.substring(1, cleanKey.length() - 1).trim();
+        }
 
-        // 1. Direct UTF-8 key (e.g. 16, 24, or 32-character plaintext secret key)
+        // 1. Direct UTF-8 key (e.g. 16, 24, or 32-character plaintext secret key as in official docs)
         byte[] utfBytes = cleanKey.getBytes(StandardCharsets.UTF_8);
         if (utfBytes.length == 32 || utfBytes.length == 16 || utfBytes.length == 24) {
             return utfBytes;
@@ -73,7 +73,7 @@ public class BusttoCryptoUtil {
 
     /**
      * Encrypts the raw JSON payload with the merchant AES secret key.
-     * Uses a 16-byte random IV, prepends IV to ciphertext, appends 16-byte GCM authentication tag, and Base64-encodes the result.
+     * Complies with PKCS7 padding and AES-GCM specification from the documentation.
      */
     public static String encrypt(String secretKey, String payload) throws Exception {
         if (payload == null) {
@@ -87,9 +87,13 @@ public class BusttoCryptoUtil {
         SecureRandom random = new SecureRandom();
         random.nextBytes(iv);
 
+        // Apply PKCS7 padding as specified in Python, Node.js, and Java documentation
+        byte[] rawBytes = payload.getBytes(StandardCharsets.UTF_8);
+        byte[] paddedBytes = pad(rawBytes);
+
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
         cipher.init(Cipher.ENCRYPT_MODE, keySpec, new GCMParameterSpec(TAG_LENGTH_BIT, iv));
-        byte[] encrypted = cipher.doFinal(payload.getBytes(StandardCharsets.UTF_8));
+        byte[] encrypted = cipher.doFinal(paddedBytes);
 
         ByteBuffer combined = ByteBuffer.allocate(iv.length + encrypted.length);
         combined.put(iv);
@@ -128,7 +132,7 @@ public class BusttoCryptoUtil {
             log.debug("GCM 128-bit decryption failed: {}, trying CTR/CBC fallbacks", e1.getMessage());
         }
 
-        // Attempt 2: AES/CTR/NoPadding (Python AES.MODE_GCM without digest tag)
+        // Attempt 2: AES/CTR/NoPadding (PyCryptodome GCM stream mode without digest tag)
         try {
             Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
             cipher.init(Cipher.DECRYPT_MODE, keySpec, new IvParameterSpec(iv));
@@ -157,6 +161,17 @@ public class BusttoCryptoUtil {
         } catch (Exception e4) {
             throw new RuntimeException("All decryption modes failed for payload", e4);
         }
+    }
+
+    private static byte[] pad(byte[] data) {
+        int blockSize = 16;
+        int padLen = blockSize - (data.length % blockSize);
+        byte[] padded = new byte[data.length + padLen];
+        System.arraycopy(data, 0, padded, 0, data.length);
+        for (int i = data.length; i < padded.length; i++) {
+            padded[i] = (byte) padLen;
+        }
+        return padded;
     }
 
     private static String unpadString(byte[] data) {
