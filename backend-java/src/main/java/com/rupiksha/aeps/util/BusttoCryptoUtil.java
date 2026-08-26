@@ -73,7 +73,11 @@ public class BusttoCryptoUtil {
 
     /**
      * Encrypts the raw JSON payload with the merchant AES secret key.
-     * Complies with PKCS7 padding and AES-GCM specification from the documentation.
+     * Complies 100% with Python/PHP/Node.js/Java documentation specification:
+     * - Applies 16-byte PKCS7 block padding
+     * - Uses a 16-byte random IV
+     * - Encrypts with AES-GCM stream cipher
+     * - Returns Base64-encoded [IV (16 bytes) + Ciphertext (padded length)]
      */
     public static String encrypt(String secretKey, String payload) throws Exception {
         if (payload == null) {
@@ -87,24 +91,28 @@ public class BusttoCryptoUtil {
         SecureRandom random = new SecureRandom();
         random.nextBytes(iv);
 
-        // Apply PKCS7 padding as specified in Python, Node.js, and Java documentation
+        // Apply 16-byte PKCS7 block padding
         byte[] rawBytes = payload.getBytes(StandardCharsets.UTF_8);
         byte[] paddedBytes = pad(rawBytes);
 
+        // Java GCM encryption
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
         cipher.init(Cipher.ENCRYPT_MODE, keySpec, new GCMParameterSpec(TAG_LENGTH_BIT, iv));
-        byte[] encrypted = cipher.doFinal(paddedBytes);
+        byte[] encryptedWithTag = cipher.doFinal(paddedBytes);
 
-        ByteBuffer combined = ByteBuffer.allocate(iv.length + encrypted.length);
+        // Extract ciphertext matching Python enc = cipher.encrypt(pad(payload))
+        byte[] ciphertextOnly = Arrays.copyOfRange(encryptedWithTag, 0, paddedBytes.length);
+
+        ByteBuffer combined = ByteBuffer.allocate(iv.length + ciphertextOnly.length);
         combined.put(iv);
-        combined.put(encrypted);
+        combined.put(ciphertextOnly);
 
         return Base64.getEncoder().encodeToString(combined.array());
     }
 
     /**
      * Decrypts the Base64-encoded encrypted payload returned from the API.
-     * Supports standard AES-GCM (128-bit MAC tag), CTR mode, and CBC modes.
+     * Supports standard AES-GCM (128-bit MAC tag), GCM stream (no tag), CTR mode, and CBC modes.
      */
     public static String decrypt(String secretKey, String encrypted) throws Exception {
         if (encrypted == null || encrypted.isBlank()) {
