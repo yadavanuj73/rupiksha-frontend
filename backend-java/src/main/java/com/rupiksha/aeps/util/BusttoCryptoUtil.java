@@ -75,19 +75,84 @@ public class BusttoCryptoUtil {
         return Arrays.copyOf(utfBytes, 32);  // copyOf right-pads with zeros if shorter, truncates if longer
     }
 
+    private static byte[] pad(byte[] data, int blockSize) {
+        int padLen = blockSize - (data.length % blockSize);
+        byte[] padded = new byte[data.length + padLen];
+        System.arraycopy(data, 0, padded, 0, data.length);
+        for (int i = data.length; i < padded.length; i++) {
+            padded[i] = (byte) padLen;
+        }
+        return padded;
+    }
+
+    private static byte[] unpad(byte[] data) {
+        if (data == null || data.length == 0) return new byte[0];
+        int padLen = data[data.length - 1] & 0xFF;
+        if (padLen <= 0 || padLen > 16) {
+            return data;
+        }
+        for (int i = data.length - padLen; i < data.length; i++) {
+            if ((data[i] & 0xFF) != padLen) {
+                return data;
+            }
+        }
+        return Arrays.copyOfRange(data, 0, data.length - padLen);
+    }
+
+    private static byte[] multiply(byte[] x, byte[] y) {
+        byte[] z = new byte[16];
+        byte[] v = Arrays.copyOf(y, 16);
+        for (int i = 0; i < 128; i++) {
+            int byteIdx = i / 8;
+            int bitIdx = 7 - (i % 8);
+            if ((x[byteIdx] & (1 << bitIdx)) != 0) {
+                for (int j = 0; j < 16; j++) {
+                    z[j] ^= v[j];
+                }
+            }
+            boolean carry = (v[15] & 1) != 0;
+            for (int j = 15; j > 0; j--) {
+                v[j] = (byte) (((v[j] & 0xFF) >>> 1) | ((v[j - 1] & 1) << 7));
+            }
+            v[0] = (byte) ((v[0] & 0xFF) >>> 1);
+            if (carry) {
+                v[0] ^= (byte) 0xE1;
+            }
+        }
+        return z;
+    }
+
+    private static byte[] calculateY0(byte[] key, byte[] iv) throws Exception {
+        Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
+        cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "AES"));
+        byte[] h = cipher.doFinal(new byte[16]);
+
+        byte[] block1 = Arrays.copyOf(iv, 16);
+        byte[] block2 = new byte[16];
+        block2[15] = (byte) 0x80;
+
+        byte[] v1 = multiply(block1, h);
+        for (int i = 0; i < 16; i++) {
+            v1[i] ^= block2[i];
+        }
+        byte[] y0 = multiply(v1, h);
+        return y0;
+    }
+
+    private static byte[] incrementY(byte[] y0) {
+        byte[] y1 = Arrays.copyOf(y0, 16);
+        for (int i = 15; i >= 12; i--) {
+            y1[i]++;
+            if (y1[i] != 0) {
+                break;
+            }
+        }
+        return y1;
+    }
+
     /**
-     * Encrypts the raw JSON payload with the merchant AES secret key.
-     *
-     * BuckBox/Bustto format (from official Python doc):
-     *   base64([IV (16 bytes)] + [PKCS7-padded ciphertext])
-     *
-     * The BuckBox Python sample uses PyCryptodome AES-GCM in pure stream-cipher mode:
-     *   cipher.encrypt(padded_payload) → ciphertext only (NO auth tag appended).
-     * This is functionally identical to AES-CBC with PKCS7 padding.
-     * We use AES/CBC/PKCS5Padding here to produce the exact same byte layout.
-     *
-     * IMPORTANT: Do NOT use AES/GCM/NoPadding with doFinal() here — Java's GCM doFinal()
-     * appends a 16-byte auth tag that BuckBox does NOT expect, causing "MAC check failed".
+     * Encrypts the raw JSON payload with the merchant AES secret key using GCM mode.
+     * Matches BuckBox Python/Node.js/PHP GCM implementation (no GCM tag appended).
      */
     public static String encrypt(String secretKey, String payload) throws Exception {
         if (payload == null) {
@@ -100,12 +165,19 @@ public class BusttoCryptoUtil {
         byte[] iv = new byte[IV_LENGTH];
         new SecureRandom().nextBytes(iv);
 
-        // AES/CBC/PKCS5Padding matches BuckBox's [IV + PKCS7-padded-ciphertext] format exactly.
-        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-        cipher.init(Cipher.ENCRYPT_MODE, keySpec, new IvParameterSpec(iv));
-        byte[] ciphertext = cipher.doFinal(payload.getBytes(StandardCharsets.UTF_8));
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, new GCMParameterSpec(128, iv));
+        
+        byte[] plaintextBytes = payload.getBytes(StandardCharsets.UTF_8);
+        byte[] paddedPlaintext = pad(plaintextBytes, 16);
+        byte[] encryptedWithTag = cipher.doFinal(paddedPlaintext);
+        
+        // Output format is: iv (16 bytes) + ciphertext (without tag)
+        // Standard GCM doFinal appends a 16-byte tag. We slice off the last 16 bytes.
+        int ciphertextLen = encryptedWithTag.length - 16;
+        byte[] ciphertext = new byte[ciphertextLen];
+        System.arraycopy(encryptedWithTag, 0, ciphertext, 0, ciphertextLen);
 
-        // Output: [IV (16 bytes)] + [PKCS7-padded ciphertext]  — no GCM auth tag
         ByteBuffer combined = ByteBuffer.allocate(iv.length + ciphertext.length);
         combined.put(iv);
         combined.put(ciphertext);
@@ -113,8 +185,9 @@ public class BusttoCryptoUtil {
     }
 
     /**
-     * Decrypts the Base64-encoded encrypted payload returned from BuckBox.
-     * Tries AES/CBC/PKCS5Padding first (BuckBox's primary format), then GCM and other fallbacks.
+     * Decrypts the Base64-encoded encrypted payload returned from BuckBox/Bustto.
+     * Tries GCM decryption without tag checking (by computing counter Y_1 and using AES/CTR/NoPadding),
+     * and has other modes as fallback.
      */
     public static String decrypt(String secretKey, String encrypted) throws Exception {
         if (encrypted == null || encrypted.isBlank()) {
@@ -132,63 +205,50 @@ public class BusttoCryptoUtil {
         byte[] keyBytes = resolveKeyBytes(secretKey);
         SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "AES");
 
-        // Attempt 1: AES/CBC/PKCS5Padding — BuckBox's primary format matching their Python doc
+        // Attempt 1: Custom GCM without tag check (mathematically identical to AES/CTR/NoPadding starting from Y_1)
+        try {
+            byte[] y0 = calculateY0(keyBytes, iv);
+            byte[] y1 = incrementY(y0);
+
+            Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, new IvParameterSpec(y1));
+            byte[] decrypted = cipher.doFinal(cipherBytes);
+
+            byte[] unpadded = unpad(decrypted);
+            return new String(unpadded, StandardCharsets.UTF_8);
+        } catch (Exception e1) {
+            log.debug("Custom GCM without tag check decryption failed: {}, trying other modes", e1.getMessage());
+        }
+
+        // Attempt 2: AES/CBC/PKCS5Padding fallback
         try {
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
             cipher.init(Cipher.DECRYPT_MODE, keySpec, new IvParameterSpec(iv));
             byte[] decrypted = cipher.doFinal(cipherBytes);
             return new String(decrypted, StandardCharsets.UTF_8);
-        } catch (Exception e1) {
-            log.debug("CBC PKCS5 decryption failed: {}, trying other modes", e1.getMessage());
+        } catch (Exception e2) {
+            log.debug("CBC PKCS5 decryption fallback failed: {}", e2.getMessage());
         }
 
-        // Attempt 2: AES/GCM/NoPadding with 128-bit tag (standard GCM with auth tag)
+        // Attempt 3: AES/GCM/NoPadding with 128-bit tag fallback (standard GCM with auth tag)
         try {
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
             cipher.init(Cipher.DECRYPT_MODE, keySpec, new GCMParameterSpec(TAG_LENGTH_BIT, iv));
             byte[] decrypted = cipher.doFinal(cipherBytes);
             return new String(decrypted, StandardCharsets.UTF_8);
-        } catch (Exception e2) {
-            log.debug("GCM 128-bit decryption failed: {}", e2.getMessage());
+        } catch (Exception e3) {
+            log.debug("GCM 128-bit decryption fallback failed: {}", e3.getMessage());
         }
 
-        // Attempt 3: AES/CTR/NoPadding (PyCryptodome GCM stream mode without digest tag)
+        // Attempt 4: AES/CTR/NoPadding with standard IV fallback
         try {
             Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
             cipher.init(Cipher.DECRYPT_MODE, keySpec, new IvParameterSpec(iv));
             byte[] decrypted = cipher.doFinal(cipherBytes);
-            return unpadString(decrypted);
-        } catch (Exception e3) {
-            log.debug("CTR decryption failed: {}", e3.getMessage());
-        }
-
-        // Attempt 4: AES/CBC/NoPadding with manual unpadding
-        try {
-            Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
-            cipher.init(Cipher.DECRYPT_MODE, keySpec, new IvParameterSpec(iv));
-            byte[] decrypted = cipher.doFinal(cipherBytes);
-            return unpadString(decrypted);
+            byte[] unpadded = unpad(decrypted);
+            return new String(unpadded, StandardCharsets.UTF_8);
         } catch (Exception e4) {
             throw new RuntimeException("All decryption modes failed for payload", e4);
         }
-    }
-
-    private static String unpadString(byte[] data) {
-        if (data == null || data.length == 0) return "";
-        int len = data.length;
-        int pad = data[len - 1] & 0xFF;
-        if (pad > 0 && pad <= 16 && len >= pad) {
-            boolean valid = true;
-            for (int i = len - pad; i < len; i++) {
-                if ((data[i] & 0xFF) != pad) {
-                    valid = false;
-                    break;
-                }
-            }
-            if (valid) {
-                return new String(data, 0, len - pad, StandardCharsets.UTF_8);
-            }
-        }
-        return new String(data, StandardCharsets.UTF_8);
     }
 }
