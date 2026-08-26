@@ -160,6 +160,7 @@ bustto:
     penny-less-url: ${BUSTTO_PENNY_LESS_URL:/api/merchant/external/v1/bank-verification/penny-less}
     penny-drop-url: ${BUSTTO_PENNY_DROP_URL:/api/merchant/external/v1/bank-verification/penny-drop}
     enabled: ${SERVICE_PAYOUT_ENABLED:true}
+    encryption-enabled: ${BUSTTO_ENCRYPTION_ENABLED:false}
 
 # AEPS Enterprise Foundation Configuration
 aeps:

@@ -22,6 +22,9 @@ public class PayoutProperties {
     private String verificationStatusUrl = "/api/merchant/external/v1/bank-verification/";
     private String walletBalanceUrl = "/api/merchant/external/merchant-wallet-balance/";
     private boolean enabled = true;
+    // Set BUSTTO_ENCRYPTION_ENABLED=true in Cloud Run to enable AES encryption.
+    // Default is false (plain JSON) so credentials can be verified first.
+    private boolean encryptionEnabled = false;
 
     public String getFullPayoutUrl() {
         return normalizeUrl(payoutUrl);

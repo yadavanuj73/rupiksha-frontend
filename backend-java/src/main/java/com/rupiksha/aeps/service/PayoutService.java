@@ -188,15 +188,22 @@ public class PayoutService {
         String payoutUrl = payoutProperties.getFullPayoutUrl();
         HttpHeaders headers = createAuthHeaders();
 
-        // 5. Execute Payout API call with strictly formatted encrypted body
+        // 5. Execute Payout API call
         try {
             String rawJson = objectMapper.writeValueAsString(rawPayload);
-            String encryptedBody = BusttoCryptoUtil.encrypt(payoutProperties.getAesKey(), rawJson);
+            HttpEntity<?> entity;
 
-            Map<String, String> requestBody = Map.of("request", encryptedBody);
-            HttpEntity<Map<String, String>> entity = new HttpEntity<>(requestBody, headers);
-
-            log.info("Sending encrypted payout request to {} for orderId {}", payoutUrl, orderId);
+            if (payoutProperties.isEncryptionEnabled() && payoutProperties.getAesKey() != null && !payoutProperties.getAesKey().isBlank()) {
+                // Encrypted mode: wrap in {"request": "<encrypted>"}
+                String encryptedBody = BusttoCryptoUtil.encrypt(payoutProperties.getAesKey(), rawJson);
+                Map<String, String> requestBody = Map.of("request", encryptedBody);
+                entity = new HttpEntity<>(requestBody, headers);
+                log.info("Sending ENCRYPTED payout request to {} for orderId {}", payoutUrl, orderId);
+            } else {
+                // Plain JSON mode: send raw payload directly (BuckBox supports this per doc)
+                entity = new HttpEntity<>(rawPayload, headers);
+                log.info("Sending PLAIN JSON payout request to {} for orderId {}", payoutUrl, orderId);
+            }
             ResponseEntity<String> response = restTemplate.exchange(payoutUrl, HttpMethod.POST, entity, String.class);
 
             String decryptedResponse = decryptResponseBody(response.getBody());
@@ -322,12 +329,16 @@ public class PayoutService {
             rawPayload.put("ifsc_code", request.getIfsc().toUpperCase().trim());
 
             String rawJson = objectMapper.writeValueAsString(rawPayload);
-            String encryptedBody = BusttoCryptoUtil.encrypt(payoutProperties.getAesKey(), rawJson);
-
-            Map<String, String> requestBody = Map.of("request", encryptedBody);
-
             HttpHeaders headers = createAuthHeaders();
-            HttpEntity<Map<String, String>> entity = new HttpEntity<>(requestBody, headers);
+            HttpEntity<?> entity;
+
+            if (payoutProperties.isEncryptionEnabled() && payoutProperties.getAesKey() != null && !payoutProperties.getAesKey().isBlank()) {
+                String encryptedBody = BusttoCryptoUtil.encrypt(payoutProperties.getAesKey(), rawJson);
+                Map<String, String> requestBody = Map.of("request", encryptedBody);
+                entity = new HttpEntity<>(requestBody, headers);
+            } else {
+                entity = new HttpEntity<>(rawPayload, headers);
+            }
 
             String url = "penny-drop".equalsIgnoreCase(request.getMethod())
                     ? payoutProperties.getFullPennyDropUrl()
