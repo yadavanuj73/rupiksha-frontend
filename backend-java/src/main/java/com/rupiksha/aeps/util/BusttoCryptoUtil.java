@@ -87,16 +87,16 @@ public class BusttoCryptoUtil {
 
         byte[] encrypted;
         try {
-            Cipher cipher = Cipher.getInstance("AES/GCM/PKCS5Padding");
-            cipher.init(Cipher.ENCRYPT_MODE, keySpec, new IvParameterSpec(iv));
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec, new GCMParameterSpec(TAG_LENGTH_BIT, iv));
             encrypted = cipher.doFinal(payload.getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
             try {
-                Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-                cipher.init(Cipher.ENCRYPT_MODE, keySpec, new GCMParameterSpec(TAG_LENGTH_BIT, iv));
+                Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+                cipher.init(Cipher.ENCRYPT_MODE, keySpec, new IvParameterSpec(iv));
                 encrypted = cipher.doFinal(payload.getBytes(StandardCharsets.UTF_8));
             } catch (Exception ex) {
-                Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+                Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
                 cipher.init(Cipher.ENCRYPT_MODE, keySpec, new IvParameterSpec(iv));
                 encrypted = cipher.doFinal(payload.getBytes(StandardCharsets.UTF_8));
             }
@@ -111,6 +111,7 @@ public class BusttoCryptoUtil {
 
     /**
      * Decrypts the Base64-encoded encrypted payload returned from the API.
+     * Supports standard GCM with tag, Python GCM without tag (CTR mode), and CBC.
      */
     public static String decrypt(String secretKey, String encrypted) throws Exception {
         if (encrypted == null || encrypted.isBlank()) {
@@ -118,8 +119,8 @@ public class BusttoCryptoUtil {
         }
 
         byte[] all = Base64.getDecoder().decode(encrypted.trim());
-        if (all.length < IV_LENGTH) {
-            throw new IllegalArgumentException("Invalid encrypted payload length");
+        if (all.length <= IV_LENGTH) {
+            throw new IllegalArgumentException("Invalid encrypted payload length: " + all.length);
         }
 
         byte[] iv = Arrays.copyOfRange(all, 0, IV_LENGTH);
@@ -128,23 +129,63 @@ public class BusttoCryptoUtil {
         byte[] keyBytes = resolveKeyBytes(secretKey);
         SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "AES");
 
-        byte[] decrypted;
+        // Attempt 1: Standard AES/GCM/NoPadding with 128-bit tag
         try {
-            Cipher cipher = Cipher.getInstance("AES/GCM/PKCS5Padding");
-            cipher.init(Cipher.DECRYPT_MODE, keySpec, new IvParameterSpec(iv));
-            decrypted = cipher.doFinal(cipherBytes);
-        } catch (Exception e) {
-            try {
-                Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-                cipher.init(Cipher.DECRYPT_MODE, keySpec, new GCMParameterSpec(TAG_LENGTH_BIT, iv));
-                decrypted = cipher.doFinal(cipherBytes);
-            } catch (Exception ex) {
-                Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-                cipher.init(Cipher.DECRYPT_MODE, keySpec, new IvParameterSpec(iv));
-                decrypted = cipher.doFinal(cipherBytes);
-            }
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, new GCMParameterSpec(TAG_LENGTH_BIT, iv));
+            byte[] decrypted = cipher.doFinal(cipherBytes);
+            return unpadString(decrypted);
+        } catch (Exception e1) {
+            log.debug("GCM 128-bit decryption failed: {}, trying CTR/CBC fallbacks", e1.getMessage());
         }
 
-        return new String(decrypted, StandardCharsets.UTF_8);
+        // Attempt 2: AES/CTR/NoPadding (Python AES.MODE_GCM without digest tag)
+        try {
+            Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, new IvParameterSpec(iv));
+            byte[] decrypted = cipher.doFinal(cipherBytes);
+            return unpadString(decrypted);
+        } catch (Exception e2) {
+            log.debug("CTR decryption failed: {}", e2.getMessage());
+        }
+
+        // Attempt 3: AES/CBC/PKCS5Padding
+        try {
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, new IvParameterSpec(iv));
+            byte[] decrypted = cipher.doFinal(cipherBytes);
+            return new String(decrypted, StandardCharsets.UTF_8);
+        } catch (Exception e3) {
+            log.debug("CBC PKCS5 decryption failed: {}", e3.getMessage());
+        }
+
+        // Attempt 4: AES/CBC/NoPadding with manual unpadding
+        try {
+            Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, new IvParameterSpec(iv));
+            byte[] decrypted = cipher.doFinal(cipherBytes);
+            return unpadString(decrypted);
+        } catch (Exception e4) {
+            throw new RuntimeException("All decryption modes failed for payload", e4);
+        }
+    }
+
+    private static String unpadString(byte[] data) {
+        if (data == null || data.length == 0) return "";
+        int len = data.length;
+        int pad = data[len - 1] & 0xFF;
+        if (pad > 0 && pad <= 16 && len >= pad) {
+            boolean valid = true;
+            for (int i = len - pad; i < len; i++) {
+                if ((data[i] & 0xFF) != pad) {
+                    valid = false;
+                    break;
+                }
+            }
+            if (valid) {
+                return new String(data, 0, len - pad, StandardCharsets.UTF_8);
+            }
+        }
+        return new String(data, StandardCharsets.UTF_8);
     }
 }

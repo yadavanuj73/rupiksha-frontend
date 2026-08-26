@@ -37,6 +37,7 @@ public class PayoutService {
     private final PayoutTransactionRepository payoutTransactionRepository;
     private final WalletService walletService;
 
+
     private String cleanUserIdString(String raw) {
         if (raw == null || raw.isBlank()) {
             throw new IllegalArgumentException("User ID is required");
@@ -177,9 +178,7 @@ public class PayoutService {
             transaction.setResponseData(decryptedResponse);
             transaction.setUtr(utr);
 
-            boolean isSuccess = statusCode == 0 || "INITIATED".equalsIgnoreCase(bbTxnStatus) || "SUCCESS".equalsIgnoreCase(bbTxnStatus) || "Successful".equalsIgnoreCase(bbTxnStatus);
-
-            if (isSuccess) {
+            if (statusCode == 0 || "INITIATED".equalsIgnoreCase(bbTxnStatus) || "SUCCESS".equalsIgnoreCase(bbTxnStatus)) {
                 transaction.setStatus("SUCCESS");
                 transaction.setResponseMessage(bbReason != null && !bbReason.isBlank() ? bbReason : "Transfer initiated successfully");
                 payoutTransactionRepository.save(transaction);
@@ -262,7 +261,7 @@ public class PayoutService {
                     .success(false)
                     .statusCode("500")
                     .status("FAILED")
-                    .message("Payout request encountered an error: " + e.getMessage())
+                    .message("Payout request encountered an error. Debited amount has been refunded.")
                     .orderId(orderId)
                     .amount(amount)
                     .build();
@@ -298,27 +297,21 @@ public class PayoutService {
 
             JsonNode root = objectMapper.readTree(decryptedResponse);
             int statusCode = root.path("bbStatusCode").asInt(-1);
-            String statusMsg = root.path("bbStatusMsg").asText("");
             JsonNode txnData = root.path("TransactionData");
 
-            String nameAtBank = txnData.path("nameAtBank").asText("");
-            String acValidationStatus = txnData.path("acValidationStatus").asText("");
-            String verificationId = txnData.path("verification_id").asText("");
-            String utr = txnData.path("utr").asText("");
+            if (statusCode == 0) {
+                String nameAtBank = txnData.path("nameAtBank").asText("");
+                String acValidationStatus = txnData.path("acValidationStatus").asText("ACCOUNT_VALID");
+                String verificationId = txnData.path("verification_id").asText("");
+                String utr = txnData.path("utr").asText("");
 
-            boolean isSuccess = statusCode == 0
-                    || "SUCCESS".equalsIgnoreCase(statusMsg)
-                    || "ACCEPTED".equalsIgnoreCase(txnData.path("status").asText())
-                    || (!nameAtBank.isBlank() && !"null".equalsIgnoreCase(nameAtBank));
-
-            if (isSuccess) {
                 return BankVerificationResponse.builder()
                         .success(true)
-                        .statusCode(statusCode >= 0 ? String.valueOf(statusCode) : "0")
+                        .statusCode("0")
                         .status("SUCCESS")
                         .message("Bank account verified successfully")
                         .nameAtBank(nameAtBank)
-                        .acValidationStatus(acValidationStatus.isBlank() ? "ACCOUNT_VALID" : acValidationStatus)
+                        .acValidationStatus(acValidationStatus)
                         .verificationId(verificationId)
                         .custAcctNo(request.getAccountNumber())
                         .custIfsc(request.getIfsc())
@@ -336,7 +329,7 @@ public class PayoutService {
 
         } catch (HttpClientErrorException | HttpServerErrorException e) {
             String decryptedError = decryptResponseBody(e.getResponseBodyAsString());
-            log.error("Bank verification error (HTTP {}): {}", e.getStatusCode(), decryptedError);
+            log.error("Bank verification error: {}", decryptedError);
             String errorMsg = "Account verification failed";
             try {
                 JsonNode errRoot = objectMapper.readTree(decryptedError);
@@ -469,7 +462,7 @@ public class PayoutService {
                 if (node.has("request")) {
                     return BusttoCryptoUtil.decrypt(payoutProperties.getAesKey(), node.get("request").asText());
                 }
-                if (node.has("bbStatusCode") || node.has("status") || node.has("statusCode") || node.has("error") || node.has("detail")) {
+                if (node.has("bbStatusCode")) {
                     return body;
                 }
             }
@@ -481,8 +474,7 @@ public class PayoutService {
     }
 
     private String extractErrorMessage(JsonNode root) {
-        if (root == null || root.isNull() || root.isMissingNode()) return "Transaction could not be processed";
-        
+        if (root == null) return "Transaction could not be processed";
         JsonNode errNode = root.path("bbErrorMsg");
         if (errNode.isTextual() && !errNode.asText().isBlank()) {
             return errNode.asText();
@@ -493,31 +485,19 @@ public class PayoutService {
                 JsonNode val = errNode.get(field);
                 if (val.isArray() && val.size() > 0) {
                     errors.add(val.get(0).asText());
-                } else if (val.isTextual()) {
-                    errors.add(val.asText());
                 } else {
-                    errors.add(field + ": " + val.toString());
+                    errors.add(field + ": " + val.asText());
                 }
             });
             if (!errors.isEmpty()) {
                 return String.join(", ", errors);
             }
         }
-        if (errNode.isArray() && errNode.size() > 0) {
-            return errNode.get(0).asText();
+        String statusMsg = root.path("bbStatusMsg").asText();
+        if (!statusMsg.isBlank() && !"SUCCESS".equalsIgnoreCase(statusMsg)) {
+            return statusMsg;
         }
-
-        for (String key : List.of("message", "error", "detail", "bbReason", "bbStatusMsg", "status", "non_field_errors")) {
-            JsonNode node = root.path(key);
-            if (node.isTextual() && !node.asText().isBlank() && !"SUCCESS".equalsIgnoreCase(node.asText())) {
-                return node.asText();
-            }
-            if (node.isArray() && node.size() > 0) {
-                return node.get(0).asText();
-            }
-        }
-
-        return root.toString();
+        return "Transaction failed with banking rail";
     }
 
     private void executeRefund(String rawUserId, BigDecimal amount, String orderId, String reason) {
