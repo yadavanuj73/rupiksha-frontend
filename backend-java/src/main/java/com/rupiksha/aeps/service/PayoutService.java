@@ -124,7 +124,6 @@ public class PayoutService {
         if (mobile.length() != 10) {
             mobile = "9876543210";
         }
-        String fullMobile = "+91" + mobile;
 
         // 2. Persist initial PENDING transaction record
         PayoutTransaction transaction = PayoutTransaction.builder()
@@ -177,7 +176,7 @@ public class PayoutService {
         rawPayload.put("external_order_id", orderId);
         rawPayload.put("bene_name", request.getBeneficiaryName().trim());
         rawPayload.put("bene_account_number", cleanAcc);
-        rawPayload.put("bene_mobile", fullMobile);
+        rawPayload.put("bene_mobile", mobile);
         rawPayload.put("bene_ifsc", rawIfsc);
         rawPayload.put("bank_name", bankName);
         rawPayload.put("branch_name", branchName);
@@ -189,35 +188,16 @@ public class PayoutService {
         String payoutUrl = payoutProperties.getFullPayoutUrl();
         HttpHeaders headers = createAuthHeaders();
 
-        // 5. Execute Payout API call with encryption and fallback
+        // 5. Execute Payout API call with strictly formatted encrypted body
         try {
             String rawJson = objectMapper.writeValueAsString(rawPayload);
             String encryptedBody = BusttoCryptoUtil.encrypt(payoutProperties.getAesKey(), rawJson);
 
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("request", encryptedBody);
-            requestBody.put("encrypted_payload", encryptedBody);
-
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+            Map<String, String> requestBody = Map.of("request", encryptedBody);
+            HttpEntity<Map<String, String>> entity = new HttpEntity<>(requestBody, headers);
 
             log.info("Sending encrypted payout request to {} for orderId {}", payoutUrl, orderId);
-            ResponseEntity<String> response;
-
-            try {
-                response = restTemplate.exchange(payoutUrl, HttpMethod.POST, entity, String.class);
-            } catch (HttpClientErrorException e) {
-                String errBody = e.getResponseBodyAsString();
-                log.warn("Encrypted payout returned HTTP {}: {}", e.getStatusCode(), errBody);
-
-                // If AES decryption failed upstream, retry with direct JSON as documented in cURL sample
-                if (errBody.contains("AES decryption failed") || errBody.contains("MAC check failed")) {
-                    log.info("Retrying payout with direct payload format for orderId {}", orderId);
-                    HttpEntity<Map<String, Object>> plainEntity = new HttpEntity<>(rawPayload, headers);
-                    response = restTemplate.exchange(payoutUrl, HttpMethod.POST, plainEntity, String.class);
-                } else {
-                    throw e;
-                }
-            }
+            ResponseEntity<String> response = restTemplate.exchange(payoutUrl, HttpMethod.POST, entity, String.class);
 
             String decryptedResponse = decryptResponseBody(response.getBody());
             log.info("Payout decrypted response for orderId {}: {}", orderId, decryptedResponse);
@@ -344,32 +324,17 @@ public class PayoutService {
             String rawJson = objectMapper.writeValueAsString(rawPayload);
             String encryptedBody = BusttoCryptoUtil.encrypt(payoutProperties.getAesKey(), rawJson);
 
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("request", encryptedBody);
-            requestBody.put("encrypted_payload", encryptedBody);
+            Map<String, String> requestBody = Map.of("request", encryptedBody);
 
             HttpHeaders headers = createAuthHeaders();
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+            HttpEntity<Map<String, String>> entity = new HttpEntity<>(requestBody, headers);
 
             String url = "penny-drop".equalsIgnoreCase(request.getMethod())
                     ? payoutProperties.getFullPennyDropUrl()
                     : payoutProperties.getFullPennyLessUrl();
 
             log.info("Verifying bank account with {} for ifsc {}", url, request.getIfsc());
-            ResponseEntity<String> response;
-
-            try {
-                response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
-            } catch (HttpClientErrorException e) {
-                String errBody = e.getResponseBodyAsString();
-                if (errBody.contains("AES decryption failed") || errBody.contains("MAC check failed")) {
-                    log.info("Retrying verification with direct payload format for ifsc {}", request.getIfsc());
-                    HttpEntity<Map<String, Object>> plainEntity = new HttpEntity<>(rawPayload, headers);
-                    response = restTemplate.exchange(url, HttpMethod.POST, plainEntity, String.class);
-                } else {
-                    throw e;
-                }
-            }
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
 
             String decryptedResponse = decryptResponseBody(response.getBody());
             log.info("Bank verification response: {}", decryptedResponse);
