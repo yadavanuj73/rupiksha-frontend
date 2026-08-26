@@ -76,10 +76,17 @@ public class BusttoCryptoUtil {
 
     /**
      * Encrypts the raw JSON payload with the merchant AES secret key.
-     * Complies 100% with Python/PHP/Node.js/Java documentation specification:
-     * - Uses a 16-byte random IV
-     * - Encrypts with AES-GCM stream cipher
-     * - Returns Base64-encoded [IV (16 bytes) + Ciphertext + Tag (16 bytes)]
+     *
+     * BuckBox/Bustto format (from official Python doc):
+     *   base64([IV (16 bytes)] + [PKCS7-padded ciphertext])
+     *
+     * The BuckBox Python sample uses PyCryptodome AES-GCM in pure stream-cipher mode:
+     *   cipher.encrypt(padded_payload) → ciphertext only (NO auth tag appended).
+     * This is functionally identical to AES-CBC with PKCS7 padding.
+     * We use AES/CBC/PKCS5Padding here to produce the exact same byte layout.
+     *
+     * IMPORTANT: Do NOT use AES/GCM/NoPadding with doFinal() here — Java's GCM doFinal()
+     * appends a 16-byte auth tag that BuckBox does NOT expect, causing "MAC check failed".
      */
     public static String encrypt(String secretKey, String payload) throws Exception {
         if (payload == null) {
@@ -90,26 +97,23 @@ public class BusttoCryptoUtil {
         SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "AES");
 
         byte[] iv = new byte[IV_LENGTH];
-        SecureRandom random = new SecureRandom();
-        random.nextBytes(iv);
+        new SecureRandom().nextBytes(iv);
 
-        byte[] rawBytes = payload.getBytes(StandardCharsets.UTF_8);
+        // AES/CBC/PKCS5Padding matches BuckBox's [IV + PKCS7-padded-ciphertext] format exactly.
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, new IvParameterSpec(iv));
+        byte[] ciphertext = cipher.doFinal(payload.getBytes(StandardCharsets.UTF_8));
 
-        // Java GCM encryption
-        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        cipher.init(Cipher.ENCRYPT_MODE, keySpec, new GCMParameterSpec(TAG_LENGTH_BIT, iv));
-        byte[] encryptedWithTag = cipher.doFinal(rawBytes);
-
-        ByteBuffer combined = ByteBuffer.allocate(iv.length + encryptedWithTag.length);
+        // Output: [IV (16 bytes)] + [PKCS7-padded ciphertext]  — no GCM auth tag
+        ByteBuffer combined = ByteBuffer.allocate(iv.length + ciphertext.length);
         combined.put(iv);
-        combined.put(encryptedWithTag);
-
+        combined.put(ciphertext);
         return Base64.getEncoder().encodeToString(combined.array());
     }
 
     /**
-     * Decrypts the Base64-encoded encrypted payload returned from the API.
-     * Supports standard AES-GCM (128-bit MAC tag), GCM stream (no tag), CTR mode, and CBC modes.
+     * Decrypts the Base64-encoded encrypted payload returned from BuckBox.
+     * Tries AES/CBC/PKCS5Padding first (BuckBox's primary format), then GCM and other fallbacks.
      */
     public static String decrypt(String secretKey, String encrypted) throws Exception {
         if (encrypted == null || encrypted.isBlank()) {
@@ -127,34 +131,34 @@ public class BusttoCryptoUtil {
         byte[] keyBytes = resolveKeyBytes(secretKey);
         SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "AES");
 
-        // Attempt 1: Standard AES/GCM/NoPadding with 128-bit tag
-        try {
-            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            cipher.init(Cipher.DECRYPT_MODE, keySpec, new GCMParameterSpec(TAG_LENGTH_BIT, iv));
-            byte[] decrypted = cipher.doFinal(cipherBytes);
-            return new String(decrypted, StandardCharsets.UTF_8);
-        } catch (Exception e1) {
-            log.debug("GCM 128-bit decryption failed: {}, trying CTR/CBC fallbacks", e1.getMessage());
-        }
-
-        // Attempt 2: AES/CTR/NoPadding (PyCryptodome GCM stream mode without digest tag)
-        try {
-            Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
-            cipher.init(Cipher.DECRYPT_MODE, keySpec, new IvParameterSpec(iv));
-            byte[] decrypted = cipher.doFinal(cipherBytes);
-            return unpadString(decrypted);
-        } catch (Exception e2) {
-            log.debug("CTR decryption failed: {}", e2.getMessage());
-        }
-
-        // Attempt 3: AES/CBC/PKCS5Padding
+        // Attempt 1: AES/CBC/PKCS5Padding — BuckBox's primary format matching their Python doc
         try {
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
             cipher.init(Cipher.DECRYPT_MODE, keySpec, new IvParameterSpec(iv));
             byte[] decrypted = cipher.doFinal(cipherBytes);
             return new String(decrypted, StandardCharsets.UTF_8);
+        } catch (Exception e1) {
+            log.debug("CBC PKCS5 decryption failed: {}, trying other modes", e1.getMessage());
+        }
+
+        // Attempt 2: AES/GCM/NoPadding with 128-bit tag (standard GCM with auth tag)
+        try {
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, new GCMParameterSpec(TAG_LENGTH_BIT, iv));
+            byte[] decrypted = cipher.doFinal(cipherBytes);
+            return new String(decrypted, StandardCharsets.UTF_8);
+        } catch (Exception e2) {
+            log.debug("GCM 128-bit decryption failed: {}", e2.getMessage());
+        }
+
+        // Attempt 3: AES/CTR/NoPadding (PyCryptodome GCM stream mode without digest tag)
+        try {
+            Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, new IvParameterSpec(iv));
+            byte[] decrypted = cipher.doFinal(cipherBytes);
+            return unpadString(decrypted);
         } catch (Exception e3) {
-            log.debug("CBC PKCS5 decryption failed: {}", e3.getMessage());
+            log.debug("CTR decryption failed: {}", e3.getMessage());
         }
 
         // Attempt 4: AES/CBC/NoPadding with manual unpadding
