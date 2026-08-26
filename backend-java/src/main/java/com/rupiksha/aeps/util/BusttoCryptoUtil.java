@@ -151,8 +151,8 @@ public class BusttoCryptoUtil {
     }
 
     /**
-     * Encrypts the raw JSON payload with the merchant AES secret key using GCM mode.
-     * Matches BuckBox Python/Node.js/PHP GCM implementation (no GCM tag appended).
+     * Encrypts the raw JSON payload with the merchant AES secret key using standard GCM mode.
+     * Matches BuckBox GCM implementation with standard 16-byte GCM tag appended.
      */
     public static String encrypt(String secretKey, String payload) throws Exception {
         if (payload == null) {
@@ -171,23 +171,17 @@ public class BusttoCryptoUtil {
         byte[] plaintextBytes = payload.getBytes(StandardCharsets.UTF_8);
         byte[] paddedPlaintext = pad(plaintextBytes, 16);
         byte[] encryptedWithTag = cipher.doFinal(paddedPlaintext);
-        
-        // Output format is: iv (16 bytes) + ciphertext (without tag)
-        // Standard GCM doFinal appends a 16-byte tag. We slice off the last 16 bytes.
-        int ciphertextLen = encryptedWithTag.length - 16;
-        byte[] ciphertext = new byte[ciphertextLen];
-        System.arraycopy(encryptedWithTag, 0, ciphertext, 0, ciphertextLen);
 
-        ByteBuffer combined = ByteBuffer.allocate(iv.length + ciphertext.length);
+        ByteBuffer combined = ByteBuffer.allocate(iv.length + encryptedWithTag.length);
         combined.put(iv);
-        combined.put(ciphertext);
+        combined.put(encryptedWithTag);
         return Base64.getEncoder().encodeToString(combined.array());
     }
 
     /**
      * Decrypts the Base64-encoded encrypted payload returned from BuckBox/Bustto.
-     * Tries GCM decryption without tag checking (by computing counter Y_1 and using AES/CTR/NoPadding),
-     * and has other modes as fallback.
+     * Tries standard GCM decryption first (as the server now correctly verifies the tag and responds with GCM tag),
+     * then falls back to custom GCM without tag checking (using CTR mode), and other legacy fallbacks.
      */
     public static String decrypt(String secretKey, String encrypted) throws Exception {
         if (encrypted == null || encrypted.isBlank()) {
@@ -205,7 +199,18 @@ public class BusttoCryptoUtil {
         byte[] keyBytes = resolveKeyBytes(secretKey);
         SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "AES");
 
-        // Attempt 1: Custom GCM without tag check (mathematically identical to AES/CTR/NoPadding starting from Y_1)
+        // Attempt 1: Standard GCM with tag verification
+        try {
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, new GCMParameterSpec(128, iv));
+            byte[] decrypted = cipher.doFinal(cipherBytes);
+            byte[] unpadded = unpad(decrypted);
+            return new String(unpadded, StandardCharsets.UTF_8);
+        } catch (Exception e1) {
+            log.debug("Standard GCM decryption failed: {}, trying custom GCM without tag check", e1.getMessage());
+        }
+
+        // Attempt 2: Custom GCM without tag check (mathematically identical to AES/CTR/NoPadding starting from Y_1)
         try {
             byte[] y0 = calculateY0(keyBytes, iv);
             byte[] y1 = incrementY(y0);
@@ -216,28 +221,18 @@ public class BusttoCryptoUtil {
 
             byte[] unpadded = unpad(decrypted);
             return new String(unpadded, StandardCharsets.UTF_8);
-        } catch (Exception e1) {
-            log.debug("Custom GCM without tag check decryption failed: {}, trying other modes", e1.getMessage());
+        } catch (Exception e2) {
+            log.debug("Custom GCM without tag check decryption failed: {}, trying CBC PKCS5 fallback", e2.getMessage());
         }
 
-        // Attempt 2: AES/CBC/PKCS5Padding fallback
+        // Attempt 3: AES/CBC/PKCS5Padding fallback
         try {
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
             cipher.init(Cipher.DECRYPT_MODE, keySpec, new IvParameterSpec(iv));
             byte[] decrypted = cipher.doFinal(cipherBytes);
             return new String(decrypted, StandardCharsets.UTF_8);
-        } catch (Exception e2) {
-            log.debug("CBC PKCS5 decryption fallback failed: {}", e2.getMessage());
-        }
-
-        // Attempt 3: AES/GCM/NoPadding with 128-bit tag fallback (standard GCM with auth tag)
-        try {
-            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            cipher.init(Cipher.DECRYPT_MODE, keySpec, new GCMParameterSpec(TAG_LENGTH_BIT, iv));
-            byte[] decrypted = cipher.doFinal(cipherBytes);
-            return new String(decrypted, StandardCharsets.UTF_8);
         } catch (Exception e3) {
-            log.debug("GCM 128-bit decryption fallback failed: {}", e3.getMessage());
+            log.debug("CBC PKCS5 decryption fallback failed: {}, trying standard CTR fallback", e3.getMessage());
         }
 
         // Attempt 4: AES/CTR/NoPadding with standard IV fallback
