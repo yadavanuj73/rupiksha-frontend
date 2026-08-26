@@ -37,6 +37,7 @@ public class BusttoCryptoUtil {
 
         // 1. Direct UTF-8 key — exact 16, 24, or 32-byte key as provided by BuckBox
         byte[] utfBytes = cleanKey.getBytes(StandardCharsets.UTF_8);
+        log.info("[BusttoCrypto] AES key length = {} bytes (UTF-8). Valid AES sizes: 16, 24, 32.", utfBytes.length);
         if (utfBytes.length == 32 || utfBytes.length == 16 || utfBytes.length == 24) {
             return utfBytes;
         }
