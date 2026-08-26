@@ -35,8 +35,21 @@ public class BusttoCryptoUtil {
             cleanKey = cleanKey.substring(1, cleanKey.length() - 1).trim();
         }
 
-        // 1. Try Hex decoding first (64 hex chars -> 32 bytes, 32 hex chars -> 16 bytes)
-        if (cleanKey.matches("^[0-9a-fA-F]+$") && (cleanKey.length() == 64 || cleanKey.length() == 32)) {
+        // 1. PRIORITY: Direct UTF-8 key — if the raw key is already a valid AES size (16, 24, 32 bytes)
+        //    return it immediately WITHOUT any decoding.
+        //    The BuckBox/Bustto portal provides the AES key as a raw ASCII/UTF-8 string.
+        //    Hex/Base64 decoding must only be attempted when the raw key is NOT a valid size
+        //    (e.g. 64-char hex-encoded or 44-char base64-encoded representation of the actual key).
+        byte[] utfBytes = cleanKey.getBytes(StandardCharsets.UTF_8);
+        if (utfBytes.length == 32 || utfBytes.length == 16 || utfBytes.length == 24) {
+            log.info("[BusttoCrypto] Resolved AES key directly via UTF-8 bytes ({} bytes — standard AES key size)", utfBytes.length);
+            return utfBytes;
+        }
+
+        // 2. Try Hex decoding — only relevant when the key is the HEX-ENCODED form of the real key
+        //    e.g. 64 hex chars representing 32 raw bytes, or 32 hex chars representing 16 raw bytes.
+        //    This path is NOT taken for normal 32-char ASCII keys.
+        if (cleanKey.matches("^[0-9a-fA-F]+$") && (cleanKey.length() == 64 || cleanKey.length() == 48)) {
             try {
                 int len = cleanKey.length();
                 byte[] data = new byte[len / 2];
@@ -49,8 +62,10 @@ public class BusttoCryptoUtil {
             } catch (Exception ignored) {}
         }
 
-        // 2. Try Base64 decoding next (e.g. 44 chars -> 32 bytes, or ends with '=')
-        if (cleanKey.length() == 44 || cleanKey.endsWith("=") || cleanKey.length() == 32 || cleanKey.length() == 24) {
+        // 3. Try Base64 decoding — only relevant when the key is the Base64-ENCODED form of the real key
+        //    e.g. 44 chars (with optional '=' padding) representing 32 raw bytes.
+        //    This path is NOT taken for normal 32-char ASCII keys.
+        if (cleanKey.endsWith("=") || cleanKey.length() == 44) {
             try {
                 byte[] decoded = Base64.getDecoder().decode(cleanKey);
                 if (decoded.length == 32 || decoded.length == 16 || decoded.length == 24) {
@@ -60,21 +75,12 @@ public class BusttoCryptoUtil {
             } catch (Exception ignored) {}
         }
 
-        // 3. Fallback to direct UTF-8 key — exact 16, 24, or 32-byte key as provided by BuckBox
-        byte[] utfBytes = cleanKey.getBytes(StandardCharsets.UTF_8);
-        log.info("[BusttoCrypto] AES key length = {} bytes (UTF-8 direct key). Valid AES sizes: 16, 24, 32.", utfBytes.length);
-        if (utfBytes.length == 32 || utfBytes.length == 16 || utfBytes.length == 24) {
-            return utfBytes;
-        }
-
         // 4. Key length is non-standard — right-pad with zeros to 32 bytes (AES-256).
-        //    This matches common payment gateway SDK behaviour where a shorter passphrase
-        //    is used as-is with zero-byte padding to reach a valid AES key length.
         //    Keys longer than 32 bytes are truncated to 32 bytes.
         log.warn("BUSTTO_AES_KEY is {} bytes (UTF-8) — not a standard AES key length. " +
                  "Right-padding to 32 bytes with zeros (AES-256). " +
                  "Verify the exact key value in your BuckBox merchant portal.", utfBytes.length);
-        return Arrays.copyOf(utfBytes, 32);  // copyOf right-pads with zeros if shorter, truncates if longer
+        return Arrays.copyOf(utfBytes, 32);
     }
 
     private static byte[] pad(byte[] data, int blockSize) {
@@ -182,8 +188,20 @@ public class BusttoCryptoUtil {
 
     /**
      * Decrypts the Base64-encoded encrypted payload returned from BuckBox/Bustto.
-     * Tries standard GCM decryption first (as the server now correctly verifies the tag and responds with GCM tag),
-     * then falls back to custom GCM without tag checking (using CTR mode), and other legacy fallbacks.
+     *
+     * Format expected (per provider documentation):
+     *   Base64( IV[16 bytes] + AES-256-GCM-Ciphertext + GCM-Tag[16 bytes] )
+     *
+     * The GCM authentication tag is appended to the ciphertext by Java's AES/GCM/NoPadding cipher
+     * and is included in cipherBytes. Java's GCM implementation expects the tag to be the last 16
+     * bytes of the ciphertext block, which matches the provider's format.
+     *
+     * The provider also applies PKCS7-style padding before encrypting (as shown in the Python sample),
+     * so we unpad after decryption.
+     *
+     * IMPORTANT: GCM authentication tag verification is mandatory and must NOT be bypassed.
+     * If the MAC check fails it means the key is wrong, the ciphertext is corrupted, or the
+     * response format does not match. Do NOT add fallback modes that skip tag verification.
      */
     public static String decrypt(String secretKey, String encrypted) throws Exception {
         if (encrypted == null || encrypted.isBlank()) {
@@ -192,60 +210,41 @@ public class BusttoCryptoUtil {
 
         byte[] all = Base64.getDecoder().decode(encrypted.trim());
         if (all.length <= IV_LENGTH) {
-            throw new IllegalArgumentException("Invalid encrypted payload length: " + all.length);
+            throw new IllegalArgumentException(
+                "AES decryption failed: payload too short (" + all.length + " bytes). " +
+                "Minimum expected: IV(" + IV_LENGTH + ") + 1 byte ciphertext + 16 byte GCM tag.");
         }
 
-        byte[] iv = Arrays.copyOfRange(all, 0, IV_LENGTH);
+        byte[] iv          = Arrays.copyOfRange(all, 0, IV_LENGTH);
         byte[] cipherBytes = Arrays.copyOfRange(all, IV_LENGTH, all.length);
 
         byte[] keyBytes = resolveKeyBytes(secretKey);
+        log.debug("[BusttoCrypto] decrypt: payload bytes={}, IV bytes={}, ciphertext+tag bytes={}, key bytes={}",
+            all.length, iv.length, cipherBytes.length, keyBytes.length);
+
         SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "AES");
 
-        // Attempt 1: Standard GCM with tag verification
         try {
+            // AES-256-GCM with 128-bit authentication tag.
+            // Java's GCM implementation appends the tag to the ciphertext on encrypt,
+            // and expects it there on decrypt — exactly the format the provider uses.
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            cipher.init(Cipher.DECRYPT_MODE, keySpec, new GCMParameterSpec(128, iv));
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, new GCMParameterSpec(TAG_LENGTH_BIT, iv));
             byte[] decrypted = cipher.doFinal(cipherBytes);
+
+            // Remove PKCS7 padding applied before encryption (matches Python/PHP provider samples)
             byte[] unpadded = unpad(decrypted);
             return new String(unpadded, StandardCharsets.UTF_8);
-        } catch (Exception e1) {
-            log.debug("Standard GCM decryption failed: {}, trying custom GCM without tag check", e1.getMessage());
-        }
 
-        // Attempt 2: Custom GCM without tag check (mathematically identical to AES/CTR/NoPadding starting from Y_1)
-        try {
-            byte[] y0 = calculateY0(keyBytes, iv);
-            byte[] y1 = incrementY(y0);
-
-            Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
-            cipher.init(Cipher.DECRYPT_MODE, keySpec, new IvParameterSpec(y1));
-            byte[] decrypted = cipher.doFinal(cipherBytes);
-
-            byte[] unpadded = unpad(decrypted);
-            return new String(unpadded, StandardCharsets.UTF_8);
-        } catch (Exception e2) {
-            log.debug("Custom GCM without tag check decryption failed: {}, trying CBC PKCS5 fallback", e2.getMessage());
-        }
-
-        // Attempt 3: AES/CBC/PKCS5Padding fallback
-        try {
-            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-            cipher.init(Cipher.DECRYPT_MODE, keySpec, new IvParameterSpec(iv));
-            byte[] decrypted = cipher.doFinal(cipherBytes);
-            return new String(decrypted, StandardCharsets.UTF_8);
-        } catch (Exception e3) {
-            log.debug("CBC PKCS5 decryption fallback failed: {}, trying standard CTR fallback", e3.getMessage());
-        }
-
-        // Attempt 4: AES/CTR/NoPadding with standard IV fallback
-        try {
-            Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
-            cipher.init(Cipher.DECRYPT_MODE, keySpec, new IvParameterSpec(iv));
-            byte[] decrypted = cipher.doFinal(cipherBytes);
-            byte[] unpadded = unpad(decrypted);
-            return new String(unpadded, StandardCharsets.UTF_8);
-        } catch (Exception e4) {
-            throw new RuntimeException("All decryption modes failed for payload", e4);
+        } catch (Exception e) {
+            // GCM tag failure = key mismatch, tampered data, or wrong ciphertext format.
+            // Log safely (no key or payload values) and re-throw with a clear message.
+            log.error("[BusttoCrypto] AES decryption failed: {}. " +
+                "Check that BUSTTO_AES_KEY matches the key in your BuckBox merchant portal " +
+                "and that the response format is Base64(IV[16]+ciphertext+tag[16]).",
+                e.getMessage());
+            throw new RuntimeException("AES decryption failed: " + e.getMessage(), e);
         }
     }
 }
+

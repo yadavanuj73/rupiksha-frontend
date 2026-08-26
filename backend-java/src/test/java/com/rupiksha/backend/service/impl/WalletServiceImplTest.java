@@ -292,7 +292,7 @@ public class WalletServiceImplTest {
         );
 
         assertNotNull(response);
-        assertEquals(BigDecimal.valueOf(950.00), retailerWallet.getBalance()); // 100.00 + 850.00
+        assertEquals(0, new BigDecimal("950.00").compareTo(retailerWallet.getBalance())); // 100.00 + 850.00
         verify(walletRepository, times(1)).save(retailerWallet);
     }
 }
