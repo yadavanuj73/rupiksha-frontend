@@ -37,15 +37,39 @@ public class PayoutService {
     private final PayoutTransactionRepository payoutTransactionRepository;
     private final WalletService walletService;
 
+    private String cleanUserIdString(String raw) {
+        if (raw == null || raw.isBlank()) {
+            throw new IllegalArgumentException("User ID is required");
+        }
+        String s = raw.trim();
+        if (s.contains("userId=")) {
+            int start = s.indexOf("userId=") + 7;
+            int end = s.indexOf(",", start);
+            if (end == -1) end = s.indexOf("]", start);
+            if (end != -1) {
+                return s.substring(start, end).trim();
+            }
+        }
+        return s;
+    }
+
+    private UUID parseUserUuid(String raw) {
+        String clean = cleanUserIdString(raw);
+        return UUID.fromString(clean);
+    }
+
     /**
      * Initiates an instant payout transfer to beneficiary bank account.
      * Enforces atomic wallet balance check and deduction, encrypted API communication,
      * duplicate submission prevention, and instant auto-refund on failure.
      */
-    public PayoutResponse initiatePayout(PayoutRequest request, String userId) {
+    public PayoutResponse initiatePayout(PayoutRequest request, String rawUserId) {
+        String cleanUserId = cleanUserIdString(rawUserId);
+        UUID userUuid = parseUserUuid(cleanUserId);
+
         String orderId = request.getOrderId();
         if (orderId == null || orderId.isBlank()) {
-            orderId = generateOrderId(userId);
+            orderId = generateOrderId(cleanUserId);
         }
 
         // 1. Guard against duplicate orderId
@@ -61,7 +85,7 @@ public class PayoutService {
         // 2. Persist initial PENDING transaction record
         PayoutTransaction transaction = PayoutTransaction.builder()
                 .orderId(orderId)
-                .userId(userId)
+                .userId(cleanUserId)
                 .amount(amount)
                 .beneficiaryName(request.getBeneficiaryName())
                 .accountNumber(request.getAccountNumber())
@@ -78,7 +102,7 @@ public class PayoutService {
         // 3. Atomically debit user's wallet
         try {
             walletService.debitForService(
-                    UUID.fromString(userId),
+                    userUuid,
                     amount,
                     "Payout to " + request.getBeneficiaryName() + " (" + request.getAccountNumber() + ")",
                     WalletTransactionContext.PAYOUT,
@@ -183,7 +207,7 @@ public class PayoutService {
                 transaction.setResponseMessage(errorDetail);
                 payoutTransactionRepository.save(transaction);
 
-                executeRefund(userId, amount, orderId, "Payout rejected: " + errorDetail);
+                executeRefund(cleanUserId, amount, orderId, "Payout rejected: " + errorDetail);
 
                 return PayoutResponse.builder()
                         .success(false)
@@ -211,7 +235,7 @@ public class PayoutService {
             transaction.setResponseMessage(errorMsg);
             payoutTransactionRepository.save(transaction);
 
-            executeRefund(userId, amount, orderId, "Payout failed: " + errorMsg);
+            executeRefund(cleanUserId, amount, orderId, "Payout failed: " + errorMsg);
 
             return PayoutResponse.builder()
                     .success(false)
@@ -230,7 +254,7 @@ public class PayoutService {
             transaction.setResponseMessage(e.getMessage());
             payoutTransactionRepository.save(transaction);
 
-            executeRefund(userId, amount, orderId, "Payout error: " + e.getMessage());
+            executeRefund(cleanUserId, amount, orderId, "Payout error: " + e.getMessage());
 
             return PayoutResponse.builder()
                     .success(false)
@@ -247,7 +271,7 @@ public class PayoutService {
      * Bank Account Verification (Penny-less).
      * Validates if the bank account exists and returns the legal Name At Bank.
      */
-    public BankVerificationResponse verifyBankAccount(BankVerificationRequest request, String userId) {
+    public BankVerificationResponse verifyBankAccount(BankVerificationRequest request, String rawUserId) {
         try {
             Map<String, Object> rawPayload = new HashMap<>();
             rawPayload.put("account_number", request.getAccountNumber().trim());
@@ -331,11 +355,12 @@ public class PayoutService {
     /**
      * Checks real-time status of payout transaction.
      */
-    public PayoutResponse checkPayoutStatus(String orderId, String userId) {
+    public PayoutResponse checkPayoutStatus(String orderId, String rawUserId) {
+        String cleanUserId = cleanUserIdString(rawUserId);
         PayoutTransaction txn = payoutTransactionRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Transaction not found: " + orderId));
 
-        if (!txn.getUserId().equals(userId)) {
+        if (!cleanUserIdString(txn.getUserId()).equals(cleanUserId)) {
             throw new IllegalArgumentException("Unauthorized transaction access");
         }
 
@@ -362,7 +387,7 @@ public class PayoutService {
                 if (!"FAILED".equalsIgnoreCase(txn.getStatus())) {
                     txn.setStatus("FAILED");
                     payoutTransactionRepository.save(txn);
-                    executeRefund(userId, txn.getAmount(), orderId, "Status check returned failed");
+                    executeRefund(cleanUserId, txn.getAmount(), orderId, "Status check returned failed");
                 }
             }
 
@@ -392,8 +417,9 @@ public class PayoutService {
         }
     }
 
-    public List<PayoutTransaction> getUserTransactions(String userId) {
-        return payoutTransactionRepository.findByUserId(userId);
+    public List<PayoutTransaction> getUserTransactions(String rawUserId) {
+        String cleanUserId = cleanUserIdString(rawUserId);
+        return payoutTransactionRepository.findByUserId(cleanUserId);
     }
 
     public PayoutTransaction getTransactionByOrderId(String orderId) {
@@ -401,7 +427,8 @@ public class PayoutService {
                 .orElseThrow(() -> new IllegalArgumentException("Transaction not found: " + orderId));
     }
 
-    public String generateOrderId(String userId) {
+    public String generateOrderId(String rawUserId) {
+        String cleanUserId = cleanUserIdString(rawUserId);
         String dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         String randStr = UUID.randomUUID().toString().replace("-", "").substring(0, 4).toUpperCase();
         return "PO_" + dateStr + "_" + randStr;
@@ -426,7 +453,6 @@ public class PayoutService {
     private String decryptResponseBody(String body) {
         if (body == null || body.isBlank()) return "{}";
         try {
-            // Check if body is a JSON object with encrypted_payload or request or direct string
             if (body.trim().startsWith("{")) {
                 JsonNode node = objectMapper.readTree(body);
                 if (node.has("encrypted_payload")) {
@@ -436,10 +462,9 @@ public class PayoutService {
                     return BusttoCryptoUtil.decrypt(payoutProperties.getAesKey(), node.get("request").asText());
                 }
                 if (node.has("bbStatusCode")) {
-                    return body; // Already plaintext JSON
+                    return body;
                 }
             }
-            // Try decrypting as raw base64 string
             return BusttoCryptoUtil.decrypt(payoutProperties.getAesKey(), body);
         } catch (Exception e) {
             log.debug("Payload is not encrypted or decryption skipped: {}", e.getMessage());
@@ -474,10 +499,11 @@ public class PayoutService {
         return "Transaction failed with banking rail";
     }
 
-    private void executeRefund(String userId, BigDecimal amount, String orderId, String reason) {
+    private void executeRefund(String rawUserId, BigDecimal amount, String orderId, String reason) {
         try {
+            UUID userUuid = parseUserUuid(rawUserId);
             walletService.refundForService(
-                    UUID.fromString(userId),
+                    userUuid,
                     amount,
                     reason,
                     orderId,
