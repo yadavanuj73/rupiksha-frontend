@@ -1135,7 +1135,7 @@ public class WalletServiceImpl implements WalletService {
         entry.setAmount(amount);
         entry.setEntryType("SERVICE_DEBIT");
         entry.setReferenceId(refNum);
-        entry.setNarration(serviceName + " usage: " + narration);
+        entry.setNarration(sanitizeNarration(serviceName + " usage: " + narration));
         entry.setOpeningBalance(oldBal);
         entry.setClosingBalance(newBal);
         entry.setIpAddress(ipAddress);
@@ -1153,7 +1153,7 @@ public class WalletServiceImpl implements WalletService {
                 .ledgerType("SERVICE_DEBIT")
                 .referenceNumber(refNum)
                 .ipAddress(ipAddress)
-                .remark("Service debit: " + serviceName + " Context: " + context)
+                .remark(sanitizeRemark("Service debit: " + serviceName + " Context: " + context))
                 .build();
         auditLogRepository.save(audit);
 
@@ -1193,7 +1193,7 @@ public class WalletServiceImpl implements WalletService {
         entry.setAmount(amount);
         entry.setEntryType("SERVICE_CREDIT");
         entry.setReferenceId(refNum);
-        entry.setNarration(serviceName + " credit: " + narration);
+        entry.setNarration(sanitizeNarration(serviceName + " credit: " + narration));
         entry.setOpeningBalance(oldBal);
         entry.setClosingBalance(newBal);
         entry.setIpAddress(ipAddress);
@@ -1211,7 +1211,7 @@ public class WalletServiceImpl implements WalletService {
                 .ledgerType("SERVICE_CREDIT")
                 .referenceNumber(refNum)
                 .ipAddress(ipAddress)
-                .remark("Service credit: " + serviceName + " Context: " + context)
+                .remark(sanitizeRemark("Service credit: " + serviceName + " Context: " + context))
                 .build();
         auditLogRepository.save(audit);
 
@@ -1252,7 +1252,7 @@ public class WalletServiceImpl implements WalletService {
         entry.setAmount(amount);
         entry.setEntryType("SERVICE_REFUND");
         entry.setReferenceId(refNum);
-        entry.setNarration("Refund for parent txn " + parentReferenceNumber + ": " + narration);
+        entry.setNarration(sanitizeNarration("Refund for parent txn " + parentReferenceNumber + ": " + narration));
         entry.setOpeningBalance(oldBal);
         entry.setClosingBalance(newBal);
         entry.setIpAddress(ipAddress);
@@ -1270,10 +1270,22 @@ public class WalletServiceImpl implements WalletService {
                 .ledgerType("SERVICE_REFUND")
                 .referenceNumber(refNum)
                 .ipAddress(ipAddress)
-                .remark("Service refund: " + serviceName + " parentRef: " + parentReferenceNumber + " Context: " + context)
+                .remark(sanitizeRemark("Service refund: " + serviceName + " parentRef: " + parentReferenceNumber + " Context: " + context))
                 .build();
         auditLogRepository.save(audit);
 
         return mapBalanceResponse(wallet);
+    }
+
+    private String sanitizeNarration(String narration) {
+        if (narration == null) return "";
+        if (narration.length() <= 128) return narration;
+        return narration.substring(0, 125) + "...";
+    }
+
+    private String sanitizeRemark(String remark) {
+        if (remark == null) return "";
+        if (remark.length() <= 255) return remark;
+        return remark.substring(0, 252) + "...";
     }
 }

@@ -7,19 +7,21 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { payoutService, transactionService, userService } from '../../services/apiService';
 import { dataService } from '../../services/dataService';
+import { useWallet } from '../../context/WalletContext';
 import DisabledServiceBanner from '../../components/shared/DisabledServiceBanner';
 
 const QUICK_AMOUNTS = [500, 1000, 2000, 5000, 10000, 25000];
 
 const PayoutHub = () => {
     const user = useMemo(() => dataService.getCurrentUser(), []);
+    const { balance, refreshWallet, isWalletLoading } = useWallet();
+    const walletBalance = Number(balance || 0);
 
     // Active View Tab: 'transfer' | 'history'
     const [activeTab, setActiveTab] = useState('transfer');
 
     // Wallet State
-    const [walletBalance, setWalletBalance] = useState(0);
-    const [balanceLoading, setBalanceLoading] = useState(false);
+    const balanceLoading = isWalletLoading;
 
     // Form State
     const [form, setForm] = useState({
@@ -54,18 +56,12 @@ const PayoutHub = () => {
 
     // Fetch Wallet Balance
     const fetchBalance = useCallback(async () => {
-        setBalanceLoading(true);
         try {
-            const res = await transactionService.getBalance();
-            if (res && res.balance !== undefined) {
-                setWalletBalance(Number(res.balance));
-            }
+            await refreshWallet();
         } catch (e) {
             console.warn('Failed to load wallet balance', e);
-        } finally {
-            setBalanceLoading(false);
         }
-    }, []);
+    }, [refreshWallet]);
 
     // Fetch Recent Payout Transactions
     const fetchHistory = useCallback(async () => {
