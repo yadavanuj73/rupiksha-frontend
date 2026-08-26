@@ -37,7 +37,6 @@ public class PayoutService {
     private final PayoutTransactionRepository payoutTransactionRepository;
     private final WalletService walletService;
 
-
     private String cleanUserIdString(String raw) {
         if (raw == null || raw.isBlank()) {
             throw new IllegalArgumentException("User ID is required");
@@ -151,13 +150,16 @@ public class PayoutService {
             String rawJson = objectMapper.writeValueAsString(rawPayload);
             String encryptedBody = BusttoCryptoUtil.encrypt(payoutProperties.getAesKey(), rawJson);
 
-            Map<String, String> requestBody = Map.of("request", encryptedBody);
+            // Populate both encrypted and structured keys for complete gateway compatibility
+            Map<String, Object> requestBody = new HashMap<>(rawPayload);
+            requestBody.put("request", encryptedBody);
+            requestBody.put("encrypted_payload", encryptedBody);
 
             HttpHeaders headers = createAuthHeaders();
-            HttpEntity<Map<String, String>> entity = new HttpEntity<>(requestBody, headers);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
             String payoutUrl = payoutProperties.getFullPayoutUrl();
-            log.info("Sending encrypted payout request to {} for orderId {}", payoutUrl, orderId);
+            log.info("Sending payout request to {} for orderId {}", payoutUrl, orderId);
 
             ResponseEntity<String> response = restTemplate.exchange(payoutUrl, HttpMethod.POST, entity, String.class);
             String decryptedResponse = decryptResponseBody(response.getBody());
@@ -165,12 +167,12 @@ public class PayoutService {
             log.info("Payout decrypted response for orderId {}: {}", orderId, decryptedResponse);
 
             JsonNode root = objectMapper.readTree(decryptedResponse);
-            int statusCode = root.path("bbStatusCode").asInt(-1);
-            String statusMsg = root.path("bbStatusMsg").asText("UNKNOWN");
+            int statusCode = root.path("bbStatusCode").asInt(root.path("statusCode").asInt(-1));
+            String statusMsg = root.path("bbStatusMsg").asText(root.path("status").asText("UNKNOWN"));
             JsonNode txnData = root.path("TransactionData");
 
-            String bbTxnId = txnData.path("bbTransactionId").asText("");
-            String bbTxnStatus = txnData.path("bbTransactionStatus").asText("");
+            String bbTxnId = txnData.path("bbTransactionId").asText(txnData.path("transaction_id").asText(""));
+            String bbTxnStatus = txnData.path("bbTransactionStatus").asText(txnData.path("status").asText(""));
             String bbReason = txnData.path("bbReason").asText(statusMsg);
             String utr = txnData.path("bbUtrNumber").asText(txnData.path("utr").asText(""));
 
@@ -178,7 +180,13 @@ public class PayoutService {
             transaction.setResponseData(decryptedResponse);
             transaction.setUtr(utr);
 
-            if (statusCode == 0 || "INITIATED".equalsIgnoreCase(bbTxnStatus) || "SUCCESS".equalsIgnoreCase(bbTxnStatus)) {
+            boolean isSuccess = statusCode == 0
+                    || "INITIATED".equalsIgnoreCase(bbTxnStatus)
+                    || "SUCCESS".equalsIgnoreCase(bbTxnStatus)
+                    || "Successful".equalsIgnoreCase(bbTxnStatus)
+                    || "SUCCESS".equalsIgnoreCase(statusMsg);
+
+            if (isSuccess) {
                 transaction.setStatus("SUCCESS");
                 transaction.setResponseMessage(bbReason != null && !bbReason.isBlank() ? bbReason : "Transfer initiated successfully");
                 payoutTransactionRepository.save(transaction);
@@ -200,8 +208,7 @@ public class PayoutService {
                         .timestamp(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
                         .build();
             } else {
-                // Provider rejected transaction -> trigger immediate refund
-                String errorDetail = extractErrorMessage(root);
+                String errorDetail = extractErrorMessage(root, decryptedResponse);
                 log.warn("Payout rejected by provider for orderId {}: {}", orderId, errorDetail);
 
                 transaction.setStatus("FAILED");
@@ -228,7 +235,7 @@ public class PayoutService {
             String errorMsg = "Transfer failed with banking rail";
             try {
                 JsonNode errRoot = objectMapper.readTree(decryptedError);
-                errorMsg = extractErrorMessage(errRoot);
+                errorMsg = extractErrorMessage(errRoot, decryptedError);
             } catch (Exception ignored) {}
 
             transaction.setStatus("FAILED");
@@ -261,7 +268,7 @@ public class PayoutService {
                     .success(false)
                     .statusCode("500")
                     .status("FAILED")
-                    .message("Payout request encountered an error. Debited amount has been refunded.")
+                    .message("Payout request encountered an error: " + e.getMessage())
                     .orderId(orderId)
                     .amount(amount)
                     .build();
@@ -281,9 +288,13 @@ public class PayoutService {
             String rawJson = objectMapper.writeValueAsString(rawPayload);
             String encryptedBody = BusttoCryptoUtil.encrypt(payoutProperties.getAesKey(), rawJson);
 
-            Map<String, String> requestBody = Map.of("request", encryptedBody);
+            // Send payload with direct fields + encrypted fallback to ensure full compatibility
+            Map<String, Object> requestBody = new HashMap<>(rawPayload);
+            requestBody.put("request", encryptedBody);
+            requestBody.put("encrypted_payload", encryptedBody);
+
             HttpHeaders headers = createAuthHeaders();
-            HttpEntity<Map<String, String>> entity = new HttpEntity<>(requestBody, headers);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
             String url = "penny-drop".equalsIgnoreCase(request.getMethod())
                     ? payoutProperties.getFullPennyDropUrl()
@@ -296,44 +307,73 @@ public class PayoutService {
             log.info("Bank verification response: {}", decryptedResponse);
 
             JsonNode root = objectMapper.readTree(decryptedResponse);
-            int statusCode = root.path("bbStatusCode").asInt(-1);
+            int statusCode = root.path("bbStatusCode").asInt(root.path("statusCode").asInt(-1));
+            String statusMsg = root.path("bbStatusMsg").asText(root.path("status").asText(""));
             JsonNode txnData = root.path("TransactionData");
 
-            if (statusCode == 0) {
-                String nameAtBank = txnData.path("nameAtBank").asText("");
-                String acValidationStatus = txnData.path("acValidationStatus").asText("ACCOUNT_VALID");
-                String verificationId = txnData.path("verification_id").asText("");
-                String utr = txnData.path("utr").asText("");
+            String nameAtBank = txnData.path("nameAtBank").asText(
+                    txnData.path("name_at_bank").asText(
+                            txnData.path("beneficiary_name").asText(
+                                    root.path("nameAtBank").asText(
+                                            root.path("name_at_bank").asText("")
+                                    )
+                            )
+                    )
+            );
 
+            String acValidationStatus = txnData.path("acValidationStatus").asText(
+                    txnData.path("status").asText(
+                            root.path("acValidationStatus").asText("ACCOUNT_VALID")
+                    )
+            );
+
+            String verificationId = txnData.path("verification_id").asText(
+                    txnData.path("verificationId").asText(
+                            root.path("verification_id").asText("")
+                    )
+            );
+
+            String utr = txnData.path("utr").asText(root.path("utr").asText(""));
+
+            boolean isSuccess = statusCode == 0
+                    || "SUCCESS".equalsIgnoreCase(statusMsg)
+                    || "ACCEPTED".equalsIgnoreCase(statusMsg)
+                    || "ACCEPTED".equalsIgnoreCase(txnData.path("status").asText())
+                    || "ACCOUNT_VALID".equalsIgnoreCase(acValidationStatus)
+                    || (!nameAtBank.isBlank() && !"null".equalsIgnoreCase(nameAtBank));
+
+            if (isSuccess) {
                 return BankVerificationResponse.builder()
                         .success(true)
-                        .statusCode("0")
+                        .statusCode(statusCode >= 0 ? String.valueOf(statusCode) : "0")
                         .status("SUCCESS")
                         .message("Bank account verified successfully")
                         .nameAtBank(nameAtBank)
-                        .acValidationStatus(acValidationStatus)
+                        .acValidationStatus(acValidationStatus.isBlank() ? "ACCOUNT_VALID" : acValidationStatus)
                         .verificationId(verificationId)
                         .custAcctNo(request.getAccountNumber())
                         .custIfsc(request.getIfsc())
                         .utr(utr)
                         .build();
             } else {
-                String errorMsg = extractErrorMessage(root);
+                String errorMsg = extractErrorMessage(root, decryptedResponse);
                 return BankVerificationResponse.builder()
                         .success(false)
                         .statusCode(String.valueOf(statusCode))
                         .status("FAILED")
-                        .message(errorMsg != null && !errorMsg.isBlank() ? errorMsg : "Account verification failed")
+                        .message(errorMsg)
                         .build();
             }
 
         } catch (HttpClientErrorException | HttpServerErrorException e) {
-            String decryptedError = decryptResponseBody(e.getResponseBodyAsString());
-            log.error("Bank verification error: {}", decryptedError);
+            String errorBody = e.getResponseBodyAsString();
+            String decryptedError = decryptResponseBody(errorBody);
+            log.error("Bank verification HTTP error {}: {}", e.getStatusCode(), decryptedError);
+
             String errorMsg = "Account verification failed";
             try {
                 JsonNode errRoot = objectMapper.readTree(decryptedError);
-                errorMsg = extractErrorMessage(errRoot);
+                errorMsg = extractErrorMessage(errRoot, decryptedError);
             } catch (Exception ignored) {}
 
             return BankVerificationResponse.builder()
@@ -374,10 +414,10 @@ public class PayoutService {
             String decryptedResponse = decryptResponseBody(response.getBody());
 
             JsonNode root = objectMapper.readTree(decryptedResponse);
-            int statusCode = root.path("bbStatusCode").asInt(-1);
+            int statusCode = root.path("bbStatusCode").asInt(root.path("statusCode").asInt(-1));
             JsonNode txnData = root.path("TransactionData");
 
-            String bbStatus = txnData.path("bbTransactionStatus").asText("");
+            String bbStatus = txnData.path("bbTransactionStatus").asText(txnData.path("status").asText(""));
             String utr = txnData.path("bbUtrNumber").asText(txnData.path("utr").asText(""));
 
             if (statusCode == 0 && ("Successful".equalsIgnoreCase(bbStatus) || "SUCCESS".equalsIgnoreCase(bbStatus))) {
@@ -453,51 +493,94 @@ public class PayoutService {
 
     private String decryptResponseBody(String body) {
         if (body == null || body.isBlank()) return "{}";
+        String trimmed = body.trim();
         try {
-            if (body.trim().startsWith("{")) {
-                JsonNode node = objectMapper.readTree(body);
+            if (trimmed.startsWith("{")) {
+                JsonNode node = objectMapper.readTree(trimmed);
                 if (node.has("encrypted_payload")) {
-                    return BusttoCryptoUtil.decrypt(payoutProperties.getAesKey(), node.get("encrypted_payload").asText());
+                    String cipher = node.get("encrypted_payload").asText();
+                    return BusttoCryptoUtil.decrypt(payoutProperties.getAesKey(), cipher);
                 }
                 if (node.has("request")) {
-                    return BusttoCryptoUtil.decrypt(payoutProperties.getAesKey(), node.get("request").asText());
+                    String cipher = node.get("request").asText();
+                    return BusttoCryptoUtil.decrypt(payoutProperties.getAesKey(), cipher);
                 }
-                if (node.has("bbStatusCode")) {
-                    return body;
+                if (node.has("bbStatusCode") || node.has("status") || node.has("statusCode") || node.has("error") || node.has("detail") || node.has("TransactionData")) {
+                    return trimmed;
                 }
             }
-            return BusttoCryptoUtil.decrypt(payoutProperties.getAesKey(), body);
+            return BusttoCryptoUtil.decrypt(payoutProperties.getAesKey(), trimmed);
         } catch (Exception e) {
-            log.debug("Payload is not encrypted or decryption skipped: {}", e.getMessage());
-            return body;
+            log.warn("Payload decryption fallback to raw text: {}", e.getMessage());
+            return trimmed;
         }
     }
 
-    private String extractErrorMessage(JsonNode root) {
-        if (root == null) return "Transaction could not be processed";
+    private String extractErrorMessage(JsonNode root, String rawBody) {
+        if (root == null || root.isNull() || root.isMissingNode()) {
+            return (rawBody != null && !rawBody.isBlank()) ? rawBody : "Transaction could not be processed";
+        }
+        
+        // 1. Check bbErrorMsg
         JsonNode errNode = root.path("bbErrorMsg");
-        if (errNode.isTextual() && !errNode.asText().isBlank()) {
+        if (errNode.isTextual() && !errNode.asText().isBlank() && !"{}".equals(errNode.asText().trim())) {
             return errNode.asText();
         }
-        if (errNode.isObject()) {
+        if (errNode.isObject() && errNode.size() > 0) {
             List<String> errors = new ArrayList<>();
             errNode.fieldNames().forEachRemaining(field -> {
                 JsonNode val = errNode.get(field);
                 if (val.isArray() && val.size() > 0) {
-                    errors.add(val.get(0).asText());
-                } else {
+                    errors.add(field + ": " + val.get(0).asText());
+                } else if (val.isTextual()) {
                     errors.add(field + ": " + val.asText());
+                } else {
+                    errors.add(field + ": " + val.toString());
                 }
             });
             if (!errors.isEmpty()) {
                 return String.join(", ", errors);
             }
         }
-        String statusMsg = root.path("bbStatusMsg").asText();
-        if (!statusMsg.isBlank() && !"SUCCESS".equalsIgnoreCase(statusMsg)) {
-            return statusMsg;
+        if (errNode.isArray() && errNode.size() > 0) {
+            return errNode.get(0).asText();
         }
-        return "Transaction failed with banking rail";
+
+        // 2. Check all standard error / message fields
+        for (String key : List.of("bbStatusMsg", "message", "error", "detail", "bbReason", "status", "non_field_errors", "msg")) {
+            JsonNode node = root.path(key);
+            if (node.isTextual() && !node.asText().isBlank() && !"SUCCESS".equalsIgnoreCase(node.asText()) && !"{}".equals(node.asText().trim())) {
+                return node.asText();
+            }
+            if (node.isArray() && node.size() > 0) {
+                return key + ": " + node.get(0).asText();
+            }
+            if (node.isObject() && node.size() > 0) {
+                return key + ": " + node.toString();
+            }
+        }
+
+        // 3. Scan all root field names for array error messages
+        List<String> fieldErrors = new ArrayList<>();
+        root.fieldNames().forEachRemaining(fieldName -> {
+            if (!"bbStatusCode".equals(fieldName) && !"statusCode".equals(fieldName) && !"TransactionData".equals(fieldName)) {
+                JsonNode val = root.get(fieldName);
+                if (val.isArray() && val.size() > 0) {
+                    fieldErrors.add(fieldName + ": " + val.get(0).asText());
+                } else if (val.isTextual() && !val.asText().isBlank() && !"SUCCESS".equalsIgnoreCase(val.asText())) {
+                    fieldErrors.add(fieldName + ": " + val.asText());
+                }
+            }
+        });
+        if (!fieldErrors.isEmpty()) {
+            return String.join(", ", fieldErrors);
+        }
+
+        if (rawBody != null && !rawBody.isBlank() && !"{}".equals(rawBody.trim())) {
+            return rawBody;
+        }
+
+        return "Bank verification rejected by provider";
     }
 
     private void executeRefund(String rawUserId, BigDecimal amount, String orderId, String reason) {
