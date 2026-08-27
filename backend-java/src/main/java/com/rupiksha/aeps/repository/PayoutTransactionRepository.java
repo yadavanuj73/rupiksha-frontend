@@ -33,14 +33,15 @@ public interface PayoutTransactionRepository extends JpaRepository<PayoutTransac
     boolean existsByOrderId(String orderId);
 
     @Query("SELECT t FROM PayoutTransaction t WHERE t.userId = :userId " +
-           "AND (:status IS NULL OR t.status = :status) " +
+           "AND (cast(:status as string) IS NULL OR t.status = :status) " +
            "AND (cast(:startDate as timestamp) IS NULL OR t.createdAt >= :startDate) " +
            "AND (cast(:endDate as timestamp) IS NULL OR t.createdAt <= :endDate) " +
-           "AND (:search IS NULL OR lower(t.orderId) LIKE lower(concat('%', :search, '%')) " +
-           "OR lower(t.utr) LIKE lower(concat('%', :search, '%')) " +
-           "OR lower(t.beneficiaryName) LIKE lower(concat('%', :search, '%')) " +
-           "OR lower(t.accountNumber) LIKE lower(concat('%', :search, '%')) " +
-           "OR lower(t.mobileNumber) LIKE lower(concat('%', :search, '%')))")
+           "AND (cast(:search as string) IS NULL OR " +
+           "lower(t.orderId) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.utr) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.beneficiaryName) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.accountNumber) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.mobileNumber) LIKE concat('%', lower(cast(:search as string)), '%'))")
     Page<PayoutTransaction> findWithFilters(
             @Param("userId") String userId,
             @Param("status") String status,
@@ -50,14 +51,15 @@ public interface PayoutTransactionRepository extends JpaRepository<PayoutTransac
             Pageable pageable);
 
     @Query("SELECT t FROM PayoutTransaction t WHERE t.userId = :userId " +
-           "AND (:status IS NULL OR t.status = :status) " +
+           "AND (cast(:status as string) IS NULL OR t.status = :status) " +
            "AND (cast(:startDate as timestamp) IS NULL OR t.createdAt >= :startDate) " +
            "AND (cast(:endDate as timestamp) IS NULL OR t.createdAt <= :endDate) " +
-           "AND (:search IS NULL OR lower(t.orderId) LIKE lower(concat('%', :search, '%')) " +
-           "OR lower(t.utr) LIKE lower(concat('%', :search, '%')) " +
-           "OR lower(t.beneficiaryName) LIKE lower(concat('%', :search, '%')) " +
-           "OR lower(t.accountNumber) LIKE lower(concat('%', :search, '%')) " +
-           "OR lower(t.mobileNumber) LIKE lower(concat('%', :search, '%')))")
+           "AND (cast(:search as string) IS NULL OR " +
+           "lower(t.orderId) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.utr) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.beneficiaryName) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.accountNumber) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.mobileNumber) LIKE concat('%', lower(cast(:search as string)), '%'))")
     List<PayoutTransaction> findAllWithFilters(
             @Param("userId") String userId,
             @Param("status") String status,

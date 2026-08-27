@@ -42,8 +42,11 @@ public class PayoutHistoryProvider extends BaseHistoryProvider {
             UUID userId, String search, String status, String provider,
             LocalDateTime fromDate, LocalDateTime toDate, Pageable pageable) {
 
+        String cleanSearch = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        String cleanStatus = (status != null && !status.trim().isEmpty()) ? status.trim() : null;
+
         Page<PayoutTransaction> txns = payoutRepository.findWithFilters(
-                userId.toString(), status, fromDate, toDate, search, pageable);
+                userId.toString(), cleanStatus, fromDate, toDate, cleanSearch, pageable);
 
         return txns.map(this::mapToDto);
     }
@@ -54,8 +57,11 @@ public class PayoutHistoryProvider extends BaseHistoryProvider {
             UUID userId, String search, String status, String provider,
             LocalDateTime fromDate, LocalDateTime toDate, Sort sort) {
 
+        String cleanSearch = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        String cleanStatus = (status != null && !status.trim().isEmpty()) ? status.trim() : null;
+
         List<PayoutTransaction> txns = payoutRepository.findAllWithFilters(
-                userId.toString(), status, fromDate, toDate, search, sort);
+                userId.toString(), cleanStatus, fromDate, toDate, cleanSearch, sort);
 
         return txns.stream().map(this::mapToDto).collect(Collectors.toList());
     }
