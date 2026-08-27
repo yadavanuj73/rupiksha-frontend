@@ -173,19 +173,30 @@ const PayoutHub = () => {
             const res = await payoutService.initiatePayout(payload);
 
             if (res && (res.success || res.status === 'SUCCESS' || res.status === 'INITIATED')) {
+                let respData = {};
+                try {
+                    if (res.responseData) {
+                        respData = typeof res.responseData === 'string' ? JSON.parse(res.responseData) : res.responseData;
+                    }
+                } catch(e) {}
+                const bbTxn = respData?.TransactionData?.bbTransactionId || res.transactionId || res.orderId;
+                const utrVal = res.utr || respData?.TransactionData?.bbUtrNumber || bbTxn || 'Pending / In Progress';
+
                 setReceiptData({
                     status: res.status || 'SUCCESS',
-                    message: res.message || 'Payout transferred successfully',
-                    orderId: res.orderId,
-                    txnId: res.transactionId || res.orderId,
-                    utr: res.utr || 'Pending / In Progress',
+                    message: res.message || res.responseMessage || 'Payout transferred successfully',
+                    orderId: res.orderId || payload.orderId,
+                    externalOrderId: res.orderId || payload.orderId,
+                    transactionId: bbTxn,
+                    utr: utrVal,
                     amount: form.amount,
                     beneficiaryName: form.beneficiaryName,
                     accountNumber: form.accountNumber,
                     ifsc: form.ifsc,
-                    bankName: form.bankName || 'Bank Account',
+                    bankName: form.bankName || 'Bank Transfer',
                     transferMode: form.transferMode,
-                    timestamp: new Date().toLocaleString('en-IN')
+                    remarks: form.remarks || 'Instant payout transfer',
+                    timestamp: res.timestamp || new Date().toLocaleString('en-IN')
                 });
                 setShowReceiptModal(true);
 
@@ -238,13 +249,332 @@ const PayoutHub = () => {
     };
 
     const handleCopy = (text, field) => {
+        if (!text || text === 'N/A') return;
         navigator.clipboard.writeText(text);
         setCopiedField(field);
         setTimeout(() => setCopiedField(''), 2000);
     };
 
+    // Official Print Receipt Generator matching AEPS Receipt Template
     const handlePrintReceipt = () => {
-        window.print();
+        if (!receiptData) return;
+        const logoUrl = window.location.origin + '/rupiksha logo.jpeg';
+        const formattedAmount = Number(receiptData.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+        const isSuccess = receiptData.status === 'SUCCESS' || receiptData.status === 'SUCCESSFUL';
+        const isPending = receiptData.status === 'INITIATED' || receiptData.status === 'PENDING';
+
+        const printWindow = window.open('', '_blank', 'width=850,height=900');
+        if (!printWindow) {
+            alert('Please allow popups to print receipt.');
+            return;
+        }
+
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <title>Rupiksha Payout Receipt - ${receiptData.orderId}</title>
+                <style>
+                    * { box-sizing: border-box; margin: 0; padding: 0; }
+                    body {
+                        font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+                        background: #f8fafc;
+                        color: #000000;
+                        padding: 24px;
+                        font-size: 12px;
+                        line-height: 1.4;
+                    }
+                    .receipt-container {
+                        max-width: 680px;
+                        margin: 0 auto;
+                        background: #ffffff;
+                        border: 2px solid #000000;
+                        border-radius: 12px;
+                        padding: 24px;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+                    }
+                    .header {
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        padding-bottom: 16px;
+                        border-bottom: 2px solid #000000;
+                    }
+                    .header-left {
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                    }
+                    .logo-img {
+                        height: 54px;
+                        width: auto;
+                        object-fit: contain;
+                        border-radius: 8px;
+                        border: 1px solid #cbd5e1;
+                    }
+                    .brand-name {
+                        font-size: 22px;
+                        font-weight: 900;
+                        color: #000000;
+                        letter-spacing: -0.5px;
+                        line-height: 1.1;
+                    }
+                    .brand-name span { color: #1d4ed8; }
+                    .brand-sub {
+                        font-size: 11px;
+                        font-weight: 800;
+                        color: #000000;
+                        text-transform: uppercase;
+                        letter-spacing: 0.8px;
+                        margin-top: 3px;
+                    }
+                    .header-right { text-align: right; }
+                    .receipt-badge {
+                        display: inline-block;
+                        background: #f0fdf4;
+                        color: #15803d;
+                        border: 2px solid #15803d;
+                        font-size: 11px;
+                        font-weight: 900;
+                        padding: 4px 10px;
+                        border-radius: 6px;
+                        text-transform: uppercase;
+                        letter-spacing: 0.8px;
+                    }
+                    .header-date {
+                        font-size: 11px;
+                        color: #000000;
+                        margin-top: 4px;
+                        font-weight: 800;
+                    }
+                    .status-banner {
+                        margin: 16px 0;
+                        padding: 12px 16px;
+                        border-radius: 8px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                    }
+                    .status-success {
+                        background: #f0fdf4;
+                        border: 2px solid #16a34a;
+                        color: #14532d;
+                    }
+                    .status-pending {
+                        background: #fffbeb;
+                        border: 2px solid #d97706;
+                        color: #78350f;
+                    }
+                    .status-failed {
+                        background: #fef2f2;
+                        border: 2px solid #dc2626;
+                        color: #7f1d1d;
+                    }
+                    .status-title {
+                        font-size: 14px;
+                        font-weight: 900;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                    }
+                    .status-desc { font-size: 11.5px; font-weight: 700; }
+                    .amount-card {
+                        background: #f8fafc;
+                        border: 2px solid #000000;
+                        border-radius: 8px;
+                        padding: 12px 16px;
+                        margin-bottom: 16px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                    }
+                    .amount-label {
+                        font-size: 12px;
+                        font-weight: 900;
+                        color: #000000;
+                        text-transform: uppercase;
+                    }
+                    .amount-value {
+                        font-size: 24px;
+                        font-weight: 900;
+                        color: #15803d;
+                    }
+                    .section-title {
+                        font-size: 12px;
+                        font-weight: 900;
+                        text-transform: uppercase;
+                        color: #000000;
+                        letter-spacing: 0.5px;
+                        margin: 14px 0 8px 0;
+                        padding-bottom: 4px;
+                        border-bottom: 2px solid #000000;
+                    }
+                    .details-grid {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-bottom: 14px;
+                    }
+                    .details-grid td {
+                        padding: 8px 10px;
+                        border-bottom: 1px solid #cbd5e1;
+                        font-size: 12px;
+                    }
+                    .details-grid tr:nth-child(even) { background: #f1f5f9; }
+                    .label-cell {
+                        color: #000000;
+                        font-weight: 900;
+                        width: 38%;
+                        text-transform: uppercase;
+                        font-size: 11px;
+                        letter-spacing: 0.4px;
+                    }
+                    .value-cell {
+                        color: #000000;
+                        font-weight: 900;
+                        text-align: right;
+                        font-size: 12px;
+                    }
+                    .mono-val {
+                        font-family: 'Courier New', Courier, monospace;
+                        font-weight: 900;
+                        letter-spacing: 0.5px;
+                    }
+                    .footer-note {
+                        background: #f8fafc;
+                        border: 1.5px solid #000000;
+                        border-radius: 8px;
+                        padding: 10px 12px;
+                        margin-top: 16px;
+                        font-size: 10.5px;
+                        font-weight: 700;
+                        color: #000000;
+                        line-height: 1.5;
+                        text-align: center;
+                    }
+                    .sign-row {
+                        display: flex;
+                        justify-content: space-between;
+                        margin-top: 36px;
+                        padding: 0 10px;
+                    }
+                    .sign-box {
+                        text-align: center;
+                        width: 180px;
+                        border-top: 1.5px dashed #000000;
+                        padding-top: 6px;
+                        font-size: 11px;
+                        font-weight: 900;
+                        color: #000000;
+                    }
+                    @media print {
+                        body { background: #ffffff; padding: 0; }
+                        .receipt-container { border: 1.5px solid #000000; box-shadow: none; padding: 10px; max-width: 100%; }
+                        @page { margin: 8mm 12mm; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="receipt-container">
+                    <div class="header">
+                        <div class="header-left">
+                            <img src="${logoUrl}" alt="Rupiksha Logo" class="logo-img" onerror="this.style.display='none'" />
+                            <div>
+                                <div class="brand-name">RUPIKSHA <span>FINTECH</span></div>
+                                <div class="brand-sub">Instant Bank Payout Terminal</div>
+                            </div>
+                        </div>
+                        <div class="header-right">
+                            <div class="receipt-badge">OFFICIAL E-RECEIPT</div>
+                            <div class="header-date">${receiptData.timestamp}</div>
+                        </div>
+                    </div>
+
+                    <div class="status-banner ${isSuccess ? 'status-success' : isPending ? 'status-pending' : 'status-failed'}">
+                        <div>
+                            <div class="status-title">
+                                ${isSuccess ? 'Payout Transfer Successful' : isPending ? 'Payout Transfer Initiated' : 'Payout Transfer Failed'}
+                            </div>
+                            <div class="status-desc">${receiptData.message}</div>
+                        </div>
+                        <div style="font-size: 18px; font-weight: 900;">
+                            ${isSuccess ? '✓ APPROVED' : isPending ? '⏳ INITIATED' : '✕ FAILED'}
+                        </div>
+                    </div>
+
+                    <div class="amount-card">
+                        <div class="amount-label">Transfer Amount</div>
+                        <div class="amount-value">₹ ${formattedAmount}</div>
+                    </div>
+
+                    <div class="section-title">Transfer & Account Details</div>
+                    <table class="details-grid">
+                        <tr>
+                            <td class="label-cell">Transfer Rail / Mode</td>
+                            <td class="value-cell" style="text-transform: uppercase;">${receiptData.transferMode || 'IMPS'} (Instant Transfer)</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell">Beneficiary Name</td>
+                            <td class="value-cell">${receiptData.beneficiaryName}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell">Beneficiary Account</td>
+                            <td class="value-cell mono-val">${receiptData.accountNumber}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell">IFSC Code</td>
+                            <td class="value-cell mono-val uppercase">${receiptData.ifsc}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell">Bank Name</td>
+                            <td class="value-cell">${receiptData.bankName}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell">External Order ID</td>
+                            <td class="value-cell mono-val">${receiptData.orderId}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell">Provider Transaction ID</td>
+                            <td class="value-cell mono-val">${receiptData.transactionId || receiptData.orderId}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell">Bank UTR / Ref No</td>
+                            <td class="value-cell mono-val" style="color: #1d4ed8;">${receiptData.utr || 'Pending / In Progress'}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell">Transfer Remarks</td>
+                            <td class="value-cell">${receiptData.remarks || 'Instant payout transfer'}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell">Date & Time</td>
+                            <td class="value-cell">${receiptData.timestamp}</td>
+                        </tr>
+                    </table>
+
+                    <div class="footer-note">
+                        This is a computer-generated transaction acknowledgement receipt verified through NPCI Banking Gateway. Rupiksha Fintech is an authorized Business Correspondent partner. For queries or support, email support@rupiksha.in.
+                    </div>
+
+                    <div class="sign-row">
+                        <div class="sign-box">Retailer Signature</div>
+                        <div class="sign-box">Authorized BC Seal / Signature</div>
+                    </div>
+                </div>
+
+                <script>
+                    window.onload = function() {
+                        setTimeout(function() {
+                            window.focus();
+                            window.print();
+                        }, 250);
+                    };
+                </script>
+            </body>
+            </html>
+        `;
+
+        printWindow.document.open();
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
     };
 
     return (
@@ -694,14 +1024,16 @@ const PayoutHub = () => {
                                                                         status: txn.status,
                                                                         message: txn.responseMessage || 'Transfer processed',
                                                                         orderId: txn.orderId,
-                                                                        txnId: txn.orderId,
-                                                                        utr: txn.utr || 'N/A',
+                                                                        externalOrderId: txn.orderId,
+                                                                        transactionId: txn.utr || txn.orderId,
+                                                                        utr: txn.utr || 'Pending / In Progress',
                                                                         amount: txn.amount,
                                                                         beneficiaryName: txn.beneficiaryName,
                                                                         accountNumber: txn.accountNumber,
                                                                         ifsc: txn.ifsc,
-                                                                        bankName: txn.bankName || 'Bank Account',
+                                                                        bankName: txn.bankName || 'Bank Transfer',
                                                                         transferMode: txn.transferMode || 'IMPS',
+                                                                        remarks: txn.remarks || 'Instant payout transfer',
                                                                         timestamp: txn.createdAt ? new Date(txn.createdAt).toLocaleString('en-IN') : new Date().toLocaleString('en-IN')
                                                                     });
                                                                     setShowReceiptModal(true);
@@ -723,121 +1055,327 @@ const PayoutHub = () => {
                 )}
             </div>
 
-            {/* ─── Processing Fullscreen Modal Lock ─────────────────────────── */}
+            {/* ─── Processing Live Animation Modal Lock (Visible until response) ─── */}
             <AnimatePresence>
                 {isSubmitting && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4 backdrop-blur-sm"
-                    >
-                        <div className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-2xl">
-                            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100 text-blue-600">
-                                <RefreshCw size={32} className="animate-spin" />
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md font-sans">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="relative w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-2xl border border-slate-200 overflow-hidden"
+                        >
+                            {/* Ambient Glow */}
+                            <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
+
+                            <div className="relative mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-blue-50 border border-blue-200 text-blue-600 shadow-inner">
+                                <RefreshCw size={36} className="animate-spin text-blue-600" />
+                                <div className="absolute inset-0 rounded-3xl border-2 border-blue-400 animate-ping opacity-25 pointer-events-none" />
                             </div>
-                            <h3 className="mt-4 text-lg font-black text-slate-900">
-                                Initiating Payout Transfer
+
+                            <h3 className="mt-5 text-xl font-black text-slate-900 tracking-tight">
+                                Processing Bank Payout
                             </h3>
-                            <p className="mt-2 text-xs font-semibold text-slate-500 leading-relaxed">
-                                Communicating securely with the banking rail. Please do not refresh, go back, or submit again.
+                            <p className="mt-1 text-xs font-bold text-slate-500">
+                                Transferring <strong className="text-slate-900">₹{Number(form.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong> to <strong className="text-slate-900">{form.beneficiaryName || 'Beneficiary'}</strong>
                             </p>
-                        </div>
-                    </motion.div>
+
+                            {/* Real-time Processing Steps */}
+                            <div className="mt-6 space-y-2.5 text-left border border-slate-100 bg-slate-50/80 rounded-2xl p-4 text-xs font-bold">
+                                <div className="flex items-center gap-2.5 text-emerald-700">
+                                    <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                                    <span>Wallet balance verified & debited</span>
+                                </div>
+                                <div className="flex items-center gap-2.5 text-blue-700 animate-pulse">
+                                    <RefreshCw size={14} className="animate-spin text-blue-600 shrink-0" />
+                                    <span>Routing securely to {form.transferMode || 'IMPS'} Banking Rail</span>
+                                </div>
+                                <div className="flex items-center gap-2.5 text-slate-400">
+                                    <div className="h-3.5 w-3.5 rounded-full border-2 border-slate-300 shrink-0" />
+                                    <span>Awaiting final bank acknowledgment</span>
+                                </div>
+                            </div>
+
+                            <p className="mt-4 text-[11px] font-semibold text-slate-400 leading-relaxed">
+                                Please do not close, refresh, or navigate away from this page.
+                            </p>
+                        </motion.div>
+                    </div>
                 )}
             </AnimatePresence>
 
-            {/* ─── Branded Transaction Receipt Modal ──────────────────────────── */}
+            {/* ─── Premium Payout Receipt Modal (Matching AEPS Receipt Design) ──── */}
             <AnimatePresence>
                 {showReceiptModal && receiptData && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm overflow-y-auto"
-                    >
-                        <div className="relative w-full max-w-lg rounded-3xl bg-white p-6 sm:p-8 shadow-2xl border border-slate-100">
-                            {/* Close button */}
-                            <button
-                                onClick={() => setShowReceiptModal(false)}
-                                className="absolute right-4 top-4 rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
-                            >
-                                <XCircle size={20} />
-                            </button>
-
-                            {/* Status Icon */}
-                            <div className="text-center">
-                                {receiptData.status === 'SUCCESS' || receiptData.status === 'SUCCESSFUL' ? (
-                                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-md shadow-emerald-500/20">
-                                        <CheckCircle2 size={36} />
-                                    </div>
-                                ) : (
-                                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-rose-100 text-rose-600 shadow-md shadow-rose-500/20">
-                                        <XCircle size={36} />
-                                    </div>
-                                )}
-
-                                <h3 className="mt-3 text-xl font-black text-slate-900">
-                                    {receiptData.status === 'SUCCESS' || receiptData.status === 'SUCCESSFUL'
-                                        ? 'Payout Transfer Successful'
-                                        : 'Payout Transfer Failed'}
-                                </h3>
-                                <p className="text-xs font-semibold text-slate-500 mt-1">{receiptData.message}</p>
-                                <div className="mt-3 text-3xl font-black text-slate-900 font-mono">
-                                    ₹{Number(receiptData.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 md:p-6 bg-slate-950/75 backdrop-blur-sm font-['Inter',sans-serif] overflow-y-auto">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.96, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.96, y: 10 }}
+                            className="relative bg-white border border-slate-300 shadow-[0_25px_70px_rgba(0,0,0,0.3)] rounded-2xl md:rounded-3xl w-full max-w-4xl overflow-hidden flex flex-col my-auto max-h-[92vh]"
+                        >
+                            {/* Top Bar with title & Close Cut Button */}
+                            <div className="px-4 sm:px-6 py-2.5 bg-slate-100 border-b border-slate-300 flex items-center justify-between shrink-0">
+                                <div className="flex items-center gap-2 text-xs sm:text-sm font-black uppercase tracking-wide text-black">
+                                    <ShieldCheck size={17} className="text-emerald-600 shrink-0" />
+                                    <span>Payout Transfer E-Receipt</span>
                                 </div>
-                            </div>
-
-                            {/* Details Table */}
-                            <div className="mt-6 divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 text-xs">
-                                <div className="flex justify-between py-2">
-                                    <span className="text-slate-500 font-bold">Order ID</span>
-                                    <span className="font-mono font-bold text-slate-900">{receiptData.orderId}</span>
-                                </div>
-                                <div className="flex justify-between py-2">
-                                    <span className="text-slate-500 font-bold">Bank UTR / Ref</span>
-                                    <span className="font-mono font-bold text-blue-600">{receiptData.utr}</span>
-                                </div>
-                                <div className="flex justify-between py-2">
-                                    <span className="text-slate-500 font-bold">Beneficiary Name</span>
-                                    <span className="font-bold text-slate-900">{receiptData.beneficiaryName}</span>
-                                </div>
-                                <div className="flex justify-between py-2">
-                                    <span className="text-slate-500 font-bold">Account Number</span>
-                                    <span className="font-mono font-bold text-slate-900">{receiptData.accountNumber}</span>
-                                </div>
-                                <div className="flex justify-between py-2">
-                                    <span className="text-slate-500 font-bold">IFSC Code</span>
-                                    <span className="font-mono font-bold uppercase text-slate-900">{receiptData.ifsc}</span>
-                                </div>
-                                <div className="flex justify-between py-2">
-                                    <span className="text-slate-500 font-bold">Transfer Rail</span>
-                                    <span className="font-bold text-slate-900 uppercase">{receiptData.transferMode || 'IMPS'}</span>
-                                </div>
-                                <div className="flex justify-between py-2">
-                                    <span className="text-slate-500 font-bold">Timestamp</span>
-                                    <span className="font-mono text-slate-700">{receiptData.timestamp}</span>
-                                </div>
-                            </div>
-
-                            {/* Receipt Action Buttons */}
-                            <div className="mt-6 flex gap-3">
                                 <button
-                                    onClick={handlePrintReceipt}
-                                    className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-bold text-slate-800 hover:bg-slate-50 transition"
+                                    type="button"
+                                    onClick={() => setShowReceiptModal(false)}
+                                    title="Close Receipt"
+                                    className="p-1.5 text-black hover:text-white bg-white hover:bg-slate-900 border border-slate-300 rounded-full transition-all cursor-pointer shadow-sm hover:scale-105"
                                 >
-                                    <Printer size={14} />
-                                    Print Receipt
+                                    <XCircle size={17} strokeWidth={2.5} />
+                                </button>
+                            </div>
+
+                            {/* Responsive 2-Part Split Layout Body */}
+                            <div className="p-4 sm:p-5 md:p-6 overflow-y-auto flex-1">
+                                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 items-start">
+
+                                    {/* ══ LEFT PART (COL 1 to 5): Branding, Status & Amount ══ */}
+                                    <div className="md:col-span-5 flex flex-col space-y-3.5">
+                                        {/* Branding Header */}
+                                        <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-300 rounded-2xl shadow-2xs">
+                                            <img
+                                                src="/rupiksha logo.jpeg"
+                                                alt="Rupiksha Logo"
+                                                className="h-11 w-11 object-contain rounded-xl border border-slate-300 p-0.5 bg-white shrink-0 shadow-xs"
+                                                onError={e => { e.currentTarget.style.display = 'none'; }}
+                                            />
+                                            <div className="text-left">
+                                                <h2 className="text-base sm:text-lg font-black tracking-tight text-black leading-none">
+                                                    RUPIKSHA <span className="text-blue-700">FINTECH</span>
+                                                </h2>
+                                                <p className="text-[10px] sm:text-[11px] font-black text-slate-800 uppercase tracking-wider mt-1">
+                                                    Instant Payout Terminal
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Status & Prominent Amount Box */}
+                                        <div className="bg-slate-50 border border-slate-300 rounded-2xl p-3.5 text-center shadow-2xs">
+                                            <div className="flex items-center justify-center mb-2">
+                                                {receiptData.status === 'SUCCESS' || receiptData.status === 'SUCCESSFUL' ? (
+                                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-950 border-2 border-emerald-400 rounded-full text-xs font-black uppercase tracking-wide">
+                                                        <CheckCircle2 size={15} className="text-emerald-700 shrink-0" />
+                                                        <span>Payout Approved</span>
+                                                    </div>
+                                                ) : receiptData.status === 'INITIATED' || receiptData.status === 'PENDING' ? (
+                                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-950 border-2 border-amber-400 rounded-full text-xs font-black uppercase tracking-wide">
+                                                        <Clock size={15} className="text-amber-700 shrink-0" />
+                                                        <span>Payout Initiated</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-100 text-rose-950 border-2 border-rose-400 rounded-full text-xs font-black uppercase tracking-wide">
+                                                        <XCircle size={15} className="text-rose-700 shrink-0" />
+                                                        <span>Payout Declined</span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="py-1">
+                                                <p className="text-[11px] font-black uppercase tracking-wider text-slate-800">
+                                                    Transfer Amount
+                                                </p>
+                                                <div className={`text-2xl sm:text-3xl font-black tracking-tight mt-0.5 ${
+                                                    receiptData.status === 'SUCCESS' || receiptData.status === 'SUCCESSFUL'
+                                                        ? 'text-emerald-700'
+                                                        : 'text-black'
+                                                }`}>
+                                                    ₹ {Number(receiptData.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                                </div>
+                                            </div>
+
+                                            {receiptData.message && (
+                                                <p className="text-[11px] font-bold text-slate-800 mt-1 leading-snug">
+                                                    {receiptData.message}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* Beneficiary Quick Card */}
+                                        <div className="border border-slate-300 rounded-2xl p-3 bg-white shadow-xs text-xs">
+                                            <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-500 block mb-1">
+                                                Credited To
+                                            </span>
+                                            <div className="font-black text-slate-900 text-sm">{receiptData.beneficiaryName}</div>
+                                            <div className="flex items-center gap-1.5 font-mono text-[11px] text-slate-600 mt-0.5">
+                                                <Landmark size={13} className="text-blue-700 shrink-0" />
+                                                <span>{receiptData.bankName}</span>
+                                            </div>
+                                            <div className="font-mono font-bold text-slate-800 mt-0.5">
+                                                A/C: {receiptData.accountNumber}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* ══ RIGHT PART (COL 6 to 12): All IDs & Transaction Details in High Contrast ══ */}
+                                    <div className="md:col-span-7 flex flex-col space-y-3">
+                                        <div className="border border-slate-300 rounded-2xl p-3 sm:p-4 bg-slate-50/90 shadow-2xs">
+                                            <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-300">
+                                                <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-black flex items-center gap-1.5">
+                                                    <FileText size={15} className="text-blue-700" />
+                                                    Transfer Details & References
+                                                </span>
+                                                <span className="text-[10px] font-black uppercase tracking-wider bg-black text-white px-2 py-0.5 rounded-md">
+                                                    Verified
+                                                </span>
+                                            </div>
+
+                                            {/* 2-Column Details Grid */}
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5">
+                                                
+                                                {/* External Order ID */}
+                                                <div className="bg-white p-2.5 rounded-xl border border-slate-200 relative group">
+                                                    <span className="block text-[10.5px] font-black text-black uppercase tracking-wider">
+                                                        External Order ID
+                                                    </span>
+                                                    <div className="flex items-center justify-between mt-0.5">
+                                                        <span className="text-xs sm:text-[12.5px] font-mono font-black text-black truncate select-all">
+                                                            {receiptData.orderId}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleCopy(receiptData.orderId, 'orderId')}
+                                                            title="Copy Order ID"
+                                                            className="text-slate-400 hover:text-blue-700 p-0.5 transition"
+                                                        >
+                                                            {copiedField === 'orderId' ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* Provider Transaction ID */}
+                                                <div className="bg-white p-2.5 rounded-xl border border-slate-200 relative group">
+                                                    <span className="block text-[10.5px] font-black text-black uppercase tracking-wider">
+                                                        Transaction ID (Ref)
+                                                    </span>
+                                                    <div className="flex items-center justify-between mt-0.5">
+                                                        <span className="text-xs sm:text-[12.5px] font-mono font-black text-black truncate select-all">
+                                                            {receiptData.transactionId || receiptData.orderId}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleCopy(receiptData.transactionId || receiptData.orderId, 'txnId')}
+                                                            title="Copy Transaction ID"
+                                                            className="text-slate-400 hover:text-blue-700 p-0.5 transition"
+                                                        >
+                                                            {copiedField === 'txnId' ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* Bank UTR */}
+                                                <div className="bg-white p-2.5 rounded-xl border border-slate-200 sm:col-span-2 relative group">
+                                                    <span className="block text-[10.5px] font-black text-black uppercase tracking-wider">
+                                                        Bank UTR Number / Reference
+                                                    </span>
+                                                    <div className="flex items-center justify-between mt-0.5">
+                                                        <span className="text-xs sm:text-[13px] font-mono font-black text-blue-700 truncate select-all">
+                                                            {receiptData.utr || 'Pending / In Progress'}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleCopy(receiptData.utr, 'utr')}
+                                                            title="Copy UTR"
+                                                            className="text-slate-400 hover:text-blue-700 p-0.5 transition"
+                                                        >
+                                                            {copiedField === 'utr' ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* Transfer Rail */}
+                                                <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                                                    <span className="block text-[10.5px] font-black text-black uppercase tracking-wider">
+                                                        Payment Rail
+                                                    </span>
+                                                    <span className="block text-xs sm:text-[13px] font-black text-blue-700 mt-0.5 uppercase">
+                                                        {receiptData.transferMode || 'IMPS'} (Instant 24x7)
+                                                    </span>
+                                                </div>
+
+                                                {/* IFSC Code */}
+                                                <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                                                    <span className="block text-[10.5px] font-black text-black uppercase tracking-wider">
+                                                        IFSC Code
+                                                    </span>
+                                                    <span className="block text-xs sm:text-[13px] font-mono font-black text-black mt-0.5 uppercase">
+                                                        {receiptData.ifsc}
+                                                    </span>
+                                                </div>
+
+                                                {/* Account Number */}
+                                                <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                                                    <span className="block text-[10.5px] font-black text-black uppercase tracking-wider">
+                                                        Account Number
+                                                    </span>
+                                                    <span className="block text-xs sm:text-[13px] font-mono font-black text-black mt-0.5">
+                                                        {receiptData.accountNumber}
+                                                    </span>
+                                                </div>
+
+                                                {/* Remarks */}
+                                                <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                                                    <span className="block text-[10.5px] font-black text-black uppercase tracking-wider">
+                                                        Transfer Remarks
+                                                    </span>
+                                                    <span className="block text-xs sm:text-[13px] font-black text-slate-800 mt-0.5 truncate">
+                                                        {receiptData.remarks || 'Instant payout transfer'}
+                                                    </span>
+                                                </div>
+
+                                                {/* Transaction Timestamp */}
+                                                <div className="bg-white p-2.5 rounded-xl border border-slate-200 sm:col-span-2">
+                                                    <span className="block text-[10.5px] font-black text-black uppercase tracking-wider">
+                                                        Transaction Date & Time
+                                                    </span>
+                                                    <span className="block text-xs sm:text-[13px] font-black text-black mt-0.5">
+                                                        {receiptData.timestamp}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* SOP Compliance Disclaimer */}
+                                        <div className="p-2.5 bg-slate-100 border border-slate-300 rounded-xl text-[10.5px] font-bold text-black text-center leading-snug">
+                                            System generated e-receipt • NPCI Banking Gateway Settlement • Rupiksha Licensed BC
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                            {/* Bottom Action buttons */}
+                            <div className="px-4 sm:px-6 py-3 bg-slate-100 border-t border-slate-300 flex items-center justify-end gap-2.5 shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={handlePrintReceipt}
+                                    className="flex-1 sm:flex-initial py-2.5 px-5 bg-black hover:bg-slate-800 text-white rounded-xl font-black uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm hover:scale-[1.02]"
+                                >
+                                    <Printer size={15} />
+                                    <span>Print Receipt</span>
                                 </button>
                                 <button
+                                    type="button"
+                                    onClick={handlePrintReceipt}
+                                    className="py-2.5 px-4 bg-blue-50 hover:bg-blue-100 border-2 border-blue-300 text-blue-900 rounded-xl font-black uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:scale-[1.02]"
+                                >
+                                    <Download size={15} />
+                                    <span>PDF</span>
+                                </button>
+                                <button
+                                    type="button"
                                     onClick={() => setShowReceiptModal(false)}
-                                    className="flex-1 rounded-xl bg-blue-600 py-2.5 text-xs font-black uppercase text-white hover:bg-blue-700 transition"
+                                    className="py-2.5 px-5 bg-white hover:bg-slate-200 border-2 border-slate-300 text-black rounded-xl font-black uppercase tracking-wider text-xs transition-all cursor-pointer hover:scale-[1.02]"
                                 >
                                     Done
                                 </button>
                             </div>
-                        </div>
-                    </motion.div>
+                        </motion.div>
+                    </div>
                 )}
             </AnimatePresence>
 

@@ -236,6 +236,9 @@ public class PayoutService {
             String bbTxnStatus = txnData.path("bbTransactionStatus").asText(txnData.path("status").asText(""));
             String bbReason = txnData.path("bbReason").asText(statusMsg);
             String utr = txnData.path("bbUtrNumber").asText(txnData.path("utr").asText(""));
+            if ((utr == null || utr.isBlank()) && bbTxnId != null && !bbTxnId.isBlank()) {
+                utr = bbTxnId;
+            }
 
             transaction.setStatusCode(String.valueOf(statusCode));
             transaction.setResponseData(decryptedResponse);
@@ -256,9 +259,9 @@ public class PayoutService {
                         .success(true)
                         .statusCode(String.valueOf(statusCode))
                         .status("SUCCESS")
-                        .message("Payout transferred successfully")
+                        .message(bbReason != null && !bbReason.isBlank() ? bbReason : "Payout transferred successfully")
                         .orderId(orderId)
-                        .transactionId(bbTxnId)
+                        .transactionId(bbTxnId != null && !bbTxnId.isBlank() ? bbTxnId : orderId)
                         .utr(utr)
                         .amount(amount)
                         .beneficiaryName(request.getBeneficiaryName())
