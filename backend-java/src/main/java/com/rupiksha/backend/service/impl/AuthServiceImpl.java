@@ -442,6 +442,7 @@ public class AuthServiceImpl implements AuthService {
         if (raw == null || raw.isBlank()) return RoleName.RETAILER;
         String normalized = raw.trim().replace('-', '_').replace(' ', '_').toUpperCase();
         return switch (normalized) {
+            case "ADMIN" -> RoleName.ADMIN;
             case "DISTRIBUTOR" -> RoleName.DISTRIBUTOR;
             case "SUPER_DISTRIBUTOR", "SUPERDISTRIBUTOR" -> RoleName.SUPER_DISTRIBUTOR;
             default -> RoleName.RETAILER;

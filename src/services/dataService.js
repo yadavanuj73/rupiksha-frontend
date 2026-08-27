@@ -283,13 +283,18 @@ export const dataService = {
             if (expected === 'SUPER_DISTRIBUTOR') {
                 return normalized === 'SUPER_DISTRIBUTOR';
             }
+            if (expected === 'ADMIN') {
+                return ['ADMIN', 'SUPER_DISTRIBUTOR', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(normalized);
+            }
             return normalized === expected;
         };
 
         try {
             const bodyPayload = { username, password };
             if (pin) bodyPayload.pin = pin;
-            if (expectedPortalRole) bodyPayload.role = expectedPortalRole;
+            if (expectedPortalRole && ['retailer', 'distributor', 'super_distributor'].includes(String(expectedPortalRole).toLowerCase())) {
+                bodyPayload.role = expectedPortalRole;
+            }
 
             const res = await fetch(`${BACKEND_URL}/auth/login`, {
                 method: 'POST',
