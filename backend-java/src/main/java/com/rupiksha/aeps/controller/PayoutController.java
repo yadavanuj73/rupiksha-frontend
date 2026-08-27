@@ -2,6 +2,7 @@ package com.rupiksha.aeps.controller;
 
 import com.rupiksha.aeps.dto.BankVerificationRequest;
 import com.rupiksha.aeps.dto.BankVerificationResponse;
+import com.rupiksha.aeps.dto.PayoutBeneficiaryDto;
 import com.rupiksha.aeps.dto.PayoutRequest;
 import com.rupiksha.aeps.dto.PayoutResponse;
 import com.rupiksha.aeps.entity.PayoutTransaction;
@@ -135,6 +136,52 @@ public class PayoutController {
         String orderId = payoutService.generateOrderId(userId);
         Map<String, String> response = new HashMap<>();
         response.put("orderId", orderId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get saved beneficiaries for logged-in user
+     */
+    @GetMapping("/beneficiaries")
+    public ResponseEntity<List<PayoutBeneficiaryDto>> getBeneficiaries(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            Authentication authentication
+    ) {
+        String userId = resolveUserId(principal, authentication);
+        List<PayoutBeneficiaryDto> beneficiaries = payoutService.getBeneficiaries(userId);
+        return ResponseEntity.ok(beneficiaries);
+    }
+
+    /**
+     * Add a new saved beneficiary
+     */
+    @PostMapping("/beneficiaries")
+    public ResponseEntity<PayoutBeneficiaryDto> addBeneficiary(
+            @Valid @RequestBody PayoutBeneficiaryDto request,
+            @AuthenticationPrincipal JwtPrincipal principal,
+            Authentication authentication
+    ) {
+        String userId = resolveUserId(principal, authentication);
+        log.info("Adding beneficiary {} for user {}", request.getBeneficiaryName(), userId);
+        PayoutBeneficiaryDto saved = payoutService.addBeneficiary(request, userId);
+        return ResponseEntity.ok(saved);
+    }
+
+    /**
+     * Delete a saved beneficiary
+     */
+    @DeleteMapping("/beneficiaries/{id}")
+    public ResponseEntity<Map<String, Object>> deleteBeneficiary(
+            @PathVariable Long id,
+            @AuthenticationPrincipal JwtPrincipal principal,
+            Authentication authentication
+    ) {
+        String userId = resolveUserId(principal, authentication);
+        log.info("Deleting beneficiary ID {} for user {}", id, userId);
+        payoutService.deleteBeneficiary(id, userId);
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "Beneficiary deleted successfully");
         return ResponseEntity.ok(response);
     }
 

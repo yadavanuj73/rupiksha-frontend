@@ -7,6 +7,9 @@ import com.rupiksha.aeps.dto.BankVerificationRequest;
 import com.rupiksha.aeps.dto.BankVerificationResponse;
 import com.rupiksha.aeps.dto.PayoutRequest;
 import com.rupiksha.aeps.dto.PayoutResponse;
+import com.rupiksha.aeps.dto.PayoutBeneficiaryDto;
+import com.rupiksha.aeps.entity.PayoutBeneficiary;
+import com.rupiksha.aeps.repository.PayoutBeneficiaryRepository;
 import com.rupiksha.aeps.entity.PayoutTransaction;
 import com.rupiksha.aeps.repository.PayoutTransactionRepository;
 import com.rupiksha.aeps.util.BusttoCryptoUtil;
@@ -36,6 +39,7 @@ public class PayoutService {
     private final ObjectMapper objectMapper;
     private final PayoutProperties payoutProperties;
     private final PayoutTransactionRepository payoutTransactionRepository;
+    private final PayoutBeneficiaryRepository payoutBeneficiaryRepository;
     private final WalletService walletService;
     private final UserRepository userRepository;
 
@@ -43,12 +47,14 @@ public class PayoutService {
             ObjectMapper objectMapper,
             PayoutProperties payoutProperties,
             PayoutTransactionRepository payoutTransactionRepository,
+            PayoutBeneficiaryRepository payoutBeneficiaryRepository,
             WalletService walletService,
             UserRepository userRepository
     ) {
         this.objectMapper = objectMapper;
         this.payoutProperties = payoutProperties;
         this.payoutTransactionRepository = payoutTransactionRepository;
+        this.payoutBeneficiaryRepository = payoutBeneficiaryRepository;
         this.walletService = walletService;
         this.userRepository = userRepository;
 
@@ -254,6 +260,10 @@ public class PayoutService {
                 transaction.setStatus("SUCCESS");
                 transaction.setResponseMessage(bbReason != null && !bbReason.isBlank() ? bbReason : "Transfer initiated successfully");
                 payoutTransactionRepository.save(transaction);
+
+                if (Boolean.TRUE.equals(request.getSaveBeneficiary())) {
+                    autoSaveBeneficiary(request, cleanUserId);
+                }
 
                 return PayoutResponse.builder()
                         .success(true)
@@ -671,5 +681,89 @@ public class PayoutService {
         } catch (Exception e) {
             log.error("Automatic refund failed for order {}: {}", orderId, e.getMessage(), e);
         }
+    }
+
+    /**
+     * Get all saved beneficiaries for user
+     */
+    public List<PayoutBeneficiaryDto> getBeneficiaries(String rawUserId) {
+        String cleanUserId = cleanUserIdString(rawUserId);
+        List<PayoutBeneficiary> list = payoutBeneficiaryRepository.findByUserIdOrderByCreatedAtDesc(cleanUserId);
+        return list.stream().map(this::mapToBeneficiaryDto).toList();
+    }
+
+    /**
+     * Add a new saved beneficiary
+     */
+    public PayoutBeneficiaryDto addBeneficiary(PayoutBeneficiaryDto request, String rawUserId) {
+        String cleanUserId = cleanUserIdString(rawUserId);
+        String cleanAcc = request.getAccountNumber().trim();
+        String rawIfsc = request.getIfsc().trim().toUpperCase();
+
+        if (payoutBeneficiaryRepository.existsByUserIdAndAccountNumberAndIfsc(cleanUserId, cleanAcc, rawIfsc)) {
+            throw new IllegalArgumentException("This bank account is already saved in your beneficiaries.");
+        }
+
+        PayoutBeneficiary beneficiary = PayoutBeneficiary.builder()
+                .userId(cleanUserId)
+                .beneficiaryName(request.getBeneficiaryName().trim())
+                .accountNumber(cleanAcc)
+                .ifsc(rawIfsc)
+                .bankName(request.getBankName() != null ? request.getBankName().trim() : null)
+                .nickName(request.getNickName() != null ? request.getNickName().trim() : null)
+                .isVerified(Boolean.TRUE.equals(request.getIsVerified()))
+                .build();
+
+        PayoutBeneficiary saved = payoutBeneficiaryRepository.save(beneficiary);
+        log.info("Saved beneficiary {} (account: {}) for user {}", saved.getBeneficiaryName(), saved.getAccountNumber(), cleanUserId);
+        return mapToBeneficiaryDto(saved);
+    }
+
+    /**
+     * Delete a saved beneficiary
+     */
+    public void deleteBeneficiary(Long id, String rawUserId) {
+        String cleanUserId = cleanUserIdString(rawUserId);
+        PayoutBeneficiary bene = payoutBeneficiaryRepository.findByIdAndUserId(id, cleanUserId)
+                .orElseThrow(() -> new IllegalArgumentException("Beneficiary not found or unauthorized"));
+        payoutBeneficiaryRepository.delete(bene);
+        log.info("Deleted beneficiary id {} for user {}", id, cleanUserId);
+    }
+
+    /**
+     * Automatically save beneficiary if not already present
+     */
+    private void autoSaveBeneficiary(PayoutRequest req, String userId) {
+        try {
+            String cleanAcc = req.getAccountNumber().trim();
+            String rawIfsc = req.getIfsc().trim().toUpperCase();
+            if (!payoutBeneficiaryRepository.existsByUserIdAndAccountNumberAndIfsc(userId, cleanAcc, rawIfsc)) {
+                PayoutBeneficiary beneficiary = PayoutBeneficiary.builder()
+                        .userId(userId)
+                        .beneficiaryName(req.getBeneficiaryName().trim())
+                        .accountNumber(cleanAcc)
+                        .ifsc(rawIfsc)
+                        .bankName(req.getBankName() != null ? req.getBankName().trim() : null)
+                        .isVerified(true)
+                        .build();
+                payoutBeneficiaryRepository.save(beneficiary);
+                log.info("Auto-saved new beneficiary {} ({}) for user {}", beneficiary.getBeneficiaryName(), cleanAcc, userId);
+            }
+        } catch (Exception e) {
+            log.warn("Could not auto-save beneficiary: {}", e.getMessage());
+        }
+    }
+
+    private PayoutBeneficiaryDto mapToBeneficiaryDto(PayoutBeneficiary bene) {
+        return PayoutBeneficiaryDto.builder()
+                .id(bene.getId())
+                .beneficiaryName(bene.getBeneficiaryName())
+                .accountNumber(bene.getAccountNumber())
+                .ifsc(bene.getIfsc())
+                .bankName(bene.getBankName())
+                .nickName(bene.getNickName())
+                .isVerified(bene.getIsVerified())
+                .createdAt(bene.getCreatedAt())
+                .build();
     }
 }

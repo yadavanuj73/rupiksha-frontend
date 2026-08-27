@@ -3,7 +3,8 @@ import {
     Landmark, Zap, ShieldCheck, CheckCircle2, XCircle, Clock, 
     RefreshCw, Search, ArrowRight, Printer, Download, AlertTriangle, 
     CreditCard, ArrowUpRight, HelpCircle, Check, Copy, ExternalLink, Sparkles, FileText,
-    Building2, User, Lock, Activity, Banknote, Shield
+    Building2, User, Lock, Activity, Banknote, Shield, Users, UserPlus, Trash2, Plus,
+    BookmarkPlus, CheckCheck, ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { payoutService, transactionService, userService } from '../../services/apiService';
@@ -16,8 +17,32 @@ const PayoutHub = () => {
     const { balance, refreshWallet, isWalletLoading } = useWallet();
     const walletBalance = Number(balance || 0);
 
-    // Active View Tab: 'transfer' | 'history'
+    // Active View Tab: 'transfer' | 'beneficiaries' | 'history'
     const [activeTab, setActiveTab] = useState('transfer');
+
+    // Beneficiary State
+    const [beneficiaries, setBeneficiaries] = useState([]);
+    const [beneficiariesLoading, setBeneficiariesLoading] = useState(false);
+    const [selectedBeneficiaryId, setSelectedBeneficiaryId] = useState(null);
+    const [saveToBeneficiaries, setSaveToBeneficiaries] = useState(false);
+    const [beneficiarySearch, setBeneficiarySearch] = useState('');
+    const [showAddBeneModal, setShowAddBeneModal] = useState(false);
+    const [deletingBeneId, setDeletingBeneId] = useState(null);
+
+    // Modal Add Beneficiary Form
+    const [newBeneForm, setNewBeneForm] = useState({
+        accountNumber: '',
+        confirmAccountNumber: '',
+        ifsc: '',
+        beneficiaryName: '',
+        bankName: '',
+        nickName: '',
+        isVerified: false,
+        verifying: false,
+        verifyError: '',
+        submitError: '',
+        isSubmitting: false
+    });
 
     // Wallet State
     const balanceLoading = isWalletLoading;
@@ -62,6 +87,21 @@ const PayoutHub = () => {
         }
     }, [refreshWallet]);
 
+    // Fetch Saved Beneficiaries
+    const fetchBeneficiaries = useCallback(async () => {
+        setBeneficiariesLoading(true);
+        try {
+            const res = await payoutService.getBeneficiaries();
+            if (Array.isArray(res)) {
+                setBeneficiaries(res);
+            }
+        } catch (e) {
+            console.warn('Failed to load beneficiaries', e);
+        } finally {
+            setBeneficiariesLoading(false);
+        }
+    }, []);
+
     // Fetch Recent Payout Transactions
     const fetchHistory = useCallback(async () => {
         setHistoryLoading(true);
@@ -90,8 +130,161 @@ const PayoutHub = () => {
         };
         checkService();
         fetchBalance();
+        fetchBeneficiaries();
         fetchHistory();
-    }, [fetchBalance, fetchHistory]);
+    }, [fetchBalance, fetchBeneficiaries, fetchHistory]);
+
+    // Beneficiary Quick Selection
+    const handleSelectBeneficiary = (bene) => {
+        setSelectedBeneficiaryId(bene.id);
+        setForm(prev => ({
+            ...prev,
+            accountNumber: bene.accountNumber,
+            confirmAccountNumber: bene.accountNumber,
+            ifsc: bene.ifsc,
+            beneficiaryName: bene.beneficiaryName,
+            bankName: bene.bankName || ''
+        }));
+        setVerificationError('');
+        if (bene.isVerified) {
+            setVerificationResult({
+                nameAtBank: bene.beneficiaryName,
+                acValidationStatus: 'VERIFIED'
+            });
+        } else {
+            setVerificationResult(null);
+        }
+        setActiveTab('transfer');
+    };
+
+    const handleClearSelectedBeneficiary = () => {
+        setSelectedBeneficiaryId(null);
+        setForm(prev => ({
+            ...prev,
+            accountNumber: '',
+            confirmAccountNumber: '',
+            ifsc: '',
+            beneficiaryName: '',
+            bankName: ''
+        }));
+        setVerificationResult(null);
+        setVerificationError('');
+    };
+
+    const handleDeleteBeneficiary = async (id, e) => {
+        if (e) e.stopPropagation();
+        if (!window.confirm('Are you sure you want to remove this saved beneficiary?')) return;
+        setDeletingBeneId(id);
+        try {
+            await payoutService.deleteBeneficiary(id);
+            if (selectedBeneficiaryId === id) {
+                handleClearSelectedBeneficiary();
+            }
+            fetchBeneficiaries();
+        } catch (err) {
+            alert(err?.message || 'Failed to delete beneficiary');
+        } finally {
+            setDeletingBeneId(null);
+        }
+    };
+
+    // Modal Beneficiary Verification
+    const handleVerifyNewBeneInModal = async () => {
+        const isAccOk = /^\d{9,18}$/.test(newBeneForm.accountNumber.trim());
+        const isIfscOk = /^[A-Z]{4}0[A-Z0-9]{6}$/.test(newBeneForm.ifsc.trim().toUpperCase());
+        if (!isAccOk || !isIfscOk) {
+            setNewBeneForm(p => ({ ...p, verifyError: 'Enter valid Account Number & IFSC code before verifying' }));
+            return;
+        }
+        setNewBeneForm(p => ({ ...p, verifying: true, verifyError: '' }));
+        try {
+            const res = await payoutService.verifyAccount({
+                accountNumber: newBeneForm.accountNumber.trim(),
+                ifsc: newBeneForm.ifsc.trim().toUpperCase(),
+                method: 'penny-less'
+            });
+            if (res && res.success && res.nameAtBank) {
+                setNewBeneForm(p => ({
+                    ...p,
+                    beneficiaryName: res.nameAtBank,
+                    bankName: p.bankName || (p.ifsc.startsWith('SBIN') ? 'State Bank of India' : 'Bank Transfer'),
+                    isVerified: true,
+                    verifying: false
+                }));
+            } else {
+                setNewBeneForm(p => ({
+                    ...p,
+                    verifyError: res?.message || 'Account verification failed. Please verify IFSC & Account Number.',
+                    verifying: false
+                }));
+            }
+        } catch (err) {
+            setNewBeneForm(p => ({
+                ...p,
+                verifyError: err?.message || 'Verification service temporarily unavailable.',
+                verifying: false
+            }));
+        }
+    };
+
+    // Modal Beneficiary Submit
+    const handleSaveNewBeneficiary = async (e) => {
+        e.preventDefault();
+        const isAccOk = /^\d{9,18}$/.test(newBeneForm.accountNumber.trim());
+        const isMatch = newBeneForm.accountNumber.trim() === newBeneForm.confirmAccountNumber.trim();
+        const isIfscOk = /^[A-Z]{4}0[A-Z0-9]{6}$/.test(newBeneForm.ifsc.trim().toUpperCase());
+        const isNameOk = newBeneForm.beneficiaryName.trim().length >= 2;
+
+        if (!isAccOk) {
+            setNewBeneForm(p => ({ ...p, submitError: 'Invalid account number (9 to 18 digits)' }));
+            return;
+        }
+        if (!isMatch) {
+            setNewBeneForm(p => ({ ...p, submitError: 'Account number and confirmation do not match' }));
+            return;
+        }
+        if (!isIfscOk) {
+            setNewBeneForm(p => ({ ...p, submitError: 'Invalid IFSC code format (e.g. SBIN0001234)' }));
+            return;
+        }
+        if (!isNameOk) {
+            setNewBeneForm(p => ({ ...p, submitError: 'Beneficiary legal name is required' }));
+            return;
+        }
+
+        setNewBeneForm(p => ({ ...p, isSubmitting: true, submitError: '' }));
+        try {
+            const res = await payoutService.addBeneficiary({
+                accountNumber: newBeneForm.accountNumber.trim(),
+                ifsc: newBeneForm.ifsc.trim().toUpperCase(),
+                beneficiaryName: newBeneForm.beneficiaryName.trim(),
+                bankName: newBeneForm.bankName.trim() || 'Bank Transfer',
+                nickName: newBeneForm.nickName.trim() || undefined,
+                isVerified: newBeneForm.isVerified
+            });
+
+            await fetchBeneficiaries();
+            setShowAddBeneModal(false);
+            if (res && res.id) {
+                handleSelectBeneficiary(res);
+            }
+            setNewBeneForm({
+                accountNumber: '',
+                confirmAccountNumber: '',
+                ifsc: '',
+                beneficiaryName: '',
+                bankName: '',
+                nickName: '',
+                isVerified: false,
+                verifying: false,
+                verifyError: '',
+                submitError: '',
+                isSubmitting: false
+            });
+        } catch (err) {
+            setNewBeneForm(p => ({ ...p, submitError: err?.message || 'Failed to save beneficiary', isSubmitting: false }));
+        }
+    };
 
     if (serviceDisabled) {
         return <DisabledServiceBanner serviceName="Payout Hub" />;
@@ -107,6 +300,19 @@ const PayoutHub = () => {
 
     const canVerify = isAccountValid && isIfscValid && !verifying;
     const canSubmit = isAccountValid && isAccountMatching && isIfscValid && isNameValid && isAmountEntered && isAmountWithinBalance && !isSubmitting;
+
+    // Filtered Beneficiaries List for search
+    const filteredBeneficiaries = useMemo(() => {
+        if (!beneficiarySearch.trim()) return beneficiaries;
+        const q = beneficiarySearch.toLowerCase();
+        return beneficiaries.filter(b => 
+            (b.beneficiaryName && b.beneficiaryName.toLowerCase().includes(q)) ||
+            (b.accountNumber && b.accountNumber.includes(q)) ||
+            (b.ifsc && b.ifsc.toLowerCase().includes(q)) ||
+            (b.bankName && b.bankName.toLowerCase().includes(q)) ||
+            (b.nickName && b.nickName.toLowerCase().includes(q))
+        );
+    }, [beneficiaries, beneficiarySearch]);
 
     // Verify Bank Account (Penny-less)
     const handleVerifyAccount = async () => {
@@ -166,7 +372,8 @@ const PayoutHub = () => {
                 bankName: form.bankName.trim() || 'Bank Transfer',
                 branchName: form.branchName.trim() || 'Main Branch',
                 transferMode: form.transferMode,
-                remarks: form.remarks.trim() || 'Instant payout transfer'
+                remarks: form.remarks.trim() || 'Instant payout transfer',
+                saveBeneficiary: !selectedBeneficiaryId && saveToBeneficiaries
             };
 
             const res = await payoutService.initiatePayout(payload);
@@ -211,10 +418,13 @@ const PayoutHub = () => {
                     amount: '',
                     remarks: ''
                 });
+                setSelectedBeneficiaryId(null);
+                setSaveToBeneficiaries(false);
                 setVerificationResult(null);
 
-                // Refresh balance and history
+                // Refresh balance, beneficiaries, and history
                 fetchBalance();
+                fetchBeneficiaries();
                 fetchHistory();
             } else {
                 setSubmitError(res?.message || 'Payout transfer failed. Any debited amount has been auto-refunded to your wallet.');
@@ -625,6 +835,23 @@ const PayoutHub = () => {
                                 </button>
                                 <button
                                     type="button"
+                                    onClick={() => { setActiveTab('beneficiaries'); fetchBeneficiaries(); }}
+                                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition ${
+                                        activeTab === 'beneficiaries'
+                                            ? 'bg-white text-blue-700 shadow-2xs'
+                                            : 'text-slate-600 hover:text-slate-900'
+                                    }`}
+                                >
+                                    <Users size={13} />
+                                    <span>Beneficiaries</span>
+                                    {beneficiaries.length > 0 && (
+                                        <span className="rounded-full bg-blue-100 text-blue-800 px-1.5 py-0.2 text-[9.5px] font-black">
+                                            {beneficiaries.length}
+                                        </span>
+                                    )}
+                                </button>
+                                <button
+                                    type="button"
                                     onClick={() => { setActiveTab('history'); fetchHistory(); }}
                                     className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition ${
                                         activeTab === 'history'
@@ -677,6 +904,104 @@ const PayoutHub = () => {
                         {/* ══ LEFT (COL 1 to 7): Beneficiary & Rail Inputs ════════ */}
                         <div className="lg:col-span-7 bg-white border border-slate-200/90 rounded-2xl md:rounded-3xl p-4 sm:p-5 shadow-xs space-y-3.5">
                             
+                            {/* ── Quick Beneficiary Selector ── */}
+                            <div className="p-3 sm:p-3.5 bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-slate-50 border border-blue-100 rounded-2xl space-y-2.5">
+                                <div className="flex items-center justify-between flex-wrap gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <Users size={15} className="text-blue-600" />
+                                        <span className="text-xs sm:text-[12.5px] font-black uppercase tracking-wide text-slate-800">
+                                            Saved Beneficiaries
+                                        </span>
+                                        <span className="rounded-full bg-blue-100 text-blue-800 px-2 py-0.5 text-[10px] font-black">
+                                            {beneficiaries.length}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowAddBeneModal(true)}
+                                            className="inline-flex items-center gap-1 text-[11px] font-black text-blue-700 bg-white hover:bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg transition shadow-2xs cursor-pointer"
+                                        >
+                                            <Plus size={12} />
+                                            Add Beneficiary
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Horizontal quick selector chips or empty prompt */}
+                                {beneficiaries.length > 0 ? (
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                                            {beneficiaries.slice(0, 10).map((bene) => {
+                                                const isSelected = selectedBeneficiaryId === bene.id;
+                                                return (
+                                                    <button
+                                                        key={bene.id}
+                                                        type="button"
+                                                        onClick={() => handleSelectBeneficiary(bene)}
+                                                        className={`shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl border text-left transition cursor-pointer ${
+                                                            isSelected
+                                                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs ring-2 ring-blue-300'
+                                                                : 'bg-white text-slate-800 border-slate-200 hover:border-blue-300 hover:bg-blue-50/50'
+                                                        }`}
+                                                    >
+                                                        <div className={`h-7 w-7 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${
+                                                            isSelected ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-700'
+                                                        }`}>
+                                                            {bene.beneficiaryName ? bene.beneficiaryName.charAt(0).toUpperCase() : <Landmark size={13} />}
+                                                        </div>
+                                                        <div className="min-w-0 pr-1">
+                                                            <div className="text-xs font-black truncate max-w-[130px] leading-tight">
+                                                                {bene.nickName || bene.beneficiaryName}
+                                                            </div>
+                                                            <div className={`text-[10px] font-mono font-bold leading-tight ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>
+                                                                ••••{bene.accountNumber ? bene.accountNumber.slice(-4) : ''}
+                                                            </div>
+                                                        </div>
+                                                        {isSelected && (
+                                                            <CheckCircle2 size={14} className="text-white shrink-0 ml-1" />
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* Active Selected Beneficiary Banner with Clear button */}
+                                        {selectedBeneficiaryId && (
+                                            <div className="flex items-center justify-between gap-2 p-2 px-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-900">
+                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                    <CheckCheck size={15} className="text-emerald-600 shrink-0" />
+                                                    <span className="truncate">
+                                                        1-Click Ready: <strong>{form.beneficiaryName}</strong> ({form.bankName || 'Bank Transfer'})
+                                                    </span>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleClearSelectedBeneficiary}
+                                                    className="text-[11px] font-black text-rose-600 hover:text-rose-800 bg-white border border-rose-200 px-2 py-0.5 rounded-lg transition shrink-0 cursor-pointer"
+                                                >
+                                                    ✕ Change / Manual
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center justify-between gap-2 p-2 px-3 bg-white/80 border border-slate-200 rounded-xl text-xs text-slate-600">
+                                        <span className="text-[11px] font-bold">
+                                            💡 Tip: Add your frequent bank beneficiaries to transfer with a single click.
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowAddBeneModal(true)}
+                                            className="text-[11px] font-black text-blue-700 hover:underline shrink-0 cursor-pointer"
+                                        >
+                                            + Add Now
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
                             {/* ── Step 1: Beneficiary Bank Details ── */}
                             <div className="space-y-3 p-3 sm:p-3.5 bg-slate-50/80 border border-slate-200/80 rounded-2xl">
                                 <div className="flex items-center justify-between flex-wrap gap-2">
@@ -725,7 +1050,10 @@ const PayoutHub = () => {
                                             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-mono transition"
                                             placeholder="Enter bank account number"
                                             value={form.accountNumber}
-                                            onChange={(e) => setForm(p => ({ ...p, accountNumber: e.target.value.replace(/\D/g, '') }))}
+                                            onChange={(e) => {
+                                                if (selectedBeneficiaryId) setSelectedBeneficiaryId(null);
+                                                setForm(p => ({ ...p, accountNumber: e.target.value.replace(/\D/g, '') }));
+                                            }}
                                             maxLength={18}
                                         />
                                     </div>
@@ -768,7 +1096,10 @@ const PayoutHub = () => {
                                             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-bold uppercase text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-mono transition"
                                             placeholder="e.g. SBIN0001234"
                                             value={form.ifsc}
-                                            onChange={(e) => setForm(p => ({ ...p, ifsc: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
+                                            onChange={(e) => {
+                                                if (selectedBeneficiaryId) setSelectedBeneficiaryId(null);
+                                                setForm(p => ({ ...p, ifsc: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }));
+                                            }}
                                             maxLength={11}
                                         />
                                     </div>
@@ -789,6 +1120,24 @@ const PayoutHub = () => {
                                     </div>
 
                                 </div>
+
+                                {/* Save to Beneficiaries Toggle for Manual Entry */}
+                                {!selectedBeneficiaryId && (
+                                    <div className="pt-1">
+                                        <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700 hover:text-slate-900 select-none">
+                                            <input
+                                                type="checkbox"
+                                                checked={saveToBeneficiaries}
+                                                onChange={(e) => setSaveToBeneficiaries(e.target.checked)}
+                                                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                            />
+                                            <span className="flex items-center gap-1.5">
+                                                <BookmarkPlus size={13} className="text-blue-600" />
+                                                Save this bank account to beneficiaries for future 1-click transfers
+                                            </span>
+                                        </label>
+                                    </div>
+                                )}
 
                                 {/* Inline Verification Result */}
                                 {verificationResult && (
@@ -996,7 +1345,171 @@ const PayoutHub = () => {
                     </form>
                 )}
 
-                {/* ─── Tab 2: Recent Transfers History ──────────────────────────── */}
+                {/* ─── Tab 2: Saved Beneficiaries Management ──────────────────────────── */}
+                {activeTab === 'beneficiaries' && (
+                    <div className="rounded-2xl md:rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-xs space-y-4">
+                        <div className="flex items-center justify-between flex-wrap gap-3 border-b border-slate-100 pb-3">
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h2 className="text-sm sm:text-base font-black text-slate-900">Saved Bank Beneficiaries</h2>
+                                    <span className="rounded-full bg-blue-100 text-blue-800 px-2 py-0.5 text-xs font-black">
+                                        {beneficiaries.length}
+                                    </span>
+                                </div>
+                                <p className="text-[11px] font-semibold text-slate-500">
+                                    Manage accounts for instant 1-click payouts without re-entering bank details
+                                </p>
+                            </div>
+                            
+                            <div className="flex items-center gap-2 flex-wrap">
+                                {/* Search Bar */}
+                                <div className="relative">
+                                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search name, account, IFSC..."
+                                        value={beneficiarySearch}
+                                        onChange={(e) => setBeneficiarySearch(e.target.value)}
+                                        className="pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 transition w-44 sm:w-56"
+                                    />
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAddBeneModal(true)}
+                                    className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-black text-white hover:bg-blue-700 transition shadow-xs cursor-pointer"
+                                >
+                                    <Plus size={13} />
+                                    Add Beneficiary
+                                </button>
+                            </div>
+                        </div>
+
+                        {beneficiariesLoading && beneficiaries.length === 0 ? (
+                            <div className="py-12 text-center text-xs font-bold text-slate-400 flex flex-col items-center justify-center gap-2">
+                                <RefreshCw size={20} className="animate-spin text-blue-600" />
+                                <span>Loading saved beneficiaries...</span>
+                            </div>
+                        ) : filteredBeneficiaries.length === 0 ? (
+                            <div className="py-12 text-center text-xs text-slate-500 flex flex-col items-center justify-center space-y-3">
+                                <div className="h-14 w-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
+                                    <Users size={26} />
+                                </div>
+                                {beneficiarySearch ? (
+                                    <>
+                                        <div className="font-black text-slate-900 text-sm">No beneficiaries match "{beneficiarySearch}"</div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setBeneficiarySearch('')}
+                                            className="text-xs font-bold text-blue-600 hover:underline cursor-pointer"
+                                        >
+                                            Clear Search Filter
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="font-black text-slate-900 text-sm">No Saved Beneficiaries Yet</div>
+                                        <p className="text-slate-500 max-w-sm text-center text-xs font-semibold">
+                                            Add bank accounts of your frequent recipients to send payouts in seconds with 1-click auto-fill.
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowAddBeneModal(true)}
+                                            className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-black text-white hover:bg-blue-700 transition shadow-sm cursor-pointer"
+                                        >
+                                            <Plus size={14} />
+                                            Add Your First Beneficiary
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                                {filteredBeneficiaries.map((bene) => (
+                                    <div
+                                        key={bene.id}
+                                        className="rounded-2xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:shadow-xs transition flex flex-col justify-between space-y-3 group"
+                                    >
+                                        <div className="space-y-2">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    <div className="h-10 w-10 rounded-xl bg-blue-50 border border-blue-100 text-blue-700 flex items-center justify-center text-base font-black shrink-0">
+                                                        {bene.beneficiaryName ? bene.beneficiaryName.charAt(0).toUpperCase() : <Landmark size={18} />}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <div className="text-sm font-black text-slate-900 truncate">
+                                                            {bene.beneficiaryName}
+                                                        </div>
+                                                        {bene.nickName && (
+                                                            <div className="text-[10.5px] font-bold text-blue-600 truncate">
+                                                                ★ {bene.nickName}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-1">
+                                                    {bene.isVerified && (
+                                                        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 text-[9.5px] font-black text-emerald-700">
+                                                            <CheckCircle2 size={11} /> Verified
+                                                        </span>
+                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => handleDeleteBeneficiary(bene.id, e)}
+                                                        disabled={deletingBeneId === bene.id}
+                                                        title="Delete Beneficiary"
+                                                        className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition cursor-pointer disabled:opacity-50"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Bank & Account Details */}
+                                            <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 space-y-1 text-xs">
+                                                <div className="flex justify-between items-center text-slate-600">
+                                                    <span className="text-[10.5px] text-slate-400 font-bold uppercase">Bank</span>
+                                                    <span className="font-bold text-slate-800 truncate max-w-[170px]">{bene.bankName || 'Bank Transfer'}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-slate-600">
+                                                    <span className="text-[10.5px] text-slate-400 font-bold uppercase">Account</span>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="font-mono font-black text-slate-900">{bene.accountNumber}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleCopy(bene.accountNumber, `acc_${bene.id}`)}
+                                                            title="Copy Account Number"
+                                                            className="text-slate-400 hover:text-blue-700 transition"
+                                                        >
+                                                            {copiedField === `acc_${bene.id}` ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div className="flex justify-between items-center text-slate-600">
+                                                    <span className="text-[10.5px] text-slate-400 font-bold uppercase">IFSC</span>
+                                                    <span className="font-mono font-bold uppercase text-slate-900">{bene.ifsc}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Send Payout CTA Button */}
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSelectBeneficiary(bene)}
+                                            className="w-full flex items-center justify-center gap-1.5 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition shadow-2xs cursor-pointer active:scale-[0.98]"
+                                        >
+                                            <SendIcon size={12} />
+                                            <span>Send Payout</span>
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ─── Tab 3: Recent Transfers History ──────────────────────────── */}
                 {activeTab === 'history' && (
                     <div className="rounded-2xl md:rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-xs">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -1445,6 +1958,207 @@ const PayoutHub = () => {
                                     Done
                                 </button>
                             </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* ─── Add New Beneficiary Modal ────────────────────────────────────── */}
+            <AnimatePresence>
+                {showAddBeneModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-sm font-sans overflow-y-auto">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            className="relative bg-white border border-slate-300 shadow-2xl rounded-3xl w-full max-w-lg overflow-hidden flex flex-col my-auto"
+                        >
+                            {/* Header */}
+                            <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="h-9 w-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                                        <UserPlus size={18} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-sm font-black text-slate-900 leading-tight">Add Bank Beneficiary</h3>
+                                        <p className="text-[10.5px] font-semibold text-slate-500">Save recipient account for instant 1-click payouts</p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAddBeneModal(false)}
+                                    className="p-1.5 text-slate-400 hover:text-slate-900 rounded-full hover:bg-slate-200 transition cursor-pointer"
+                                >
+                                    <XCircle size={18} />
+                                </button>
+                            </div>
+
+                            {/* Form Body */}
+                            <form onSubmit={handleSaveNewBeneficiary} className="p-5 space-y-3.5">
+                                {newBeneForm.submitError && (
+                                    <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs font-bold text-rose-700">
+                                        <AlertTriangle size={15} className="shrink-0 text-rose-600" />
+                                        <span>{newBeneForm.submitError}</span>
+                                    </div>
+                                )}
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {/* Account Number */}
+                                    <div>
+                                        <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1">
+                                            Account Number *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-mono transition"
+                                            placeholder="Enter account number"
+                                            value={newBeneForm.accountNumber}
+                                            onChange={(e) => setNewBeneForm(p => ({ ...p, accountNumber: e.target.value.replace(/\D/g, '') }))}
+                                            maxLength={18}
+                                        />
+                                    </div>
+
+                                    {/* Confirm Account Number */}
+                                    <div>
+                                        <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1">
+                                            Confirm Account Number *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-mono transition"
+                                            placeholder="Re-enter account number"
+                                            value={newBeneForm.confirmAccountNumber}
+                                            onChange={(e) => setNewBeneForm(p => ({ ...p, confirmAccountNumber: e.target.value.replace(/\D/g, '') }))}
+                                            maxLength={18}
+                                        />
+                                    </div>
+
+                                    {/* IFSC Code */}
+                                    <div>
+                                        <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1">
+                                            IFSC Code *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-bold uppercase text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-mono transition"
+                                            placeholder="e.g. SBIN0001234"
+                                            value={newBeneForm.ifsc}
+                                            onChange={(e) => setNewBeneForm(p => ({ ...p, ifsc: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
+                                            maxLength={11}
+                                        />
+                                    </div>
+
+                                    {/* Bank Verification Trigger */}
+                                    <div className="flex flex-col justify-end">
+                                        <button
+                                            type="button"
+                                            onClick={handleVerifyNewBeneInModal}
+                                            disabled={newBeneForm.verifying || !/^\d{9,18}$/.test(newBeneForm.accountNumber) || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(newBeneForm.ifsc)}
+                                            className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 py-2.5 px-3 rounded-xl transition cursor-pointer shadow-xs"
+                                        >
+                                            {newBeneForm.verifying ? (
+                                                <>
+                                                    <RefreshCw size={13} className="animate-spin" />
+                                                    Verifying Bank...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Sparkles size={13} />
+                                                    Verify Name
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+
+                                    {/* Beneficiary Legal Name */}
+                                    <div className="sm:col-span-2">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="text-[11px] font-black uppercase tracking-wider text-slate-700">
+                                                Beneficiary Legal Name *
+                                            </label>
+                                            {newBeneForm.isVerified && (
+                                                <span className="text-[10.5px] font-black text-emerald-600 flex items-center gap-1">
+                                                    <CheckCircle2 size={12} /> Verified from Bank
+                                                </span>
+                                            )}
+                                        </div>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition"
+                                            placeholder="Legal account holder name"
+                                            value={newBeneForm.beneficiaryName}
+                                            onChange={(e) => setNewBeneForm(p => ({ ...p, beneficiaryName: e.target.value }))}
+                                        />
+                                    </div>
+
+                                    {/* Bank Name */}
+                                    <div>
+                                        <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1">
+                                            Bank Name (Optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition"
+                                            placeholder="e.g. State Bank of India"
+                                            value={newBeneForm.bankName}
+                                            onChange={(e) => setNewBeneForm(p => ({ ...p, bankName: e.target.value }))}
+                                        />
+                                    </div>
+
+                                    {/* Nickname */}
+                                    <div>
+                                        <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1">
+                                            Nickname (Optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition"
+                                            placeholder="e.g. Main Vendor / Self"
+                                            value={newBeneForm.nickName}
+                                            onChange={(e) => setNewBeneForm(p => ({ ...p, nickName: e.target.value }))}
+                                            maxLength={50}
+                                        />
+                                    </div>
+                                </div>
+
+                                {newBeneForm.verifyError && (
+                                    <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 p-2 text-xs font-bold text-rose-700">
+                                        <AlertTriangle size={13} className="shrink-0 text-rose-600" />
+                                        <span>{newBeneForm.verifyError}</span>
+                                    </div>
+                                )}
+
+                                <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAddBeneModal(false)}
+                                        className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={newBeneForm.isSubmitting}
+                                        className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-black text-white uppercase tracking-wider transition shadow-sm cursor-pointer disabled:opacity-50"
+                                    >
+                                        {newBeneForm.isSubmitting ? (
+                                            <>
+                                                <RefreshCw size={13} className="animate-spin" />
+                                                Saving Beneficiary...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <ShieldCheck size={14} />
+                                                Save Beneficiary
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
                         </motion.div>
                     </div>
                 )}

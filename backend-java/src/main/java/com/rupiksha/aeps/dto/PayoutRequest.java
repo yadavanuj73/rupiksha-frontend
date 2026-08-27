@@ -48,4 +48,6 @@ public class PayoutRequest {
 
     @Pattern(regexp = "^[0-9]{10}$", message = "Invalid 10-digit mobile number")
     private String mobileNumber;
+
+    private Boolean saveBeneficiary;
 }

@@ -424,6 +424,21 @@ export const payoutService = {
   generateOrderId: () =>
     apiFetch("/payout/generate-order-id"),
 
+  // Beneficiary Management
+  getBeneficiaries: () =>
+    apiFetch("/payout/beneficiaries"),
+
+  addBeneficiary: (beneficiaryData) =>
+    apiFetch("/payout/beneficiaries", {
+      method: "POST",
+      body: JSON.stringify(beneficiaryData),
+    }),
+
+  deleteBeneficiary: (id) =>
+    apiFetch(`/payout/beneficiaries/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    }),
+
   // Health check
   health: () =>
     apiFetch("/payout/health"),
