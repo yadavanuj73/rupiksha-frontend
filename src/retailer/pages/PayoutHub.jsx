@@ -1041,173 +1041,202 @@ const PayoutHub = () => {
                     </div>
                 )}
 
-                {/* 4. No Beneficiary Registered State (Ultra Compact - Fits Without Scroll) */}
+                {/* 4. No Beneficiary Registered State (2-Part Responsive Wide Layout) */}
                 {activeTab === 'transfer' && !beneficiariesLoading && !hasApproved && hasNone && (
-                    <div className="bg-white border border-slate-200/90 rounded-2xl md:rounded-3xl p-3.5 sm:p-5 shadow-2xs max-w-3xl mx-auto space-y-3">
-                        <div className="flex items-center gap-3 border-b border-slate-100 pb-2.5">
-                            <div className="h-9 w-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0 shadow-2xs">
-                                <Building2 size={20} />
+                    <div className="bg-white border-2 border-slate-200/90 rounded-2xl md:rounded-3xl p-5 sm:p-7 md:p-8 shadow-sm w-full max-w-6xl mx-auto space-y-6">
+                        {/* Card Header */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+                            <div className="flex items-center gap-3.5">
+                                <div className="h-12 w-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white shrink-0 shadow-md shadow-blue-500/25">
+                                    <Building2 size={24} />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg sm:text-xl font-black text-slate-950 tracking-tight leading-tight">
+                                        Register Bank Beneficiary for Payouts
+                                    </h2>
+                                    <p className="text-xs sm:text-sm font-bold text-slate-700 mt-0.5">
+                                        Enter and verify your bank account details below to submit for instant Admin approval.
+                                    </p>
+                                </div>
                             </div>
-                            <div>
-                                <h2 className="text-sm sm:text-base font-black text-slate-900 leading-tight">
-                                    Register Bank Beneficiary for Payouts
-                                </h2>
-                                <p className="text-[11px] font-semibold text-slate-500 leading-tight">
-                                    Enter your beneficiary bank account details to submit for Admin approval.
-                                </p>
-                            </div>
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-xs font-black self-start sm:self-auto">
+                                <ShieldCheck size={14} className="text-blue-600" /> NPCI Bank Verified
+                            </span>
                         </div>
 
-                        <form onSubmit={handleSaveNewBeneficiary} className="space-y-2.5">
+                        <form onSubmit={handleSaveNewBeneficiary} className="space-y-6">
                             {newBeneForm.submitError && (
-                                <div className="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 p-2 text-xs font-bold text-rose-700">
-                                    <AlertTriangle size={14} className="shrink-0 text-rose-600" />
+                                <div className="flex items-center gap-2.5 rounded-xl border-2 border-rose-200 bg-rose-50 p-3.5 text-xs sm:text-sm font-black text-rose-900">
+                                    <AlertTriangle size={18} className="shrink-0 text-rose-600" />
                                     <span>{newBeneForm.submitError}</span>
                                 </div>
                             )}
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                                <div>
-                                    <label className="block text-[10.5px] font-black uppercase tracking-wider text-slate-700 mb-0.5">
-                                        Account Number *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        required
-                                        className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-1.5 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-100 font-mono transition"
-                                        placeholder="Enter bank account number"
-                                        value={newBeneForm.accountNumber}
-                                        onChange={(e) => setNewBeneForm(p => ({ ...p, accountNumber: e.target.value.replace(/\D/g, '') }))}
-                                        maxLength={18}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-[10.5px] font-black uppercase tracking-wider text-slate-700 mb-0.5">
-                                        Confirm Account Number *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        required
-                                        className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-1.5 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-100 font-mono transition"
-                                        placeholder="Re-enter bank account number"
-                                        value={newBeneForm.confirmAccountNumber}
-                                        onChange={(e) => setNewBeneForm(p => ({ ...p, confirmAccountNumber: e.target.value.replace(/\D/g, '') }))}
-                                        maxLength={18}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-[10.5px] font-black uppercase tracking-wider text-slate-700 mb-0.5">
-                                        IFSC Code *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        required
-                                        className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-1.5 text-xs sm:text-sm font-bold uppercase text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-100 font-mono transition"
-                                        placeholder="e.g. SBIN0001234"
-                                        value={newBeneForm.ifsc}
-                                        onChange={(e) => setNewBeneForm(p => ({ ...p, ifsc: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
-                                        maxLength={11}
-                                    />
-                                </div>
-
-                                <div className="flex flex-col justify-end">
-                                    <button
-                                        type="button"
-                                        onClick={handleVerifyNewBeneInModal}
-                                        disabled={newBeneForm.verifying || !/^\d{9,18}$/.test(newBeneForm.accountNumber) || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(newBeneForm.ifsc)}
-                                        className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 py-1.5 px-3 rounded-lg transition cursor-pointer shadow-2xs"
-                                    >
-                                        {newBeneForm.verifying ? (
-                                            <>
-                                                <RefreshCw size={12} className="animate-spin" />
-                                                Verifying Bank...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Sparkles size={12} />
-                                                Verify Legal Name
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-
-                                <div>
-                                    <div className="flex items-center justify-between mb-0.5">
-                                        <label className="text-[10.5px] font-black uppercase tracking-wider text-slate-700">
-                                            Beneficiary Legal Name *
-                                        </label>
-                                        {newBeneForm.isVerified && (
-                                            <span className="text-[9.5px] font-black text-emerald-600 flex items-center gap-1">
-                                                <CheckCircle2 size={11} /> Verified
-                                            </span>
-                                        )}
+                            {/* 2-Part Responsive Split: Left Side & Right Side */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
+                                
+                                {/* ═══ LEFT SIDE: Account Number, Confirm Account Number, Beneficiary Legal Name ═══ */}
+                                <div className="space-y-4 bg-slate-50/70 border border-slate-200/80 rounded-2xl p-4 sm:p-6">
+                                    <div className="text-xs font-black uppercase tracking-wider text-blue-700 flex items-center gap-1.5 pb-1 border-b border-slate-200/60">
+                                        <span>1. Account & Beneficiary Identity</span>
                                     </div>
-                                    <input
-                                        type="text"
-                                        required
-                                        className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-1.5 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-100 transition"
-                                        placeholder="Legal account holder name"
-                                        value={newBeneForm.beneficiaryName}
-                                        onChange={(e) => setNewBeneForm(p => ({ ...p, beneficiaryName: e.target.value }))}
-                                    />
+
+                                    {/* Account Number */}
+                                    <div>
+                                        <label className="block text-xs sm:text-sm font-black uppercase tracking-wider text-slate-950 mb-1.5">
+                                            Account Number *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full rounded-xl border-2 border-slate-300 bg-white px-4 py-3 text-sm sm:text-base font-black text-slate-950 placeholder:text-slate-400 placeholder:font-normal outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-100 font-mono transition shadow-2xs"
+                                            placeholder="Enter bank account number"
+                                            value={newBeneForm.accountNumber}
+                                            onChange={(e) => setNewBeneForm(p => ({ ...p, accountNumber: e.target.value.replace(/\D/g, '') }))}
+                                            maxLength={18}
+                                        />
+                                    </div>
+
+                                    {/* Confirm Account Number */}
+                                    <div>
+                                        <label className="block text-xs sm:text-sm font-black uppercase tracking-wider text-slate-950 mb-1.5">
+                                            Confirm Account Number *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full rounded-xl border-2 border-slate-300 bg-white px-4 py-3 text-sm sm:text-base font-black text-slate-950 placeholder:text-slate-400 placeholder:font-normal outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-100 font-mono transition shadow-2xs"
+                                            placeholder="Re-enter bank account number"
+                                            value={newBeneForm.confirmAccountNumber}
+                                            onChange={(e) => setNewBeneForm(p => ({ ...p, confirmAccountNumber: e.target.value.replace(/\D/g, '') }))}
+                                            maxLength={18}
+                                        />
+                                    </div>
+
+                                    {/* Beneficiary Legal Name */}
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                                            <label className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-950">
+                                                Beneficiary Legal Name *
+                                            </label>
+                                            {newBeneForm.isVerified && (
+                                                <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1">
+                                                    <CheckCircle2 size={13} className="text-emerald-600" /> Bank Verified Name
+                                                </span>
+                                            )}
+                                        </div>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full rounded-xl border-2 border-slate-300 bg-white px-4 py-3 text-sm sm:text-base font-black text-slate-950 placeholder:text-slate-400 placeholder:font-normal outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-100 transition shadow-2xs"
+                                            placeholder="Legal account holder name"
+                                            value={newBeneForm.beneficiaryName}
+                                            onChange={(e) => setNewBeneForm(p => ({ ...p, beneficiaryName: e.target.value }))}
+                                        />
+                                    </div>
                                 </div>
 
-                                <div>
-                                    <label className="block text-[10.5px] font-black uppercase tracking-wider text-slate-700 mb-0.5">
-                                        Bank Name (Optional)
-                                    </label>
-                                    <input
-                                        type="text"
-                                        className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-1.5 text-xs font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 transition"
-                                        placeholder="e.g. State Bank of India"
-                                        value={newBeneForm.bankName}
-                                        onChange={(e) => setNewBeneForm(p => ({ ...p, bankName: e.target.value }))}
-                                    />
+                                {/* ═══ RIGHT SIDE: IFSC Code + Verify Button, Bank Name, Nickname, Submit Button ═══ */}
+                                <div className="space-y-4 bg-slate-50/70 border border-slate-200/80 rounded-2xl p-4 sm:p-6">
+                                    <div className="text-xs font-black uppercase tracking-wider text-blue-700 flex items-center gap-1.5 pb-1 border-b border-slate-200/60">
+                                        <span>2. Bank IFSC & Verification</span>
+                                    </div>
+
+                                    {/* IFSC Code + Verify Legal Name Button */}
+                                    <div>
+                                        <label className="block text-xs sm:text-sm font-black uppercase tracking-wider text-slate-950 mb-1.5">
+                                            IFSC Code *
+                                        </label>
+                                        <div className="flex flex-col sm:flex-row gap-2.5">
+                                            <input
+                                                type="text"
+                                                required
+                                                className="flex-1 rounded-xl border-2 border-slate-300 bg-white px-4 py-3 text-sm sm:text-base font-black uppercase text-slate-950 placeholder:text-slate-400 placeholder:font-normal outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-100 font-mono transition shadow-2xs"
+                                                placeholder="e.g. SBIN0001234"
+                                                value={newBeneForm.ifsc}
+                                                onChange={(e) => setNewBeneForm(p => ({ ...p, ifsc: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
+                                                maxLength={11}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleVerifyNewBeneInModal}
+                                                disabled={newBeneForm.verifying || !/^\d{9,18}$/.test(newBeneForm.accountNumber) || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(newBeneForm.ifsc)}
+                                                className="inline-flex items-center justify-center gap-2 text-xs sm:text-sm font-black text-white bg-emerald-600 hover:bg-emerald-700 active:scale-98 disabled:opacity-50 px-5 py-3 rounded-xl transition cursor-pointer shadow-md shadow-emerald-600/20 shrink-0"
+                                            >
+                                                {newBeneForm.verifying ? (
+                                                    <>
+                                                        <RefreshCw size={15} className="animate-spin" />
+                                                        Verifying...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Sparkles size={15} />
+                                                        Verify Legal Name
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Bank Name (Optional) */}
+                                    <div>
+                                        <label className="block text-xs sm:text-sm font-black uppercase tracking-wider text-slate-950 mb-1.5">
+                                            Bank Name (Optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            className="w-full rounded-xl border-2 border-slate-300 bg-white px-4 py-3 text-sm sm:text-base font-black text-slate-950 placeholder:text-slate-400 placeholder:font-normal outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-100 transition shadow-2xs"
+                                            placeholder="e.g. State Bank of India"
+                                            value={newBeneForm.bankName}
+                                            onChange={(e) => setNewBeneForm(p => ({ ...p, bankName: e.target.value }))}
+                                        />
+                                    </div>
+
+                                    {/* Nickname (Optional) */}
+                                    <div>
+                                        <label className="block text-xs sm:text-sm font-black uppercase tracking-wider text-slate-950 mb-1.5">
+                                            Nickname (Optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            className="w-full rounded-xl border-2 border-slate-300 bg-white px-4 py-3 text-sm sm:text-base font-black text-slate-950 placeholder:text-slate-400 placeholder:font-normal outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-100 transition shadow-2xs"
+                                            placeholder="e.g. Primary Shop Account"
+                                            value={newBeneForm.nickName}
+                                            onChange={(e) => setNewBeneForm(p => ({ ...p, nickName: e.target.value }))}
+                                            maxLength={50}
+                                        />
+                                    </div>
+
+                                    {newBeneForm.verifyError && (
+                                        <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs font-black text-rose-800">
+                                            <AlertTriangle size={15} className="shrink-0 text-rose-600" />
+                                            <span>{newBeneForm.verifyError}</span>
+                                        </div>
+                                    )}
+
+                                    {/* Big Bold Submit for Admin Approval Button */}
+                                    <div className="pt-2">
+                                        <button
+                                            type="submit"
+                                            disabled={newBeneForm.isSubmitting}
+                                            className="w-full inline-flex items-center justify-center gap-2.5 py-3.5 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-98 text-sm sm:text-base font-black uppercase tracking-wider text-white transition shadow-lg shadow-blue-600/30 cursor-pointer disabled:opacity-50"
+                                        >
+                                            {newBeneForm.isSubmitting ? (
+                                                <>
+                                                    <RefreshCw size={18} className="animate-spin" />
+                                                    Submitting to Admin...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <ShieldCheck size={18} />
+                                                    Submit for Admin Approval
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
                                 </div>
 
-                                <div>
-                                    <label className="block text-[10.5px] font-black uppercase tracking-wider text-slate-700 mb-0.5">
-                                        Nickname (Optional)
-                                    </label>
-                                    <input
-                                        type="text"
-                                        className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-1.5 text-xs font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 transition"
-                                        placeholder="e.g. Primary Account"
-                                        value={newBeneForm.nickName}
-                                        onChange={(e) => setNewBeneForm(p => ({ ...p, nickName: e.target.value }))}
-                                        maxLength={50}
-                                    />
-                                </div>
-
-                                <div className="flex flex-col justify-end">
-                                    <button
-                                        type="submit"
-                                        disabled={newBeneForm.isSubmitting}
-                                        className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-xs font-black uppercase tracking-wider text-white transition shadow-2xs cursor-pointer disabled:opacity-50"
-                                    >
-                                        {newBeneForm.isSubmitting ? (
-                                            <>
-                                                <RefreshCw size={13} className="animate-spin" />
-                                                Submitting...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <ShieldCheck size={14} />
-                                                Submit for Admin Approval
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
                             </div>
-
-                            {newBeneForm.verifyError && (
-                                <div className="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 p-2 text-xs font-bold text-rose-700">
-                                    <AlertTriangle size={13} className="shrink-0 text-rose-600" />
-                                    <span>{newBeneForm.verifyError}</span>
-                                </div>
-                            )}
                         </form>
                     </div>
                 )}
