@@ -168,7 +168,7 @@ const PlansRates = () => {
         setPage(1);
 
         try {
-            const token = localStorage.getItem('rupiksha_token');
+            const token = localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token');
             const endpoint = viewType === 'COMMISSION' ? '/all-commissions' : '/all-transactions';
             const res = await fetch(
                 `${BACKEND_URL}${endpoint}?from=${fromDate}&to=${toDate}`,

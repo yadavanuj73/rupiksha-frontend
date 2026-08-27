@@ -24,17 +24,23 @@ async function safeJson(res, fallback = { success: false, message: 'Invalid serv
     }
 }
 
+const getToken = () => {
+    const isAdminTab = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+    if (isAdminTab) return localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token');
+    return localStorage.getItem('rupiksha_imp_token') || localStorage.getItem('rupiksha_token');
+};
+
 /**
  * Sends a real approval email via the Python Backend SMTP.
  */
 export const sendApprovalEmail = async (params) => {
     try {
-        const token = localStorage.getItem('rupiksha_token');
+        const token = getToken();
         const response = await fetch(`${BACKEND_URL}/send-approval`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
             },
             body: JSON.stringify({
                 to: params.to,
@@ -60,12 +66,12 @@ export const sendApprovalEmail = async (params) => {
  */
 export const sendOTPEmail = async (email, otp, name) => {
     try {
-        const token = localStorage.getItem('rupiksha_token');
+        const token = getToken();
         const response = await fetch(`${BACKEND_URL}/send-otp`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
             },
             body: JSON.stringify({ to: email, otp, name })
         });
@@ -83,12 +89,12 @@ export const sendOTPEmail = async (email, otp, name) => {
  */
 export const sendCredentialsEmail = async (params) => {
     try {
-        const token = localStorage.getItem('rupiksha_token');
+        const token = getToken();
         const response = await fetch(`${BACKEND_URL}/send-credentials`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
             },
             body: JSON.stringify({
                 to: params.to,

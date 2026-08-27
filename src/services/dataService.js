@@ -19,12 +19,18 @@ async function safeJson(res, fallback = {}) {
     }
 }
 
+function getEffectiveToken() {
+    const isAdminTab = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+    if (isAdminTab) {
+        return localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token');
+    }
+    return localStorage.getItem('rupiksha_imp_token') || localStorage.getItem('rupiksha_token');
+}
+
 // ── Auth-aware fetch: clears stale token and redirects to login on 401 ──────
 async function authFetch(url, options = {}) {
     const isAdminTab = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
-    const token = isAdminTab 
-        ? (localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token'))
-        : (localStorage.getItem('rupiksha_imp_token') || localStorage.getItem('rupiksha_token'));
+    const token = getEffectiveToken();
     const headers = {
         ...(options.headers || {}),
         ...(token ? { 'Authorization': `Bearer ${token}` } : {})
@@ -243,7 +249,7 @@ export const dataService = {
             return { success: true, message: "User added successfully." };
         }
         try {
-            const token = localStorage.getItem('rupiksha_token');
+            const token = getEffectiveToken();
             const res = await fetch(`${BACKEND_URL}/admin/add-user`, {
                 method: 'POST',
                 headers: { 
@@ -756,7 +762,7 @@ export const dataService = {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('rupiksha_token')}`
+                    'Authorization': `Bearer ${getEffectiveToken()}`
                 },
                 body: JSON.stringify(payload)
             });
@@ -875,7 +881,7 @@ export const dataService = {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('rupiksha_token')}`
+                    'Authorization': `Bearer ${getEffectiveToken()}`
                 },
                 body: JSON.stringify(payload)
             });
@@ -891,7 +897,7 @@ export const dataService = {
 
     async getPendingKycs(type) {
         try {
-            const token = localStorage.getItem('rupiksha_token');
+            const token = getEffectiveToken();
             const res = await fetch(`${BACKEND_URL}/admin/kyc/pending`, {
                 headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             });
@@ -959,7 +965,7 @@ export const dataService = {
             return str;
         }
         try {
-            const token = localStorage.getItem('rupiksha_token');
+            const token = getEffectiveToken();
             const res = await fetch(`${BACKEND_URL}/admin/users`, {
                 headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             });
@@ -975,7 +981,7 @@ export const dataService = {
 
     approveKyc: async function (identifier /*, type, merchantId*/) {
         try {
-            const token = localStorage.getItem('rupiksha_token');
+            const token = getEffectiveToken();
             const userId = await this._resolveUserIdForKyc(identifier);
             if (!userId) return { success: false, message: 'User not found' };
             const res = await fetch(`${BACKEND_URL}/admin/kyc/${userId}`, {
@@ -996,7 +1002,7 @@ export const dataService = {
 
     rejectKyc: async function (identifier, _type, reason = '') {
         try {
-            const token = localStorage.getItem('rupiksha_token');
+            const token = getEffectiveToken();
             const userId = await this._resolveUserIdForKyc(identifier);
             if (!userId) return { success: false, message: 'User not found' };
             const res = await fetch(`${BACKEND_URL}/admin/kyc/${userId}`, {
@@ -1235,7 +1241,7 @@ export const dataService = {
 
     getTrashUsers: async function () {
         try {
-            const token = localStorage.getItem('rupiksha_token');
+            const token = getEffectiveToken();
             const res = await fetch(`${BACKEND_URL}/admin/trash-users`, {
                 headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             });
@@ -1250,7 +1256,7 @@ export const dataService = {
             return this.getData().loans || [];
         }
         try {
-            const token = localStorage.getItem('rupiksha_token');
+            const token = getEffectiveToken();
             const res = await fetch(`${BACKEND_URL}/loan/all`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -1278,7 +1284,7 @@ export const dataService = {
             return { success: false, message: 'Application not found in local db' };
         }
         try {
-            const token = localStorage.getItem('rupiksha_token');
+            const token = getEffectiveToken();
             const res = await fetch(`${BACKEND_URL}/loan/simulate-status`, {
                 method: 'POST',
                 headers: { 
@@ -1592,7 +1598,7 @@ export const dataService = {
 
     issueCredentialsForApproval: async function (identifier) {
         try {
-            const token = localStorage.getItem('rupiksha_token');
+            const token = getEffectiveToken();
             const res = await fetch(`${BACKEND_URL}/admin/approvals/${encodeURIComponent(identifier)}/issue-credentials`, {
                 method: 'POST',
                 headers: token ? { 'Authorization': `Bearer ${token}` } : {}
@@ -1639,7 +1645,7 @@ export const dataService = {
 
     rejectUser: async function (identifier) {
         try {
-            const token = localStorage.getItem('rupiksha_token');
+            const token = getEffectiveToken();
             const res = await fetch(`${BACKEND_URL}/admin/approvals/${encodeURIComponent(identifier)}`, {
                 method: 'POST',
                 headers: {
@@ -1696,7 +1702,7 @@ export const dataService = {
 
     deleteUser: async function (identifier) {
         try {
-            const token = localStorage.getItem('rupiksha_token');
+            const token = getEffectiveToken();
             const res = await fetch(`${BACKEND_URL}/admin/users/${encodeURIComponent(identifier)}`, {
                 method: 'DELETE',
                 headers: token ? { 'Authorization': `Bearer ${token}` } : {}

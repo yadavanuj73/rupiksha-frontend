@@ -99,7 +99,7 @@ const Retailers = () => {
     const handleDelete = async (retailer) => {
         setDeleting(true);
         try {
-            const token = localStorage.getItem('rupiksha_token');
+            const token = localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token');
             const res = await fetch(`${BACKEND_URL}/admin/users/${retailer.id || retailer.username}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }

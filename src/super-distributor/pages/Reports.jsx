@@ -125,7 +125,7 @@ export const CommissionReport = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('rupiksha_token');
+            const token = localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token');
             const res = await fetch(`${BACKEND_URL}/all-commissions?from=${fromDate}&to=${toDate}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });

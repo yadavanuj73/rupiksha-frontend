@@ -17,7 +17,7 @@ const WalletControl = ({ initialTab = 'credit' }) => {
 
     const loadData = async () => {
         try {
-            const token = localStorage.getItem('rupiksha_token');
+            const token = localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token');
             // Fetch fund requests
             const reqRes = await fetch(`${BACKEND_URL}/admin/wallet/fund-requests`, {
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -43,7 +43,7 @@ const WalletControl = ({ initialTab = 'credit' }) => {
         setLoading(true);
         setMessage(null);
         try {
-            const token = localStorage.getItem('rupiksha_token');
+            const token = localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token');
             const endpoint = `/admin/wallet/${activeTab}`; // credit, debit, lock, release-lock
             const res = await fetch(`${BACKEND_URL}${endpoint}`, {
                 method: 'POST',
@@ -70,7 +70,7 @@ const WalletControl = ({ initialTab = 'credit' }) => {
 
     const handleApprove = async (id, status) => {
         try {
-            const token = localStorage.getItem('rupiksha_token');
+            const token = localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token');
             const endpoint = status === 'APPROVED' ? '/admin/wallet/approve-request' : '/admin/wallet/reject-request';
             const res = await fetch(`${BACKEND_URL}${endpoint}`, {
                 method: 'POST',

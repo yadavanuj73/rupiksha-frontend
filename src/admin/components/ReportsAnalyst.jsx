@@ -23,7 +23,7 @@ const ReportsAnalyst = () => {
     const fetchTopMerchants = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('rupiksha_token');
+            const token = localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token');
             const res = await fetch(`${BACKEND_URL}/admin/reports/top-merchants?timeframe=${timeframe}&state=${selectedState}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`

@@ -244,7 +244,7 @@ const Admin = () => {
         if (e) e.preventDefault();
         setIsSavingMember(true);
         try {
-            const token = localStorage.getItem('rupiksha_token');
+            const token = localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token');
             const res = await fetch(`${BACKEND_URL}/admin/add-user`, {
                 method: 'POST',
                 headers: {
@@ -583,7 +583,7 @@ const Admin = () => {
             return;
         }
 
-        const adminToken = localStorage.getItem('rupiksha_token');
+        const adminToken = localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token');
         if (!adminToken) {
             setStatus({ type: 'error', message: 'Admin session expired. Please sign in again.' });
             setTimeout(() => {

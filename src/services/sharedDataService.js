@@ -1,4 +1,4 @@
-﻿import { BACKEND_URL } from './config';
+import { BACKEND_URL } from './config';
 import { generateUniquePartyCode } from '../database/partyCode';
 
 // Environment-based toggle: Use real backend on localhost, localstorage in production
@@ -19,7 +19,10 @@ export const sharedDataService = {
 
     // --- LIVE API METHODS ---
     getAuthHeader: () => {
-        const token = localStorage.getItem('rupiksha_token');
+        const isAdminTab = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+        const token = isAdminTab 
+            ? (localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token'))
+            : (localStorage.getItem('rupiksha_imp_token') || localStorage.getItem('rupiksha_token'));
         return token ? { 'Authorization': `Bearer ${token}` } : {};
     },
 
@@ -209,7 +212,6 @@ export const sharedDataService = {
             const dist = dists[idx];
             if (!useLocalOnly) {
                 try {
-                    const token = localStorage.getItem('rupiksha_token');
                     const existingCodes = [...dists.map(d => d.partyCode), ...this.getAllSuperDistributors().map(s => s.partyCode)];
                     const payload = {
                         id: dist._id || dist.id,
@@ -223,8 +225,7 @@ export const sharedDataService = {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            ...this.getAuthHeader(),
-                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                            ...this.getAuthHeader()
                         },
                         body: JSON.stringify(payload)
                     });
@@ -233,8 +234,7 @@ export const sharedDataService = {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
-                                ...this.getAuthHeader(),
-                                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                                ...this.getAuthHeader()
                             },
                             body: JSON.stringify(payload)
                         });
@@ -276,22 +276,20 @@ export const sharedDataService = {
             const sa = sas[idx];
             if (!useLocalOnly) {
                 try {
-                    const token = localStorage.getItem('rupiksha_token');
                     const existingCodes = [...sas.map(s => s.partyCode), ...this.getAllDistributors().map(d => d.partyCode)];
                     const payload = {
                         id: sa._id || sa.id,
                         username: sa.username || sa.mobile,
                         password: password,
                         pin: sa.pin || '1122',
-                        partyCode: (sa.partyCode || generateUniquePartyCode(sa.state, sa.role || 'SUPER_DISTRIBUTOR', existingCodes)).toUpperCase(),
+                        partyCode: generateUniquePartyCode(sa.state, 'SUPER_DISTRIBUTOR', existingCodes).toUpperCase(),
                         status: 'Approved'
                     };
                     let res = await fetch(`${BACKEND_URL}/approve-user`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            ...this.getAuthHeader(),
-                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                            ...this.getAuthHeader()
                         },
                         body: JSON.stringify(payload)
                     });
@@ -300,8 +298,7 @@ export const sharedDataService = {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
-                                ...this.getAuthHeader(),
-                                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                                ...this.getAuthHeader()
                             },
                             body: JSON.stringify(payload)
                         });

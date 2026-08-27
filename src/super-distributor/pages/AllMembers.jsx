@@ -153,7 +153,7 @@ const AllMembers = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            const token = localStorage.getItem('rupiksha_token');
+            const token = localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token');
             const res = await fetch(`${BACKEND_URL}/admin/users`, {
                 method: 'POST',
                 headers: {

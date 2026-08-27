@@ -256,7 +256,7 @@ const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistr
     const fetchDashboard = useCallback(async () => {
         try {
             const url = `${BACKEND_URL}/dashboard/live`;
-            const token = localStorage.getItem('rupiksha_token');
+            const token = localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token');
             const res = await fetch(url, {
                 headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             });

@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import dataService, { BACKEND_URL } from '../../services/dataService';
-const getToken = () => localStorage.getItem('rupiksha_token');
+const getToken = () => localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token');
 
 async function authFetch(url, options = {}) {
     const token = getToken();

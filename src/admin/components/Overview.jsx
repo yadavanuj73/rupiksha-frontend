@@ -93,7 +93,7 @@ const Overview = ({ data = {}, distributors = [], SuperDistributors = [], onNavi
         try {
             // 1. Fetch live metrics from dashboard/live
             const liveUrl = `${BACKEND_URL}/dashboard/live`;
-            const token = localStorage.getItem('rupiksha_token');
+            const token = localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token');
             const liveRes = await fetch(liveUrl, {
                 headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             });
