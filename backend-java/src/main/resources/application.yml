@@ -188,6 +188,8 @@ fingpay:
   password: ${FINGPAY_PASSWORD:}
   supermerchant:
     id: ${FINGPAY_SUPERMERCHANT_ID:1407}
+    gstin: ${FINGPAY_SUPERMERCHANT_GSTIN:}
+    pan: ${FINGPAY_SUPERMERCHANT_PAN:}
   device:
     imei: ${FINGPAY_DEVICE_IMEI:10068311}
   api:

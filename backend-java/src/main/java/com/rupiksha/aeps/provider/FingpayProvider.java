@@ -27,6 +27,7 @@ import com.rupiksha.aeps.provider.fingpay.service.FpDailyAuthService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -44,6 +45,12 @@ import java.util.*;
 @Component
 @RequiredArgsConstructor
 public class FingpayProvider implements AepsProvider {
+
+    @Value("${fingpay.supermerchant.gstin:}")
+    private String superMerchantGstin;
+
+    @Value("${fingpay.supermerchant.pan:}")
+    private String superMerchantPan;
 
     private final OnboardService onboardService;
     private final SendOtpService sendOtpService;
@@ -143,10 +150,18 @@ public class FingpayProvider implements AepsProvider {
         merchant.setCertificateOfIncorporationImage(false);
 
         KycDTO kyc = new KycDTO();
-        kyc.setAadhaarNumber(request.getAadharNumber());
-        kyc.setUserPan(request.getPanCard());
-        kyc.setGstinNumber(request.getGstinNumber() != null && !request.getGstinNumber().isBlank() ? request.getGstinNumber().trim() : null);
-        kyc.setCompanyOrShopPan(null);
+        kyc.setAadhaarNumber(request.getAadharNumber() != null ? request.getAadharNumber().trim() : "");
+        kyc.setUserPan(request.getPanCard() != null ? request.getPanCard().trim().toUpperCase() : "");
+
+        String gstin = (request.getGstinNumber() != null && !request.getGstinNumber().isBlank())
+                ? request.getGstinNumber().trim().toUpperCase()
+                : (superMerchantGstin != null && !superMerchantGstin.isBlank() ? superMerchantGstin.trim().toUpperCase() : "");
+        kyc.setGstinNumber(gstin);
+
+        String companyPan = (superMerchantPan != null && !superMerchantPan.isBlank())
+                ? superMerchantPan.trim().toUpperCase()
+                : (request.getPanCard() != null ? request.getPanCard().trim().toUpperCase() : "");
+        kyc.setCompanyOrShopPan(companyPan);
         kyc.setShopAndPanImage(false);
         merchant.setKyc(kyc);
         
