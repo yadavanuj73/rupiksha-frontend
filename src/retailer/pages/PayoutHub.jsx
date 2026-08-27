@@ -10,8 +10,6 @@ import { dataService } from '../../services/dataService';
 import { useWallet } from '../../context/WalletContext';
 import DisabledServiceBanner from '../../components/shared/DisabledServiceBanner';
 
-const QUICK_AMOUNTS = [500, 1000, 2000, 5000, 10000, 25000];
-
 const PayoutHub = () => {
     const user = useMemo(() => dataService.getCurrentUser(), []);
     const { balance, refreshWallet, isWalletLoading } = useWallet();
@@ -578,394 +576,370 @@ const PayoutHub = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100/60 to-indigo-50/30 p-4 sm:p-6 lg:p-8 font-sans">
-            <div className="mx-auto max-w-5xl space-y-6">
+        <div className="p-3 sm:p-4 md:p-5 font-sans">
+            <div className="mx-auto max-w-5xl space-y-3.5">
 
-                {/* ─── Top Header Card ────────────────────────────────────────── */}
-                <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white/90 p-6 sm:p-8 shadow-sm backdrop-blur-xl">
-                    <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-gradient-to-bl from-blue-500/10 to-indigo-500/10 blur-3xl pointer-events-none" />
-
-                    <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50/80 px-3.5 py-1 text-xs font-black uppercase tracking-wider text-blue-700">
-                                <Zap size={14} className="animate-pulse" />
-                                Instant Bank Transfer
-                            </div>
-                            <h1 className="mt-2 text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
-                                Payout Hub
-                            </h1>
-                            <p className="mt-1 text-xs sm:text-sm font-semibold text-slate-500">
-                                Transfer funds 24x7 securely to any bank account via IMPS, NEFT & RTGS rails.
-                            </p>
-                        </div>
-
-                        {/* Live Main Wallet Balance Widget */}
-                        <div className="flex items-center gap-4 rounded-2xl border border-slate-200/80 bg-slate-50/90 p-4 shadow-inner">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md shadow-blue-500/20">
-                                <CreditCard size={22} />
+                {/* ─── Compact Top Header & Controls ────────────────────────── */}
+                <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-2xs">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        
+                        {/* Title & Badge */}
+                        <div className="flex items-center gap-2.5">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-xs">
+                                <Zap size={20} />
                             </div>
                             <div>
-                                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                                    Main Wallet Balance
-                                </span>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-xl sm:text-2xl font-black text-slate-900 font-mono">
-                                        ₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                    <h1 className="text-base sm:text-lg font-black tracking-tight text-slate-900 leading-none">
+                                        Payout Hub
+                                    </h1>
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-blue-700">
+                                        Instant Settlement
                                     </span>
-                                    <button 
-                                        onClick={fetchBalance} 
-                                        disabled={balanceLoading}
-                                        title="Refresh Balance"
-                                        className="rounded-lg p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition"
-                                    >
-                                        <RefreshCw size={14} className={balanceLoading ? 'animate-spin' : ''} />
-                                    </button>
                                 </div>
+                                <p className="text-[11px] font-bold text-slate-500 mt-0.5">
+                                    Transfer funds securely 24x7 to any bank account via IMPS, NEFT & RTGS.
+                                </p>
                             </div>
                         </div>
-                    </div>
 
-                    {/* Navigation Tabs */}
-                    <div className="mt-6 flex gap-2 border-b border-slate-100 pt-2">
-                        <button
-                            onClick={() => setActiveTab('transfer')}
-                            className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs sm:text-sm font-black uppercase tracking-wider transition ${
-                                activeTab === 'transfer'
-                                    ? 'border-blue-600 text-blue-600'
-                                    : 'border-transparent text-slate-500 hover:text-slate-800'
-                            }`}
-                        >
-                            <SendIcon size={16} />
-                            New Transfer
-                        </button>
-                        <button
-                            onClick={() => { setActiveTab('history'); fetchHistory(); }}
-                            className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs sm:text-sm font-black uppercase tracking-wider transition ${
-                                activeTab === 'history'
-                                    ? 'border-blue-600 text-blue-600'
-                                    : 'border-transparent text-slate-500 hover:text-slate-800'
-                            }`}
-                        >
-                            <Clock size={16} />
-                            Recent Transfers
-                            {history.length > 0 && (
-                                <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-700">
-                                    {history.length}
-                                </span>
-                            )}
-                        </button>
+                        {/* Middle & Right: Tabs & Wallet Balance */}
+                        <div className="flex items-center justify-between sm:justify-end gap-2.5">
+                            
+                            {/* Nav Tab Toggle */}
+                            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+                                <button
+                                    onClick={() => setActiveTab('transfer')}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition ${
+                                        activeTab === 'transfer'
+                                            ? 'bg-white text-blue-700 shadow-2xs'
+                                            : 'text-slate-600 hover:text-slate-900'
+                                    }`}
+                                >
+                                    <SendIcon size={13} />
+                                    <span>Transfer</span>
+                                </button>
+                                <button
+                                    onClick={() => { setActiveTab('history'); fetchHistory(); }}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition ${
+                                        activeTab === 'history'
+                                            ? 'bg-white text-blue-700 shadow-2xs'
+                                            : 'text-slate-600 hover:text-slate-900'
+                                    }`}
+                                >
+                                    <Clock size={13} />
+                                    <span>History</span>
+                                    {history.length > 0 && (
+                                        <span className="rounded-full bg-blue-100 text-blue-800 px-1.5 py-0.2 text-[9.5px] font-black">
+                                            {history.length}
+                                        </span>
+                                    )}
+                                </button>
+                            </div>
+
+                            {/* Wallet Balance Pill */}
+                            <div className="flex items-center gap-2 bg-slate-900 text-white px-3 py-1.5 rounded-xl shadow-2xs shrink-0">
+                                <div className="text-left">
+                                    <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 leading-none">
+                                        Wallet
+                                    </div>
+                                    <div className="text-sm font-black font-mono leading-tight">
+                                        ₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={fetchBalance} 
+                                    disabled={balanceLoading}
+                                    title="Refresh Balance"
+                                    className="p-1 text-slate-400 hover:text-white rounded transition"
+                                >
+                                    <RefreshCw size={12} className={balanceLoading ? 'animate-spin' : ''} />
+                                </button>
+                            </div>
+
+                        </div>
                     </div>
                 </div>
 
-                {/* ─── Tab 1: New Transfer Form ────────────────────────────────── */}
+                {/* ─── Tab 1: New Transfer Form (Compact Single Card) ───────── */}
                 {activeTab === 'transfer' && (
-                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <div className="rounded-2xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-2xs">
+                        <form onSubmit={handlePayoutSubmit} className="space-y-3.5">
+                            
+                            {/* Top Info / Account Fields (2x2 Grid) */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                
+                                {/* 1. Account Number */}
+                                <div>
+                                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1">
+                                        Account Number *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm font-black text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 font-mono transition"
+                                        placeholder="Enter bank account number"
+                                        value={form.accountNumber}
+                                        onChange={(e) => setForm(p => ({ ...p, accountNumber: e.target.value.replace(/\D/g, '') }))}
+                                        maxLength={18}
+                                    />
+                                </div>
 
-                        {/* Left 2 Cols: Main Transfer Card */}
-                        <div className="lg:col-span-2 rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-sm">
-                            <form onSubmit={handlePayoutSubmit} className="space-y-5">
+                                {/* 2. Confirm Account Number */}
+                                <div>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <label className="text-[11px] font-black uppercase tracking-wider text-slate-700">
+                                            Confirm Account Number *
+                                        </label>
+                                        {form.confirmAccountNumber && (
+                                            <span className={`text-[10px] font-black ${isAccountMatching ? 'text-emerald-600' : 'text-rose-500'}`}>
+                                                {isAccountMatching ? '✓ Matched' : '✗ Mismatch'}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <input
+                                        type="text"
+                                        required
+                                        className={`w-full rounded-xl border px-3 py-2 text-sm font-black text-slate-900 placeholder:text-slate-400 outline-none font-mono transition ${
+                                            form.confirmAccountNumber && !isAccountMatching
+                                                ? 'border-rose-300 bg-rose-50/50 focus:border-rose-500 focus:ring-2 focus:ring-rose-100'
+                                                : 'border-slate-200 bg-slate-50/50 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100'
+                                        }`}
+                                        placeholder="Re-enter account number"
+                                        value={form.confirmAccountNumber}
+                                        onChange={(e) => setForm(p => ({ ...p, confirmAccountNumber: e.target.value.replace(/\D/g, '') }))}
+                                        maxLength={18}
+                                    />
+                                </div>
 
-                                {/* Step 1: Account Number & Verification */}
-                                <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 sm:p-5">
-                                    <div className="flex items-center justify-between">
-                                        <label className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[11px] text-white">1</span>
-                                            Beneficiary Account Details
+                                {/* 3. IFSC Code with Verify Account Button */}
+                                <div>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <label className="text-[11px] font-black uppercase tracking-wider text-slate-700">
+                                            IFSC Code *
                                         </label>
                                         {isAccountValid && isIfscValid && (
                                             <button
                                                 type="button"
                                                 onClick={handleVerifyAccount}
                                                 disabled={verifying}
-                                                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition shadow-sm"
+                                                className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-md transition"
                                             >
                                                 {verifying ? (
                                                     <>
-                                                        <RefreshCw size={12} className="animate-spin" />
-                                                        Verifying Account...
+                                                        <RefreshCw size={10} className="animate-spin" />
+                                                        Verifying...
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <Sparkles size={12} />
+                                                        <Sparkles size={10} />
                                                         Verify Account Holder
                                                     </>
                                                 )}
                                             </button>
                                         )}
                                     </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                                        <div>
-                                            <label className="text-[11px] font-bold text-slate-600">Account Number *</label>
-                                            <input
-                                                type="text"
-                                                required
-                                                className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-mono transition"
-                                                placeholder="Enter bank account number"
-                                                value={form.accountNumber}
-                                                onChange={(e) => setForm(p => ({ ...p, accountNumber: e.target.value.replace(/\D/g, '') }))}
-                                                maxLength={18}
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="text-[11px] font-bold text-slate-600 flex items-center justify-between">
-                                                Confirm Account Number *
-                                                {form.confirmAccountNumber && (
-                                                    <span className={`text-[10px] font-black ${isAccountMatching ? 'text-emerald-600' : 'text-rose-500'}`}>
-                                                        {isAccountMatching ? '✓ Matched' : '✗ Mismatch'}
-                                                    </span>
-                                                )}
-                                            </label>
-                                            <input
-                                                type="text"
-                                                required
-                                                className={`mt-1 w-full rounded-xl border px-3.5 py-2.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none font-mono transition ${
-                                                    form.confirmAccountNumber && !isAccountMatching
-                                                        ? 'border-rose-300 bg-rose-50/40 focus:border-rose-500 focus:ring-2 focus:ring-rose-100'
-                                                        : 'border-slate-200 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
-                                                }`}
-                                                placeholder="Re-enter bank account number"
-                                                value={form.confirmAccountNumber}
-                                                onChange={(e) => setForm(p => ({ ...p, confirmAccountNumber: e.target.value.replace(/\D/g, '') }))}
-                                                maxLength={18}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                                        <div>
-                                            <label className="text-[11px] font-bold text-slate-600">IFSC Code *</label>
-                                            <input
-                                                type="text"
-                                                required
-                                                className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-bold uppercase text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-mono transition"
-                                                placeholder="e.g. SBIN0001234"
-                                                value={form.ifsc}
-                                                onChange={(e) => setForm(p => ({ ...p, ifsc: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
-                                                maxLength={11}
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="text-[11px] font-bold text-slate-600">Beneficiary Legal Name *</label>
-                                            <input
-                                                type="text"
-                                                required
-                                                className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition"
-                                                placeholder="Name as in bank records"
-                                                value={form.beneficiaryName}
-                                                onChange={(e) => setForm(p => ({ ...p, beneficiaryName: e.target.value }))}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Verification Success Badge */}
-                                    {verificationResult && (
-                                        <div className="flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50/90 p-3 text-xs font-bold text-emerald-800">
-                                            <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
-                                            <span>
-                                                Account Verified: <span className="font-extrabold">{verificationResult.nameAtBank}</span> (Status: {verificationResult.acValidationStatus})
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    {/* Verification Error Badge */}
-                                    {verificationError && (
-                                        <div className="flex items-center gap-2.5 rounded-xl border border-rose-200 bg-rose-50/90 p-3 text-xs font-bold text-rose-800">
-                                            <AlertTriangle size={16} className="text-rose-600 shrink-0" />
-                                            <span>{verificationError}</span>
-                                        </div>
-                                    )}
+                                    <input
+                                        type="text"
+                                        required
+                                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm font-black uppercase text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 font-mono transition"
+                                        placeholder="e.g. SBIN0001234"
+                                        value={form.ifsc}
+                                        onChange={(e) => setForm(p => ({ ...p, ifsc: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
+                                        maxLength={11}
+                                    />
                                 </div>
 
-                                {/* Step 2: Transfer Mode & Amount */}
-                                <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 sm:p-5">
-                                    <label className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[11px] text-white">2</span>
-                                        Transfer Mode & Amount
+                                {/* 4. Beneficiary Legal Name */}
+                                <div>
+                                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1">
+                                        Beneficiary Legal Name *
                                     </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition"
+                                        placeholder="Name as in bank records"
+                                        value={form.beneficiaryName}
+                                        onChange={(e) => setForm(p => ({ ...p, beneficiaryName: e.target.value }))}
+                                    />
+                                </div>
+                            </div>
 
-                                    {/* Transfer Mode Selector */}
-                                    <div className="grid grid-cols-3 gap-2">
+                            {/* Verification Result Banner (Inline compact) */}
+                            {verificationResult && (
+                                <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/90 px-3 py-2 text-xs font-bold text-emerald-800">
+                                    <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
+                                    <span>
+                                        Account Verified: <strong className="font-black">{verificationResult.nameAtBank}</strong> (Status: {verificationResult.acValidationStatus})
+                                    </span>
+                                </div>
+                            )}
+
+                            {verificationError && (
+                                <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50/90 px-3 py-2 text-xs font-bold text-rose-800">
+                                    <AlertTriangle size={15} className="text-rose-600 shrink-0" />
+                                    <span>{verificationError}</span>
+                                </div>
+                            )}
+
+                            {/* Middle Row: Transfer Rail & Transfer Amount (2-Col Grid) */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                                
+                                {/* Transfer Mode Selector */}
+                                <div>
+                                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1">
+                                        Payment Rail *
+                                    </label>
+                                    <div className="grid grid-cols-3 gap-1.5">
                                         {[
                                             { mode: 'IMPS', title: 'IMPS', desc: 'Instant 24x7' },
-                                            { mode: 'NEFT', title: 'NEFT', desc: 'Batch Transfer' },
-                                            { mode: 'RTGS', title: 'RTGS', desc: 'High Value (₹2L+)' }
+                                            { mode: 'NEFT', title: 'NEFT', desc: 'Batch' },
+                                            { mode: 'RTGS', title: 'RTGS', desc: '₹2L+' }
                                         ].map(item => (
                                             <button
                                                 key={item.mode}
                                                 type="button"
                                                 onClick={() => setForm(p => ({ ...p, transferMode: item.mode }))}
-                                                className={`rounded-xl border p-2.5 text-center transition ${
+                                                className={`rounded-xl border py-1.5 px-2 text-center transition ${
                                                     form.transferMode === item.mode
-                                                        ? 'border-blue-600 bg-blue-50/80 text-blue-900 shadow-sm'
-                                                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                                                        ? 'border-blue-600 bg-blue-50 text-blue-900 font-black shadow-2xs'
+                                                        : 'border-slate-200 bg-slate-50/60 text-slate-600 hover:border-slate-300'
                                                 }`}
                                             >
-                                                <div className="text-xs font-black">{item.title}</div>
-                                                <div className="text-[10px] font-semibold text-slate-400">{item.desc}</div>
+                                                <div className="text-xs font-black leading-tight">{item.title}</div>
+                                                <div className="text-[9.5px] font-semibold text-slate-400 leading-tight">{item.desc}</div>
                                             </button>
                                         ))}
-                                    </div>
-
-                                    {/* Amount Input */}
-                                    <div>
-                                        <label className="text-[11px] font-bold text-slate-600">Transfer Amount (₹) *</label>
-                                        <div className="relative mt-1">
-                                            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base font-black text-slate-400">₹</span>
-                                            <input
-                                                type="text"
-                                                required
-                                                className={`w-full rounded-xl border pl-8 pr-4 py-2.5 text-base font-black text-slate-900 placeholder:text-slate-400 outline-none font-mono transition ${
-                                                    form.amount && !isAmountWithinBalance
-                                                        ? 'border-rose-300 bg-rose-50/40 focus:border-rose-500 focus:ring-2 focus:ring-rose-100'
-                                                        : 'border-slate-200 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
-                                                }`}
-                                                placeholder="0.00"
-                                                value={form.amount}
-                                                onChange={(e) => setForm(p => ({ ...p, amount: e.target.value.replace(/[^\d.]/g, '') }))}
-                                            />
-                                        </div>
-
-                                        {/* Insufficient Balance Notice */}
-                                        {form.amount && !isAmountWithinBalance && (
-                                            <p className="mt-1 text-xs font-bold text-rose-600">
-                                                Amount exceeds your available wallet balance of ₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {/* Quick Amount Chips */}
-                                    <div className="flex flex-wrap gap-2">
-                                        {QUICK_AMOUNTS.map(amt => (
-                                            <button
-                                                key={amt}
-                                                type="button"
-                                                onClick={() => setForm(p => ({ ...p, amount: String(amt) }))}
-                                                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 hover:border-blue-400 hover:bg-blue-50/50 transition font-mono"
-                                            >
-                                                +₹{amt.toLocaleString('en-IN')}
-                                            </button>
-                                        ))}
-                                    </div>
-
-                                    {/* Remarks */}
-                                    <div>
-                                        <label className="text-[11px] font-bold text-slate-600">Transaction Remarks (Optional)</label>
-                                        <input
-                                            type="text"
-                                            className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-800 placeholder:text-slate-400 outline-none focus:border-blue-500"
-                                            placeholder="e.g. Vendor payout, salary, or refund"
-                                            value={form.remarks}
-                                            onChange={(e) => setForm(p => ({ ...p, remarks: e.target.value }))}
-                                            maxLength={100}
-                                        />
                                     </div>
                                 </div>
 
-                                {/* Error message */}
-                                {submitError && (
-                                    <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-bold text-rose-700">
-                                        <AlertTriangle size={16} className="shrink-0 text-rose-600" />
-                                        <span>{submitError}</span>
+                                {/* Amount Input */}
+                                <div>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <label className="text-[11px] font-black uppercase tracking-wider text-slate-700">
+                                            Transfer Amount (₹) *
+                                        </label>
+                                        {form.amount && !isAmountWithinBalance && (
+                                            <span className="text-[10px] font-black text-rose-600">
+                                                Exceeds wallet (₹{walletBalance.toFixed(2)})
+                                            </span>
+                                        )}
                                     </div>
-                                )}
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base font-black text-slate-400">₹</span>
+                                        <input
+                                            type="text"
+                                            required
+                                            className={`w-full rounded-xl border pl-7 pr-3 py-2 text-base font-black text-slate-900 placeholder:text-slate-400 outline-none font-mono transition ${
+                                                form.amount && !isAmountWithinBalance
+                                                    ? 'border-rose-300 bg-rose-50/50 focus:border-rose-500 focus:ring-2 focus:ring-rose-100'
+                                                    : 'border-slate-200 bg-slate-50/50 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100'
+                                            }`}
+                                            placeholder="0.00"
+                                            value={form.amount}
+                                            onChange={(e) => setForm(p => ({ ...p, amount: e.target.value.replace(/[^\d.]/g, '') }))}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
 
-                                {/* Submit Action Button */}
+                            {/* Remarks Field */}
+                            <div>
+                                <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1">
+                                    Transaction Remarks (Optional)
+                                </label>
+                                <input
+                                    type="text"
+                                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-1.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:bg-white transition"
+                                    placeholder="e.g. Vendor payout, salary, or refund"
+                                    value={form.remarks}
+                                    onChange={(e) => setForm(p => ({ ...p, remarks: e.target.value }))}
+                                    maxLength={100}
+                                />
+                            </div>
+
+                            {/* Submit Error banner */}
+                            {submitError && (
+                                <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs font-bold text-rose-700">
+                                    <AlertTriangle size={15} className="shrink-0 text-rose-600" />
+                                    <span>{submitError}</span>
+                                </div>
+                            )}
+
+                            {/* Submit Button & Safeguard Footnote */}
+                            <div className="pt-1 space-y-2">
                                 <button
                                     type="submit"
                                     disabled={!canSubmit || isSubmitting}
-                                    className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3.5 text-sm font-black uppercase tracking-wider text-white shadow-lg shadow-blue-500/25 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition active:scale-[0.99]"
+                                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-600 py-3 text-xs sm:text-sm font-black uppercase tracking-wider text-white shadow-md shadow-blue-500/20 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer active:scale-[0.99]"
                                 >
                                     {isSubmitting ? (
                                         <>
-                                            <RefreshCw size={18} className="animate-spin" />
+                                            <RefreshCw size={16} className="animate-spin" />
                                             Processing Payout Transfer...
                                         </>
                                     ) : (
                                         <>
-                                            <ShieldCheck size={18} />
+                                            <ShieldCheck size={17} />
                                             Confirm & Transfer Payout
                                         </>
                                     )}
                                 </button>
-                            </form>
-                        </div>
 
-                        {/* Right 1 Col: Guidelines & Security Card */}
-                        <div className="space-y-6">
-                            <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm">
-                                <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
-                                    <ShieldCheck size={18} className="text-emerald-600" />
-                                    Payout Safeguards
-                                </h3>
-                                <ul className="mt-4 space-y-3 text-xs font-medium text-slate-600">
-                                    <li className="flex items-start gap-2">
-                                        <Check size={14} className="mt-0.5 text-emerald-600 shrink-0" />
-                                        <span><strong>Instant Auto-Refund:</strong> In case of bank failure, funds are instantly credited back to your wallet.</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <Check size={14} className="mt-0.5 text-emerald-600 shrink-0" />
-                                        <span><strong>Account Verification:</strong> Use "Verify Account Holder" to guarantee exact name matches bank records.</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <Check size={14} className="mt-0.5 text-emerald-600 shrink-0" />
-                                        <span><strong>Duplicate Protection:</strong> Each payout uses a unique encrypted order ID to prevent accidental double transfers.</span>
-                                    </li>
-                                </ul>
+                                <div className="flex items-center justify-center gap-4 text-[10.5px] font-bold text-slate-500 text-center">
+                                    <span className="flex items-center gap-1">
+                                        <Check size={12} className="text-emerald-600" /> Instant Bank Auto-Refund
+                                    </span>
+                                    <span>•</span>
+                                    <span className="flex items-center gap-1">
+                                        <ShieldCheck size={12} className="text-blue-600" /> NPCI Verified Rails
+                                    </span>
+                                </div>
                             </div>
 
-                            <div className="rounded-3xl border border-blue-100 bg-blue-50/50 p-6">
-                                <h4 className="text-xs font-black uppercase tracking-wider text-blue-900">
-                                    Need Higher Limits?
-                                </h4>
-                                <p className="mt-1.5 text-xs text-blue-700/90 leading-relaxed font-semibold">
-                                    For high volume bulk payouts and corporate integrations, please ensure your KYC is updated and contact support.
-                                </p>
-                            </div>
-                        </div>
+                        </form>
                     </div>
                 )}
 
                 {/* ─── Tab 2: Recent Transfers History ──────────────────────────── */}
                 {activeTab === 'history' && (
-                    <div className="rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-sm">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <div className="rounded-2xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-2xs">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                             <div>
-                                <h2 className="text-base font-black text-slate-900">Recent Payout History</h2>
-                                <p className="text-xs font-semibold text-slate-500">Live status of your initiated payouts</p>
+                                <h2 className="text-sm sm:text-base font-black text-slate-900">Recent Payout History</h2>
+                                <p className="text-[11px] font-semibold text-slate-500">Live status of your initiated payouts</p>
                             </div>
                             <button
                                 onClick={fetchHistory}
                                 disabled={historyLoading}
-                                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
                             >
-                                <RefreshCw size={12} className={historyLoading ? 'animate-spin' : ''} />
+                                <RefreshCw size={11} className={historyLoading ? 'animate-spin' : ''} />
                                 Refresh
                             </button>
                         </div>
 
                         {historyLoading && history.length === 0 ? (
-                            <div className="py-12 text-center text-xs font-bold text-slate-400">
+                            <div className="py-8 text-center text-xs font-bold text-slate-400">
                                 Loading transfer history...
                             </div>
                         ) : history.length === 0 ? (
-                            <div className="py-12 text-center text-xs font-bold text-slate-400">
+                            <div className="py-8 text-center text-xs font-bold text-slate-400">
                                 No payout transfers found yet. Initiated transfers will appear here.
                             </div>
                         ) : (
-                            <div className="mt-4 overflow-x-auto">
+                            <div className="mt-3 overflow-x-auto">
                                 <table className="w-full text-left text-xs">
                                     <thead>
                                         <tr className="border-b border-slate-100 text-[10px] font-black uppercase tracking-wider text-slate-400">
-                                            <th className="pb-3">Date & Time</th>
-                                            <th className="pb-3">Order ID / UTR</th>
-                                            <th className="pb-3">Beneficiary</th>
-                                            <th className="pb-3">Mode</th>
-                                            <th className="pb-3 text-right">Amount</th>
-                                            <th className="pb-3 text-center">Status</th>
-                                            <th className="pb-3 text-right">Action</th>
+                                            <th className="pb-2.5">Date & Time</th>
+                                            <th className="pb-2.5">Order ID / UTR</th>
+                                            <th className="pb-2.5">Beneficiary</th>
+                                            <th className="pb-2.5">Mode</th>
+                                            <th className="pb-2.5 text-right">Amount</th>
+                                            <th className="pb-2.5 text-center">Status</th>
+                                            <th className="pb-2.5 text-right">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
@@ -976,28 +950,28 @@ const PayoutHub = () => {
 
                                             return (
                                                 <tr key={txn.id || txn.orderId} className="hover:bg-slate-50/60 transition">
-                                                    <td className="py-3 font-mono text-[11px] text-slate-500">
+                                                    <td className="py-2.5 font-mono text-[11px] text-slate-500">
                                                         {txn.createdAt ? new Date(txn.createdAt).toLocaleString('en-IN') : 'N/A'}
                                                     </td>
-                                                    <td className="py-3 font-mono">
+                                                    <td className="py-2.5 font-mono">
                                                         <div className="font-bold text-slate-900">{txn.orderId}</div>
                                                         {txn.utr && (
                                                             <div className="text-[10px] text-slate-400">UTR: {txn.utr}</div>
                                                         )}
                                                     </td>
-                                                    <td className="py-3">
+                                                    <td className="py-2.5">
                                                         <div className="font-bold text-slate-900">{txn.beneficiaryName}</div>
                                                         <div className="font-mono text-[10px] text-slate-400">
                                                             {txn.accountNumber} ({txn.ifsc})
                                                         </div>
                                                     </td>
-                                                    <td className="py-3 font-bold text-blue-600 uppercase">
+                                                    <td className="py-2.5 font-bold text-blue-600 uppercase">
                                                         {txn.transferMode || 'IMPS'}
                                                     </td>
-                                                    <td className="py-3 text-right font-black text-slate-900 font-mono">
+                                                    <td className="py-2.5 text-right font-black text-slate-900 font-mono">
                                                         ₹{Number(txn.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                                     </td>
-                                                    <td className="py-3 text-center">
+                                                    <td className="py-2.5 text-center">
                                                         <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase ${
                                                             isSuccess
                                                                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
@@ -1008,7 +982,7 @@ const PayoutHub = () => {
                                                             {isSuccess ? '✓ Success' : isFailed ? '✕ Failed' : '⏳ Pending'}
                                                         </span>
                                                     </td>
-                                                    <td className="py-3 text-right">
+                                                    <td className="py-2.5 text-right">
                                                         {isPending ? (
                                                             <button
                                                                 onClick={() => handleCheckStatus(txn.orderId)}
