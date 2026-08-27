@@ -825,10 +825,6 @@ const PayoutHub = () => {
                                     <h1 className="text-sm sm:text-base font-black tracking-tight text-slate-900 leading-tight">
                                         Instant Payout Terminal
                                     </h1>
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200/80 px-2 py-0.2 text-[9.5px] font-black uppercase tracking-wider text-emerald-700">
-                                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
-                                        Rail 24x7 Active
-                                    </span>
                                 </div>
                                 <p className="text-[10.5px] font-semibold text-slate-500">
                                     Rupiksha Services Private Limited • NPCI Verified Banking Transfer
@@ -1406,9 +1402,6 @@ const PayoutHub = () => {
                                         <Activity size={13} className="text-blue-600" />
                                         Live Transfer Summary
                                     </span>
-                                    <span className="px-2 py-0.5 rounded-md bg-blue-600 text-white text-[10px] font-black uppercase font-mono shadow-2xs">
-                                        {form.transferMode} RAIL
-                                    </span>
                                 </div>
 
                                 <div className="flex items-baseline justify-between py-1">
@@ -1438,7 +1431,7 @@ const PayoutHub = () => {
                                     <div className="flex justify-between items-center text-slate-600">
                                         <span className="text-slate-500 text-[11px] font-semibold">Account:</span>
                                         <span className="font-mono font-black text-slate-950 text-xs tracking-wider">
-                                            {form.accountNumber ? `${form.accountNumber.slice(0, 3)}••••${form.accountNumber.slice(-4)}` : '—'}
+                                            {form.accountNumber || '—'}
                                         </span>
                                     </div>
                                     <div className="flex justify-between items-center text-slate-600">
@@ -1498,16 +1491,6 @@ const PayoutHub = () => {
                                         </>
                                     )}
                                 </button>
-
-                                <div className="flex items-center justify-center gap-3 text-[10.5px] font-bold text-slate-500 text-center flex-wrap">
-                                    <span className="flex items-center gap-1 text-emerald-700">
-                                        <CheckCircle2 size={12} /> Instant Auto-Refund on failure
-                                    </span>
-                                    <span>•</span>
-                                    <span className="flex items-center gap-1 text-blue-700">
-                                        <Lock size={12} /> 256-bit Encrypted Banking
-                                    </span>
-                                </div>
                             </div>
 
                         </div>
