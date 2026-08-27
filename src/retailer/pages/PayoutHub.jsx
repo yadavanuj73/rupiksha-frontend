@@ -102,13 +102,20 @@ const PayoutHub = () => {
         }
     }, []);
 
-    // Fetch Recent Payout Transactions
+    // Fetch Recent Payout Transactions (Lazy loaded on demand)
+    const [showAllHistory, setShowAllHistory] = useState(false);
     const fetchHistory = useCallback(async () => {
         setHistoryLoading(true);
         try {
             const res = await payoutService.getTransactions();
             if (Array.isArray(res)) {
-                setHistory(res);
+                // Sort newest first
+                const sorted = [...res].sort((a, b) => {
+                    const tA = new Date(a.createdAt || 0).getTime();
+                    const tB = new Date(b.createdAt || 0).getTime();
+                    return tB - tA;
+                });
+                setHistory(sorted);
             }
         } catch (e) {
             console.warn('Failed to fetch payout history', e);
@@ -131,8 +138,7 @@ const PayoutHub = () => {
         checkService();
         fetchBalance();
         fetchBeneficiaries();
-        fetchHistory();
-    }, [fetchBalance, fetchBeneficiaries, fetchHistory]);
+    }, [fetchBalance, fetchBeneficiaries]);
 
     // Beneficiary Quick Selection
     const handleSelectBeneficiary = (bene) => {
@@ -442,19 +448,16 @@ const PayoutHub = () => {
                 setSaveToBeneficiaries(false);
                 setVerificationResult(null);
 
-                // Refresh balance, beneficiaries, and history
+                // Refresh balance and beneficiaries
                 fetchBalance();
                 fetchBeneficiaries();
-                fetchHistory();
             } else {
                 setSubmitError(res?.message || 'Payout transfer failed. Any debited amount has been auto-refunded to your wallet.');
                 fetchBalance();
-                fetchHistory();
             }
         } catch (err) {
             setSubmitError(err?.message || 'Transfer request failed. Please check your transaction history.');
             fetchBalance();
-            fetchHistory();
         } finally {
             setIsSubmitting(false);
         }
@@ -1726,7 +1729,7 @@ const PayoutHub = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
-                                        {history.map(txn => {
+                                        {(showAllHistory ? history : history.slice(0, 10)).map(txn => {
                                             const isSuccess = txn.status === 'SUCCESS' || txn.status === 'SUCCESSFUL';
                                             const isFailed = txn.status === 'FAILED' || txn.status === 'FAILURE';
                                             const isPending = !isSuccess && !isFailed;
@@ -1771,7 +1774,7 @@ const PayoutHub = () => {
                                                                 type="button"
                                                                 onClick={() => handleCheckStatus(txn.orderId)}
                                                                 disabled={statusCheckingId === txn.orderId}
-                                                                className="rounded-lg bg-blue-50 px-2.5 py-1 text-[10px] font-black text-blue-700 hover:bg-blue-100 disabled:opacity-50 transition"
+                                                                className="rounded-lg bg-blue-50 px-2.5 py-1 text-[10px] font-black text-blue-700 hover:bg-blue-100 disabled:opacity-50 transition cursor-pointer"
                                                             >
                                                                 {statusCheckingId === txn.orderId ? 'Checking...' : 'Check Status'}
                                                             </button>
@@ -1808,6 +1811,22 @@ const PayoutHub = () => {
                                         })}
                                     </tbody>
                                 </table>
+                            </div>
+                        )}
+
+                        {/* Pagination / Show More Toggle */}
+                        {history.length > 10 && (
+                            <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-3 text-xs">
+                                <span className="font-semibold text-slate-500">
+                                    Showing {showAllHistory ? history.length : Math.min(10, history.length)} of {history.length} transactions
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAllHistory(prev => !prev)}
+                                    className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition cursor-pointer"
+                                >
+                                    {showAllHistory ? 'Show Latest 10 Only' : `Show All (${history.length})`}
+                                </button>
                             </div>
                         )}
                     </div>
