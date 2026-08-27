@@ -72,8 +72,8 @@ const DistributorTopBar = ({ onMenuClick }) => {
                         <img src={logo} alt="Rupiksha logo" className="h-8 w-8 object-contain" />
                     </div>
                     <div className="hidden sm:block">
-                        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-600">Rupiksha Fintech</p>
-                        <p className="text-slate-800 text-[13px] font-black tracking-wide">Distributor</p>
+                        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-600">Rupiksha Services Private Limited</p>
+                        <p className="text-slate-800 text-[13px] font-black tracking-wide">Distributor Portal</p>
                     </div>
                 </button>
 

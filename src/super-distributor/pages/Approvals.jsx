@@ -615,7 +615,7 @@ const Approvals = () => {
     const CredentialSharerModal = () => {
         if (!credentialData) return null;
 
-        const shareText = `*RUPIKSHA FINTECH APPROVAL*\n\n` +
+        const shareText = `*RUPIKSHA SERVICES PRIVATE LIMITED APPROVAL*\n\n` +
             `Hello *${credentialData.name}*,\n` +
             `Aapka *${credentialData.portalType}* account approve ho gaya hai.\n\n` +
             `*Login Details:*\n` +

@@ -53,7 +53,7 @@ export const DEFAULT_CONTENT = {
     contact: {
         phone: '+91 98765 43210',
         email: 'support@rupiksha.in',
-        address: 'RuPiKsha Fintech Pvt. Ltd., India',
+        address: 'Rupiksha Services Private Limited, India',
         whatsapp: '+91 98765 43210',
     },
 

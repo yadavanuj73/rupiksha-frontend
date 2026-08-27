@@ -22,7 +22,7 @@ const AddMoney = () => {
     const fileRef = useRef();
 
     const bankDetails = [
-        { label: 'Account Holder', val: 'RUPIKSHA FINTECH PVT LTD', icon: Building2 },
+        { label: 'Account Holder', val: 'Rupiksha Services Private Limited', icon: Building2 },
         { label: 'Bank Name', val: 'ICICI BANK', icon: Landmark },
         { label: 'Account No.', val: '002105112233', icon: CreditCard },
         { label: 'IFSC Code', val: 'ICIC0000021', icon: Hash },

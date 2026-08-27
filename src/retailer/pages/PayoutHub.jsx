@@ -479,7 +479,7 @@ const PayoutHub = () => {
                         <div class="header-left">
                             <img src="${logoUrl}" alt="Rupiksha Logo" class="logo-img" onerror="this.style.display='none'" />
                             <div>
-                                <div class="brand-name">RUPIKSHA <span>FINTECH</span></div>
+                                <div class="brand-name">Rupiksha Services <span>Private Limited</span></div>
                                 <div class="brand-sub">Instant Bank Payout Terminal</div>
                             </div>
                         </div>
@@ -551,7 +551,7 @@ const PayoutHub = () => {
                     </table>
 
                     <div class="footer-note">
-                        This is a computer-generated transaction acknowledgement receipt verified through NPCI Banking Gateway. Rupiksha Fintech is an authorized Business Correspondent partner. For queries or support, email support@rupiksha.in.
+                        This is a computer-generated transaction acknowledgement receipt verified through NPCI Banking Gateway. Rupiksha Services Private Limited is an authorized Business Correspondent partner. For queries or support, email support@rupiksha.in.
                     </div>
 
                     <div class="sign-row">
@@ -1146,7 +1146,7 @@ const PayoutHub = () => {
                                             />
                                             <div className="text-left">
                                                 <h2 className="text-base sm:text-lg font-black tracking-tight text-black leading-none">
-                                                    RUPIKSHA <span className="text-blue-700">FINTECH</span>
+                                                    Rupiksha Services <span className="text-blue-700">Private Limited</span>
                                                 </h2>
                                                 <p className="text-[10px] sm:text-[11px] font-black text-slate-800 uppercase tracking-wider mt-1">
                                                     Instant Payout Terminal

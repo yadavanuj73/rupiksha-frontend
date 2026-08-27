@@ -609,7 +609,7 @@ const SuperDistributors = () => {
                             <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] mb-2">CONGRATULATIONS</p>
                             <h2 className="text-3xl font-black text-slate-800 italic mb-2 tracking-tight">Distributor Added!</h2>
                             <p className="text-xs font-bold text-slate-400 mb-8 uppercase tracking-widest leading-relaxed">
-                                Request processed successfully via RUPIKSHA Fintech Gateway
+                                Request processed successfully via Rupiksha Services Private Limited Gateway
                             </p>
 
                             <div className="bg-slate-50 border-2 border-slate-100 rounded-3xl p-6 mb-8 text-left space-y-3">

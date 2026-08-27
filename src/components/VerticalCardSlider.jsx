@@ -67,7 +67,7 @@ const VerticalCardSlider = () => {
                             <div className="hiw-grid-watermark">{item.icon}</div>
 
                             {/* Footer label */}
-                            <div className="hiw-grid-footer">RUPIKSHA FINTECH PREMIUM</div>
+                            <div className="hiw-grid-footer">RUPIKSHA SERVICES PRIVATE LIMITED</div>
                         </motion.div>
                     ))}
                 </div>

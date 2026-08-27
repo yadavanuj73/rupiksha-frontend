@@ -1195,7 +1195,7 @@ const HistoryTab = ({ users, onToast }) => {
                 doc.setPage(p);
                 doc.setFontSize(6);
                 doc.setTextColor(150, 150, 170);
-                doc.text(`Rupiksha Fintech — Confidential | Page ${p} of ${totalPages_}`, pageW / 2, pageH - 4, { align: 'center' });
+                doc.text(`Rupiksha Services Private Limited — Confidential | Page ${p} of ${totalPages_}`, pageW / 2, pageH - 4, { align: 'center' });
             }
 
             doc.save(`wallet_history_${new Date().toISOString().slice(0,10)}.pdf`);
