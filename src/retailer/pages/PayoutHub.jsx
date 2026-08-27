@@ -71,10 +71,6 @@ const PayoutHub = () => {
     const [receiptData, setReceiptData] = useState(null);
     const [showReceiptModal, setShowReceiptModal] = useState(false);
 
-    // History State
-    const [history, setHistory] = useState([]);
-    const [historyLoading, setHistoryLoading] = useState(false);
-    const [statusCheckingId, setStatusCheckingId] = useState(null);
     const [copiedField, setCopiedField] = useState('');
     const [serviceDisabled, setServiceDisabled] = useState(false);
 
@@ -99,28 +95,6 @@ const PayoutHub = () => {
             console.warn('Failed to load beneficiaries', e);
         } finally {
             setBeneficiariesLoading(false);
-        }
-    }, []);
-
-    // Fetch Recent Payout Transactions (Lazy loaded on demand)
-    const [showAllHistory, setShowAllHistory] = useState(false);
-    const fetchHistory = useCallback(async () => {
-        setHistoryLoading(true);
-        try {
-            const res = await payoutService.getTransactions();
-            if (Array.isArray(res)) {
-                // Sort newest first
-                const sorted = [...res].sort((a, b) => {
-                    const tA = new Date(a.createdAt || 0).getTime();
-                    const tB = new Date(b.createdAt || 0).getTime();
-                    return tB - tA;
-                });
-                setHistory(sorted);
-            }
-        } catch (e) {
-            console.warn('Failed to fetch payout history', e);
-        } finally {
-            setHistoryLoading(false);
         }
     }, []);
 
@@ -866,23 +840,6 @@ const PayoutHub = () => {
                                     {beneficiaries.length > 0 && (
                                         <span className="rounded-full bg-blue-100 text-blue-800 px-1.5 py-0.2 text-[9px] font-black">
                                             {beneficiaries.length}
-                                        </span>
-                                    )}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => { setActiveTab('history'); fetchHistory(); }}
-                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-black uppercase tracking-wider transition ${
-                                        activeTab === 'history'
-                                            ? 'bg-white text-blue-700 shadow-2xs'
-                                            : 'text-slate-600 hover:text-slate-900'
-                                    }`}
-                                >
-                                    <Clock size={12} />
-                                    <span>History</span>
-                                    {history.length > 0 && (
-                                        <span className="rounded-full bg-blue-100 text-blue-800 px-1.5 py-0.2 text-[9px] font-black">
-                                            {history.length}
                                         </span>
                                     )}
                                 </button>
@@ -1682,151 +1639,6 @@ const PayoutHub = () => {
                                         </div>
                                     );
                                 })}
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* ─── Tab 3: Recent Transfers History ──────────────────────────── */}
-                {activeTab === 'history' && (
-                    <div className="rounded-2xl md:rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-xs">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                            <div>
-                                <h2 className="text-sm sm:text-base font-black text-slate-900">Recent Payout Transactions</h2>
-                                <p className="text-[11px] font-semibold text-slate-500">Live status of your initiated payouts</p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={fetchHistory}
-                                disabled={historyLoading}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
-                            >
-                                <RefreshCw size={11} className={historyLoading ? 'animate-spin' : ''} />
-                                Refresh
-                            </button>
-                        </div>
-
-                        {historyLoading && history.length === 0 ? (
-                            <div className="py-8 text-center text-xs font-bold text-slate-400">
-                                Loading transfer history...
-                            </div>
-                        ) : history.length === 0 ? (
-                            <div className="py-8 text-center text-xs font-bold text-slate-400">
-                                No payout transfers found yet. Initiated transfers will appear here.
-                            </div>
-                        ) : (
-                            <div className="mt-3 overflow-x-auto">
-                                <table className="w-full text-left text-xs">
-                                    <thead>
-                                        <tr className="border-b border-slate-100 text-[10px] font-black uppercase tracking-wider text-slate-400">
-                                            <th className="pb-2.5">Date & Time</th>
-                                            <th className="pb-2.5">Order ID / UTR</th>
-                                            <th className="pb-2.5">Beneficiary</th>
-                                            <th className="pb-2.5">Mode</th>
-                                            <th className="pb-2.5 text-right">Amount</th>
-                                            <th className="pb-2.5 text-center">Status</th>
-                                            <th className="pb-2.5 text-right">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
-                                        {(showAllHistory ? history : history.slice(0, 10)).map(txn => {
-                                            const isSuccess = txn.status === 'SUCCESS' || txn.status === 'SUCCESSFUL';
-                                            const isFailed = txn.status === 'FAILED' || txn.status === 'FAILURE';
-                                            const isPending = !isSuccess && !isFailed;
-
-                                            return (
-                                                <tr key={txn.id || txn.orderId} className="hover:bg-slate-50/60 transition">
-                                                    <td className="py-2.5 font-mono text-[11px] text-slate-500">
-                                                        {txn.createdAt ? new Date(txn.createdAt).toLocaleString('en-IN') : 'N/A'}
-                                                    </td>
-                                                    <td className="py-2.5 font-mono">
-                                                        <div className="font-bold text-slate-900">{txn.orderId}</div>
-                                                        {txn.utr && (
-                                                            <div className="text-[10px] text-slate-400">UTR: {txn.utr}</div>
-                                                        )}
-                                                    </td>
-                                                    <td className="py-2.5">
-                                                        <div className="font-bold text-slate-900">{txn.beneficiaryName}</div>
-                                                        <div className="font-mono text-[10px] text-slate-400">
-                                                            {txn.accountNumber} ({txn.ifsc})
-                                                        </div>
-                                                    </td>
-                                                    <td className="py-2.5 font-bold text-blue-600 uppercase">
-                                                        {txn.transferMode || 'IMPS'}
-                                                    </td>
-                                                    <td className="py-2.5 text-right font-black text-slate-900 font-mono">
-                                                        ₹{Number(txn.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                                    </td>
-                                                    <td className="py-2.5 text-center">
-                                                        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase ${
-                                                            isSuccess
-                                                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                                                : isFailed
-                                                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                                                                : 'bg-amber-50 text-amber-700 border border-amber-200'
-                                                        }`}>
-                                                            {isSuccess ? '✓ Success' : isFailed ? '✕ Failed' : '⏳ Pending'}
-                                                        </span>
-                                                    </td>
-                                                    <td className="py-2.5 text-right">
-                                                        {isPending ? (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleCheckStatus(txn.orderId)}
-                                                                disabled={statusCheckingId === txn.orderId}
-                                                                className="rounded-lg bg-blue-50 px-2.5 py-1 text-[10px] font-black text-blue-700 hover:bg-blue-100 disabled:opacity-50 transition cursor-pointer"
-                                                            >
-                                                                {statusCheckingId === txn.orderId ? 'Checking...' : 'Check Status'}
-                                                            </button>
-                                                        ) : (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    setReceiptData({
-                                                                        status: txn.status,
-                                                                        message: txn.responseMessage || 'Transfer processed',
-                                                                        orderId: txn.orderId,
-                                                                        externalOrderId: txn.orderId,
-                                                                        transactionId: txn.utr || txn.orderId,
-                                                                        utr: txn.utr || 'Pending / In Progress',
-                                                                        amount: txn.amount,
-                                                                        beneficiaryName: txn.beneficiaryName,
-                                                                        accountNumber: txn.accountNumber,
-                                                                        ifsc: txn.ifsc,
-                                                                        bankName: txn.bankName || 'Bank Transfer',
-                                                                        transferMode: txn.transferMode || 'IMPS',
-                                                                        remarks: txn.remarks || 'Instant payout transfer',
-                                                                        timestamp: txn.createdAt ? new Date(txn.createdAt).toLocaleString('en-IN') : new Date().toLocaleString('en-IN')
-                                                                    });
-                                                                    setShowReceiptModal(true);
-                                                                }}
-                                                                className="rounded-lg border border-slate-200 px-2.5 py-1 text-[10px] font-bold text-slate-700 hover:bg-slate-100 transition cursor-pointer"
-                                                            >
-                                                                Receipt
-                                                            </button>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-
-                        {/* Pagination / Show More Toggle */}
-                        {history.length > 10 && (
-                            <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-3 text-xs">
-                                <span className="font-semibold text-slate-500">
-                                    Showing {showAllHistory ? history.length : Math.min(10, history.length)} of {history.length} transactions
-                                </span>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowAllHistory(prev => !prev)}
-                                    className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition cursor-pointer"
-                                >
-                                    {showAllHistory ? 'Show Latest 10 Only' : `Show All (${history.length})`}
-                                </button>
                             </div>
                         )}
                     </div>
