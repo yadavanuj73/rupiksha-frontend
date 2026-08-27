@@ -114,6 +114,12 @@ public class PayoutService {
         String cleanAcc = rawAcc.replaceAll("[^0-9]", "");
         String rawIfsc = request.getIfsc() != null ? request.getIfsc().toUpperCase().trim() : "";
 
+        // Verify recipient account has been APPROVED by Admin
+        Optional<PayoutBeneficiary> approvedBene = payoutBeneficiaryRepository.findFirstByUserIdAndAccountNumberAndIfsc(cleanUserId, cleanAcc, rawIfsc);
+        if (approvedBene.isEmpty() || !"APPROVED".equalsIgnoreCase(approvedBene.get().getStatus())) {
+            throw new IllegalArgumentException("Payout transfer is only allowed to an Admin-Approved bank beneficiary. Please submit and wait for Admin approval.");
+        }
+
         // Length validation as specified in Bustto documentation (bank_name max 20, bene_address max 54)
         String bankName = request.getBankName() != null && !request.getBankName().isBlank()
                 ? request.getBankName().trim() : "Bank Transfer";
@@ -693,7 +699,7 @@ public class PayoutService {
     }
 
     /**
-     * Add a new saved beneficiary
+     * Add a new saved beneficiary (submitted as PENDING for admin approval)
      */
     public PayoutBeneficiaryDto addBeneficiary(PayoutBeneficiaryDto request, String rawUserId) {
         String cleanUserId = cleanUserIdString(rawUserId);
@@ -701,7 +707,7 @@ public class PayoutService {
         String rawIfsc = request.getIfsc().trim().toUpperCase();
 
         if (payoutBeneficiaryRepository.existsByUserIdAndAccountNumberAndIfsc(cleanUserId, cleanAcc, rawIfsc)) {
-            throw new IllegalArgumentException("This bank account is already saved in your beneficiaries.");
+            throw new IllegalArgumentException("This bank account has already been registered in your beneficiaries.");
         }
 
         PayoutBeneficiary beneficiary = PayoutBeneficiary.builder()
@@ -712,10 +718,11 @@ public class PayoutService {
                 .bankName(request.getBankName() != null ? request.getBankName().trim() : null)
                 .nickName(request.getNickName() != null ? request.getNickName().trim() : null)
                 .isVerified(Boolean.TRUE.equals(request.getIsVerified()))
+                .status("PENDING")
                 .build();
 
         PayoutBeneficiary saved = payoutBeneficiaryRepository.save(beneficiary);
-        log.info("Saved beneficiary {} (account: {}) for user {}", saved.getBeneficiaryName(), saved.getAccountNumber(), cleanUserId);
+        log.info("Registered beneficiary {} (account: {}) for user {} with status PENDING", saved.getBeneficiaryName(), saved.getAccountNumber(), cleanUserId);
         return mapToBeneficiaryDto(saved);
     }
 
@@ -728,6 +735,57 @@ public class PayoutService {
                 .orElseThrow(() -> new IllegalArgumentException("Beneficiary not found or unauthorized"));
         payoutBeneficiaryRepository.delete(bene);
         log.info("Deleted beneficiary id {} for user {}", id, cleanUserId);
+    }
+
+    /**
+     * Get all beneficiaries for Admin review with user details
+     */
+    public List<PayoutBeneficiaryDto> getAllBeneficiariesForAdmin() {
+        List<PayoutBeneficiary> list = payoutBeneficiaryRepository.findAllByOrderByCreatedAtDesc();
+        return list.stream().map(this::mapToBeneficiaryDtoWithUser).toList();
+    }
+
+    /**
+     * Get beneficiary counts for Admin KPI
+     */
+    public Map<String, Long> getBeneficiaryStatsForAdmin() {
+        Map<String, Long> stats = new HashMap<>();
+        stats.put("pending", payoutBeneficiaryRepository.countByStatus("PENDING"));
+        stats.put("approved", payoutBeneficiaryRepository.countByStatus("APPROVED"));
+        stats.put("rejected", payoutBeneficiaryRepository.countByStatus("REJECTED"));
+        stats.put("total", payoutBeneficiaryRepository.count());
+        return stats;
+    }
+
+    /**
+     * Admin approves a beneficiary
+     */
+    public PayoutBeneficiaryDto adminApproveBeneficiary(Long id, String adminId) {
+        PayoutBeneficiary bene = payoutBeneficiaryRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Beneficiary not found with ID: " + id));
+        bene.setStatus("APPROVED");
+        bene.setIsVerified(true);
+        bene.setRejectionReason(null);
+        bene.setActionedAt(LocalDateTime.now());
+        bene.setActionedBy(adminId);
+        PayoutBeneficiary saved = payoutBeneficiaryRepository.save(bene);
+        log.info("Admin {} APPROVED beneficiary ID {} ({}) for user {}", adminId, id, saved.getBeneficiaryName(), saved.getUserId());
+        return mapToBeneficiaryDtoWithUser(saved);
+    }
+
+    /**
+     * Admin rejects a beneficiary
+     */
+    public PayoutBeneficiaryDto adminRejectBeneficiary(Long id, String reason, String adminId) {
+        PayoutBeneficiary bene = payoutBeneficiaryRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Beneficiary not found with ID: " + id));
+        bene.setStatus("REJECTED");
+        bene.setRejectionReason(reason != null && !reason.isBlank() ? reason.trim() : "Details did not match banking records");
+        bene.setActionedAt(LocalDateTime.now());
+        bene.setActionedBy(adminId);
+        PayoutBeneficiary saved = payoutBeneficiaryRepository.save(bene);
+        log.info("Admin {} REJECTED beneficiary ID {} for user {} (Reason: {})", adminId, id, saved.getUserId(), bene.getRejectionReason());
+        return mapToBeneficiaryDtoWithUser(saved);
     }
 
     /**
@@ -745,6 +803,7 @@ public class PayoutService {
                         .ifsc(rawIfsc)
                         .bankName(req.getBankName() != null ? req.getBankName().trim() : null)
                         .isVerified(true)
+                        .status("APPROVED")
                         .build();
                 payoutBeneficiaryRepository.save(beneficiary);
                 log.info("Auto-saved new beneficiary {} ({}) for user {}", beneficiary.getBeneficiaryName(), cleanAcc, userId);
@@ -757,13 +816,34 @@ public class PayoutService {
     private PayoutBeneficiaryDto mapToBeneficiaryDto(PayoutBeneficiary bene) {
         return PayoutBeneficiaryDto.builder()
                 .id(bene.getId())
+                .userId(bene.getUserId())
                 .beneficiaryName(bene.getBeneficiaryName())
                 .accountNumber(bene.getAccountNumber())
                 .ifsc(bene.getIfsc())
                 .bankName(bene.getBankName())
                 .nickName(bene.getNickName())
                 .isVerified(bene.getIsVerified())
+                .status(bene.getStatus())
+                .rejectionReason(bene.getRejectionReason())
+                .actionedAt(bene.getActionedAt())
+                .actionedBy(bene.getActionedBy())
                 .createdAt(bene.getCreatedAt())
                 .build();
+    }
+
+    private PayoutBeneficiaryDto mapToBeneficiaryDtoWithUser(PayoutBeneficiary bene) {
+        PayoutBeneficiaryDto dto = mapToBeneficiaryDto(bene);
+        try {
+            if (bene.getUserId() != null) {
+                UUID uUuid = UUID.fromString(bene.getUserId().trim());
+                userRepository.findById(uUuid).ifPresent(u -> {
+                    dto.setUserPartyCode(u.getPartyCode() != null ? u.getPartyCode() : u.getUsername());
+                    dto.setUserFullName(u.getFullName());
+                    dto.setUserEmail(u.getEmail());
+                    dto.setUserMobile(u.getMobile());
+                });
+            }
+        } catch (Exception ignored) {}
+        return dto;
     }
 }

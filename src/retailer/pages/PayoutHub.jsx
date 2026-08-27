@@ -290,6 +290,26 @@ const PayoutHub = () => {
         return <DisabledServiceBanner serviceName="Payout Hub" />;
     }
 
+    // Approval Status Groups
+    const approvedBeneficiaries = useMemo(() => beneficiaries.filter(b => b.status === 'APPROVED'), [beneficiaries]);
+    const pendingBeneficiaries = useMemo(() => beneficiaries.filter(b => b.status === 'PENDING'), [beneficiaries]);
+    const rejectedBeneficiaries = useMemo(() => beneficiaries.filter(b => b.status === 'REJECTED'), [beneficiaries]);
+
+    const hasApproved = approvedBeneficiaries.length > 0;
+    const hasPendingOnly = !hasApproved && pendingBeneficiaries.length > 0;
+    const hasRejectedOnly = !hasApproved && !hasPendingOnly && rejectedBeneficiaries.length > 0;
+    const hasNone = beneficiaries.length === 0;
+
+    // Auto-select first approved beneficiary if not already selected
+    useEffect(() => {
+        if (approvedBeneficiaries.length > 0) {
+            const currentSelected = approvedBeneficiaries.find(b => b.id === selectedBeneficiaryId);
+            if (!currentSelected) {
+                handleSelectBeneficiary(approvedBeneficiaries[0]);
+            }
+        }
+    }, [approvedBeneficiaries, selectedBeneficiaryId]);
+
     // Validation Flags
     const isAccountValid = /^\d{9,18}$/.test(form.accountNumber.trim());
     const isAccountMatching = form.accountNumber.trim() && form.accountNumber.trim() === form.confirmAccountNumber.trim();
@@ -897,8 +917,299 @@ const PayoutHub = () => {
                     </div>
                 </div>
 
-                {/* ─── Tab 1: Terminal Form & Live Action Split Layout ──────── */}
-                {activeTab === 'transfer' && (
+                {/* ─── Tab 1: Terminal Form & 4-State Approval Gating ──────── */}
+                
+                {/* 1. Loading State */}
+                {activeTab === 'transfer' && beneficiariesLoading && beneficiaries.length === 0 && (
+                    <div className="py-20 text-center text-xs font-bold text-slate-500 flex flex-col items-center justify-center gap-3 bg-white rounded-3xl border border-slate-200/90 p-8 shadow-xs">
+                        <RefreshCw size={28} className="animate-spin text-blue-600" />
+                        <div className="text-sm font-black text-slate-800">Checking Beneficiary Approval Status...</div>
+                        <p className="text-xs text-slate-400">Verifying authorized bank accounts with Admin & NPCI gateway</p>
+                    </div>
+                )}
+
+                {/* 2. Pending Approval State */}
+                {activeTab === 'transfer' && !beneficiariesLoading && !hasApproved && hasPendingOnly && (
+                    <div className="bg-white border border-amber-200/90 rounded-3xl p-6 sm:p-8 shadow-xs space-y-6 max-w-3xl mx-auto text-center">
+                        <div className="mx-auto h-16 w-16 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shadow-xs">
+                            <Clock size={32} className="animate-pulse" />
+                        </div>
+                        
+                        <div className="space-y-2">
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-black uppercase tracking-wider">
+                                <Clock size={13} /> Beneficiary Approval Pending
+                            </div>
+                            <h2 className="text-xl sm:text-2xl font-black text-slate-900">
+                                Approval Pending with Admin
+                            </h2>
+                            <p className="text-xs sm:text-sm font-semibold text-slate-600 max-w-lg mx-auto leading-relaxed">
+                                Your bank beneficiary details have been submitted to Admin. The <strong>Instant Payout Terminal</strong> will be automatically unlocked for transfers as soon as Admin approves your bank beneficiary.
+                            </p>
+                        </div>
+
+                        {/* Submitted Details Card */}
+                        <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 sm:p-5 text-left max-w-xl mx-auto space-y-3">
+                            <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
+                                <div className="text-[11px] font-black uppercase tracking-wider text-slate-500">Submitted Bank Account</div>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-700 text-[10.5px] font-black">
+                                    <Clock size={11} /> Under Review
+                                </span>
+                            </div>
+                            {pendingBeneficiaries.map((bene) => (
+                                <div key={bene.id} className="grid grid-cols-2 gap-3 text-xs">
+                                    <div>
+                                        <div className="text-[10.5px] text-slate-400 font-bold uppercase">Beneficiary Name</div>
+                                        <div className="font-black text-slate-900 text-sm mt-0.5">{bene.beneficiaryName}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-[10.5px] text-slate-400 font-bold uppercase">Bank Name</div>
+                                        <div className="font-bold text-slate-800 mt-0.5">{bene.bankName || 'Bank Transfer'}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-[10.5px] text-slate-400 font-bold uppercase">Account Number</div>
+                                        <div className="font-mono font-black text-slate-900 mt-0.5">{bene.accountNumber}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-[10.5px] text-slate-400 font-bold uppercase">IFSC Code</div>
+                                        <div className="font-mono font-black text-slate-900 mt-0.5">{bene.ifsc}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="flex items-center justify-center gap-3 flex-wrap pt-2">
+                            <button
+                                type="button"
+                                onClick={fetchBeneficiaries}
+                                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider transition shadow-sm cursor-pointer"
+                            >
+                                <RefreshCw size={14} />
+                                Refresh Approval Status
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setShowAddBeneModal(true)}
+                                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-black uppercase tracking-wider transition cursor-pointer"
+                            >
+                                <Plus size={14} />
+                                Add Another Account
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* 3. Rejected by Admin State */}
+                {activeTab === 'transfer' && !beneficiariesLoading && !hasApproved && hasRejectedOnly && (
+                    <div className="bg-white border border-rose-200/90 rounded-3xl p-6 sm:p-8 shadow-xs space-y-6 max-w-3xl mx-auto text-center">
+                        <div className="mx-auto h-16 w-16 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shadow-xs">
+                            <XCircle size={32} />
+                        </div>
+                        
+                        <div className="space-y-2">
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 text-rose-800 text-xs font-black uppercase tracking-wider">
+                                <AlertTriangle size={13} /> Request Rejected
+                            </div>
+                            <h2 className="text-xl sm:text-2xl font-black text-slate-900">
+                                Beneficiary Request Rejected by Admin
+                            </h2>
+                            <p className="text-xs sm:text-sm font-semibold text-slate-600 max-w-lg mx-auto leading-relaxed">
+                                Your payout beneficiary request was rejected by Admin. Please review the reason below and submit a new request with accurate banking details.
+                            </p>
+                        </div>
+
+                        {/* Rejection Alert Box */}
+                        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 sm:p-5 text-left max-w-xl mx-auto space-y-2">
+                            <div className="text-[11px] font-black uppercase tracking-wider text-rose-600">Admin Rejection Reason</div>
+                            <div className="text-sm font-black text-rose-950 bg-white/80 border border-rose-200/70 p-3 rounded-xl">
+                                "{rejectedBeneficiaries[0]?.rejectionReason || 'Bank account details could not be verified with bank records.'}"
+                            </div>
+                            <div className="text-[11.5px] font-bold text-rose-700 pt-1">
+                                Rejected Account: <span className="font-mono font-black">{rejectedBeneficiaries[0]?.accountNumber}</span> ({rejectedBeneficiaries[0]?.ifsc})
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-center gap-3 flex-wrap pt-2">
+                            <button
+                                type="button"
+                                onClick={() => setShowAddBeneModal(true)}
+                                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider transition shadow-sm cursor-pointer"
+                            >
+                                <Plus size={14} />
+                                Submit New Beneficiary Request
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* 4. No Beneficiary Registered State */}
+                {activeTab === 'transfer' && !beneficiariesLoading && !hasApproved && hasNone && (
+                    <div className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-8 shadow-xs max-w-2xl mx-auto space-y-6">
+                        <div className="text-center space-y-2">
+                            <div className="mx-auto h-14 w-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-2xs">
+                                <Building2 size={28} />
+                            </div>
+                            <h2 className="text-lg sm:text-xl font-black text-slate-900">
+                                Register Bank Beneficiary for Payouts
+                            </h2>
+                            <p className="text-xs font-semibold text-slate-500 max-w-md mx-auto">
+                                Instant Payout transfers require an approved bank beneficiary. Please enter your bank account details below to submit for Admin approval.
+                            </p>
+                        </div>
+
+                        <form onSubmit={handleSaveNewBeneficiary} className="space-y-4 pt-2">
+                            {newBeneForm.submitError && (
+                                <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-700">
+                                    <AlertTriangle size={15} className="shrink-0 text-rose-600" />
+                                    <span>{newBeneForm.submitError}</span>
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                <div>
+                                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1">
+                                        Account Number *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-mono transition"
+                                        placeholder="Enter bank account number"
+                                        value={newBeneForm.accountNumber}
+                                        onChange={(e) => setNewBeneForm(p => ({ ...p, accountNumber: e.target.value.replace(/\D/g, '') }))}
+                                        maxLength={18}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1">
+                                        Confirm Account Number *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-mono transition"
+                                        placeholder="Re-enter bank account number"
+                                        value={newBeneForm.confirmAccountNumber}
+                                        onChange={(e) => setNewBeneForm(p => ({ ...p, confirmAccountNumber: e.target.value.replace(/\D/g, '') }))}
+                                        maxLength={18}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1">
+                                        IFSC Code *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-xs sm:text-sm font-bold uppercase text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-mono transition"
+                                        placeholder="e.g. SBIN0001234"
+                                        value={newBeneForm.ifsc}
+                                        onChange={(e) => setNewBeneForm(p => ({ ...p, ifsc: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
+                                        maxLength={11}
+                                    />
+                                </div>
+
+                                <div className="flex flex-col justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={handleVerifyNewBeneInModal}
+                                        disabled={newBeneForm.verifying || !/^\d{9,18}$/.test(newBeneForm.accountNumber) || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(newBeneForm.ifsc)}
+                                        className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 py-2.5 px-3 rounded-xl transition cursor-pointer shadow-xs"
+                                    >
+                                        {newBeneForm.verifying ? (
+                                            <>
+                                                <RefreshCw size={13} className="animate-spin" />
+                                                Verifying Bank...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Sparkles size={13} />
+                                                Verify Legal Name
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+
+                                <div className="sm:col-span-2">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <label className="text-[11px] font-black uppercase tracking-wider text-slate-700">
+                                            Beneficiary Legal Name *
+                                        </label>
+                                        {newBeneForm.isVerified && (
+                                            <span className="text-[10.5px] font-black text-emerald-600 flex items-center gap-1">
+                                                <CheckCircle2 size={12} /> Verified from Bank
+                                            </span>
+                                        )}
+                                    </div>
+                                    <input
+                                        type="text"
+                                        required
+                                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition"
+                                        placeholder="Legal account holder name"
+                                        value={newBeneForm.beneficiaryName}
+                                        onChange={(e) => setNewBeneForm(p => ({ ...p, beneficiaryName: e.target.value }))}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1">
+                                        Bank Name (Optional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-xs font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 transition"
+                                        placeholder="e.g. State Bank of India"
+                                        value={newBeneForm.bankName}
+                                        onChange={(e) => setNewBeneForm(p => ({ ...p, bankName: e.target.value }))}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1">
+                                        Nickname (Optional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-xs font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 transition"
+                                        placeholder="e.g. Primary Account"
+                                        value={newBeneForm.nickName}
+                                        onChange={(e) => setNewBeneForm(p => ({ ...p, nickName: e.target.value }))}
+                                        maxLength={50}
+                                    />
+                                </div>
+                            </div>
+
+                            {newBeneForm.verifyError && (
+                                <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs font-bold text-rose-700">
+                                    <AlertTriangle size={14} className="shrink-0 text-rose-600" />
+                                    <span>{newBeneForm.verifyError}</span>
+                                </div>
+                            )}
+
+                            <button
+                                type="submit"
+                                disabled={newBeneForm.isSubmitting}
+                                className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs sm:text-sm font-black uppercase tracking-wider text-white transition shadow-md shadow-blue-500/25 cursor-pointer disabled:opacity-50"
+                            >
+                                {newBeneForm.isSubmitting ? (
+                                    <>
+                                        <RefreshCw size={15} className="animate-spin" />
+                                        Submitting to Admin...
+                                    </>
+                                ) : (
+                                    <>
+                                        <ShieldCheck size={16} />
+                                        Submit for Admin Approval
+                                    </>
+                                )}
+                            </button>
+                        </form>
+                    </div>
+                )}
+
+                {/* 5. Approved State: Full Terminal Unlocked */}
+                {activeTab === 'transfer' && !beneficiariesLoading && hasApproved && (
                     <form onSubmit={handlePayoutSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
                         
                         {/* ══ LEFT (COL 1 to 7): Beneficiary & Rail Inputs ════════ */}
@@ -910,10 +1221,10 @@ const PayoutHub = () => {
                                     <div className="flex items-center gap-2">
                                         <Users size={15} className="text-blue-600" />
                                         <span className="text-xs sm:text-[12.5px] font-black uppercase tracking-wide text-slate-800">
-                                            Saved Beneficiaries
+                                            Approved Beneficiaries
                                         </span>
-                                        <span className="rounded-full bg-blue-100 text-blue-800 px-2 py-0.5 text-[10px] font-black">
-                                            {beneficiaries.length}
+                                        <span className="rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.5 text-[10px] font-black">
+                                            {approvedBeneficiaries.length} Approved
                                         </span>
                                     </div>
 
@@ -929,11 +1240,11 @@ const PayoutHub = () => {
                                     </div>
                                 </div>
 
-                                {/* Horizontal quick selector chips or empty prompt */}
-                                {beneficiaries.length > 0 ? (
+                                {/* Horizontal quick selector chips of APPROVED beneficiaries */}
+                                {approvedBeneficiaries.length > 0 ? (
                                     <div className="space-y-2">
                                         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
-                                            {beneficiaries.slice(0, 10).map((bene) => {
+                                            {approvedBeneficiaries.slice(0, 10).map((bene) => {
                                                 const isSelected = selectedBeneficiaryId === bene.id;
                                                 return (
                                                     <button
@@ -967,7 +1278,7 @@ const PayoutHub = () => {
                                             })}
                                         </div>
 
-                                        {/* Active Selected Beneficiary Banner with Clear button */}
+                                        {/* Active Selected Beneficiary Banner with Change button */}
                                         {selectedBeneficiaryId && (
                                             <div className="flex items-center justify-between gap-2 p-2 px-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-900">
                                                 <div className="flex items-center gap-1.5 min-w-0">
@@ -979,9 +1290,9 @@ const PayoutHub = () => {
                                                 <button
                                                     type="button"
                                                     onClick={handleClearSelectedBeneficiary}
-                                                    className="text-[11px] font-black text-rose-600 hover:text-rose-800 bg-white border border-rose-200 px-2 py-0.5 rounded-lg transition shrink-0 cursor-pointer"
+                                                    className="text-[11px] font-black text-slate-600 hover:text-slate-800 bg-white border border-slate-200 px-2 py-0.5 rounded-lg transition shrink-0 cursor-pointer"
                                                 >
-                                                    ✕ Change / Manual
+                                                    Change
                                                 </button>
                                             </div>
                                         )}
@@ -989,7 +1300,7 @@ const PayoutHub = () => {
                                 ) : (
                                     <div className="flex items-center justify-between gap-2 p-2 px-3 bg-white/80 border border-slate-200 rounded-xl text-xs text-slate-600">
                                         <span className="text-[11px] font-bold">
-                                            💡 Tip: Add your frequent bank beneficiaries to transfer with a single click.
+                                            💡 Tip: Select an approved beneficiary or add a new one for admin approval.
                                         </span>
                                         <button
                                             type="button"
@@ -1425,85 +1736,130 @@ const PayoutHub = () => {
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                                {filteredBeneficiaries.map((bene) => (
-                                    <div
-                                        key={bene.id}
-                                        className="rounded-2xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:shadow-xs transition flex flex-col justify-between space-y-3 group"
-                                    >
-                                        <div className="space-y-2">
-                                            <div className="flex items-start justify-between gap-2">
-                                                <div className="flex items-center gap-2.5 min-w-0">
-                                                    <div className="h-10 w-10 rounded-xl bg-blue-50 border border-blue-100 text-blue-700 flex items-center justify-center text-base font-black shrink-0">
-                                                        {bene.beneficiaryName ? bene.beneficiaryName.charAt(0).toUpperCase() : <Landmark size={18} />}
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <div className="text-sm font-black text-slate-900 truncate">
-                                                            {bene.beneficiaryName}
+                                {filteredBeneficiaries.map((bene) => {
+                                    const isApproved = bene.status === 'APPROVED';
+                                    const isPending = bene.status === 'PENDING';
+                                    const isRejected = bene.status === 'REJECTED';
+
+                                    return (
+                                        <div
+                                            key={bene.id}
+                                            className={`rounded-2xl border bg-white p-4 transition flex flex-col justify-between space-y-3 group ${
+                                                isApproved ? 'border-slate-200 hover:border-blue-300 hover:shadow-xs' :
+                                                isPending ? 'border-amber-200 bg-amber-50/20' :
+                                                'border-rose-200 bg-rose-50/20'
+                                            }`}
+                                        >
+                                            <div className="space-y-2">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="flex items-center gap-2.5 min-w-0">
+                                                        <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-base font-black shrink-0 ${
+                                                            isApproved ? 'bg-blue-50 border border-blue-100 text-blue-700' :
+                                                            isPending ? 'bg-amber-50 border border-amber-200 text-amber-700' :
+                                                            'bg-rose-50 border border-rose-200 text-rose-700'
+                                                        }`}>
+                                                            {bene.beneficiaryName ? bene.beneficiaryName.charAt(0).toUpperCase() : <Landmark size={18} />}
                                                         </div>
-                                                        {bene.nickName && (
-                                                            <div className="text-[10.5px] font-bold text-blue-600 truncate">
-                                                                ★ {bene.nickName}
+                                                        <div className="min-w-0">
+                                                            <div className="text-sm font-black text-slate-900 truncate">
+                                                                {bene.beneficiaryName}
                                                             </div>
-                                                        )}
+                                                            {bene.nickName && (
+                                                                <div className="text-[10.5px] font-bold text-blue-600 truncate">
+                                                                    ★ {bene.nickName}
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                </div>
 
-                                                <div className="flex items-center gap-1">
-                                                    {bene.isVerified && (
-                                                        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 text-[9.5px] font-black text-emerald-700">
-                                                            <CheckCircle2 size={11} /> Verified
-                                                        </span>
-                                                    )}
-                                                    <button
-                                                        type="button"
-                                                        onClick={(e) => handleDeleteBeneficiary(bene.id, e)}
-                                                        disabled={deletingBeneId === bene.id}
-                                                        title="Delete Beneficiary"
-                                                        className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition cursor-pointer disabled:opacity-50"
-                                                    >
-                                                        <Trash2 size={14} />
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            {/* Bank & Account Details */}
-                                            <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 space-y-1 text-xs">
-                                                <div className="flex justify-between items-center text-slate-600">
-                                                    <span className="text-[10.5px] text-slate-400 font-bold uppercase">Bank</span>
-                                                    <span className="font-bold text-slate-800 truncate max-w-[170px]">{bene.bankName || 'Bank Transfer'}</span>
-                                                </div>
-                                                <div className="flex justify-between items-center text-slate-600">
-                                                    <span className="text-[10.5px] text-slate-400 font-bold uppercase">Account</span>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span className="font-mono font-black text-slate-900">{bene.accountNumber}</span>
+                                                    <div className="flex items-center gap-1">
+                                                        {isApproved && (
+                                                            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 text-[9.5px] font-black text-emerald-700">
+                                                                <CheckCircle2 size={11} /> Approved
+                                                            </span>
+                                                        )}
+                                                        {isPending && (
+                                                            <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[9.5px] font-black text-amber-700">
+                                                                <Clock size={11} /> Pending Approval
+                                                            </span>
+                                                        )}
+                                                        {isRejected && (
+                                                            <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 border border-rose-200 px-1.5 py-0.5 text-[9.5px] font-black text-rose-700">
+                                                                <XCircle size={11} /> Rejected
+                                                            </span>
+                                                        )}
                                                         <button
                                                             type="button"
-                                                            onClick={() => handleCopy(bene.accountNumber, `acc_${bene.id}`)}
-                                                            title="Copy Account Number"
-                                                            className="text-slate-400 hover:text-blue-700 transition"
+                                                            onClick={(e) => handleDeleteBeneficiary(bene.id, e)}
+                                                            disabled={deletingBeneId === bene.id}
+                                                            title="Delete Beneficiary"
+                                                            className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition cursor-pointer disabled:opacity-50"
                                                         >
-                                                            {copiedField === `acc_${bene.id}` ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                                                            <Trash2 size={14} />
                                                         </button>
                                                     </div>
                                                 </div>
-                                                <div className="flex justify-between items-center text-slate-600">
-                                                    <span className="text-[10.5px] text-slate-400 font-bold uppercase">IFSC</span>
-                                                    <span className="font-mono font-bold uppercase text-slate-900">{bene.ifsc}</span>
+
+                                                {/* Rejection Note if Rejected */}
+                                                {isRejected && bene.rejectionReason && (
+                                                    <div className="rounded-xl border border-rose-200 bg-rose-50 p-2 text-[10.5px] font-bold text-rose-800">
+                                                        <strong>Rejection Note:</strong> {bene.rejectionReason}
+                                                    </div>
+                                                )}
+
+                                                {/* Bank & Account Details */}
+                                                <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 space-y-1 text-xs">
+                                                    <div className="flex justify-between items-center text-slate-600">
+                                                        <span className="text-[10.5px] text-slate-400 font-bold uppercase">Bank</span>
+                                                        <span className="font-bold text-slate-800 truncate max-w-[170px]">{bene.bankName || 'Bank Transfer'}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center text-slate-600">
+                                                        <span className="text-[10.5px] text-slate-400 font-bold uppercase">Account</span>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="font-mono font-black text-slate-900">{bene.accountNumber}</span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleCopy(bene.accountNumber, `acc_${bene.id}`)}
+                                                                title="Copy Account Number"
+                                                                className="text-slate-400 hover:text-blue-700 transition"
+                                                            >
+                                                                {copiedField === `acc_${bene.id}` ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex justify-between items-center text-slate-600">
+                                                        <span className="text-[10.5px] text-slate-400 font-bold uppercase">IFSC</span>
+                                                        <span className="font-mono font-bold uppercase text-slate-900">{bene.ifsc}</span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
 
-                                        {/* Send Payout CTA Button */}
-                                        <button
-                                            type="button"
-                                            onClick={() => handleSelectBeneficiary(bene)}
-                                            className="w-full flex items-center justify-center gap-1.5 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition shadow-2xs cursor-pointer active:scale-[0.98]"
-                                        >
-                                            <SendIcon size={12} />
-                                            <span>Send Payout</span>
-                                        </button>
-                                    </div>
-                                ))}
+                                            {/* Send Payout CTA Button or Status Indicator */}
+                                            {isApproved ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleSelectBeneficiary(bene)}
+                                                    className="w-full flex items-center justify-center gap-1.5 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition shadow-2xs cursor-pointer active:scale-[0.98]"
+                                                >
+                                                    <SendIcon size={12} />
+                                                    <span>Send Payout</span>
+                                                </button>
+                                            ) : isPending ? (
+                                                <div className="w-full py-2 px-3 bg-amber-100 text-amber-800 rounded-xl text-xs font-bold text-center">
+                                                    ⏳ Awaiting Admin Approval
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowAddBeneModal(true)}
+                                                    className="w-full py-2 px-3 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded-xl text-xs font-bold text-center transition cursor-pointer"
+                                                >
+                                                    Resubmit Request
+                                                </button>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>

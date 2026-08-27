@@ -39,5 +39,21 @@ public class PayoutBeneficiaryDto {
 
     private Boolean isVerified;
 
+    private String status; // PENDING, APPROVED, REJECTED
+
+    private String rejectionReason;
+
+    private LocalDateTime actionedAt;
+
+    private String actionedBy;
+
+    private String userId;
+
+    // User metadata for admin reviews
+    private String userPartyCode;
+    private String userFullName;
+    private String userEmail;
+    private String userMobile;
+
     private LocalDateTime createdAt;
 }

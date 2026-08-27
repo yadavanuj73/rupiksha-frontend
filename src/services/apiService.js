@@ -439,6 +439,24 @@ export const payoutService = {
       method: "DELETE",
     }),
 
+  // Admin Beneficiary Approval Endpoints
+  getAdminBeneficiaries: () =>
+    apiFetch("/payout/admin/beneficiaries"),
+
+  getAdminBeneficiaryStats: () =>
+    apiFetch("/payout/admin/beneficiaries/stats"),
+
+  adminApproveBeneficiary: (id) =>
+    apiFetch(`/payout/admin/beneficiaries/${encodeURIComponent(id)}/approve`, {
+      method: "POST",
+    }),
+
+  adminRejectBeneficiary: (id, reason) =>
+    apiFetch(`/payout/admin/beneficiaries/${encodeURIComponent(id)}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
+
   // Health check
   health: () =>
     apiFetch("/payout/health"),

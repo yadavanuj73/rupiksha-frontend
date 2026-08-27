@@ -12,9 +12,19 @@ public interface PayoutBeneficiaryRepository extends JpaRepository<PayoutBenefic
 
     List<PayoutBeneficiary> findByUserIdOrderByCreatedAtDesc(String userId);
 
+    List<PayoutBeneficiary> findByUserIdAndStatusOrderByCreatedAtDesc(String userId, String status);
+
     Optional<PayoutBeneficiary> findByIdAndUserId(Long id, String userId);
+
+    Optional<PayoutBeneficiary> findFirstByUserIdAndAccountNumberAndIfsc(String userId, String accountNumber, String ifsc);
 
     boolean existsByUserIdAndAccountNumberAndIfsc(String userId, String accountNumber, String ifsc);
 
     void deleteByIdAndUserId(Long id, String userId);
+
+    List<PayoutBeneficiary> findAllByOrderByCreatedAtDesc();
+
+    List<PayoutBeneficiary> findByStatusOrderByCreatedAtDesc(String status);
+
+    long countByStatus(String status);
 }

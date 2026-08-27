@@ -185,6 +185,66 @@ public class PayoutController {
         return ResponseEntity.ok(response);
     }
 
+    // ─── ADMIN APPROVAL ENDPOINTS ─────────────────────────────────────────────
+
+    /**
+     * Admin: Get all beneficiaries across all users with user metadata
+     */
+    @GetMapping("/admin/beneficiaries")
+    public ResponseEntity<List<PayoutBeneficiaryDto>> getAllBeneficiariesForAdmin(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            Authentication authentication
+    ) {
+        String adminId = resolveUserId(principal, authentication);
+        log.info("Admin {} fetching all beneficiaries for review", adminId);
+        List<PayoutBeneficiaryDto> list = payoutService.getAllBeneficiariesForAdmin();
+        return ResponseEntity.ok(list);
+    }
+
+    /**
+     * Admin: Get summary statistics for beneficiaries (approved, pending, rejected)
+     */
+    @GetMapping("/admin/beneficiaries/stats")
+    public ResponseEntity<Map<String, Long>> getBeneficiaryStatsForAdmin(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            Authentication authentication
+    ) {
+        Map<String, Long> stats = payoutService.getBeneficiaryStatsForAdmin();
+        return ResponseEntity.ok(stats);
+    }
+
+    /**
+     * Admin: Approve a beneficiary
+     */
+    @PostMapping("/admin/beneficiaries/{id}/approve")
+    public ResponseEntity<PayoutBeneficiaryDto> approveBeneficiary(
+            @PathVariable Long id,
+            @AuthenticationPrincipal JwtPrincipal principal,
+            Authentication authentication
+    ) {
+        String adminId = resolveUserId(principal, authentication);
+        log.info("Admin {} approving beneficiary ID {}", adminId, id);
+        PayoutBeneficiaryDto approved = payoutService.adminApproveBeneficiary(id, adminId);
+        return ResponseEntity.ok(approved);
+    }
+
+    /**
+     * Admin: Reject a beneficiary
+     */
+    @PostMapping("/admin/beneficiaries/{id}/reject")
+    public ResponseEntity<PayoutBeneficiaryDto> rejectBeneficiary(
+            @PathVariable Long id,
+            @RequestBody(required = false) Map<String, String> body,
+            @AuthenticationPrincipal JwtPrincipal principal,
+            Authentication authentication
+    ) {
+        String adminId = resolveUserId(principal, authentication);
+        String reason = body != null ? body.get("reason") : null;
+        log.info("Admin {} rejecting beneficiary ID {} with reason: {}", adminId, id, reason);
+        PayoutBeneficiaryDto rejected = payoutService.adminRejectBeneficiary(id, reason, adminId);
+        return ResponseEntity.ok(rejected);
+    }
+
     /**
      * Health check endpoint
      */

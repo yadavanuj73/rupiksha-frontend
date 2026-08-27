@@ -39,6 +39,17 @@ public class PayoutBeneficiary {
     @Column(nullable = false)
     private Boolean isVerified = false;
 
+    @Builder.Default
+    @Column(nullable = false)
+    private String status = "PENDING"; // PENDING, APPROVED, REJECTED
+
+    @Column(length = 500)
+    private String rejectionReason;
+
+    private LocalDateTime actionedAt;
+
+    private String actionedBy;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -49,6 +60,9 @@ public class PayoutBeneficiary {
         createdAt = LocalDateTime.now();
         if (isVerified == null) {
             isVerified = false;
+        }
+        if (status == null || status.isBlank()) {
+            status = "PENDING";
         }
     }
 
