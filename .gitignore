@@ -38,11 +38,7 @@ backend-java/target/
 # Project context file — local only, never push
 context.md
 
-# Local IDE / AI configuration — never commit
-.agents/
-.cursor/
-.kiro/
-.windsurf/
+
 
 # Documentation and local reference files — never commit
 GO_LIVE_CHECKLIST.md

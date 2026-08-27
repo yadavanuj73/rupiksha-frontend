@@ -150,8 +150,8 @@ bustto:
   payout:
     base-url: ${BUSTTO_BASE_URL:https://admin.bustto.com}
     api-key: ${BUSTTO_API_KEY:${QUICKZAPS_API_KEY:}}
-    jwt-secret: ${BUSTTO_JWT_SECRET:}
-    aes-key: ${BUSTTO_AES_KEY:}
+    jwt-secret: ${BUSTTO_JWT_SECRET:${BUSTTO_SECRET_KEY:}}
+    aes-key: ${BUSTTO_AES_KEY:${BUSTTO_ENCRYPTION_KEY:}}
     merchant-id: ${BUSTTO_MERCHANT_ID:}
     merchant-name: ${BUSTTO_MERCHANT_NAME:}
     merchant-email: ${BUSTTO_MERCHANT_EMAIL:}

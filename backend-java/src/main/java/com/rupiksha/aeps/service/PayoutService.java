@@ -190,11 +190,11 @@ public class PayoutService {
 
         // 4. Build payload matching provider specification
         Map<String, Object> rawPayload = new HashMap<>();
-        rawPayload.put("amount", amount.stripTrailingZeros().toPlainString());
+        rawPayload.put("amount", amount.doubleValue());
         rawPayload.put("external_order_id", orderId);
         rawPayload.put("bene_name", request.getBeneficiaryName().trim());
         rawPayload.put("bene_account_number", cleanAcc);
-        rawPayload.put("bene_mobile", mobile);
+        rawPayload.put("bene_mobile", mobile.startsWith("+91") ? mobile : "+91" + mobile);
         rawPayload.put("bene_ifsc", rawIfsc);
         rawPayload.put("bank_name", bankName);
         rawPayload.put("branch_name", branchName);
