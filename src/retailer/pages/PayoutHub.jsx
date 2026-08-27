@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { 
     Landmark, Zap, ShieldCheck, CheckCircle2, XCircle, Clock, 
     RefreshCw, Search, ArrowRight, Printer, Download, AlertTriangle, 
-    CreditCard, ArrowUpRight, HelpCircle, Check, Copy, ExternalLink, Sparkles
+    CreditCard, ArrowUpRight, HelpCircle, Check, Copy, ExternalLink, Sparkles, FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { payoutService, transactionService, userService } from '../../services/apiService';
