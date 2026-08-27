@@ -266,10 +266,6 @@ const PayoutHub = () => {
         }
     };
 
-    if (serviceDisabled) {
-        return <DisabledServiceBanner serviceName="Payout Hub" />;
-    }
-
     // Approval Status Groups
     const approvedBeneficiaries = useMemo(() => beneficiaries.filter(b => b.status === 'APPROVED'), [beneficiaries]);
     const pendingBeneficiaries = useMemo(() => beneficiaries.filter(b => b.status === 'PENDING'), [beneficiaries]);
@@ -782,6 +778,10 @@ const PayoutHub = () => {
         printWindow.document.write(htmlContent);
         printWindow.document.close();
     };
+
+    if (serviceDisabled) {
+        return <DisabledServiceBanner serviceName="Payout Hub" />;
+    }
 
     return (
         <div className="w-full min-h-[calc(100vh-80px)] bg-slate-50/70 p-2 sm:p-3 md:p-3.5 font-['Inter',sans-serif]">
