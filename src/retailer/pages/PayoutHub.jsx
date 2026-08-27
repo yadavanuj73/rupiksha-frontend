@@ -1,3 +1,4 @@
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { 
     Landmark, Zap, ShieldCheck, CheckCircle2, XCircle, Clock, 
     RefreshCw, Search, ArrowRight, Printer, Download, AlertTriangle, 
