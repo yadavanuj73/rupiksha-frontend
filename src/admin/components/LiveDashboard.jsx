@@ -251,7 +251,8 @@ const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistr
     const localRetailers = parentData?.users || [];
     const localDists = parentDists || [];
     const localSAs = parentSAs || [];
-    const allLocalUsers = [...localRetailers, ...localDists, ...localSAs];
+    const allLocalUsersRef = useRef([]);
+    allLocalUsersRef.current = [...localRetailers, ...localDists, ...localSAs];
 
     const fetchDashboard = useCallback(async () => {
         try {
@@ -266,10 +267,10 @@ const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistr
             setPrevData(prevRef.current);
             prevRef.current = json;
 
-            // Merge with local data to ensure real registered users are counted
-            const localActive = allLocalUsers.filter(u => u?.status === 'Approved').length;
-            const localPending = allLocalUsers.filter(u => u?.status === 'Pending').length;
-            const localWallet = allLocalUsers.reduce((sum, u) => {
+            const allLocal = allLocalUsersRef.current;
+            const localActive = allLocal.filter(u => u?.status === 'Approved').length;
+            const localPending = allLocal.filter(u => u?.status === 'Pending').length;
+            const localWallet = allLocal.reduce((sum, u) => {
                 const b = parseFloat((u?.wallet?.balance || '0').toString().replace(/,/g, ''));
                 return sum + (isNaN(b) ? 0 : b);
             }, 0);
@@ -278,7 +279,7 @@ const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistr
             const merged = {
                 ...json,
                 users: {
-                    total: Math.max(json.users?.total || 0, allLocalUsers.length),
+                    total: Math.max(json.users?.total || 0, allLocal.length),
                     active: Math.max(json.users?.active || 0, localActive),
                     pending: Math.max(json.users?.pending || 0, localPending),
                     inactive: json.users?.inactive || 0,
@@ -294,17 +295,17 @@ const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistr
             setLastFetch(new Date());
         } catch (err) {
             setConnected(false);
-            // Gracefully fall back to local data
-            const localActive = allLocalUsers.filter(u => u?.status === 'Approved').length;
-            const localPending = allLocalUsers.filter(u => u?.status === 'Pending').length;
-            const localWallet = allLocalUsers.reduce((sum, u) => {
+            const allLocal = allLocalUsersRef.current;
+            const localActive = allLocal.filter(u => u?.status === 'Approved').length;
+            const localPending = allLocal.filter(u => u?.status === 'Pending').length;
+            const localWallet = allLocal.reduce((sum, u) => {
                 const b = parseFloat((u?.wallet?.balance || '0').toString().replace(/,/g, ''));
                 return sum + (isNaN(b) ? 0 : b);
             }, 0);
             setLiveData(prev => ({
                 ...prev,
                 users: {
-                    total: allLocalUsers.length || prev.users.total,
+                    total: allLocal.length || prev.users.total,
                     active: localActive || prev.users.active,
                     pending: localPending || prev.users.pending,
                     inactive: prev.users.inactive,
@@ -313,34 +314,30 @@ const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistr
                 walletStats: { ...prev.walletStats, total: localWallet || prev.walletStats.total },
             }));
         }
-    }, [allLocalUsers.length]);
+    }, []);
 
-    const fetchBeneData = useCallback(async () => {
+    const fetchBeneData = useCallback(async (fetchFullList = false) => {
         setBeneLoading(true);
         try {
-            const [statsRes, listRes] = await Promise.allSettled([
-                payoutService.getAdminBeneficiaryStats(),
-                payoutService.getAdminBeneficiaries()
-            ]);
+            const stats = await payoutService.getAdminBeneficiaryStats();
+            if (stats) setBeneStats(stats);
 
-            if (statsRes.status === 'fulfilled' && statsRes.value) {
-                setBeneStats(statsRes.value);
-            }
-            if (listRes.status === 'fulfilled' && Array.isArray(listRes.value)) {
-                setBeneList(listRes.value);
+            if (fetchFullList || showBeneModal) {
+                const list = await payoutService.getAdminBeneficiaries();
+                if (Array.isArray(list)) setBeneList(list);
             }
         } catch (e) {
             console.warn('Failed to load admin beneficiary stats', e);
         } finally {
             setBeneLoading(false);
         }
-    }, []);
+    }, [showBeneModal]);
 
     const handleApproveBene = async (id) => {
         setActionLoadingId(id);
         try {
             await payoutService.adminApproveBeneficiary(id);
-            await fetchBeneData();
+            await fetchBeneData(true);
         } catch (err) {
             alert(err?.message || 'Failed to approve beneficiary');
         } finally {
@@ -356,7 +353,7 @@ const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistr
             await payoutService.adminRejectBeneficiary(rejectTargetBene.id, rejectReason);
             setRejectTargetBene(null);
             setRejectReason('');
-            await fetchBeneData();
+            await fetchBeneData(true);
         } catch (err) {
             alert(err?.message || 'Failed to reject beneficiary');
         } finally {
@@ -385,20 +382,32 @@ const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistr
         return list;
     }, [beneList, beneFilter, beneSearch]);
 
+    // Initial fetch on mount & when modal opens
     useEffect(() => {
         fetchDashboard();
-        fetchBeneData();
+        fetchBeneData(showBeneModal);
+    }, [fetchDashboard, fetchBeneData, showBeneModal]);
+
+    // Background polling: every 60 seconds, only when tab is visible
+    useEffect(() => {
+        const POLL_INTERVAL_MS = 60000; // 60s
         const pollInterval = setInterval(() => {
+            if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+                return; // skip polling when tab is inactive to save API calls
+            }
             fetchDashboard();
-            fetchBeneData();
+            fetchBeneData(false);
             setTick(t => t + 1);
-        }, REFRESH_INTERVAL);
-        const clockInterval = setInterval(() => setTime(new Date()), 1000);
-        return () => {
-            clearInterval(pollInterval);
-            clearInterval(clockInterval);
-        };
+        }, POLL_INTERVAL_MS);
+
+        return () => clearInterval(pollInterval);
     }, [fetchDashboard, fetchBeneData]);
+
+    // Live clock timer
+    useEffect(() => {
+        const clockInterval = setInterval(() => setTime(new Date()), 1000);
+        return () => clearInterval(clockInterval);
+    }, []);
 
     const timeStr = time.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const dateStr = time.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
