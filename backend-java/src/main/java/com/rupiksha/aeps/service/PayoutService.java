@@ -561,11 +561,15 @@ public class PayoutService {
         try {
             if (trimmed.startsWith("{")) {
                 JsonNode node = objectMapper.readTree(trimmed);
-                if (node.has("encrypted_payload")) {
+                if (node.has("response") && !node.get("response").isNull()) {
+                    String cipher = node.get("response").asText();
+                    return BusttoCryptoUtil.decrypt(payoutProperties.getAesKey(), cipher);
+                }
+                if (node.has("encrypted_payload") && !node.get("encrypted_payload").isNull()) {
                     String cipher = node.get("encrypted_payload").asText();
                     return BusttoCryptoUtil.decrypt(payoutProperties.getAesKey(), cipher);
                 }
-                if (node.has("request")) {
+                if (node.has("request") && !node.get("request").isNull()) {
                     String cipher = node.get("request").asText();
                     return BusttoCryptoUtil.decrypt(payoutProperties.getAesKey(), cipher);
                 }
