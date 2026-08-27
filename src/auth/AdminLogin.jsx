@@ -108,7 +108,7 @@ const AdminLogin = () => {
 
         setLoadingLogin(true);
         try {
-            const res = await dataService.loginUser(username, password);
+            const res = await dataService.loginUser(username, password, null, 'admin');
             if (!res.success) {
                 setError(res.message || 'Invalid credentials.');
                 setCaptchaInput('');
@@ -121,12 +121,17 @@ const AdminLogin = () => {
                 ['ADMIN', 'SUPER_DISTRIBUTOR', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(r)
             );
             if (!isAdmin) {
-                localStorage.removeItem('rupiksha_user');
-                localStorage.removeItem('rupiksha_token');
+                localStorage.removeItem('rupiksha_admin_user');
+                localStorage.removeItem('rupiksha_admin_token');
                 setError('These credentials are not authorized for the admin portal.');
                 setCaptchaInput('');
                 genCaptcha();
                 return;
+            }
+
+            localStorage.setItem('rupiksha_admin_user', JSON.stringify(res.user));
+            if (res.token) {
+                localStorage.setItem('rupiksha_admin_token', res.token);
             }
 
             setStep('otp');
@@ -174,8 +179,8 @@ const AdminLogin = () => {
         try {
             // JWT already stored by the credential step via dataService.loginUser.
             // Admin OTP is a dev-only 2FA gate; any 6-digit code proceeds.
-            const savedUser = localStorage.getItem('rupiksha_user');
-            const token = localStorage.getItem('rupiksha_token');
+            const savedUser = localStorage.getItem('rupiksha_admin_user') || localStorage.getItem('rupiksha_user');
+            const token = localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token');
             if (!savedUser || !token) {
                 setError('Session expired. Please sign in again.');
                 setStep('credentials');

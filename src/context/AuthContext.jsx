@@ -124,13 +124,28 @@ export function AuthProvider({ children }) {
       return;
     }
 
+    // If this tab is an Admin path, prefer the isolated Admin session
+    const isAdminPath = window.location.pathname.startsWith('/admin');
+    if (isAdminPath) {
+      const adminToken = localStorage.getItem("rupiksha_admin_token");
+      const adminUser = localStorage.getItem("rupiksha_admin_user");
+      if (adminToken && adminUser) {
+        try {
+          const parsedAdmin = normalizeUserSession(JSON.parse(adminUser));
+          if (parsedAdmin) {
+            setUser(parsedAdmin);
+            setPermissions(parsedAdmin.permissions || []);
+            setLoading(false);
+            return;
+          }
+        } catch { /* fall through to fallback */ }
+      }
+    }
+
     // If this tab has an imp session (e.g. page refresh in impersonation tab), restore it.
     // BUT: only if the URL path looks like a member portal (not /admin*).
-    // A stale rupiksha_imp_token can get left behind in the same browser when an admin
-    // opens "Login as Member" and then hard-refreshes their own /admin tab.
     const impToken = localStorage.getItem("rupiksha_imp_token");
     const impUser = localStorage.getItem("rupiksha_imp_user");
-    const isAdminPath = window.location.pathname.startsWith('/admin');
     if (impToken && impUser && !isAdminPath) {
       try {
         const parsedImp = normalizeUserSession(JSON.parse(impUser));
@@ -193,12 +208,6 @@ export function AuthProvider({ children }) {
     return () => clearInterval(interval);
   }, []);
 
-  // NOTE: socket.io live-updates stub removed. The Java backend does not expose
-  // a socket.io server, so the previous io() connection always failed and printed
-  // repeated connection errors in the browser console. If real-time updates are
-  // needed later, add a /ws endpoint in the Java backend and reintroduce this
-  // client connection.
-
   // Update last activity on interaction
   useEffect(() => {
     if (!user) return;
@@ -252,11 +261,20 @@ export function AuthProvider({ children }) {
         if (!normalized) {
           return { success: false, message: "Session normalization failed." };
         }
-        localStorage.removeItem("rupiksha_imp_token");
-        localStorage.removeItem("rupiksha_imp_user");
-        localStorage.setItem("rupiksha_user", JSON.stringify(normalized));
-        if (res.token) {
-          localStorage.setItem("rupiksha_token", res.token);
+        
+        const isAdminRole = expectedPortalRole && ['admin', 'super_distributor', 'employee', 'national_header', 'state_header', 'regional_header'].includes(String(expectedPortalRole).toLowerCase());
+        if (isAdminRole) {
+          localStorage.setItem("rupiksha_admin_user", JSON.stringify(normalized));
+          if (res.token) {
+            localStorage.setItem("rupiksha_admin_token", res.token);
+          }
+        } else {
+          localStorage.removeItem("rupiksha_imp_token");
+          localStorage.removeItem("rupiksha_imp_user");
+          localStorage.setItem("rupiksha_user", JSON.stringify(normalized));
+          if (res.token) {
+            localStorage.setItem("rupiksha_token", res.token);
+          }
         }
         setUser(normalized);
         setPermissions(normalized.permissions || []);
@@ -285,14 +303,22 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
+    const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
     const isImpSession = !!localStorage.getItem("rupiksha_imp_token");
-    if (isImpSession) {
-      // In an impersonation tab — only clear imp keys, not admin's real token
+    
+    if (isAdminPath) {
+      localStorage.removeItem("rupiksha_admin_token");
+      localStorage.removeItem("rupiksha_admin_user");
+      localStorage.removeItem("rupiksha_admin_refresh_token");
+      sessionStorage.removeItem("admin_auth");
+    } else if (isImpSession) {
+      // In an impersonation tab — only clear imp keys, not real token
       localStorage.removeItem("rupiksha_imp_token");
       localStorage.removeItem("rupiksha_imp_user");
     } else {
       localStorage.removeItem("rupiksha_token");
       localStorage.removeItem("rupiksha_user");
+      localStorage.removeItem("rupiksha_refresh_token");
       localStorage.removeItem("rupiksha_imp_token");
       localStorage.removeItem("rupiksha_imp_user");
       localStorage.removeItem("last_activity");
@@ -310,10 +336,10 @@ export function AuthProvider({ children }) {
   };
 
   // Prefer imp token only in impersonation tabs (non-admin paths).
-  // Admin tab should NEVER use rupiksha_imp_token — it would send member token to admin endpoints.
+  // Admin tab should use rupiksha_admin_token (isolated from member tab).
   const getToken = () => {
     const isAdminTab = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
-    if (isAdminTab) return localStorage.getItem("rupiksha_token");
+    if (isAdminTab) return localStorage.getItem("rupiksha_admin_token") || localStorage.getItem("rupiksha_token");
     return localStorage.getItem("rupiksha_imp_token") || localStorage.getItem("rupiksha_token");
   };
 

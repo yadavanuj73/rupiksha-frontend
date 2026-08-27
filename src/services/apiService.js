@@ -5,7 +5,7 @@ const BASE_URL = rawApiUrl.endsWith('/api/v1') ? rawApiUrl : `${rawApiUrl}/api/v
 // Token helper — admin path always uses admin token, member imp-tab uses imp token
 const getToken = () => {
   const isAdminTab = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
-  if (isAdminTab) return localStorage.getItem('rupiksha_token');
+  if (isAdminTab) return localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token');
   return localStorage.getItem('rupiksha_imp_token') || localStorage.getItem('rupiksha_token');
 };
 const makeIdempotencyKey = () =>
@@ -37,8 +37,12 @@ export const apiFetch = async (endpoint, options = {}) => {
       window.location.href = "/login";
       return;
     }
-    // Admin tab: do NOT redirect or clear admin token — throw so caller can handle
-    throw new Error("Session expired");
+    // Admin tab: clear admin token and redirect to admin login
+    localStorage.removeItem("rupiksha_admin_token");
+    localStorage.removeItem("rupiksha_admin_user");
+    sessionStorage.removeItem("admin_auth");
+    window.location.href = "/admin-login";
+    return;
   }
   const text = await res.text();
   let body = null;

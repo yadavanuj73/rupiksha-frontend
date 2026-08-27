@@ -21,19 +21,27 @@ async function safeJson(res, fallback = {}) {
 
 // ── Auth-aware fetch: clears stale token and redirects to login on 401 ──────
 async function authFetch(url, options = {}) {
-    const token = localStorage.getItem('rupiksha_token');
+    const isAdminTab = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+    const token = isAdminTab 
+        ? (localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token'))
+        : (localStorage.getItem('rupiksha_imp_token') || localStorage.getItem('rupiksha_token'));
     const headers = {
         ...(options.headers || {}),
         ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     };
     const res = await fetch(url, { ...options, headers });
     if (res.status === 401) {
-        const isAdminTab = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
         if (!isAdminTab) {
             console.warn('[authFetch] 401 on', url, '— token expired, clearing session');
             localStorage.removeItem('rupiksha_token');
             localStorage.removeItem('rupiksha_user');
             window.location.href = '/login';
+        } else {
+            console.warn('[authFetch] 401 on admin path', url, '— clearing admin session');
+            localStorage.removeItem('rupiksha_admin_token');
+            localStorage.removeItem('rupiksha_admin_user');
+            sessionStorage.removeItem('admin_auth');
+            window.location.href = '/admin-login';
         }
     }
     return res;
@@ -323,11 +331,19 @@ export const dataService = {
                 return { success: false, message: 'Invalid credentials or unauthorized portal access.' };
             }
 
-            localStorage.removeItem('rupiksha_imp_token');
-            localStorage.removeItem('rupiksha_imp_user');
-            localStorage.setItem('rupiksha_user', JSON.stringify(normalizedUser));
-            localStorage.setItem('rupiksha_token', data.accessToken);
-            if (data.refreshToken) localStorage.setItem('rupiksha_refresh_token', data.refreshToken);
+            const isAdminLogin = expectedPortalRole && ['admin', 'super_distributor', 'employee', 'national_header', 'state_header', 'regional_header'].includes(String(expectedPortalRole).toLowerCase());
+
+            if (isAdminLogin) {
+                localStorage.setItem('rupiksha_admin_user', JSON.stringify(normalizedUser));
+                localStorage.setItem('rupiksha_admin_token', data.accessToken);
+                if (data.refreshToken) localStorage.setItem('rupiksha_admin_refresh_token', data.refreshToken);
+            } else {
+                localStorage.removeItem('rupiksha_imp_token');
+                localStorage.removeItem('rupiksha_imp_user');
+                localStorage.setItem('rupiksha_user', JSON.stringify(normalizedUser));
+                localStorage.setItem('rupiksha_token', data.accessToken);
+                if (data.refreshToken) localStorage.setItem('rupiksha_refresh_token', data.refreshToken);
+            }
             return { success: true, user: normalizedUser, token: data.accessToken };
         } catch (e) {
             return { success: false, message: "Server connection failed: " + (e?.message || 'network error') };
@@ -335,9 +351,15 @@ export const dataService = {
     },
 
     getCurrentUser: function () {
+        const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+        if (isAdminPath) {
+            const adminUser = localStorage.getItem('rupiksha_admin_user');
+            if (adminUser) {
+                try { return JSON.parse(adminUser); } catch (e) {}
+            }
+        }
         const impToken = localStorage.getItem('rupiksha_imp_token');
         const impUser = localStorage.getItem('rupiksha_imp_user');
-        const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
         if (impToken && impUser && !isAdminPath) {
             try {
                 return JSON.parse(impUser);
