@@ -642,14 +642,16 @@ const PayoutHub = () => {
                                 </button>
                             </div>
 
-                            {/* Wallet Balance Pill */}
-                            <div className="flex items-center gap-2.5 bg-gradient-to-r from-slate-900 to-slate-950 text-white px-3.5 py-2 rounded-xl shadow-xs shrink-0 border border-slate-800">
-                                <CreditCard size={17} className="text-blue-400 shrink-0" />
+                            {/* Wallet Balance Pill (Light Theme Matching UI) */}
+                            <div className="flex items-center gap-2.5 bg-blue-50/90 border border-blue-200 text-slate-800 px-3.5 py-1.5 rounded-xl shadow-2xs shrink-0">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white shadow-2xs">
+                                    <CreditCard size={16} />
+                                </div>
                                 <div className="text-left">
-                                    <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 leading-none">
-                                        Wallet Balance
+                                    <div className="text-[9.5px] font-black uppercase tracking-wider text-blue-700 leading-none">
+                                        Main Wallet
                                     </div>
-                                    <div className="text-sm sm:text-base font-black font-mono leading-tight text-white mt-0.5">
+                                    <div className="text-sm sm:text-base font-black font-mono leading-tight text-slate-900 mt-0.5">
                                         ₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                     </div>
                                 </div>
@@ -658,9 +660,9 @@ const PayoutHub = () => {
                                     onClick={fetchBalance} 
                                     disabled={balanceLoading}
                                     title="Refresh Balance"
-                                    className="p-1 text-slate-400 hover:text-white rounded transition"
+                                    className="p-1 text-slate-400 hover:text-blue-700 rounded transition"
                                 >
-                                    <RefreshCw size={13} className={balanceLoading ? 'animate-spin text-blue-400' : ''} />
+                                    <RefreshCw size={13} className={balanceLoading ? 'animate-spin text-blue-600' : ''} />
                                 </button>
                             </div>
 
@@ -668,347 +670,330 @@ const PayoutHub = () => {
                     </div>
                 </div>
 
-                {/* ─── Tab 1: Terminal Form & Live Telemetry Layout ─────────── */}
+                {/* ─── Tab 1: Terminal Form & Live Action Split Layout ──────── */}
                 {activeTab === 'transfer' && (
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                    <form onSubmit={handlePayoutSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
                         
-                        {/* ══ LEFT (COL 1 to 8): Main Payout Form ════════════════ */}
-                        <div className="lg:col-span-8 bg-white border border-slate-200/90 rounded-2xl md:rounded-3xl p-4 sm:p-5 shadow-xs">
-                            <form onSubmit={handlePayoutSubmit} className="space-y-4">
-                                
-                                {/* ── Step 1: Beneficiary Bank Details ── */}
-                                <div className="space-y-3 p-3 sm:p-4 bg-slate-50/70 border border-slate-200/80 rounded-2xl">
-                                    <div className="flex items-center justify-between flex-wrap gap-2">
-                                        <div className="flex items-center gap-2">
-                                            <div className="h-6 w-6 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs font-black">
-                                                1
-                                            </div>
-                                            <span className="text-xs sm:text-[13px] font-black uppercase tracking-wide text-slate-800">
-                                                Beneficiary Bank Account Details
-                                            </span>
-                                        </div>
-
-                                        {isAccountValid && isIfscValid && (
-                                            <button
-                                                type="button"
-                                                onClick={handleVerifyAccount}
-                                                disabled={verifying}
-                                                className="inline-flex items-center gap-1.5 text-[10.5px] font-black text-white bg-emerald-600 hover:bg-emerald-700 px-2.5 py-1 rounded-lg transition shadow-xs cursor-pointer disabled:opacity-50"
-                                            >
-                                                {verifying ? (
-                                                    <>
-                                                        <RefreshCw size={11} className="animate-spin" />
-                                                        Verifying Account...
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Sparkles size={11} />
-                                                        Verify Account Holder
-                                                    </>
-                                                )}
-                                            </button>
-                                        )}
-                                    </div>
-
-                                    {/* 2x2 Clean Inputs */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        
-                                        {/* Account Number */}
-                                        <div>
-                                            <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1">
-                                                Account Number *
-                                            </label>
-                                            <div className="relative">
-                                                <input
-                                                    type="text"
-                                                    required
-                                                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-mono transition"
-                                                    placeholder="Enter bank account number"
-                                                    value={form.accountNumber}
-                                                    onChange={(e) => setForm(p => ({ ...p, accountNumber: e.target.value.replace(/\D/g, '') }))}
-                                                    maxLength={18}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Confirm Account Number */}
-                                        <div>
-                                            <div className="flex items-center justify-between mb-1">
-                                                <label className="text-[11px] font-black uppercase tracking-wider text-slate-700">
-                                                    Confirm Account Number *
-                                                </label>
-                                                {form.confirmAccountNumber && (
-                                                    <span className={`text-[10px] font-black ${isAccountMatching ? 'text-emerald-600' : 'text-rose-500'}`}>
-                                                        {isAccountMatching ? '✓ Matched' : '✕ Mismatch'}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <input
-                                                type="text"
-                                                required
-                                                className={`w-full rounded-xl border px-3.5 py-2 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none font-mono transition ${
-                                                    form.confirmAccountNumber && !isAccountMatching
-                                                        ? 'border-rose-300 bg-rose-50/50 focus:border-rose-500 focus:ring-2 focus:ring-rose-100'
-                                                        : 'border-slate-200 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
-                                                }`}
-                                                placeholder="Re-enter account number"
-                                                value={form.confirmAccountNumber}
-                                                onChange={(e) => setForm(p => ({ ...p, confirmAccountNumber: e.target.value.replace(/\D/g, '') }))}
-                                                maxLength={18}
-                                            />
-                                        </div>
-
-                                        {/* IFSC Code */}
-                                        <div>
-                                            <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1">
-                                                IFSC Code *
-                                            </label>
-                                            <input
-                                                type="text"
-                                                required
-                                                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm font-bold uppercase text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-mono transition"
-                                                placeholder="e.g. SBIN0001234"
-                                                value={form.ifsc}
-                                                onChange={(e) => setForm(p => ({ ...p, ifsc: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
-                                                maxLength={11}
-                                            />
-                                        </div>
-
-                                        {/* Beneficiary Legal Name */}
-                                        <div>
-                                            <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1">
-                                                Beneficiary Legal Name *
-                                            </label>
-                                            <input
-                                                type="text"
-                                                required
-                                                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition"
-                                                placeholder="Name as in bank records"
-                                                value={form.beneficiaryName}
-                                                onChange={(e) => setForm(p => ({ ...p, beneficiaryName: e.target.value }))}
-                                            />
-                                        </div>
-
-                                    </div>
-
-                                    {/* Inline Verification Result */}
-                                    {verificationResult && (
-                                        <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800">
-                                            <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
-                                            <span>
-                                                Account Verified: <strong className="font-black">{verificationResult.nameAtBank}</strong> (Status: {verificationResult.acValidationStatus})
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    {verificationError && (
-                                        <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-800">
-                                            <AlertTriangle size={15} className="text-rose-600 shrink-0" />
-                                            <span>{verificationError}</span>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* ── Step 2: Payment Rail & Amount ── */}
-                                <div className="space-y-3 p-3 sm:p-4 bg-slate-50/70 border border-slate-200/80 rounded-2xl">
+                        {/* ══ LEFT (COL 1 to 7): Beneficiary & Rail Inputs ════════ */}
+                        <div className="lg:col-span-7 bg-white border border-slate-200/90 rounded-2xl md:rounded-3xl p-4 sm:p-5 shadow-xs space-y-3.5">
+                            
+                            {/* ── Step 1: Beneficiary Bank Details ── */}
+                            <div className="space-y-3 p-3 sm:p-3.5 bg-slate-50/80 border border-slate-200/80 rounded-2xl">
+                                <div className="flex items-center justify-between flex-wrap gap-2">
                                     <div className="flex items-center gap-2">
                                         <div className="h-6 w-6 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs font-black">
-                                            2
+                                            1
                                         </div>
                                         <span className="text-xs sm:text-[13px] font-black uppercase tracking-wide text-slate-800">
-                                            Transfer Rail & Amount
+                                            Beneficiary Account Details
                                         </span>
                                     </div>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        
-                                        {/* Rail Selector Pills */}
-                                        <div>
-                                            <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1">
-                                                Payment Rail *
-                                            </label>
-                                            <div className="grid grid-cols-3 gap-1.5">
-                                                {[
-                                                    { mode: 'IMPS', title: 'IMPS', desc: 'Instant 24x7' },
-                                                    { mode: 'NEFT', title: 'NEFT', desc: 'Batch' },
-                                                    { mode: 'RTGS', title: 'RTGS', desc: '₹2L+' }
-                                                ].map(item => (
-                                                    <button
-                                                        key={item.mode}
-                                                        type="button"
-                                                        onClick={() => setForm(p => ({ ...p, transferMode: item.mode }))}
-                                                        className={`rounded-xl border py-2 px-2 text-center transition cursor-pointer ${
-                                                            form.transferMode === item.mode
-                                                                ? 'border-blue-600 bg-blue-600 text-white font-black shadow-xs'
-                                                                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                                                        }`}
-                                                    >
-                                                        <div className="text-xs font-black leading-tight">{item.title}</div>
-                                                        <div className={`text-[9px] font-bold leading-tight ${form.transferMode === item.mode ? 'text-blue-100' : 'text-slate-400'}`}>
-                                                            {item.desc}
-                                                        </div>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
+                                    {isAccountValid && isIfscValid && (
+                                        <button
+                                            type="button"
+                                            onClick={handleVerifyAccount}
+                                            disabled={verifying}
+                                            className="inline-flex items-center gap-1.5 text-[10.5px] font-black text-white bg-emerald-600 hover:bg-emerald-700 px-2.5 py-1 rounded-lg transition shadow-xs cursor-pointer disabled:opacity-50"
+                                        >
+                                            {verifying ? (
+                                                <>
+                                                    <RefreshCw size={11} className="animate-spin" />
+                                                    Verifying Account...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Sparkles size={11} />
+                                                    Verify Account Holder
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
+                                </div>
 
-                                        {/* Amount Input */}
-                                        <div>
-                                            <div className="flex items-center justify-between mb-1">
-                                                <label className="text-[11px] font-black uppercase tracking-wider text-slate-700">
-                                                    Transfer Amount (₹) *
-                                                </label>
-                                                {form.amount && !isAmountWithinBalance && (
-                                                    <span className="text-[10px] font-black text-rose-600">
-                                                        Exceeds balance
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="relative">
-                                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base font-black text-slate-400">₹</span>
-                                                <input
-                                                    type="text"
-                                                    required
-                                                    className={`w-full rounded-xl border pl-8 pr-3.5 py-2 text-base font-black text-slate-900 placeholder:text-slate-400 outline-none font-mono transition ${
-                                                        form.amount && !isAmountWithinBalance
-                                                            ? 'border-rose-300 bg-rose-50/50 focus:border-rose-500 focus:ring-2 focus:ring-rose-100'
-                                                            : 'border-slate-200 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
-                                                    }`}
-                                                    placeholder="0.00"
-                                                    value={form.amount}
-                                                    onChange={(e) => setForm(p => ({ ...p, amount: e.target.value.replace(/[^\d.]/g, '') }))}
-                                                />
-                                            </div>
-                                        </div>
-
-                                    </div>
-
-                                    {/* Remarks Field */}
+                                {/* 2x2 Clean Inputs */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    
+                                    {/* Account Number */}
                                     <div>
                                         <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1">
-                                            Transaction Remarks (Optional)
+                                            Account Number *
                                         </label>
                                         <input
                                             type="text"
-                                            className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400 outline-none focus:border-blue-500 transition"
-                                            placeholder="e.g. Vendor payout, salary, or customer settlement"
-                                            value={form.remarks}
-                                            onChange={(e) => setForm(p => ({ ...p, remarks: e.target.value }))}
-                                            maxLength={100}
+                                            required
+                                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-mono transition"
+                                            placeholder="Enter bank account number"
+                                            value={form.accountNumber}
+                                            onChange={(e) => setForm(p => ({ ...p, accountNumber: e.target.value.replace(/\D/g, '') }))}
+                                            maxLength={18}
                                         />
                                     </div>
+
+                                    {/* Confirm Account Number */}
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="text-[11px] font-black uppercase tracking-wider text-slate-700">
+                                                Confirm Account Number *
+                                            </label>
+                                            {form.confirmAccountNumber && (
+                                                <span className={`text-[10px] font-black ${isAccountMatching ? 'text-emerald-600' : 'text-rose-500'}`}>
+                                                    {isAccountMatching ? '✓ Matched' : '✕ Mismatch'}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <input
+                                            type="text"
+                                            required
+                                            className={`w-full rounded-xl border px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none font-mono transition ${
+                                                form.confirmAccountNumber && !isAccountMatching
+                                                    ? 'border-rose-300 bg-rose-50/50 focus:border-rose-500 focus:ring-2 focus:ring-rose-100'
+                                                    : 'border-slate-200 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                                            }`}
+                                            placeholder="Re-enter account number"
+                                            value={form.confirmAccountNumber}
+                                            onChange={(e) => setForm(p => ({ ...p, confirmAccountNumber: e.target.value.replace(/\D/g, '') }))}
+                                            maxLength={18}
+                                        />
+                                    </div>
+
+                                    {/* IFSC Code */}
+                                    <div>
+                                        <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1">
+                                            IFSC Code *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-bold uppercase text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-mono transition"
+                                            placeholder="e.g. SBIN0001234"
+                                            value={form.ifsc}
+                                            onChange={(e) => setForm(p => ({ ...p, ifsc: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
+                                            maxLength={11}
+                                        />
+                                    </div>
+
+                                    {/* Beneficiary Legal Name */}
+                                    <div>
+                                        <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1">
+                                            Beneficiary Legal Name *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition"
+                                            placeholder="Name as in bank records"
+                                            value={form.beneficiaryName}
+                                            onChange={(e) => setForm(p => ({ ...p, beneficiaryName: e.target.value }))}
+                                        />
+                                    </div>
+
                                 </div>
 
-                                {/* Submit Error */}
-                                {submitError && (
-                                    <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs font-bold text-rose-700">
-                                        <AlertTriangle size={15} className="shrink-0 text-rose-600" />
-                                        <span>{submitError}</span>
+                                {/* Inline Verification Result */}
+                                {verificationResult && (
+                                    <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800">
+                                        <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                                        <span>
+                                            Verified: <strong className="font-black">{verificationResult.nameAtBank}</strong> (Status: {verificationResult.acValidationStatus})
+                                        </span>
                                     </div>
                                 )}
 
-                                {/* Primary Action Submit Button */}
-                                <div className="space-y-2 pt-1">
-                                    <button
-                                        type="submit"
-                                        disabled={!canSubmit || isSubmitting}
-                                        className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 py-3 text-xs sm:text-sm font-black uppercase tracking-wider text-white shadow-md shadow-blue-500/25 hover:from-blue-700 hover:to-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer active:scale-[0.99]"
-                                    >
-                                        {isSubmitting ? (
-                                            <>
-                                                <RefreshCw size={16} className="animate-spin" />
-                                                Routing Bank Transfer...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <ShieldCheck size={18} />
-                                                Confirm & Transfer Payout
-                                            </>
-                                        )}
-                                    </button>
-
-                                    <div className="flex items-center justify-center gap-3 text-[10.5px] font-bold text-slate-500 text-center flex-wrap">
-                                        <span className="flex items-center gap-1 text-emerald-700">
-                                            <CheckCircle2 size={12} /> Instant Auto-Refund on failure
-                                        </span>
-                                        <span>•</span>
-                                        <span className="flex items-center gap-1 text-blue-700">
-                                            <Lock size={12} /> 256-bit Encrypted Banking Channel
-                                        </span>
+                                {verificationError && (
+                                    <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-800">
+                                        <AlertTriangle size={14} className="text-rose-600 shrink-0" />
+                                        <span>{verificationError}</span>
                                     </div>
-                                </div>
+                                )}
+                            </div>
 
-                            </form>
-                        </div>
-
-                        {/* ══ RIGHT (COL 9 to 12): Live Telemetry & Summary Card ════ */}
-                        <div className="lg:col-span-4 space-y-3.5">
-                            
-                            {/* Live Transaction Preview */}
-                            <div className="rounded-2xl md:rounded-3xl bg-gradient-to-br from-slate-900 via-slate-950 to-blue-950 text-white p-5 border border-slate-800 shadow-md relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
-                                
-                                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                                    <span className="text-[11px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
-                                        <Activity size={13} className="text-blue-400" />
-                                        Live Preview
-                                    </span>
-                                    <span className="px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-300 text-[10px] font-black uppercase font-mono">
-                                        {form.transferMode} RAIL
+                            {/* ── Step 2: Payment Rail & Amount ── */}
+                            <div className="space-y-3 p-3 sm:p-3.5 bg-slate-50/80 border border-slate-200/80 rounded-2xl">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-6 w-6 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs font-black">
+                                        2
+                                    </div>
+                                    <span className="text-xs sm:text-[13px] font-black uppercase tracking-wide text-slate-800">
+                                        Transfer Rail & Amount
                                     </span>
                                 </div>
 
-                                <div className="py-3">
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                                        Transfer Amount
-                                    </span>
-                                    <div className="text-2xl sm:text-3xl font-black font-mono text-white tracking-tight mt-0.5">
-                                        ₹ {Number(form.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    
+                                    {/* Rail Selector Pills */}
+                                    <div>
+                                        <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1">
+                                            Payment Rail *
+                                        </label>
+                                        <div className="grid grid-cols-3 gap-1.5">
+                                            {[
+                                                { mode: 'IMPS', title: 'IMPS', desc: 'Instant' },
+                                                { mode: 'NEFT', title: 'NEFT', desc: 'Batch' },
+                                                { mode: 'RTGS', title: 'RTGS', desc: '₹2L+' }
+                                            ].map(item => (
+                                                <button
+                                                    key={item.mode}
+                                                    type="button"
+                                                    onClick={() => setForm(p => ({ ...p, transferMode: item.mode }))}
+                                                    className={`rounded-xl border py-2 px-1.5 text-center transition cursor-pointer ${
+                                                        form.transferMode === item.mode
+                                                            ? 'border-blue-600 bg-blue-600 text-white font-black shadow-xs'
+                                                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                                                    }`}
+                                                >
+                                                    <div className="text-xs font-black leading-tight">{item.title}</div>
+                                                    <div className={`text-[9px] font-bold leading-tight ${form.transferMode === item.mode ? 'text-blue-100' : 'text-slate-400'}`}>
+                                                        {item.desc}
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="space-y-2 text-xs border-t border-slate-800/80 pt-3">
-                                    <div className="flex justify-between items-center text-slate-300">
-                                        <span className="text-slate-400 text-[11px]">Beneficiary:</span>
-                                        <span className="font-bold text-white truncate max-w-[170px]">
-                                            {form.beneficiaryName || '—'}
-                                        </span>
+                                    {/* Amount Input */}
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="text-[11px] font-black uppercase tracking-wider text-slate-700">
+                                                Transfer Amount (₹) *
+                                            </label>
+                                            {form.amount && !isAmountWithinBalance && (
+                                                <span className="text-[10px] font-black text-rose-600">
+                                                    Exceeds balance
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="relative">
+                                            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base font-black text-slate-400">₹</span>
+                                            <input
+                                                type="text"
+                                                required
+                                                className={`w-full rounded-xl border pl-8 pr-3.5 py-2 text-base font-black text-slate-900 placeholder:text-slate-400 outline-none font-mono transition ${
+                                                    form.amount && !isAmountWithinBalance
+                                                        ? 'border-rose-300 bg-rose-50/50 focus:border-rose-500 focus:ring-2 focus:ring-rose-100'
+                                                        : 'border-slate-200 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                                                }`}
+                                                placeholder="0.00"
+                                                value={form.amount}
+                                                onChange={(e) => setForm(p => ({ ...p, amount: e.target.value.replace(/[^\d.]/g, '') }))}
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="flex justify-between items-center text-slate-300">
-                                        <span className="text-slate-400 text-[11px]">Account:</span>
-                                        <span className="font-mono font-bold text-slate-200">
-                                            {form.accountNumber ? `${form.accountNumber.slice(0, 3)}••••${form.accountNumber.slice(-4)}` : '—'}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-slate-300">
-                                        <span className="text-slate-400 text-[11px]">IFSC:</span>
-                                        <span className="font-mono font-bold uppercase text-slate-200">
-                                            {form.ifsc || '—'}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-slate-300">
-                                        <span className="text-slate-400 text-[11px]">Est. Delivery:</span>
-                                        <span className="font-bold text-emerald-400">
-                                            {form.transferMode === 'IMPS' ? 'Instant (< 5s)' : form.transferMode === 'NEFT' ? '30 - 60 mins' : 'Instant (RTGS)'}
-                                        </span>
-                                    </div>
-                                </div>
 
-                                {/* Security Badges in Telemetry */}
-                                <div className="mt-4 pt-3 border-t border-slate-800 space-y-1.5 text-[10.5px] font-semibold text-slate-300">
-                                    <div className="flex items-center gap-1.5 text-slate-300">
-                                        <ShieldCheck size={13} className="text-blue-400 shrink-0" />
-                                        <span>Direct NPCI Banking Settlement</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 text-slate-300">
-                                        <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />
-                                        <span>Encrypted Unique Order Generation</span>
-                                    </div>
                                 </div>
                             </div>
 
                         </div>
-                    </div>
+
+                        {/* ══ RIGHT (COL 8 to 12): Live Telemetry, Remarks & Transfer CTA ══ */}
+                        <div className="lg:col-span-5 bg-white border border-slate-200/90 rounded-2xl md:rounded-3xl p-4 sm:p-5 shadow-xs space-y-3.5">
+                            
+                            {/* Live Transaction Preview (Matching Light UI) */}
+                            <div className="rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/50 p-4 border border-blue-100/90 shadow-2xs space-y-2.5">
+                                <div className="flex items-center justify-between pb-2 border-b border-blue-100">
+                                    <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                                        <Activity size={13} className="text-blue-600" />
+                                        Live Transfer Summary
+                                    </span>
+                                    <span className="px-2 py-0.5 rounded-md bg-blue-600 text-white text-[10px] font-black uppercase font-mono shadow-2xs">
+                                        {form.transferMode} RAIL
+                                    </span>
+                                </div>
+
+                                <div className="flex items-baseline justify-between py-1">
+                                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                                        Amount
+                                    </span>
+                                    <div className="text-2xl sm:text-3xl font-black font-mono text-blue-700 tracking-tight">
+                                        ₹ {Number(form.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1.5 text-xs border-t border-blue-100/80 pt-2.5">
+                                    <div className="flex justify-between items-center text-slate-600">
+                                        <span className="text-slate-500 text-[11px]">Beneficiary:</span>
+                                        <span className="font-black text-slate-900 truncate max-w-[190px]">
+                                            {form.beneficiaryName || '—'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-slate-600">
+                                        <span className="text-slate-500 text-[11px]">Account:</span>
+                                        <span className="font-mono font-bold text-slate-900">
+                                            {form.accountNumber ? `${form.accountNumber.slice(0, 3)}••••${form.accountNumber.slice(-4)}` : '—'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-slate-600">
+                                        <span className="text-slate-500 text-[11px]">IFSC:</span>
+                                        <span className="font-mono font-bold uppercase text-slate-900">
+                                            {form.ifsc || '—'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-slate-600">
+                                        <span className="text-slate-500 text-[11px]">Est. Settlement:</span>
+                                        <span className="font-black text-emerald-700">
+                                            {form.transferMode === 'IMPS' ? 'Instant (< 5s)' : form.transferMode === 'NEFT' ? '30 - 60 mins' : 'Instant (RTGS)'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Remarks Field */}
+                            <div>
+                                <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1">
+                                    Transaction Remarks (Optional)
+                                </label>
+                                <input
+                                    type="text"
+                                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2 text-xs font-semibold text-slate-800 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:bg-white transition"
+                                    placeholder="e.g. Vendor payout, salary, or customer settlement"
+                                    value={form.remarks}
+                                    onChange={(e) => setForm(p => ({ ...p, remarks: e.target.value }))}
+                                    maxLength={100}
+                                />
+                            </div>
+
+                            {/* Submit Error banner */}
+                            {submitError && (
+                                <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs font-bold text-rose-700">
+                                    <AlertTriangle size={15} className="shrink-0 text-rose-600" />
+                                    <span>{submitError}</span>
+                                </div>
+                            )}
+
+                            {/* Primary Action Submit Button */}
+                            <div className="space-y-2 pt-1">
+                                <button
+                                    type="submit"
+                                    disabled={!canSubmit || isSubmitting}
+                                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 py-3 text-xs sm:text-sm font-black uppercase tracking-wider text-white shadow-md shadow-blue-500/25 hover:from-blue-700 hover:to-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer active:scale-[0.99]"
+                                >
+                                    {isSubmitting ? (
+                                        <>
+                                            <RefreshCw size={16} className="animate-spin" />
+                                            Routing Bank Transfer...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <ShieldCheck size={18} />
+                                            Confirm & Transfer Payout
+                                        </>
+                                    )}
+                                </button>
+
+                                <div className="flex items-center justify-center gap-3 text-[10.5px] font-bold text-slate-500 text-center flex-wrap">
+                                    <span className="flex items-center gap-1 text-emerald-700">
+                                        <CheckCircle2 size={12} /> Instant Auto-Refund on failure
+                                    </span>
+                                    <span>•</span>
+                                    <span className="flex items-center gap-1 text-blue-700">
+                                        <Lock size={12} /> 256-bit Encrypted Banking
+                                    </span>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </form>
                 )}
 
                 {/* ─── Tab 2: Recent Transfers History ──────────────────────────── */}
