@@ -1363,29 +1363,6 @@ const PayoutHub = () => {
                                             onChange={(e) => setForm(p => ({ ...p, amount: e.target.value.replace(/[^\d.]/g, '') }))}
                                         />
                                     </div>
-
-                                    {/* Quick Amount Pills */}
-                                    <div className="flex items-center gap-1.5 pt-2 overflow-x-auto">
-                                        {[500, 1000, 2000, 5000].map(amt => (
-                                            <button
-                                                key={amt}
-                                                type="button"
-                                                onClick={() => setForm(p => ({ ...p, amount: String((Number(p.amount) || 0) + amt) }))}
-                                                className="shrink-0 rounded-lg bg-white border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 px-2.5 py-1 text-[11px] font-bold text-slate-700 transition cursor-pointer shadow-2xs"
-                                            >
-                                                +₹{amt.toLocaleString('en-IN')}
-                                            </button>
-                                        ))}
-                                        {walletBalance > 0 && (
-                                            <button
-                                                type="button"
-                                                onClick={() => setForm(p => ({ ...p, amount: String(walletBalance) }))}
-                                                className="shrink-0 rounded-lg bg-blue-50 border border-blue-200 hover:bg-blue-100 px-2.5 py-1 text-[11px] font-black text-blue-700 transition cursor-pointer shadow-2xs"
-                                            >
-                                                Max ₹{Math.floor(walletBalance).toLocaleString('en-IN')}
-                                            </button>
-                                        )}
-                                    </div>
                                 </div>
 
                             </div>
