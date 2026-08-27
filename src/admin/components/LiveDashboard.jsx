@@ -251,8 +251,9 @@ const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistr
     const localRetailers = parentData?.users || [];
     const localDists = parentDists || [];
     const localSAs = parentSAs || [];
-    const allLocalUsersRef = useRef([]);
-    allLocalUsersRef.current = [...localRetailers, ...localDists, ...localSAs];
+    const allLocalUsers = [...localRetailers, ...localDists, ...localSAs];
+    const allLocalUsersRef = useRef(allLocalUsers);
+    allLocalUsersRef.current = allLocalUsers;
 
     const fetchDashboard = useCallback(async () => {
         try {
