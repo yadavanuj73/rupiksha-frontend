@@ -235,6 +235,18 @@ const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistr
     const [tick, setTick] = useState(0);
     const prevRef = useRef(null);
 
+    // Beneficiary Approval State
+    const [beneStats, setBeneStats] = useState({ pending: 0, approved: 0, rejected: 0, total: 0 });
+    const [beneList, setBeneList] = useState([]);
+    const [beneLoading, setBeneLoading] = useState(false);
+    const [showBeneModal, setShowBeneModal] = useState(false);
+    const [beneFilter, setBeneFilter] = useState('ALL');
+    const [beneSearch, setBeneSearch] = useState('');
+    const [rejectTargetBene, setRejectTargetBene] = useState(null);
+    const [rejectReason, setRejectReason] = useState('');
+    const [actionLoadingId, setActionLoadingId] = useState(null);
+    const [copiedField, setCopiedField] = useState('');
+
     // Merge local storage users for richer stats when server is empty
     const localRetailers = parentData?.users || [];
     const localDists = parentDists || [];
