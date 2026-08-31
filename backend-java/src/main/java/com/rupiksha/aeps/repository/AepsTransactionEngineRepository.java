@@ -19,9 +19,9 @@ public interface AepsTransactionEngineRepository extends JpaRepository<AepsTrans
     boolean existsByTransactionId(String transactionId);
 
     @Query("SELECT t FROM AepsTransactionEngine t WHERE t.userId = :userId " +
-           "AND (:serviceType IS NULL OR t.serviceType = :serviceType) " +
-           "AND (:status IS NULL OR t.status = :status) " +
-           "AND (:provider IS NULL OR t.provider = :provider) " +
+           "AND (:serviceType IS NULL OR UPPER(t.serviceType) = UPPER(:serviceType)) " +
+           "AND (:status IS NULL OR UPPER(t.status) = UPPER(:status)) " +
+           "AND (:provider IS NULL OR LOWER(t.provider) = LOWER(:provider)) " +
            "AND (:startDate IS NULL OR t.initiatedAt >= :startDate) " +
            "AND (:endDate IS NULL OR t.initiatedAt <= :endDate) " +
            "AND (:search IS NULL OR lower(t.transactionId) LIKE lower(concat('%', :search, '%')) " +
@@ -38,9 +38,9 @@ public interface AepsTransactionEngineRepository extends JpaRepository<AepsTrans
             Pageable pageable);
 
     @Query("SELECT t FROM AepsTransactionEngine t WHERE t.userId = :userId " +
-           "AND (:serviceType IS NULL OR t.serviceType = :serviceType) " +
-           "AND (:status IS NULL OR t.status = :status) " +
-           "AND (:provider IS NULL OR t.provider = :provider) " +
+           "AND (:serviceType IS NULL OR UPPER(t.serviceType) = UPPER(:serviceType)) " +
+           "AND (:status IS NULL OR UPPER(t.status) = UPPER(:status)) " +
+           "AND (:provider IS NULL OR LOWER(t.provider) = LOWER(:provider)) " +
            "AND (:startDate IS NULL OR t.initiatedAt >= :startDate) " +
            "AND (:endDate IS NULL OR t.initiatedAt <= :endDate) " +
            "AND (:search IS NULL OR lower(t.transactionId) LIKE lower(concat('%', :search, '%')) " +

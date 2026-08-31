@@ -391,30 +391,43 @@ const Reports = () => {
             </div>
 
             {/* ── Summary Cards ── */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                    { label: 'Total Volume', val: `₹${(summary.totalVolume || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, icon: IndianRupee, col: currentConfig.color || '#4a148c' },
-                    { label: 'Commission Earned', val: `₹${(summary.commissionEarned || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, icon: Coins, col: '#10b981' },
-                    { label: 'Total Transactions', val: summary.totalTransactions, icon: FileText, col: '#0ea5e9' },
-                    { label: 'Success / Fail / Pending', val: `${summary.successCount} / ${summary.failedCount} / ${summary.pendingCount}`, icon: Clock, col: '#ea580c' },
-                ].map((s, i) => (
-                    <motion.div
-                        key={i}
-                        initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-                        className="bg-white border border-slate-200/80 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all group relative overflow-hidden"
-                    >
-                        <div className="absolute right-0 top-0 w-20 h-20 rounded-full blur-3xl opacity-5" style={{ backgroundColor: s.col }}></div>
-                        <div className="flex items-center justify-between mb-3 relative z-10">
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${s.col}10` }}>
-                                <s.icon size={18} style={{ color: s.col }} />
-                            </div>
-                            <ArrowUpRight className="text-slate-200 group-hover:text-slate-400 transition-colors" size={16} />
-                        </div>
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">{s.label}</p>
-                        <p className="text-lg font-black text-slate-800 mt-1 tracking-tight">{s.val}</p>
-                    </motion.div>
-                ))}
-            </div>
+            {(() => {
+                const isAeps = reportType === 'aeps_1' || reportType === 'aeps_2';
+                const cards = isAeps ? [
+                    { label: 'Total Transactions', val: summary.totalTransactions || 0, icon: FileText, col: '#0ea5e9' },
+                    { label: 'Cash Withdrawal', val: `₹${Number(summary.cashWithdrawalVolume ?? (summary.totalVolume || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: IndianRupee, col: '#2563eb' },
+                    { label: 'Cash Deposit', val: `₹${Number(summary.cashDepositVolume || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Landmark, col: '#0891b2' },
+                    { label: 'Commission Earned', val: `₹${Number(summary.commissionEarned || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Coins, col: '#10b981' },
+                    { label: 'Success / Fail / Pending', val: `${summary.successCount || 0} / ${summary.failedCount || 0} / ${summary.pendingCount || 0}`, icon: Clock, col: '#ea580c' },
+                ] : [
+                    { label: 'Total Volume', val: `₹${Number(summary.totalVolume || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: IndianRupee, col: currentConfig.color || '#4a148c' },
+                    { label: 'Commission Earned', val: `₹${Number(summary.commissionEarned || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Coins, col: '#10b981' },
+                    { label: 'Total Transactions', val: summary.totalTransactions || 0, icon: FileText, col: '#0ea5e9' },
+                    { label: 'Success / Fail / Pending', val: `${summary.successCount || 0} / ${summary.failedCount || 0} / ${summary.pendingCount || 0}`, icon: Clock, col: '#ea580c' },
+                ];
+
+                return (
+                    <div className={isAeps ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4" : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"}>
+                        {cards.map((s, i) => (
+                            <motion.div
+                                key={i}
+                                initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+                                className="bg-white border border-slate-200/80 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all group relative overflow-hidden"
+                            >
+                                <div className="absolute right-0 top-0 w-20 h-20 rounded-full blur-3xl opacity-5" style={{ backgroundColor: s.col }}></div>
+                                <div className="flex items-center justify-between mb-3 relative z-10">
+                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${s.col}10` }}>
+                                        <s.icon size={18} style={{ color: s.col }} />
+                                    </div>
+                                    <ArrowUpRight className="text-slate-200 group-hover:text-slate-400 transition-colors" size={16} />
+                                </div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">{s.label}</p>
+                                <p className="text-lg font-black text-slate-800 mt-1 tracking-tight">{s.val}</p>
+                            </motion.div>
+                        ))}
+                    </div>
+                );
+            })()}
 
             {/* ── Filters & Search Control ── */}
             <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm space-y-6">

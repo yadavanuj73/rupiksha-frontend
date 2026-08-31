@@ -18,4 +18,6 @@ public class TransactionHistorySummaryDto {
     private long pendingCount;
     private BigDecimal totalVolume;
     private BigDecimal commissionEarned;
+    private BigDecimal cashWithdrawalVolume;
+    private BigDecimal cashDepositVolume;
 }

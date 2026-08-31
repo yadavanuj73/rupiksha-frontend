@@ -1,10 +1,11 @@
 package com.rupiksha.backend.service.history.providers;
 
-import com.rupiksha.aeps.provider.fingpay.entity.FingpayTransaction;
-import com.rupiksha.aeps.provider.fingpay.repository.FingpayTransactionRepository;
+import com.rupiksha.aeps.entity.AepsTransactionEngine;
+import com.rupiksha.aeps.repository.AepsTransactionEngineRepository;
 import com.rupiksha.backend.api.dto.TransactionHistoryResponseDto;
 import com.rupiksha.backend.api.dto.TransactionHistorySummaryDto;
 import com.rupiksha.backend.domain.TransactionReportType;
+import com.rupiksha.backend.repository.CommissionTransactionRepository;
 import com.rupiksha.backend.repository.WalletEntryRepository;
 import com.rupiksha.backend.service.history.BaseHistoryProvider;
 import lombok.extern.slf4j.Slf4j;
@@ -24,12 +25,15 @@ import java.util.stream.Collectors;
 @Component
 public class FingpayHistoryProvider extends BaseHistoryProvider {
 
-    private final FingpayTransactionRepository fingpayRepository;
+    private final AepsTransactionEngineRepository transactionRepository;
+    private final CommissionTransactionRepository commissionTransactionRepository;
 
     public FingpayHistoryProvider(WalletEntryRepository walletEntryRepository,
-                                  FingpayTransactionRepository fingpayRepository) {
+                                  AepsTransactionEngineRepository transactionRepository,
+                                  CommissionTransactionRepository commissionTransactionRepository) {
         super(walletEntryRepository);
-        this.fingpayRepository = fingpayRepository;
+        this.transactionRepository = transactionRepository;
+        this.commissionTransactionRepository = commissionTransactionRepository;
     }
 
     @Override
@@ -42,12 +46,15 @@ public class FingpayHistoryProvider extends BaseHistoryProvider {
             TransactionReportType reportType,
             UUID userId, String search, String status, String provider,
             LocalDateTime fromDate, LocalDateTime toDate, Pageable pageable) {
-        
-        long uidLong = userId.getMostSignificantBits() & Long.MAX_VALUE;
+
+        String cleanSearch = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        String cleanStatus = (status != null && !status.trim().isEmpty()) ? status.trim() : null;
+        String cleanProvider = (provider != null && !provider.trim().isEmpty()) ? provider.trim() : null;
+
         Pageable translated = translatePageable(pageable);
-        Page<FingpayTransaction> txns = fingpayRepository.findWithFilters(
-                uidLong, status, fromDate, toDate, search, translated);
-        
+        Page<AepsTransactionEngine> txns = transactionRepository.findWithFilters(
+                userId, null, cleanStatus, cleanProvider, fromDate, toDate, cleanSearch, translated);
+
         return txns.map(this::mapToDto);
     }
 
@@ -56,12 +63,15 @@ public class FingpayHistoryProvider extends BaseHistoryProvider {
             TransactionReportType reportType,
             UUID userId, String search, String status, String provider,
             LocalDateTime fromDate, LocalDateTime toDate, Sort sort) {
-        
-        long uidLong = userId.getMostSignificantBits() & Long.MAX_VALUE;
+
+        String cleanSearch = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        String cleanStatus = (status != null && !status.trim().isEmpty()) ? status.trim() : null;
+        String cleanProvider = (provider != null && !provider.trim().isEmpty()) ? provider.trim() : null;
+
         Sort translated = translateSort(sort);
-        List<FingpayTransaction> txns = fingpayRepository.findAllWithFilters(
-                uidLong, status, fromDate, toDate, search, translated);
-        
+        List<AepsTransactionEngine> txns = transactionRepository.findAllWithFilters(
+                userId, null, cleanStatus, cleanProvider, fromDate, toDate, cleanSearch, translated);
+
         return txns.stream().map(this::mapToDto).collect(Collectors.toList());
     }
 
@@ -74,11 +84,11 @@ public class FingpayHistoryProvider extends BaseHistoryProvider {
     }
 
     private Sort translateSort(Sort sort) {
-        if (sort == null || sort.isUnsorted()) return Sort.by(Sort.Direction.DESC, "createdAt");
+        if (sort == null || sort.isUnsorted()) return Sort.by(Sort.Direction.DESC, "initiatedAt");
         List<Sort.Order> orders = sort.stream()
                 .map(order -> {
-                    if ("amount".equalsIgnoreCase(order.getProperty())) {
-                        return new Sort.Order(order.getDirection(), "txnamount");
+                    if ("createdAt".equalsIgnoreCase(order.getProperty()) || "date".equalsIgnoreCase(order.getProperty())) {
+                        return new Sort.Order(order.getDirection(), "initiatedAt");
                     }
                     return order;
                 })
@@ -91,10 +101,9 @@ public class FingpayHistoryProvider extends BaseHistoryProvider {
             TransactionReportType reportType,
             UUID userId, String search, String status, String provider,
             LocalDateTime fromDate, LocalDateTime toDate) {
-        
-        long uidLong = userId.getMostSignificantBits() & Long.MAX_VALUE;
-        List<FingpayTransaction> all = fingpayRepository.findAllWithFilters(
-                uidLong, status, fromDate, toDate, search, Sort.unsorted());
+
+        List<AepsTransactionEngine> all = transactionRepository.findAllWithFilters(
+                userId, null, status, provider, fromDate, toDate, search, Sort.unsorted());
 
         long total = all.size();
         long success = all.stream().filter(t -> "SUCCESS".equalsIgnoreCase(t.getStatus()) || "APPROVED".equalsIgnoreCase(t.getStatus())).count();
@@ -102,12 +111,28 @@ public class FingpayHistoryProvider extends BaseHistoryProvider {
         long pending = total - success - failed;
 
         BigDecimal totalVolume = all.stream()
-                .map(t -> BigDecimal.valueOf(t.getTxnamount() != null ? t.getTxnamount() : 0.0))
+                .filter(t -> "SUCCESS".equalsIgnoreCase(t.getStatus()) || "APPROVED".equalsIgnoreCase(t.getStatus()))
+                .map(t -> t.getAmount() != null ? t.getAmount() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal commission = all.stream()
-                .map(t -> getBalancesAndCommission(t.getTxnid()).commission)
+        BigDecimal cashWithdrawalVolume = all.stream()
+                .filter(t -> "CASH_WITHDRAWAL".equalsIgnoreCase(t.getServiceType()) &&
+                        ("SUCCESS".equalsIgnoreCase(t.getStatus()) || "APPROVED".equalsIgnoreCase(t.getStatus())))
+                .map(t -> t.getAmount() != null ? t.getAmount() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal cashDepositVolume = all.stream()
+                .filter(t -> "CASH_DEPOSIT".equalsIgnoreCase(t.getServiceType()) &&
+                        ("SUCCESS".equalsIgnoreCase(t.getStatus()) || "APPROVED".equalsIgnoreCase(t.getStatus())))
+                .map(t -> t.getAmount() != null ? t.getAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal commission = commissionTransactionRepository.sumCommissionByBeneficiaryIdAndServiceType(userId, "AEPS_1");
+        if (commission == null || commission.compareTo(BigDecimal.ZERO) == 0) {
+            commission = all.stream()
+                    .map(t -> getBalancesAndCommission(t.getTransactionId()).commission)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
 
         return TransactionHistorySummaryDto.builder()
                 .totalTransactions(total)
@@ -115,28 +140,30 @@ public class FingpayHistoryProvider extends BaseHistoryProvider {
                 .failedCount(failed)
                 .pendingCount(pending)
                 .totalVolume(totalVolume)
-                .commissionEarned(commission)
+                .cashWithdrawalVolume(cashWithdrawalVolume)
+                .cashDepositVolume(cashDepositVolume)
+                .commissionEarned(commission != null ? commission : BigDecimal.ZERO)
                 .build();
     }
 
-    private TransactionHistoryResponseDto mapToDto(FingpayTransaction txn) {
-        WalletBalances balances = getBalancesAndCommission(txn.getTxnid());
+    private TransactionHistoryResponseDto mapToDto(AepsTransactionEngine txn) {
+        WalletBalances balances = getBalancesAndCommission(txn.getTransactionId());
         return TransactionHistoryResponseDto.builder()
-                .transactionId(txn.getTxnid())
-                .providerReference(txn.getFtxnin())
-                .providerTransactionId(txn.getFtxnin())
-                .bankReference(txn.getRrn())
-                .retailerId(String.valueOf(txn.getUid()))
-                .serviceType(txn.getType())
-                .provider("FINGPAY")
-                .amount(BigDecimal.valueOf(txn.getTxnamount() != null ? txn.getTxnamount() : 0.0))
+                .transactionId(txn.getTransactionId())
+                .providerReference(txn.getProviderReference())
+                .providerTransactionId(txn.getProviderReference())
+                .bankReference(txn.getReferenceNumber())
+                .retailerId(String.valueOf(txn.getUserId()))
+                .serviceType(txn.getServiceType())
+                .provider(txn.getProvider() != null ? txn.getProvider() : "FINGPAY")
+                .amount(txn.getAmount() != null ? txn.getAmount() : BigDecimal.ZERO)
                 .commission(balances.commission)
                 .openingBalance(balances.openingBalance)
                 .closingBalance(balances.closingBalance)
                 .status(txn.getStatus())
-                .remarks(txn.getMessage())
-                .createdAt(txn.getCreatedAt())
-                .updatedAt(txn.getCreatedAt())
+                .remarks(txn.getProviderMessage() != null ? txn.getProviderMessage() : txn.getServiceType())
+                .createdAt(txn.getInitiatedAt())
+                .updatedAt(txn.getCompletedAt() != null ? txn.getCompletedAt() : txn.getInitiatedAt())
                 .build();
     }
 }
