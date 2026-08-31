@@ -515,6 +515,44 @@ public class CommissionServiceImpl implements CommissionService {
         log.info("Admin {} assigned commission plan {} to user {}", admin.getUsername(), plan.getPlanName(), user.getUsername());
     }
 
+    @Override
+    @Transactional
+    public CommissionDtos.CommissionPlanDto upgradeRetailerPlan(UUID retailerId, UUID planId, String ipAddress) {
+        User retailer = userRepository.findById(retailerId)
+                .orElseThrow(() -> new IllegalArgumentException("Retailer user not found"));
+
+        CommissionPlan plan = commissionPlanRepository.findByIdWithSlabs(planId)
+                .orElseThrow(() -> new IllegalArgumentException("Commission plan not found"));
+
+        if (!Boolean.TRUE.equals(plan.getEnabled())) {
+            throw new IllegalArgumentException("The selected commission plan is currently disabled");
+        }
+
+        if (retailer.getAepsCommissionPlan() != null && retailer.getAepsCommissionPlan().getId().equals(planId)) {
+            return mapPlanToDto(plan);
+        }
+
+        BigDecimal price = plan.getPrice() != null ? plan.getPrice() : BigDecimal.ZERO;
+        if (price.compareTo(BigDecimal.ZERO) > 0) {
+            String idempotencyKey = "UPGRADE-" + retailerId + "-" + planId + "-" + System.currentTimeMillis();
+            walletService.debitForService(
+                    retailerId,
+                    price,
+                    "Commission Plan Upgrade: " + plan.getPlanName(),
+                    WalletTransactionContext.PLAN_UPGRADE,
+                    "PLAN_UPGRADE",
+                    ipAddress != null ? ipAddress : "127.0.0.1",
+                    idempotencyKey
+            );
+        }
+
+        retailer.setAepsCommissionPlan(plan);
+        userRepository.save(retailer);
+
+        log.info("Retailer {} successfully upgraded commission plan to {}", retailer.getUsername(), plan.getPlanName());
+        return mapPlanToDto(plan);
+    }
+
     private CommissionDtos.CommissionPlanDto mapPlanToDto(CommissionPlan plan) {
         List<CommissionDtos.CommissionSlabDto> slabs = plan.getSlabs().stream()
                 .map(s -> {

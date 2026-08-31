@@ -81,6 +81,23 @@ export const commissionService = {
     },
 
     /**
+     * Get all available commission plans with slabs for retailer
+     */
+    async getRetailerAvailablePlans(serviceType = 'AEPS_1') {
+        return apiFetch(`/retailer/commissions/plans?serviceType=${encodeURIComponent(serviceType)}`);
+    },
+
+    /**
+     * Upgrade/purchase a commission plan using wallet balance
+     */
+    async upgradeRetailerPlan(planId) {
+        return apiFetch('/retailer/commissions/upgrade', {
+            method: 'POST',
+            body: JSON.stringify({ planId }),
+        });
+    },
+
+    /**
      * Get retailer's own earned commission history
      */
     async getRetailerHistory(params = {}) {

@@ -112,4 +112,9 @@ public class CommissionDtos {
             @NotNull(message = "Plan ID is required")
             UUID planId
     ) {}
+
+    public record UpgradePlanRequest(
+            @NotNull(message = "Plan ID is required")
+            UUID planId
+    ) {}
 }

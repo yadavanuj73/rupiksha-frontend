@@ -64,4 +64,9 @@ public interface CommissionService {
      * Assigns a commission plan to a user.
      */
     void assignPlanToUser(UUID userId, UUID planId, UUID adminId, String ipAddress);
+
+    /**
+     * Upgrades/changes a retailer's commission plan with wallet payment deduction if applicable.
+     */
+    CommissionDtos.CommissionPlanDto upgradeRetailerPlan(UUID retailerId, UUID planId, String ipAddress);
 }

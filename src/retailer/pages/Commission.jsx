@@ -5,22 +5,17 @@ import {
     Search, Filter, RefreshCw, ChevronLeft, ChevronRight,
     Award, CheckCircle2, ShieldCheck, ArrowUpRight, Sparkles,
     Layers, Fingerprint, Copy, Check, FileText, Download,
-    Crown, Zap, ArrowDownRight
+    Crown, Zap, ArrowDownRight, X, Wallet, AlertCircle
 } from 'lucide-react';
 import { commissionService } from '../../services/commissionService';
+import { useWallet } from '../../context/WalletContext';
+import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 
-const Icon3D = ({ icon: Icon, color, size = 26 }) => (
-    <div className="relative group shrink-0">
-        <div className="absolute inset-0 rounded-2xl blur-xl opacity-30 group-hover:opacity-60 transition-opacity" style={{ backgroundColor: color }}></div>
-        <div className="relative w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-all active:scale-95 border border-white/20 overflow-hidden" style={{ backgroundColor: color }}>
-            <div className="absolute inset-0 bg-gradient-to-br from-white/35 to-transparent"></div>
-            <Icon size={size} className="text-white relative z-10" />
-        </div>
-    </div>
-);
-
 export default function RetailerCommission() {
+    const navigate = useNavigate();
+    const { balance, availableBalance, refreshWallet } = useWallet();
+
     const [summary, setSummary] = useState({
         totalCommission: 0,
         todayCommission: 0,
@@ -31,6 +26,7 @@ export default function RetailerCommission() {
     });
 
     const [activePlan, setActivePlan] = useState(null);
+    const [availablePlans, setAvailablePlans] = useState([]);
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [historyLoading, setHistoryLoading] = useState(false);
@@ -41,16 +37,93 @@ export default function RetailerCommission() {
     const [serviceFilter, setServiceFilter] = useState('ALL');
     const [copiedTxnId, setCopiedTxnId] = useState('');
 
+    // Upgrade Plan Modal states
+    const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+    const [upgradingPlanId, setUpgradingPlanId] = useState(null);
+    const [upgradeNotification, setUpgradeNotification] = useState(null);
+
+    // Fallback plans if database plans are still loading
+    const defaultPlans = [
+        {
+            id: 'plan_free',
+            planName: 'Free Plan',
+            planCode: 'FREE',
+            price: 0,
+            maxComm: '9.00',
+            slabs: [
+                { minAmount: 500, maxAmount: 999, retailerCommission: 1.00 },
+                { minAmount: 1000, maxAmount: 1499, retailerCommission: 2.00 },
+                { minAmount: 1500, maxAmount: 1999, retailerCommission: 3.00 },
+                { minAmount: 2000, maxAmount: 2499, retailerCommission: 4.00 },
+                { minAmount: 2500, maxAmount: 2999, retailerCommission: 5.00 },
+                { minAmount: 3000, maxAmount: 7999, retailerCommission: 7.00 },
+                { minAmount: 8000, maxAmount: 10000, retailerCommission: 9.00 }
+            ]
+        },
+        {
+            id: 'plan_2999',
+            planName: '₹2999 Plan',
+            planCode: 'PLAN_2999',
+            price: 2999,
+            maxComm: '11.00',
+            slabs: [
+                { minAmount: 500, maxAmount: 999, retailerCommission: 1.00 },
+                { minAmount: 1000, maxAmount: 1499, retailerCommission: 2.00 },
+                { minAmount: 1500, maxAmount: 1999, retailerCommission: 3.00 },
+                { minAmount: 2000, maxAmount: 2499, retailerCommission: 4.00 },
+                { minAmount: 2500, maxAmount: 2999, retailerCommission: 5.00 },
+                { minAmount: 3000, maxAmount: 7999, retailerCommission: 9.00 },
+                { minAmount: 8000, maxAmount: 10000, retailerCommission: 11.00 }
+            ]
+        },
+        {
+            id: 'plan_4999',
+            planName: '₹4999 Plan',
+            planCode: 'PLAN_4999',
+            price: 4999,
+            maxComm: '13.00',
+            slabs: [
+                { minAmount: 500, maxAmount: 999, retailerCommission: 1.00 },
+                { minAmount: 1000, maxAmount: 1499, retailerCommission: 3.00 },
+                { minAmount: 1500, maxAmount: 1999, retailerCommission: 4.00 },
+                { minAmount: 2000, maxAmount: 2499, retailerCommission: 6.00 },
+                { minAmount: 2500, maxAmount: 2999, retailerCommission: 7.00 },
+                { minAmount: 3000, maxAmount: 7999, retailerCommission: 10.00 },
+                { minAmount: 8000, maxAmount: 10000, retailerCommission: 13.00 }
+            ]
+        },
+        {
+            id: 'plan_7999',
+            planName: '₹7999 Plan',
+            planCode: 'PLAN_7999',
+            price: 7999,
+            maxComm: '16.00',
+            slabs: [
+                { minAmount: 500, maxAmount: 999, retailerCommission: 1.00 },
+                { minAmount: 1000, maxAmount: 1499, retailerCommission: 3.00 },
+                { minAmount: 1500, maxAmount: 1999, retailerCommission: 5.00 },
+                { minAmount: 2000, maxAmount: 2499, retailerCommission: 7.00 },
+                { minAmount: 2500, maxAmount: 2999, retailerCommission: 9.00 },
+                { minAmount: 3000, maxAmount: 7999, retailerCommission: 12.00 },
+                { minAmount: 8000, maxAmount: 10000, retailerCommission: 16.00 }
+            ]
+        }
+    ];
+
     // Fetch Summary & Plan
     const fetchInitialData = async () => {
         setLoading(true);
         try {
-            const [sumData, planData] = await Promise.all([
+            const [sumData, planData, allPlansData] = await Promise.all([
                 commissionService.getRetailerSummary().catch(() => null),
-                commissionService.getRetailerPlan().catch(() => null)
+                commissionService.getRetailerPlan().catch(() => null),
+                commissionService.getRetailerAvailablePlans().catch(() => null)
             ]);
             if (sumData) setSummary(sumData);
             if (planData) setActivePlan(planData);
+            if (allPlansData && Array.isArray(allPlansData) && allPlansData.length > 0) {
+                setAvailablePlans(allPlansData);
+            }
         } catch (err) {
             console.error('Failed to load commission summary:', err);
         } finally {
@@ -121,98 +194,103 @@ export default function RetailerCommission() {
         XLSX.writeFile(wb, `Rupiksha_Commission_Ledger_${Date.now()}.xlsx`);
     };
 
+    // Plan Upgrade Handler
+    const handleUpgradePlan = async (targetPlan) => {
+        const walletBal = parseFloat(String(balance || availableBalance || 0));
+        const planPrice = parseFloat(String(targetPlan.price || 0));
+
+        if (planPrice > 0 && walletBal < planPrice) {
+            setUpgradeNotification({
+                type: 'error',
+                message: `Insufficient wallet balance (₹${walletBal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}). You need ₹${planPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })} to upgrade to ${targetPlan.planName}.`
+            });
+            return;
+        }
+
+        setUpgradingPlanId(targetPlan.id || targetPlan.planCode);
+        setUpgradeNotification(null);
+
+        try {
+            const upgraded = await commissionService.upgradeRetailerPlan(targetPlan.id);
+            if (upgraded) {
+                setActivePlan(upgraded);
+            }
+            if (refreshWallet) await refreshWallet();
+            await fetchInitialData();
+            await fetchHistory();
+            setUpgradeNotification({
+                type: 'success',
+                message: `🎉 Successfully upgraded to ${targetPlan.planName}! Your new slabs are now active.`
+            });
+            setTimeout(() => {
+                setShowUpgradeModal(false);
+                setUpgradeNotification(null);
+            }, 2500);
+        } catch (err) {
+            console.error("Upgrade plan error:", err);
+            setUpgradeNotification({
+                type: 'error',
+                message: err.message || 'Failed to upgrade plan. Please verify your balance and try again.'
+            });
+        } finally {
+            setUpgradingPlanId(null);
+        }
+    };
+
+    const currentPlanName = activePlan?.planName || summary.currentPlanName || 'Free Plan';
+    const currentPlanCode = activePlan?.planCode || summary.currentPlanCode || 'FREE';
+    const plansToDisplay = availablePlans.length > 0 ? availablePlans : defaultPlans;
+    const walletBalanceNum = parseFloat(String(balance || availableBalance || 0));
     const totalPages = Math.ceil(totalElements / size) || 1;
 
     return (
         <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8 pb-28 font-['Inter',sans-serif] bg-slate-50 min-h-screen">
-            {/* ── TOP SECTION: TWO-COLUMN LAYOUT (LEFT: HEADER & SLABS | RIGHT: 4 METRIC CARDS) ── */}
+            
+            {/* ── TOP SECTION: TWO-COLUMN COMPACT LAYOUT ── */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
                 
-                {/* ── LEFT COLUMN: Header Info & Slabs (Span 7) ───────────────────── */}
-                <div className="lg:col-span-7 flex flex-col gap-6">
-                    {/* Header Banner Card */}
-                    <div className="bg-white rounded-3xl p-6 md:p-7 border border-slate-200/70 shadow-sm flex flex-col justify-between gap-5 relative overflow-hidden">
-                        <div className="absolute right-0 top-0 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-
-                        <div className="flex items-start gap-4 relative z-10">
-                            <Icon3D icon={Coins} color="#f59e0b" size={26} />
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                                    <span className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200/60 shadow-2xs">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                                        My Earnings &bull; AEPS 1
-                                    </span>
+                {/* ── LEFT COLUMN: Earning Slabs with Active Plan Badge & Upgrade Button (Span 7) ── */}
+                <div className="lg:col-span-7 flex flex-col">
+                    <div className="bg-white rounded-3xl p-6 md:p-7 border border-slate-200/70 shadow-sm flex-1 flex flex-col justify-between space-y-5">
+                        
+                        {/* Header: Active Plan Badge on Left + Title + Upgrade Plan on Right */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                            
+                            <div className="flex items-center gap-3.5">
+                                {/* Active Plan Badge */}
+                                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/90 px-3.5 py-2 rounded-2xl flex items-center gap-2.5 shadow-2xs shrink-0">
+                                    <div className="w-8 h-8 rounded-xl bg-emerald-500 flex items-center justify-center text-white shadow-xs">
+                                        <Crown size={16} strokeWidth={2.5} />
+                                    </div>
+                                    <div>
+                                        <p className="text-[8.5px] font-black text-emerald-800/70 uppercase tracking-widest leading-none">Active Plan</p>
+                                        <p className="text-xs font-black text-emerald-700 uppercase tracking-tight mt-0.5">
+                                            {currentPlanName}
+                                        </p>
+                                    </div>
                                 </div>
-                                <h1 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">
-                                    Commission & Earnings
-                                </h1>
-                                <p className="text-xs font-semibold text-slate-400 mt-1">
-                                    Real-time fixed rupee commission credited directly to your Rupiksha wallet.
-                                </p>
-                            </div>
-                        </div>
 
-                        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 relative z-10">
-                            {/* Active Plan Pill */}
-                            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 px-3.5 py-2 rounded-xl flex items-center gap-2.5 shadow-2xs">
-                                <div className="w-7 h-7 rounded-lg bg-emerald-500 flex items-center justify-center text-white shadow-xs">
-                                    <Crown size={14} strokeWidth={2.5} />
-                                </div>
-                                <div>
-                                    <p className="text-[8px] font-black text-emerald-800/70 uppercase tracking-widest leading-tight">Active Plan</p>
-                                    <p className="text-[11px] font-black text-emerald-700 uppercase tracking-tight">
-                                        {summary.currentPlanName || 'Free Plan'}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                {/* Export Excel Button */}
-                                <button
-                                    onClick={exportToExcel}
-                                    disabled={history.length === 0}
-                                    className="flex items-center gap-2 px-4 h-10 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-[1.5px] shadow-sm hover:bg-black transition-all active:scale-95 disabled:opacity-50"
-                                    title="Download Statement"
-                                >
-                                    <Download size={13} />
-                                    Excel
-                                </button>
-
-                                {/* Refresh Button */}
-                                <button
-                                    onClick={() => { fetchInitialData(); fetchHistory(); }}
-                                    disabled={loading || historyLoading}
-                                    className="w-10 h-10 bg-white border border-slate-200 rounded-xl shadow-xs flex items-center justify-center hover:shadow-md transition-all active:rotate-180 hover:border-amber-500 disabled:opacity-50 text-slate-700"
-                                    title="Refresh Data"
-                                >
-                                    <RefreshCw size={15} className={loading || historyLoading ? 'animate-spin text-amber-500' : ''} />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Active Plan Slabs Card */}
-                    <div className="bg-white rounded-3xl p-6 border border-slate-200/70 shadow-sm flex-1 flex flex-col justify-between space-y-4">
-                        <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-100">
-                            <div className="flex items-center gap-2.5">
-                                <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 shrink-0">
-                                    <Layers size={16} />
-                                </div>
-                                <div>
-                                    <h2 className="text-xs md:text-sm font-black text-slate-800 tracking-tight">
-                                        Your Earning Slabs ({activePlan?.planName || summary.currentPlanName || 'Free Plan'})
+                                <div className="min-w-0">
+                                    <h2 className="text-sm md:text-base font-black text-slate-800 tracking-tight truncate">
+                                        Your Earning Slabs ({currentPlanName})
                                     </h2>
-                                    <p className="text-[10px] font-semibold text-slate-400">
+                                    <p className="text-[11px] font-semibold text-slate-400">
                                         Exact rupee payout per cash withdrawal transaction.
                                     </p>
                                 </div>
                             </div>
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200/70 shrink-0">
-                                <Zap size={10} className="text-emerald-500" />
-                                Fixed Payout
-                            </span>
+
+                            {/* Upgrade Plan Button */}
+                            <button
+                                onClick={() => setShowUpgradeModal(true)}
+                                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-md shadow-indigo-500/20 transition-all active:scale-95 cursor-pointer shrink-0"
+                            >
+                                <Sparkles size={14} className="text-amber-300 animate-pulse" />
+                                <span>Upgrade Plan</span>
+                            </button>
                         </div>
 
+                        {/* Slabs Grid */}
                         {activePlan && activePlan.slabs && activePlan.slabs.length > 0 ? (
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
                                 {activePlan.slabs.map((slab, i) => (
@@ -242,8 +320,8 @@ export default function RetailerCommission() {
                             /* Default Fallback Free Plan Slabs */
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
                                 {[
-                                    { range: '₹500 - ₹999', comm: '+₹2.00' },
-                                    { range: '₹1,000 - ₹1,499', comm: '+₹2.20' },
+                                    { range: '₹500 - ₹999', comm: '+₹1.00' },
+                                    { range: '₹1,000 - ₹1,499', comm: '+₹2.00' },
                                     { range: '₹1,500 - ₹1,999', comm: '+₹3.00' },
                                     { range: '₹2,000 - ₹2,499', comm: '+₹4.00' },
                                     { range: '₹2,500 - ₹2,999', comm: '+₹5.00' },
@@ -403,7 +481,7 @@ export default function RetailerCommission() {
                         </p>
                     </div>
 
-                    {/* Filter controls */}
+                    {/* Filter & Export controls */}
                     <form onSubmit={handleSearchSubmit} className="flex flex-wrap items-center gap-3">
                         <div className="relative">
                             <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -418,15 +496,27 @@ export default function RetailerCommission() {
 
                         <button
                             type="submit"
-                            className="px-4 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-sm active:scale-95"
+                            className="px-4 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-sm active:scale-95 cursor-pointer"
                         >
                             Search
+                        </button>
+
+                        {/* Export Excel Button placed right near the search bar */}
+                        <button
+                            type="button"
+                            onClick={exportToExcel}
+                            disabled={history.length === 0}
+                            className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
+                            title="Export to Excel"
+                        >
+                            <Download size={13} />
+                            <span>Excel</span>
                         </button>
 
                         <button
                             type="button"
                             onClick={() => { setSearch(''); setPage(0); fetchHistory(0); }}
-                            className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+                            className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
                             title="Reset & Refresh"
                         >
                             <RefreshCw size={14} className={historyLoading ? 'animate-spin' : ''} />
@@ -582,6 +672,226 @@ export default function RetailerCommission() {
                     </div>
                 )}
             </div>
+
+            {/* ── UPGRADE COMMISSION PLAN MODAL ─────────────────────────────────── */}
+            <AnimatePresence>
+                {showUpgradeModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-md overflow-y-auto">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.94, y: 15 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.94, y: 15 }}
+                            className="bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl max-w-6xl w-full p-6 md:p-8 space-y-6 relative max-h-[92vh] flex flex-col my-auto"
+                        >
+                            {/* Modal Header */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 shrink-0">
+                                <div className="flex items-center gap-3.5">
+                                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/25 shrink-0">
+                                        <Sparkles size={24} className="text-amber-300 animate-pulse" />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <h2 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">
+                                                Upgrade Commission Plan
+                                            </h2>
+                                            <span className="bg-amber-50 text-amber-700 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-amber-200 uppercase tracking-wider">
+                                                AEPS 1
+                                            </span>
+                                        </div>
+                                        <p className="text-xs font-semibold text-slate-400 mt-0.5">
+                                            Unlock higher rupee margins credited directly to your wallet per cash withdrawal.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                    {/* Live Wallet Balance Pill */}
+                                    <div className="bg-slate-50 border border-slate-200/80 px-4 py-2 rounded-2xl flex items-center gap-2.5 shadow-2xs">
+                                        <div className="w-7 h-7 rounded-xl bg-emerald-500 flex items-center justify-center text-white">
+                                            <Wallet size={14} />
+                                        </div>
+                                        <div>
+                                            <p className="text-[8.5px] font-black text-slate-400 uppercase tracking-widest leading-none">Wallet Balance</p>
+                                            <p className="text-xs font-black text-slate-800 font-mono tracking-tight mt-0.5">
+                                                &#8377;{walletBalanceNum.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Close Button */}
+                                    <button
+                                        onClick={() => { setShowUpgradeModal(false); setUpgradeNotification(null); }}
+                                        className="w-10 h-10 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors cursor-pointer"
+                                        title="Close"
+                                    >
+                                        <X size={18} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Notification banner */}
+                            {upgradeNotification && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -5 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className={`p-4 rounded-2xl text-xs font-bold flex items-center gap-3 shrink-0 ${
+                                        upgradeNotification.type === 'success'
+                                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                            : 'bg-rose-50 text-rose-800 border border-rose-200'
+                                    }`}
+                                >
+                                    {upgradeNotification.type === 'success' ? (
+                                        <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+                                    ) : (
+                                        <AlertCircle size={18} className="text-rose-600 shrink-0" />
+                                    )}
+                                    <span className="flex-1">{upgradeNotification.message}</span>
+                                    {upgradeNotification.type === 'error' && (
+                                        <button
+                                            onClick={() => navigate('/add-money')}
+                                            className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider shrink-0 transition-colors"
+                                        >
+                                            Add Money
+                                        </button>
+                                    )}
+                                </motion.div>
+                            )}
+
+                            {/* Plans Comparison Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 overflow-y-auto pr-1 py-1">
+                                {plansToDisplay.map((plan) => {
+                                    const isCurrent = (activePlan && (activePlan.id === plan.id || activePlan.planCode === plan.planCode)) ||
+                                        (!activePlan && (plan.planCode === 'FREE' || plan.planName?.toLowerCase().includes('free')));
+                                    
+                                    const priceVal = parseFloat(String(plan.price || 0));
+                                    const isUpgradingThis = upgradingPlanId === (plan.id || plan.planCode);
+                                    const hasSufficientBalance = walletBalanceNum >= priceVal;
+
+                                    // Determine highest commission rate
+                                    const slabsList = plan.slabs || [];
+                                    const maxCommission = slabsList.length > 0
+                                        ? Math.max(...slabsList.map(s => Number(s.retailerCommission || 0)))
+                                        : Number(plan.maxComm || 9.00);
+
+                                    return (
+                                        <motion.div
+                                            key={plan.id || plan.planCode}
+                                            whileHover={{ y: -3, transition: { duration: 0.15 } }}
+                                            className={`rounded-3xl p-5 border flex flex-col justify-between transition-all relative overflow-hidden ${
+                                                isCurrent
+                                                    ? 'bg-gradient-to-b from-emerald-50/70 to-white border-emerald-300 shadow-md ring-2 ring-emerald-500/20'
+                                                    : 'bg-white hover:bg-slate-50/50 border-slate-200/90 shadow-sm hover:shadow-lg'
+                                            }`}
+                                        >
+                                            {/* Top Pill / Badge */}
+                                            <div className="flex items-center justify-between gap-2 mb-3">
+                                                <span className={`text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg ${
+                                                    isCurrent
+                                                        ? 'bg-emerald-600 text-white shadow-xs'
+                                                        : 'bg-slate-100 text-slate-600'
+                                                }`}>
+                                                    {isCurrent ? 'ACTIVE PLAN' : plan.planCode}
+                                                </span>
+                                                <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                                                    Up to &#8377;{maxCommission.toFixed(2)}/txn
+                                                </span>
+                                            </div>
+
+                                            {/* Plan Name & Price */}
+                                            <div className="space-y-1 mb-4">
+                                                <h3 className="text-lg font-black text-slate-800 tracking-tight">
+                                                    {plan.planName}
+                                                </h3>
+                                                <div className="flex items-baseline gap-1">
+                                                    <span className="text-2xl font-black text-slate-900 font-mono tracking-tight">
+                                                        {priceVal === 0 ? 'FREE' : `₹${priceVal.toLocaleString('en-IN')}`}
+                                                    </span>
+                                                    {priceVal > 0 && (
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase">
+                                                            / One-time
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Slabs breakdown list */}
+                                            <div className="space-y-1.5 py-3 border-y border-slate-100 text-[11px] mb-4">
+                                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                                                    Commission Rates:
+                                                </p>
+                                                {slabsList.slice(0, 6).map((slab, sIdx) => (
+                                                    <div key={sIdx} className="flex items-center justify-between text-slate-600 font-mono">
+                                                        <span className="text-[10.5px]">
+                                                            &#8377;{Number(slab.minAmount).toLocaleString('en-IN')} - &#8377;{Number(slab.maxAmount).toLocaleString('en-IN')}
+                                                        </span>
+                                                        <span className="font-black text-emerald-600">
+                                                            +&#8377;{Number(slab.retailerCommission).toFixed(2)}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                                {slabsList.length > 6 && (
+                                                    <div className="flex items-center justify-between text-slate-600 font-mono">
+                                                        <span className="text-[10.5px]">
+                                                            &#8377;{Number(slabsList[slabsList.length - 1].minAmount).toLocaleString('en-IN')} - &#8377;{Number(slabsList[slabsList.length - 1].maxAmount).toLocaleString('en-IN')}
+                                                        </span>
+                                                        <span className="font-black text-emerald-600">
+                                                            +&#8377;{Number(slabsList[slabsList.length - 1].retailerCommission).toFixed(2)}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Action Button */}
+                                            <div className="pt-2">
+                                                {isCurrent ? (
+                                                    <button
+                                                        disabled
+                                                        className="w-full py-3 bg-emerald-100 text-emerald-800 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-not-allowed"
+                                                    >
+                                                        <CheckCircle2 size={14} className="text-emerald-600" />
+                                                        Current Plan
+                                                    </button>
+                                                ) : hasSufficientBalance ? (
+                                                    <button
+                                                        onClick={() => handleUpgradePlan(plan)}
+                                                        disabled={isUpgradingThis || upgradingPlanId !== null}
+                                                        className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-indigo-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                                                    >
+                                                        {isUpgradingThis ? (
+                                                            <>
+                                                                <RefreshCw size={14} className="animate-spin" />
+                                                                <span>Upgrading...</span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Sparkles size={14} className="text-amber-300" />
+                                                                <span>Pay &#8377;{priceVal.toLocaleString('en-IN')} & Upgrade</span>
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => {
+                                                            setUpgradeNotification({
+                                                                type: 'error',
+                                                                message: `Insufficient balance (₹${walletBalanceNum.toFixed(2)}). Need ₹${priceVal.toFixed(2)} for ${plan.planName}. Please add money to proceed.`
+                                                            });
+                                                        }}
+                                                        className="w-full py-3 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-500 rounded-xl text-[10.5px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors border border-slate-200"
+                                                    >
+                                                        <AlertCircle size={13} className="text-rose-500" />
+                                                        <span>Insufficient (₹{priceVal.toLocaleString('en-IN')})</span>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </motion.div>
+                                    );
+                                })}
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

@@ -42,6 +42,28 @@ public class RetailerCommissionController {
         return ResponseEntity.ok(commissionService.getRetailerActivePlan(retailerId));
     }
 
+    @GetMapping("/plans")
+    public ResponseEntity<java.util.List<CommissionDtos.CommissionPlanDto>> getAvailablePlans(
+            @RequestParam(required = false, defaultValue = "AEPS_1") String serviceType
+    ) {
+        return ResponseEntity.ok(commissionService.getPlans(serviceType));
+    }
+
+    @PostMapping("/upgrade")
+    public ResponseEntity<CommissionDtos.CommissionPlanDto> upgradePlan(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @jakarta.validation.Valid @RequestBody CommissionDtos.UpgradePlanRequest request,
+            jakarta.servlet.http.HttpServletRequest httpRequest
+    ) {
+        UUID retailerId = UUID.fromString(principal.userId());
+        String ip = httpRequest.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isBlank()) {
+            ip = httpRequest.getRemoteAddr();
+        }
+        CommissionDtos.CommissionPlanDto upgraded = commissionService.upgradeRetailerPlan(retailerId, request.planId(), ip != null ? ip : "127.0.0.1");
+        return ResponseEntity.ok(upgraded);
+    }
+
     @GetMapping("/history")
     public ResponseEntity<Page<CommissionDtos.CommissionTransactionDto>> getHistory(
             @AuthenticationPrincipal JwtPrincipal principal,
