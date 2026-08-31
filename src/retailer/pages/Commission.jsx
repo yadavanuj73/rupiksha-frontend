@@ -703,7 +703,7 @@ export default function RetailerCommission() {
                             initial={{ opacity: 0, scale: 0.96, y: 10 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.96, y: 10 }}
-                            className="bg-white rounded-3xl md:rounded-[2.2rem] border border-slate-200/90 shadow-2xl max-w-6xl w-full flex flex-col p-5 sm:p-6 md:p-7 space-y-4 md:space-y-5 my-auto"
+                            className="bg-white rounded-3xl md:rounded-[2.2rem] border border-slate-200/90 shadow-2xl max-w-7xl w-full flex flex-col p-5 sm:p-6 md:p-7 space-y-4 md:space-y-5 my-auto"
                         >
                             {/* Modal Header */}
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 shrink-0">
@@ -817,11 +817,13 @@ export default function RetailerCommission() {
                                                 </span>
                                             </div>
 
-                                            {/* Plan Name & Price */}
+                                            {/* Plan Name & Price - Fully visible without truncation */}
                                             <div className="space-y-0.5 mb-2">
-                                                <h3 className="text-base sm:text-lg font-black text-black tracking-tight leading-snug truncate" title={planDisplayName}>
-                                                    {planDisplayName}
-                                                </h3>
+                                                <div className="min-h-[2.2rem] flex items-center">
+                                                    <h3 className="text-[14.5px] sm:text-[15.5px] md:text-base font-black text-black tracking-tight leading-snug break-normal" title={planDisplayName}>
+                                                        {planDisplayName}
+                                                    </h3>
+                                                </div>
                                                 <div className="flex items-baseline gap-1.5 pt-0.5">
                                                     <span className="text-2xl sm:text-3xl font-black text-black font-mono tracking-tight">
                                                         {priceVal === 0 ? 'FREE' : `₹${priceVal.toLocaleString('en-IN')}`}
