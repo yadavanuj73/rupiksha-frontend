@@ -84,7 +84,17 @@ export const commissionService = {
      * Get all available commission plans with slabs for retailer
      */
     async getRetailerAvailablePlans(serviceType = 'AEPS_1') {
-        return apiFetch(`/retailer/commissions/plans?serviceType=${encodeURIComponent(serviceType)}`);
+        try {
+            const res = await apiFetch(`/retailer/commissions/plans?serviceType=${encodeURIComponent(serviceType)}`);
+            if (res && Array.isArray(res) && res.length > 0) return res;
+        } catch (err) {
+            console.warn('Retailer commission plans endpoint fallback:', err);
+        }
+        try {
+            const res = await apiFetch(`/admin/commissions/plans?serviceType=${encodeURIComponent(serviceType)}`);
+            if (res && Array.isArray(res) && res.length > 0) return res;
+        } catch (_) {}
+        return [];
     },
 
     /**
