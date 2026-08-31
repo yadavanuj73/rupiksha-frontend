@@ -3,7 +3,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import {
     LayoutGrid, Plane, Smartphone, HandCoins, FileText,
     Fingerprint, Calculator, Zap, Lightbulb, Landmark, Headset,
-    FileChartColumn, CreditCard, ScanFace, ChevronRight, ChevronDown,
+    FileChartColumn, ScanFace, ChevronRight, ChevronDown,
     Handshake, Home, Coins, Shield, History, Lock, Unlock, Pin, PinOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -166,7 +166,6 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
             ]
         },
         { id: 'gst_einvoice_report', label: 'GST E-Invoice Report', icon: FileChartColumn, onClick: () => setActiveTab('gst_einvoice_report') },
-        { id: 'plans', label: 'Commission Plans', icon: CreditCard, onClick: () => setActiveTab('plans') },
     ];
 
     const ekycItems = [

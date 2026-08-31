@@ -43,7 +43,6 @@ const AepsFingpayComingSoon = lazy(() => import('./retailer/pages/AepsFingpayCom
 const CMS = lazy(() => import('./retailer/pages/CMS'));
 const AllServices = lazy(() => import('./retailer/pages/AllServices'));
 const Reports = lazy(() => import('./retailer/pages/Reports'));
-const Plans = lazy(() => import('./retailer/pages/Plans'));
 const RetailerCommission = lazy(() => import('./retailer/pages/Commission'));
 const MATM = lazy(() => import('./retailer/pages/MATM'));
 const AddMoneyComponent = lazy(() => import('./retailer/components/banking/AddMoney'));
@@ -233,7 +232,7 @@ function App() {
                 <Route path="/aeps-device-test" element={<ProtectedRoute role="DIAGNOSTIC_ALLOWED"><AepsDeviceTest /></ProtectedRoute>} />
                 <Route path="/cms" element={<CMS />} />
                 <Route path="/all-services" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/plans" element={<Plans />} />
+                <Route path="/plans" element={<Navigate to="/commission" replace />} />
                 <Route path="/commission" element={<RetailerCommission />} />
                 <Route path="/matm" element={<MATM />} />
                 <Route path="/add-money" element={<AddMoneyComponent />} />

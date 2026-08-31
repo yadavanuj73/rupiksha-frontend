@@ -53,8 +53,7 @@ const RetailerLayout = () => {
         if (path.startsWith('/reports')) {
             return reportType || 'reports';
         }
-        if (path === '/commission') return 'commission';
-        if (path.startsWith('/plans')) return 'plans';
+        if (path === '/commission' || path.startsWith('/plans')) return 'commission';
         if (path.startsWith('/matm')) return 'matm';
         if (path === '/add-money') return 'add_money';
         if (path === '/support') return 'support';
@@ -164,7 +163,7 @@ const RetailerLayout = () => {
             'all_services': '/dashboard',
             'reports': '/reports',
             'commission': '/commission',
-            'plans': '/plans',
+            'plans': '/commission',
             'matm': '/matm',
             'add_money': '/add-money',
             'retailer_ekyc': '/aeps-kyc',
