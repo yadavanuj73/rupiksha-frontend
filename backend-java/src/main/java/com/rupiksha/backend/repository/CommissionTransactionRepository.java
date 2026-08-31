@@ -31,14 +31,25 @@ public interface CommissionTransactionRepository extends JpaRepository<Commissio
 
     Page<CommissionTransaction> findByBeneficiaryUserId(UUID beneficiaryUserId, Pageable pageable);
 
-    @Query("SELECT ct FROM CommissionTransaction ct WHERE " +
+    @Query(value = "SELECT ct FROM CommissionTransaction ct " +
+            "LEFT JOIN FETCH ct.beneficiaryUser " +
+            "LEFT JOIN FETCH ct.retailerUser " +
+            "WHERE " +
             "(:beneficiaryId IS NULL OR ct.beneficiaryUser.id = :beneficiaryId) AND " +
             "(:serviceType IS NULL OR ct.serviceType = :serviceType) AND " +
             "(:status IS NULL OR ct.status = :status) AND " +
             "(:planCode IS NULL OR ct.planCode = :planCode) AND " +
             "(:startDate IS NULL OR ct.createdAt >= :startDate) AND " +
             "(:endDate IS NULL OR ct.createdAt <= :endDate) AND " +
-            "(:search IS NULL OR LOWER(ct.originalTransactionId) LIKE LOWER(:search) OR LOWER(ct.commissionReference) LIKE LOWER(:search) OR LOWER(ct.beneficiaryUser.username) LIKE LOWER(:search) OR LOWER(ct.beneficiaryUser.fullName) LIKE LOWER(:search))")
+            "(:search IS NULL OR LOWER(ct.originalTransactionId) LIKE LOWER(CAST(:search AS string)) OR LOWER(ct.commissionReference) LIKE LOWER(CAST(:search AS string)) OR LOWER(ct.beneficiaryUser.username) LIKE LOWER(CAST(:search AS string)) OR LOWER(ct.beneficiaryUser.fullName) LIKE LOWER(CAST(:search AS string)))",
+           countQuery = "SELECT COUNT(ct) FROM CommissionTransaction ct WHERE " +
+            "(:beneficiaryId IS NULL OR ct.beneficiaryUser.id = :beneficiaryId) AND " +
+            "(:serviceType IS NULL OR ct.serviceType = :serviceType) AND " +
+            "(:status IS NULL OR ct.status = :status) AND " +
+            "(:planCode IS NULL OR ct.planCode = :planCode) AND " +
+            "(:startDate IS NULL OR ct.createdAt >= :startDate) AND " +
+            "(:endDate IS NULL OR ct.createdAt <= :endDate) AND " +
+            "(:search IS NULL OR LOWER(ct.originalTransactionId) LIKE LOWER(CAST(:search AS string)) OR LOWER(ct.commissionReference) LIKE LOWER(CAST(:search AS string)) OR LOWER(ct.beneficiaryUser.username) LIKE LOWER(CAST(:search AS string)) OR LOWER(ct.beneficiaryUser.fullName) LIKE LOWER(CAST(:search AS string)))")
     Page<CommissionTransaction> findWithFilters(
             @Param("beneficiaryId") UUID beneficiaryId,
             @Param("serviceType") String serviceType,

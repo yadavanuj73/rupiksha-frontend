@@ -590,6 +590,9 @@ public class CommissionServiceImpl implements CommissionService {
     private CommissionDtos.CommissionTransactionDto mapTransactionToDto(CommissionTransaction txn) {
         String slabRange = "₹" + txn.getSlabMin() + " - ₹" + txn.getSlabMax();
 
+        User beneficiary = txn.getBeneficiaryUser();
+        User retailer = txn.getRetailerUser();
+
         return new CommissionDtos.CommissionTransactionDto(
                 txn.getId(),
                 txn.getCommissionReference(),
@@ -598,13 +601,13 @@ public class CommissionServiceImpl implements CommissionService {
                 txn.getPlanCode(),
                 slabRange,
                 txn.getTransactionAmount(),
-                txn.getBeneficiaryUser().getId().toString(),
-                txn.getBeneficiaryUser().getFullName(),
-                txn.getBeneficiaryUser().getUsername(),
+                beneficiary != null && beneficiary.getId() != null ? beneficiary.getId().toString() : null,
+                beneficiary != null ? beneficiary.getFullName() : null,
+                beneficiary != null ? beneficiary.getUsername() : null,
                 txn.getBeneficiaryRole(),
-                txn.getRetailerUser().getId().toString(),
-                txn.getRetailerUser().getFullName(),
-                txn.getRetailerUser().getUsername(),
+                retailer != null && retailer.getId() != null ? retailer.getId().toString() : null,
+                retailer != null ? retailer.getFullName() : null,
+                retailer != null ? retailer.getUsername() : null,
                 txn.getCommissionAmount(),
                 txn.getStatus(),
                 txn.getRemarks(),
