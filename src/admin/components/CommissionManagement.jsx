@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import confetti from 'canvas-confetti';
 import {
     IndianRupee, Save, RotateCcw, ShieldAlert, CheckCircle2,
     AlertTriangle, Search, Filter, History, ChevronLeft, ChevronRight,
@@ -119,7 +120,35 @@ export default function CommissionManagement() {
             }));
 
             const updatedPlan = await commissionService.updatePlanSlabs(selectedPlanId, formattedSlabs);
-            setNotification({ type: 'success', message: 'Commission plan updated and saved to PostgreSQL successfully!' });
+            setNotification({ type: 'success', message: 'Plan Saved Successfully' });
+
+            // Trigger celebration effect
+            try {
+                confetti({
+                    particleCount: 120,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    colors: ['#10b981', '#6366f1', '#f59e0b', '#3b82f6', '#ec4899']
+                });
+                setTimeout(() => {
+                    confetti({
+                        particleCount: 60,
+                        angle: 60,
+                        spread: 55,
+                        origin: { x: 0 },
+                        colors: ['#10b981', '#6366f1', '#f59e0b']
+                    });
+                    confetti({
+                        particleCount: 60,
+                        angle: 120,
+                        spread: 55,
+                        origin: { x: 1 },
+                        colors: ['#10b981', '#6366f1', '#f59e0b']
+                    });
+                }, 200);
+            } catch {
+                // Ignore if not supported
+            }
             
             // Refresh plans in background
             setOriginalSlabs(JSON.parse(JSON.stringify(updatedPlan.slabs || [])));
