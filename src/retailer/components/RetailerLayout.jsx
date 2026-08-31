@@ -166,8 +166,6 @@ const RetailerLayout = () => {
             'plans': '/commission',
             'matm': '/matm',
             'add_money': '/add-money',
-            'retailer_ekyc': '/aeps-kyc',
-            'icici_ekyc': '/aeps-kyc',
             'support': '/support',
             'personal_loan': '/personal_loan',
             'home_loan': '/home_loan',

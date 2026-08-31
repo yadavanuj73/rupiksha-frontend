@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import {
     LayoutGrid, Plane, Smartphone, HandCoins, FileText,
-    Fingerprint, Calculator, Zap, Lightbulb, Landmark, Headset,
-    FileChartColumn, ScanFace, ChevronRight, ChevronDown,
+    Calculator, Zap, Lightbulb, Landmark, Headset,
+    FileChartColumn, ChevronRight, ChevronDown,
     Handshake, Home, Coins, Shield, History, Lock, Unlock, Pin, PinOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -168,9 +168,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
         { id: 'gst_einvoice_report', label: 'GST E-Invoice Report', icon: FileChartColumn, onClick: () => setActiveTab('gst_einvoice_report') },
     ];
 
-    const ekycItems = [
-        { id: 'retailer_ekyc', label: 'Retailer eKYC', icon: ScanFace, type: 'ekyc' },
-        { id: 'icici_ekyc', label: 'ICICI eKYC', icon: Fingerprint, type: 'ekyc' },
+    const supportItems = [
         { id: 'support', label: 'Help & Support', icon: Headset, type: 'support' },
     ];
 
@@ -278,7 +276,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
                         />
                     ))}
 
-                    {ekycItems.map((item) => (
+                    {supportItems.map((item) => (
                         <MenuItem
                             key={item.id}
                             item={item}
