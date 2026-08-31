@@ -159,6 +159,18 @@ export default function CommissionManagement() {
         }
     }, [activeTab, historyPage, historyStatus, selectedService]);
 
+    // Plan Name mapping helper for Admin
+    const getAdminPlanDisplayName = (plan) => {
+        if (!plan) return 'Free Plan';
+        const code = String(plan.planCode || '').toUpperCase();
+        const name = String(plan.planName || '');
+        if (code === 'PLAN_2999' || name.includes('2999') || name.toLowerCase().includes('anand')) return 'Rupiksha Anand Plan';
+        if (code === 'PLAN_4999' || name.includes('4999') || name.toLowerCase().includes('nidhi')) return 'Rupiksha Nidhi Plan';
+        if (code === 'PLAN_7999' || name.includes('7999') || name.toLowerCase().includes('dhanbarsha')) return 'Rupiksha Dhanbarsha Plan';
+        if (code === 'FREE' || name.toLowerCase().includes('free')) return 'Free Plan';
+        return name || 'Commission Plan';
+    };
+
     const activePlan = plans.find(p => p.id === selectedPlanId);
 
     const hasChanges = useMemo(() => {
@@ -277,6 +289,7 @@ export default function CommissionManagement() {
                             <div className="flex flex-wrap gap-2">
                                 {plans.map(p => {
                                     const isSelected = p.id === selectedPlanId;
+                                    const displayName = getAdminPlanDisplayName(p);
                                     return (
                                         <button
                                             key={p.id}
@@ -288,8 +301,8 @@ export default function CommissionManagement() {
                                             }`}
                                         >
                                             {p.isDefault && <Sparkles size={12} className={isSelected ? 'text-amber-400' : 'text-amber-500'} />}
-                                            {p.planName}
-                                            {p.price > 0 && <span className="opacity-70 text-[10px]">(&#8377;{p.price})</span>}
+                                            <span>{displayName}</span>
+                                            {p.price > 0 && <span className="opacity-75 text-[10px] font-bold">(&#8377;{Number(p.price).toLocaleString('en-IN')})</span>}
                                         </button>
                                     );
                                 })}
@@ -303,7 +316,7 @@ export default function CommissionManagement() {
                             <div>
                                 <div className="flex items-center gap-2">
                                     <h2 className="text-lg font-black text-slate-800">
-                                        {activePlan ? `${activePlan.planName} Plan Slabs` : 'Commission Slabs'}
+                                        {activePlan ? `${getAdminPlanDisplayName(activePlan)} Slabs` : 'Commission Slabs'}
                                     </h2>
                                     {activePlan?.isDefault && (
                                         <span className="bg-emerald-50 text-emerald-700 text-[10px] font-black px-2 py-0.5 rounded-full border border-emerald-200">
