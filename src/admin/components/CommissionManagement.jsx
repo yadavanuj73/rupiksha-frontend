@@ -212,11 +212,11 @@ export default function CommissionManagement() {
 
             {/* ── 2-COLUMN SIDE-BY-SIDE LAYOUT ── */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                {/* ── LEFT COLUMN: Header Card (Card 1) + Controls Card (Card 2) ── */}
+                {/* ── LEFT COLUMN: Commission Management & Plan Selectors ── */}
                 <div className="lg:col-span-4 space-y-6">
-                    {/* Card 1: Header & Tabs */}
-                    <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-5">
-                        <div className="flex items-center gap-3.5">
+                    <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-6">
+                        {/* Header */}
+                        <div className="flex items-center gap-3.5 pb-3 border-b border-slate-100">
                             <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 via-blue-600 to-sky-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 shrink-0">
                                 <IndianRupee size={24} strokeWidth={2.5} />
                             </div>
@@ -224,45 +224,12 @@ export default function CommissionManagement() {
                                 <span className="text-[9px] font-black uppercase tracking-[0.2em] text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
                                     Operations &bull; Master
                                 </span>
-                                <h1 className="text-xl font-black text-slate-800 tracking-tight mt-1 truncate">
+                                <h1 className="text-xl font-black text-slate-800 tracking-tight mt-0.5 truncate">
                                     Commission Management
                                 </h1>
                             </div>
                         </div>
 
-                        <p className="text-xs font-semibold text-slate-400 leading-relaxed">
-                            Configure authoritative slab-based financial commissions across Retailer, Distributor & Super Distributor hierarchies.
-                        </p>
-
-                        {/* Sub-nav Tabs */}
-                        <div className="flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
-                            <button
-                                onClick={() => setActiveTab('config')}
-                                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                                    activeTab === 'config'
-                                        ? 'bg-white text-slate-800 shadow-sm'
-                                        : 'text-slate-500 hover:text-slate-800'
-                                }`}
-                            >
-                                <Layers size={14} />
-                                Plan Config
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('history')}
-                                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                                    activeTab === 'history'
-                                        ? 'bg-white text-slate-800 shadow-sm'
-                                        : 'text-slate-500 hover:text-slate-800'
-                                }`}
-                            >
-                                <History size={14} />
-                                Audit Ledger
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Card 2: Service & Commission Plan Selector */}
-                    <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-5">
                         {/* Service Selector */}
                         <div className="space-y-2">
                             <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">
@@ -293,10 +260,7 @@ export default function CommissionManagement() {
                                     return (
                                         <button
                                             key={p.id}
-                                            onClick={() => {
-                                                handleSelectPlan(p);
-                                                if (activeTab !== 'config') setActiveTab('config');
-                                            }}
+                                            onClick={() => handleSelectPlan(p)}
                                             className={`w-full px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-between gap-2 text-left cursor-pointer ${
                                                 isSelected
                                                     ? 'bg-slate-900 text-white shadow-md shadow-slate-900/20 ring-2 ring-slate-900'
@@ -349,31 +313,6 @@ export default function CommissionManagement() {
                                         Commission is a fixed rupee amount granted per successful transaction slab.
                                     </p>
                                 </div>
-
-                                <div className="flex items-center gap-3">
-                                    {hasChanges && (
-                                        <button
-                                            onClick={handleReset}
-                                            disabled={saving}
-                                            className="px-4 py-2.5 rounded-2xl border border-slate-200 text-slate-600 text-xs font-black uppercase tracking-wider hover:bg-slate-50 transition-all flex items-center gap-2 cursor-pointer"
-                                        >
-                                            <RotateCcw size={14} />
-                                            Reset
-                                        </button>
-                                    )}
-                                    <button
-                                        onClick={handleSave}
-                                        disabled={saving || !hasChanges}
-                                        className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 text-white shadow-lg cursor-pointer ${
-                                            saving || !hasChanges
-                                                ? 'bg-slate-300 shadow-none cursor-not-allowed text-slate-500'
-                                                : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30'
-                                        }`}
-                                    >
-                                        <Save size={14} />
-                                        {saving ? 'Saving...' : 'Save Configuration'}
-                                    </button>
-                                </div>
                             </div>
 
                             {loadingPlans ? (
@@ -386,105 +325,138 @@ export default function CommissionManagement() {
                                     <p className="text-sm font-bold">No slabs configured for this plan.</p>
                                 </div>
                             ) : (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left border-collapse">
-                                        <thead>
-                                            <tr className="bg-slate-50/75 border-b border-slate-100 text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                                                <th className="py-4 px-5">Slab Range (&#8377;)</th>
-                                                <th className="py-4 px-3 text-center">Retailer (&#8377;)</th>
-                                                <th className="py-4 px-3 text-center">Distributor (&#8377;)</th>
-                                                <th className="py-4 px-3 text-center">Super Distributor (&#8377;)</th>
-                                                <th className="py-4 px-3 text-center">Total Distributed</th>
-                                                <th className="py-4 px-5 text-right">Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100 text-xs font-bold text-slate-700">
-                                            {slabs.map((slab, idx) => {
-                                                const ret = parseFloat(slab.retailerCommission) || 0;
-                                                const dist = parseFloat(slab.distributorCommission) || 0;
-                                                const sd = parseFloat(slab.superDistributorCommission) || 0;
-                                                const total = ret + dist + sd;
-                                                const isHighTotal = total > 20;
+                                <>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="bg-slate-50/75 border-b border-slate-100 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                                    <th className="py-4 px-5">Slab Range (&#8377;)</th>
+                                                    <th className="py-4 px-3 text-center">Retailer (&#8377;)</th>
+                                                    <th className="py-4 px-3 text-center">Distributor (&#8377;)</th>
+                                                    <th className="py-4 px-3 text-center">Super Distributor (&#8377;)</th>
+                                                    <th className="py-4 px-3 text-center">Total Distributed</th>
+                                                    <th className="py-4 px-5 text-right">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100 text-xs font-bold text-slate-700">
+                                                {slabs.map((slab, idx) => {
+                                                    const ret = parseFloat(slab.retailerCommission) || 0;
+                                                    const dist = parseFloat(slab.distributorCommission) || 0;
+                                                    const sd = parseFloat(slab.superDistributorCommission) || 0;
+                                                    const total = ret + dist + sd;
+                                                    const isHighTotal = total > 20;
 
-                                                return (
-                                                    <tr key={slab.id || idx} className="hover:bg-slate-50/50 transition-colors">
-                                                        <td className="py-4 px-5">
-                                                            <span className="font-mono text-sm font-black text-slate-800">
-                                                                &#8377;{Number(slab.minAmount).toLocaleString()} &ndash; &#8377;{Number(slab.maxAmount).toLocaleString()}
-                                                            </span>
-                                                        </td>
-
-                                                        {/* Retailer Edit */}
-                                                        <td className="py-3 px-3 text-center">
-                                                            <div className="inline-flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-indigo-500 focus-within:bg-white transition-all shadow-inner">
-                                                                <span className="text-slate-400 mr-1 text-xs">&#8377;</span>
-                                                                <input
-                                                                    type="number"
-                                                                    step="0.25"
-                                                                    min="0"
-                                                                    value={slab.retailerCommission}
-                                                                    onChange={(e) => handleSlabChange(idx, 'retailerCommission', e.target.value)}
-                                                                    className="w-16 bg-transparent text-sm font-black text-slate-800 text-center focus:outline-none"
-                                                                />
-                                                            </div>
-                                                        </td>
-
-                                                        {/* Distributor Edit */}
-                                                        <td className="py-3 px-3 text-center">
-                                                            <div className="inline-flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-indigo-500 focus-within:bg-white transition-all shadow-inner">
-                                                                <span className="text-slate-400 mr-1 text-xs">&#8377;</span>
-                                                                <input
-                                                                    type="number"
-                                                                    step="0.25"
-                                                                    min="0"
-                                                                    value={slab.distributorCommission}
-                                                                    onChange={(e) => handleSlabChange(idx, 'distributorCommission', e.target.value)}
-                                                                    className="w-16 bg-transparent text-sm font-black text-slate-800 text-center focus:outline-none"
-                                                                />
-                                                            </div>
-                                                        </td>
-
-                                                        {/* Super Distributor Edit */}
-                                                        <td className="py-3 px-3 text-center">
-                                                            <div className="inline-flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-indigo-500 focus-within:bg-white transition-all shadow-inner">
-                                                                <span className="text-slate-400 mr-1 text-xs">&#8377;</span>
-                                                                <input
-                                                                    type="number"
-                                                                    step="0.25"
-                                                                    min="0"
-                                                                    value={slab.superDistributorCommission}
-                                                                    onChange={(e) => handleSlabChange(idx, 'superDistributorCommission', e.target.value)}
-                                                                    className="w-16 bg-transparent text-sm font-black text-slate-800 text-center focus:outline-none"
-                                                                />
-                                                            </div>
-                                                        </td>
-
-                                                        {/* Total Commission */}
-                                                        <td className="py-4 px-3 text-center">
-                                                            <div className="flex items-center justify-center gap-1.5">
-                                                                <span className="font-mono text-xs font-black text-indigo-600 bg-indigo-50/70 px-2.5 py-1 rounded-xl border border-indigo-100">
-                                                                    &#8377;{total.toFixed(2)}
+                                                    return (
+                                                        <tr key={slab.id || idx} className="hover:bg-slate-50/50 transition-colors">
+                                                            <td className="py-4 px-5">
+                                                                <span className="font-mono text-sm font-black text-slate-800">
+                                                                    &#8377;{Number(slab.minAmount).toLocaleString()} &ndash; &#8377;{Number(slab.maxAmount).toLocaleString()}
                                                                 </span>
-                                                                {isHighTotal && (
-                                                                    <span title="High total commission warning" className="text-amber-500">
-                                                                        <AlertTriangle size={14} />
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </td>
+                                                            </td>
 
-                                                        {/* Active / Enabled */}
-                                                        <td className="py-4 px-5 text-right">
-                                                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                                Active
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                                            {/* Retailer Edit */}
+                                                            <td className="py-3 px-3 text-center">
+                                                                <div className="inline-flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-indigo-500 focus-within:bg-white transition-all shadow-inner">
+                                                                    <span className="text-slate-400 mr-1 text-xs">&#8377;</span>
+                                                                    <input
+                                                                        type="number"
+                                                                        step="0.25"
+                                                                        min="0"
+                                                                        value={slab.retailerCommission}
+                                                                        onChange={(e) => handleSlabChange(idx, 'retailerCommission', e.target.value)}
+                                                                        className="w-16 bg-transparent text-sm font-black text-slate-800 text-center focus:outline-none"
+                                                                    />
+                                                                </div>
+                                                            </td>
+
+                                                            {/* Distributor Edit */}
+                                                            <td className="py-3 px-3 text-center">
+                                                                <div className="inline-flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-indigo-500 focus-within:bg-white transition-all shadow-inner">
+                                                                    <span className="text-slate-400 mr-1 text-xs">&#8377;</span>
+                                                                    <input
+                                                                        type="number"
+                                                                        step="0.25"
+                                                                        min="0"
+                                                                        value={slab.distributorCommission}
+                                                                        onChange={(e) => handleSlabChange(idx, 'distributorCommission', e.target.value)}
+                                                                        className="w-16 bg-transparent text-sm font-black text-slate-800 text-center focus:outline-none"
+                                                                    />
+                                                                </div>
+                                                            </td>
+
+                                                            {/* Super Distributor Edit */}
+                                                            <td className="py-3 px-3 text-center">
+                                                                <div className="inline-flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-indigo-500 focus-within:bg-white transition-all shadow-inner">
+                                                                    <span className="text-slate-400 mr-1 text-xs">&#8377;</span>
+                                                                    <input
+                                                                        type="number"
+                                                                        step="0.25"
+                                                                        min="0"
+                                                                        value={slab.superDistributorCommission}
+                                                                        onChange={(e) => handleSlabChange(idx, 'superDistributorCommission', e.target.value)}
+                                                                        className="w-16 bg-transparent text-sm font-black text-slate-800 text-center focus:outline-none"
+                                                                    />
+                                                                </div>
+                                                            </td>
+
+                                                            {/* Total Commission */}
+                                                            <td className="py-4 px-3 text-center">
+                                                                <div className="flex items-center justify-center gap-1.5">
+                                                                    <span className="font-mono text-xs font-black text-indigo-600 bg-indigo-50/70 px-2.5 py-1 rounded-xl border border-indigo-100">
+                                                                        &#8377;{total.toFixed(2)}
+                                                                    </span>
+                                                                    {isHighTotal && (
+                                                                        <span title="High total commission warning" className="text-amber-500">
+                                                                            <AlertTriangle size={14} />
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+
+                                                            {/* Active / Enabled */}
+                                                            <td className="py-4 px-5 text-right">
+                                                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                                    Active
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    {/* Footer Action Bar */}
+                                    <div className="p-4 sm:p-6 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                        <span className="text-xs font-bold text-slate-400">
+                                            {hasChanges ? 'You have unsaved changes in slab rates.' : 'All slab changes are saved.'}
+                                        </span>
+                                        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                                            {hasChanges && (
+                                                <button
+                                                    onClick={handleReset}
+                                                    disabled={saving}
+                                                    className="px-4 py-2.5 rounded-2xl border border-slate-200 text-slate-600 text-xs font-black uppercase tracking-wider hover:bg-slate-100 transition-all flex items-center gap-2 cursor-pointer"
+                                                >
+                                                    <RotateCcw size={14} />
+                                                    Reset
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={handleSave}
+                                                disabled={saving || !hasChanges}
+                                                className={`px-6 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 text-white shadow-lg cursor-pointer ${
+                                                    saving || !hasChanges
+                                                        ? 'bg-slate-300 shadow-none cursor-not-allowed text-slate-500'
+                                                        : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30'
+                                                }`}
+                                            >
+                                                <Save size={14} />
+                                                {saving ? 'Saving...' : 'Save Plan'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </>
                             )}
                         </div>
                     ) : (
