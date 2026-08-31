@@ -303,4 +303,59 @@ public class CommissionServiceImplTest {
         CommissionDtos.UpdateSlabsRequest overlapReq = new CommissionDtos.UpdateSlabsRequest(List.of(slabA, slabB));
         assertThrows(IllegalArgumentException.class, () -> commissionService.updatePlanSlabs(freePlan.getId(), overlapReq, adminId, "127.0.0.1"));
     }
+
+    @Test
+    @DisplayName("CASE 13: Upgrade Plan - Paid Plan Debits Wallet and Updates User Plan")
+    void testUpgradeRetailerPlanPaid() {
+        UUID planId = UUID.randomUUID();
+        CommissionPlan paidPlan = CommissionPlan.builder()
+                .id(planId)
+                .serviceType("AEPS_1")
+                .planName("Rupiksha Anand Plan")
+                .planCode("PLAN_2999")
+                .price(new BigDecimal("2999.00"))
+                .enabled(true)
+                .slabs(new ArrayList<>(defaultSlabs))
+                .build();
+
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+        when(commissionPlanRepository.findByIdWithSlabs(planId)).thenReturn(Optional.of(paidPlan));
+
+        CommissionDtos.CommissionPlanDto result = commissionService.upgradeRetailerPlan(retailer.getId(), planId, "127.0.0.1");
+
+        assertNotNull(result);
+        assertEquals("PLAN_2999", result.planCode());
+        assertEquals(new BigDecimal("2999.00"), result.price());
+
+        // Verify wallet debited ₹2999.00
+        verify(walletService, times(1)).debitForService(
+                eq(retailer.getId()),
+                eq(new BigDecimal("2999.00")),
+                contains("Commission Plan Upgrade"),
+                eq(WalletTransactionContext.PLAN_UPGRADE),
+                eq("PLAN_UPGRADE"),
+                eq("127.0.0.1"),
+                anyString()
+        );
+
+        // Verify retailer user was saved with new plan
+        assertEquals(paidPlan, retailer.getAepsCommissionPlan());
+        verify(userRepository, times(1)).save(retailer);
+    }
+
+    @Test
+    @DisplayName("CASE 14: Upgrade Plan - Already on Same Plan Returns Early Without Debit")
+    void testUpgradeRetailerPlanSamePlanNoDebit() {
+        retailer.setAepsCommissionPlan(freePlan);
+
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+        when(commissionPlanRepository.findByIdWithSlabs(freePlan.getId())).thenReturn(Optional.of(freePlan));
+
+        CommissionDtos.CommissionPlanDto result = commissionService.upgradeRetailerPlan(retailer.getId(), freePlan.getId(), "127.0.0.1");
+
+        assertNotNull(result);
+        assertEquals("FREE", result.planCode());
+        verify(walletService, never()).debitForService(any(), any(), any(), any(), any(), any(), any());
+        verify(userRepository, never()).save(retailer);
+    }
 }

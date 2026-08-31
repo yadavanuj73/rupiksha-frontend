@@ -59,7 +59,7 @@ public class WalletEntry {
     @Column(nullable = false, length = 20)
     private WalletTransactionStatus status = WalletTransactionStatus.INITIATED;
 
-    @Column(name = "idempotency_key", length = 80, unique = true)
+    @Column(name = "idempotency_key", length = 255, unique = true)
     private String idempotencyKey;
 
     @Enumerated(EnumType.STRING)

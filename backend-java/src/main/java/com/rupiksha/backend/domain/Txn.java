@@ -34,7 +34,7 @@ public class Txn {
     @Column(name = "provider_ref", length = 120)
     private String providerRef;
 
-    @Column(name = "idempotency_key", nullable = false, unique = true, length = 80)
+    @Column(name = "idempotency_key", nullable = false, unique = true, length = 255)
     private String idempotencyKey;
 
     @Column(name = "created_at", nullable = false, updatable = false)
