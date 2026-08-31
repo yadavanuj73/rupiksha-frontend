@@ -39,9 +39,6 @@ public class CommissionServiceImplTest {
     @Mock
     private WalletService walletService;
 
-    @Mock
-    private AuditLogRepository auditLogRepository;
-
     @InjectMocks
     private CommissionServiceImpl commissionService;
 

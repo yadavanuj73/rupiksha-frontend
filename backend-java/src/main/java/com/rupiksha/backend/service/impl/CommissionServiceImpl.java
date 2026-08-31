@@ -30,7 +30,6 @@ public class CommissionServiceImpl implements CommissionService {
     private final CommissionTransactionRepository commissionTransactionRepository;
     private final UserRepository userRepository;
     private final WalletService walletService;
-    private final AuditLogRepository auditLogRepository;
 
     private static final ZoneId IST_ZONE = ZoneId.of("Asia/Kolkata");
 
@@ -311,18 +310,6 @@ public class CommissionServiceImpl implements CommissionService {
         }
 
         CommissionPlan saved = commissionPlanRepository.save(plan);
-
-        // Audit Log
-        AuditLog audit = AuditLog.builder()
-                .operator(admin)
-                .walletType("COMMISSION")
-                .ledgerType("CONFIG_UPDATE")
-                .referenceNumber("COMM-CFG-" + plan.getPlanCode())
-                .ipAddress(ipAddress)
-                .remark("Updated commission slabs for Plan: " + plan.getPlanName() + " (" + plan.getPlanCode() + ") with " + slabDtos.size() + " slabs.")
-                .build();
-        auditLogRepository.save(audit);
-
         log.info("Admin {} updated commission slabs for plan {} ({})", admin.getUsername(), plan.getPlanName(), plan.getId());
         return mapPlanToDto(saved);
     }
@@ -374,17 +361,7 @@ public class CommissionServiceImpl implements CommissionService {
         }
 
         CommissionPlan saved = commissionPlanRepository.save(plan);
-
-        AuditLog audit = AuditLog.builder()
-                .operator(admin)
-                .walletType("COMMISSION")
-                .ledgerType("CONFIG_CREATE")
-                .referenceNumber("COMM-NEW-" + planCode)
-                .ipAddress(ipAddress)
-                .remark("Created new commission plan: " + plan.getPlanName() + " (" + planCode + ")")
-                .build();
-        auditLogRepository.save(audit);
-
+        log.info("Admin {} created commission plan {} ({})", admin.getUsername(), plan.getPlanName(), plan.getPlanCode());
         return mapPlanToDto(saved);
     }
 
@@ -534,17 +511,6 @@ public class CommissionServiceImpl implements CommissionService {
 
         user.setAepsCommissionPlan(plan);
         userRepository.save(user);
-
-        AuditLog audit = AuditLog.builder()
-                .operator(admin)
-                .targetUser(user)
-                .walletType("COMMISSION")
-                .ledgerType("PLAN_ASSIGN")
-                .referenceNumber("COMM-ASSIGN-" + user.getUsername())
-                .ipAddress(ipAddress)
-                .remark("Assigned commission plan '" + plan.getPlanName() + "' (" + plan.getPlanCode() + ") to user " + user.getUsername())
-                .build();
-        auditLogRepository.save(audit);
 
         log.info("Admin {} assigned commission plan {} to user {}", admin.getUsername(), plan.getPlanName(), user.getUsername());
     }
