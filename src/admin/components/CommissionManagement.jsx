@@ -179,54 +179,6 @@ export default function CommissionManagement() {
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto font-['Inter',sans-serif]">
-            {/* ── HEADER ────────────────────────────────────────────────────────── */}
-            <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 via-blue-600 to-sky-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
-                        <IndianRupee size={28} strokeWidth={2.5} />
-                    </div>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
-                                Operations &bull; Master Settings
-                            </span>
-                        </div>
-                        <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight mt-1">
-                            Commission Management
-                        </h1>
-                        <p className="text-xs font-semibold text-slate-400 mt-0.5">
-                            Configure authoritative slab-based financial commissions across Retailer, Distributor & Super Distributor hierarchies.
-                        </p>
-                    </div>
-                </div>
-
-                {/* Sub-nav Tabs */}
-                <div className="flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shrink-0">
-                    <button
-                        onClick={() => setActiveTab('config')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                            activeTab === 'config'
-                                ? 'bg-white text-slate-800 shadow-sm'
-                                : 'text-slate-500 hover:text-slate-800'
-                        }`}
-                    >
-                        <Layers size={14} />
-                        Plan Configuration
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('history')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                            activeTab === 'history'
-                                ? 'bg-white text-slate-800 shadow-sm'
-                                : 'text-slate-500 hover:text-slate-800'
-                        }`}
-                    >
-                        <History size={14} />
-                        Audit Ledger
-                    </button>
-                </div>
-            </div>
-
             {/* ── NOTIFICATION TOAST ────────────────────────────────────────────── */}
             <AnimatePresence>
                 {notification && (
@@ -250,7 +202,7 @@ export default function CommissionManagement() {
                         </div>
                         <button
                             onClick={() => setNotification(null)}
-                            className="text-slate-400 hover:text-slate-600 text-sm font-black px-2"
+                            className="text-slate-400 hover:text-slate-600 text-sm font-black px-2 cursor-pointer"
                         >
                             &times;
                         </button>
@@ -258,11 +210,59 @@ export default function CommissionManagement() {
                 )}
             </AnimatePresence>
 
-            {activeTab === 'config' ? (
-                /* ── CONFIGURATION TAB ─────────────────────────────────────────── */
-                <div className="space-y-6">
-                    {/* Controls Bar */}
-                    <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+            {/* ── 2-COLUMN SIDE-BY-SIDE LAYOUT ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* ── LEFT COLUMN: Header Card (Card 1) + Controls Card (Card 2) ── */}
+                <div className="lg:col-span-4 space-y-6">
+                    {/* Card 1: Header & Tabs */}
+                    <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-5">
+                        <div className="flex items-center gap-3.5">
+                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 via-blue-600 to-sky-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 shrink-0">
+                                <IndianRupee size={24} strokeWidth={2.5} />
+                            </div>
+                            <div className="min-w-0">
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
+                                    Operations &bull; Master
+                                </span>
+                                <h1 className="text-xl font-black text-slate-800 tracking-tight mt-1 truncate">
+                                    Commission Management
+                                </h1>
+                            </div>
+                        </div>
+
+                        <p className="text-xs font-semibold text-slate-400 leading-relaxed">
+                            Configure authoritative slab-based financial commissions across Retailer, Distributor & Super Distributor hierarchies.
+                        </p>
+
+                        {/* Sub-nav Tabs */}
+                        <div className="flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+                            <button
+                                onClick={() => setActiveTab('config')}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                                    activeTab === 'config'
+                                        ? 'bg-white text-slate-800 shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-800'
+                                }`}
+                            >
+                                <Layers size={14} />
+                                Plan Config
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('history')}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                                    activeTab === 'history'
+                                        ? 'bg-white text-slate-800 shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-800'
+                                }`}
+                            >
+                                <History size={14} />
+                                Audit Ledger
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Card 2: Service & Commission Plan Selector */}
+                    <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-5">
                         {/* Service Selector */}
                         <div className="space-y-2">
                             <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">
@@ -272,7 +272,7 @@ export default function CommissionManagement() {
                                 <select
                                     value={selectedService}
                                     onChange={(e) => setSelectedService(e.target.value)}
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold text-slate-800 focus:bg-white focus:outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-xs font-bold text-slate-800 focus:bg-white focus:outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer"
                                 >
                                     {services.map(s => (
                                         <option key={s.id} value={s.id}>{s.label}</option>
@@ -281,343 +281,363 @@ export default function CommissionManagement() {
                             </div>
                         </div>
 
-                        {/* Plan Selector Buttons */}
+                        {/* Plan Selector Buttons - Vertical Stack */}
                         <div className="space-y-2">
                             <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">
                                 Select Commission Plan
                             </label>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-col gap-2">
                                 {plans.map(p => {
                                     const isSelected = p.id === selectedPlanId;
                                     const displayName = getAdminPlanDisplayName(p);
                                     return (
                                         <button
                                             key={p.id}
-                                            onClick={() => handleSelectPlan(p)}
-                                            className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                                            onClick={() => {
+                                                handleSelectPlan(p);
+                                                if (activeTab !== 'config') setActiveTab('config');
+                                            }}
+                                            className={`w-full px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-between gap-2 text-left cursor-pointer ${
                                                 isSelected
-                                                    ? 'bg-slate-900 text-white shadow-md shadow-slate-900/20'
-                                                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'
+                                                    ? 'bg-slate-900 text-white shadow-md shadow-slate-900/20 ring-2 ring-slate-900'
+                                                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/80'
                                             }`}
                                         >
-                                            {p.isDefault && <Sparkles size={12} className={isSelected ? 'text-amber-400' : 'text-amber-500'} />}
-                                            <span>{displayName}</span>
-                                            {p.price > 0 && <span className="opacity-75 text-[10px] font-bold">(&#8377;{Number(p.price).toLocaleString('en-IN')})</span>}
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                {p.isDefault && <Sparkles size={13} className={isSelected ? 'text-amber-400' : 'text-amber-500'} />}
+                                                <span className="truncate">{displayName}</span>
+                                            </div>
+                                            {p.price > 0 ? (
+                                                <span className={`text-[10.5px] font-bold px-2 py-0.5 rounded-lg shrink-0 ${
+                                                    isSelected ? 'bg-slate-800 text-indigo-200' : 'bg-slate-200/70 text-slate-600'
+                                                }`}>
+                                                    &#8377;{Number(p.price).toLocaleString('en-IN')}
+                                                </span>
+                                            ) : (
+                                                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg shrink-0 ${
+                                                    isSelected ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                                }`}>
+                                                    FREE
+                                                </span>
+                                            )}
                                         </button>
                                     );
                                 })}
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    {/* Slabs Editor Table */}
-                    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-                        <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <h2 className="text-lg font-black text-slate-800">
-                                        {activePlan ? `${getAdminPlanDisplayName(activePlan)} Slabs` : 'Commission Slabs'}
-                                    </h2>
-                                    {activePlan?.isDefault && (
-                                        <span className="bg-emerald-50 text-emerald-700 text-[10px] font-black px-2 py-0.5 rounded-full border border-emerald-200">
-                                            Default System Plan
-                                        </span>
-                                    )}
+                {/* ── RIGHT COLUMN: Slabs Editor Table (Card 3) or Audit Ledger ── */}
+                <div className="lg:col-span-8">
+                    {activeTab === 'config' ? (
+                        /* Slabs Editor Table */
+                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                            <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h2 className="text-lg font-black text-slate-800">
+                                            {activePlan ? `${getAdminPlanDisplayName(activePlan)} Slabs` : 'Commission Slabs'}
+                                        </h2>
+                                        {activePlan?.isDefault && (
+                                            <span className="bg-emerald-50 text-emerald-700 text-[10px] font-black px-2 py-0.5 rounded-full border border-emerald-200">
+                                                Default System Plan
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-xs font-medium text-slate-400 mt-0.5">
+                                        Commission is a fixed rupee amount granted per successful transaction slab.
+                                    </p>
                                 </div>
-                                <p className="text-xs font-medium text-slate-400 mt-0.5">
-                                    Commission is a fixed rupee amount granted per successful transaction slab.
-                                </p>
-                            </div>
 
-                            <div className="flex items-center gap-3">
-                                {hasChanges && (
+                                <div className="flex items-center gap-3">
+                                    {hasChanges && (
+                                        <button
+                                            onClick={handleReset}
+                                            disabled={saving}
+                                            className="px-4 py-2.5 rounded-2xl border border-slate-200 text-slate-600 text-xs font-black uppercase tracking-wider hover:bg-slate-50 transition-all flex items-center gap-2 cursor-pointer"
+                                        >
+                                            <RotateCcw size={14} />
+                                            Reset
+                                        </button>
+                                    )}
                                     <button
-                                        onClick={handleReset}
-                                        disabled={saving}
-                                        className="px-4 py-2.5 rounded-2xl border border-slate-200 text-slate-600 text-xs font-black uppercase tracking-wider hover:bg-slate-50 transition-all flex items-center gap-2"
+                                        onClick={handleSave}
+                                        disabled={saving || !hasChanges}
+                                        className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 text-white shadow-lg cursor-pointer ${
+                                            saving || !hasChanges
+                                                ? 'bg-slate-300 shadow-none cursor-not-allowed text-slate-500'
+                                                : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30'
+                                        }`}
                                     >
-                                        <RotateCcw size={14} />
-                                        Reset
+                                        <Save size={14} />
+                                        {saving ? 'Saving...' : 'Save Configuration'}
                                     </button>
-                                )}
-                                <button
-                                    onClick={handleSave}
-                                    disabled={saving || !hasChanges}
-                                    className={`px-6 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 text-white shadow-lg ${
-                                        saving || !hasChanges
-                                            ? 'bg-slate-300 shadow-none cursor-not-allowed text-slate-500'
-                                            : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30'
-                                    }`}
-                                >
-                                    <Save size={14} />
-                                    {saving ? 'Saving...' : 'Save Configuration'}
-                                </button>
+                                </div>
                             </div>
-                        </div>
 
-                        {loadingPlans ? (
-                            <div className="p-12 text-center text-slate-400 flex flex-col items-center gap-2">
-                                <RefreshCw className="animate-spin text-indigo-500" size={24} />
-                                <span className="text-xs font-bold">Loading plans & slabs...</span>
+                            {loadingPlans ? (
+                                <div className="p-12 text-center text-slate-400 flex flex-col items-center gap-2">
+                                    <RefreshCw className="animate-spin text-indigo-500" size={24} />
+                                    <span className="text-xs font-bold">Loading plans & slabs...</span>
+                                </div>
+                            ) : slabs.length === 0 ? (
+                                <div className="p-12 text-center text-slate-400">
+                                    <p className="text-sm font-bold">No slabs configured for this plan.</p>
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-slate-50/75 border-b border-slate-100 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                                <th className="py-4 px-5">Slab Range (&#8377;)</th>
+                                                <th className="py-4 px-3 text-center">Retailer (&#8377;)</th>
+                                                <th className="py-4 px-3 text-center">Distributor (&#8377;)</th>
+                                                <th className="py-4 px-3 text-center">Super Distributor (&#8377;)</th>
+                                                <th className="py-4 px-3 text-center">Total Distributed</th>
+                                                <th className="py-4 px-5 text-right">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 text-xs font-bold text-slate-700">
+                                            {slabs.map((slab, idx) => {
+                                                const ret = parseFloat(slab.retailerCommission) || 0;
+                                                const dist = parseFloat(slab.distributorCommission) || 0;
+                                                const sd = parseFloat(slab.superDistributorCommission) || 0;
+                                                const total = ret + dist + sd;
+                                                const isHighTotal = total > 20;
+
+                                                return (
+                                                    <tr key={slab.id || idx} className="hover:bg-slate-50/50 transition-colors">
+                                                        <td className="py-4 px-5">
+                                                            <span className="font-mono text-sm font-black text-slate-800">
+                                                                &#8377;{Number(slab.minAmount).toLocaleString()} &ndash; &#8377;{Number(slab.maxAmount).toLocaleString()}
+                                                            </span>
+                                                        </td>
+
+                                                        {/* Retailer Edit */}
+                                                        <td className="py-3 px-3 text-center">
+                                                            <div className="inline-flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-indigo-500 focus-within:bg-white transition-all shadow-inner">
+                                                                <span className="text-slate-400 mr-1 text-xs">&#8377;</span>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.25"
+                                                                    min="0"
+                                                                    value={slab.retailerCommission}
+                                                                    onChange={(e) => handleSlabChange(idx, 'retailerCommission', e.target.value)}
+                                                                    className="w-16 bg-transparent text-sm font-black text-slate-800 text-center focus:outline-none"
+                                                                />
+                                                            </div>
+                                                        </td>
+
+                                                        {/* Distributor Edit */}
+                                                        <td className="py-3 px-3 text-center">
+                                                            <div className="inline-flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-indigo-500 focus-within:bg-white transition-all shadow-inner">
+                                                                <span className="text-slate-400 mr-1 text-xs">&#8377;</span>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.25"
+                                                                    min="0"
+                                                                    value={slab.distributorCommission}
+                                                                    onChange={(e) => handleSlabChange(idx, 'distributorCommission', e.target.value)}
+                                                                    className="w-16 bg-transparent text-sm font-black text-slate-800 text-center focus:outline-none"
+                                                                />
+                                                            </div>
+                                                        </td>
+
+                                                        {/* Super Distributor Edit */}
+                                                        <td className="py-3 px-3 text-center">
+                                                            <div className="inline-flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-indigo-500 focus-within:bg-white transition-all shadow-inner">
+                                                                <span className="text-slate-400 mr-1 text-xs">&#8377;</span>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.25"
+                                                                    min="0"
+                                                                    value={slab.superDistributorCommission}
+                                                                    onChange={(e) => handleSlabChange(idx, 'superDistributorCommission', e.target.value)}
+                                                                    className="w-16 bg-transparent text-sm font-black text-slate-800 text-center focus:outline-none"
+                                                                />
+                                                            </div>
+                                                        </td>
+
+                                                        {/* Total Commission */}
+                                                        <td className="py-4 px-3 text-center">
+                                                            <div className="flex items-center justify-center gap-1.5">
+                                                                <span className="font-mono text-xs font-black text-indigo-600 bg-indigo-50/70 px-2.5 py-1 rounded-xl border border-indigo-100">
+                                                                    &#8377;{total.toFixed(2)}
+                                                                </span>
+                                                                {isHighTotal && (
+                                                                    <span title="High total commission warning" className="text-amber-500">
+                                                                        <AlertTriangle size={14} />
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </td>
+
+                                                        {/* Active / Enabled */}
+                                                        <td className="py-4 px-5 text-right">
+                                                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                                Active
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        /* ── AUDIT LEDGER TAB ─────────────────────────────────────────── */
+                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-6">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div>
+                                    <h2 className="text-lg font-black text-slate-800">Commission Distribution Audit Ledger</h2>
+                                    <p className="text-xs font-medium text-slate-400 mt-0.5">
+                                        Permanent record of all distributed commissions, mapped transactions, beneficiaries, and role credits.
+                                    </p>
+                                </div>
+
+                                {/* Search and filter */}
+                                <div className="flex items-center gap-3">
+                                    <div className="relative">
+                                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                        <input
+                                            type="text"
+                                            placeholder="Search by Txn ID / Ref..."
+                                            value={historySearch}
+                                            onChange={(e) => setHistorySearch(e.target.value)}
+                                            onKeyDown={(e) => { if (e.key === 'Enter') fetchHistory(); }}
+                                            className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:outline-none focus:border-indigo-500 w-52"
+                                        />
+                                    </div>
+
+                                    <select
+                                        value={historyStatus}
+                                        onChange={(e) => setHistoryStatus(e.target.value)}
+                                        className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none"
+                                    >
+                                        <option value="ALL">All</option>
+                                        <option value="SUCCESS">Success</option>
+                                        <option value="FAILED">Failed</option>
+                                    </select>
+
+                                    <button
+                                        onClick={fetchHistory}
+                                        className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
+                                        title="Refresh"
+                                    >
+                                        <RefreshCw size={14} className={historyLoading ? 'animate-spin' : ''} />
+                                    </button>
+                                </div>
                             </div>
-                        ) : slabs.length === 0 ? (
-                            <div className="p-12 text-center text-slate-400">
-                                <p className="text-sm font-bold">No slabs configured for this plan.</p>
-                            </div>
-                        ) : (
+
+                            {/* Table */}
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
                                         <tr className="bg-slate-50/75 border-b border-slate-100 text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                                            <th className="py-4 px-6">Slab Range (&#8377;)</th>
-                                            <th className="py-4 px-4 text-center">Retailer (&#8377;)</th>
-                                            <th className="py-4 px-4 text-center">Distributor (&#8377;)</th>
-                                            <th className="py-4 px-4 text-center">Super Distributor (&#8377;)</th>
-                                            <th className="py-4 px-4 text-center">Total Distributed</th>
-                                            <th className="py-4 px-6 text-right">Status</th>
+                                            <th className="py-3 px-4">Date & Time</th>
+                                            <th className="py-3 px-4">Commission Ref</th>
+                                            <th className="py-3 px-4">Original Txn ID</th>
+                                            <th className="py-3 px-4">Beneficiary</th>
+                                            <th className="py-3 px-4">Role</th>
+                                            <th className="py-3 px-4 text-right">Txn Amount</th>
+                                            <th className="py-3 px-4 text-center">Slab</th>
+                                            <th className="py-3 px-4 text-right">Commission</th>
+                                            <th className="py-3 px-4 text-center">Status</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100 text-xs font-bold text-slate-700">
-                                        {slabs.map((slab, idx) => {
-                                            const ret = parseFloat(slab.retailerCommission) || 0;
-                                            const dist = parseFloat(slab.distributorCommission) || 0;
-                                            const sd = parseFloat(slab.superDistributorCommission) || 0;
-                                            const total = ret + dist + sd;
-                                            const isHighTotal = total > 20;
-
-                                            return (
-                                                <tr key={slab.id || idx} className="hover:bg-slate-50/50 transition-colors">
-                                                    <td className="py-4 px-6">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-mono text-sm font-black text-slate-800">
-                                                                &#8377;{Number(slab.minAmount).toLocaleString()} &ndash; &#8377;{Number(slab.maxAmount).toLocaleString()}
-                                                            </span>
-                                                        </div>
+                                    <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+                                        {historyLoading ? (
+                                            <tr>
+                                                <td colSpan={9} className="py-12 text-center text-slate-400">
+                                                    <RefreshCw className="animate-spin mx-auto mb-2 text-indigo-500" size={20} />
+                                                    Loading commission transactions...
+                                                </td>
+                                            </tr>
+                                        ) : historyList.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={9} className="py-12 text-center text-slate-400 font-bold">
+                                                    No commission transactions found.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            historyList.map(item => (
+                                                <tr key={item.id} className="hover:bg-slate-50/50">
+                                                    <td className="py-3 px-4 text-slate-500 font-mono text-[11px]">
+                                                        {new Date(item.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
                                                     </td>
-
-                                                    {/* Retailer Edit */}
+                                                    <td className="py-3 px-4 font-mono font-bold text-slate-800">
+                                                        {item.commissionReference}
+                                                    </td>
+                                                    <td className="py-3 px-4 font-mono text-slate-600">
+                                                        {item.originalTransactionId}
+                                                    </td>
+                                                    <td className="py-3 px-4 font-bold text-slate-800">
+                                                        {item.beneficiaryName} <span className="text-slate-400 text-[10px]">({item.beneficiaryUsername})</span>
+                                                    </td>
+                                                    <td className="py-3 px-4">
+                                                        <span className={`inline-flex px-2 py-0.5 rounded-md text-[9px] font-black uppercase ${
+                                                            item.beneficiaryRole === 'RETAILER'
+                                                                ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                                                : item.beneficiaryRole === 'DISTRIBUTOR'
+                                                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                                                : 'bg-purple-50 text-purple-700 border border-purple-200'
+                                                        }`}>
+                                                            {item.beneficiaryRole}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-3 px-4 text-right font-mono font-bold text-slate-800">
+                                                        &#8377;{Number(item.transactionAmount).toLocaleString()}
+                                                    </td>
+                                                    <td className="py-3 px-4 text-center font-mono text-[11px] text-slate-600">
+                                                        {item.slabRange}
+                                                    </td>
+                                                    <td className="py-3 px-4 text-right font-mono font-black text-emerald-600">
+                                                        +&#8377;{Number(item.commissionAmount).toFixed(2)}
+                                                    </td>
                                                     <td className="py-3 px-4 text-center">
-                                                        <div className="inline-flex items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 focus-within:border-indigo-500 focus-within:bg-white transition-all shadow-inner">
-                                                            <span className="text-slate-400 mr-1 text-xs">&#8377;</span>
-                                                            <input
-                                                                type="number"
-                                                                step="0.25"
-                                                                min="0"
-                                                                value={slab.retailerCommission}
-                                                                onChange={(e) => handleSlabChange(idx, 'retailerCommission', e.target.value)}
-                                                                className="w-20 bg-transparent text-sm font-black text-slate-800 text-center focus:outline-none"
-                                                            />
-                                                        </div>
-                                                    </td>
-
-                                                    {/* Distributor Edit */}
-                                                    <td className="py-3 px-4 text-center">
-                                                        <div className="inline-flex items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 focus-within:border-indigo-500 focus-within:bg-white transition-all shadow-inner">
-                                                            <span className="text-slate-400 mr-1 text-xs">&#8377;</span>
-                                                            <input
-                                                                type="number"
-                                                                step="0.25"
-                                                                min="0"
-                                                                value={slab.distributorCommission}
-                                                                onChange={(e) => handleSlabChange(idx, 'distributorCommission', e.target.value)}
-                                                                className="w-20 bg-transparent text-sm font-black text-slate-800 text-center focus:outline-none"
-                                                            />
-                                                        </div>
-                                                    </td>
-
-                                                    {/* Super Distributor Edit */}
-                                                    <td className="py-3 px-4 text-center">
-                                                        <div className="inline-flex items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 focus-within:border-indigo-500 focus-within:bg-white transition-all shadow-inner">
-                                                            <span className="text-slate-400 mr-1 text-xs">&#8377;</span>
-                                                            <input
-                                                                type="number"
-                                                                step="0.25"
-                                                                min="0"
-                                                                value={slab.superDistributorCommission}
-                                                                onChange={(e) => handleSlabChange(idx, 'superDistributorCommission', e.target.value)}
-                                                                className="w-20 bg-transparent text-sm font-black text-slate-800 text-center focus:outline-none"
-                                                            />
-                                                        </div>
-                                                    </td>
-
-                                                    {/* Total Commission */}
-                                                    <td className="py-4 px-4 text-center">
-                                                        <div className="flex items-center justify-center gap-1.5">
-                                                            <span className="font-mono text-sm font-black text-indigo-600 bg-indigo-50/70 px-3 py-1 rounded-xl border border-indigo-100">
-                                                                &#8377;{total.toFixed(2)}
-                                                            </span>
-                                                            {isHighTotal && (
-                                                                <span title="High total commission warning" className="text-amber-500">
-                                                                    <AlertTriangle size={14} />
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </td>
-
-                                                    {/* Active / Enabled */}
-                                                    <td className="py-4 px-6 text-right">
-                                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                            Active
+                                                        <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                            {item.status}
                                                         </span>
                                                     </td>
                                                 </tr>
-                                            );
-                                        })}
+                                            ))
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
-                        )}
-                    </div>
-                </div>
-            ) : (
-                /* ── AUDIT LEDGER TAB ─────────────────────────────────────────── */
-                <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-6">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
-                            <h2 className="text-lg font-black text-slate-800">Commission Distribution Audit Ledger</h2>
-                            <p className="text-xs font-medium text-slate-400 mt-0.5">
-                                Permanent record of all distributed commissions, mapped transactions, beneficiaries, and role credits.
-                            </p>
-                        </div>
 
-                        {/* Search and filter */}
-                        <div className="flex items-center gap-3">
-                            <div className="relative">
-                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Search by Txn ID / Reference / User..."
-                                    value={historySearch}
-                                    onChange={(e) => setHistorySearch(e.target.value)}
-                                    onKeyDown={(e) => { if (e.key === 'Enter') fetchHistory(); }}
-                                    className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:outline-none focus:border-indigo-500 w-64"
-                                />
-                            </div>
-
-                            <select
-                                value={historyStatus}
-                                onChange={(e) => setHistoryStatus(e.target.value)}
-                                className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none"
-                            >
-                                <option value="ALL">All Statuses</option>
-                                <option value="SUCCESS">Success</option>
-                                <option value="FAILED">Failed</option>
-                            </select>
-
-                            <button
-                                onClick={fetchHistory}
-                                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
-                                title="Refresh"
-                            >
-                                <RefreshCw size={14} className={historyLoading ? 'animate-spin' : ''} />
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Table */}
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-slate-50/75 border-b border-slate-100 text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                                    <th className="py-3 px-4">Date & Time</th>
-                                    <th className="py-3 px-4">Commission Ref</th>
-                                    <th className="py-3 px-4">Original Txn ID</th>
-                                    <th className="py-3 px-4">Beneficiary</th>
-                                    <th className="py-3 px-4">Role</th>
-                                    <th className="py-3 px-4 text-right">Txn Amount</th>
-                                    <th className="py-3 px-4 text-center">Slab</th>
-                                    <th className="py-3 px-4 text-right">Commission</th>
-                                    <th className="py-3 px-4 text-center">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-                                {historyLoading ? (
-                                    <tr>
-                                        <td colSpan={9} className="py-12 text-center text-slate-400">
-                                            <RefreshCw className="animate-spin mx-auto mb-2 text-indigo-500" size={20} />
-                                            Loading commission transactions...
-                                        </td>
-                                    </tr>
-                                ) : historyList.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={9} className="py-12 text-center text-slate-400 font-bold">
-                                            No commission transactions found.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    historyList.map(item => (
-                                        <tr key={item.id} className="hover:bg-slate-50/50">
-                                            <td className="py-3 px-4 text-slate-500 font-mono text-[11px]">
-                                                {new Date(item.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
-                                            </td>
-                                            <td className="py-3 px-4 font-mono font-bold text-slate-800">
-                                                {item.commissionReference}
-                                            </td>
-                                            <td className="py-3 px-4 font-mono text-slate-600">
-                                                {item.originalTransactionId}
-                                            </td>
-                                            <td className="py-3 px-4 font-bold text-slate-800">
-                                                {item.beneficiaryName} <span className="text-slate-400 text-[10px]">({item.beneficiaryUsername})</span>
-                                            </td>
-                                            <td className="py-3 px-4">
-                                                <span className={`inline-flex px-2 py-0.5 rounded-md text-[9px] font-black uppercase ${
-                                                    item.beneficiaryRole === 'RETAILER'
-                                                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                                        : item.beneficiaryRole === 'DISTRIBUTOR'
-                                                        ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                                        : 'bg-purple-50 text-purple-700 border border-purple-200'
-                                                }`}>
-                                                    {item.beneficiaryRole}
-                                                </span>
-                                            </td>
-                                            <td className="py-3 px-4 text-right font-mono font-bold text-slate-800">
-                                                &#8377;{Number(item.transactionAmount).toLocaleString()}
-                                            </td>
-                                            <td className="py-3 px-4 text-center font-mono text-[11px] text-slate-600">
-                                                {item.slabRange}
-                                            </td>
-                                            <td className="py-3 px-4 text-right font-mono font-black text-emerald-600">
-                                                +&#8377;{Number(item.commissionAmount).toFixed(2)}
-                                            </td>
-                                            <td className="py-3 px-4 text-center">
-                                                <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                    {item.status}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {/* Pagination */}
-                    {historyTotal > historySize && (
-                        <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                            <span className="text-xs text-slate-400 font-bold">
-                                Showing {historyPage * historySize + 1} to {Math.min((historyPage + 1) * historySize, historyTotal)} of {historyTotal} records
-                            </span>
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => setHistoryPage(p => Math.max(0, p - 1))}
-                                    disabled={historyPage === 0}
-                                    className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed"
-                                >
-                                    <ChevronLeft size={16} />
-                                </button>
-                                <span className="text-xs font-black text-slate-700 px-2">Page {historyPage + 1}</span>
-                                <button
-                                    onClick={() => setHistoryPage(p => p + 1)}
-                                    disabled={(historyPage + 1) * historySize >= historyTotal}
-                                    className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed"
-                                >
-                                    <ChevronRight size={16} />
-                                </button>
-                            </div>
+                            {/* Pagination */}
+                            {historyTotal > historySize && (
+                                <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                                    <span className="text-xs text-slate-400 font-bold">
+                                        Showing {historyPage * historySize + 1} to {Math.min((historyPage + 1) * historySize, historyTotal)} of {historyTotal} records
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setHistoryPage(p => Math.max(0, p - 1))}
+                                            disabled={historyPage === 0}
+                                            className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                                        >
+                                            <ChevronLeft size={16} />
+                                        </button>
+                                        <span className="text-xs font-black text-slate-700 px-2">Page {historyPage + 1}</span>
+                                        <button
+                                            onClick={() => setHistoryPage(p => p + 1)}
+                                            disabled={(historyPage + 1) * historySize >= historyTotal}
+                                            className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                                        >
+                                            <ChevronRight size={16} />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
-            )}
+            </div>
         </div>
     );
 }
