@@ -161,10 +161,10 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
                 { id: 'micro_atm_transactions', label: 'Micro ATM Transactions' },
                 { id: 'payment_gateway', label: 'Payment Gateway' },
                 { id: 'credit_card_bill', label: 'Credit Card Bill' },
-                { id: 'upi_cash_withdrawal', label: 'UPI Cash Withdrawal' },
-                { id: 'commission', label: 'Commission' }
+                { id: 'upi_cash_withdrawal', label: 'UPI Cash Withdrawal' }
             ]
         },
+        { id: 'commission', label: 'Commission', icon: Coins, onClick: () => setActiveTab('commission') },
         { id: 'gst_einvoice_report', label: 'GST E-Invoice Report', icon: FileChartColumn, onClick: () => setActiveTab('gst_einvoice_report') },
     ];
 
