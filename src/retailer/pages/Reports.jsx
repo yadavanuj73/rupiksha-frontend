@@ -79,16 +79,20 @@ const Reports = () => {
     const queryParams = new URLSearchParams(location.search);
     const reportType = queryParams.get('report') || 'aeps_1';
 
-    // State Variables
-    const [transactions, setTransactions] = useState([]);
-    const [summary, setSummary] = useState({
+    const initialSummary = {
         totalTransactions: 0,
         successCount: 0,
         failedCount: 0,
         pendingCount: 0,
         totalVolume: 0,
+        cashWithdrawalVolume: 0,
+        cashDepositVolume: 0,
         commissionEarned: 0
-    });
+    };
+
+    // State Variables
+    const [transactions, setTransactions] = useState([]);
+    const [summary, setSummary] = useState(initialSummary);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
@@ -136,12 +140,12 @@ const Reports = () => {
     const currentConfig = reportConfigs[reportType] || reportConfigs.aeps_1;
 
     // Fetch dynamic transaction data
-    const fetchHistoryData = async () => {
+    const fetchHistoryData = async (overridePage = currentPage) => {
         setLoading(true);
         try {
             const params = {
                 reportType: getReportEnum(reportType),
-                page: currentPage,
+                page: overridePage,
                 size: pageSize,
                 search: searchTerm,
                 status: statusFilter,
@@ -159,13 +163,21 @@ const Reports = () => {
                 setTotalElements(response.pagination?.totalElements || 0);
                 if (response.summary) {
                     setSummary(response.summary);
+                } else {
+                    setSummary(initialSummary);
                 }
             } else {
                 setTransactions([]);
+                setSummary(initialSummary);
+                setTotalPages(0);
+                setTotalElements(0);
             }
         } catch (error) {
             console.error("Failed to load history data:", error);
             setTransactions([]);
+            setSummary(initialSummary);
+            setTotalPages(0);
+            setTotalElements(0);
         } finally {
             setLoading(false);
         }
@@ -173,12 +185,16 @@ const Reports = () => {
 
     useEffect(() => {
         setCurrentPage(0);
-        fetchHistoryData();
+        setTransactions([]);
+        setSummary(initialSummary);
+        setTotalPages(0);
+        setTotalElements(0);
     }, [reportType]);
 
     useEffect(() => {
-        fetchHistoryData();
-    }, [currentPage, pageSize, statusFilter, providerFilter, sortBy, sortDirection]);
+        fetchHistoryData(currentPage);
+    }, [reportType, currentPage, pageSize, statusFilter, providerFilter, sortBy, sortDirection]);
+
 
     const handleSearchSubmit = (e) => {
         if (e) e.preventDefault();

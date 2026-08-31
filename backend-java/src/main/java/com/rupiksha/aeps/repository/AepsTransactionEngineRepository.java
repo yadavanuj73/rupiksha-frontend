@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -19,41 +20,44 @@ public interface AepsTransactionEngineRepository extends JpaRepository<AepsTrans
     boolean existsByTransactionId(String transactionId);
 
     @Query("SELECT t FROM AepsTransactionEngine t WHERE t.userId = :userId " +
-           "AND (:serviceType IS NULL OR UPPER(t.serviceType) = UPPER(:serviceType)) " +
-           "AND (:status IS NULL OR UPPER(t.status) = UPPER(:status)) " +
-           "AND (:provider IS NULL OR LOWER(t.provider) = LOWER(:provider)) " +
-           "AND (:startDate IS NULL OR t.initiatedAt >= :startDate) " +
-           "AND (:endDate IS NULL OR t.initiatedAt <= :endDate) " +
-           "AND (:search IS NULL OR lower(t.transactionId) LIKE lower(concat('%', :search, '%')) " +
-           "OR lower(t.referenceNumber) LIKE lower(concat('%', :search, '%')) " +
-           "OR lower(t.providerReference) LIKE lower(concat('%', :search, '%')))")
+           "AND (cast(:serviceType as string) IS NULL OR UPPER(t.serviceType) = UPPER(cast(:serviceType as string))) " +
+           "AND (cast(:status as string) IS NULL OR UPPER(t.status) = UPPER(cast(:status as string))) " +
+           "AND (cast(:provider as string) IS NULL OR LOWER(t.provider) = LOWER(cast(:provider as string))) " +
+           "AND (cast(:startDate as timestamp) IS NULL OR t.initiatedAt >= :startDate) " +
+           "AND (cast(:endDate as timestamp) IS NULL OR t.initiatedAt <= :endDate) " +
+           "AND (cast(:search as string) IS NULL OR " +
+           "lower(t.transactionId) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.referenceNumber) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.providerReference) LIKE concat('%', lower(cast(:search as string)), '%'))")
     Page<AepsTransactionEngine> findWithFilters(
-            UUID userId,
-            String serviceType,
-            String status,
-            String provider,
-            LocalDateTime startDate,
-            LocalDateTime endDate,
-            String search,
+            @Param("userId") UUID userId,
+            @Param("serviceType") String serviceType,
+            @Param("status") String status,
+            @Param("provider") String provider,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("search") String search,
             Pageable pageable);
 
     @Query("SELECT t FROM AepsTransactionEngine t WHERE t.userId = :userId " +
-           "AND (:serviceType IS NULL OR UPPER(t.serviceType) = UPPER(:serviceType)) " +
-           "AND (:status IS NULL OR UPPER(t.status) = UPPER(:status)) " +
-           "AND (:provider IS NULL OR LOWER(t.provider) = LOWER(:provider)) " +
-           "AND (:startDate IS NULL OR t.initiatedAt >= :startDate) " +
-           "AND (:endDate IS NULL OR t.initiatedAt <= :endDate) " +
-           "AND (:search IS NULL OR lower(t.transactionId) LIKE lower(concat('%', :search, '%')) " +
-           "OR lower(t.referenceNumber) LIKE lower(concat('%', :search, '%')) " +
-           "OR lower(t.providerReference) LIKE lower(concat('%', :search, '%')))")
+           "AND (cast(:serviceType as string) IS NULL OR UPPER(t.serviceType) = UPPER(cast(:serviceType as string))) " +
+           "AND (cast(:status as string) IS NULL OR UPPER(t.status) = UPPER(cast(:status as string))) " +
+           "AND (cast(:provider as string) IS NULL OR LOWER(t.provider) = LOWER(cast(:provider as string))) " +
+           "AND (cast(:startDate as timestamp) IS NULL OR t.initiatedAt >= :startDate) " +
+           "AND (cast(:endDate as timestamp) IS NULL OR t.initiatedAt <= :endDate) " +
+           "AND (cast(:search as string) IS NULL OR " +
+           "lower(t.transactionId) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.referenceNumber) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.providerReference) LIKE concat('%', lower(cast(:search as string)), '%'))")
     List<AepsTransactionEngine> findAllWithFilters(
-            UUID userId,
-            String serviceType,
-            String status,
-            String provider,
-            LocalDateTime startDate,
-            LocalDateTime endDate,
-            String search,
+            @Param("userId") UUID userId,
+            @Param("serviceType") String serviceType,
+            @Param("status") String status,
+            @Param("provider") String provider,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("search") String search,
             Sort sort);
 }
+
 

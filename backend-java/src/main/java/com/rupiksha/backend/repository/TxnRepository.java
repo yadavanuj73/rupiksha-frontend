@@ -22,40 +22,41 @@ public interface TxnRepository extends JpaRepository<Txn, UUID> {
     Integer countByUserIdAndServiceType(UUID userId, String serviceType);
 
     @Query("SELECT t FROM Txn t WHERE t.user.id = :userId " +
-           "AND (:serviceType IS NULL OR t.serviceType = :serviceType OR (:isBbps = true AND t.serviceType LIKE 'BBPS_%')) " +
-           "AND (:status IS NULL OR t.status = :status) " +
-           "AND (:startDate IS NULL OR t.createdAt >= :startDate) " +
-           "AND (:endDate IS NULL OR t.createdAt <= :endDate) " +
-           "AND (:provider IS NULL OR lower(t.providerRef) = lower(:provider) OR lower(t.serviceType) LIKE lower(concat('%', :provider, '%')) OR (:provider = 'Airtel' AND lower(t.providerRef) LIKE '%airtel%') OR (:provider = 'Fingpay' AND lower(t.providerRef) LIKE '%fingpay%')) " +
-           "AND (:search IS NULL OR lower(t.providerRef) LIKE lower(concat('%', :search, '%')) OR lower(t.idempotencyKey) LIKE lower(concat('%', :search, '%')))")
+           "AND (cast(:serviceType as string) IS NULL OR t.serviceType = cast(:serviceType as string) OR (:isBbps = true AND t.serviceType LIKE 'BBPS_%')) " +
+           "AND (cast(:status as string) IS NULL OR t.status = :status) " +
+           "AND (cast(:startDate as timestamp) IS NULL OR t.createdAt >= :startDate) " +
+           "AND (cast(:endDate as timestamp) IS NULL OR t.createdAt <= :endDate) " +
+           "AND (cast(:provider as string) IS NULL OR lower(t.providerRef) = lower(cast(:provider as string)) OR lower(t.serviceType) LIKE lower(concat('%', cast(:provider as string), '%')) OR (cast(:provider as string) = 'Airtel' AND lower(t.providerRef) LIKE '%airtel%') OR (cast(:provider as string) = 'Fingpay' AND lower(t.providerRef) LIKE '%fingpay%')) " +
+           "AND (cast(:search as string) IS NULL OR lower(t.providerRef) LIKE lower(concat('%', cast(:search as string), '%')) OR lower(t.idempotencyKey) LIKE lower(concat('%', cast(:search as string), '%')))")
     Page<Txn> findWithFilters(
-            UUID userId,
-            String serviceType,
-            Boolean isBbps,
-            TransactionStatus status,
-            String provider,
-            Instant startDate,
-            Instant endDate,
-            String search,
+            @org.springframework.data.repository.query.Param("userId") UUID userId,
+            @org.springframework.data.repository.query.Param("serviceType") String serviceType,
+            @org.springframework.data.repository.query.Param("isBbps") Boolean isBbps,
+            @org.springframework.data.repository.query.Param("status") TransactionStatus status,
+            @org.springframework.data.repository.query.Param("provider") String provider,
+            @org.springframework.data.repository.query.Param("startDate") Instant startDate,
+            @org.springframework.data.repository.query.Param("endDate") Instant endDate,
+            @org.springframework.data.repository.query.Param("search") String search,
             Pageable pageable);
 
     @Query("SELECT t FROM Txn t WHERE t.user.id = :userId " +
-           "AND (:serviceType IS NULL OR t.serviceType = :serviceType OR (:isBbps = true AND t.serviceType LIKE 'BBPS_%')) " +
-           "AND (:status IS NULL OR t.status = :status) " +
-           "AND (:startDate IS NULL OR t.createdAt >= :startDate) " +
-           "AND (:endDate IS NULL OR t.createdAt <= :endDate) " +
-           "AND (:provider IS NULL OR lower(t.providerRef) = lower(:provider) OR lower(t.serviceType) LIKE lower(concat('%', :provider, '%')) OR (:provider = 'Airtel' AND lower(t.providerRef) LIKE '%airtel%') OR (:provider = 'Fingpay' AND lower(t.providerRef) LIKE '%fingpay%')) " +
-           "AND (:search IS NULL OR lower(t.providerRef) LIKE lower(concat('%', :search, '%')) OR lower(t.idempotencyKey) LIKE lower(concat('%', :search, '%')))")
+           "AND (cast(:serviceType as string) IS NULL OR t.serviceType = cast(:serviceType as string) OR (:isBbps = true AND t.serviceType LIKE 'BBPS_%')) " +
+           "AND (cast(:status as string) IS NULL OR t.status = :status) " +
+           "AND (cast(:startDate as timestamp) IS NULL OR t.createdAt >= :startDate) " +
+           "AND (cast(:endDate as timestamp) IS NULL OR t.createdAt <= :endDate) " +
+           "AND (cast(:provider as string) IS NULL OR lower(t.providerRef) = lower(cast(:provider as string)) OR lower(t.serviceType) LIKE lower(concat('%', cast(:provider as string), '%')) OR (cast(:provider as string) = 'Airtel' AND lower(t.providerRef) LIKE '%airtel%') OR (cast(:provider as string) = 'Fingpay' AND lower(t.providerRef) LIKE '%fingpay%')) " +
+           "AND (cast(:search as string) IS NULL OR lower(t.providerRef) LIKE lower(concat('%', cast(:search as string), '%')) OR lower(t.idempotencyKey) LIKE lower(concat('%', cast(:search as string), '%')))")
     List<Txn> findAllWithFilters(
-            UUID userId,
-            String serviceType,
-            Boolean isBbps,
-            TransactionStatus status,
-            String provider,
-            Instant startDate,
-            Instant endDate,
-            String search,
+            @org.springframework.data.repository.query.Param("userId") UUID userId,
+            @org.springframework.data.repository.query.Param("serviceType") String serviceType,
+            @org.springframework.data.repository.query.Param("isBbps") Boolean isBbps,
+            @org.springframework.data.repository.query.Param("status") TransactionStatus status,
+            @org.springframework.data.repository.query.Param("provider") String provider,
+            @org.springframework.data.repository.query.Param("startDate") Instant startDate,
+            @org.springframework.data.repository.query.Param("endDate") Instant endDate,
+            @org.springframework.data.repository.query.Param("search") String search,
             Sort sort);
 }
+
 
 

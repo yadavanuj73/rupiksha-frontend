@@ -19,10 +19,10 @@ public interface WalletEntryRepository extends JpaRepository<WalletEntry, UUID> 
     java.util.List<WalletEntry> findByWalletId(UUID walletId);
 
     @Query("select coalesce(sum(e.tds), 0) from WalletEntry e where :userId is null or e.wallet.user.id = :userId")
-    BigDecimal sumTdsByUserId(UUID userId);
+    BigDecimal sumTdsByUserId(@org.springframework.data.repository.query.Param("userId") UUID userId);
 
     @Query("select coalesce(sum(e.gst), 0) from WalletEntry e where :userId is null or e.wallet.user.id = :userId")
-    BigDecimal sumGstByUserId(UUID userId);
+    BigDecimal sumGstByUserId(@org.springframework.data.repository.query.Param("userId") UUID userId);
 
     @Query("select e from WalletEntry e where " +
            "e.wallet.id = coalesce(:walletId, e.wallet.id) and " +
@@ -33,13 +33,14 @@ public interface WalletEntryRepository extends JpaRepository<WalletEntry, UUID> 
            "e.createdAt <= coalesce(:endDate, e.createdAt) and " +
            "(lower(e.narration) like :search or lower(e.referenceId) like :search or lower(e.wallet.user.username) like :search)")
     Page<WalletEntry> findWithFilters(
-            UUID walletId,
-            WalletTransactionStatus status,
-            WalletTransactionContext context,
-            String entryType,
-            java.time.Instant startDate,
-            java.time.Instant endDate,
-            String search,
+            @org.springframework.data.repository.query.Param("walletId") UUID walletId,
+            @org.springframework.data.repository.query.Param("status") WalletTransactionStatus status,
+            @org.springframework.data.repository.query.Param("context") WalletTransactionContext context,
+            @org.springframework.data.repository.query.Param("entryType") String entryType,
+            @org.springframework.data.repository.query.Param("startDate") java.time.Instant startDate,
+            @org.springframework.data.repository.query.Param("endDate") java.time.Instant endDate,
+            @org.springframework.data.repository.query.Param("search") String search,
             Pageable pageable);
 }
+
 

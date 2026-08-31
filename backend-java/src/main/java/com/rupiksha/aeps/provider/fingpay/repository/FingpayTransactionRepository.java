@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -16,36 +17,39 @@ public interface FingpayTransactionRepository extends JpaRepository<FingpayTrans
     Optional<FingpayTransaction> findByTxnid(String txnid);
 
     @Query("SELECT t FROM FingpayTransaction t WHERE t.uid = :uid " +
-           "AND (:status IS NULL OR t.status = :status) " +
-           "AND (:startDate IS NULL OR t.createdAt >= :startDate) " +
-           "AND (:endDate IS NULL OR t.createdAt <= :endDate) " +
-           "AND (:search IS NULL OR lower(t.txnid) LIKE lower(concat('%', :search, '%')) " +
-           "OR lower(t.ftxnin) LIKE lower(concat('%', :search, '%')) " +
-           "OR lower(t.aadhar) LIKE lower(concat('%', :search, '%')) " +
-           "OR lower(t.mobile) LIKE lower(concat('%', :search, '%')) " +
-           "OR lower(t.rrn) LIKE lower(concat('%', :search, '%')))")
+           "AND (cast(:status as string) IS NULL OR t.status = cast(:status as string)) " +
+           "AND (cast(:startDate as timestamp) IS NULL OR t.createdAt >= :startDate) " +
+           "AND (cast(:endDate as timestamp) IS NULL OR t.createdAt <= :endDate) " +
+           "AND (cast(:search as string) IS NULL OR " +
+           "lower(t.txnid) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.ftxnin) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.aadhar) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.mobile) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.rrn) LIKE concat('%', lower(cast(:search as string)), '%'))")
     Page<FingpayTransaction> findWithFilters(
-            Long uid,
-            String status,
-            LocalDateTime startDate,
-            LocalDateTime endDate,
-            String search,
+            @Param("uid") Long uid,
+            @Param("status") String status,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("search") String search,
             Pageable pageable);
 
     @Query("SELECT t FROM FingpayTransaction t WHERE t.uid = :uid " +
-           "AND (:status IS NULL OR t.status = :status) " +
-           "AND (:startDate IS NULL OR t.createdAt >= :startDate) " +
-           "AND (:endDate IS NULL OR t.createdAt <= :endDate) " +
-           "AND (:search IS NULL OR lower(t.txnid) LIKE lower(concat('%', :search, '%')) " +
-           "OR lower(t.ftxnin) LIKE lower(concat('%', :search, '%')) " +
-           "OR lower(t.aadhar) LIKE lower(concat('%', :search, '%')) " +
-           "OR lower(t.mobile) LIKE lower(concat('%', :search, '%')) " +
-           "OR lower(t.rrn) LIKE lower(concat('%', :search, '%')))")
+           "AND (cast(:status as string) IS NULL OR t.status = cast(:status as string)) " +
+           "AND (cast(:startDate as timestamp) IS NULL OR t.createdAt >= :startDate) " +
+           "AND (cast(:endDate as timestamp) IS NULL OR t.createdAt <= :endDate) " +
+           "AND (cast(:search as string) IS NULL OR " +
+           "lower(t.txnid) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.ftxnin) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.aadhar) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.mobile) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.rrn) LIKE concat('%', lower(cast(:search as string)), '%'))")
     List<FingpayTransaction> findAllWithFilters(
-            Long uid,
-            String status,
-            LocalDateTime startDate,
-            LocalDateTime endDate,
-            String search,
+            @Param("uid") Long uid,
+            @Param("status") String status,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("search") String search,
             Sort sort);
-}
+}
+
