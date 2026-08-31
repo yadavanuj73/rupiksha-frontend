@@ -125,250 +125,267 @@ export default function RetailerCommission() {
 
     return (
         <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8 pb-28 font-['Inter',sans-serif] bg-slate-50 min-h-screen">
-            {/* ── HEADER BANNER ─────────────────────────────────────────────────── */}
-            <div className="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-200/70 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative overflow-hidden">
-                <div className="absolute right-0 top-0 w-80 h-80 bg-amber-500/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+            {/* ── TOP SECTION: TWO-COLUMN LAYOUT (LEFT: HEADER & SLABS | RIGHT: 4 METRIC CARDS) ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                
+                {/* ── LEFT COLUMN: Header Info & Slabs (Span 7) ───────────────────── */}
+                <div className="lg:col-span-7 flex flex-col gap-6">
+                    {/* Header Banner Card */}
+                    <div className="bg-white rounded-3xl p-6 md:p-7 border border-slate-200/70 shadow-sm flex flex-col justify-between gap-5 relative overflow-hidden">
+                        <div className="absolute right-0 top-0 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
 
-                <div className="flex items-center gap-5 relative z-10">
-                    <Icon3D icon={Coins} color="#f59e0b" size={28} />
-                    <div>
-                        <div className="flex items-center gap-2 mb-1.5">
-                            <span className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.25em] text-amber-600 bg-amber-50 px-3 py-1 rounded-full border border-amber-200/60 shadow-xs">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                                My Earnings &bull; AEPS 1
+                        <div className="flex items-start gap-4 relative z-10">
+                            <Icon3D icon={Coins} color="#f59e0b" size={26} />
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                    <span className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200/60 shadow-2xs">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                        My Earnings &bull; AEPS 1
+                                    </span>
+                                </div>
+                                <h1 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">
+                                    Commission & Earnings
+                                </h1>
+                                <p className="text-xs font-semibold text-slate-400 mt-1">
+                                    Real-time fixed rupee commission credited directly to your Rupiksha wallet.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 relative z-10">
+                            {/* Active Plan Pill */}
+                            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 px-3.5 py-2 rounded-xl flex items-center gap-2.5 shadow-2xs">
+                                <div className="w-7 h-7 rounded-lg bg-emerald-500 flex items-center justify-center text-white shadow-xs">
+                                    <Crown size={14} strokeWidth={2.5} />
+                                </div>
+                                <div>
+                                    <p className="text-[8px] font-black text-emerald-800/70 uppercase tracking-widest leading-tight">Active Plan</p>
+                                    <p className="text-[11px] font-black text-emerald-700 uppercase tracking-tight">
+                                        {summary.currentPlanName || 'Free Plan'}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                {/* Export Excel Button */}
+                                <button
+                                    onClick={exportToExcel}
+                                    disabled={history.length === 0}
+                                    className="flex items-center gap-2 px-4 h-10 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-[1.5px] shadow-sm hover:bg-black transition-all active:scale-95 disabled:opacity-50"
+                                    title="Download Statement"
+                                >
+                                    <Download size={13} />
+                                    Excel
+                                </button>
+
+                                {/* Refresh Button */}
+                                <button
+                                    onClick={() => { fetchInitialData(); fetchHistory(); }}
+                                    disabled={loading || historyLoading}
+                                    className="w-10 h-10 bg-white border border-slate-200 rounded-xl shadow-xs flex items-center justify-center hover:shadow-md transition-all active:rotate-180 hover:border-amber-500 disabled:opacity-50 text-slate-700"
+                                    title="Refresh Data"
+                                >
+                                    <RefreshCw size={15} className={loading || historyLoading ? 'animate-spin text-amber-500' : ''} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Active Plan Slabs Card */}
+                    <div className="bg-white rounded-3xl p-6 border border-slate-200/70 shadow-sm flex-1 flex flex-col justify-between space-y-4">
+                        <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 shrink-0">
+                                    <Layers size={16} />
+                                </div>
+                                <div>
+                                    <h2 className="text-xs md:text-sm font-black text-slate-800 tracking-tight">
+                                        Your Earning Slabs ({activePlan?.planName || summary.currentPlanName || 'Free Plan'})
+                                    </h2>
+                                    <p className="text-[10px] font-semibold text-slate-400">
+                                        Exact rupee payout per cash withdrawal transaction.
+                                    </p>
+                                </div>
+                            </div>
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200/70 shrink-0">
+                                <Zap size={10} className="text-emerald-500" />
+                                Fixed Payout
                             </span>
                         </div>
-                        <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">
-                            Commission & Earnings
-                        </h1>
-                        <p className="text-xs font-semibold text-slate-400 mt-1">
-                            Real-time fixed rupee commission credited directly to your Rupiksha wallet.
+
+                        {activePlan && activePlan.slabs && activePlan.slabs.length > 0 ? (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+                                {activePlan.slabs.map((slab, i) => (
+                                    <motion.div
+                                        key={slab.id || i}
+                                        whileHover={{ y: -2, transition: { duration: 0.15 } }}
+                                        className="bg-slate-50 hover:bg-white rounded-xl p-3 border border-slate-200/80 hover:border-emerald-300 hover:shadow-xs transition-all text-center space-y-1.5 relative group"
+                                    >
+                                        <div className="inline-block bg-white group-hover:bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/60 shadow-2xs">
+                                            <p className="text-[9px] font-black text-slate-600 font-mono tracking-tight">
+                                                &#8377;{Number(slab.minAmount).toLocaleString('en-IN')} &ndash; &#8377;{Number(slab.maxAmount).toLocaleString('en-IN')}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-base font-black text-emerald-600 font-mono tracking-tight">
+                                                +&#8377;{Number(slab.retailerCommission).toFixed(2)}
+                                            </p>
+                                        </div>
+                                        <div className="pt-1.5 border-t border-slate-200/40 flex items-center justify-center gap-1 text-[8px] font-black text-slate-400 uppercase tracking-wider">
+                                            <CheckCircle2 size={9} className="text-emerald-500" />
+                                            <span>Per Txn</span>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        ) : (
+                            /* Default Fallback Free Plan Slabs */
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+                                {[
+                                    { range: '₹500 - ₹999', comm: '+₹2.00' },
+                                    { range: '₹1,000 - ₹1,499', comm: '+₹2.20' },
+                                    { range: '₹1,500 - ₹1,999', comm: '+₹3.00' },
+                                    { range: '₹2,000 - ₹2,499', comm: '+₹4.00' },
+                                    { range: '₹2,500 - ₹2,999', comm: '+₹5.00' },
+                                    { range: '₹3,000 - ₹7,999', comm: '+₹7.00' },
+                                    { range: '₹8,000 - ₹10,000', comm: '+₹9.00' }
+                                ].map((slab, i) => (
+                                    <motion.div
+                                        key={i}
+                                        whileHover={{ y: -2, transition: { duration: 0.15 } }}
+                                        className="bg-slate-50 hover:bg-white rounded-xl p-3 border border-slate-200/80 hover:border-emerald-300 hover:shadow-xs transition-all text-center space-y-1.5 relative group"
+                                    >
+                                        <div className="inline-block bg-white group-hover:bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/60 shadow-2xs">
+                                            <p className="text-[9px] font-black text-slate-600 font-mono tracking-tight">
+                                                {slab.range}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-base font-black text-emerald-600 font-mono tracking-tight">
+                                                {slab.comm}
+                                            </p>
+                                        </div>
+                                        <div className="pt-1.5 border-t border-slate-200/40 flex items-center justify-center gap-1 text-[8px] font-black text-slate-400 uppercase tracking-wider">
+                                            <CheckCircle2 size={9} className="text-emerald-500" />
+                                            <span>Per Txn</span>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* ── RIGHT COLUMN: 4 Metric Cards in 2x2 Grid (Span 5) ────────────── */}
+                <div className="lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
+                    {/* 1. Total Commission */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.05 }}
+                        className="bg-white rounded-3xl p-5 md:p-6 border border-slate-200/70 shadow-sm relative overflow-hidden group hover:shadow-md transition-all flex flex-col justify-between"
+                    >
+                        <div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Earned</span>
+                                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
+                                    <Award size={18} />
+                                </div>
+                            </div>
+                            <div className="mt-4 flex items-baseline gap-1">
+                                <span className="text-slate-400 text-sm font-bold">&#8377;</span>
+                                <span className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight font-mono">
+                                    {Number(summary.totalCommission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                            </div>
+                        </div>
+                        <p className="text-[10px] font-bold text-emerald-600 mt-3 flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            Lifetime commissions credited
                         </p>
-                    </div>
-                </div>
+                    </motion.div>
 
-                <div className="flex flex-wrap items-center gap-3 relative z-10">
-                    {/* Active Plan Pill */}
-                    <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 px-5 py-3 rounded-2xl flex items-center gap-3.5 shadow-xs">
-                        <div className="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/25">
-                            <Crown size={18} strokeWidth={2.5} />
-                        </div>
-                        <div>
-                            <p className="text-[9px] font-black text-emerald-800/70 uppercase tracking-widest">Active Plan</p>
-                            <p className="text-xs font-black text-emerald-700 uppercase tracking-tight">
-                                {summary.currentPlanName || 'Free Plan'}
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Export Excel Button */}
-                    <button
-                        onClick={exportToExcel}
-                        disabled={history.length === 0}
-                        className="flex items-center gap-2 px-5 h-12 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-[2px] shadow-sm hover:bg-black transition-all active:scale-95 disabled:opacity-50"
-                        title="Download Statement"
+                    {/* 2. Today's Commission */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="bg-white rounded-3xl p-5 md:p-6 border border-slate-200/70 shadow-sm relative overflow-hidden group hover:shadow-md transition-all flex flex-col justify-between"
                     >
-                        <Download size={14} />
-                        Excel
-                    </button>
-
-                    {/* Refresh Button */}
-                    <button
-                        onClick={() => { fetchInitialData(); fetchHistory(); }}
-                        disabled={loading || historyLoading}
-                        className="w-12 h-12 bg-white border border-slate-200 rounded-xl shadow-sm flex items-center justify-center hover:shadow-md transition-all active:rotate-180 hover:border-amber-500 disabled:opacity-50 text-slate-700"
-                        title="Refresh Data"
-                    >
-                        <RefreshCw size={18} className={loading || historyLoading ? 'animate-spin text-amber-500' : ''} />
-                    </button>
-                </div>
-            </div>
-
-            {/* ── METRIC CARDS ─────────────────────────────────────────────────── */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* 1. Total Commission */}
-                <motion.div
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.05 }}
-                    className="bg-white rounded-2xl p-5 md:p-6 border border-slate-200/70 shadow-sm relative overflow-hidden group hover:shadow-md transition-all"
-                >
-                    <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Earned</span>
-                        <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
-                            <Award size={20} />
-                        </div>
-                    </div>
-                    <div className="mt-4 flex items-baseline gap-1">
-                        <span className="text-slate-400 text-base font-bold">&#8377;</span>
-                        <span className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight font-mono">
-                            {Number(summary.totalCommission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                    </div>
-                    <p className="text-[11px] font-bold text-emerald-600 mt-2.5 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        Lifetime commissions credited
-                    </p>
-                </motion.div>
-
-                {/* 2. Today's Commission */}
-                <motion.div
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="bg-white rounded-2xl p-5 md:p-6 border border-slate-200/70 shadow-sm relative overflow-hidden group hover:shadow-md transition-all"
-                >
-                    <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Today's Earnings</span>
-                        <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
-                            <Clock size={20} />
-                        </div>
-                    </div>
-                    <div className="mt-4 flex items-baseline gap-1">
-                        <span className="text-slate-400 text-base font-bold">&#8377;</span>
-                        <span className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight font-mono">
-                            {Number(summary.todayCommission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                    </div>
-                    <p className="text-[11px] font-bold text-slate-400 mt-2.5 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
-                        Earned since 12:00 AM today
-                    </p>
-                </motion.div>
-
-                {/* 3. This Month */}
-                <motion.div
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.15 }}
-                    className="bg-white rounded-2xl p-5 md:p-6 border border-slate-200/70 shadow-sm relative overflow-hidden group hover:shadow-md transition-all"
-                >
-                    <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">This Month</span>
-                        <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
-                            <Calendar size={20} />
-                        </div>
-                    </div>
-                    <div className="mt-4 flex items-baseline gap-1">
-                        <span className="text-slate-400 text-base font-bold">&#8377;</span>
-                        <span className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight font-mono">
-                            {Number(summary.thisMonthCommission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                    </div>
-                    <p className="text-[11px] font-bold text-blue-600 mt-2.5 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                        Current billing month
-                    </p>
-                </motion.div>
-
-                {/* 4. AEPS 1 Total */}
-                <motion.div
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="bg-white rounded-2xl p-5 md:p-6 border border-slate-200/70 shadow-sm relative overflow-hidden group hover:shadow-md transition-all"
-                >
-                    <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">AEPS 1 Total</span>
-                        <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
-                            <Fingerprint size={20} />
-                        </div>
-                    </div>
-                    <div className="mt-4 flex items-baseline gap-1">
-                        <span className="text-slate-400 text-base font-bold">&#8377;</span>
-                        <span className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight font-mono">
-                            {Number(summary.aeps1Commission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                    </div>
-                    <p className="text-[11px] font-bold text-amber-600 mt-2.5 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                        Cash withdrawal commission
-                    </p>
-                </motion.div>
-            </div>
-
-            {/* ── ACTIVE PLAN SLABS VIEW ───────────────────────────────────────── */}
-            <div className="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-200/70 shadow-sm space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
-                            <Layers size={20} />
-                        </div>
                         <div>
-                            <h2 className="text-base font-black text-slate-800 tracking-tight">
-                                Your Earning Slabs ({activePlan?.planName || summary.currentPlanName || 'Free Plan'})
-                            </h2>
-                            <p className="text-xs font-semibold text-slate-400">
-                                Exact rupee commission payout credited instantly per completed cash withdrawal transaction.
-                            </p>
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Today's Earnings</span>
+                                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+                                    <Clock size={18} />
+                                </div>
+                            </div>
+                            <div className="mt-4 flex items-baseline gap-1">
+                                <span className="text-slate-400 text-sm font-bold">&#8377;</span>
+                                <span className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight font-mono">
+                                    {Number(summary.todayCommission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                            </div>
                         </div>
-                    </div>
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200/70 shrink-0 self-start sm:self-auto">
-                        <Zap size={12} className="text-emerald-500" />
-                        Fixed Rupee Payout
-                    </span>
-                </div>
+                        <p className="text-[10px] font-bold text-slate-400 mt-3 flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                            Earned since 12:00 AM today
+                        </p>
+                    </motion.div>
 
-                {activePlan && activePlan.slabs && activePlan.slabs.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3.5">
-                        {activePlan.slabs.map((slab, i) => (
-                            <motion.div
-                                key={slab.id || i}
-                                whileHover={{ y: -3, transition: { duration: 0.15 } }}
-                                className="bg-slate-50/80 hover:bg-white rounded-2xl p-4 border border-slate-200/80 hover:border-emerald-300 hover:shadow-md transition-all text-center space-y-2.5 relative group"
-                            >
-                                <div className="inline-block bg-white group-hover:bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200/60 shadow-2xs">
-                                    <p className="text-[10px] font-black text-slate-600 font-mono tracking-tight">
-                                        &#8377;{Number(slab.minAmount).toLocaleString('en-IN')} &ndash; &#8377;{Number(slab.maxAmount).toLocaleString('en-IN')}
-                                    </p>
+                    {/* 3. This Month */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.15 }}
+                        className="bg-white rounded-3xl p-5 md:p-6 border border-slate-200/70 shadow-sm relative overflow-hidden group hover:shadow-md transition-all flex flex-col justify-between"
+                    >
+                        <div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">This Month</span>
+                                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
+                                    <Calendar size={18} />
                                 </div>
-                                <div className="py-1">
-                                    <p className="text-xl font-black text-emerald-600 font-mono tracking-tight">
-                                        +&#8377;{Number(slab.retailerCommission).toFixed(2)}
-                                    </p>
+                            </div>
+                            <div className="mt-4 flex items-baseline gap-1">
+                                <span className="text-slate-400 text-sm font-bold">&#8377;</span>
+                                <span className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight font-mono">
+                                    {Number(summary.thisMonthCommission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                            </div>
+                        </div>
+                        <p className="text-[10px] font-bold text-blue-600 mt-3 flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                            Current billing month
+                        </p>
+                    </motion.div>
+
+                    {/* 4. AEPS 1 Total */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="bg-white rounded-3xl p-5 md:p-6 border border-slate-200/70 shadow-sm relative overflow-hidden group hover:shadow-md transition-all flex flex-col justify-between"
+                    >
+                        <div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">AEPS 1 Total</span>
+                                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
+                                    <Fingerprint size={18} />
                                 </div>
-                                <div className="pt-2 border-t border-slate-200/50 flex items-center justify-center gap-1 text-[9px] font-black text-slate-400 uppercase tracking-wider">
-                                    <CheckCircle2 size={11} className="text-emerald-500" />
-                                    <span>Per Txn</span>
-                                </div>
-                            </motion.div>
-                        ))}
-                    </div>
-                ) : (
-                    /* Default Fallback Free Plan Slabs */
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3.5">
-                        {[
-                            { range: '₹500 - ₹999', comm: '+₹2.00' },
-                            { range: '₹1,000 - ₹1,499', comm: '+₹2.20' },
-                            { range: '₹1,500 - ₹1,999', comm: '+₹3.00' },
-                            { range: '₹2,000 - ₹2,499', comm: '+₹4.00' },
-                            { range: '₹2,500 - ₹2,999', comm: '+₹5.00' },
-                            { range: '₹3,000 - ₹7,999', comm: '+₹7.00' },
-                            { range: '₹8,000 - ₹10,000', comm: '+₹9.00' }
-                        ].map((slab, i) => (
-                            <motion.div
-                                key={i}
-                                whileHover={{ y: -3, transition: { duration: 0.15 } }}
-                                className="bg-slate-50/80 hover:bg-white rounded-2xl p-4 border border-slate-200/80 hover:border-emerald-300 hover:shadow-md transition-all text-center space-y-2.5 relative group"
-                            >
-                                <div className="inline-block bg-white group-hover:bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200/60 shadow-2xs">
-                                    <p className="text-[10px] font-black text-slate-600 font-mono tracking-tight">
-                                        {slab.range}
-                                    </p>
-                                </div>
-                                <div className="py-1">
-                                    <p className="text-xl font-black text-emerald-600 font-mono tracking-tight">
-                                        {slab.comm}
-                                    </p>
-                                </div>
-                                <div className="pt-2 border-t border-slate-200/50 flex items-center justify-center gap-1 text-[9px] font-black text-slate-400 uppercase tracking-wider">
-                                    <CheckCircle2 size={11} className="text-emerald-500" />
-                                    <span>Per Txn</span>
-                                </div>
-                            </motion.div>
-                        ))}
-                    </div>
-                )}
+                            </div>
+                            <div className="mt-4 flex items-baseline gap-1">
+                                <span className="text-slate-400 text-sm font-bold">&#8377;</span>
+                                <span className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight font-mono">
+                                    {Number(summary.aeps1Commission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                            </div>
+                        </div>
+                        <p className="text-[10px] font-bold text-amber-600 mt-3 flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                            Cash withdrawal commission
+                        </p>
+                    </motion.div>
+                </div>
             </div>
 
             {/* ── COMMISSION HISTORY TABLE ──────────────────────────────────────── */}
