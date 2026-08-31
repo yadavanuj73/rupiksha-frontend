@@ -64,6 +64,7 @@ public class AepsController {
     private final CdStatusService cdStatusService;
     private final com.rupiksha.aeps.provider.fingpay.service.CwStatusService cwStatusService;
     private final WalletService walletService;
+    private final com.rupiksha.backend.service.CommissionService commissionService;
 
 
 
@@ -590,6 +591,12 @@ public class AepsController {
                             engineTxn.getTransactionId()
                     );
                     log.info("Successfully credited wallet for reconciled AEPS Cash Withdrawal: {}", engineTxn.getTransactionId());
+
+                    try {
+                        commissionService.processAepsCommission(engineTxn);
+                    } catch (Exception commEx) {
+                        log.error("Commission calculation error on CW reconciliation for {}: {}", engineTxn.getTransactionId(), commEx.getMessage(), commEx);
+                    }
                 } catch (Exception e) {
                     log.error("Failed to credit wallet during CW reconciliation for {}: {}", engineTxn.getTransactionId(), e.getMessage());
                 }

@@ -172,6 +172,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
                 { id: 'my_earnings_report', label: 'My Earnings Report' }
             ]
         },
+        { id: 'commission', label: 'Commission', icon: Coins, onClick: () => setActiveTab('commission') },
         { id: 'gst_einvoice_report', label: 'GST E-Invoice Report', icon: FileChartColumn, onClick: () => setActiveTab('gst_einvoice_report') },
         { id: 'plans', label: 'Commission Plans', icon: CreditCard, onClick: () => setActiveTab('plans') },
     ];

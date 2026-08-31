@@ -254,6 +254,10 @@ public class User {
     @JoinColumn(name = "parent_user_id")
     private User parentUser;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "aeps_commission_plan_id")
+    private CommissionPlan aepsCommissionPlan;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "user_roles",

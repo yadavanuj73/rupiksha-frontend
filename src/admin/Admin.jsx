@@ -24,6 +24,7 @@ import WalletManager from './components/WalletManager';
 import Overview from './components/Overview';
 import rupikshaNewLogo from '../assets/rupiksha_new_logo.png';
 import EnhancedMembersTable from './components/EnhancedMembersTable';
+import CommissionManagement from './components/CommissionManagement';
 import { useAuth } from '../context/AuthContext';
 import { generateUniquePartyCode, stateCodeMap } from '../database/partyCode';
 
@@ -3038,7 +3039,10 @@ const Admin = () => {
     ];
 
     const OPERATIONS_NAV = [
-        ...((currentUser?.role === 'ADMIN' || isAdminUser) ? [{ id: 'Wallet-Overview', icon: Wallet, label: 'Wallet Manager' }] : []),
+        ...((currentUser?.role === 'ADMIN' || isAdminUser) ? [
+            { id: 'Wallet-Overview', icon: Wallet, label: 'Wallet Manager' },
+            { id: 'Commission', icon: IndianRupee, label: 'Commission' },
+        ] : []),
     ];
 
     const MANAGEMENT_NAV = [
@@ -3397,6 +3401,15 @@ const Admin = () => {
                                             {activeSection === 'Wallet-Lock' && <WalletManager initialTab="lock" />}
                                             {activeSection === 'Wallet-Release' && <WalletManager initialTab="release" />}
                                         </>
+                                    ) : (
+                                        <UnauthorizedAccess sectionName={activeLabel} />
+                                    )
+                                )}
+
+                                {/* Operations: Commission Management */}
+                                {activeSection === 'Commission' && (
+                                    (currentUser?.role === 'ADMIN' || isAdminUser) ? (
+                                        <CommissionManagement />
                                     ) : (
                                         <UnauthorizedAccess sectionName={activeLabel} />
                                     )

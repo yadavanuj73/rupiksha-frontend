@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 public class AepsTransactionEventListener {
 
     private final WalletService walletService;
+    private final com.rupiksha.backend.service.CommissionService commissionService;
 
     @EventListener
     public void onTransactionComplete(AepsTransactionEvent event) {
@@ -47,10 +48,16 @@ public class AepsTransactionEventListener {
                     log.error("Failed to credit wallet for AEPS transaction {}: {}", txn.getTransactionId(), e.getMessage(), e);
                 }
             }
-        }
 
-        // 2. Extension Point: Commission Calculation
-        log.info("[EXTENSION POINT] Commission calculator: Skipped in this phase. Target transaction: {}", txn.getTransactionId());
+            // 2. Extension Point: Commission Calculation & Distribution
+            try {
+                log.info("Triggering commission calculation for transaction: {}", txn.getTransactionId());
+                commissionService.processAepsCommission(txn);
+            } catch (Exception e) {
+                log.error("Commission processing error for transaction {} (AEPS transaction remains SUCCESS): {}", 
+                        txn.getTransactionId(), e.getMessage(), e);
+            }
+        }
 
         // 3. Extension Point: Settlement Processor
         log.info("[EXTENSION POINT] Settlement: Skipped in this phase. Target transaction: {}", txn.getTransactionId());

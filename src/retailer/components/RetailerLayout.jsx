@@ -53,6 +53,7 @@ const RetailerLayout = () => {
         if (path.startsWith('/reports')) {
             return reportType || 'reports';
         }
+        if (path === '/commission') return 'commission';
         if (path.startsWith('/plans')) return 'plans';
         if (path.startsWith('/matm')) return 'matm';
         if (path === '/add-money') return 'add_money';
@@ -162,6 +163,7 @@ const RetailerLayout = () => {
             'payout': '/payout-hub',
             'all_services': '/dashboard',
             'reports': '/reports',
+            'commission': '/commission',
             'plans': '/plans',
             'matm': '/matm',
             'add_money': '/add-money',
