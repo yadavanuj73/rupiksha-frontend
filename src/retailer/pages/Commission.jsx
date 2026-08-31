@@ -273,30 +273,30 @@ export default function RetailerCommission() {
 
                 {/* ── LEFT COLUMN: Earning Slabs with Active Plan Badge & Upgrade Button (Span 7) ── */}
                 <div className="lg:col-span-7 flex flex-col">
-                    <div className="bg-white rounded-3xl p-6 md:p-7 border border-slate-200/70 shadow-sm flex-1 flex flex-col justify-between space-y-5">
+                    <div className="bg-white rounded-3xl p-5 sm:p-6 md:p-7 border border-slate-200/70 shadow-sm flex-1 flex flex-col justify-between space-y-4 sm:space-y-5 overflow-hidden">
 
                         {/* Header: Active Plan Badge on Left + Title + Upgrade Plan on Right */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-slate-100">
 
-                            <div className="flex items-center gap-3.5">
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
                                 {/* Active Plan Badge */}
-                                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/90 px-3.5 py-2 rounded-2xl flex items-center gap-2.5 shadow-2xs shrink-0">
-                                    <div className="w-8 h-8 rounded-xl bg-emerald-500 flex items-center justify-center text-white shadow-xs">
-                                        <Crown size={16} strokeWidth={2.5} />
+                                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/90 px-3 py-1.5 rounded-2xl flex items-center gap-2 shadow-2xs shrink-0 max-w-[190px] sm:max-w-none">
+                                    <div className="w-7 h-7 rounded-xl bg-emerald-500 flex items-center justify-center text-white shadow-xs shrink-0">
+                                        <Crown size={15} strokeWidth={2.5} />
                                     </div>
-                                    <div>
-                                        <p className="text-[8.5px] font-black text-emerald-800/70 uppercase tracking-widest leading-none">Active Plan</p>
-                                        <p className="text-xs font-black text-emerald-700 uppercase tracking-tight mt-0.5">
+                                    <div className="min-w-0">
+                                        <p className="text-[8px] font-black text-emerald-800/70 uppercase tracking-widest leading-none">Active Plan</p>
+                                        <p className="text-[11px] sm:text-xs font-black text-emerald-700 uppercase tracking-tight mt-0.5 truncate">
                                             {currentPlanName}
                                         </p>
                                     </div>
                                 </div>
 
-                                <div className="min-w-0">
+                                <div className="min-w-0 flex-1">
                                     <h2 className="text-sm md:text-base font-black text-slate-800 tracking-tight truncate">
-                                        Your Earning Slabs ({currentPlanName})
+                                        Your Earning Slabs
                                     </h2>
-                                    <p className="text-[11px] font-semibold text-slate-400">
+                                    <p className="text-[10.5px] font-medium text-slate-400 truncate hidden sm:block">
                                         Exact rupee payout per cash withdrawal transaction.
                                     </p>
                                 </div>
@@ -305,29 +305,29 @@ export default function RetailerCommission() {
                             {/* Upgrade Plan Button */}
                             <button
                                 onClick={() => setShowUpgradeModal(true)}
-                                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-md shadow-indigo-500/20 transition-all active:scale-95 cursor-pointer shrink-0"
+                                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-md shadow-indigo-500/20 transition-all active:scale-95 cursor-pointer shrink-0 self-start sm:self-auto"
                             >
-                                <Sparkles size={14} className="text-amber-300 animate-pulse" />
+                                <Sparkles size={13} className="text-amber-300 animate-pulse" />
                                 <span>Upgrade Plan</span>
                             </button>
                         </div>
 
                         {/* Slabs Grid */}
                         {activePlan && activePlan.slabs && activePlan.slabs.length > 0 ? (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-2.5">
                                 {activePlan.slabs.map((slab, i) => (
                                     <motion.div
                                         key={slab.id || i}
                                         whileHover={{ y: -2, transition: { duration: 0.15 } }}
-                                        className="bg-slate-50 hover:bg-white rounded-xl p-3 border border-slate-200/80 hover:border-emerald-300 hover:shadow-xs transition-all text-center space-y-1.5 relative group"
+                                        className="bg-slate-50 hover:bg-white rounded-xl p-2.5 sm:p-3 border border-slate-200/80 hover:border-emerald-300 hover:shadow-xs transition-all text-center space-y-1.5 relative group flex flex-col justify-between h-full"
                                     >
-                                        <div className="inline-block bg-white group-hover:bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/60 shadow-2xs">
-                                            <p className="text-[11px] font-bold text-black font-mono tracking-tight">
+                                        <div className="inline-block bg-white group-hover:bg-slate-100 px-1.5 sm:px-2 py-0.5 rounded-md border border-slate-200/60 shadow-2xs max-w-full truncate">
+                                            <p className="text-[10px] sm:text-[10.5px] font-bold text-black font-mono tracking-tight whitespace-nowrap">
                                                 &#8377;{Number(slab.minAmount).toLocaleString('en-IN')} &ndash; &#8377;{Number(slab.maxAmount).toLocaleString('en-IN')}
                                             </p>
                                         </div>
                                         <div>
-                                            <p className="text-lg font-black text-emerald-700 font-mono tracking-tight">
+                                            <p className="text-base sm:text-lg font-black text-emerald-700 font-mono tracking-tight">
                                                 +&#8377;{Number(slab.retailerCommission).toFixed(2)}
                                             </p>
                                         </div>
@@ -340,7 +340,7 @@ export default function RetailerCommission() {
                             </div>
                         ) : (
                             /* Default Fallback Free Plan Slabs */
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-2.5">
                                 {[
                                     { range: '₹500 - ₹999', comm: '+₹2.00' },
                                     { range: '₹1,000 - ₹1,499', comm: '+₹2.20' },
@@ -353,15 +353,15 @@ export default function RetailerCommission() {
                                     <motion.div
                                         key={i}
                                         whileHover={{ y: -2, transition: { duration: 0.15 } }}
-                                        className="bg-slate-50 hover:bg-white rounded-xl p-3 border border-slate-200/80 hover:border-emerald-300 hover:shadow-xs transition-all text-center space-y-1.5 relative group"
+                                        className="bg-slate-50 hover:bg-white rounded-xl p-2.5 sm:p-3 border border-slate-200/80 hover:border-emerald-300 hover:shadow-xs transition-all text-center space-y-1.5 relative group flex flex-col justify-between h-full"
                                     >
-                                        <div className="inline-block bg-white group-hover:bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/60 shadow-2xs">
-                                            <p className="text-[11px] font-bold text-black font-mono tracking-tight">
+                                        <div className="inline-block bg-white group-hover:bg-slate-100 px-1.5 sm:px-2 py-0.5 rounded-md border border-slate-200/60 shadow-2xs max-w-full truncate">
+                                            <p className="text-[10px] sm:text-[10.5px] font-bold text-black font-mono tracking-tight whitespace-nowrap">
                                                 {slab.range}
                                             </p>
                                         </div>
                                         <div>
-                                            <p className="text-lg font-black text-emerald-700 font-mono tracking-tight">
+                                            <p className="text-base sm:text-lg font-black text-emerald-700 font-mono tracking-tight">
                                                 {slab.comm}
                                             </p>
                                         </div>

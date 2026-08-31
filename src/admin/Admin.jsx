@@ -551,23 +551,6 @@ const Admin = () => {
 
 
 
-    const handleSave = () => {
-        dataService.saveData(data);
-        setStatus({ type: 'success', message: 'All changes saved successfully!' });
-        setTimeout(() => setStatus(null), 3000);
-    };
-
-    const handleReset = () => {
-        if (window.confirm('Reset all data to defaults?')) {
-            dataService.resetData();
-            setData(dataService.getData());
-            sharedDataService.resetToDefaults();
-            refreshDists();
-            setStatus({ type: 'success', message: 'All data reset to defaults!' });
-            setTimeout(() => setStatus(null), 3000);
-        }
-    };
-
     const normalizeSessionRole = (raw) => {
         if (!raw) return 'RETAILER';
         return String(raw).trim().replace(/\s+/g, '_').toUpperCase();
@@ -3310,15 +3293,6 @@ const Admin = () => {
                         </div>
 
                         <div className="flex items-center gap-2">
-                            <button onClick={handleReset} title="Reset to defaults"
-                                className="w-8 h-8 flex items-center justify-center rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-500 transition-all">
-                                <RefreshCcw size={14} />
-                            </button>
-                            <button onClick={handleSave}
-                                className="flex items-center gap-1.5 bg-[#6366f1] text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wide shadow-md hover:scale-105 active:scale-95 transition-all">
-                                <Save size={13} /> Save
-                            </button>
-                            <div className="w-px h-5 bg-slate-200 mx-1 hidden sm:block" />
                             <button className="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-500 relative transition-all">
                                 <Zap size={14} />
                                 <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full border-2 border-white" />
