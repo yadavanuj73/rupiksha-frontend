@@ -393,18 +393,18 @@ export default function RetailerCommission() {
                                 </div>
 
                                 <div className="min-w-0 flex-1">
-                                    <h2 className="text-sm md:text-base font-black text-slate-900 tracking-tight truncate">
+                                    <h2 className="text-sm md:text-base font-black text-black tracking-tight truncate">
                                         Your Earning Slabs
                                     </h2>
-                                    <p className="text-[10.5px] font-medium text-slate-500 truncate hidden sm:block">
+                                    <p className="text-[10.5px] sm:text-[11px] font-black text-black truncate hidden sm:block">
                                         Exact rupee payout per cash withdrawal transaction.
                                     </p>
                                     {isPaidActivePlan && activeExpiresAt && (
                                         <p className="text-[11px] sm:text-xs font-black text-black flex items-center gap-1.5 mt-0.5 font-mono">
-                                            <Timer size={12} className="text-black shrink-0" />
+                                            <Timer size={13} className="text-black shrink-0" strokeWidth={2.5} />
                                             <span>
                                                 Expires in <span className="font-black text-black">{timeRemaining.formatted || `${activePlan?.daysRemaining || 0}d left`}</span>
-                                                <span className="font-semibold text-slate-500 ml-1 font-sans text-[10px] hidden sm:inline">(Valid till {formatExpiryDate(activeExpiresAt)})</span>
+                                                <span className="font-black text-black ml-1 font-sans text-[10.5px] hidden sm:inline">(Valid till {formatExpiryDate(activeExpiresAt)})</span>
                                             </span>
                                         </p>
                                     )}
