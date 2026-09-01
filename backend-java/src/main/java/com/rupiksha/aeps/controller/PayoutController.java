@@ -3,6 +3,7 @@ package com.rupiksha.aeps.controller;
 import com.rupiksha.aeps.dto.BankVerificationRequest;
 import com.rupiksha.aeps.dto.BankVerificationResponse;
 import com.rupiksha.aeps.dto.PayoutBeneficiaryDto;
+import com.rupiksha.aeps.dto.PayoutChargeSlabDto;
 import com.rupiksha.aeps.dto.PayoutRequest;
 import com.rupiksha.aeps.dto.PayoutResponse;
 import com.rupiksha.aeps.entity.PayoutTransaction;
@@ -243,6 +244,29 @@ public class PayoutController {
         log.info("Admin {} rejecting beneficiary ID {} with reason: {}", adminId, id, reason);
         PayoutBeneficiaryDto rejected = payoutService.adminRejectBeneficiary(id, reason, adminId);
         return ResponseEntity.ok(rejected);
+    }
+
+    /**
+     * Get active payout charge slabs (for Retailer & Admin)
+     */
+    @GetMapping("/charges")
+    public ResponseEntity<List<PayoutChargeSlabDto>> getPayoutCharges() {
+        return ResponseEntity.ok(payoutService.getPayoutChargeSlabs());
+    }
+
+    /**
+     * Admin: Update payout charge slabs (Auto-computes 18% GST)
+     */
+    @PutMapping("/admin/charges")
+    public ResponseEntity<List<PayoutChargeSlabDto>> updatePayoutCharges(
+            @RequestBody List<PayoutChargeSlabDto> slabs,
+            @AuthenticationPrincipal JwtPrincipal principal,
+            Authentication authentication
+    ) {
+        String adminId = resolveUserId(principal, authentication);
+        log.info("Admin {} updating payout charge slabs: {}", adminId, slabs);
+        List<PayoutChargeSlabDto> updated = payoutService.updatePayoutChargeSlabs(slabs);
+        return ResponseEntity.ok(updated);
     }
 
     /**

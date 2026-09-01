@@ -409,6 +409,9 @@ const Reports = () => {
             {/* ── Summary Cards ── */}
             {(() => {
                 const isAeps = reportType === 'aeps_1' || reportType === 'aeps_2';
+                const isPayoutReport = reportType === 'payout_hub' || reportType === 'payout';
+                const commCardLabel = isPayoutReport ? 'Payout Charges' : 'Commission Earned';
+
                 const cards = isAeps ? [
                     { label: 'Total Transactions', val: summary.totalTransactions || 0, icon: FileText, col: '#0ea5e9' },
                     { label: 'Cash Withdrawal', val: `₹${Number(summary.cashWithdrawalVolume ?? (summary.totalVolume || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: IndianRupee, col: '#2563eb' },
@@ -417,7 +420,7 @@ const Reports = () => {
                     { label: 'Success / Fail / Pending', val: `${summary.successCount || 0} / ${summary.failedCount || 0} / ${summary.pendingCount || 0}`, icon: Clock, col: '#ea580c' },
                 ] : [
                     { label: 'Total Volume', val: `₹${Number(summary.totalVolume || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: IndianRupee, col: currentConfig.color || '#4a148c' },
-                    { label: 'Commission Earned', val: `₹${Number(summary.commissionEarned || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Coins, col: '#10b981' },
+                    { label: commCardLabel, val: `₹${Number(summary.commissionEarned || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Coins, col: '#10b981' },
                     { label: 'Total Transactions', val: summary.totalTransactions || 0, icon: FileText, col: '#0ea5e9' },
                     { label: 'Success / Fail / Pending', val: `${summary.successCount || 0} / ${summary.failedCount || 0} / ${summary.pendingCount || 0}`, icon: Clock, col: '#ea580c' },
                 ];
@@ -553,7 +556,7 @@ const Reports = () => {
                                     { id: 'createdAt', label: 'Timestamp' },
                                     { id: 'serviceType', label: 'Particulars / Domain' },
                                     { id: 'amount', label: 'Amount' },
-                                    { id: 'commission', label: 'Commission' },
+                                    { id: 'commission', label: (reportType === 'payout_hub' || reportType === 'payout') ? 'Payout Charges' : 'Commission' },
                                     { id: 'status', label: 'Status' },
                                     { id: 'actions', label: 'Receipt' }
                                 ].map((h) => (

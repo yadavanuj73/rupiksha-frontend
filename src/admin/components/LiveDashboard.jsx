@@ -110,6 +110,10 @@ function ServiceCard({ serviceKey, data }) {
     const { todayTxn = 0, todayAmt = 0, monthlyTxn = 0, monthlyAmt = 0, todayComm = 0, monthlyComm = 0 } = data || {};
     const [hov, setHov] = useState(false);
 
+    const isPayout = serviceKey?.toLowerCase() === 'payout' || cfg.label?.toLowerCase() === 'payout';
+    const commLabelToday = isPayout ? 'Today Charges' : 'Today Comm';
+    const commLabelMonthly = isPayout ? 'Monthly Charges' : 'Monthly Comm';
+
     return (
         <div
             onMouseEnter={() => setHov(true)}
@@ -143,10 +147,10 @@ function ServiceCard({ serviceKey, data }) {
                 {[
                     ['Today Txn', fmt(todayTxn)],
                     ['Today Amt', `₹${fmt(todayAmt)}`],
-                    ['Today Comm', `₹${fmtCur(todayComm)}`],
+                    [commLabelToday, `₹${fmtCur(todayComm)}`],
                     ['Monthly Txn', fmt(monthlyTxn)],
                     ['Monthly Amt', `₹${fmt(monthlyAmt)}`],
-                    ['Monthly Comm', `₹${fmtCur(monthlyComm)}`],
+                    [commLabelMonthly, `₹${fmtCur(monthlyComm)}`],
                 ].map(([label, val]) => (
                     <div key={label} style={{
                         background: `${cfg.accent}08`, borderRadius: 8,

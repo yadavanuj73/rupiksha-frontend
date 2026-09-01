@@ -9,6 +9,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { payoutService, transactionService, userService } from '../../services/apiService';
 import { dataService } from '../../services/dataService';
+import { payoutChargeService } from '../../services/payoutChargeService';
 import { useWallet } from '../../context/WalletContext';
 import DisabledServiceBanner from '../../components/shared/DisabledServiceBanner';
 
@@ -19,6 +20,9 @@ const PayoutHub = () => {
 
     // Active View Tab: 'transfer' | 'beneficiaries' | 'history'
     const [activeTab, setActiveTab] = useState('transfer');
+
+    // Charge slabs state
+    const [chargeSlabs, setChargeSlabs] = useState([]);
 
     // Beneficiary State
     const [beneficiaries, setBeneficiaries] = useState([]);
@@ -112,6 +116,9 @@ const PayoutHub = () => {
         checkService();
         fetchBalance();
         fetchBeneficiaries();
+        payoutChargeService.getCharges().then(res => {
+            if (Array.isArray(res) && res.length > 0) setChargeSlabs(res);
+        }).catch(() => {});
     }, [fetchBalance, fetchBeneficiaries]);
 
     // Beneficiary Quick Selection
@@ -286,12 +293,17 @@ const PayoutHub = () => {
         }
     }, [approvedBeneficiaries, selectedBeneficiaryId]);
 
+    // Dynamic Charge & GST Calculation
+    const payoutChargeInfo = useMemo(() => {
+        return payoutChargeService.calculateChargeForAmount(form.amount, chargeSlabs);
+    }, [form.amount, chargeSlabs]);
+
     // Validation Flags
     const isAccountValid = /^\d{9,18}$/.test(form.accountNumber.trim());
     const isAccountMatching = form.accountNumber.trim() && form.accountNumber.trim() === form.confirmAccountNumber.trim();
     const isIfscValid = /^[A-Z]{4}0[A-Z0-9]{6}$/.test(form.ifsc.trim().toUpperCase());
     const isAmountEntered = Number(form.amount) > 0;
-    const isAmountWithinBalance = Number(form.amount) <= walletBalance;
+    const isAmountWithinBalance = isAmountEntered && payoutChargeInfo.totalDeduction <= walletBalance;
     const isNameValid = form.beneficiaryName.trim().length >= 2;
 
     const canVerify = isAccountValid && isIfscValid && !verifying;
@@ -348,7 +360,7 @@ const PayoutHub = () => {
 
         if (!canSubmit) {
             if (!isAmountWithinBalance) {
-                setSubmitError(`Insufficient wallet balance. You have ₹${walletBalance.toLocaleString('en-IN')}, but transfer requires ₹${Number(form.amount).toLocaleString('en-IN')}.`);
+                setSubmitError(`Insufficient wallet balance. Total required: ₹${payoutChargeInfo.totalDeduction.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (Transfer ₹${Number(form.amount).toLocaleString('en-IN')} + Payout Charges ₹${payoutChargeInfo.totalCharge.toFixed(2)} incl. 18% GST). Available: ₹${walletBalance.toLocaleString('en-IN')}.`);
             } else if (!isAccountMatching) {
                 setSubmitError('Account number and confirm account number do not match.');
             } else {
@@ -1345,8 +1357,31 @@ const PayoutHub = () => {
                                     <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                                         Amount
                                     </span>
-                                    <div className="text-2xl sm:text-3xl font-black font-mono text-blue-700 tracking-tight">
+                                    <div className="text-xl sm:text-2xl font-black font-mono text-blue-700 tracking-tight">
                                         ₹ {Number(form.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                    </div>
+                                </div>
+
+                                <div className="flex items-baseline justify-between py-1 border-t border-blue-100/60 pt-1.5">
+                                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                                        Payout Charges
+                                    </span>
+                                    <div className="text-right">
+                                        <span className="text-xs sm:text-sm font-black font-mono text-slate-800">
+                                            ₹ {payoutChargeInfo.totalCharge.toFixed(2)}
+                                        </span>
+                                        <span className="ml-1 text-[9.5px] font-bold text-slate-500">
+                                            (incl. 18% GST)
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-baseline justify-between py-1.5 border-t border-blue-200/80 pt-2 bg-blue-100/40 -mx-4 px-4 rounded-xl">
+                                    <span className="text-[11px] font-black uppercase tracking-wider text-slate-900">
+                                        Total Deducted
+                                    </span>
+                                    <div className="text-base sm:text-lg font-black font-mono text-indigo-900 tracking-tight">
+                                        ₹ {payoutChargeInfo.totalDeduction.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                     </div>
                                 </div>
 

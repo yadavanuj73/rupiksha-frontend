@@ -108,7 +108,9 @@ public class PayoutHistoryProvider extends BaseHistoryProvider {
                 .serviceType("PAYOUT")
                 .provider("PAYOUT_HUB")
                 .amount(txn.getAmount())
-                .commission(balances.commission)
+                .commission(txn.getTotalChargedAmount() != null && txn.getTotalChargedAmount().compareTo(BigDecimal.ZERO) > 0 
+                        ? txn.getTotalChargedAmount() 
+                        : (balances.commission != null ? balances.commission : BigDecimal.ZERO))
                 .openingBalance(balances.openingBalance)
                 .closingBalance(balances.closingBalance)
                 .status(txn.getStatus())

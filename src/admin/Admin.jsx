@@ -6,7 +6,7 @@ import {
     ArrowLeft, CheckCircle2, AlertTriangle, Plus, Trash2, Edit3, FileText,
     BarChart3, Megaphone, Zap, Upload, X, ImageIcon, Play,
     Camera, Eye, IndianRupee, ChevronRight, Wallet, TrendingUp, History, ArrowRight,
-    Building2, UserPlus, UserMinus, ShieldCheck, Link2, Crown, ChevronDown, Mail, MapPin, Search, Smartphone, Clock, LayoutGrid, User, Activity, Lock, Unlock, LogOut, Terminal
+    Building2, UserPlus, UserMinus, ShieldCheck, Link2, Crown, ChevronDown, Mail, MapPin, Search, Smartphone, Clock, LayoutGrid, User, Activity, Lock, Unlock, LogOut, Terminal, SendHorizontal
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { dataService, BACKEND_URL } from '../services/dataService';
@@ -25,6 +25,7 @@ import Overview from './components/Overview';
 import rupikshaNewLogo from '../assets/rupiksha_new_logo.png';
 import EnhancedMembersTable from './components/EnhancedMembersTable';
 import CommissionManagement from './components/CommissionManagement';
+import PayoutChargeManagement from './components/PayoutChargeManagement';
 import { useAuth } from '../context/AuthContext';
 import { generateUniquePartyCode, stateCodeMap } from '../database/partyCode';
 
@@ -3025,6 +3026,7 @@ const Admin = () => {
         ...((currentUser?.role === 'ADMIN' || isAdminUser) ? [
             { id: 'Wallet-Overview', icon: Wallet, label: 'Wallet Manager' },
             { id: 'Commission', icon: IndianRupee, label: 'Commission' },
+            { id: 'PayoutCharges', icon: SendHorizontal, label: 'Payout Charges' },
         ] : []),
     ];
 
@@ -3384,6 +3386,15 @@ const Admin = () => {
                                 {activeSection === 'Commission' && (
                                     (currentUser?.role === 'ADMIN' || isAdminUser) ? (
                                         <CommissionManagement />
+                                    ) : (
+                                        <UnauthorizedAccess sectionName={activeLabel} />
+                                    )
+                                )}
+
+                                {/* Operations: Payout Charges Management */}
+                                {activeSection === 'PayoutCharges' && (
+                                    (currentUser?.role === 'ADMIN' || isAdminUser) ? (
+                                        <PayoutChargeManagement />
                                     ) : (
                                         <UnauthorizedAccess sectionName={activeLabel} />
                                     )

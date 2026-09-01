@@ -8,6 +8,9 @@ import com.rupiksha.aeps.dto.BankVerificationResponse;
 import com.rupiksha.aeps.dto.PayoutRequest;
 import com.rupiksha.aeps.dto.PayoutResponse;
 import com.rupiksha.aeps.dto.PayoutBeneficiaryDto;
+import com.rupiksha.aeps.dto.PayoutChargeSlabDto;
+import com.rupiksha.aeps.entity.PayoutChargeSlab;
+import com.rupiksha.aeps.repository.PayoutChargeSlabRepository;
 import com.rupiksha.aeps.entity.PayoutBeneficiary;
 import com.rupiksha.aeps.repository.PayoutBeneficiaryRepository;
 import com.rupiksha.aeps.entity.PayoutTransaction;
@@ -40,6 +43,7 @@ public class PayoutService {
     private final PayoutProperties payoutProperties;
     private final PayoutTransactionRepository payoutTransactionRepository;
     private final PayoutBeneficiaryRepository payoutBeneficiaryRepository;
+    private final PayoutChargeSlabRepository payoutChargeSlabRepository;
     private final WalletService walletService;
     private final UserRepository userRepository;
 
@@ -48,6 +52,7 @@ public class PayoutService {
             PayoutProperties payoutProperties,
             PayoutTransactionRepository payoutTransactionRepository,
             PayoutBeneficiaryRepository payoutBeneficiaryRepository,
+            PayoutChargeSlabRepository payoutChargeSlabRepository,
             WalletService walletService,
             UserRepository userRepository
     ) {
@@ -55,6 +60,7 @@ public class PayoutService {
         this.payoutProperties = payoutProperties;
         this.payoutTransactionRepository = payoutTransactionRepository;
         this.payoutBeneficiaryRepository = payoutBeneficiaryRepository;
+        this.payoutChargeSlabRepository = payoutChargeSlabRepository;
         this.walletService = walletService;
         this.userRepository = userRepository;
 
@@ -86,6 +92,111 @@ public class PayoutService {
         return UUID.fromString(clean);
     }
 
+    public List<PayoutChargeSlabDto> getPayoutChargeSlabs() {
+        List<PayoutChargeSlab> slabs = payoutChargeSlabRepository.findAllByIsActiveTrueOrderByMinAmountAsc();
+        if (slabs.isEmpty()) {
+            return List.of(
+                    PayoutChargeSlabDto.builder()
+                            .id(1L)
+                            .minAmount(new BigDecimal("500.00"))
+                            .maxAmount(new BigDecimal("24999.00"))
+                            .baseCharge(new BigDecimal("5.50"))
+                            .gstRate(new BigDecimal("18.00"))
+                            .gstAmount(new BigDecimal("0.99"))
+                            .totalCharge(new BigDecimal("6.49"))
+                            .isActive(true)
+                            .build(),
+                    PayoutChargeSlabDto.builder()
+                            .id(2L)
+                            .minAmount(new BigDecimal("25000.00"))
+                            .maxAmount(new BigDecimal("100000.00"))
+                            .baseCharge(new BigDecimal("10.50"))
+                            .gstRate(new BigDecimal("18.00"))
+                            .gstAmount(new BigDecimal("1.89"))
+                            .totalCharge(new BigDecimal("12.39"))
+                            .isActive(true)
+                            .build()
+            );
+        }
+        return slabs.stream().map(s -> PayoutChargeSlabDto.builder()
+                .id(s.getId())
+                .minAmount(s.getMinAmount())
+                .maxAmount(s.getMaxAmount())
+                .baseCharge(s.getBaseCharge())
+                .gstRate(s.getGstRate())
+                .gstAmount(s.getGstAmount())
+                .totalCharge(s.getTotalCharge())
+                .isActive(s.getIsActive())
+                .build()).toList();
+    }
+
+    public List<PayoutChargeSlabDto> updatePayoutChargeSlabs(List<PayoutChargeSlabDto> dtoList) {
+        if (dtoList == null || dtoList.isEmpty()) {
+            throw new IllegalArgumentException("Payout charge slabs list cannot be empty");
+        }
+
+        List<PayoutChargeSlab> savedList = new ArrayList<>();
+        for (PayoutChargeSlabDto dto : dtoList) {
+            BigDecimal base = dto.getBaseCharge() != null ? dto.getBaseCharge() : BigDecimal.ZERO;
+            BigDecimal gstRate = dto.getGstRate() != null ? dto.getGstRate() : new BigDecimal("18.00");
+            BigDecimal gstAmount = base.multiply(gstRate).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+            BigDecimal totalCharge = base.add(gstAmount);
+
+            PayoutChargeSlab slab;
+            if (dto.getId() != null) {
+                slab = payoutChargeSlabRepository.findById(dto.getId()).orElse(new PayoutChargeSlab());
+            } else {
+                slab = new PayoutChargeSlab();
+            }
+
+            slab.setMinAmount(dto.getMinAmount() != null ? dto.getMinAmount() : BigDecimal.ZERO);
+            slab.setMaxAmount(dto.getMaxAmount() != null ? dto.getMaxAmount() : new BigDecimal("100000.00"));
+            slab.setBaseCharge(base);
+            slab.setGstRate(gstRate);
+            slab.setGstAmount(gstAmount);
+            slab.setTotalCharge(totalCharge);
+            slab.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : true);
+
+            savedList.add(payoutChargeSlabRepository.save(slab));
+        }
+
+        return savedList.stream().map(s -> PayoutChargeSlabDto.builder()
+                .id(s.getId())
+                .minAmount(s.getMinAmount())
+                .maxAmount(s.getMaxAmount())
+                .baseCharge(s.getBaseCharge())
+                .gstRate(s.getGstRate())
+                .gstAmount(s.getGstAmount())
+                .totalCharge(s.getTotalCharge())
+                .isActive(s.getIsActive())
+                .build()).toList();
+    }
+
+    public PayoutChargeSlabDto calculatePayoutCharge(BigDecimal transferAmount) {
+        if (transferAmount == null) return null;
+        List<PayoutChargeSlabDto> slabs = getPayoutChargeSlabs();
+        for (PayoutChargeSlabDto slab : slabs) {
+            if (transferAmount.compareTo(slab.getMinAmount()) >= 0 && transferAmount.compareTo(slab.getMaxAmount()) <= 0) {
+                return slab;
+            }
+        }
+        if (transferAmount.compareTo(new BigDecimal("25000")) >= 0) {
+            return PayoutChargeSlabDto.builder()
+                    .baseCharge(new BigDecimal("10.50"))
+                    .gstRate(new BigDecimal("18.00"))
+                    .gstAmount(new BigDecimal("1.89"))
+                    .totalCharge(new BigDecimal("12.39"))
+                    .build();
+        } else {
+            return PayoutChargeSlabDto.builder()
+                    .baseCharge(new BigDecimal("5.50"))
+                    .gstRate(new BigDecimal("18.00"))
+                    .gstAmount(new BigDecimal("0.99"))
+                    .totalCharge(new BigDecimal("6.49"))
+                    .build();
+        }
+    }
+
     /**
      * Initiates an instant payout transfer to beneficiary bank account.
      * Enforces atomic wallet balance check and deduction, encrypted API communication,
@@ -109,6 +220,13 @@ public class PayoutService {
         if (amount == null || amount.compareTo(BigDecimal.ONE) < 0) {
             throw new IllegalArgumentException("Payout amount must be at least ₹1.00");
         }
+
+        // Calculate payout charge & 18% GST
+        PayoutChargeSlabDto chargeSlab = calculatePayoutCharge(amount);
+        BigDecimal baseCharge = chargeSlab != null && chargeSlab.getBaseCharge() != null ? chargeSlab.getBaseCharge() : BigDecimal.ZERO;
+        BigDecimal gstAmount = chargeSlab != null && chargeSlab.getGstAmount() != null ? chargeSlab.getGstAmount() : BigDecimal.ZERO;
+        BigDecimal totalCharge = chargeSlab != null && chargeSlab.getTotalCharge() != null ? chargeSlab.getTotalCharge() : BigDecimal.ZERO;
+        BigDecimal totalDeduction = amount.add(totalCharge);
 
         String rawAcc = request.getAccountNumber() != null ? request.getAccountNumber().trim() : "";
         String cleanAcc = rawAcc.replaceAll("[^0-9]", "");
@@ -160,6 +278,10 @@ public class PayoutService {
                 .orderId(orderId)
                 .userId(cleanUserId)
                 .amount(amount)
+                .chargeAmount(baseCharge)
+                .gstAmount(gstAmount)
+                .totalChargedAmount(totalCharge)
+                .totalDeductedAmount(totalDeduction)
                 .beneficiaryName(request.getBeneficiaryName())
                 .accountNumber(cleanAcc)
                 .ifsc(rawIfsc)
@@ -172,12 +294,12 @@ public class PayoutService {
 
         payoutTransactionRepository.save(transaction);
 
-        // 3. Atomically debit user's wallet
+        // 3. Atomically debit user's wallet (Transfer Amount + Payout Charges)
         try {
             walletService.debitForService(
                     userUuid,
-                    amount,
-                    "Payout to " + request.getBeneficiaryName() + " (" + cleanAcc + ")",
+                    totalDeduction,
+                    "Payout of ₹" + amount + " to " + request.getBeneficiaryName() + " (" + cleanAcc + ") + Charges ₹" + totalCharge,
                     WalletTransactionContext.PAYOUT,
                     "PAYOUT",
                     "127.0.0.1",
@@ -193,7 +315,7 @@ public class PayoutService {
                     .statusCode("WALLET_DEBIT_FAILED")
                     .status("FAILED")
                     .message(e.getMessage() != null && e.getMessage().contains("Insufficient")
-                            ? "Insufficient wallet balance for payout"
+                            ? "Insufficient wallet balance for payout. Required ₹" + totalDeduction + " (including ₹" + totalCharge + " payout charges)."
                             : "Could not process wallet deduction: " + e.getMessage())
                     .orderId(orderId)
                     .amount(amount)
@@ -295,7 +417,7 @@ public class PayoutService {
                 transaction.setResponseMessage(errorDetail);
                 payoutTransactionRepository.save(transaction);
 
-                executeRefund(cleanUserId, amount, orderId, "Payout rejected: " + errorDetail);
+                executeRefund(cleanUserId, totalDeduction, orderId, "Payout rejected: " + errorDetail);
 
                 return PayoutResponse.builder()
                         .success(false)
@@ -323,7 +445,7 @@ public class PayoutService {
             transaction.setResponseMessage(errorMsg);
             payoutTransactionRepository.save(transaction);
 
-            executeRefund(cleanUserId, amount, orderId, "Payout failed: " + errorMsg);
+            executeRefund(cleanUserId, totalDeduction, orderId, "Payout failed: " + errorMsg);
 
             return PayoutResponse.builder()
                     .success(false)
@@ -342,7 +464,7 @@ public class PayoutService {
             transaction.setResponseMessage(e.getMessage());
             payoutTransactionRepository.save(transaction);
 
-            executeRefund(cleanUserId, amount, orderId, "Payout error: " + e.getMessage());
+            executeRefund(cleanUserId, totalDeduction, orderId, "Payout error: " + e.getMessage());
 
             return PayoutResponse.builder()
                     .success(false)
@@ -509,7 +631,8 @@ public class PayoutService {
                 if (!"FAILED".equalsIgnoreCase(txn.getStatus())) {
                     txn.setStatus("FAILED");
                     payoutTransactionRepository.save(txn);
-                    executeRefund(cleanUserId, txn.getAmount(), orderId, "Status check returned failed");
+                    BigDecimal refundAmt = txn.getTotalDeductedAmount() != null ? txn.getTotalDeductedAmount() : txn.getAmount();
+                    executeRefund(cleanUserId, refundAmt, orderId, "Status check returned failed");
                 }
             }
 

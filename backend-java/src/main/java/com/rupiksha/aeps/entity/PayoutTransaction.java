@@ -29,6 +29,18 @@ public class PayoutTransaction {
     @Column(nullable = false)
     private BigDecimal amount;
 
+    @Column(name = "charge_amount")
+    private BigDecimal chargeAmount;
+
+    @Column(name = "gst_amount")
+    private BigDecimal gstAmount;
+
+    @Column(name = "total_charged_amount")
+    private BigDecimal totalChargedAmount;
+
+    @Column(name = "total_deducted_amount")
+    private BigDecimal totalDeductedAmount;
+
     @Column(nullable = false)
     private String beneficiaryName;
 
