@@ -19,7 +19,7 @@ public class PayoutRequest {
     private String orderId;
 
     @NotNull(message = "Amount is required")
-    @DecimalMin(value = "1.0", message = "Minimum payout amount is ₹1")
+    @DecimalMin(value = "500.0", message = "Minimum payout amount is ₹500")
     @DecimalMax(value = "500000.0", message = "Maximum payout amount is ₹5,00,000")
     private BigDecimal amount;
 

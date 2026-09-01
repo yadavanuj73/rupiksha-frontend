@@ -217,8 +217,8 @@ public class PayoutService {
         }
 
         BigDecimal amount = request.getAmount();
-        if (amount == null || amount.compareTo(BigDecimal.ONE) < 0) {
-            throw new IllegalArgumentException("Payout amount must be at least ₹1.00");
+        if (amount == null || amount.compareTo(BigDecimal.valueOf(500)) < 0) {
+            throw new IllegalArgumentException("Payout amount must be at least ₹500.00");
         }
 
         // Calculate payout charge & 18% GST
