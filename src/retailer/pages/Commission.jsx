@@ -380,15 +380,7 @@ export default function RetailerCommission() {
                                         <Crown size={16} strokeWidth={2.5} />
                                     </div>
                                     <div className="min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <p className="text-[8px] font-black text-emerald-800/70 uppercase tracking-widest leading-none">Active Plan</p>
-                                            {isPaidActivePlan && activeExpiresAt && (
-                                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-600 text-white text-[8px] font-bold font-mono">
-                                                    <Timer size={9} />
-                                                    {timeRemaining.formatted || `${activePlan?.daysRemaining || 0}d left`}
-                                                </span>
-                                            )}
-                                        </div>
+                                        <p className="text-[8.5px] font-black text-emerald-800 uppercase tracking-widest leading-none">Active Plan</p>
                                         <p className="text-[12px] sm:text-xs font-black text-emerald-700 uppercase tracking-tight mt-0.5 truncate">
                                             {currentPlanName}
                                         </p>
@@ -401,12 +393,21 @@ export default function RetailerCommission() {
                                 </div>
 
                                 <div className="min-w-0 flex-1">
-                                    <h2 className="text-sm md:text-base font-black text-slate-800 tracking-tight truncate">
+                                    <h2 className="text-sm md:text-base font-black text-slate-900 tracking-tight truncate">
                                         Your Earning Slabs
                                     </h2>
-                                    <p className="text-[10.5px] font-medium text-slate-400 truncate hidden sm:block">
+                                    <p className="text-[10.5px] font-medium text-slate-500 truncate hidden sm:block">
                                         Exact rupee payout per cash withdrawal transaction.
                                     </p>
+                                    {isPaidActivePlan && activeExpiresAt && (
+                                        <p className="text-[11px] sm:text-xs font-black text-black flex items-center gap-1.5 mt-0.5 font-mono">
+                                            <Timer size={12} className="text-black shrink-0" />
+                                            <span>
+                                                Expires in <span className="font-black text-black">{timeRemaining.formatted || `${activePlan?.daysRemaining || 0}d left`}</span>
+                                                <span className="font-semibold text-slate-500 ml-1 font-sans text-[10px] hidden sm:inline">(Valid till {formatExpiryDate(activeExpiresAt)})</span>
+                                            </span>
+                                        </p>
+                                    )}
                                 </div>
                             </div>
 
