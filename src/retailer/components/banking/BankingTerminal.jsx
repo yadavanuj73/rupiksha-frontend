@@ -358,6 +358,9 @@ export default function BankingTerminal({ provider, status, setStatus }) {
             if (amt < 100 || amt > 10000) {
                 return "Transaction amount must be between ₹100 and ₹10,000.";
             }
+            if (amt % 5 !== 0) {
+                return "Transaction amount must be a multiple of 5 (e.g. ₹500, ₹505, ₹1,000).";
+            }
             if (isDeposit && amt !== denominationSum) {
                 return `Denomination total (₹${denominationSum}) does not match entered transaction amount (₹${formData.amount}).`;
             }
@@ -1029,7 +1032,7 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                                 <label className="text-xs font-black text-black flex items-center justify-between">
                                                     <span>Transaction Amount (₹)</span>
                                                     <span className="text-[10px] font-black text-slate-700">
-                                                        ₹100 - ₹10,000
+                                                        ₹100 - ₹10,000 (Multiples of ₹5)
                                                     </span>
                                                 </label>
                                                 <div className="relative">
@@ -1041,15 +1044,25 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                                         name="amount"
                                                         min="100"
                                                         max="10000"
-                                                        step="1"
-                                                        placeholder="Enter amount"
+                                                        step="5"
+                                                        placeholder="Enter amount (e.g. 500)"
                                                         value={formData.amount}
                                                         onChange={handleFormChange}
                                                         onWheel={(e) => e.target.blur()}
-                                                        className="w-full pl-8 pr-3.5 py-2.5 rounded-2xl border-2 border-slate-300 text-lg font-black text-black placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 transition bg-slate-50/70 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                        className={`w-full pl-8 pr-3.5 py-2.5 rounded-2xl border-2 text-lg font-black text-black placeholder:text-slate-500 focus:outline-none transition bg-slate-50/70 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                                                            formData.amount && !isNaN(parseFloat(formData.amount)) && parseFloat(formData.amount) % 5 !== 0
+                                                                ? 'border-amber-400 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-amber-50/30'
+                                                                : 'border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-600'
+                                                        }`}
                                                         required
                                                     />
                                                 </div>
+                                                {formData.amount && !isNaN(parseFloat(formData.amount)) && parseFloat(formData.amount) % 5 !== 0 && (
+                                                    <p className="text-[11px] font-bold text-amber-700 flex items-center gap-1 pt-0.5 animate-fadeIn">
+                                                        <AlertCircle size={12} className="text-amber-600 shrink-0" />
+                                                        <span>Amount must be a multiple of ₹5 (e.g. ₹{Math.floor(parseFloat(formData.amount) / 5) * 5 || 500} or ₹{(Math.floor(parseFloat(formData.amount) / 5) + 1) * 5 || 505})</span>
+                                                    </p>
+                                                )}
                                             </div>
 
                                             {/* Quick Amount Pills */}

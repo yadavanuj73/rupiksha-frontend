@@ -15,6 +15,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -326,6 +328,8 @@ public class CommissionServiceImplTest {
         assertNotNull(result);
         assertEquals("PLAN_2999", result.planCode());
         assertEquals(new BigDecimal("2999.00"), result.price());
+        assertNotNull(result.planExpiresAt());
+        assertNotNull(result.daysRemaining());
 
         // Verify wallet debited ₹2999.00
         verify(walletService, times(1)).debitForService(
@@ -338,8 +342,9 @@ public class CommissionServiceImplTest {
                 anyString()
         );
 
-        // Verify retailer user was saved with new plan
+        // Verify retailer user was saved with new plan and expiry
         assertEquals(paidPlan, retailer.getAepsCommissionPlan());
+        assertNotNull(retailer.getAepsCommissionPlanExpiresAt());
         verify(userRepository, times(1)).save(retailer);
     }
 
@@ -357,5 +362,113 @@ public class CommissionServiceImplTest {
         assertEquals("FREE", result.planCode());
         verify(walletService, never()).debitForService(any(), any(), any(), any(), any(), any(), any());
         verify(userRepository, never()).save(retailer);
+    }
+
+    @Test
+    @DisplayName("CASE 15: Upgrade Plan Difference - Upgrading ₹2999 to ₹4999 debits only difference ₹2000 & keeps expiry")
+    void testUpgradePlanDifferenceDebitAndPreservesExpiry() {
+        UUID plan2999Id = UUID.randomUUID();
+        CommissionPlan plan2999 = CommissionPlan.builder()
+                .id(plan2999Id)
+                .serviceType("AEPS_1")
+                .planName("Rupiksha Anand Plan")
+                .planCode("PLAN_2999")
+                .price(new BigDecimal("2999.00"))
+                .enabled(true)
+                .slabs(new ArrayList<>(defaultSlabs))
+                .build();
+
+        UUID plan4999Id = UUID.randomUUID();
+        CommissionPlan plan4999 = CommissionPlan.builder()
+                .id(plan4999Id)
+                .serviceType("AEPS_1")
+                .planName("Rupiksha Nidhi Plan")
+                .planCode("PLAN_4999")
+                .price(new BigDecimal("4999.00"))
+                .enabled(true)
+                .slabs(new ArrayList<>(defaultSlabs))
+                .build();
+
+        Instant existingExpiry = java.time.Instant.now().plus(60, java.time.temporal.ChronoUnit.DAYS);
+        Instant existingActivated = java.time.Instant.now().minus(305, java.time.temporal.ChronoUnit.DAYS);
+        retailer.setAepsCommissionPlan(plan2999);
+        retailer.setAepsCommissionPlanActivatedAt(existingActivated);
+        retailer.setAepsCommissionPlanExpiresAt(existingExpiry);
+
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+        when(commissionPlanRepository.findByIdWithSlabs(plan4999Id)).thenReturn(Optional.of(plan4999));
+
+        CommissionDtos.CommissionPlanDto result = commissionService.upgradeRetailerPlan(retailer.getId(), plan4999Id, "127.0.0.1");
+
+        assertNotNull(result);
+        assertEquals("PLAN_4999", result.planCode());
+        // Verify only the difference ₹2000 (4999 - 2999) is debited
+        verify(walletService, times(1)).debitForService(
+                eq(retailer.getId()),
+                eq(new BigDecimal("2000.00")),
+                contains("Upgrade Difference"),
+                eq(WalletTransactionContext.PLAN_UPGRADE),
+                eq("PLAN_UPGRADE"),
+                eq("127.0.0.1"),
+                anyString()
+        );
+        // Verify expiry is preserved
+        assertEquals(existingExpiry, retailer.getAepsCommissionPlanExpiresAt());
+        assertEquals(plan4999, retailer.getAepsCommissionPlan());
+    }
+
+    @Test
+    @DisplayName("CASE 16: Downgrade Prevention - Cannot downgrade from active ₹2999 plan to Free plan")
+    void testDowngradeRejectedWhileActive() {
+        UUID plan2999Id = UUID.randomUUID();
+        CommissionPlan plan2999 = CommissionPlan.builder()
+                .id(plan2999Id)
+                .serviceType("AEPS_1")
+                .planName("Rupiksha Anand Plan")
+                .planCode("PLAN_2999")
+                .price(new BigDecimal("2999.00"))
+                .enabled(true)
+                .slabs(new ArrayList<>(defaultSlabs))
+                .build();
+
+        Instant existingExpiry = java.time.Instant.now().plus(100, java.time.temporal.ChronoUnit.DAYS);
+        retailer.setAepsCommissionPlan(plan2999);
+        retailer.setAepsCommissionPlanExpiresAt(existingExpiry);
+
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+        when(commissionPlanRepository.findByIdWithSlabs(freePlan.getId())).thenReturn(Optional.of(freePlan));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                commissionService.upgradeRetailerPlan(retailer.getId(), freePlan.getId(), "127.0.0.1")
+        );
+        assertTrue(ex.getMessage().contains("Cannot downgrade your plan"));
+    }
+
+    @Test
+    @DisplayName("CASE 17: Expired Paid Plan Falls Back to Free Plan")
+    void testExpiredPaidPlanFallsBackToFreePlan() {
+        UUID plan2999Id = UUID.randomUUID();
+        CommissionPlan plan2999 = CommissionPlan.builder()
+                .id(plan2999Id)
+                .serviceType("AEPS_1")
+                .planName("Rupiksha Anand Plan")
+                .planCode("PLAN_2999")
+                .price(new BigDecimal("2999.00"))
+                .enabled(true)
+                .slabs(new ArrayList<>(defaultSlabs))
+                .build();
+
+        // Expired 5 days ago
+        Instant expiredAt = java.time.Instant.now().minus(5, java.time.temporal.ChronoUnit.DAYS);
+        retailer.setAepsCommissionPlan(plan2999);
+        retailer.setAepsCommissionPlanExpiresAt(expiredAt);
+
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+        when(commissionPlanRepository.findByServiceTypeAndIsDefaultTrue("AEPS_1")).thenReturn(Optional.of(freePlan));
+
+        CommissionDtos.CommissionPlanDto activePlanDto = commissionService.getRetailerActivePlan(retailer.getId());
+        assertNotNull(activePlanDto);
+        assertEquals("FREE", activePlanDto.planCode());
+        assertTrue(activePlanDto.isExpired());
     }
 }

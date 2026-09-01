@@ -276,6 +276,11 @@ public class TransactionServiceImpl implements TransactionService {
             if (request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
                 throw new ValidationException("Transaction amount must be positive and non-zero.");
             }
+            if (type.equals("CASH_WITHDRAWAL") || type.equals("AADHAAR_PAY")) {
+                if (request.getAmount().remainder(new BigDecimal("5")).compareTo(BigDecimal.ZERO) != 0) {
+                    throw new ValidationException("Cash withdrawal amount must be a multiple of 5 (e.g. ₹500, ₹505, ₹1,000).");
+                }
+            }
         } else {
             if (request.getAmount() == null) {
                 request.setAmount(BigDecimal.ZERO);

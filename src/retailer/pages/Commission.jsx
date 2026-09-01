@@ -5,7 +5,8 @@ import {
     Search, Filter, RefreshCw, ChevronLeft, ChevronRight,
     Award, CheckCircle2, ShieldCheck, ArrowUpRight, Sparkles,
     Layers, Fingerprint, Copy, Check, FileText, Download,
-    Crown, Zap, ArrowDownRight, X, Wallet, AlertCircle
+    Crown, Zap, ArrowDownRight, X, Wallet, AlertCircle,
+    Lock, Timer
 } from 'lucide-react';
 import { commissionService } from '../../services/commissionService';
 import { useWallet } from '../../context/WalletContext';
@@ -41,6 +42,94 @@ export default function RetailerCommission() {
     const [showUpgradeModal, setShowUpgradeModal] = useState(false);
     const [upgradingPlanId, setUpgradingPlanId] = useState(null);
     const [upgradeNotification, setUpgradeNotification] = useState(null);
+
+    // Live countdown timer state & helper
+    const [timeRemaining, setTimeRemaining] = useState({
+        days: 0,
+        hours: 0,
+        minutes: 0,
+        seconds: 0,
+        isExpired: false,
+        formatted: ''
+    });
+
+    const activeExpiresAt = activePlan?.planExpiresAt || summary?.planExpiresAt;
+    const isPaidActivePlan = Boolean(
+        (activePlan && activePlan.price > 0 && !activePlan.isExpired) ||
+        (!activePlan && summary?.currentPlanPrice > 0 && !summary?.isExpired)
+    );
+
+    const formatExpiryDate = (isoString) => {
+        if (!isoString) return '';
+        try {
+            return new Date(isoString).toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            });
+        } catch {
+            return '';
+        }
+    };
+
+    useEffect(() => {
+        if (!activeExpiresAt) {
+            setTimeRemaining({
+                days: 0,
+                hours: 0,
+                minutes: 0,
+                seconds: 0,
+                isExpired: false,
+                formatted: ''
+            });
+            return;
+        }
+
+        const updateCountdown = () => {
+            const expiryTime = new Date(activeExpiresAt).getTime();
+            const now = new Date().getTime();
+            const difference = expiryTime - now;
+
+            if (difference <= 0) {
+                setTimeRemaining({
+                    days: 0,
+                    hours: 0,
+                    minutes: 0,
+                    seconds: 0,
+                    isExpired: true,
+                    formatted: 'Plan Expired'
+                });
+                return;
+            }
+
+            const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
+            let formatted = '';
+            if (days > 0) {
+                formatted = `${days}d ${hours}h left`;
+            } else if (hours > 0) {
+                formatted = `${hours}h ${minutes}m left`;
+            } else {
+                formatted = `${minutes}m ${seconds}s left`;
+            }
+
+            setTimeRemaining({
+                days,
+                hours,
+                minutes,
+                seconds,
+                isExpired: false,
+                formatted
+            });
+        };
+
+        updateCountdown();
+        const interval = setInterval(updateCountdown, 1000);
+        return () => clearInterval(interval);
+    }, [activeExpiresAt]);
 
     // Plan Name and Badge mapping helpers
     const getPlanDisplayName = (plan) => {
@@ -219,12 +308,18 @@ export default function RetailerCommission() {
     // Plan Upgrade Handler
     const handleUpgradePlan = async (targetPlan) => {
         const walletBal = parseFloat(String(balance || availableBalance || 0));
-        const planPrice = parseFloat(String(targetPlan.price || 0));
+        const currentActivePrice = (activePlan && activePlan.price > 0 && !activePlan.isExpired)
+            ? parseFloat(String(activePlan.price || 0))
+            : (summary?.currentPlanPrice > 0 && !summary?.isExpired ? parseFloat(String(summary.currentPlanPrice || 0)) : 0);
 
-        if (planPrice > 0 && walletBal < planPrice) {
+        const targetPlanPrice = parseFloat(String(targetPlan.price || 0));
+        const isUpgradeDiff = currentActivePrice > 0 && targetPlanPrice > currentActivePrice;
+        const priceToPay = isUpgradeDiff ? (targetPlanPrice - currentActivePrice) : targetPlanPrice;
+
+        if (priceToPay > 0 && walletBal < priceToPay) {
             setUpgradeNotification({
                 type: 'error',
-                message: `Insufficient wallet balance (₹${walletBal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}). You need ₹${planPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })} to upgrade to ${targetPlan.planName}.`
+                message: `Insufficient wallet balance (₹${walletBal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}). You need ₹${priceToPay.toLocaleString('en-IN', { minimumFractionDigits: 2 })} to upgrade to ${getPlanDisplayName(targetPlan)}.`
             });
             return;
         }
@@ -242,7 +337,7 @@ export default function RetailerCommission() {
             await fetchHistory();
             setUpgradeNotification({
                 type: 'success',
-                message: `🎉 Successfully upgraded to ${targetPlan.planName}! Your new slabs are now active.`
+                message: `🎉 Successfully upgraded to ${getPlanDisplayName(targetPlan)}! Your new slabs are now active.`
             });
             setTimeout(() => {
                 setShowUpgradeModal(false);
@@ -280,15 +375,28 @@ export default function RetailerCommission() {
 
                             <div className="flex items-center gap-3 min-w-0 flex-1">
                                 {/* Active Plan Badge */}
-                                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/90 px-3 py-1.5 rounded-2xl flex items-center gap-2 shadow-2xs shrink-0 max-w-[190px] sm:max-w-none">
-                                    <div className="w-7 h-7 rounded-xl bg-emerald-500 flex items-center justify-center text-white shadow-xs shrink-0">
-                                        <Crown size={15} strokeWidth={2.5} />
+                                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/90 px-3.5 py-2 rounded-2xl flex items-center gap-2.5 shadow-2xs shrink-0 max-w-[280px] sm:max-w-none">
+                                    <div className="w-8 h-8 rounded-xl bg-emerald-500 flex items-center justify-center text-white shadow-xs shrink-0">
+                                        <Crown size={16} strokeWidth={2.5} />
                                     </div>
                                     <div className="min-w-0">
-                                        <p className="text-[8px] font-black text-emerald-800/70 uppercase tracking-widest leading-none">Active Plan</p>
-                                        <p className="text-[11px] sm:text-xs font-black text-emerald-700 uppercase tracking-tight mt-0.5 truncate">
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-[8px] font-black text-emerald-800/70 uppercase tracking-widest leading-none">Active Plan</p>
+                                            {isPaidActivePlan && activeExpiresAt && (
+                                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-600 text-white text-[8px] font-bold font-mono">
+                                                    <Timer size={9} />
+                                                    {timeRemaining.formatted || `${activePlan?.daysRemaining || 0}d left`}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="text-[12px] sm:text-xs font-black text-emerald-700 uppercase tracking-tight mt-0.5 truncate">
                                             {currentPlanName}
                                         </p>
+                                        {isPaidActivePlan && activeExpiresAt && (
+                                            <p className="text-[9px] font-semibold text-emerald-600/80 mt-0.5">
+                                                Valid till {formatExpiryDate(activeExpiresAt)}
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
 
@@ -776,12 +884,20 @@ export default function RetailerCommission() {
                             {/* Plans Comparison Grid - No Inner Scroll */}
                             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3.5 sm:gap-4">
                                 {plansToDisplay.map((plan) => {
+                                    const currentActivePrice = (activePlan && activePlan.price > 0 && !activePlan.isExpired)
+                                        ? parseFloat(String(activePlan.price || 0))
+                                        : (summary?.currentPlanPrice > 0 && !summary?.isExpired ? parseFloat(String(summary.currentPlanPrice || 0)) : 0);
+
                                     const isCurrent = (activePlan && (activePlan.id === plan.id || activePlan.planCode === plan.planCode)) ||
                                         (!activePlan && (plan.planCode === 'FREE' || plan.planName?.toLowerCase().includes('free')));
 
                                     const priceVal = parseFloat(String(plan.price || 0));
                                     const isUpgradingThis = upgradingPlanId === (plan.id || plan.planCode);
-                                    const hasSufficientBalance = walletBalanceNum >= priceVal;
+                                    const isHigherTier = isPaidActivePlan && !isCurrent && priceVal > currentActivePrice;
+                                    const isLowerTier = isPaidActivePlan && !isCurrent && priceVal < currentActivePrice;
+                                    const diffPrice = isHigherTier ? (priceVal - currentActivePrice) : priceVal;
+                                    const effectivePrice = isHigherTier ? diffPrice : priceVal;
+                                    const hasSufficientBalance = walletBalanceNum >= effectivePrice;
                                     const planDisplayName = getPlanDisplayName(plan);
                                     const planBadge = getPlanBadge(plan, isCurrent);
 
@@ -801,6 +917,8 @@ export default function RetailerCommission() {
                                             whileHover={{ y: -2, transition: { duration: 0.15 } }}
                                             className={`rounded-2xl sm:rounded-3xl p-4 sm:p-5 border flex flex-col justify-between transition-all relative ${isCurrent
                                                 ? 'bg-gradient-to-b from-emerald-50/70 to-white border-emerald-300 shadow-md ring-2 ring-emerald-500/20'
+                                                : isLowerTier
+                                                ? 'bg-slate-50/80 border-slate-200/80 opacity-80'
                                                 : 'bg-white hover:bg-slate-50/40 border-slate-200 shadow-xs hover:shadow-md'
                                                 }`}
                                         >
@@ -808,8 +926,13 @@ export default function RetailerCommission() {
                                             <div className="flex items-center justify-between gap-1.5 mb-2.5">
                                                 <span className={`text-[8.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg ${isCurrent
                                                     ? 'bg-emerald-600 text-white shadow-2xs'
+                                                    : isLowerTier
+                                                    ? 'bg-slate-200 text-slate-600 flex items-center gap-1'
+                                                    : isHigherTier
+                                                    ? 'bg-indigo-100 text-indigo-800'
                                                     : 'bg-slate-100 text-slate-600'
                                                     }`}>
+                                                    {isLowerTier && <Lock size={9} />}
                                                     {planBadge}
                                                 </span>
                                                 <span className="text-[9.5px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
@@ -817,23 +940,51 @@ export default function RetailerCommission() {
                                                 </span>
                                             </div>
 
-                                            {/* Plan Name & Price - Fully visible without truncation */}
+                                            {/* Plan Name & Price */}
                                             <div className="space-y-0.5 mb-2">
                                                 <div className="min-h-[2.2rem] flex items-center">
                                                     <h3 className="text-[14.5px] sm:text-[15.5px] md:text-base font-black text-black tracking-tight leading-snug break-normal" title={planDisplayName}>
                                                         {planDisplayName}
                                                     </h3>
                                                 </div>
-                                                <div className="flex items-baseline gap-1.5 pt-0.5">
-                                                    <span className="text-2xl sm:text-3xl font-black text-black font-mono tracking-tight">
-                                                        {priceVal === 0 ? 'FREE' : `₹${priceVal.toLocaleString('en-IN')}`}
-                                                    </span>
-                                                    {priceVal > 0 && (
-                                                        <span className="text-[10px] font-black text-indigo-800 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md uppercase tracking-wider">
-                                                            / Year
-                                                        </span>
+                                                <div className="flex flex-wrap items-baseline gap-1.5 pt-0.5">
+                                                    {isHigherTier ? (
+                                                        <>
+                                                            <span className="text-xs sm:text-sm font-bold text-slate-400 line-through font-mono">
+                                                                ₹{priceVal.toLocaleString('en-IN')}
+                                                            </span>
+                                                            <span className="text-2xl sm:text-3xl font-black text-indigo-700 font-mono tracking-tight">
+                                                                ₹{diffPrice.toLocaleString('en-IN')}
+                                                            </span>
+                                                            <span className="text-[9px] font-black text-indigo-800 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded-md uppercase tracking-wider">
+                                                                Upgrade Diff
+                                                            </span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <span className="text-2xl sm:text-3xl font-black text-black font-mono tracking-tight">
+                                                                {priceVal === 0 ? 'FREE' : `₹${priceVal.toLocaleString('en-IN')}`}
+                                                            </span>
+                                                            {priceVal > 0 && (
+                                                                <span className="text-[10px] font-black text-indigo-800 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                                                                    / Year
+                                                                </span>
+                                                            )}
+                                                        </>
                                                     )}
                                                 </div>
+                                                {isHigherTier && activeExpiresAt && (
+                                                    <p className="text-[9.5px] font-medium text-slate-500 pt-1 flex items-center gap-1">
+                                                        <Timer size={10} className="text-indigo-600 shrink-0" />
+                                                        <span className="truncate">Retains validity till {formatExpiryDate(activeExpiresAt)}</span>
+                                                    </p>
+                                                )}
+                                                {isCurrent && isPaidActivePlan && activeExpiresAt && (
+                                                    <p className="text-[9.5px] font-bold text-emerald-700 pt-1 flex items-center gap-1">
+                                                        <Timer size={10} className="text-emerald-600 shrink-0" />
+                                                        <span className="truncate">Expires in {timeRemaining.formatted}</span>
+                                                    </p>
+                                                )}
                                             </div>
 
                                             {/* Slabs breakdown list - Large, Bold & Dark Black */}
@@ -852,7 +1003,7 @@ export default function RetailerCommission() {
                                                     </div>
                                                 ))}
                                                 {slabsList.length > 6 && (
-                                                    <div className="flex items-center justify-between leading-tight">
+                                                    <div key={6} className="flex items-center justify-between leading-tight">
                                                         <span className="text-xs sm:text-[13px] font-bold font-mono text-black">
                                                             &#8377;{Number(slabsList[slabsList.length - 1].minAmount).toLocaleString('en-IN')} - &#8377;{Number(slabsList[slabsList.length - 1].maxAmount).toLocaleString('en-IN')}
                                                         </span>
@@ -873,6 +1024,19 @@ export default function RetailerCommission() {
                                                         <CheckCircle2 size={13} className="text-emerald-600" />
                                                         Current Plan
                                                     </button>
+                                                ) : isLowerTier ? (
+                                                    <div className="space-y-1">
+                                                        <button
+                                                            disabled
+                                                            className="w-full py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[10.5px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-not-allowed border border-slate-200"
+                                                        >
+                                                            <Lock size={12} className="text-slate-400" />
+                                                            Downgrade Locked
+                                                        </button>
+                                                        <p className="text-[9px] font-medium text-slate-400 text-center leading-tight">
+                                                            Active plan valid till {formatExpiryDate(activeExpiresAt)}
+                                                        </p>
+                                                    </div>
                                                 ) : hasSufficientBalance ? (
                                                     <button
                                                         onClick={() => handleUpgradePlan(plan)}
@@ -887,7 +1051,7 @@ export default function RetailerCommission() {
                                                         ) : (
                                                             <>
                                                                 <Sparkles size={13} className="text-amber-300" />
-                                                                <span>Pay &#8377;{priceVal.toLocaleString('en-IN')}/Year & Upgrade</span>
+                                                                <span>Pay &#8377;{effectivePrice.toLocaleString('en-IN')} {isHigherTier ? 'Upgrade' : '/Year & Upgrade'}</span>
                                                             </>
                                                         )}
                                                     </button>
@@ -896,13 +1060,13 @@ export default function RetailerCommission() {
                                                         onClick={() => {
                                                             setUpgradeNotification({
                                                                 type: 'error',
-                                                                message: `Insufficient balance (₹${walletBalanceNum.toFixed(2)}). Need ₹${priceVal.toFixed(2)} for ${planDisplayName}. Please add money to proceed.`
+                                                                message: `Insufficient balance (₹${walletBalanceNum.toFixed(2)}). Need ₹${effectivePrice.toFixed(2)} for ${planDisplayName}. Please add money to proceed.`
                                                             });
                                                         }}
                                                         className="w-full py-2.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors border border-slate-200"
                                                     >
                                                         <AlertCircle size={12} className="text-rose-500" />
-                                                        <span>Insufficient (₹{priceVal.toLocaleString('en-IN')})</span>
+                                                        <span>Insufficient (₹{effectivePrice.toLocaleString('en-IN')})</span>
                                                     </button>
                                                 )}
                                             </div>

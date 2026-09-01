@@ -258,6 +258,12 @@ public class User {
     @JoinColumn(name = "aeps_commission_plan_id")
     private CommissionPlan aepsCommissionPlan;
 
+    @Column(name = "aeps_commission_plan_activated_at")
+    private Instant aepsCommissionPlanActivatedAt;
+
+    @Column(name = "aeps_commission_plan_expires_at")
+    private Instant aepsCommissionPlanExpiresAt;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "user_roles",

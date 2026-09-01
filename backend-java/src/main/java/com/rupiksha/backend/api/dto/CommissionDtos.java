@@ -47,8 +47,25 @@ public class CommissionDtos {
             BigDecimal price,
             Boolean isDefault,
             Boolean enabled,
-            List<CommissionSlabDto> slabs
-    ) {}
+            List<CommissionSlabDto> slabs,
+            Instant planActivatedAt,
+            Instant planExpiresAt,
+            Long daysRemaining,
+            Boolean isExpired
+    ) {
+        public CommissionPlanDto(
+                UUID id,
+                String serviceType,
+                String planName,
+                String planCode,
+                BigDecimal price,
+                Boolean isDefault,
+                Boolean enabled,
+                List<CommissionSlabDto> slabs
+        ) {
+            this(id, serviceType, planName, planCode, price, isDefault, enabled, slabs, null, null, null, false);
+        }
+    }
 
     public record UpdateSlabsRequest(
             @NotEmpty(message = "Slabs list cannot be empty")
@@ -102,8 +119,24 @@ public class CommissionDtos {
             BigDecimal thisMonthCommission,
             BigDecimal aeps1Commission,
             String currentPlanName,
-            String currentPlanCode
-    ) {}
+            String currentPlanCode,
+            BigDecimal currentPlanPrice,
+            Instant planActivatedAt,
+            Instant planExpiresAt,
+            Long daysRemaining,
+            Boolean isExpired
+    ) {
+        public CommissionSummaryDto(
+                BigDecimal totalCommission,
+                BigDecimal todayCommission,
+                BigDecimal thisMonthCommission,
+                BigDecimal aeps1Commission,
+                String currentPlanName,
+                String currentPlanCode
+        ) {
+            this(totalCommission, todayCommission, thisMonthCommission, aeps1Commission, currentPlanName, currentPlanCode, BigDecimal.ZERO, null, null, null, false);
+        }
+    }
 
     public record AssignPlanRequest(
             @NotNull(message = "User ID is required")

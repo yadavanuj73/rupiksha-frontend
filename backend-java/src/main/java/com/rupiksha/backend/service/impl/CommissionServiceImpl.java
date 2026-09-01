@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -94,6 +95,11 @@ public class CommissionServiceImpl implements CommissionService {
 
         // 2. Resolve Retailer Plan
         CommissionPlan plan = retailer.getAepsCommissionPlan();
+        if (isPaidPlanExpired(retailer)) {
+            log.info("Retailer {} paid commission plan {} expired on {}. Falling back to default Free plan.",
+                    retailer.getUsername(), plan != null ? plan.getPlanName() : "", retailer.getAepsCommissionPlanExpiresAt());
+            plan = null;
+        }
         if (plan == null || !Boolean.TRUE.equals(plan.getEnabled())) {
             plan = commissionPlanRepository.findByServiceTypeAndIsDefaultTrue("AEPS_1")
                     .or(() -> commissionPlanRepository.findByServiceTypeAndPlanCode("AEPS_1", "FREE"))
@@ -465,9 +471,34 @@ public class CommissionServiceImpl implements CommissionService {
         User user = userRepository.findById(retailerId).orElse(null);
         String planName = "Free Plan";
         String planCode = "FREE";
+        BigDecimal currentPlanPrice = BigDecimal.ZERO;
+        Instant activatedAt = null;
+        Instant expiresAt = null;
+        Long daysRemaining = null;
+        boolean isExpired = false;
+
         if (user != null && user.getAepsCommissionPlan() != null) {
-            planName = user.getAepsCommissionPlan().getPlanName();
-            planCode = user.getAepsCommissionPlan().getPlanCode();
+            CommissionPlan userPlan = user.getAepsCommissionPlan();
+            BigDecimal price = userPlan.getPrice() != null ? userPlan.getPrice() : BigDecimal.ZERO;
+            if (price.compareTo(BigDecimal.ZERO) > 0) {
+                if (isPaidPlanExpired(user)) {
+                    isExpired = true;
+                    planName = "Free Plan";
+                    planCode = "FREE";
+                    currentPlanPrice = BigDecimal.ZERO;
+                } else {
+                    planName = userPlan.getPlanName();
+                    planCode = userPlan.getPlanCode();
+                    currentPlanPrice = price;
+                    activatedAt = user.getAepsCommissionPlanActivatedAt();
+                    expiresAt = user.getAepsCommissionPlanExpiresAt();
+                    daysRemaining = calculateDaysRemaining(expiresAt);
+                }
+            } else {
+                planName = userPlan.getPlanName();
+                planCode = userPlan.getPlanCode();
+                currentPlanPrice = BigDecimal.ZERO;
+            }
         }
 
         return new CommissionDtos.CommissionSummaryDto(
@@ -476,8 +507,36 @@ public class CommissionServiceImpl implements CommissionService {
                 monthComm != null ? monthComm : BigDecimal.ZERO,
                 aeps1Comm != null ? aeps1Comm : BigDecimal.ZERO,
                 planName,
-                planCode
+                planCode,
+                currentPlanPrice,
+                activatedAt,
+                expiresAt,
+                daysRemaining,
+                isExpired
         );
+    }
+
+    private boolean isPaidPlanExpired(User user) {
+        if (user == null || user.getAepsCommissionPlan() == null) {
+            return false;
+        }
+        CommissionPlan plan = user.getAepsCommissionPlan();
+        BigDecimal price = plan.getPrice() != null ? plan.getPrice() : BigDecimal.ZERO;
+        if (price.compareTo(BigDecimal.ZERO) <= 0) {
+            // Free plan never expires
+            return false;
+        }
+        Instant expiresAt = user.getAepsCommissionPlanExpiresAt();
+        if (expiresAt == null) {
+            return false;
+        }
+        return Instant.now().isAfter(expiresAt);
+    }
+
+    private Long calculateDaysRemaining(Instant expiresAt) {
+        if (expiresAt == null) return null;
+        long days = Duration.between(Instant.now(), expiresAt).toDays();
+        return Math.max(0, days);
     }
 
     @Override
@@ -487,13 +546,20 @@ public class CommissionServiceImpl implements CommissionService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + retailerId));
 
         CommissionPlan plan = user.getAepsCommissionPlan();
-        if (plan == null) {
+        boolean isExpired = isPaidPlanExpired(user);
+
+        if (plan == null || isExpired || !Boolean.TRUE.equals(plan.getEnabled())) {
             plan = commissionPlanRepository.findByServiceTypeAndIsDefaultTrue("AEPS_1")
                     .or(() -> commissionPlanRepository.findByServiceTypeAndPlanCode("AEPS_1", "FREE"))
                     .orElseThrow(() -> new IllegalStateException("Default AEPS 1 commission plan not configured in system."));
+            return mapPlanToDtoWithUserContext(plan, null, null, null, isExpired);
         }
 
-        return mapPlanToDto(plan);
+        Instant activatedAt = user.getAepsCommissionPlanActivatedAt();
+        Instant expiresAt = user.getAepsCommissionPlanExpiresAt();
+        Long daysRemaining = calculateDaysRemaining(expiresAt);
+
+        return mapPlanToDtoWithUserContext(plan, activatedAt, expiresAt, daysRemaining, false);
     }
 
     @Override
@@ -510,6 +576,13 @@ public class CommissionServiceImpl implements CommissionService {
                 .orElseThrow(() -> new IllegalArgumentException("Commission plan not found: " + planId));
 
         user.setAepsCommissionPlan(plan);
+        if (plan.getPrice() != null && plan.getPrice().compareTo(BigDecimal.ZERO) > 0) {
+            user.setAepsCommissionPlanActivatedAt(Instant.now());
+            user.setAepsCommissionPlanExpiresAt(Instant.now().plus(365, ChronoUnit.DAYS));
+        } else {
+            user.setAepsCommissionPlanActivatedAt(null);
+            user.setAepsCommissionPlanExpiresAt(null);
+        }
         userRepository.save(user);
 
         log.info("Admin {} assigned commission plan {} to user {}", admin.getUsername(), plan.getPlanName(), user.getUsername());
@@ -521,24 +594,70 @@ public class CommissionServiceImpl implements CommissionService {
         User retailer = userRepository.findById(retailerId)
                 .orElseThrow(() -> new IllegalArgumentException("Retailer user not found"));
 
-        CommissionPlan plan = commissionPlanRepository.findByIdWithSlabs(planId)
+        CommissionPlan targetPlan = commissionPlanRepository.findByIdWithSlabs(planId)
                 .orElseThrow(() -> new IllegalArgumentException("Commission plan not found"));
 
-        if (!Boolean.TRUE.equals(plan.getEnabled())) {
+        if (!Boolean.TRUE.equals(targetPlan.getEnabled())) {
             throw new IllegalArgumentException("The selected commission plan is currently disabled");
         }
 
-        if (retailer.getAepsCommissionPlan() != null && retailer.getAepsCommissionPlan().getId().equals(planId)) {
-            return mapPlanToDto(plan);
+        CommissionPlan currentPlan = retailer.getAepsCommissionPlan();
+        boolean hasActivePaidPlan = currentPlan != null 
+                && currentPlan.getPrice() != null 
+                && currentPlan.getPrice().compareTo(BigDecimal.ZERO) > 0 
+                && !isPaidPlanExpired(retailer);
+
+        BigDecimal targetPrice = targetPlan.getPrice() != null ? targetPlan.getPrice() : BigDecimal.ZERO;
+        BigDecimal currentPrice = (hasActivePaidPlan && currentPlan.getPrice() != null) ? currentPlan.getPrice() : BigDecimal.ZERO;
+
+        // If user is already on this exact plan
+        if (currentPlan != null && currentPlan.getId().equals(planId)) {
+            Instant activatedAt = retailer.getAepsCommissionPlanActivatedAt();
+            Instant expiresAt = retailer.getAepsCommissionPlanExpiresAt();
+            Long daysRemaining = calculateDaysRemaining(expiresAt);
+            return mapPlanToDtoWithUserContext(targetPlan, activatedAt, expiresAt, daysRemaining, false);
         }
 
-        BigDecimal price = plan.getPrice() != null ? plan.getPrice() : BigDecimal.ZERO;
-        if (price.compareTo(BigDecimal.ZERO) > 0) {
+        // Downgrade Prevention: Cannot downgrade to lower-priced plan or Free plan while active plan is valid
+        if (hasActivePaidPlan && targetPrice.compareTo(currentPrice) <= 0) {
+            throw new IllegalArgumentException(
+                    "Cannot downgrade your plan while your current active plan is valid. Plan downgrades are only permitted after your current plan expires."
+            );
+        }
+
+        Instant newActivatedAt;
+        Instant newExpiresAt;
+        BigDecimal priceToDebit;
+
+        if (hasActivePaidPlan) {
+            // Upgrading from an active paid plan (e.g. ₹2,999 to ₹4,999 or ₹7,999)
+            // 1. Charge only the difference amount
+            priceToDebit = targetPrice.subtract(currentPrice);
+            // 2. Preserve remaining validity / original expiry date
+            newActivatedAt = retailer.getAepsCommissionPlanActivatedAt() != null 
+                    ? retailer.getAepsCommissionPlanActivatedAt() 
+                    : Instant.now();
+            newExpiresAt = retailer.getAepsCommissionPlanExpiresAt() != null 
+                    ? retailer.getAepsCommissionPlanExpiresAt() 
+                    : Instant.now().plus(365, ChronoUnit.DAYS);
+        } else {
+            // Fresh purchase from Free plan or after plan expiry
+            priceToDebit = targetPrice;
+            if (targetPrice.compareTo(BigDecimal.ZERO) > 0) {
+                newActivatedAt = Instant.now();
+                newExpiresAt = Instant.now().plus(365, ChronoUnit.DAYS);
+            } else {
+                newActivatedAt = null;
+                newExpiresAt = null;
+            }
+        }
+
+        if (priceToDebit.compareTo(BigDecimal.ZERO) > 0) {
             String idempotencyKey = "UPGRADE-" + retailerId + "-" + planId + "-" + System.currentTimeMillis();
             walletService.debitForService(
                     retailerId,
-                    price,
-                    "Commission Plan Upgrade: " + plan.getPlanName(),
+                    priceToDebit,
+                    "Commission Plan Upgrade: " + targetPlan.getPlanName() + (hasActivePaidPlan ? " (Upgrade Difference)" : ""),
                     WalletTransactionContext.PLAN_UPGRADE,
                     "PLAN_UPGRADE",
                     ipAddress != null ? ipAddress : "127.0.0.1",
@@ -546,14 +665,29 @@ public class CommissionServiceImpl implements CommissionService {
             );
         }
 
-        retailer.setAepsCommissionPlan(plan);
+        retailer.setAepsCommissionPlan(targetPlan);
+        retailer.setAepsCommissionPlanActivatedAt(newActivatedAt);
+        retailer.setAepsCommissionPlanExpiresAt(newExpiresAt);
         userRepository.save(retailer);
 
-        log.info("Retailer {} successfully upgraded commission plan to {}", retailer.getUsername(), plan.getPlanName());
-        return mapPlanToDto(plan);
+        log.info("Retailer {} successfully upgraded commission plan to {} (Debited ₹{}, Expiry: {})", 
+                retailer.getUsername(), targetPlan.getPlanName(), priceToDebit, newExpiresAt);
+
+        Long daysRemaining = calculateDaysRemaining(newExpiresAt);
+        return mapPlanToDtoWithUserContext(targetPlan, newActivatedAt, newExpiresAt, daysRemaining, false);
     }
 
     private CommissionDtos.CommissionPlanDto mapPlanToDto(CommissionPlan plan) {
+        return mapPlanToDtoWithUserContext(plan, null, null, null, false);
+    }
+
+    private CommissionDtos.CommissionPlanDto mapPlanToDtoWithUserContext(
+            CommissionPlan plan,
+            Instant activatedAt,
+            Instant expiresAt,
+            Long daysRemaining,
+            Boolean isExpired
+    ) {
         List<CommissionDtos.CommissionSlabDto> slabs = plan.getSlabs().stream()
                 .map(s -> {
                     BigDecimal ret = s.getRetailerCommission() != null ? s.getRetailerCommission() : BigDecimal.ZERO;
@@ -583,7 +717,11 @@ public class CommissionServiceImpl implements CommissionService {
                 plan.getPrice(),
                 plan.getIsDefault(),
                 plan.getEnabled(),
-                slabs
+                slabs,
+                activatedAt,
+                expiresAt,
+                daysRemaining,
+                isExpired != null ? isExpired : false
         );
     }
 
