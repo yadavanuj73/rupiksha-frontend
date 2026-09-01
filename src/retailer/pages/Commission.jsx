@@ -364,11 +364,11 @@ export default function RetailerCommission() {
         <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8 pb-28 font-['Inter',sans-serif] bg-slate-50 min-h-screen">
 
             {/* ── TOP SECTION: TWO-COLUMN COMPACT LAYOUT ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
 
-                {/* ── LEFT COLUMN: Earning Slabs with Active Plan Badge & Upgrade Button (Span 7) ── */}
-                <div className="lg:col-span-7 flex flex-col">
-                    <div className="bg-white rounded-3xl p-5 sm:p-6 md:p-7 border border-slate-200/70 shadow-sm flex-1 flex flex-col justify-between space-y-4 sm:space-y-5 overflow-hidden">
+                {/* ── LEFT COLUMN: Earning Slabs with Active Plan Badge & Upgrade Button (Span 8) ── */}
+                <div className="lg:col-span-8 flex flex-col">
+                    <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/70 shadow-sm flex-1 flex flex-col justify-between space-y-4 overflow-hidden">
 
                         {/* Header: Active Plan Badge on Left + Title + Upgrade Plan on Right */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-slate-100">
@@ -384,11 +384,6 @@ export default function RetailerCommission() {
                                         <p className="text-[12px] sm:text-xs font-black text-emerald-700 uppercase tracking-tight mt-0.5 truncate">
                                             {currentPlanName}
                                         </p>
-                                        {isPaidActivePlan && activeExpiresAt && (
-                                            <p className="text-[9px] font-semibold text-emerald-600/80 mt-0.5">
-                                                Valid till {formatExpiryDate(activeExpiresAt)}
-                                            </p>
-                                        )}
                                     </div>
                                 </div>
 
@@ -404,7 +399,6 @@ export default function RetailerCommission() {
                                             <Timer size={13} className="text-black shrink-0" strokeWidth={2.5} />
                                             <span>
                                                 Expires in <span className="font-black text-black">{timeRemaining.formatted || `${activePlan?.daysRemaining || 0}d left`}</span>
-                                                <span className="font-black text-black ml-1 font-sans text-[10.5px] hidden sm:inline">(Valid till {formatExpiryDate(activeExpiresAt)})</span>
                                             </span>
                                         </p>
                                     )}
@@ -485,32 +479,32 @@ export default function RetailerCommission() {
                     </div>
                 </div>
 
-                {/* ── RIGHT COLUMN: 4 Metric Cards in 2x2 Grid (Span 5) ────────────── */}
-                <div className="lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
+                {/* ── RIGHT COLUMN: 4 Metric Cards in 2x2 Grid (Span 4) ────────────── */}
+                <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 gap-3 h-full">
                     {/* 1. Total Commission */}
                     <motion.div
                         initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.05 }}
-                        className="bg-white rounded-3xl p-5 md:p-6 border border-slate-200/70 shadow-sm relative overflow-hidden group hover:shadow-md transition-all flex flex-col justify-between"
+                        className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200/70 shadow-2xs relative overflow-hidden group hover:shadow-xs transition-all flex flex-col justify-between"
                     >
                         <div>
                             <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Earned</span>
-                                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
-                                    <Award size={18} />
+                                <span className="text-[9.5px] font-black uppercase tracking-wider text-slate-400">Total Earned</span>
+                                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
+                                    <Award size={15} />
                                 </div>
                             </div>
-                            <div className="mt-4 flex items-baseline gap-1">
-                                <span className="text-slate-400 text-sm font-bold">&#8377;</span>
-                                <span className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight font-mono">
+                            <div className="mt-2.5 flex items-baseline gap-0.5">
+                                <span className="text-slate-400 text-xs font-bold">&#8377;</span>
+                                <span className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight font-mono">
                                     {Number(summary.totalCommission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </span>
                             </div>
                         </div>
-                        <p className="text-[10px] font-bold text-emerald-600 mt-3 flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                            Lifetime commissions credited
+                        <p className="text-[9.5px] font-bold text-emerald-600 mt-2 flex items-center gap-1 truncate">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                            Lifetime credited
                         </p>
                     </motion.div>
 
@@ -519,25 +513,25 @@ export default function RetailerCommission() {
                         initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 }}
-                        className="bg-white rounded-3xl p-5 md:p-6 border border-slate-200/70 shadow-sm relative overflow-hidden group hover:shadow-md transition-all flex flex-col justify-between"
+                        className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200/70 shadow-2xs relative overflow-hidden group hover:shadow-xs transition-all flex flex-col justify-between"
                     >
                         <div>
                             <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Today's Earnings</span>
-                                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
-                                    <Clock size={18} />
+                                <span className="text-[9.5px] font-black uppercase tracking-wider text-slate-400">Today's Earnings</span>
+                                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+                                    <Clock size={15} />
                                 </div>
                             </div>
-                            <div className="mt-4 flex items-baseline gap-1">
-                                <span className="text-slate-400 text-sm font-bold">&#8377;</span>
-                                <span className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight font-mono">
+                            <div className="mt-2.5 flex items-baseline gap-0.5">
+                                <span className="text-slate-400 text-xs font-bold">&#8377;</span>
+                                <span className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight font-mono">
                                     {Number(summary.todayCommission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </span>
                             </div>
                         </div>
-                        <p className="text-[10px] font-bold text-slate-400 mt-3 flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
-                            Earned since 12:00 AM today
+                        <p className="text-[9.5px] font-bold text-slate-400 mt-2 flex items-center gap-1 truncate">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0"></span>
+                            Earned today
                         </p>
                     </motion.div>
 
@@ -546,25 +540,25 @@ export default function RetailerCommission() {
                         initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.15 }}
-                        className="bg-white rounded-3xl p-5 md:p-6 border border-slate-200/70 shadow-sm relative overflow-hidden group hover:shadow-md transition-all flex flex-col justify-between"
+                        className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200/70 shadow-2xs relative overflow-hidden group hover:shadow-xs transition-all flex flex-col justify-between"
                     >
                         <div>
                             <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">This Month</span>
-                                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
-                                    <Calendar size={18} />
+                                <span className="text-[9.5px] font-black uppercase tracking-wider text-slate-400">This Month</span>
+                                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
+                                    <Calendar size={15} />
                                 </div>
                             </div>
-                            <div className="mt-4 flex items-baseline gap-1">
-                                <span className="text-slate-400 text-sm font-bold">&#8377;</span>
-                                <span className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight font-mono">
+                            <div className="mt-2.5 flex items-baseline gap-0.5">
+                                <span className="text-slate-400 text-xs font-bold">&#8377;</span>
+                                <span className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight font-mono">
                                     {Number(summary.thisMonthCommission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </span>
                             </div>
                         </div>
-                        <p className="text-[10px] font-bold text-blue-600 mt-3 flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                            Current billing month
+                        <p className="text-[9.5px] font-bold text-blue-600 mt-2 flex items-center gap-1 truncate">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
+                            Current month
                         </p>
                     </motion.div>
 
@@ -573,25 +567,25 @@ export default function RetailerCommission() {
                         initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.2 }}
-                        className="bg-white rounded-3xl p-5 md:p-6 border border-slate-200/70 shadow-sm relative overflow-hidden group hover:shadow-md transition-all flex flex-col justify-between"
+                        className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200/70 shadow-2xs relative overflow-hidden group hover:shadow-xs transition-all flex flex-col justify-between"
                     >
                         <div>
                             <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">AEPS 1 Total</span>
-                                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
-                                    <Fingerprint size={18} />
+                                <span className="text-[9.5px] font-black uppercase tracking-wider text-slate-400">AEPS 1 Total</span>
+                                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
+                                    <Fingerprint size={15} />
                                 </div>
                             </div>
-                            <div className="mt-4 flex items-baseline gap-1">
-                                <span className="text-slate-400 text-sm font-bold">&#8377;</span>
-                                <span className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight font-mono">
+                            <div className="mt-2.5 flex items-baseline gap-0.5">
+                                <span className="text-slate-400 text-xs font-bold">&#8377;</span>
+                                <span className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight font-mono">
                                     {Number(summary.aeps1Commission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </span>
                             </div>
                         </div>
-                        <p className="text-[10px] font-bold text-amber-600 mt-3 flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                            Cash withdrawal commission
+                        <p className="text-[9.5px] font-bold text-amber-600 mt-2 flex items-center gap-1 truncate">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
+                            Cash withdrawal
                         </p>
                     </motion.div>
                 </div>
