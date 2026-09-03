@@ -22,27 +22,26 @@ const MenuItem = ({ item, isActive, onClick, isExpanded, toggleExpand, activeTab
                         onClick();
                     }
                 }}
-                className={`flex items-center ${isSidebarOpen ? 'justify-between px-2.5' : 'justify-center px-0'} py-2 my-1 cursor-pointer group transition-all duration-200 rounded-xl relative`}
+                className={`flex items-center ${isSidebarOpen ? 'justify-between px-2.5' : 'justify-center px-0'} py-2 my-1 cursor-pointer group transition-all duration-200 rounded-xl relative border ${
+                    isActive
+                        ? 'bg-slate-950 text-white border-slate-900 shadow-sm'
+                        : 'border-transparent text-slate-950 hover:bg-gradient-to-r hover:from-blue-50/90 hover:via-indigo-50/80 hover:to-purple-50/80 hover:text-indigo-950 hover:border-indigo-100/80 hover:shadow-xs'
+                }`}
                 title={!isSidebarOpen ? item.label : undefined}
-                style={{ color: isActive ? '#ffffff' : '#000000' }}
             >
-                {isActive && (
-                    <div className="absolute inset-0 bg-black border border-black shadow-sm rounded-xl z-0" />
-                )}
-
                 <div className={`flex items-center ${isSidebarOpen ? 'space-x-2.5' : 'justify-center'} relative z-10 w-full min-w-0`}>
                     {item.iconColor ? (
-                        <div className={`p-1.5 rounded-lg shrink-0 transition-all duration-200 ${isActive ? 'bg-white/20 text-white ring-1 ring-white/30' : item.iconColor}`}>
-                            <item.icon size={15} strokeWidth={2.5} />
+                        <div className={`p-1.5 rounded-lg shrink-0 transition-all duration-200 ${isActive ? 'bg-white/20 text-white ring-1 ring-white/30' : item.iconColor} group-hover:scale-105`}>
+                            <item.icon size={16} strokeWidth={2.5} />
                         </div>
                     ) : (
-                        <div className="shrink-0 transition-all duration-200" style={{ color: isActive ? '#ffffff' : '#000000' }}>
-                            <item.icon size={18} strokeWidth={isActive ? 2.5 : 2} />
+                        <div className={`shrink-0 transition-all duration-200 ${isActive ? 'text-white' : 'text-slate-950 group-hover:text-blue-600'} group-hover:scale-105`}>
+                            <item.icon size={19} strokeWidth={isActive ? 2.5 : 2.2} />
                         </div>
                     )}
                     
                     {isSidebarOpen && (
-                        <span className="font-extrabold text-xs tracking-tight truncate flex-1 text-black" style={{ color: isActive ? '#ffffff' : '#000000' }}>
+                        <span className={`font-black text-[13px] tracking-tight truncate flex-1 ${isActive ? 'text-white' : 'text-slate-950 group-hover:text-indigo-950'}`}>
                             {item.label}
                         </span>
                     )}
@@ -51,7 +50,7 @@ const MenuItem = ({ item, isActive, onClick, isExpanded, toggleExpand, activeTab
                 {isSidebarOpen && item.hasSubmenu && (
                     <div className="relative z-10 shrink-0 ml-1">
                         <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : 'rotate-0'}`}>
-                            <ChevronDown size={13} style={{ color: isActive ? '#ffffff' : '#475569' }} />
+                            <ChevronDown size={14} className={isActive ? 'text-white' : 'text-slate-700 group-hover:text-indigo-600'} />
                         </div>
                     </div>
                 )}
@@ -64,7 +63,7 @@ const MenuItem = ({ item, isActive, onClick, isExpanded, toggleExpand, activeTab
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        className="ml-6 pl-2 border-l-2 border-slate-300 overflow-hidden space-y-0.5"
+                        className="ml-5 pl-2.5 border-l-2 border-indigo-100/90 overflow-hidden space-y-1 my-1"
                     >
                         {item.subItems.map((sub, idx) => {
                             const isSubActive = activeTab === sub.id;
@@ -84,11 +83,11 @@ const MenuItem = ({ item, isActive, onClick, isExpanded, toggleExpand, activeTab
                                             setActiveTab(sub.id);
                                         }
                                     }}
-                                    className="block w-full text-left px-2 py-1.5 text-[10.5px] font-black uppercase tracking-wider transition-all rounded-lg cursor-pointer hover:bg-slate-200 hover:text-black truncate"
-                                    style={{ 
-                                        color: isSubActive ? '#000000' : '#334155',
-                                        backgroundColor: isSubActive ? '#e2e8f0' : undefined
-                                    }}
+                                    className={`block w-full text-left px-2.5 py-1.5 text-[12px] font-bold transition-all duration-200 rounded-lg cursor-pointer truncate ${
+                                        isSubActive
+                                            ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-black shadow-xs'
+                                            : 'text-slate-900 hover:bg-gradient-to-r hover:from-blue-50 hover:via-indigo-50/90 hover:to-purple-50 hover:text-blue-700 hover:font-black hover:translate-x-1 hover:shadow-2xs'
+                                    }`}
                                 >
                                     {sub.label}
                                 </div>
@@ -133,8 +132,8 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
             iconColor: 'bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white shadow-sm',
             hasSubmenu: true,
             subItems: [
-                { id: 'aeps_services_1', label: 'AEPS 1' },
-                { id: 'aeps_services_2', label: 'AEPS 2' },
+                { id: 'aeps_services_1', label: 'Aeps 1' },
+                { id: 'aeps_services_2', label: 'Aeps 2' },
                 { id: 'matm', label: 'Micro ATM (m-ATM)' },
                 { id: 'cms', label: 'CMS Banking' },
                 { id: 'utility', label: 'Recharge & Bill Pay' },
@@ -152,19 +151,19 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
             icon: History,
             hasSubmenu: true,
             subItems: [
-                { id: 'aeps_1', label: 'AEPS 1' },
-                { id: 'aeps_2', label: 'AEPS 2' },
+                { id: 'aeps_1', label: 'Aeps 1' },
+                { id: 'aeps_2', label: 'Aeps 2' },
                 { id: 'payout_hub', label: 'Payout Hub' },
                 { id: 'wallet', label: 'Wallet' },
-                { id: 'wallet_to_wallet', label: 'Wallet To Wallet' },
-                { id: 'mobile_dth_recharge', label: 'Mobile & Dth Recharge' },
+                { id: 'wallet_to_wallet', label: 'Wallet to Wallet' },
+                { id: 'mobile_dth_recharge', label: 'Mobile & DTH Recharge' },
                 { id: 'micro_atm_transactions', label: 'Micro ATM Transactions' },
                 { id: 'payment_gateway', label: 'Payment Gateway' },
                 { id: 'credit_card_bill', label: 'Credit Card Bill' },
                 { id: 'upi_cash_withdrawal', label: 'UPI Cash Withdrawal' }
             ]
         },
-        { id: 'commission', label: 'Commission', icon: Coins, onClick: () => setActiveTab('commission') },
+        { id: 'commission', label: 'Commission Plan', icon: Coins, onClick: () => setActiveTab('commission') },
         { id: 'gst_einvoice_report', label: 'GST E-Invoice Report', icon: FileChartColumn, onClick: () => setActiveTab('gst_einvoice_report') },
     ];
 
@@ -187,10 +186,10 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
             initial={false}
             animate={{
                 width: typeof window !== 'undefined' && window.innerWidth >= 1024 
-                    ? (isExpanded ? 208 : 56) 
-                    : 208,
+                    ? (isExpanded ? 218 : 56) 
+                    : 218,
                 x: typeof window !== 'undefined' && window.innerWidth < 1024 
-                    ? (showMobileSidebar ? 0 : -220) 
+                    ? (showMobileSidebar ? 0 : -230) 
                     : 0
             }}
             transition={{ type: 'spring', stiffness: 400, damping: 35 }}
@@ -206,7 +205,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
                         animate={{ opacity: 1 }}
                         className="flex items-center justify-between w-full"
                     >
-                        <span className="text-[10px] font-black tracking-widest uppercase text-black">Navigation</span>
+                        <span className="text-xs font-black tracking-wider text-slate-950">Navigation</span>
                         <button
                             type="button"
                             onClick={toggleLock}
@@ -235,7 +234,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
             </div>
 
             {/* Navigation List */}
-            <div className="flex-1 overflow-y-auto py-1 scrollbar-none">
+            <div className="flex-1 overflow-y-auto py-1.5 scrollbar-none">
                 <div className="flex flex-col">
                     <MenuItem
                         item={{ id: 'dashboard', label: 'Dashboard', icon: LayoutGrid }}

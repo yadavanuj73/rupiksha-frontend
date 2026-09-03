@@ -314,7 +314,7 @@ export default function RetailerCommission() {
 
         const targetPlanPrice = parseFloat(String(targetPlan.price || 0));
         const isUpgradeDiff = currentActivePrice > 0 && targetPlanPrice > currentActivePrice;
-        const priceToPay = isUpgradeDiff ? (targetPlanPrice - currentActivePrice) : targetPlanPrice;
+        const priceToPay = isUpgradeDiff ? (targetPlanPrice - currentActivePrice + 500) : targetPlanPrice;
 
         if (priceToPay > 0 && walletBal < priceToPay) {
             setUpgradeNotification({
@@ -890,7 +890,7 @@ export default function RetailerCommission() {
                                     const isUpgradingThis = upgradingPlanId === (plan.id || plan.planCode);
                                     const isHigherTier = isPaidActivePlan && !isCurrent && priceVal > currentActivePrice;
                                     const isLowerTier = isPaidActivePlan && !isCurrent && priceVal < currentActivePrice;
-                                    const diffPrice = isHigherTier ? (priceVal - currentActivePrice) : priceVal;
+                                    const diffPrice = isHigherTier ? (priceVal - currentActivePrice + 500) : priceVal;
                                     const effectivePrice = isHigherTier ? diffPrice : priceVal;
                                     const hasSufficientBalance = walletBalanceNum >= effectivePrice;
                                     const planDisplayName = getPlanDisplayName(plan);

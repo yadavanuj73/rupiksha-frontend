@@ -402,10 +402,10 @@ public class CommissionServiceImplTest {
 
         assertNotNull(result);
         assertEquals("PLAN_4999", result.planCode());
-        // Verify only the difference ₹2000 (4999 - 2999) is debited
+        // Verify difference + 500 extra: ₹2500 (4999 - 2999 + 500) is debited
         verify(walletService, times(1)).debitForService(
                 eq(retailer.getId()),
-                eq(new BigDecimal("2000.00")),
+                eq(new BigDecimal("2500.00")),
                 contains("Upgrade Difference"),
                 eq(WalletTransactionContext.PLAN_UPGRADE),
                 eq("PLAN_UPGRADE"),

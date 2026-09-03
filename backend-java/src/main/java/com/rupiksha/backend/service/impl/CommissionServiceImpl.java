@@ -631,8 +631,8 @@ public class CommissionServiceImpl implements CommissionService {
 
         if (hasActivePaidPlan) {
             // Upgrading from an active paid plan (e.g. ₹2,999 to ₹4,999 or ₹7,999)
-            // 1. Charge only the difference amount
-            priceToDebit = targetPrice.subtract(currentPrice);
+            // 1. Charge difference amount + 500 extra
+            priceToDebit = targetPrice.subtract(currentPrice).add(new BigDecimal("500"));
             // 2. Preserve remaining validity / original expiry date
             newActivatedAt = retailer.getAepsCommissionPlanActivatedAt() != null 
                     ? retailer.getAepsCommissionPlanActivatedAt() 

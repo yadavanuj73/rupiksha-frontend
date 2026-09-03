@@ -364,7 +364,7 @@ const PayoutHub = () => {
             if (isAmountBelowMin) {
                 setSubmitError('Minimum transfer amount is ₹500.00.');
             } else if (!isAmountWithinBalance) {
-                setSubmitError(`Insufficient wallet balance. Total required: ₹${payoutChargeInfo.totalDeduction.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (Transfer ₹${Number(form.amount).toLocaleString('en-IN')} + Payout Charges ₹${payoutChargeInfo.totalCharge.toFixed(2)} incl. 18% GST). Available: ₹${walletBalance.toLocaleString('en-IN')}.`);
+                setSubmitError(`Insufficient wallet balance. Total required: ₹${payoutChargeInfo.totalDeduction.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (Transfer ₹${Number(form.amount).toLocaleString('en-IN')} + Base Charge ₹${payoutChargeInfo.baseCharge.toFixed(2)} + GST (${payoutChargeInfo.gstRate || 18}%) ₹${payoutChargeInfo.gstAmount.toFixed(2)} = Total Charges ₹${payoutChargeInfo.totalCharge.toFixed(2)}). Available: ₹${walletBalance.toLocaleString('en-IN')}.`);
             } else if (!isAccountMatching) {
                 setSubmitError('Account number and confirm account number do not match.');
             } else {
@@ -1392,16 +1392,29 @@ const PayoutHub = () => {
                                     </div>
                                 </div>
 
-                                <div className="flex items-baseline justify-between py-1 border-t border-blue-100/60 pt-1.5">
-                                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                                        Payout Charges
-                                    </span>
-                                    <div className="text-right">
-                                        <span className="text-xs sm:text-sm font-black font-mono text-slate-800">
-                                            ₹ {payoutChargeInfo.totalCharge.toFixed(2)}
+                                <div className="space-y-1.5 py-1.5 border-t border-blue-100/60 pt-2">
+                                    <div className="flex items-baseline justify-between">
+                                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                                            Base Charges
                                         </span>
-                                        <span className="ml-1 text-[9.5px] font-bold text-slate-500">
-                                            (incl. 18% GST)
+                                        <span className="text-xs sm:text-sm font-bold font-mono text-slate-700">
+                                            ₹ {payoutChargeInfo.baseCharge.toFixed(2)}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-baseline justify-between">
+                                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                                            GST ({payoutChargeInfo.gstRate || 18}%)
+                                        </span>
+                                        <span className="text-xs sm:text-sm font-bold font-mono text-slate-700">
+                                            + ₹ {payoutChargeInfo.gstAmount.toFixed(2)}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-baseline justify-between pt-1 border-t border-blue-100/50">
+                                        <span className="text-[11px] font-black uppercase tracking-wider text-slate-800">
+                                            Total Payout Charges
+                                        </span>
+                                        <span className="text-xs sm:text-sm font-black font-mono text-slate-900">
+                                            ₹ {payoutChargeInfo.totalCharge.toFixed(2)}
                                         </span>
                                     </div>
                                 </div>

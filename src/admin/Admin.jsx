@@ -3025,7 +3025,7 @@ const Admin = () => {
     const OPERATIONS_NAV = [
         ...((currentUser?.role === 'ADMIN' || isAdminUser) ? [
             { id: 'Wallet-Overview', icon: Wallet, label: 'Wallet Manager' },
-            { id: 'Commission', icon: IndianRupee, label: 'Commission' },
+            { id: 'Commission', icon: IndianRupee, label: 'Commission Plan' },
             { id: 'PayoutCharges', icon: SendHorizontal, label: 'Payout Charges' },
         ] : []),
     ];
