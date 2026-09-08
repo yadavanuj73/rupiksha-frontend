@@ -1667,21 +1667,15 @@ export default function BankingTerminal({ provider, status, setStatus }) {
             <CdoOtpModal
                 isOpen={showCdoModal}
                 onClose={() => setShowCdoModal(false)}
-                onSuccess={handleTransactCdo}
+                formData={formData}
+                cdoData={cdoData}
+                cdoStep={cdoStep}
+                setCdoStep={setCdoStep}
                 onValidateOtp={handleValidateCdoOtp}
-                onResendOtp={triggerGenerateCdoOtp}
-                depositData={{
-                    amount: formData.amount,
-                    mobile: formData.mobile,
-                    accountNo: formData.accountNo,
-                    bankName: formData.bankName,
-                    bankIin: formData.bankIin,
-                    remarks: formData.remarks
-                }}
-                walletBalance={currentWalletBal}
+                onTransact={handleTransactCdo}
                 loading={cdoLoading}
                 error={cdoError}
-                cdoTxnDetails={cdoTxnDetails}
+                walletBalance={currentWalletBal}
             />
 
             {/* Aadhaar OTP Verification Modal for Transactions > ₹5,000 */}
