@@ -22,7 +22,9 @@ import {
     MapPin,
     BadgeCheck,
     Edit3,
-    Banknote
+    Banknote,
+    Wallet,
+    UserCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRD } from '../../../hooks/useRD';
@@ -35,6 +37,7 @@ import CaptureSuccess from '../../../components/CaptureSuccess';
 import { aepsService } from '../../../services/apiService';
 import ReceiptModal from './ReceiptModal';
 import AadhaarOtpModal from './AadhaarOtpModal';
+import CdoOtpModal from './CdoOtpModal';
 import DailyAuthentication from '../../../components/DailyAuthentication';
 import { validateVerhoeff } from '../../../utils/verhoeff';
 
@@ -62,38 +65,38 @@ const TAB_CONFIG = {
     CASH_WITHDRAWAL: {
         label: 'Cash Withdrawal',
         shortLabel: 'Withdrawal',
-        icon: Banknote,
-        gradient: 'from-blue-600 via-indigo-600 to-indigo-700',
+        icon: Coins,
+        gradient: 'from-blue-600 via-indigo-600 to-violet-600',
         bgGlow: 'bg-blue-500/10',
         borderColor: 'border-blue-500/40',
         activePill: 'from-blue-600 to-indigo-700',
         badge: 'Cash Out',
         balloonColor: 'from-blue-400 to-indigo-500',
-        desc: 'Instant Aadhaar biometric cash withdrawal'
+        desc: 'Withdraw cash directly from customer bank'
     },
     BALANCE_INQUIRY: {
         label: 'Balance Inquiry',
         shortLabel: 'Balance',
         icon: Search,
-        gradient: 'from-sky-500 via-blue-600 to-indigo-600',
-        bgGlow: 'bg-sky-500/10',
-        borderColor: 'border-sky-500/40',
-        activePill: 'from-sky-500 to-blue-700',
+        gradient: 'from-emerald-500 via-teal-600 to-cyan-600',
+        bgGlow: 'bg-emerald-500/10',
+        borderColor: 'border-emerald-500/40',
+        activePill: 'from-emerald-600 to-teal-700',
         badge: 'Live Balance',
-        balloonColor: 'from-sky-400 to-blue-500',
-        desc: 'Real-time bank account balance check'
+        balloonColor: 'from-emerald-400 to-teal-500',
+        desc: 'Check live balance in real time'
     },
     MINI_STATEMENT: {
         label: 'Mini Statement',
         shortLabel: 'Statement',
         icon: FileText,
-        gradient: 'from-purple-600 via-violet-600 to-indigo-700',
-        bgGlow: 'bg-purple-500/10',
-        borderColor: 'border-purple-500/40',
-        activePill: 'from-purple-600 to-violet-700',
+        gradient: 'from-amber-500 via-orange-600 to-yellow-600',
+        bgGlow: 'bg-amber-500/10',
+        borderColor: 'border-amber-500/40',
+        activePill: 'from-amber-600 to-orange-700',
         badge: 'Past 9 Txns',
-        balloonColor: 'from-purple-400 to-violet-600',
-        desc: 'Instant 9-10 recent bank account entries'
+        balloonColor: 'from-amber-400 to-orange-500',
+        desc: 'Get recent 9 transactions'
     },
     AADHAAR_PAY: {
         label: 'Aadhaar Pay',
@@ -123,7 +126,8 @@ const TAB_CONFIG = {
 
 export default function BankingTerminal({ provider, status, setStatus }) {
     const { captureState, status: rdStatus, device, error: rdError, captureResult, capture, reset } = useRD();
-    const { refreshWallet } = useWallet();
+    const { balance, availableBalance, refreshWallet } = useWallet();
+    const currentWalletBal = parseFloat(availableBalance || balance || '0') || 0;
 
     const isFingpay = provider === 'fingpay';
     const tabKeys = isFingpay
@@ -136,6 +140,7 @@ export default function BankingTerminal({ provider, status, setStatus }) {
     }));
 
     const [activeTab, setActiveTab] = useState('CASH_WITHDRAWAL');
+    const [depositMode, setDepositMode] = useState('AADHAAR'); // 'AADHAAR' | 'OTP'
     const [currentStep, setCurrentStep] = useState(1); // 1 = Input Details, 2 = Biometric Capture & Confirm
     const [idType, setIdType] = useState('AADHAAR'); // 'AADHAAR' (12 digits) or 'VID' (16 digits)
     
@@ -148,6 +153,7 @@ export default function BankingTerminal({ provider, status, setStatus }) {
     const [formData, setFormData] = useState({
         mobile: '',
         aadhar: '',
+        accountNumber: '',
         bankId: '',
         bankName: '',
         bankIin: '',
@@ -186,6 +192,19 @@ export default function BankingTerminal({ provider, status, setStatus }) {
     const [otpLoading, setOtpLoading] = useState(false);
     const [otpError, setOtpError] = useState('');
     const [txnOtpData, setTxnOtpData] = useState({ otp: '', fpTransactionId: '' });
+
+    // Fingpay Cash Deposit with OTP (CDO) Modal State
+    const [showCdoModal, setShowCdoModal] = useState(false);
+    const [cdoStep, setCdoStep] = useState(2); // 2 = Enter OTP, 3 = Confirm Beneficiary
+    const [cdoLoading, setCdoLoading] = useState(false);
+    const [cdoError, setCdoError] = useState('');
+    const [cdoData, setCdoData] = useState({
+        fingpayTransactionId: '',
+        cdPkId: 0,
+        merchantTranId: '',
+        beneficiaryName: '',
+        otp: ''
+    });
 
     // Fetch banks and lock location on mount
     useEffect(() => {
@@ -235,10 +254,12 @@ export default function BankingTerminal({ provider, status, setStatus }) {
     // Reset fields on tab change
     const handleTabChange = (tabId) => {
         setActiveTab(tabId);
+        setDepositMode('AADHAAR');
         setCurrentStep(1);
         setFormData(prev => ({ 
             ...prev, 
             amount: '',
+            accountNumber: '',
             remarks: tabId === 'CASH_WITHDRAWAL' ? 'Cash Withdrawal' : 
                      tabId === 'BALANCE_INQUIRY' ? 'Balance Inquiry' : 
                      tabId === 'MINI_STATEMENT' ? 'Mini Statement' : 
@@ -250,6 +271,16 @@ export default function BankingTerminal({ provider, status, setStatus }) {
         setShowOtpModal(false);
         setOtpError('');
         setTxnOtpData({ otp: '', fpTransactionId: '' });
+        setShowCdoModal(false);
+        setCdoStep(2);
+        setCdoError('');
+        setCdoData({
+            fingpayTransactionId: '',
+            cdPkId: 0,
+            merchantTranId: '',
+            beneficiaryName: '',
+            otp: ''
+        });
         if (reset) reset();
         setDenominations({
             500: 0,
@@ -288,6 +319,8 @@ export default function BankingTerminal({ provider, status, setStatus }) {
         } else if (name === 'aadhar') {
             const maxLen = idType === 'VID' ? 16 : 12;
             setFormData(prev => ({ ...prev, [name]: value.replace(/\D/g, '').slice(0, maxLen) }));
+        } else if (name === 'accountNumber') {
+            setFormData(prev => ({ ...prev, [name]: value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 24) }));
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));
         }
@@ -341,11 +374,22 @@ export default function BankingTerminal({ provider, status, setStatus }) {
         if (!formData.mobile || formData.mobile.length !== 10) {
             return "Please enter a valid 10-digit customer mobile number.";
         }
-        const expectedLen = idType === 'VID' ? 16 : 12;
-        if (!formData.aadhar || formData.aadhar.length !== expectedLen) {
-            return idType === 'VID' 
-                ? "Please enter a valid 16-digit Virtual ID (VID)." 
-                : "Please enter a valid 12-digit Aadhaar number.";
+        if (isDeposit && depositMode === 'OTP') {
+            if (!formData.accountNumber || formData.accountNumber.trim().length < 6) {
+                return "Please enter a valid customer bank account number.";
+            }
+        } else {
+            const expectedLen = idType === 'VID' ? 16 : 12;
+            if (!formData.aadhar || formData.aadhar.length !== expectedLen) {
+                return idType === 'VID' 
+                    ? "Please enter a valid 16-digit Virtual ID (VID)." 
+                    : "Please enter a valid 12-digit Aadhaar number.";
+            }
+            if (!isAadhaarChecksumValid) {
+                return idType === 'VID'
+                    ? "Invalid Virtual ID (VID). Please verify the 16 digits."
+                    : "Invalid Aadhaar number checksum (Verhoeff algorithm failed). Please re-check the 12 digits.";
+            }
         }
         if (!formData.bankName && !formData.bankIin) {
             return "Please select a customer bank from the list.";
@@ -361,8 +405,13 @@ export default function BankingTerminal({ provider, status, setStatus }) {
             if (amt % 5 !== 0) {
                 return "Transaction amount must be a multiple of 5 (e.g. ₹500, ₹505, ₹1,000).";
             }
-            if (isDeposit && amt !== denominationSum) {
-                return `Denomination total (₹${denominationSum}) does not match entered transaction amount (₹${formData.amount}).`;
+            if (isDeposit) {
+                if (amt > currentWalletBal) {
+                    return `Insufficient wallet balance (₹${currentWalletBal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}). Maximum deposit allowed is ₹${currentWalletBal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}.`;
+                }
+                if (amt !== denominationSum) {
+                    return `Denomination total (₹${denominationSum.toLocaleString('en-IN')}) does not match entered transaction amount (₹${formData.amount}).`;
+                }
             }
         }
         if (!bcConsent) {
@@ -409,14 +458,175 @@ export default function BankingTerminal({ provider, status, setStatus }) {
         }
     };
 
+    // Fingpay CDO Leg 1: Trigger Generate OTP
+    const triggerGenerateCdoOtp = async () => {
+        setCdoLoading(true);
+        setCdoError('');
+        setErrorMsg('');
+        try {
+            const payload = {
+                mobileNumber: formData.mobile,
+                iin: formData.bankIin,
+                bankName: formData.bankName,
+                accountNumber: formData.accountNumber,
+                amount: parseFloat(formData.amount),
+                requestRemarks: formData.remarks || `Cash Deposit from ${formData.mobile}`,
+                latitude: location?.latitude || "28.6139",
+                longitude: location?.longitude || "77.2090",
+                deviceId: device ? (device.serial || device.dpID || '10068311') : '10068311'
+            };
+
+            const res = await aepsService.generateCdoOtp(payload);
+            if (res.success && res.data) {
+                setCdoData({
+                    fingpayTransactionId: res.data.fingpayTransactionId || '',
+                    cdPkId: res.data.cdPkId || 0,
+                    merchantTranId: res.data.merchantTranId || '',
+                    beneficiaryName: '',
+                    otp: ''
+                });
+                setCdoStep(2);
+                setShowCdoModal(true);
+                setSuccessMsg("OTP sent to customer's mobile number.");
+            } else {
+                setErrorMsg(res.message || "Failed to generate Cash Deposit OTP. Please verify details.");
+            }
+        } catch (err) {
+            console.error("generateCdoOtp error", err);
+            setErrorMsg(err.message || "Failed to connect to Fingpay OTP service.");
+        } finally {
+            setCdoLoading(false);
+        }
+    };
+
+    // Fingpay CDO Leg 2: Validate OTP & Fetch Beneficiary Details
+    const handleValidateCdoOtp = async (enteredOtp) => {
+        setCdoLoading(true);
+        setCdoError('');
+        try {
+            const payload = {
+                mobileNumber: formData.mobile,
+                iin: formData.bankIin,
+                bankName: formData.bankName,
+                accountNumber: formData.accountNumber,
+                amount: parseFloat(formData.amount),
+                requestRemarks: formData.remarks || `Cash Deposit from ${formData.mobile}`,
+                latitude: location?.latitude || "28.6139",
+                longitude: location?.longitude || "77.2090",
+                deviceId: device ? (device.serial || device.dpID || '10068311') : '10068311',
+                fingpayTransactionId: cdoData.fingpayTransactionId,
+                otp: enteredOtp,
+                cdPkId: cdoData.cdPkId,
+                merchantTranId: cdoData.merchantTranId
+            };
+
+            const res = await aepsService.validateCdoOtp(payload);
+            if (res.success && res.data) {
+                setCdoData(prev => ({
+                    ...prev,
+                    beneficiaryName: res.data.beneficiaryName || 'Customer Account Holder',
+                    otp: enteredOtp
+                }));
+                setCdoStep(3); // Beneficiary verified!
+            } else {
+                setCdoError(res.message || "OTP verification failed. Please verify the OTP.");
+            }
+        } catch (err) {
+            console.error("validateCdoOtp error", err);
+            setCdoError(err.message || "Failed to validate OTP with bank.");
+        } finally {
+            setCdoLoading(false);
+        }
+    };
+
+    // Fingpay CDO Leg 3: Execute Cash Deposit with OTP
+    const handleTransactCdo = async () => {
+        setCdoLoading(true);
+        setCdoError('');
+        try {
+            const payload = {
+                mobileNumber: formData.mobile,
+                iin: formData.bankIin,
+                bankName: formData.bankName,
+                accountNumber: formData.accountNumber,
+                amount: parseFloat(formData.amount),
+                requestRemarks: formData.remarks || `Cash Deposit from ${formData.mobile}`,
+                latitude: location?.latitude || "28.6139",
+                longitude: location?.longitude || "77.2090",
+                deviceId: device ? (device.serial || device.dpID || '10068311') : '10068311',
+                fingpayTransactionId: cdoData.fingpayTransactionId,
+                otp: cdoData.otp,
+                cdPkId: cdoData.cdPkId,
+                merchantTranId: cdoData.merchantTranId
+            };
+
+            const res = await aepsService.transactCdo(payload);
+            if (res.success && res.data) {
+                const data = res.data;
+                const receipt = {
+                    status: 'SUCCESS',
+                    message: res.message || 'Cash Deposit Completed Successfully',
+                    txnId: data.merchantTranId || cdoData.merchantTranId,
+                    fpTxnId: data.fingpayTransactionId || cdoData.fingpayTransactionId,
+                    bankRRN: data.bankRrn || data.bankRRN || data.stan || 'N/A',
+                    transactionAmount: parseFloat(formData.amount),
+                    balanceAmount: data.balanceAmount || 0,
+                    maskedAadhaar: 'Account: ' + formData.accountNumber,
+                    mobile: formData.mobile,
+                    bankName: formData.bankName,
+                    timestamp: new Date().toLocaleString('en-IN'),
+                    agentId: status.agentId || 'BC-TERMINAL',
+                    serviceLabel: 'Cash Deposit (OTP)',
+                    serviceType: 'CASH_DEPOSIT'
+                };
+                setShowCdoModal(false);
+                setReceiptData(receipt);
+                setReceiptOpen(true);
+                setSuccessMsg("Cash Deposit executed successfully!");
+
+                // Refresh wallet
+                if (refreshWallet) refreshWallet();
+                window.dispatchEvent(new Event('walletUpdated'));
+                window.dispatchEvent(new Event('dataUpdated'));
+
+                // Reset form
+                setFormData({
+                    mobile: '',
+                    aadhar: '',
+                    accountNumber: '',
+                    bankId: '',
+                    bankName: '',
+                    bankIin: '',
+                    amount: '',
+                    remarks: 'Cash Deposit'
+                });
+                setBankSearch('');
+                setBcConsent(false);
+                setDenominations({ 500: 0, 200: 0, 100: 0, 50: 0, 20: 0, 10: 0 });
+            } else {
+                setCdoError(res.message || res.data?.responseMessage || "Cash deposit transaction declined by bank.");
+            }
+        } catch (err) {
+            console.error("transactCdo error", err);
+            setCdoError(err.message || "Failed to execute deposit transaction.");
+        } finally {
+            setCdoLoading(false);
+        }
+    };
+
     // Transition from Step 1 to Step 2
     const handleProceedToStep2 = (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
         setErrorMsg('');
         setSuccessMsg('');
         const err = validateStep1();
         if (err) {
             setErrorMsg(err);
+            return;
+        }
+
+        if (isDeposit && depositMode === 'OTP') {
+            triggerGenerateCdoOtp();
             return;
         }
 
@@ -799,6 +1009,36 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                         </span>
                                     </div>
 
+                                    {/* Mode Selector for Cash Deposit: Biometric vs OTP (Fingpay Section 1 & 2) */}
+                                    {isDeposit && (
+                                        <div className="bg-slate-100 p-1 rounded-2xl border border-slate-300 grid grid-cols-2 gap-1 mb-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setDepositMode('AADHAAR')}
+                                                className={`py-2 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                                                    depositMode === 'AADHAAR'
+                                                        ? 'bg-black text-white shadow-md'
+                                                        : 'text-slate-700 hover:bg-slate-200'
+                                                }`}
+                                            >
+                                                <Fingerprint size={14} />
+                                                <span>Aadhaar Biometric Deposit</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setDepositMode('OTP')}
+                                                className={`py-2 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                                                    depositMode === 'OTP'
+                                                        ? 'bg-emerald-700 text-white shadow-md'
+                                                        : 'text-slate-700 hover:bg-slate-200'
+                                                }`}
+                                            >
+                                                <KeyRound size={14} />
+                                                <span>Account Deposit with OTP (CDO)</span>
+                                            </button>
+                                        </div>
+                                    )}
+
                                     {/* Row 1: Mobile & Identification (Big, comfortable, bold) */}
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         {/* Customer Mobile Number */}
@@ -824,59 +1064,83 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                             />
                                         </div>
 
-                                        {/* Aadhaar / VID Switcher & Input */}
-                                        <div className="space-y-1">
-                                            <div className="flex items-center justify-between">
-                                                <label className="text-xs font-black text-black flex items-center gap-1">
-                                                    <Fingerprint size={13} className="text-blue-700 font-bold" />
-                                                    Identity ({idType})
+                                        {/* Aadhaar / VID Switcher OR Account Number (for CDO) */}
+                                        {isDeposit && depositMode === 'OTP' ? (
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-black text-black flex items-center justify-between">
+                                                    <span className="flex items-center gap-1 text-black">
+                                                        <CreditCard size={13} className="text-emerald-700 font-bold" />
+                                                        Bank Account Number
+                                                    </span>
+                                                    <span className="text-[9px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded uppercase">
+                                                        OTP Mode
+                                                    </span>
                                                 </label>
-                                                <div className="flex items-center gap-1 bg-slate-200 p-0.5 rounded-lg text-[9px] font-black">
+                                                <input
+                                                    type="text"
+                                                    name="accountNumber"
+                                                    maxLength="24"
+                                                    placeholder="Enter bank account number"
+                                                    value={formData.accountNumber}
+                                                    onChange={handleFormChange}
+                                                    className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-slate-300 text-sm font-black text-black placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-600 transition tracking-wider bg-slate-50/70"
+                                                    required
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-1">
+                                                <div className="flex items-center justify-between">
+                                                    <label className="text-xs font-black text-black flex items-center gap-1">
+                                                        <Fingerprint size={13} className="text-blue-700 font-bold" />
+                                                        Identity ({idType})
+                                                    </label>
+                                                    <div className="flex items-center gap-1 bg-slate-200 p-0.5 rounded-lg text-[9px] font-black">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleIdTypeChange('AADHAAR')}
+                                                            className={`px-2 py-0.5 rounded-md transition ${
+                                                                idType === 'AADHAAR' ? 'bg-black text-white shadow-xs' : 'text-slate-800'
+                                                            }`}
+                                                        >
+                                                            12D Aadhaar
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleIdTypeChange('VID')}
+                                                            className={`px-2 py-0.5 rounded-md transition ${
+                                                                idType === 'VID' ? 'bg-black text-white shadow-xs' : 'text-slate-800'
+                                                            }`}
+                                                        >
+                                                            16D VID
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div className="relative">
+                                                    <input
+                                                        type={showAadhaar ? "text" : "password"}
+                                                        name="aadhar"
+                                                        maxLength={idType === 'VID' ? 16 : 12}
+                                                        placeholder={idType === 'VID' ? "16-digit Virtual ID" : "12-digit Aadhaar Number"}
+                                                        value={formData.aadhar}
+                                                        onChange={handleFormChange}
+                                                        className="w-full px-3.5 pr-10 py-2.5 rounded-2xl border-2 border-slate-300 text-sm font-black text-black placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 transition tracking-wider bg-slate-50/70"
+                                                        required
+                                                    />
                                                     <button
                                                         type="button"
-                                                        onClick={() => handleIdTypeChange('AADHAAR')}
-                                                        className={`px-2 py-0.5 rounded-md transition ${
-                                                            idType === 'AADHAAR' ? 'bg-black text-white shadow-xs' : 'text-slate-800'
-                                                        }`}
+                                                        onClick={() => setShowAadhaar(!showAadhaar)}
+                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-black p-0.5 cursor-pointer"
                                                     >
-                                                        12D Aadhaar
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleIdTypeChange('VID')}
-                                                        className={`px-2 py-0.5 rounded-md transition ${
-                                                            idType === 'VID' ? 'bg-black text-white shadow-xs' : 'text-slate-800'
-                                                        }`}
-                                                    >
-                                                        16D VID
+                                                        {showAadhaar ? <EyeOff size={15} /> : <Eye size={15} />}
                                                     </button>
                                                 </div>
                                             </div>
-
-                                            <div className="relative">
-                                                <input
-                                                    type={showAadhaar ? "text" : "password"}
-                                                    name="aadhar"
-                                                    maxLength={idType === 'VID' ? 16 : 12}
-                                                    placeholder={idType === 'VID' ? "16-digit Virtual ID" : "12-digit Aadhaar Number"}
-                                                    value={formData.aadhar}
-                                                    onChange={handleFormChange}
-                                                    className="w-full px-3.5 pr-10 py-2.5 rounded-2xl border-2 border-slate-300 text-sm font-black text-black placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 transition tracking-wider bg-slate-50/70"
-                                                    required
-                                                />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setShowAadhaar(!showAadhaar)}
-                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-black p-0.5 cursor-pointer"
-                                                >
-                                                    {showAadhaar ? <EyeOff size={15} /> : <Eye size={15} />}
-                                                </button>
-                                            </div>
-                                        </div>
+                                        )}
                                     </div>
 
-                                    {/* Inline Verhoeff Status Indicator */}
-                                    {formData.aadhar.length > 0 && (
+                                    {/* Inline Verhoeff Status Indicator (only for Aadhaar Mode) */}
+                                    {(!isDeposit || depositMode === 'AADHAAR') && formData.aadhar.length > 0 && (
                                         <div className="flex items-center justify-between text-[10px] px-1 font-bold">
                                             <span className="text-black font-extrabold">
                                                 Digits: {formData.aadhar.length}/{idType === 'VID' ? 16 : 12}
@@ -1028,11 +1292,41 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                     {/* Amount Section (if required) */}
                                     {requiresAmount ? (
                                         <div className="space-y-2">
-                                            <div className="space-y-1">
-                                                <label className="text-xs font-black text-black flex items-center justify-between">
-                                                    <span>Transaction Amount (₹)</span>
-                                                    <span className="text-[10px] font-black text-slate-700">
-                                                        ₹100 - ₹10,000 (Multiples of ₹5)
+                                                {/* Wallet Balance notice for Cash Deposit */}
+                                                {isDeposit && (
+                                                    <div className={`p-2.5 rounded-2xl border flex items-center justify-between transition-colors ${
+                                                        formData.amount && parseFloat(formData.amount) > currentWalletBal
+                                                            ? 'bg-rose-50 border-rose-300 text-rose-950'
+                                                            : 'bg-emerald-50/80 border-emerald-300 text-emerald-950'
+                                                    }`}>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className={`w-7 h-7 rounded-xl flex items-center justify-center ${
+                                                                formData.amount && parseFloat(formData.amount) > currentWalletBal
+                                                                    ? 'bg-rose-200 text-rose-800'
+                                                                    : 'bg-emerald-200 text-emerald-800'
+                                                            }`}>
+                                                                <Wallet size={14} />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[10px] font-black uppercase tracking-wider">Retailer Wallet Balance</p>
+                                                                <p className="text-xs font-black">₹{currentWalletBal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                                                            </div>
+                                                        </div>
+                                                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${
+                                                            formData.amount && parseFloat(formData.amount) > currentWalletBal
+                                                                ? 'bg-rose-200 border-rose-400 text-rose-900'
+                                                                : 'bg-emerald-200 border-emerald-400 text-emerald-900'
+                                                        }`}>
+                                                            {formData.amount && parseFloat(formData.amount) > currentWalletBal ? 'Exceeds Balance' : 'Max Cap Active'}
+                                                        </span>
+                                                    </div>
+                                                )}
+
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-black text-black uppercase tracking-wider flex justify-between items-center">
+                                                    <span>Enter Amount (₹)</span>
+                                                    <span className="text-slate-600 font-bold text-[9px]">
+                                                        {isDeposit ? `Multiples of ₹5 (Max ₹${currentWalletBal.toLocaleString('en-IN')})` : 'Multiples of ₹5 (Min ₹100 - Max ₹10,000)'}
                                                     </span>
                                                 </label>
                                                 <div className="relative">
@@ -1043,20 +1337,28 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                                         type="number"
                                                         name="amount"
                                                         min="100"
-                                                        max="10000"
+                                                        max={isDeposit ? Math.min(10000, currentWalletBal) : 10000}
                                                         step="5"
                                                         placeholder="Enter amount (e.g. 500)"
                                                         value={formData.amount}
                                                         onChange={handleFormChange}
                                                         onWheel={(e) => e.target.blur()}
                                                         className={`w-full pl-8 pr-3.5 py-2.5 rounded-2xl border-2 text-lg font-black text-black placeholder:text-slate-500 focus:outline-none transition bg-slate-50/70 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                                                            formData.amount && !isNaN(parseFloat(formData.amount)) && parseFloat(formData.amount) % 5 !== 0
+                                                            formData.amount && parseFloat(formData.amount) > currentWalletBal
+                                                                ? 'border-rose-400 focus:ring-2 focus:ring-rose-500 focus:border-rose-500 bg-rose-50/30'
+                                                                : formData.amount && !isNaN(parseFloat(formData.amount)) && parseFloat(formData.amount) % 5 !== 0
                                                                 ? 'border-amber-400 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-amber-50/30'
                                                                 : 'border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-600'
                                                         }`}
                                                         required
                                                     />
                                                 </div>
+                                                {isDeposit && formData.amount && parseFloat(formData.amount) > currentWalletBal && (
+                                                    <p className="text-[11px] font-bold text-rose-700 flex items-center gap-1 pt-0.5 animate-fadeIn">
+                                                        <AlertCircle size={12} className="text-rose-600 shrink-0" />
+                                                        <span>Deposit amount exceeds available wallet balance (₹{currentWalletBal.toLocaleString('en-IN')}). Max allowed is ₹{currentWalletBal.toLocaleString('en-IN')}.</span>
+                                                    </p>
+                                                )}
                                                 {formData.amount && !isNaN(parseFloat(formData.amount)) && parseFloat(formData.amount) % 5 !== 0 && (
                                                     <p className="text-[11px] font-bold text-amber-700 flex items-center gap-1 pt-0.5 animate-fadeIn">
                                                         <AlertCircle size={12} className="text-amber-600 shrink-0" />
@@ -1067,7 +1369,7 @@ export default function BankingTerminal({ provider, status, setStatus }) {
 
                                             {/* Quick Amount Pills */}
                                             <div className="grid grid-cols-3 gap-1.5">
-                                                {QUICK_AMOUNTS.map(amt => (
+                                                {QUICK_AMOUNTS.filter(amt => !isDeposit || amt <= Math.max(currentWalletBal, 100)).map(amt => (
                                                     <button
                                                         key={amt}
                                                         type="button"
@@ -1164,16 +1466,20 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                 {/* Proceed Button */}
                                 <motion.button
                                     type="submit"
-                                    disabled={!bcConsent}
+                                    disabled={!bcConsent || (isDeposit && formData.amount && parseFloat(formData.amount) > currentWalletBal)}
                                     whileHover={{ scale: bcConsent ? 1.01 : 1 }}
                                     whileTap={{ scale: bcConsent ? 0.98 : 1 }}
                                     className={`w-full py-3 px-4 rounded-2xl font-black uppercase tracking-wider text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-md group ${
-                                        bcConsent 
+                                        bcConsent && !(isDeposit && formData.amount && parseFloat(formData.amount) > currentWalletBal)
                                             ? `bg-black hover:bg-slate-900 text-white shadow-black/25` 
                                             : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
                                     }`}
                                 >
-                                    <span>Proceed to Biometric Capture</span>
+                                    <span>
+                                        {isDeposit && depositMode === 'OTP' 
+                                            ? 'Generate OTP & Fetch Beneficiary' 
+                                            : 'Proceed to Biometric Capture'}
+                                    </span>
                                     <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                                 </motion.button>
                             </div>
@@ -1356,6 +1662,27 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                     )}
                 </AnimatePresence>
             )}
+
+            {/* CDO (OTP-Based Cash Deposit) Modal */}
+            <CdoOtpModal
+                isOpen={showCdoModal}
+                onClose={() => setShowCdoModal(false)}
+                onSuccess={handleTransactCdo}
+                onValidateOtp={handleValidateCdoOtp}
+                onResendOtp={triggerGenerateCdoOtp}
+                depositData={{
+                    amount: formData.amount,
+                    mobile: formData.mobile,
+                    accountNo: formData.accountNo,
+                    bankName: formData.bankName,
+                    bankIin: formData.bankIin,
+                    remarks: formData.remarks
+                }}
+                walletBalance={currentWalletBal}
+                loading={cdoLoading}
+                error={cdoError}
+                cdoTxnDetails={cdoTxnDetails}
+            />
 
             {/* Aadhaar OTP Verification Modal for Transactions > ₹5,000 */}
             <AadhaarOtpModal

@@ -11,6 +11,8 @@ public class CashDepositRequest {
     private String log;
     private Double amount;
     private Long bankId;
+    private String requestRemarks;
+    private String deviceId;
 
     // Biometric fields
     private String errorCode;

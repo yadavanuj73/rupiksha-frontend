@@ -609,12 +609,23 @@ public class FingpayProvider implements AepsProvider {
         } else if (serviceType.equals("CASH_DEPOSIT")) {
             CashDepositRequest req = new CashDepositRequest();
             req.setUid(uidLong);
-            req.setMobile(context.getMerchant().getMobile());
+            String custMobile = context.getRequest().getMobileNumber();
+            if (custMobile == null || custMobile.isBlank()) {
+                custMobile = context.getRequest().getCustomerMobile();
+            }
+            if (custMobile == null || custMobile.isBlank()) {
+                custMobile = context.getMerchant().getMobile();
+            }
+            req.setMobile(custMobile);
             req.setAadhar(context.getRequest().getAdhaarNumber());
             req.setLat(context.getRequest().getLatitude() != null ? context.getRequest().getLatitude() : "28.6139");
             req.setLog(context.getRequest().getLongitude() != null ? context.getRequest().getLongitude() : "77.2090");
             req.setAmount(context.getRequest().getAmount().doubleValue());
             req.setBankId(bank.getId());
+            req.setRequestRemarks(context.getRequest().getRequestRemarks() != null && !context.getRequest().getRequestRemarks().isBlank()
+                    ? context.getRequest().getRequestRemarks()
+                    : "CD");
+            req.setDeviceId(context.getRequest().getDeviceId());
 
             populateBiometricsCD(req, parsed);
 

@@ -226,8 +226,15 @@ fingpay:
       url: ${FINGPAY_AP_STATUS_URL:https://fingpayap.tapits.in/fpaepsweb/api/auth/merchantInfo/statusCheckV3/aadhaarPay/merchantLoginId}
   cd:
     url: ${FINGPAY_CD_URL:https://fingpayap.tapits.in/fpaepsservice/api/CashDeposit/merchant/deposit}
+    ack-url: ${FINGPAY_CD_ACK_URL:https://fingpayap.tapits.in/fpaepsservice/api/CashDeposit/merchant/deposit/acknowledgement}
     status:
       url: ${FINGPAY_CD_STATUS_URL:https://fingpayap.tapits.in/fpaepsweb/api/auth/merchantInfo/statusCheckV2/merchantLoginId/cashDeposit}
+    otp:
+      generate-url: ${FINGPAY_CDO_GEN_URL:https://fingpayap.tapits.in/fpaepsservice/api/CashDeposit/merchant/generate/otp}
+      validate-url: ${FINGPAY_CDO_VAL_URL:https://fingpayap.tapits.in/fpaepsservice/api/CashDeposit/merchant/validate/otp}
+      txn-url: ${FINGPAY_CDO_TXN_URL:https://fingpayap.tapits.in/fpaepsservice/api/CashDeposit/merchant/transaction}
+      ack-url: ${FINGPAY_CDO_ACK_URL:https://fingpayap.tapits.in/fpaepsservice//api/CashDeposit/otp/merchant/acknowledgement}
+      status-url: ${FINGPAY_CDO_STATUS_URL:https://fingpayap.tapits.in/fpaepsweb/api/auth/merchantInfo/statusCheck/cashDepositWithOtp}
   daily-auth:
     url: ${FINGPAY_DAILY_AUTH_URL:https://fingpayap.tapits.in/fpaepsservice/auth/tfauth/merchant/validate/aadhar}
   otp:

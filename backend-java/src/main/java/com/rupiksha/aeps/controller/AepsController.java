@@ -65,6 +65,8 @@ public class AepsController {
     private final com.rupiksha.aeps.provider.fingpay.service.CwStatusService cwStatusService;
     private final WalletService walletService;
     private final com.rupiksha.backend.service.CommissionService commissionService;
+    private final com.rupiksha.aeps.provider.fingpay.service.CashDepositOtpService cashDepositOtpService;
+    private final com.rupiksha.backend.repository.UserRepository userRepository;
 
 
 
@@ -395,6 +397,68 @@ public class AepsController {
         }
     }
 
+    @PostMapping("/cdo/generate-otp")
+    public ResponseEntity<ApiResponse<com.rupiksha.aeps.provider.fingpay.dto.CdoResponse>> generateCdoOtp(
+            @RequestBody com.rupiksha.aeps.provider.fingpay.dto.CdoRequest request) {
+        log.info("REST request to generate Cash Deposit OTP for acc: {}, amount: {}", request.getAccountNumber(), request.getAmount());
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof JwtPrincipal principal)) {
+            return ResponseEntity.status(401).body(ApiResponse.error("Merchant session is unauthenticated or expired."));
+        }
+        com.rupiksha.backend.domain.User mainUser = userRepository.findById(java.util.UUID.fromString(principal.userId()))
+                .or(() -> userRepository.findByMobile(principal.username()))
+                .orElseThrow(() -> new RuntimeException("Merchant user record not found"));
+
+        var response = cashDepositOtpService.generateOtp(request, mainUser);
+        if (response.isSuccess()) {
+            return ResponseEntity.ok(ApiResponse.success(response.getMessage() != null ? response.getMessage() : "OTP sent successfully", response));
+        } else {
+            return ResponseEntity.badRequest().body(ApiResponse.error(response.getMessage() != null ? response.getMessage() : "Failed to generate OTP", response));
+        }
+    }
+
+    @PostMapping("/cdo/validate-otp")
+    public ResponseEntity<ApiResponse<com.rupiksha.aeps.provider.fingpay.dto.CdoResponse>> validateCdoOtp(
+            @RequestBody com.rupiksha.aeps.provider.fingpay.dto.CdoRequest request) {
+        log.info("REST request to validate Cash Deposit OTP for txnId: {}", request.getFingpayTransactionId());
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof JwtPrincipal principal)) {
+            return ResponseEntity.status(401).body(ApiResponse.error("Merchant session is unauthenticated or expired."));
+        }
+        com.rupiksha.backend.domain.User mainUser = userRepository.findById(java.util.UUID.fromString(principal.userId()))
+                .or(() -> userRepository.findByMobile(principal.username()))
+                .orElseThrow(() -> new RuntimeException("Merchant user record not found"));
+
+        var response = cashDepositOtpService.validateOtp(request, mainUser);
+        if (response.isSuccess()) {
+            return ResponseEntity.ok(ApiResponse.success(response.getMessage() != null ? response.getMessage() : "OTP validated successfully", response));
+        } else {
+            return ResponseEntity.badRequest().body(ApiResponse.error(response.getMessage() != null ? response.getMessage() : "OTP validation failed", response));
+        }
+    }
+
+    @PostMapping("/cdo/transaction")
+    public ResponseEntity<ApiResponse<com.rupiksha.aeps.provider.fingpay.dto.CdoResponse>> transactCdo(
+            @RequestBody com.rupiksha.aeps.provider.fingpay.dto.CdoRequest request) {
+        log.info("REST request to execute Cash Deposit with OTP: amount={}, acc={}", request.getAmount(), request.getAccountNumber());
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof JwtPrincipal principal)) {
+            return ResponseEntity.status(401).body(ApiResponse.error("Merchant session is unauthenticated or expired."));
+        }
+        com.rupiksha.backend.domain.User mainUser = userRepository.findById(java.util.UUID.fromString(principal.userId()))
+                .or(() -> userRepository.findByMobile(principal.username()))
+                .orElseThrow(() -> new RuntimeException("Merchant user record not found"));
+
+        var response = cashDepositOtpService.executeTransaction(request, mainUser);
+        if (response.isSuccess()) {
+            return ResponseEntity.ok(ApiResponse.success(response.getMessage() != null ? response.getMessage() : "Transaction successful", response));
+        } else {
+            return ResponseEntity.badRequest().body(ApiResponse.error(response.getMessage() != null ? response.getMessage() : "Transaction failed", response));
+        }
+    }
 
     @PostMapping("/transaction-status")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getTransactionStatus(@RequestBody Map<String, String> reqBody) {

@@ -558,5 +558,26 @@ export const aepsService = {
       method: "POST",
       body: JSON.stringify({ kycType }),
     }),
+
+  /**
+   * Fingpay Cash Deposit with OTP (CDO) flow
+   */
+  generateCdoOtp: (payload) =>
+    apiFetch("/aeps/cdo/generate-otp", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  validateCdoOtp: (payload) =>
+    apiFetch("/aeps/cdo/validate-otp", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  transactCdo: (payload) =>
+    apiFetch("/aeps/cdo/transaction", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 };
 

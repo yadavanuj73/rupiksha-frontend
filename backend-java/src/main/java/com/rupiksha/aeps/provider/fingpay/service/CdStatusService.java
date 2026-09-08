@@ -81,7 +81,11 @@ public class CdStatusService {
             response.setApiStatusMessage(root.path("message").asText(""));
 
             JsonNode data = root.path("data");
-            if (!data.isMissingNode()) {
+            if (data.isArray() && data.size() > 0) {
+                data = data.get(0);
+            }
+
+            if (!data.isMissingNode() && !data.isNull()) {
                 response.setFingpayTransactionId(data.path("fingpayTransactionId").asText(""));
                 response.setStan(data.path("stan").asText(""));
                 response.setBankRRN(data.path("bankRRN").asText(""));
