@@ -260,14 +260,17 @@ public class CashDepositService {
                 || "SUCCESS".equalsIgnoreCase(s)
                 || root.path("status").asBoolean(false);
 
-        if (!statusFlag || data.isMissingNode()) return false;
+        if (data.isMissingNode() || data.isNull()) return false;
 
-        String rrn = data.path("bankRRN").asText("");
+        String txnStatus = data.path("transactionStatus").asText("");
+        if ("failed".equalsIgnoreCase(txnStatus)) return false;
+
+        String rrn = data.path("bankRRN").asText(data.path("bankRrn").asText(""));
         String rc = data.path("responseCode").asText(data.path("statusCode").asText(""));
         
         // Success if 00, or deemed success on 91, 52, 08 as per Fingpay specification
         boolean isSuccessCode = "00".equals(rc) || "91".equals(rc) || "52".equals(rc) || "08".equals(rc);
-        return !rrn.isEmpty() && isSuccessCode;
+        return (!rrn.isEmpty() && isSuccessCode) || (statusFlag && "successful".equalsIgnoreCase(txnStatus));
     }
 
     private void sendAcknowledgementAsync(String merchantTranId, String fingpayTxnId, boolean ackStatus, String rrn, String responseCode) {
@@ -311,22 +314,25 @@ public class CashDepositService {
         txn.setCreatedAt(java.time.LocalDateTime.now());
 
         if (success) {
-            txn.setTxnid(data.path("merchantTransactionId").asText(txnId));
+            txn.setTxnid(data.path("merchantTransactionId").asText(data.path("merchantTxnId").asText(txnId)));
             txn.setFtxnin(data.path("fpTransactionId").asText(
                     data.path("FingpayTransactionId").asText(txnId)));
             txn.setAmount(data.path("balanceAmount").asDouble(0));
-            txn.setRrn(data.path("bankRRN").asText("NA"));
+            txn.setRrn(data.path("bankRRN").asText(data.path("bankRrn").asText("NA")));
             txn.setStatus("SUCCESS");
-            txn.setMessage(root.path("message").asText("Transaction Successful"));
+            txn.setMessage(data.path("errorMessage").asText(root.path("message").asText("Transaction Successful")));
         } else {
-            txn.setTxnid(txnId);
-            txn.setFtxnin(txnId);
-            txn.setAmount(0.0);
-            txn.setRrn("TEMP" + (long) (Math.random() * 9000000000L + 1000000000L));
+            txn.setTxnid(data.path("merchantTransactionId").asText(data.path("merchantTxnId").asText(txnId)));
+            txn.setFtxnin(data.path("fpTransactionId").asText(
+                    data.path("FingpayTransactionId").asText(txnId)));
+            txn.setAmount(data.path("balanceAmount").asDouble(0.0));
+            txn.setRrn(data.path("bankRRN").asText(data.path("bankRrn").asText("TEMP" + (long) (Math.random() * 9000000000L + 1000000000L))));
             txn.setStatus("FAILED");
             
-            // Check if there is an inner error message or response message
-            String errMsg = data.path("responseMessage").asText("");
+            String errMsg = data.path("errorMessage").asText("");
+            if (errMsg.isEmpty()) {
+                errMsg = data.path("responseMessage").asText("");
+            }
             if (errMsg.isEmpty()) {
                 errMsg = root.path("message").asText("Transaction Failed");
             }
@@ -348,12 +354,17 @@ public class CashDepositService {
             resp.setBankRRN(txn.getRrn());
             resp.setTransactionAmount(data.path("transactionAmount").asDouble(0));
             resp.setBalanceAmount(txn.getAmount());
-            resp.setResponseCode(data.path("responseCode").asText());
+            resp.setResponseCode(data.path("responseCode").asText("00"));
         } else {
             resp.setStatus("FAILED");
             resp.setMessage(txn.getMessage());
-            resp.setTxnId(txnId);
-            resp.setResponseCode(data.path("responseCode").asText("FP009"));
+            resp.setTxnId(txn.getTxnid());
+            resp.setFpTxnId(txn.getFtxnin());
+            resp.setBankRRN(data.path("bankRRN").asText(null));
+            String rc = data.path("responseCode").asText("");
+            if (rc.isEmpty()) rc = data.path("statusCode").asText("");
+            if (rc.isEmpty()) rc = root.path("statusCode").asText("FP009");
+            resp.setResponseCode(rc);
         }
         return resp;
     }
