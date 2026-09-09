@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
     Landmark, 
     ArrowRight, 
@@ -125,9 +125,10 @@ const TAB_CONFIG = {
 };
 
 export default function BankingTerminal({ provider, status, setStatus }) {
-    const { captureState, status: rdStatus, device, error: rdError, captureResult, capture, reset } = useRD();
+    const { captureState, status: rdStatus, device, error: rdError, captureResult, capture, reset, clearCapture } = useRD();
     const { balance, availableBalance, refreshWallet } = useWallet();
     const currentWalletBal = parseFloat(availableBalance || balance || '0') || 0;
+    const processedPidRef = useRef(null);
 
     const isFingpay = provider === 'fingpay';
     const tabKeys = isFingpay
@@ -281,7 +282,9 @@ export default function BankingTerminal({ provider, status, setStatus }) {
             beneficiaryName: '',
             otp: ''
         });
-        if (reset) reset();
+        processedPidRef.current = null;
+        if (clearCapture) clearCapture();
+        else if (reset) reset();
         setDenominations({
             500: 0,
             200: 0,
@@ -634,6 +637,9 @@ export default function BankingTerminal({ provider, status, setStatus }) {
             triggerSendTxnOtp();
         } else {
             setTxnOtpData({ otp: '', fpTransactionId: '' });
+            processedPidRef.current = null;
+            if (clearCapture) clearCapture();
+            else if (reset) reset();
             setCurrentStep(2);
         }
     };
@@ -648,6 +654,13 @@ export default function BankingTerminal({ provider, status, setStatus }) {
             setErrorMsg("Please scan customer fingerprint before submitting.");
             return;
         }
+
+        // Prevent reusing previously submitted biometric PID
+        if (processedPidRef.current === activeResult.pidXml) {
+            console.warn("Blocking duplicate submit with identical PID XML");
+            return;
+        }
+        processedPidRef.current = activeResult.pidXml;
 
         setLoading(true);
         try {
@@ -720,8 +733,10 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                 setBankSearch('');
                 setBcConsent(false);
                 setTxnOtpData({ otp: '', fpTransactionId: '' });
+                processedPidRef.current = null;
+                if (clearCapture) clearCapture();
+                else if (reset) reset();
                 setCurrentStep(1);
-                if (reset) reset();
                 setDenominations({
                     500: 0,
                     200: 0,
@@ -736,7 +751,8 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                 const respCode = failData?.responseCode || failData?.data?.responseCode || '';
                 const respMsg = response.message || failData?.responseMessage || failData?.data?.responseMessage || '';
 
-                if (reset) reset();
+                if (clearCapture) clearCapture();
+                else if (reset) reset();
 
                 if (respCode === 'FP069' || respMsg.toLowerCase().includes('2fa') || respMsg.toLowerCase().includes('daily auth')) {
                     if (setStatus) {
@@ -750,7 +766,8 @@ export default function BankingTerminal({ provider, status, setStatus }) {
             }
         } catch (err) {
             console.error("AEPS Transaction execution failed", err);
-            if (reset) reset();
+            if (clearCapture) clearCapture();
+            else if (reset) reset();
             const errMsg = err.message || "";
             if (errMsg.toLowerCase().includes('2fa')) {
                 if (setStatus) {
@@ -766,12 +783,14 @@ export default function BankingTerminal({ provider, status, setStatus }) {
         }
     };
 
-    // Auto-proceed transaction immediately when finger capture completes in Step 2
+    // Auto-proceed transaction immediately when fresh finger capture completes in Step 2
     useEffect(() => {
         if (currentStep === 2 && captureResult && captureResult.pidXml && !loading && !receiptOpen) {
-            handleFinalSubmit(captureResult);
+            if (processedPidRef.current !== captureResult.pidXml) {
+                handleFinalSubmit(captureResult);
+            }
         }
-    }, [captureResult, currentStep]);
+    }, [captureResult, currentStep, loading, receiptOpen]);
 
     const currentTabObj = TAB_CONFIG[activeTab] || TAB_CONFIG.CASH_WITHDRAWAL;
 
@@ -849,7 +868,14 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                     <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl">
                         <button
                             type="button"
-                            onClick={() => currentStep === 2 && setCurrentStep(1)}
+                            onClick={() => {
+                                if (currentStep === 2) {
+                                    processedPidRef.current = null;
+                                    if (clearCapture) clearCapture();
+                                    else if (reset) reset();
+                                    setCurrentStep(1);
+                                }
+                            }}
                             className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black transition cursor-pointer ${
                                 currentStep === 1
                                     ? 'bg-black text-white shadow-xs'
@@ -1548,7 +1574,12 @@ export default function BankingTerminal({ provider, status, setStatus }) {
 
                                 <button
                                     type="button"
-                                    onClick={() => setCurrentStep(1)}
+                                    onClick={() => {
+                                        processedPidRef.current = null;
+                                        if (clearCapture) clearCapture();
+                                        else if (reset) reset();
+                                        setCurrentStep(1);
+                                    }}
                                     className="w-full py-2.5 px-3 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-black rounded-2xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer"
                                 >
                                     <ArrowLeft size={13} />

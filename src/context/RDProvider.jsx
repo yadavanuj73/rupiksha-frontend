@@ -83,8 +83,19 @@ export function RDProvider({ children }) {
     };
 
     const reset = async () => {
+        setCaptureResult(null);
+        setCaptureState(RD_STATES.READY);
+        setStatus('Capture Ready');
+        setError(null);
         if (!serviceConfig) return false;
         return resetDevice(serviceConfig);
+    };
+
+    const clearCapture = () => {
+        setCaptureResult(null);
+        setCaptureState(RD_STATES.READY);
+        setStatus('Capture Ready');
+        setError(null);
     };
 
     const capture = async (customPidOptions = null) => {
@@ -149,6 +160,7 @@ export function RDProvider({ children }) {
             capture,
             deviceInfo,
             reset,
+            clearCapture,
             health
         }}>
             {children}
