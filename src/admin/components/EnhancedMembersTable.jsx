@@ -88,6 +88,50 @@ const ALL_PLATFORM_SERVICES = [
     { serviceType: 'TICKET_SUPPORT', label: 'Ticket Support' }
 ];
 
+export const resolveMemberOwner = (member, allMembers = []) => {
+    if (!member) return null;
+
+    // 1. Explicit addedByName / addedByPartyCode
+    if (member.addedByName || member.addedByPartyCode) {
+        const matched = (allMembers || []).find(m =>
+            (member.addedByUserRef && (String(m.id) === String(member.addedByUserRef) || String(m.userId) === String(member.addedByUserRef) || String(m.username) === String(member.addedByUserRef))) ||
+            (member.addedByPartyCode && m.partyCode === member.addedByPartyCode) ||
+            (member.addedByName && (m.fullName === member.addedByName || m.name === member.addedByName))
+        );
+        return {
+            name: member.addedByName || matched?.fullName || matched?.name || 'Distributor',
+            partyCode: member.addedByPartyCode || matched?.partyCode || '—',
+            mobile: member.addedByMobile || matched?.mobile || '—'
+        };
+    }
+
+    // 2. Owner linkage via ownerId / parentUserId / addedByUserRef / parent_id
+    const ownerRef = member.ownerId || member.parentUserId || member.addedByUserRef || member.parent_id;
+    if (ownerRef) {
+        const matched = (allMembers || []).find(m =>
+            String(m.id) === String(ownerRef) || String(m._id) === String(ownerRef) || String(m.userId) === String(ownerRef) || String(m.username) === String(ownerRef) || String(m.mobile) === String(ownerRef)
+        );
+        if (matched) {
+            return {
+                name: matched.fullName || matched.name || matched.username,
+                partyCode: matched.partyCode || '—',
+                mobile: matched.mobile || '—'
+            };
+        }
+    }
+
+    // 3. Fallback direct owner fields
+    if (member.ownerName || member.ownerPartyCode || member.parentName || member.parentPartyCode) {
+        return {
+            name: member.ownerName || member.parentName || 'Distributor',
+            partyCode: member.ownerPartyCode || member.parentPartyCode || '—',
+            mobile: member.ownerMobile || member.parentMobile || '—'
+        };
+    }
+
+    return null;
+};
+
 /* ─── main component ─── */
 const EnhancedMembersTable = () => {
     const [members, setMembers]             = useState([]);
@@ -490,6 +534,7 @@ const EnhancedMembersTable = () => {
                                 <th className="px-2 py-3 text-center border-r border-slate-200">#</th>
                                 <th className="px-2 py-3 text-left   border-r border-slate-200">Name</th>
                                 <th className="px-2 py-3 text-left   border-r border-slate-200">Party Code</th>
+                                <th className="px-2 py-3 text-left   border-r border-slate-200">Owner</th>
                                 <th className="px-2 py-3 text-left   border-r border-slate-200 hidden lg:table-cell">Address</th>
                                 <th className="px-2 py-3 text-center border-r border-slate-200">Mobile</th>
                                 <th className="px-2 py-3 text-left   border-r border-slate-200">Email</th>
@@ -504,14 +549,14 @@ const EnhancedMembersTable = () => {
                         <tbody className="divide-y divide-slate-100">
                             {loading ? (
                                 <tr>
-                                    <td colSpan={11} className="py-14 text-center">
+                                    <td colSpan={12} className="py-14 text-center">
                                         <Loader2 className="animate-spin mx-auto text-indigo-400" size={28} />
                                         <p className="text-sm text-slate-400 mt-2">Loading members…</p>
                                     </td>
                                 </tr>
                             ) : pagedMembers.length === 0 ? (
                                 <tr>
-                                    <td colSpan={11} className="py-14 text-center">
+                                    <td colSpan={12} className="py-14 text-center">
                                         <User size={28} className="text-slate-200 mx-auto" />
                                         <p className="text-sm text-slate-400 mt-2 font-semibold">No members found</p>
                                     </td>
@@ -519,6 +564,7 @@ const EnhancedMembersTable = () => {
                             ) : pagedMembers.map((member, idx) => {
                                 const rb = roleBadgeOf(member.roles || []);
                                 const addr = [member.addressLine1, member.city, member.stateName].filter(Boolean).join(', ');
+                                const owner = resolveMemberOwner(member, members);
                                 return (
                                     <tr
                                         key={member.id || idx}
@@ -537,6 +583,19 @@ const EnhancedMembersTable = () => {
                                         {/* Party Code */}
                                         <td className="px-2 py-3 border-r border-slate-100 text-[12px] font-semibold text-slate-600 font-mono">
                                             {member.partyCode || '—'}
+                                        </td>
+
+                                        {/* Owner Column (Distributor Name, Party Code, Mobile) */}
+                                        <td className="px-2.5 py-3 border-r border-slate-100 text-left">
+                                            {owner ? (
+                                                <div className="flex flex-col gap-0.5 leading-tight">
+                                                    <span className="font-black text-[12px] text-slate-800">{owner.name}</span>
+                                                    <span className="text-[10px] font-mono font-bold text-indigo-600">{owner.partyCode}</span>
+                                                    <span className="text-[10px] text-slate-500 font-semibold">{owner.mobile}</span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-[11px] text-slate-400 italic">Self / Direct</span>
+                                            )}
                                         </td>
 
                                         {/* Address (hidden on tablet md, visible on lg+) */}
@@ -670,6 +729,16 @@ const EnhancedMembersTable = () => {
                                 <div className="col-span-2">
                                     <Field label="Address" value={addr || 'No address provided'} truncate className="text-slate-500 italic" />
                                 </div>
+                                {(() => {
+                                    const owner = resolveMemberOwner(member, members);
+                                    return owner ? (
+                                        <div className="col-span-2 bg-indigo-50/60 border border-indigo-100 rounded-xl p-2.5">
+                                            <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-0.5">Owner / Distributor</p>
+                                            <p className="text-[12px] font-bold text-slate-800">{owner.name} <span className="font-mono text-indigo-600">({owner.partyCode})</span></p>
+                                            <p className="text-[11px] text-slate-500">{owner.mobile}</p>
+                                        </div>
+                                    ) : null;
+                                })()}
                             </div>
 
                             {/* Card actions */}
@@ -737,6 +806,19 @@ const EnhancedMembersTable = () => {
                                     <DetailField label="Mobile"     value={selectedMember.mobile} />
                                     <DetailField label="Email"      value={selectedMember.email} />
                                 </div>
+                                {(() => {
+                                    const owner = resolveMemberOwner(selectedMember, members);
+                                    return owner ? (
+                                        <div className="bg-indigo-50/70 border border-indigo-100 rounded-xl p-3.5 space-y-1">
+                                            <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Owner / Assigned Distributor</p>
+                                            <div className="grid grid-cols-3 gap-2 pt-1">
+                                                <DetailField label="Name" value={owner.name} />
+                                                <DetailField label="Party Code" value={owner.partyCode} mono />
+                                                <DetailField label="Mobile" value={owner.mobile} />
+                                            </div>
+                                        </div>
+                                    ) : null;
+                                })()}
                                 {selectedMember.password && (
                                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
                                         <div className="flex items-center justify-between mb-2">

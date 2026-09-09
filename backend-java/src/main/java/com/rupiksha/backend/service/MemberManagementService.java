@@ -153,6 +153,29 @@ public class MemberManagementService {
         
         List<UserServiceDTO> services = getUserServices(user.getId());
 
+        String addedByName = user.getAddedByName();
+        String addedByPartyCode = user.getAddedByPartyCode();
+        String addedByRole = user.getAddedByRole();
+        String addedByUserRef = user.getAddedByUserRef();
+
+        if (user.getParentUser() != null) {
+            if (addedByName == null || addedByName.isBlank()) {
+                addedByName = user.getParentUser().getFullName();
+            }
+            if (addedByPartyCode == null || addedByPartyCode.isBlank()) {
+                addedByPartyCode = user.getParentUser().getPartyCode();
+            }
+            if (addedByUserRef == null || addedByUserRef.isBlank()) {
+                addedByUserRef = user.getParentUser().getId().toString();
+            }
+            if (addedByRole == null || addedByRole.isBlank()) {
+                addedByRole = user.getParentUser().getRoles().stream()
+                        .map(r -> r.getName().name())
+                        .findFirst()
+                        .orElse("DISTRIBUTOR");
+            }
+        }
+
         MemberDetailResponse.MemberDetailResponseBuilder builder = MemberDetailResponse.builder()
                 .id(user.getId())
                 .username(user.getUsername())
@@ -172,10 +195,10 @@ public class MemberManagementService {
                 .pincode(user.getPincode())
                 .businessName(user.getBusinessName())
                 .partyCode(user.getPartyCode())
-                .addedByUserRef(user.getAddedByUserRef())
-                .addedByName(user.getAddedByName())
-                .addedByRole(user.getAddedByRole())
-                .addedByPartyCode(user.getAddedByPartyCode())
+                .addedByUserRef(addedByUserRef)
+                .addedByName(addedByName)
+                .addedByRole(addedByRole)
+                .addedByPartyCode(addedByPartyCode)
                 .kycRejectionReason(user.getKycRejectionReason())
                 .kycSubmittedAt(user.getKycSubmittedAt())
                 .kycApprovedAt(user.getKycApprovedAt())

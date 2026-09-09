@@ -281,7 +281,37 @@ public class AuthServiceImpl implements AuthService {
                     String pRole = parent.getRoles().stream().map(r -> r.getName().name()).findFirst().orElse("DISTRIBUTOR");
                     user.setAddedByRole(pRole);
                 });
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+                userRepository.findByMobile(request.parentUserId().trim()).ifPresent(parent -> {
+                    user.setParentUser(parent);
+                    user.setAddedByUserRef(parent.getId().toString());
+                    user.setAddedByName(parent.getFullName());
+                    user.setAddedByPartyCode(parent.getPartyCode());
+                    String pRole = parent.getRoles().stream().map(r -> r.getName().name()).findFirst().orElse("DISTRIBUTOR");
+                    user.setAddedByRole(pRole);
+                });
+            }
+        } else if (isPresent(request.addedByUserRef())) {
+            try {
+                UUID parentId = UUID.fromString(request.addedByUserRef().trim());
+                userRepository.findById(parentId).ifPresent(parent -> {
+                    user.setParentUser(parent);
+                    user.setAddedByUserRef(parent.getId().toString());
+                    user.setAddedByName(parent.getFullName());
+                    user.setAddedByPartyCode(parent.getPartyCode());
+                    String pRole = parent.getRoles().stream().map(r -> r.getName().name()).findFirst().orElse("DISTRIBUTOR");
+                    user.setAddedByRole(pRole);
+                });
+            } catch (Exception ignored) {
+                userRepository.findByMobile(request.addedByUserRef().trim()).ifPresent(parent -> {
+                    user.setParentUser(parent);
+                    user.setAddedByUserRef(parent.getId().toString());
+                    user.setAddedByName(parent.getFullName());
+                    user.setAddedByPartyCode(parent.getPartyCode());
+                    String pRole = parent.getRoles().stream().map(r -> r.getName().name()).findFirst().orElse("DISTRIBUTOR");
+                    user.setAddedByRole(pRole);
+                });
+            }
         } else if (isPresent(request.addedByPartyCode())) {
             userRepository.findByPartyCode(request.addedByPartyCode().trim()).ifPresent(parent -> {
                 user.setParentUser(parent);
@@ -297,6 +327,9 @@ public class AuthServiceImpl implements AuthService {
         }
         if (isPresent(request.addedByRole()) && user.getAddedByRole() == null) {
             user.setAddedByRole(request.addedByRole().trim());
+        }
+        if (isPresent(request.addedByPartyCode()) && user.getAddedByPartyCode() == null) {
+            user.setAddedByPartyCode(request.addedByPartyCode().trim());
         }
     }
 

@@ -117,12 +117,20 @@ export default function NetworkRegistrationForm({
             };
             const roleText = String(uplineRole || '').toUpperCase();
             const currentUpline = roleText === 'DISTRIBUTOR'
-                ? sharedDataService.getCurrentDistributor()
-                : (roleText === 'SUPER_DISTRIBUTOR' ? sharedDataService.getCurrentSuperDistributor() : null);
+                ? (sharedDataService.getCurrentDistributor() || (uplineId ? sharedDataService.getDistributorById(uplineId) : null))
+                : (roleText === 'SUPER_DISTRIBUTOR' ? (sharedDataService.getCurrentSuperDistributor() || (uplineId ? sharedDataService.getSuperDistributorById(uplineId) : null)) : null);
+
             payload.addedByUserRef = String(uplineId || currentUpline?.id || '').trim() || null;
-            payload.addedByName = String(currentUpline?.name || currentUpline?.fullName || '').trim() || null;
+            payload.addedByName = String(currentUpline?.fullName || currentUpline?.name || '').trim() || null;
             payload.addedByRole = roleText || null;
             payload.addedByPartyCode = String(currentUpline?.partyCode || '').trim() || null;
+            payload.addedByMobile = String(currentUpline?.mobile || '').trim() || null;
+            payload.parentUserId = String(uplineId || currentUpline?.id || '').trim() || null;
+            payload.ownerId = String(uplineId || currentUpline?.id || '').trim() || null;
+            payload.ownerName = String(currentUpline?.fullName || currentUpline?.name || '').trim() || null;
+            payload.ownerPartyCode = String(currentUpline?.partyCode || '').trim() || null;
+            payload.ownerMobile = String(currentUpline?.mobile || '').trim() || null;
+
             const result = await dataService.requestRegistration(payload);
             if (!result || !result.success) {
                 setError(result?.message || 'Registration failed. Please try again.');
@@ -130,9 +138,7 @@ export default function NetworkRegistrationForm({
             }
 
             // Track the upline linkage locally so the distributor / SD sees
-            // this pending applicant in their own network list. The
-            // authoritative state of truth is the backend; this is a
-            // convenience mirror while admin approval is pending.
+            // this applicant in their own network list.
             try {
                 if (uplineId && uplineRole === 'DISTRIBUTOR' && form.role === 'RETAILER') {
                     sharedDataService.assignRetailerToDistributor(uplineId, form.mobile);

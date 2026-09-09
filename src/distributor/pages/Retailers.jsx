@@ -64,13 +64,14 @@ const Retailers = () => {
             allRetailers = fallback.map((u) => ({ ...u, status: normalizeStatus(u.status) }));
         }
 
-        // Show retailers that were assigned to this distributor from local linkage.
+        // Show retailers that were assigned to this distributor from local linkage or backend mapping.
         const assignedSet = new Set((freshDist.assignedRetailers || []).map((x) => String(x || '')));
         const assigned = allRetailers.filter((r) =>
             assignedSet.has(String(r.username || '')) ||
             assignedSet.has(String(r.mobile || '')) ||
             String(r.ownerId || '') === String(freshDist.id || '') ||
-            String(r.addedByUserRef || '') === String(freshDist.id || '')
+            String(r.addedByUserRef || '') === String(freshDist.id || '') ||
+            (freshDist.partyCode && String(r.addedByPartyCode || r.ownerPartyCode || '') === String(freshDist.partyCode))
         );
         setRetailers(assigned);
     };
@@ -89,7 +90,7 @@ const Retailers = () => {
     const handleRegistrationSuccess = () => {
         setShowAddModal(false);
         setShowSuccess(true);
-        // Refresh the list so the new pending retailer appears immediately.
+        // Refresh the list so the new retailer appears immediately.
         loadData();
     };
 
@@ -233,7 +234,6 @@ const Retailers = () => {
                                 <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Location</th>
                                 <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Wallet Balance</th>
                                 <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Action</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
@@ -275,30 +275,10 @@ const Retailers = () => {
                                             {r.displayStatus || 'Unknown'}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-2">
-                                            {r.displayStatus === 'Pending KYC' && (
-                                                <button
-                                                    onClick={() => handleSendKycRequest(r)}
-                                                    disabled={kycPingLoadingId === String(r.id || r.username || '')}
-                                                    className="px-2.5 py-1 bg-blue-50 text-blue-600 border border-blue-100 rounded-lg text-[9px] font-black uppercase tracking-wider disabled:opacity-60"
-                                                    title="Send KYC completion reminder"
-                                                >
-                                                    {kycPingLoadingId === String(r.id || r.username || '') ? 'Sending...' : 'Send KYC Request'}
-                                                </button>
-                                            )}
-                                            <button
-                                                onClick={() => setSelectedRetailer(r)}
-                                                className="p-2.5 hover:bg-amber-50 text-slate-400 hover:text-amber-600 rounded-xl transition-all border border-transparent hover:border-amber-100"
-                                            >
-                                                <Eye size={18} />
-                                            </button>
-                                        </div>
-                                    </td>
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan="6" className="px-6 py-16 text-center">
+                                    <td colSpan="5" className="px-6 py-16 text-center">
                                         <div className="flex flex-col items-center gap-3">
                                             <Users size={48} className="text-slate-200" />
                                             <p className="text-slate-400 font-black text-[11px] uppercase tracking-[0.2em]">No retailers found in your network</p>
@@ -351,7 +331,7 @@ const Retailers = () => {
                                         Register Partner
                                     </h3>
                                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">
-                                        Same form as portal sign-up · Admin approval required
+                                        Direct partner registration · Instant auto-approval
                                     </p>
                                 </div>
                                 <button onClick={() => setShowAddModal(false)} className="p-3 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-2xl transition-all">
@@ -366,7 +346,7 @@ const Retailers = () => {
                                     uplineRole="DISTRIBUTOR"
                                     onCancel={() => setShowAddModal(false)}
                                     onSuccess={handleRegistrationSuccess}
-                                    submitLabel="Submit for Admin Approval"
+                                    submitLabel="Register Retailer (Auto-Approved)"
                                 />
                             </div>
                         </motion.div>
@@ -424,15 +404,15 @@ const Retailers = () => {
                                 <div className="space-y-2">
                                     <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em]">Congratulations!</p>
                                     <h2 className="text-2xl font-black text-slate-800 tracking-tight">Retailer Registered!</h2>
-                                    <p className="text-[11px] font-bold text-slate-400 px-4">Retailer verification completed successfully via email OTP.</p>
+                                    <p className="text-[11px] font-bold text-slate-400 px-4">Retailer account registered & KYC auto-approved successfully.</p>
                                 </div>
 
-                                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 space-y-2">
-                                    <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest flex items-center justify-center gap-2">
-                                        <Clock size={12} /> Status: Pending
+                                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 space-y-2">
+                                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest flex items-center justify-center gap-2">
+                                        <CheckCircle2 size={12} /> Status: Approved & Active
                                     </p>
-                                    <p className="text-xs font-black text-amber-800">WAIT FOR ADMIN APPROVAL</p>
-                                    <p className="text-[9px] font-bold text-amber-600/70 uppercase">Credentials will be sent after approval</p>
+                                    <p className="text-xs font-black text-emerald-800">KYC AUTO-APPROVED</p>
+                                    <p className="text-[9px] font-bold text-emerald-600/70 uppercase">Retailer mapped to your network</p>
                                 </div>
 
                                 <button

@@ -117,9 +117,19 @@ export const dataService = {
                 ...data,
                 username,
                 role: normalizedRole,
-                status: 'pending',
+                status: 'Approved',
+                kycStatus: 'APPROVED',
                 balance: '0.00',
-                id: 'REQ-' + Math.floor(1000 + Math.random() * 9000)
+                ownerId: data.ownerId || data.parentUserId || data.addedByUserRef || null,
+                ownerName: data.ownerName || data.addedByName || null,
+                ownerPartyCode: data.ownerPartyCode || data.addedByPartyCode || null,
+                ownerMobile: data.ownerMobile || null,
+                addedByUserRef: data.addedByUserRef || data.ownerId || null,
+                addedByName: data.addedByName || data.ownerName || null,
+                addedByPartyCode: data.addedByPartyCode || data.ownerPartyCode || null,
+                addedByRole: data.addedByRole || null,
+                id: 'REQ-' + Math.floor(1000 + Math.random() * 9000),
+                partyCode: 'RPR' + (data.state ? data.state.slice(0, 2).toUpperCase() : 'IN') + Math.floor(10000 + Math.random() * 90000)
             };
             if (!localData.users.find(u => u.username === username)) {
                 localData.users.push(newUser);
@@ -132,14 +142,11 @@ export const dataService = {
                         role: normalizedRole.toUpperCase()
                     }
                 }));
+                window.dispatchEvent(new Event('distributorDataUpdated'));
             }
-            return { success: true, message: "Registration request submitted successfully.", registrationId: newUser.id };
+            return { success: true, message: "User registered and auto-approved successfully.", registrationId: newUser.id, user: newUser };
         }
 
-        // Java backend RegisterRequest accepts the core auth fields plus optional
-        // profile attributes (state/city/pincode/address/businessName). Sending
-        // state is important so the admin's approval modal can auto-generate a
-        // state-coded party code (e.g. RPRBR######).
         const payload = {
             username,
             mobile: String(data.mobile || username || '').trim(),
@@ -148,16 +155,20 @@ export const dataService = {
             password: String(data.password || '').trim(),
             role: normalizedRole.toUpperCase(),
             state: String(data.state || data.stateName || '').trim() || null,
-            // Backward-compatible alias for older backends that expected stateName.
             stateName: String(data.stateName || data.state || '').trim() || null,
             city: String(data.city || '').trim() || null,
             pincode: String(data.pincode || data.pin || '').trim() || null,
             address: String(data.address || data.addressLine1 || '').trim() || null,
             businessName: String(data.businessName || data.shopName || '').trim() || null,
-            addedByUserRef: String(data.addedByUserRef || data.uplineId || '').trim() || null,
-            addedByName: String(data.addedByName || '').trim() || null,
+            parentUserId: String(data.parentUserId || data.ownerId || data.addedByUserRef || data.uplineId || '').trim() || null,
+            ownerId: String(data.ownerId || data.parentUserId || data.addedByUserRef || data.uplineId || '').trim() || null,
+            ownerName: String(data.ownerName || data.addedByName || '').trim() || null,
+            ownerPartyCode: String(data.ownerPartyCode || data.addedByPartyCode || '').trim() || null,
+            ownerMobile: String(data.ownerMobile || data.addedByMobile || '').trim() || null,
+            addedByUserRef: String(data.addedByUserRef || data.ownerId || data.uplineId || '').trim() || null,
+            addedByName: String(data.addedByName || data.ownerName || '').trim() || null,
             addedByRole: String(data.addedByRole || data.uplineRole || '').trim() || null,
-            addedByPartyCode: String(data.addedByPartyCode || '').trim() || null
+            addedByPartyCode: String(data.addedByPartyCode || data.ownerPartyCode || '').trim() || null
         };
 
         const url = `${BACKEND_URL}/auth/register`;
@@ -184,10 +195,11 @@ export const dataService = {
                         role: normalizedRole.toUpperCase()
                     }
                 }));
+                window.dispatchEvent(new Event('distributorDataUpdated'));
             }
             return {
                 success: true,
-                message: "Registration request submitted successfully. Please wait for admin approval.",
+                message: "User registered and auto-approved successfully.",
                 registrationId: body?.id,
                 user: body
             };
