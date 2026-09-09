@@ -409,9 +409,6 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                 if (amt > currentWalletBal) {
                     return `Insufficient wallet balance (₹${currentWalletBal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}). Maximum deposit allowed is ₹${currentWalletBal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}.`;
                 }
-                if (amt !== denominationSum) {
-                    return `Denomination total (₹${denominationSum.toLocaleString('en-IN')}) does not match entered transaction amount (₹${formData.amount}).`;
-                }
             }
         }
         if (!bcConsent) {
@@ -1393,38 +1390,7 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                         </div>
                                     )}
 
-                                    {/* Denomination Breakdown for Cash Deposit */}
-                                    {isDeposit && (
-                                        <div className="border-2 border-slate-300 rounded-2xl p-2.5 bg-slate-50 space-y-1.5">
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-[10px] font-black uppercase tracking-wider text-black">
-                                                    Cash Denominations
-                                                </span>
-                                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                                                    formData.amount && parseFloat(formData.amount) === denominationSum
-                                                        ? 'bg-emerald-200 text-black'
-                                                        : 'bg-amber-200 text-black'
-                                                }`}>
-                                                    Sum: ₹{denominationSum.toLocaleString('en-IN')}
-                                                </span>
-                                            </div>
-                                            <div className="grid grid-cols-3 gap-1.5">
-                                                {[500, 200, 100, 50, 20, 10].map(denom => (
-                                                    <div key={denom} className="bg-white border border-slate-300 p-1.5 rounded-xl flex items-center justify-between text-[11px] font-black">
-                                                        <span className="text-black font-black">₹{denom}</span>
-                                                        <input
-                                                            type="number"
-                                                            min="0"
-                                                            placeholder="0"
-                                                            value={denominations[denom] || ''}
-                                                            onChange={(e) => handleDenominationChange(e.target.value, denom)}
-                                                            className="w-10 text-right text-xs font-black text-black bg-slate-100 border border-slate-300 rounded px-1 py-0.5"
-                                                        />
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
+
 
                                     {/* Remarks field */}
                                     <div className="space-y-0.5">
