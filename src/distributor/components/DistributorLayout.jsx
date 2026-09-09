@@ -32,15 +32,18 @@ const DistributorLayout = () => {
             return;
         }
 
-        // Ensure we always read the freshest data from localStorage
-        const fresh = sharedDataService.getDistributorById(user.id);
-        if (fresh) {
-            sharedDataService.setCurrentDistributor({
-                ...user,
-                ...fresh,
-                role: user.role || 'DISTRIBUTOR',
-                roles: user.roles || ['DISTRIBUTOR']
-            });
+        try {
+            const fresh = sharedDataService.getDistributorById(user.id);
+            if (fresh) {
+                sharedDataService.setCurrentDistributor({
+                    ...user,
+                    ...fresh,
+                    role: user.role || 'DISTRIBUTOR',
+                    roles: user.roles || ['DISTRIBUTOR']
+                });
+            }
+        } catch (e) {
+            console.warn('DistributorLayout session sync non-fatal:', e);
         }
     }, [user, loading, navigate]);
 

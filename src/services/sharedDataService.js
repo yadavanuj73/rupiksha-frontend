@@ -63,12 +63,36 @@ export const sharedDataService = {
     },
 
     saveDistributors: function (dists, silent = false) {
-        localStorage.setItem(this.KEYS.DISTRIBUTORS, JSON.stringify(dists));
+        try {
+            const sanitized = (dists || []).map(d => {
+                const copy = { ...d };
+                if (copy.photoUrl && copy.photoUrl.length > 500) delete copy.photoUrl;
+                if (copy.aadhaarPhotoUrl && copy.aadhaarPhotoUrl.length > 500) delete copy.aadhaarPhotoUrl;
+                if (copy.panPhotoUrl && copy.panPhotoUrl.length > 500) delete copy.panPhotoUrl;
+                return copy;
+            });
+            localStorage.setItem(this.KEYS.DISTRIBUTORS, JSON.stringify(sanitized));
+        } catch (e) {
+            console.warn('Storage quota exceeded in saveDistributors, clearing cache:', e);
+            try {
+                localStorage.removeItem('rupiksha_data');
+                localStorage.setItem(this.KEYS.DISTRIBUTORS, JSON.stringify((dists || []).slice(-20)));
+            } catch { /* non-fatal */ }
+        }
         if (!silent) window.dispatchEvent(new Event('distributorDataUpdated'));
     },
 
     saveSuperDistributors: function (sas, silent = false) {
-        localStorage.setItem(this.KEYS.SUPER_DISTRIBUTORS, JSON.stringify(sas));
+        try {
+            const sanitized = (sas || []).map(s => {
+                const copy = { ...s };
+                if (copy.photoUrl && copy.photoUrl.length > 500) delete copy.photoUrl;
+                return copy;
+            });
+            localStorage.setItem(this.KEYS.SUPER_DISTRIBUTORS, JSON.stringify(sas));
+        } catch (e) {
+            console.warn('Storage quota exceeded in saveSuperDistributors:', e);
+        }
         if (!silent) window.dispatchEvent(new Event('SuperDistributorDataUpdated'));
     },
 
@@ -374,19 +398,81 @@ export const sharedDataService = {
     },
 
     setCurrentDistributor: (dist) => {
-        localStorage.setItem('rupiksha_user', JSON.stringify(dist));
+        try {
+            if (!dist) return;
+            const clean = {
+                id: dist.id || dist._id || dist.userId,
+                username: dist.username || dist.mobile,
+                name: dist.name || dist.fullName,
+                fullName: dist.fullName || dist.name,
+                mobile: dist.mobile,
+                email: dist.email,
+                partyCode: dist.partyCode,
+                role: dist.role || 'DISTRIBUTOR',
+                roles: dist.roles || ['DISTRIBUTOR'],
+                wallet: dist.wallet,
+                balance: dist.balance
+            };
+            localStorage.setItem('rupiksha_user', JSON.stringify(clean));
+        } catch (e) {
+            console.warn('LocalStorage quota warning in setCurrentDistributor:', e);
+            try {
+                localStorage.removeItem('rupiksha_data');
+                localStorage.removeItem('rupiksha_distributors');
+                localStorage.setItem('rupiksha_user', JSON.stringify({
+                    id: dist.id,
+                    username: dist.username || dist.mobile,
+                    name: dist.name || dist.fullName,
+                    role: dist.role || 'DISTRIBUTOR',
+                    roles: dist.roles || ['DISTRIBUTOR']
+                }));
+            } catch (err2) {
+                console.error('Failed to save minimal distributor session:', err2);
+            }
+        }
     },
 
     getCurrentSuperDistributor: () => {
-        const saved = localStorage.getItem('rupiksha_user');
-        if (!saved) return null;
-        const user = JSON.parse(saved);
-        const allowed = ['SUPER_DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'];
-        return allowed.includes(user.role) ? user : null;
+        try {
+            const saved = localStorage.getItem('rupiksha_user');
+            if (!saved) return null;
+            const user = JSON.parse(saved);
+            const allowed = ['SUPER_DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'];
+            return allowed.includes(user.role) ? user : null;
+        } catch { return null; }
     },
 
     setCurrentSuperDistributor: (sa) => {
-        localStorage.setItem('rupiksha_user', JSON.stringify(sa));
+        try {
+            if (!sa) return;
+            const clean = {
+                id: sa.id || sa._id || sa.userId,
+                username: sa.username || sa.mobile,
+                name: sa.name || sa.fullName,
+                fullName: sa.fullName || sa.name,
+                mobile: sa.mobile,
+                email: sa.email,
+                partyCode: sa.partyCode,
+                role: sa.role || 'SUPER_DISTRIBUTOR',
+                roles: sa.roles || ['SUPER_DISTRIBUTOR'],
+                wallet: sa.wallet,
+                balance: sa.balance
+            };
+            localStorage.setItem('rupiksha_user', JSON.stringify(clean));
+        } catch (e) {
+            console.warn('LocalStorage quota warning in setCurrentSuperDistributor:', e);
+            try {
+                localStorage.removeItem('rupiksha_data');
+                localStorage.removeItem('rupiksha_super_distributors');
+                localStorage.setItem('rupiksha_user', JSON.stringify({
+                    id: sa.id,
+                    username: sa.username || sa.mobile,
+                    name: sa.name || sa.fullName,
+                    role: sa.role || 'SUPER_DISTRIBUTOR',
+                    roles: sa.roles || ['SUPER_DISTRIBUTOR']
+                }));
+            } catch { /* non-fatal */ }
+        }
     },
 
     logout: () => {

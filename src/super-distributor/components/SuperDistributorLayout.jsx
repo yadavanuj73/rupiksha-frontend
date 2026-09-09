@@ -32,15 +32,18 @@ const SuperDistributorLayout = () => {
             return;
         }
 
-        // Ensure we always read the freshest data from localStorage
-        const fresh = sharedDataService.getSuperDistributorById(user.id);
-        if (fresh) {
-            sharedDataService.setCurrentSuperDistributor({
-                ...user,
-                ...fresh,
-                role: user.role || 'SUPER_DISTRIBUTOR',
-                roles: user.roles || ['SUPER_DISTRIBUTOR']
-            });
+        try {
+            const fresh = sharedDataService.getSuperDistributorById(user.id);
+            if (fresh) {
+                sharedDataService.setCurrentSuperDistributor({
+                    ...user,
+                    ...fresh,
+                    role: user.role || 'SUPER_DISTRIBUTOR',
+                    roles: user.roles || ['SUPER_DISTRIBUTOR']
+                });
+            }
+        } catch (e) {
+            console.warn('SuperDistributorLayout session sync non-fatal:', e);
         }
     }, [user, loading, navigate]);
 
