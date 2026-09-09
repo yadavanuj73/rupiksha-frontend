@@ -68,7 +68,7 @@ public class CashDepositOtpService {
     @Value("${fingpay.supermerchant.id:1}")
     private String superMerchantId;
 
-    @Value("${fingpay.security.key}")
+    @Value("${fingpay.security.key:${fingpay.api.secret:}}")
     private String securityKey;
 
     /**

@@ -241,7 +241,7 @@ fingpay:
     url: ${FINGPAY_AEPS_OTP_URL:https://fingpayap.tapits.in/fpaepsservice/api/auth/merchant/send/otp}
   default-bank-iin: ${FINGPAY_DEFAULT_BANK_IIN:607152}
   security:
-    key: ${FINGPAY_SECURITY_KEY:}
+    key: ${FINGPAY_SECURITY_KEY:${FINGPAY_API_SECRET:}}
 
 ---
 # Production profile overrides. Activated with SPRING_PROFILES_ACTIVE=prod.

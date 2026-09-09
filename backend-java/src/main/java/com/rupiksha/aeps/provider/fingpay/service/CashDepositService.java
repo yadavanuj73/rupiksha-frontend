@@ -45,7 +45,7 @@ public class CashDepositService {
     @Value("${fingpay.supermerchant.id}")
     private String superMerchantId;
 
-    @Value("${fingpay.security.key:}")
+    @Value("${fingpay.security.key:${fingpay.api.secret:}}")
     private String securityKey;
 
 
@@ -132,7 +132,7 @@ public class CashDepositService {
                 log.warn("CD coordinate parse warning: {}", e.getMessage());
             }
 
-            // 5. Main payload (matches Fingpay CD API doc exactly)
+            // 5. Main payload (matches Fingpay CD API doc Section 1 exactly)
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("merchantTranId", transactionId);
             payload.put("languageCode", "en");
@@ -149,11 +149,6 @@ public class CashDepositService {
             payload.put("merchantUserName", merchantUserName);
             payload.put("merchantPin", md5(rawPin));
             payload.put("subMerchantId", "");
-            try {
-                payload.put("superMerchantId", Integer.parseInt(superMerchantId));
-            } catch (Exception e) {
-                payload.put("superMerchantId", superMerchantId);
-            }
             payload.put("cardnumberORUID", cardOrUID);
             payload.put("captureResponse", captureResponse);
 
@@ -162,14 +157,14 @@ public class CashDepositService {
             log.info("Fingpay CD request: txnId={}, mobile={}, amount={}, bankIIN={}, hasSecurityKey={}",
                     transactionId, req.getMobile(), req.getAmount(), bank.getIinno(), !secKey.isEmpty());
 
-            // 6. Encrypt — hash = Base64(SHA256(JSON + securityKey)) per Fingpay API doc.
+            // 6. Encrypt — hash = Base64(SHA256(JSON + securityKey)) per Fingpay API doc Section 1.
             SecretKey sessionKey = encryptionUtil.generateSessionKey();
             String eskey         = encryptionUtil.encryptSessionKey(sessionKey);
             String encryptedBody = encryptionUtil.encryptBody(plainJson, sessionKey);
             String hashInput     = secKey.isEmpty() ? plainJson : (plainJson + secKey);
             String hash          = encryptionUtil.generateHash(hashInput);
 
-            // 7. Headers
+            // 7. Headers (SuperMerchantId sent in HTTP header per Fingpay Section 1)
             String effectiveImei = (req.getDeviceId() != null && !req.getDeviceId().isBlank()
                     && !req.getDeviceId().equalsIgnoreCase("unknown"))
                     ? req.getDeviceId().trim() : deviceImei;
