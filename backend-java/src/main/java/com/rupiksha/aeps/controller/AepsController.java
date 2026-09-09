@@ -414,11 +414,9 @@ public class AepsController {
                 .orElseThrow(() -> new RuntimeException("Merchant user record not found"));
 
         var response = cashDepositOtpService.generateOtp(request, mainUser);
-        if (response.isSuccess()) {
-            return ResponseEntity.ok(ApiResponse.success(response.getMessage() != null ? response.getMessage() : "OTP sent successfully", response));
-        } else {
-            return ResponseEntity.badRequest().body(ApiResponse.error(response.getMessage() != null ? response.getMessage() : "Failed to generate OTP", response));
-        }
+        return ResponseEntity.ok(response.isSuccess()
+                ? ApiResponse.success(response.getMessage() != null ? response.getMessage() : "OTP sent successfully", response)
+                : ApiResponse.error(response.getMessage() != null ? response.getMessage() : "Failed to generate OTP", response));
     }
 
     @PostMapping("/cdo/validate-otp")
@@ -435,11 +433,9 @@ public class AepsController {
                 .orElseThrow(() -> new RuntimeException("Merchant user record not found"));
 
         var response = cashDepositOtpService.validateOtp(request, mainUser);
-        if (response.isSuccess()) {
-            return ResponseEntity.ok(ApiResponse.success(response.getMessage() != null ? response.getMessage() : "OTP validated successfully", response));
-        } else {
-            return ResponseEntity.badRequest().body(ApiResponse.error(response.getMessage() != null ? response.getMessage() : "OTP validation failed", response));
-        }
+        return ResponseEntity.ok(response.isSuccess()
+                ? ApiResponse.success(response.getMessage() != null ? response.getMessage() : "OTP validated successfully", response)
+                : ApiResponse.error(response.getMessage() != null ? response.getMessage() : "OTP validation failed", response));
     }
 
     @PostMapping("/cdo/transaction")
@@ -456,11 +452,9 @@ public class AepsController {
                 .orElseThrow(() -> new RuntimeException("Merchant user record not found"));
 
         var response = cashDepositOtpService.executeTransaction(request, mainUser);
-        if (response.isSuccess()) {
-            return ResponseEntity.ok(ApiResponse.success(response.getMessage() != null ? response.getMessage() : "Transaction successful", response));
-        } else {
-            return ResponseEntity.badRequest().body(ApiResponse.error(response.getMessage() != null ? response.getMessage() : "Transaction failed", response));
-        }
+        return ResponseEntity.ok(response.isSuccess()
+                ? ApiResponse.success(response.getMessage() != null ? response.getMessage() : "Transaction successful", response)
+                : ApiResponse.error(response.getMessage() != null ? response.getMessage() : "Transaction failed", response));
     }
 
     @PostMapping("/transaction-status")
