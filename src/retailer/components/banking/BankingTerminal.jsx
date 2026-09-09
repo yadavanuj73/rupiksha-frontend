@@ -735,12 +735,13 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                 });
             } else {
                 const failData = response.data;
-                const respCode = failData?.responseCode || '';
-                const respMsg = response.message || failData?.responseMessage || '';
-                
+                // responseCode lives inside the TransactionResult (data) object
+                const respCode = failData?.responseCode || failData?.data?.responseCode || '';
+                const respMsg = response.message || failData?.responseMessage || failData?.data?.responseMessage || '';
+
                 if (reset) reset();
 
-                if (respCode === 'FP069' || respMsg.toLowerCase().includes('2fa')) {
+                if (respCode === 'FP069' || respMsg.toLowerCase().includes('2fa') || respMsg.toLowerCase().includes('daily auth')) {
                     if (setStatus) {
                         setStatus(prev => ({ ...prev, aeps2faDone: false }));
                     }

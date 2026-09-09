@@ -384,17 +384,20 @@ public class AepsController {
 
         TransactionResult result = transactionService.executeTransaction(request, mobile);
 
-        if ("SUCCESS".equalsIgnoreCase(result.getStatus())) {
-            return ResponseEntity.ok(ApiResponse.success(
-                    result.getResponseMessage() != null ? result.getResponseMessage() : "Transaction approved successfully", 
-                    result
-            ));
-        } else {
-            return ResponseEntity.badRequest().body(ApiResponse.error(
-                    result.getResponseMessage() != null ? result.getResponseMessage() : "Transaction failed", 
-                    result
-            ));
-        }
+        // Always return 200 OK for a completed transaction cycle (SUCCESS, FAILED, PENDING).
+        // The HTTP 400 status is reserved for invalid request payloads (handled by GlobalExceptionHandler
+        // via ValidationException / MethodArgumentNotValidException). Returning 400 for a Fingpay DECLINED
+        // response causes apiFetch() to throw an exception, preventing the frontend from reading the
+        // responseCode and responseMessage fields from the body to display the correct error or
+        // trigger the 2FA modal.
+        boolean txnSuccess = "SUCCESS".equalsIgnoreCase(result.getStatus());
+        return ResponseEntity.ok(txnSuccess
+                ? ApiResponse.success(
+                        result.getResponseMessage() != null ? result.getResponseMessage() : "Transaction approved successfully",
+                        result)
+                : ApiResponse.error(
+                        result.getResponseMessage() != null ? result.getResponseMessage() : "Transaction failed or declined by bank/gateway.",
+                        result));
     }
 
     @PostMapping("/cdo/generate-otp")
