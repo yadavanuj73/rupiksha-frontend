@@ -143,7 +143,8 @@ public class CashDepositService {
             payload.put("requestRemarks", req.getRequestRemarks() != null && !req.getRequestRemarks().isBlank()
                     ? req.getRequestRemarks() : "CD");
             payload.put("transactionAmount", req.getAmount());
-            payload.put("timestamp", encryptionUtil.timestamp());
+            String timestamp = encryptionUtil.timestamp();
+            payload.put("timestamp", timestamp);
             payload.put("transactionType", "CD");
             payload.put("merchantUserName", merchantUserName);
             payload.put("merchantPin", md5(rawPin));
@@ -157,16 +158,15 @@ public class CashDepositService {
             payload.put("captureResponse", captureResponse);
 
             String plainJson = objectMapper.writeValueAsString(payload);
-            log.info("Fingpay CD request: txnId={}, mobile={}, amount={}, bankIIN={}",
-                    transactionId, req.getMobile(), req.getAmount(), bank.getIinno());
+            String secKey = (securityKey != null) ? securityKey.trim() : "";
+            log.info("Fingpay CD request: txnId={}, mobile={}, amount={}, bankIIN={}, hasSecurityKey={}",
+                    transactionId, req.getMobile(), req.getAmount(), bank.getIinno(), !secKey.isEmpty());
 
-            // 6. Encrypt — hash = SHA256(JSON + securityKey) per Fingpay API doc section 1.
-            //    If FINGPAY_SECURITY_KEY env var is not set, falls back to SHA256(JSON) alone.
+            // 6. Encrypt — hash = Base64(SHA256(JSON + securityKey)) per Fingpay API doc.
             SecretKey sessionKey = encryptionUtil.generateSessionKey();
             String eskey         = encryptionUtil.encryptSessionKey(sessionKey);
             String encryptedBody = encryptionUtil.encryptBody(plainJson, sessionKey);
-            String hashInput     = (securityKey != null && !securityKey.isBlank())
-                    ? plainJson + securityKey : plainJson;
+            String hashInput     = secKey.isEmpty() ? plainJson : (plainJson + secKey);
             String hash          = encryptionUtil.generateHash(hashInput);
 
             // 7. Headers
@@ -176,11 +176,10 @@ public class CashDepositService {
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.TEXT_PLAIN);
-            headers.set("trnTimestamp", encryptionUtil.timestamp());
+            headers.set("trnTimestamp", timestamp);
             headers.set("hash", hash);
             headers.set("deviceIMEI", effectiveImei);
             headers.set("eskey", eskey);
-            // superMerchantId required in headers per Fingpay API doc
             headers.set("superMerchantId", superMerchantId);
 
             // 8. API call
