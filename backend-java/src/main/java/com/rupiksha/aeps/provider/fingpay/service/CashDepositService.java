@@ -45,6 +45,9 @@ public class CashDepositService {
     @Value("${fingpay.supermerchant.id}")
     private String superMerchantId;
 
+    @Value("${fingpay.security.key:}")
+    private String securityKey;
+
 
     public CashDepositResponse process(CashDepositRequest req, String transactionId) {
         String maskedAadhaar = "XXXXXXXX" + req.getAadhar().substring(req.getAadhar().length() - 4);
@@ -157,11 +160,14 @@ public class CashDepositService {
             log.info("Fingpay CD request: txnId={}, mobile={}, amount={}, bankIIN={}",
                     transactionId, req.getMobile(), req.getAmount(), bank.getIinno());
 
-            // 6. Encrypt — hash = SHA256(json) only, same as CashWithdrawalService (no securityKey concat)
+            // 6. Encrypt — hash = SHA256(JSON + securityKey) per Fingpay API doc section 1.
+            //    If FINGPAY_SECURITY_KEY env var is not set, falls back to SHA256(JSON) alone.
             SecretKey sessionKey = encryptionUtil.generateSessionKey();
             String eskey         = encryptionUtil.encryptSessionKey(sessionKey);
             String encryptedBody = encryptionUtil.encryptBody(plainJson, sessionKey);
-            String hash          = encryptionUtil.generateHash(plainJson);
+            String hashInput     = (securityKey != null && !securityKey.isBlank())
+                    ? plainJson + securityKey : plainJson;
+            String hash          = encryptionUtil.generateHash(hashInput);
 
             // 7. Headers
             String effectiveImei = (req.getDeviceId() != null && !req.getDeviceId().isBlank()
@@ -174,6 +180,8 @@ public class CashDepositService {
             headers.set("hash", hash);
             headers.set("deviceIMEI", effectiveImei);
             headers.set("eskey", eskey);
+            // superMerchantId required in headers per Fingpay API doc
+            headers.set("superMerchantId", superMerchantId);
 
             // 8. API call
             HttpEntity<String> entity = new HttpEntity<>(encryptedBody, headers);
@@ -227,10 +235,12 @@ public class CashDepositService {
                 return resp;
             }
         } catch (Exception e) {
-            log.error("CD error uid={} txnId={} msg={}", req.getUid(), transactionId, e.getMessage(), e);
+            log.error("CD error uid={} txnId={} cause={} msg={}", req.getUid(), transactionId, e.getClass().getSimpleName(), e.getMessage(), e);
             CashDepositResponse resp = new CashDepositResponse();
             resp.setStatus("FAILED");
-            resp.setMessage("Internal error. Ref: " + transactionId);
+            // Expose actual exception type and message for diagnosing production issues.
+            // TODO: sanitize this before GA release.
+            resp.setMessage("[CD-ERR:" + e.getClass().getSimpleName() + "] " + e.getMessage() + " (Ref: " + transactionId + ")");
             resp.setTxnId(transactionId);
             return resp;
         }
