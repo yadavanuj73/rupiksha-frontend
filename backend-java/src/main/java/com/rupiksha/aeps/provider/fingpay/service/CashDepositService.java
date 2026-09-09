@@ -145,7 +145,7 @@ public class CashDepositService {
                 log.warn("CD coordinate parse warning: {}", e.getMessage());
             }
 
-            // 5. Main payload (matches Fingpay CD API doc Section 1 exactly)
+            // 5. Main payload (matches updated Fingpay CD API doc 15.10.2024 exactly)
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("merchantTranId", transactionId);
             payload.put("languageCode", "en");
@@ -155,13 +155,14 @@ public class CashDepositService {
             payload.put("paymentType", "B");
             payload.put("requestRemarks", req.getRequestRemarks() != null && !req.getRequestRemarks().isBlank()
                     ? req.getRequestRemarks() : "CD");
+            payload.put("isFacialTan", false);
+            payload.put("isIRISTxn", false);
             payload.put("transactionAmount", req.getAmount());
             String timestamp = encryptionUtil.timestamp();
             payload.put("timestamp", timestamp);
             payload.put("transactionType", "CD");
             payload.put("merchantUserName", merchantUserName);
             payload.put("merchantPin", md5(rawPin));
-            payload.put("subMerchantId", "");
             payload.put("cardnumberORUID", cardOrUID);
             payload.put("captureResponse", captureResponse);
 
