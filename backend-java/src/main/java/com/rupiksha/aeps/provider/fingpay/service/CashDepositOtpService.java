@@ -445,6 +445,7 @@ public class CashDepositOtpService {
         headers.set("hash", hash);
         headers.set("deviceIMEI", effectiveImei);
         headers.set("eskey", eskey);
+        headers.set("superMerchantId", superMerchantId);
 
         HttpEntity<String> entity = new HttpEntity<>(encryptedBody, headers);
         return restTemplate.exchange(targetUrl, HttpMethod.POST, entity, String.class);
