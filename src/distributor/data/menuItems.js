@@ -1,18 +1,11 @@
 import {
-    Users, Repeat, FileBarChart, Map, FileText, Wallet, Percent,
-    LifeBuoy, History, Monitor, MapPin, Youtube, User, Plus, Share2
+    Users, Repeat, FileBarChart, FileText, Wallet, Percent,
+    LifeBuoy, History, Monitor, MapPin, Youtube, User
 } from 'lucide-react';
 
 export const menuItems = [
     { title: "ALL SERVICES", icon: Monitor, path: "/distributor/all-services" },
-    {
-        title: "RETAILERS", icon: Users, path: "/distributor/retailers",
-        submenu: [
-            { title: "Retailer Details", icon: Monitor, path: "/distributor/retailers/details" },
-            { title: "Share Rupiksha APP", icon: Share2, path: "/distributor/retailers/share" },
-            { title: "Retailer Service Workflow", icon: Monitor, path: "/distributor/retailers/workflow" }
-        ]
-    },
+    { title: "RETAILERS", icon: Users, path: "/distributor/retailers" },
     {
         title: "TRANSACTIONS", icon: Repeat, path: "/distributor/transactions",
         submenu: [
@@ -32,23 +25,6 @@ export const menuItems = [
             { title: "DMT Report", icon: Monitor, path: "/distributor/reports/dmt" },
             { title: "BBPS Report", icon: Monitor, path: "/distributor/reports/bbps" },
             { title: "CMS Report", icon: FileText, path: "/distributor/reports/cms" },
-        ]
-    },
-    { title: "PLAN & RATES", icon: Map, path: "/distributor/plans" },
-    { title: "INVOICE", icon: FileText, path: "/distributor/invoice" },
-    {
-        title: "ACCOUNTS", icon: Wallet, path: "/distributor/accounts",
-        submenu: [
-            { title: "My Ledger", icon: FileText, path: "/distributor/accounts/my-ledger" },
-            { title: "Retailer Ledger", icon: Monitor, path: "/distributor/accounts/retailer-ledger" },
-            { title: "Commission Reports", icon: FileBarChart, path: "/distributor/accounts/commission" }
-        ]
-    },
-    {
-        title: "PROMOTIONS", icon: Percent, path: "/distributor/promotions",
-        submenu: [
-            { title: "Promotions", icon: Plus, path: "/distributor/promotions/list" },
-            { title: "Video / Pdf", icon: Monitor, path: "/distributor/promotions/assets" }
         ]
     },
     {

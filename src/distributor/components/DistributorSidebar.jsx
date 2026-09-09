@@ -1,14 +1,13 @@
-﻿import React, { useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { menuItems } from '../data/menuItems';
-import { ChevronDown, ChevronRight, Phone, Smartphone, LayoutDashboard, ArrowLeft, Users } from 'lucide-react';
+import { ChevronDown, ChevronRight, Phone, Smartphone, LayoutDashboard, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { sharedDataService } from '../../services/sharedDataService';
 
 const DistributorSidebar = ({ showMobile, onClose }) => {
     const [openMenus, setOpenMenus] = useState({});
     const location = useLocation();
-    const navigate = useNavigate();
 
     const toggleMenu = (title) => setOpenMenus((prev) => ({ ...prev, [title]: !prev[title] }));
 
@@ -160,17 +159,8 @@ const DistributorSidebar = ({ showMobile, onClose }) => {
                     })}
                 </nav>
 
-                {/* Footer and Theme Picker */}
+                {/* Footer */}
                 <div className="border-t border-slate-200 p-3 space-y-4">
-                    <button
-                        onClick={() => navigate('/dashboard')}
-                        className={`w-full flex items-center gap-2 text-slate-700 hover:bg-slate-100 text-[9px] font-black uppercase tracking-widest transition-colors py-2 px-2 rounded-lg
-                            justify-start`}
-                    >
-                        <ArrowLeft size={14} className="shrink-0" />
-                        <span>Back to Retailer Panel</span>
-                    </button>
-
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}

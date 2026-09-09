@@ -84,7 +84,6 @@ const DistributorLayout = () => {
                         { to: '/distributor/retailers', label: 'Retailers' },
                         { to: '/distributor/transactions', label: 'Transactions' },
                         { to: '/distributor/reports', label: 'Reports' },
-                        { to: '/distributor/accounts', label: 'Accounts' },
                     ].map(({ to, label, end }) => (
                         <NavLink
                             key={to}
