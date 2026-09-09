@@ -2,8 +2,8 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const KYC_EXEMPT_ROLES = ['ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'];
-const KYC_REQUIRED_ROLES = ['RETAILER', 'DISTRIBUTOR', 'SUPER_DISTRIBUTOR'];
+const KYC_EXEMPT_ROLES = ['ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE', 'DISTRIBUTOR', 'SUPER_DISTRIBUTOR'];
+const KYC_REQUIRED_ROLES = ['RETAILER'];
 const normalizeRole = (raw) =>
     String(typeof raw === 'string' ? raw : raw?.name || '')
         .trim()
@@ -30,10 +30,10 @@ const isKycApproved = (user) => {
 
 const shouldRequireKyc = (user) => {
     if (user?.username === 'admin') return false;
-    if (user?.impersonated) return true; // impersonated users always go through KYC gate
     const userRoles = getUserRoles(user);
-    // Any exempt role (ADMIN, EMPLOYEE, HEADER) skips KYC entirely
+    // Any exempt role (ADMIN, EMPLOYEE, HEADER, DISTRIBUTOR, SUPER_DISTRIBUTOR) skips KYC entirely
     if (userRoles.some((r) => KYC_EXEMPT_ROLES.includes(r))) return false;
+    if (user?.impersonated) return true; // impersonated retailer users always go through KYC gate
     return userRoles.some((r) => KYC_REQUIRED_ROLES.includes(r));
 };
 
