@@ -13,6 +13,8 @@ public class CashDepositRequest {
     private Long bankId;
     private String requestRemarks;
     private String deviceId;
+    private String merchantUserName;
+    private String merchantPin;
 
     // Biometric fields
     private String errorCode;

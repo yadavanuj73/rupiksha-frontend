@@ -59,15 +59,28 @@ public class CashDepositService {
 
             // 2. Merchant outlet + pin resolve (null-safe, mirrors CashWithdrawalService)
             AepsKyc kyc = (req.getUid() != null) ? aepsKycRepo.findByUid(req.getUid()).orElse(null) : null;
+            if (kyc == null && req.getMerchantUserName() != null && !req.getMerchantUserName().isBlank()) {
+                kyc = aepsKycRepo.findByOutlet(req.getMerchantUserName().trim())
+                        .or(() -> aepsKycRepo.findByMerchantId(req.getMerchantUserName().trim()))
+                        .orElse(null);
+            }
 
-            String merchantUserName = null;
-            String rawPin = null;
+            String merchantUserName = (req.getMerchantUserName() != null && !req.getMerchantUserName().isBlank())
+                    ? req.getMerchantUserName().trim().toUpperCase()
+                    : null;
+            String rawPin = (req.getMerchantPin() != null && !req.getMerchantPin().isBlank())
+                    ? req.getMerchantPin().trim()
+                    : null;
 
             if (kyc != null) {
-                merchantUserName = (kyc.getOutlet() != null && !kyc.getOutlet().isBlank())
-                        ? kyc.getOutlet().trim().toUpperCase()
-                        : (kyc.getMerchantId() != null ? kyc.getMerchantId().trim().toUpperCase() : null);
-                rawPin = kyc.getMpin();
+                if (merchantUserName == null || merchantUserName.isBlank()) {
+                    merchantUserName = (kyc.getOutlet() != null && !kyc.getOutlet().isBlank())
+                            ? kyc.getOutlet().trim().toUpperCase()
+                            : (kyc.getMerchantId() != null ? kyc.getMerchantId().trim().toUpperCase() : null);
+                }
+                if (rawPin == null || rawPin.isBlank()) {
+                    rawPin = kyc.getMpin();
+                }
             }
 
             // Fallback: try FingUser table for pin

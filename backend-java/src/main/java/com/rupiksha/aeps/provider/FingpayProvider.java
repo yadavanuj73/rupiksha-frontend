@@ -609,6 +609,8 @@ public class FingpayProvider implements AepsProvider {
         } else if (serviceType.equals("CASH_DEPOSIT")) {
             CashDepositRequest req = new CashDepositRequest();
             req.setUid(uidLong);
+            req.setMerchantUserName(resolvedMerchantUserName);
+            req.setMerchantPin(resolvedPin);
             String custMobile = context.getRequest().getMobileNumber();
             if (custMobile == null || custMobile.isBlank()) {
                 custMobile = context.getRequest().getCustomerMobile();
