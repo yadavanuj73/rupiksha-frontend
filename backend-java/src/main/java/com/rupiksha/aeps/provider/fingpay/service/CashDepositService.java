@@ -45,8 +45,6 @@ public class CashDepositService {
     @Value("${fingpay.supermerchant.id}")
     private String superMerchantId;
 
-    @Value("${fingpay.security.key}")
-    private String securityKey;
 
     public CashDepositResponse process(CashDepositRequest req, String transactionId) {
         String maskedAadhaar = "XXXXXXXX" + req.getAadhar().substring(req.getAadhar().length() - 4);
@@ -54,46 +52,64 @@ public class CashDepositService {
         try {
             // 1. Bank IIN resolve
             FingBank bank = bankRepo.findById(req.getBankId())
-                    .orElseThrow(() -> new RuntimeException("INVALID BANK CODE"));
+                    .orElseThrow(() -> new RuntimeException("INVALID BANK CODE: " + req.getBankId()));
 
-            // 2. Merchant outlet + pin resolve
-            AepsKyc kyc = aepsKycRepo.findByUid(req.getUid())
-                    .orElseThrow(() -> new RuntimeException("AepsKyc not found for uid: " + req.getUid()));
+            // 2. Merchant outlet + pin resolve (null-safe, mirrors CashWithdrawalService)
+            AepsKyc kyc = (req.getUid() != null) ? aepsKycRepo.findByUid(req.getUid()).orElse(null) : null;
 
-            String merchantUserName = kyc.getOutlet();
-            String rawPin = (kyc.getMpin() != null)
-                    ? kyc.getMpin()
-                    : userRepo.findById(req.getUid())
-                    .orElseThrow(() -> new RuntimeException("FingUser not found"))
-                    .getPin();
+            String merchantUserName = null;
+            String rawPin = null;
 
-            // 3. captureResponse (sensitive biometrics - do not log or store)
+            if (kyc != null) {
+                merchantUserName = (kyc.getOutlet() != null && !kyc.getOutlet().isBlank())
+                        ? kyc.getOutlet().trim().toUpperCase()
+                        : (kyc.getMerchantId() != null ? kyc.getMerchantId().trim().toUpperCase() : null);
+                rawPin = kyc.getMpin();
+            }
+
+            // Fallback: try FingUser table for pin
+            if (rawPin == null || rawPin.isBlank()) {
+                if (req.getUid() != null) {
+                    FingUser fu = userRepo.findById(req.getUid()).orElse(null);
+                    if (fu != null) rawPin = fu.getPin();
+                }
+            }
+
+            // Final safe defaults
+            if (merchantUserName == null || merchantUserName.isBlank()) {
+                merchantUserName = String.valueOf(req.getUid());
+            }
+            if (rawPin == null || rawPin.isBlank()) {
+                rawPin = "1234";
+            }
+
+            // 3. captureResponse — null-safe defaults for every field (mirrors CW)
             Map<String, Object> captureResponse = new LinkedHashMap<>();
-            captureResponse.put("errCode", req.getErrorCode() != null ? req.getErrorCode() : "0");
-            captureResponse.put("errInfo", req.getErrorInfo() != null ? req.getErrorInfo() : "Image Capture Success");
-            captureResponse.put("fCount", req.getFCount() != null ? req.getFCount() : "1");
-            captureResponse.put("fType", req.getFType() != null ? req.getFType() : "0");
-            captureResponse.put("iCount", "0");
-            captureResponse.put("iType", "0");
-            captureResponse.put("pCount", "0");
-            captureResponse.put("pType", "0");
-            captureResponse.put("nmPoints", req.getNmPoints() != null ? req.getNmPoints() : "46");
-            captureResponse.put("qScore", req.getQScore() != null ? req.getQScore() : "100");
-            captureResponse.put("dpID", req.getDpId());
-            captureResponse.put("rdsID", req.getRdsId());
-            captureResponse.put("rdsVer", req.getRdsVer());
-            captureResponse.put("dc", req.getDc());
-            captureResponse.put("mi", req.getMi());
-            captureResponse.put("mc", req.getMc());
-            captureResponse.put("ci", req.getCi());
-            captureResponse.put("sessionKey", req.getSessionKey());
-            captureResponse.put("hmac", req.getHmac());
-            captureResponse.put("PidDatatype", req.getPidType() != null ? req.getPidType() : "X");
-            captureResponse.put("Piddata", req.getPidData());
+            captureResponse.put("errCode",     req.getErrorCode()   != null ? req.getErrorCode()   : "0");
+            captureResponse.put("errInfo",     req.getErrorInfo()   != null ? req.getErrorInfo()   : "Image Capture Success");
+            captureResponse.put("fCount",      req.getFCount()      != null ? req.getFCount()      : "1");
+            captureResponse.put("fType",       req.getFType()       != null ? req.getFType()       : "0");
+            captureResponse.put("iCount",      "0");
+            captureResponse.put("iType",       "0");
+            captureResponse.put("pCount",      "0");
+            captureResponse.put("pType",       "0");
+            captureResponse.put("nmPoints",    req.getNmPoints()    != null ? req.getNmPoints()    : "46");
+            captureResponse.put("qScore",      req.getQScore()      != null ? req.getQScore()      : "100");
+            captureResponse.put("dpID",        req.getDpId()        != null ? req.getDpId()        : "");
+            captureResponse.put("rdsID",       req.getRdsId()       != null ? req.getRdsId()       : "");
+            captureResponse.put("rdsVer",      req.getRdsVer()      != null ? req.getRdsVer()      : "");
+            captureResponse.put("dc",          req.getDc()          != null ? req.getDc()          : "");
+            captureResponse.put("mi",          req.getMi()          != null ? req.getMi()          : "");
+            captureResponse.put("mc",          req.getMc()          != null ? req.getMc()          : "");
+            captureResponse.put("ci",          req.getCi()          != null ? req.getCi()          : "");
+            captureResponse.put("sessionKey",  req.getSessionKey()  != null ? req.getSessionKey()  : "");
+            captureResponse.put("hmac",        req.getHmac()        != null ? req.getHmac()        : "");
+            captureResponse.put("PidDatatype", req.getPidType()     != null ? req.getPidType()     : "X");
+            captureResponse.put("Piddata",     req.getPidData()     != null ? req.getPidData()     : "");
 
-            // 4. cardnumberORUID (handling VID automatically)
+            // 4. cardnumberORUID (VID or Aadhaar)
             Map<String, Object> cardOrUID = new LinkedHashMap<>();
-            if (req.getAadhar().length() == 16) {
+            if (req.getAadhar() != null && req.getAadhar().length() == 16) {
                 cardOrUID.put("nationalBankIdentificationNumber", bank.getIinno());
                 cardOrUID.put("indicatorforUID", 2);
                 cardOrUID.put("adhaarNumber", "999999999999");
@@ -104,23 +120,25 @@ public class CashDepositService {
                 cardOrUID.put("adhaarNumber", req.getAadhar());
             }
 
-            // 5. Main payload
+            // Parse coordinates safely
+            double latVal = 28.6139, lonVal = 77.2090;
+            try {
+                if (req.getLat() != null && !req.getLat().isBlank()) latVal = Double.parseDouble(req.getLat());
+                if (req.getLog() != null && !req.getLog().isBlank()) lonVal = Double.parseDouble(req.getLog());
+            } catch (Exception e) {
+                log.warn("CD coordinate parse warning: {}", e.getMessage());
+            }
+
+            // 5. Main payload (matches Fingpay CD API doc exactly)
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("merchantTranId", transactionId);
             payload.put("languageCode", "en");
-            try {
-                payload.put("latitude", Double.parseDouble(req.getLat()));
-            } catch (Exception e) {
-                payload.put("latitude", 28.6139);
-            }
-            try {
-                payload.put("longitude", Double.parseDouble(req.getLog()));
-            } catch (Exception e) {
-                payload.put("longitude", 77.2090);
-            }
+            payload.put("latitude", latVal);
+            payload.put("longitude", lonVal);
             payload.put("mobileNumber", req.getMobile());
             payload.put("paymentType", "B");
-            payload.put("requestRemarks", req.getRequestRemarks() != null && !req.getRequestRemarks().isBlank() ? req.getRequestRemarks() : "CD");
+            payload.put("requestRemarks", req.getRequestRemarks() != null && !req.getRequestRemarks().isBlank()
+                    ? req.getRequestRemarks() : "CD");
             payload.put("transactionAmount", req.getAmount());
             payload.put("timestamp", encryptionUtil.timestamp());
             payload.put("transactionType", "CD");
@@ -136,19 +154,19 @@ public class CashDepositService {
             payload.put("captureResponse", captureResponse);
 
             String plainJson = objectMapper.writeValueAsString(payload);
+            log.info("Fingpay CD request: txnId={}, mobile={}, amount={}, bankIIN={}",
+                    transactionId, req.getMobile(), req.getAmount(), bank.getIinno());
 
-            // 6. Encrypt (sensitive session keys and payloads are not written to application logs)
+            // 6. Encrypt — hash = SHA256(json) only, same as CashWithdrawalService (no securityKey concat)
             SecretKey sessionKey = encryptionUtil.generateSessionKey();
-            String eskey = encryptionUtil.encryptSessionKey(sessionKey);
+            String eskey         = encryptionUtil.encryptSessionKey(sessionKey);
             String encryptedBody = encryptionUtil.encryptBody(plainJson, sessionKey);
-            
-            // Hash calculation: Base64(SHA256(JSON + securityKey))
-            String hash = encryptionUtil.generateHash(plainJson + securityKey);
+            String hash          = encryptionUtil.generateHash(plainJson);
 
-            // 7. Headers (deviceIMEI: scanner serial number per Fingpay document)
-            String effectiveImei = (req.getDeviceId() != null && !req.getDeviceId().isBlank())
-                    ? req.getDeviceId().trim()
-                    : deviceImei;
+            // 7. Headers
+            String effectiveImei = (req.getDeviceId() != null && !req.getDeviceId().isBlank()
+                    && !req.getDeviceId().equalsIgnoreCase("unknown"))
+                    ? req.getDeviceId().trim() : deviceImei;
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.TEXT_PLAIN);
@@ -162,6 +180,8 @@ public class CashDepositService {
             ResponseEntity<String> httpResp = restTemplate.exchange(
                     cdUrl, HttpMethod.POST, entity, String.class);
 
+            log.info("Fingpay CD raw response for txnId {}: {}", transactionId, httpResp.getBody());
+
             // 9. Parse response
             JsonNode root = objectMapper.readTree(httpResp.getBody());
             JsonNode data = root.path("data");
@@ -169,12 +189,12 @@ public class CashDepositService {
             // 10. Success condition
             boolean success = isSuccess(root, data);
 
-            // 11. Save transaction to iaepstxn table (sensitive/biometric request details are excluded)
+            // 11. Save transaction to iaepstxn table
             FingpayTransaction txn = buildTxn(req, transactionId, maskedAadhaar, success, root, data);
             txnRepo.save(txn);
 
             // 12. Send Cash Deposit Acknowledgement (Fingpay Section 1c mandate)
-            sendAcknowledgementAsync(transactionId, txn.getFtxnin(), success, txn.getRrn(), 
+            sendAcknowledgementAsync(transactionId, txn.getFtxnin(), success, txn.getRrn(),
                     data.isMissingNode() ? (success ? "00" : "99") : data.path("responseCode").asText(success ? "00" : "99"));
 
             // 13. Build sanitized response
