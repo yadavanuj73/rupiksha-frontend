@@ -112,6 +112,13 @@ export default function NetworkRegistrationForm({
         parentUserId: uplineId || ''
     });
 
+    const roleText = String(uplineRole || '').toUpperCase();
+    const currentUpline = roleText === 'DISTRIBUTOR'
+        ? (sharedDataService.getCurrentDistributor() || (uplineId ? sharedDataService.getDistributorById(uplineId) : null))
+        : (roleText === 'SUPER_DISTRIBUTOR'
+            ? (sharedDataService.getCurrentSuperDistributor() || (uplineId ? sharedDataService.getSuperDistributorById(uplineId) : null))
+            : (sharedDataService.getCurrentDistributor() || sharedDataService.getCurrentSuperDistributor() || (uplineId ? sharedDataService.getDistributorById(uplineId) : null)));
+
     const [showPass, setShowPass] = useState(false);
     const [showConfirmPass, setShowConfirmPass] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -602,21 +609,35 @@ export default function NetworkRegistrationForm({
 
                         <div>
                             <label className="block text-[11px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
-                                Assign Parent / Upline (Optional)
+                                Assigned Parent / Upline
                             </label>
-                            <select
-                                name="parentUserId"
-                                value={form.parentUserId}
-                                onChange={handleChange}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
-                            >
-                                <option value="">-- Direct Parent / Current Upline --</option>
-                                {parents.map(p => (
-                                    <option key={p.id} value={p.id}>
-                                        {p.fullName} ({p.partyCode || p.username}) - {p.role}
-                                    </option>
-                                ))}
-                            </select>
+                            {currentUpline || uplineId ? (
+                                <div className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 flex items-center justify-between shadow-sm">
+                                    <span className="text-xs sm:text-sm font-bold text-slate-800 tracking-tight flex items-center gap-1.5 truncate">
+                                        <User className="w-4 h-4 text-blue-600 shrink-0" />
+                                        <span className="truncate">
+                                            {currentUpline?.fullName || currentUpline?.name || 'Distributor'} {currentUpline?.partyCode ? `(${currentUpline.partyCode})` : (currentUpline?.username ? `(${currentUpline.username})` : '')}
+                                        </span>
+                                    </span>
+                                    <span className="text-[10px] font-bold text-blue-600 bg-blue-100/80 px-2 py-0.5 rounded-full uppercase tracking-widest shrink-0 ml-1">
+                                        {uplineRole ? uplineRole.replace(/_/g, ' ') : (currentUpline?.role || 'DISTRIBUTOR')}
+                                    </span>
+                                </div>
+                            ) : (
+                                <select
+                                    name="parentUserId"
+                                    value={form.parentUserId}
+                                    onChange={handleChange}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
+                                >
+                                    <option value="">-- Direct Parent / Upline --</option>
+                                    {parents.filter(p => p.role !== 'RETAILER').map(p => (
+                                        <option key={p.id} value={p.id}>
+                                            {p.fullName} ({p.partyCode || p.username}) - {p.role}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
                         </div>
                     </div>
 
