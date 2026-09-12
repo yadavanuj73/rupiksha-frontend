@@ -363,39 +363,36 @@ const Retailers = () => {
             </div>
 
             {/* ══════════════════════════════════════════
-                CLEAN 12-COLUMN TABLE (Exact Admin Design)
+                CLEAN RETAILER NETWORK TABLE
             ══════════════════════════════════════════ */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                 <div className="w-full overflow-x-auto">
-                    <table className="w-full border-collapse text-left min-w-[1100px]" style={{ tableLayout: 'auto' }}>
+                    <table className="w-full border-collapse text-left min-w-[900px]" style={{ tableLayout: 'auto' }}>
                         <thead>
                             <tr className="bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 text-[11px] font-black text-slate-500 uppercase tracking-wider">
                                 <th className="px-2.5 py-3 text-center border-r border-slate-200 w-10">#</th>
                                 <th className="px-3 py-3 text-left border-r border-slate-200">Name</th>
                                 <th className="px-3 py-3 text-left border-r border-slate-200">Party Code</th>
-                                <th className="px-3 py-3 text-left border-r border-slate-200">Owner</th>
                                 <th className="px-3 py-3 text-left border-r border-slate-200">Address</th>
                                 <th className="px-3 py-3 text-center border-r border-slate-200">Mobile</th>
                                 <th className="px-3 py-3 text-left border-r border-slate-200">Email</th>
-                                <th className="px-3 py-3 text-center border-r border-slate-200">Role & Status</th>
                                 <th className="px-3 py-3 text-right border-r border-slate-200">Wallet</th>
                                 <th className="px-3 py-3 text-center border-r border-slate-200">Activity</th>
-                                <th className="px-3 py-3 text-center border-r border-slate-200">Joined</th>
-                                <th className="px-3 py-3 text-center">Actions</th>
+                                <th className="px-3 py-3 text-center">Joined</th>
                             </tr>
                         </thead>
 
                         <tbody className="divide-y divide-slate-100 text-xs">
                             {loading ? (
                                 <tr>
-                                    <td colSpan={12} className="py-14 text-center">
+                                    <td colSpan={9} className="py-14 text-center">
                                         <Loader2 className="animate-spin mx-auto text-blue-500" size={28} />
                                         <p className="text-xs text-slate-400 mt-2 font-semibold">Loading retailers…</p>
                                     </td>
                                 </tr>
                             ) : filtered.length === 0 ? (
                                 <tr>
-                                    <td colSpan={12} className="py-14 text-center">
+                                    <td colSpan={9} className="py-14 text-center">
                                         <Users size={32} className="text-slate-300 mx-auto" />
                                         <p className="text-xs text-slate-400 mt-2 font-bold uppercase tracking-wider">No retailers found in network</p>
                                     </td>
@@ -422,23 +419,8 @@ const Retailers = () => {
                                             {member.partyCode || '—'}
                                         </td>
 
-                                        {/* Owner Column (Distributor Name, Party Code, Mobile) */}
-                                        <td className="px-3 py-3 border-r border-slate-100 text-left">
-                                            <div className="flex flex-col gap-0.5 leading-tight">
-                                                <span className="font-black text-[12px] text-slate-800">
-                                                    {dist?.fullName || dist?.name || 'Distributor'}
-                                                </span>
-                                                <span className="text-[10px] font-mono font-bold text-blue-600">
-                                                    {dist?.partyCode || dist?.username || 'RPDMH78914'}
-                                                </span>
-                                                <span className="text-[10px] text-slate-500 font-semibold">
-                                                    {dist?.mobile || '—'}
-                                                </span>
-                                            </div>
-                                        </td>
-
                                         {/* Address */}
-                                        <td className="px-3 py-3 border-r border-slate-100 text-slate-600 text-[11px] max-w-[180px] truncate" title={addr}>
+                                        <td className="px-3 py-3 border-r border-slate-100 text-slate-600 text-[11px] max-w-[220px] truncate" title={addr}>
                                             {addr || '—'}
                                         </td>
 
@@ -448,20 +430,8 @@ const Retailers = () => {
                                         </td>
 
                                         {/* Email */}
-                                        <td className="px-3 py-3 text-slate-600 text-[11px] border-r border-slate-100 max-w-[160px] truncate" title={member.email}>
+                                        <td className="px-3 py-3 text-slate-600 text-[11px] border-r border-slate-100 max-w-[180px] truncate" title={member.email}>
                                             {member.email || '—'}
-                                        </td>
-
-                                        {/* Role & Status Pills */}
-                                        <td className="px-3 py-3 text-center border-r border-slate-100">
-                                            <div className="flex flex-col items-center gap-1">
-                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-700 border border-blue-200">
-                                                    RETAILER
-                                                </span>
-                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 border border-emerald-200">
-                                                    APPROVED
-                                                </span>
-                                            </div>
                                         </td>
 
                                         {/* Wallet Balance */}
@@ -475,45 +445,9 @@ const Retailers = () => {
                                         </td>
 
                                         {/* Joined Date & Time */}
-                                        <td className="px-3 py-3 text-center border-r border-slate-100 text-[11px] leading-tight">
+                                        <td className="px-3 py-3 text-center text-[11px] leading-tight">
                                             <div className="font-bold text-slate-700">{fmtDateOnly(member.createdAt)}</div>
                                             <div className="text-[10px] text-slate-400 font-mono mt-0.5">{fmtTime(member.createdAt)}</div>
-                                        </td>
-
-                                        {/* Actions (Stacked Clean Buttons Matching Admin) */}
-                                        <td className="px-3 py-2.5 text-center">
-                                            <div className="flex flex-col gap-1 w-[120px] mx-auto select-none">
-                                                <button
-                                                    onClick={() => handleLoginAsMember(member)}
-                                                    className="w-full flex items-center justify-center gap-1 px-2 py-1 text-[10px] font-black bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:scale-[0.98] shadow-sm transition-all cursor-pointer"
-                                                >
-                                                    <Zap size={10} /> Login As Member
-                                                </button>
-                                                <button
-                                                    onClick={() => handleViewServices(member)}
-                                                    className="w-full flex items-center justify-center gap-1 px-2 py-1 text-[10px] font-black bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:scale-[0.98] shadow-sm transition-all cursor-pointer"
-                                                >
-                                                    <Package size={10} /> Services
-                                                </button>
-                                                <button
-                                                    onClick={() => setSelectedRetailer(member)}
-                                                    className="w-full flex items-center justify-center gap-1 px-2 py-1 text-[10px] font-black bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:scale-[0.98] shadow-sm transition-all cursor-pointer"
-                                                >
-                                                    <Eye size={10} /> View Details
-                                                </button>
-                                                <button
-                                                    onClick={() => setEditingRetailer(member)}
-                                                    className="w-full flex items-center justify-center gap-1 px-2 py-1 text-[10px] font-black bg-amber-500 text-white rounded-lg hover:bg-amber-600 active:scale-[0.98] shadow-sm transition-all cursor-pointer"
-                                                >
-                                                    <Edit3 size={10} /> Edit
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteRetailer(member)}
-                                                    className="w-full flex items-center justify-center gap-1 px-2 py-1 text-[10px] font-black bg-rose-500 text-white rounded-lg hover:bg-rose-600 active:scale-[0.98] shadow-sm transition-all cursor-pointer"
-                                                >
-                                                    <Trash2 size={10} /> Delete
-                                                </button>
-                                            </div>
                                         </td>
                                     </tr>
                                 );

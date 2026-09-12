@@ -56,35 +56,34 @@ const DistributorSidebar = ({
                         : (isExpanded ? '240px' : '72px')
                 }}
             >
-                {/* Header with Big Logo & Lock Toggle */}
-                <div className={`h-16 flex items-center shrink-0 border-b border-slate-100 transition-all duration-300 ${isExpanded ? 'justify-between px-4' : 'justify-center px-2'}`}>
-                    <div className="flex items-center gap-2 overflow-hidden">
-                        <img
-                            src={logo}
-                            alt="Rupiksha"
-                            className={`object-contain transition-all duration-300 ${isExpanded ? 'h-9 w-auto max-w-[150px]' : 'h-8 w-8 rounded-lg'}`}
-                        />
+                {/* Logo area */}
+                <div className={`flex items-center shrink-0 py-6 border-b border-slate-100 transition-all duration-300 ${isExpanded ? 'justify-between px-5' : 'justify-center px-2'}`}>
+                    <div className="flex items-center gap-2.5 overflow-hidden">
+                        {isExpanded ? (
+                            <img
+                                src={logo}
+                                alt="Rupiksha"
+                                className="h-10 w-auto max-w-[140px] object-contain rounded-lg"
+                            />
+                        ) : (
+                            <img
+                                src={logo}
+                                alt="R"
+                                className="w-8 h-8 object-contain rounded-lg shadow-sm"
+                            />
+                        )}
                     </div>
 
                     {isExpanded && (
                         <button
                             onClick={toggleSidebarLock}
-                            className="hidden lg:flex p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition-all cursor-pointer shrink-0"
-                            title={isSidebarLocked ? "Unlock Sidebar (Auto-collapse on hover leave)" : "Lock Sidebar (Keep expanded)"}
+                            className="hidden lg:flex p-1.5 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 text-slate-400 hover:text-blue-600 transition-all cursor-pointer shrink-0"
+                            title={isSidebarLocked ? "Unlock Sidebar (Auto-collapse)" : "Lock Sidebar (Always expanded)"}
                         >
-                            {isSidebarLocked ? <Lock size={16} className="text-blue-600" /> : <Unlock size={16} className="text-slate-400" />}
+                            {isSidebarLocked ? <Lock size={16} className="text-blue-600" /> : <Unlock size={16} />}
                         </button>
                     )}
                 </div>
-
-                {/* Section Badge when expanded */}
-                {isExpanded && (
-                    <div className="px-4 pt-3 pb-1">
-                        <span className="inline-flex items-center rounded-full bg-blue-50 border border-blue-100 text-blue-700 px-3 py-1 text-[9px] font-black uppercase tracking-widest">
-                            Distributor Panel
-                        </span>
-                    </div>
-                )}
 
                 {/* Navigation Links */}
                 <nav className="flex-1 overflow-y-auto py-2 scrollbar-none space-y-1 px-2">
