@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import DistributorSidebar from './DistributorSidebar';
 import DistributorTopBar from './DistributorTopBar';
 import { sharedDataService } from '../../services/sharedDataService';
@@ -103,31 +103,6 @@ const DistributorLayout = () => {
                             <span className="text-slate-400 text-[9px] font-black uppercase tracking-[0.2em] hidden md:block">Distributor Node v4.2</span>
                         </div>
                     </div>
-                </div>
-
-                {/* Tab Navigation */}
-                <div className="bg-white border-b border-slate-100 px-4 flex items-center gap-1 shrink-0 overflow-x-auto shadow-sm scrollbar-none">
-                    {[
-                        { to: '/distributor', label: 'Dashboard', end: true },
-                        { to: '/distributor/retailers', label: 'Retailers' },
-                        { to: '/distributor/transactions', label: 'Transactions' },
-                        { to: '/distributor/reports', label: 'Reports' },
-                    ].map(({ to, label, end }) => (
-                        <NavLink
-                            key={to}
-                            to={to}
-                            end={end}
-                            className={({ isActive }) =>
-                                `px-4 py-3 text-[10px] font-black uppercase tracking-wider whitespace-nowrap border-b-2 transition-all
-                                ${isActive
-                                    ? 'border-blue-600 text-blue-600 font-black'
-                                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-                                }`
-                            }
-                        >
-                            {label}
-                        </NavLink>
-                    ))}
                 </div>
 
                 {/* Main Content Area */}
