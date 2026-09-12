@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Users, Search, Filter, MoreHorizontal,
-    Plus, Download, UserPlus, Shield,
+    Plus, Download, UserPlus, Shield, ShieldCheck,
     CheckCircle2, AlertCircle, Clock, X,
     Eye, Edit2, Wallet, Smartphone, Mail, MapPin
 } from 'lucide-react';
