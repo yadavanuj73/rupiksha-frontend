@@ -1,20 +1,20 @@
 import {
     Users, Repeat, FileBarChart, FileText, Wallet, Percent,
-    LifeBuoy, History, Monitor, MapPin, Youtube, User
+    LifeBuoy, History, Monitor, MapPin, Youtube, User, Smartphone
 } from 'lucide-react';
 
 export const menuItems = [
-    { title: "ALL SERVICES", icon: Monitor, path: "/distributor/all-services" },
-    { title: "RETAILERS", icon: Users, path: "/distributor/retailers" },
+    { title: "All Services", icon: Smartphone, path: "/distributor/all-services" },
+    { title: "Retailers", icon: Users, path: "/distributor/retailers" },
     {
-        title: "TRANSACTIONS", icon: Repeat, path: "/distributor/transactions",
+        title: "Transactions", icon: Repeat, path: "/distributor/transactions",
         submenu: [
             { title: "Distributor Receipt", icon: FileText, path: "/distributor/transactions/distributor-receipt" },
             { title: "Retailer Receipt", icon: FileText, path: "/distributor/transactions/retailer-receipt" }
         ]
     },
     {
-        title: "REPORTS", icon: FileBarChart, path: "/distributor/reports",
+        title: "Reports", icon: FileBarChart, path: "/distributor/reports",
         submenu: [
             { title: "Retailer Balance", icon: FileText, path: "/distributor/reports/retailer-balance" },
             { title: "Payment Request", icon: Wallet, path: "/distributor/reports/payment-request" },
@@ -28,7 +28,7 @@ export const menuItems = [
         ]
     },
     {
-        title: "SUPPORT", icon: LifeBuoy, path: "/distributor/support",
+        title: "Support", icon: LifeBuoy, path: "/distributor/support",
         submenu: [
             { title: "Online New Retailers Lead", icon: MapPin, path: "/distributor/support/leads" },
             { title: "ECollect/OLP Complaints", icon: Repeat, path: "/distributor/support/complaints-ecollect" },
@@ -36,5 +36,5 @@ export const menuItems = [
             { title: "Training Videos", icon: Youtube, path: "/distributor/support/videos" }
         ]
     },
-    { title: "OLD FY REPORTS", icon: History, path: "/distributor/old-reports" }
+    { title: "Old FY Reports", icon: History, path: "/distributor/old-reports" }
 ];
