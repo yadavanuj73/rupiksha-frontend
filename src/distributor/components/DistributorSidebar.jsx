@@ -84,29 +84,42 @@ const DistributorSidebar = ({
                 }`}
             >
                 {/* Header / Lock Area */}
-                <div className="px-3 py-2 flex items-center justify-between h-[52px] border-b border-slate-200">
+                <div className={`shrink-0 border-b border-slate-200 transition-all duration-300 ${
+                    isExpanded ? 'px-3 py-3' : 'px-2 py-2.5'
+                }`}>
                     {isExpanded ? (
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            className="flex items-center justify-between w-full"
+                            className="flex items-start justify-between w-full gap-2"
                         >
-                            <span className="text-xs font-black tracking-wider text-slate-950">Navigation</span>
+                            <div className="flex-1 flex justify-center items-center py-1">
+                                <img
+                                    src={logo}
+                                    alt="Rupiksha"
+                                    className="h-16 w-auto object-contain max-w-[135px]"
+                                />
+                            </div>
                             <button
                                 type="button"
                                 onClick={toggleSidebarLock}
-                                className={`p-1 rounded-lg transition cursor-pointer flex items-center gap-1 ${
+                                className={`p-1.5 rounded-lg transition cursor-pointer flex items-center gap-1 shrink-0 ${
                                     isSidebarLocked
-                                        ? 'bg-black text-white hover:bg-slate-800'
+                                        ? 'bg-slate-900 text-white hover:bg-slate-800'
                                         : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
                                 }`}
                                 title={isSidebarLocked ? "Sidebar locked open. Click to enable auto-slide." : "Sidebar slideable. Click to lock open."}
                             >
-                                {isSidebarLocked ? <Lock size={12} /> : <Unlock size={12} />}
+                                {isSidebarLocked ? <Lock size={13} /> : <Unlock size={13} />}
                             </button>
                         </motion.div>
                     ) : (
-                        <div className="w-full flex justify-center">
+                        <div className="w-full flex flex-col items-center gap-2">
+                            <img
+                                src={logo}
+                                alt="R"
+                                className="w-7 h-7 object-contain rounded"
+                            />
                             <button
                                 type="button"
                                 onClick={toggleSidebarLock}

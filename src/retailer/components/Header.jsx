@@ -3,8 +3,6 @@ import { Wallet, Bell, ChevronDown, Menu, User, CreditCard, Settings, MoreVertic
 import { dataService } from '../../services/dataService';
 import { useWallet } from '../../context/WalletContext';
 import { useAuth } from '../../context/AuthContext';
-// Using logo from public folder
-const mainLogo = '/rupiksha logo.jpeg';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -68,11 +66,8 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
                     >
                         <Menu size={19} />
                     </button>
-                    <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2">
-                        <div className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center">
-                            <img src={mainLogo} alt="RUPIKSHA" className="h-8 w-8 object-contain" />
-                        </div>
-                        <p className="hidden sm:block text-[12px] font-black text-blue-700 tracking-wide">RUPIKSHA</p>
+                    <button onClick={() => navigate('/dashboard')} className="flex items-center">
+                        <p className="text-[15px] font-black text-blue-700 tracking-wider">RUPIKSHA</p>
                     </button>
                 </div>
 
