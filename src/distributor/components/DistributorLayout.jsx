@@ -8,6 +8,26 @@ import { Lock, Shield } from 'lucide-react';
 
 const DistributorLayout = () => {
     const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+    const [isSidebarLocked, setIsSidebarLocked] = useState(() => {
+        try {
+            return localStorage.getItem('rupiksha_distributor_sidebar_locked') === 'true';
+        } catch {
+            return false;
+        }
+    });
+    const [isSidebarHovered, setIsSidebarHovered] = useState(false);
+    const isExpanded = isSidebarLocked || isSidebarHovered;
+
+    const toggleSidebarLock = () => {
+        setIsSidebarLocked(prev => {
+            const next = !prev;
+            try {
+                localStorage.setItem('rupiksha_distributor_sidebar_locked', String(next));
+            } catch {}
+            return next;
+        });
+    };
+
     const navigate = useNavigate();
     const { user, loading, lockTimeLeft, logoutTimeLeft } = useAuth();
 
@@ -54,9 +74,14 @@ const DistributorLayout = () => {
             <DistributorSidebar
                 showMobile={showMobileSidebar}
                 onClose={() => setShowMobileSidebar(false)}
+                isSidebarLocked={isSidebarLocked}
+                toggleSidebarLock={toggleSidebarLock}
+                isSidebarHovered={isSidebarHovered}
+                setIsSidebarHovered={setIsSidebarHovered}
+                isExpanded={isExpanded}
             />
 
-            <div className="h-full flex flex-col overflow-hidden min-w-0 pt-[76px] lg:ml-64">
+            <div className={`h-full flex flex-col overflow-hidden min-w-0 pt-[76px] transition-all duration-300 ${isSidebarLocked ? 'lg:ml-64' : 'lg:ml-[72px]'}`}>
                 {/* Security Session Monitor */}
                 <div className="bg-blue-50 text-slate-700 h-9 flex items-center px-6 shrink-0 border-b border-blue-100">
                     <div className="flex items-center gap-6 w-full max-w-7xl mx-auto">

@@ -1,11 +1,21 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { menuItems } from '../data/menuItems';
-import { ChevronDown, ChevronRight, Phone, Smartphone, LayoutDashboard, Users } from 'lucide-react';
+import { ChevronDown, ChevronRight, Phone, Smartphone, LayoutDashboard, Users, Lock, Unlock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { sharedDataService } from '../../services/sharedDataService';
 
-const DistributorSidebar = ({ showMobile, onClose }) => {
+const logo = '/rupiksha logo.jpeg';
+
+const DistributorSidebar = ({
+    showMobile,
+    onClose,
+    isSidebarLocked,
+    toggleSidebarLock,
+    isSidebarHovered,
+    setIsSidebarHovered,
+    isExpanded
+}) => {
     const [openMenus, setOpenMenus] = useState({});
     const location = useLocation();
 
@@ -29,63 +39,101 @@ const DistributorSidebar = ({ showMobile, onClose }) => {
                 )}
             </AnimatePresence>
 
-            {/* Locked Premium Sidebar */}
-            <motion.aside
-                initial={false}
-                animate={{
-                    x: typeof window !== 'undefined' && window.innerWidth < 1024
-                        ? (showMobile ? 0 : -240)
-                        : 0
-                }}
-                transition={{ type: 'spring', stiffness: 280, damping: 28 }}
+            {/* Premium Collapsible & Lockable Sidebar */}
+            <aside
+                onMouseEnter={() => setIsSidebarHovered(true)}
+                onMouseLeave={() => setIsSidebarHovered(false)}
                 className={`
-                    fixed top-0 left-0 h-screen z-50 w-64 flex flex-col
-                    bg-slate-50 text-slate-700
-                    border-r border-slate-200 shadow-[8px_0_28px_rgba(15,23,42,0.06)]
-                    ${showMobile ? 'translate-x-0' : '-translate-x-full'}
-                    lg:top-[76px] lg:h-[calc(100vh-76px)] lg:translate-x-0
+                    fixed top-0 left-0 h-screen z-50 flex flex-col
+                    bg-white text-slate-700
+                    border-r border-slate-200 shadow-[4px_0_24px_rgba(15,23,42,0.05)]
+                    transition-all duration-300 ease-in-out
+                    ${showMobile ? 'translate-x-0 w-64' : '-translate-x-full lg:translate-x-0'}
+                    ${isExpanded ? 'lg:w-64' : 'lg:w-[72px]'}
                 `}
             >
-                <div className="px-4 py-3 border-b border-slate-200">
-                    <span className="inline-flex items-center rounded-full bg-blue-50 border border-blue-100 text-blue-700 px-3 py-1 text-[10px] font-black uppercase tracking-widest">
-                        Distributor Panel
-                    </span>
+                {/* Header with Big Logo & Lock Toggle */}
+                <div className={`h-[76px] flex items-center shrink-0 border-b border-slate-100 px-3 transition-all duration-300 ${isExpanded ? 'justify-between px-4' : 'justify-center'}`}>
+                    <div className="flex items-center gap-2.5 overflow-hidden">
+                        <img
+                            src={logo}
+                            alt="Rupiksha"
+                            className={`object-contain rounded-xl transition-all duration-300 ${isExpanded ? 'h-9 w-auto max-w-[140px]' : 'h-8 w-8'}`}
+                        />
+                    </div>
+
+                    {isExpanded && (
+                        <button
+                            onClick={toggleSidebarLock}
+                            className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition-all cursor-pointer shrink-0"
+                            title={isSidebarLocked ? "Unlock Sidebar (Auto-collapse on hover leave)" : "Lock Sidebar (Keep expanded)"}
+                        >
+                            {isSidebarLocked ? <Lock size={16} className="text-blue-600" /> : <Unlock size={16} className="text-slate-400" />}
+                        </button>
+                    )}
                 </div>
 
-                {/* Nav */}
-                <nav className="flex-1 overflow-y-auto py-3 scrollbar-none space-y-1 px-2">
+                {/* Section Badge when expanded */}
+                {isExpanded && (
+                    <div className="px-4 pt-3 pb-1">
+                        <span className="inline-flex items-center rounded-full bg-blue-50 border border-blue-100 text-blue-700 px-3 py-1 text-[9px] font-black uppercase tracking-widest">
+                            Distributor Panel
+                        </span>
+                    </div>
+                )}
+
+                {/* Navigation Links */}
+                <nav className="flex-1 overflow-y-auto py-2 scrollbar-none space-y-1 px-2">
                     {/* Dashboard NavLink */}
                     <NavLink
                         to="/distributor"
                         end
                         onClick={onClose}
+                        title={!isExpanded ? "Dashboard" : undefined}
                         className={({ isActive }) =>
-                            `flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200
+                            `relative flex items-center rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-200
+                            ${isExpanded ? 'px-3 py-2.5 gap-3 justify-start' : 'p-2.5 justify-center'}
                             ${isActive
-                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25'
-                                : 'text-slate-700 hover:bg-slate-100'
-                            } justify-start`
+                                ? 'bg-blue-50/80 text-blue-700 shadow-sm font-black'
+                                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                            }`
                         }
                     >
-                        <LayoutDashboard size={16} className="shrink-0" />
-                        <span className="truncate">Dashboard</span>
+                        {({ isActive }) => (
+                            <>
+                                {isActive && (
+                                    <div className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-emerald-500 rounded-r-full" />
+                                )}
+                                <LayoutDashboard size={18} className={`shrink-0 ${isActive ? 'text-blue-600' : 'text-slate-400'}`} />
+                                {isExpanded && <span className="truncate">Dashboard</span>}
+                            </>
+                        )}
                     </NavLink>
 
                     {/* Super Distributor Extra Link */}
-                    {['SUPER_DISTRIBUTOR', 'ADMIN', 'SUPER_DISTRIBUTOR'].includes(sharedDataService.getCurrentDistributor()?.role) && (
+                    {['SUPER_DISTRIBUTOR', 'ADMIN'].includes(sharedDataService.getCurrentDistributor()?.role) && (
                         <NavLink
                             to="/distributor/distributors"
                             onClick={onClose}
+                            title={!isExpanded ? "Manage Distributors" : undefined}
                             className={({ isActive }) =>
-                                `flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200
+                                `relative flex items-center rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-200
+                                ${isExpanded ? 'px-3 py-2.5 gap-3 justify-start' : 'p-2.5 justify-center'}
                                 ${isActive
-                                    ? 'bg-gradient-to-r from-blue-500 to-blue-400 text-white shadow-lg shadow-blue-500/30'
-                                    : 'text-slate-700 hover:bg-slate-100'
-                                } justify-start`
+                                    ? 'bg-blue-50/80 text-blue-700 shadow-sm font-black'
+                                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                                }`
                             }
                         >
-                            <Users size={16} className="shrink-0" />
-                            <span className="truncate">Manage Distributors</span>
+                            {({ isActive }) => (
+                                <>
+                                    {isActive && (
+                                        <div className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-emerald-500 rounded-r-full" />
+                                    )}
+                                    <Users size={18} className={`shrink-0 ${isActive ? 'text-blue-600' : 'text-slate-400'}`} />
+                                    {isExpanded && <span className="truncate">Manage Distributors</span>}
+                                </>
+                            )}
                         </NavLink>
                     )}
 
@@ -97,85 +145,105 @@ const DistributorSidebar = ({ showMobile, onClose }) => {
                         return (
                             <div key={item.title}>
                                 {item.submenu ? (
-                                    <button
-                                        onClick={() => toggleMenu(item.title)}
-                                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200
-                                            ${isActive ? 'text-white bg-blue-600' : 'text-slate-700 hover:bg-slate-100'}
-                                            justify-start`}
-                                    >
-                                        <item.icon size={16} className="shrink-0" />
-                                        <span className="flex-1 text-left truncate">{item.title}</span>
-                                        {isOpen
-                                            ? <ChevronDown size={11} className="shrink-0 text-blue-600" />
-                                            : <ChevronRight size={11} className="shrink-0" />}
-                                    </button>
+                                    <div>
+                                        <button
+                                            onClick={() => {
+                                                if (!isExpanded) setIsSidebarHovered(true);
+                                                toggleMenu(item.title);
+                                            }}
+                                            title={!isExpanded ? item.title : undefined}
+                                            className={`relative w-full flex items-center rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-200
+                                                ${isExpanded ? 'px-3 py-2.5 gap-3 justify-start' : 'p-2.5 justify-center'}
+                                                ${isActive ? 'bg-blue-50/80 text-blue-700 font-black' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                                        >
+                                            {isActive && (
+                                                <div className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-emerald-500 rounded-r-full" />
+                                            )}
+                                            <item.icon size={18} className={`shrink-0 ${isActive ? 'text-blue-600' : 'text-slate-400'}`} />
+                                            {isExpanded && (
+                                                <>
+                                                    <span className="flex-1 text-left truncate">{item.title}</span>
+                                                    {isOpen
+                                                        ? <ChevronDown size={13} className="shrink-0 text-blue-600" />
+                                                        : <ChevronRight size={13} className="shrink-0 text-slate-400" />}
+                                                </>
+                                            )}
+                                        </button>
+
+                                        {/* Submenu */}
+                                        <AnimatePresence>
+                                            {item.submenu && isOpen && isExpanded && (
+                                                <motion.div
+                                                    initial={{ height: 0, opacity: 0 }}
+                                                    animate={{ height: 'auto', opacity: 1 }}
+                                                    exit={{ height: 0, opacity: 0 }}
+                                                    transition={{ duration: 0.2, ease: 'easeInOut' }}
+                                                    className="overflow-hidden ml-5 mt-0.5 border-l border-slate-200 pl-2.5 space-y-0.5"
+                                                >
+                                                    {item.submenu.map((sub) => (
+                                                        <NavLink
+                                                            key={sub.path}
+                                                            to={sub.path}
+                                                            onClick={onClose}
+                                                            className={({ isActive }) =>
+                                                                `flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all
+                                                                ${isActive ? 'text-blue-700 bg-blue-50 font-black' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`
+                                                            }
+                                                        >
+                                                            <sub.icon size={12} className="shrink-0 text-slate-400" />
+                                                            <span className="truncate">{sub.title}</span>
+                                                        </NavLink>
+                                                    ))}
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
                                 ) : (
                                     <NavLink
                                         to={item.path}
                                         end
                                         onClick={onClose}
+                                        title={!isExpanded ? item.title : undefined}
                                         className={({ isActive }) =>
-                                            `flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200
+                                            `relative flex items-center rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-200
+                                            ${isExpanded ? 'px-3 py-2.5 gap-3 justify-start' : 'p-2.5 justify-center'}
                                             ${isActive
-                                                ? 'bg-gradient-to-r from-blue-600 to-indigo-500 text-white shadow-lg shadow-blue-600/25'
-                                                : 'text-slate-700 hover:bg-slate-100'
-                                            } justify-start`
+                                                ? 'bg-blue-50/80 text-blue-700 shadow-sm font-black'
+                                                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                                            }`
                                         }
                                     >
-                                        <item.icon size={16} className="shrink-0" />
-                                        <span className="truncate">{item.title}</span>
+                                        {({ isActive }) => (
+                                            <>
+                                                {isActive && (
+                                                    <div className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-emerald-500 rounded-r-full" />
+                                                )}
+                                                <item.icon size={18} className={`shrink-0 ${isActive ? 'text-blue-600' : 'text-slate-400'}`} />
+                                                {isExpanded && <span className="truncate">{item.title}</span>}
+                                            </>
+                                        )}
                                     </NavLink>
                                 )}
-
-                                {/* Submenu */}
-                                <AnimatePresence>
-                                    {item.submenu && isOpen && (
-                                        <motion.div
-                                            initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: 'auto', opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                            transition={{ duration: 0.25, ease: 'easeInOut' }}
-                                            className="overflow-hidden ml-5 mt-0.5 border-l border-slate-200 pl-3 space-y-0.5"
-                                        >
-                                            {item.submenu.map((sub) => (
-                                                <NavLink
-                                                    key={sub.path}
-                                                    to={sub.path}
-                                                    onClick={onClose}
-                                                    className={({ isActive }) =>
-                                                        `flex items-center gap-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all
-                                                        ${isActive ? 'text-blue-700 bg-blue-50 border border-blue-100' : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'}`
-                                                    }
-                                                >
-                                                    <sub.icon size={11} className="shrink-0" />
-                                                    <span className="truncate">{sub.title}</span>
-                                                </NavLink>
-                                            ))}
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
                             </div>
                         );
                     })}
                 </nav>
 
-                {/* Footer */}
-                <div className="border-t border-slate-200 p-3 space-y-4">
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="bg-slate-50 rounded-xl p-3 space-y-1 border border-slate-200"
-                    >
-                        <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Customer Support</p>
-                        <div className="flex items-center gap-2 text-slate-700 text-[9px] font-bold">
-                            <Phone size={10} /> 0621-4008548
+                {/* Footer with Support details */}
+                {isExpanded && (
+                    <div className="border-t border-slate-100 p-3 shrink-0">
+                        <div className="bg-slate-50 rounded-xl p-2.5 space-y-1 border border-slate-200/80 text-[10px]">
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Customer Support</p>
+                            <div className="flex items-center gap-1.5 text-slate-700 font-bold">
+                                <Phone size={10} className="text-blue-600" /> 0621-4008548
+                            </div>
+                            <div className="flex items-center gap-1.5 text-slate-700 font-bold">
+                                <Smartphone size={10} className="text-blue-600" /> 7004128310
+                            </div>
                         </div>
-                        <div className="flex items-center gap-2 text-slate-700 text-[9px] font-bold">
-                            <Smartphone size={10} /> 7004128310
-                        </div>
-                    </motion.div>
-                </div>
-            </motion.aside>
+                    </div>
+                )}
+            </aside>
         </>
     );
 };

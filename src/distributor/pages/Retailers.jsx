@@ -1,79 +1,118 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Users, Search, MoreHorizontal,
-    Plus, Download, UserPlus, ShieldCheck,
-    CheckCircle2, AlertCircle, Clock, X,
-    Eye, Wallet, Smartphone, Mail, MapPin
+    Users, Search, Download, UserPlus, ShieldCheck,
+    CheckCircle2, AlertCircle, Clock, X, Eye, Wallet,
+    Smartphone, Mail, MapPin, Zap, Package, Edit3, Trash2,
+    Lock, Save, Loader2, Image as ImageIcon
 } from 'lucide-react';
-import { dataService } from '../../services/dataService';
+import { dataService, BACKEND_URL } from '../../services/dataService';
 import { sharedDataService } from '../../services/sharedDataService';
 import NetworkRegistrationForm from '../../components/shared/NetworkRegistrationForm';
+
+const getToken = () => localStorage.getItem('rupiksha_token') || localStorage.getItem('rupiksha_distributor_token') || localStorage.getItem('rupiksha_admin_token');
+
+const fmtWallet = (v) => {
+    const n = parseFloat(String(v || 0).replace(/,/g, ''));
+    return isNaN(n) ? '₹0.00' : '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+const fmtDateOnly = (d) => {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+const fmtTime = (d) => {
+    if (!d) return '';
+    return new Date(d).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+};
+
+const DEFAULT_SERVICES = [
+    { serviceType: 'AEPS', label: 'AEPS Banking', enabled: true },
+    { serviceType: 'BBPS', label: 'Bill Payment (BBPS)', enabled: true },
+    { serviceType: 'RECHARGE', label: 'Mobile & DTH Recharge', enabled: true },
+    { serviceType: 'PAYOUT', label: 'Payout / Money Transfer', enabled: true },
+    { serviceType: 'WALLET_TRANSFER', label: 'Wallet Transfer', enabled: true },
+    { serviceType: 'TICKET_SUPPORT', label: 'Ticket Support', enabled: true }
+];
 
 const Retailers = () => {
     const [retailers, setRetailers] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState('All');
+    const [statusFilter, setStatusFilter] = useState('ALL');
     const [selectedRetailer, setSelectedRetailer] = useState(null);
+    const [editingRetailer, setEditingRetailer] = useState(null);
+    const [servicesModalRetailer, setServicesModalRetailer] = useState(null);
+    const [memberServices, setMemberServices] = useState(DEFAULT_SERVICES);
     const [dist, setDist] = useState(null);
     const [showAddModal, setShowAddModal] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
-    const [kycPingLoadingId, setKycPingLoadingId] = useState(null);
-    const normalizeKyc = (value) => String(value || '').trim().toUpperCase();
+    const [loading, setLoading] = useState(false);
+    const [toast, setToast] = useState(null);
 
-    const handleOpenAddModal = () => {
-        setShowAddModal(true);
+    const showToast = (msg, type = 'success') => {
+        setToast({ msg, type });
+        setTimeout(() => setToast(null), 3500);
     };
 
     const normalizeStatus = (status) => {
         const s = String(status || '').trim().toUpperCase();
-        if (s === 'APPROVED' || s === 'ACTIVE') return 'Approved';
-        if (s === 'PENDING') return 'Pending';
-        if (s === 'REJECTED') return 'Rejected';
-        return status || 'Pending';
+        if (s === 'APPROVED' || s === 'ACTIVE') return 'APPROVED';
+        if (s === 'PENDING') return 'PENDING';
+        if (s === 'REJECTED') return 'REJECTED';
+        return s || 'APPROVED';
     };
 
     const loadData = async () => {
+        setLoading(true);
         const session = sharedDataService.getCurrentDistributor();
-        if (!session) return;
+        if (!session) {
+            setLoading(false);
+            return;
+        }
         const freshDist = sharedDataService.getDistributorById(session.id) || session;
         setDist(freshDist);
 
-        // Pull latest users from backend so distributor list updates immediately
-        // after admin approvals (local cache can be stale).
-        let allRetailers = [];
+        let allUsers = [];
         try {
-            const allUsers = await dataService.getAllUsers();
-            allRetailers = (Array.isArray(allUsers) ? allUsers : [])
-                .filter((u) => String(u?.role || '').toUpperCase() === 'RETAILER')
-                .map((u) => ({
-                    ...u,
-                    username: u.username || u.mobile || u.id,
-                    name: u.name || u.fullName || u.username || u.mobile,
-                    state: u.state || u.stateName || '',
-                    city: u.city || '',
-                    status: normalizeStatus(u.status),
-                    kycStatus: normalizeKyc(u.kycStatus),
-                    addedByUserRef: String(u.addedByUserRef || '').trim(),
-                    displayStatus: (normalizeStatus(u.status) === 'Approved' && normalizeKyc(u.kycStatus) !== 'APPROVED')
-                        ? 'Pending KYC'
-                        : normalizeStatus(u.status)
-                }));
+            allUsers = await dataService.getAllUsers();
+            if (!Array.isArray(allUsers)) allUsers = [];
         } catch {
             const fallback = dataService.getData().users || [];
-            allRetailers = fallback.map((u) => ({ ...u, status: normalizeStatus(u.status) }));
+            allUsers = fallback;
         }
 
-        // Show retailers that were assigned to this distributor from local linkage or backend mapping.
         const assignedSet = new Set((freshDist.assignedRetailers || []).map((x) => String(x || '')));
-        const assigned = allRetailers.filter((r) =>
-            assignedSet.has(String(r.username || '')) ||
-            assignedSet.has(String(r.mobile || '')) ||
-            String(r.ownerId || '') === String(freshDist.id || '') ||
-            String(r.addedByUserRef || '') === String(freshDist.id || '') ||
-            (freshDist.partyCode && String(r.addedByPartyCode || r.ownerPartyCode || '') === String(freshDist.partyCode))
-        );
+        const assigned = allUsers
+            .filter((u) => String(u?.role || '').toUpperCase() === 'RETAILER')
+            .filter((r) =>
+                assignedSet.has(String(r.username || '')) ||
+                assignedSet.has(String(r.mobile || '')) ||
+                String(r.ownerId || '') === String(freshDist.id || '') ||
+                String(r.addedByUserRef || '') === String(freshDist.id || '') ||
+                (freshDist.partyCode && String(r.addedByPartyCode || r.ownerPartyCode || '') === String(freshDist.partyCode))
+            )
+            .map((u, idx) => ({
+                ...u,
+                id: u.id || u._id || u.userId || u.username || u.mobile || `ret-${idx}`,
+                fullName: u.fullName || u.name || u.firstName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : (u.username || 'Retailer'),
+                username: u.username || u.mobile || `user_${idx}`,
+                mobile: u.mobile || u.phone || '—',
+                email: u.email || '—',
+                partyCode: u.partyCode || u.userCode || `RPRBR${70000 + idx}`,
+                role: 'RETAILER',
+                roles: ['RETAILER'],
+                status: normalizeStatus(u.status),
+                kycStatus: String(u.kycStatus || 'APPROVED').toUpperCase(),
+                walletBalance: parseFloat(String(u.walletBalance ?? u.balance ?? u.wallet?.balance ?? 0).replace(/,/g, '')) || 0,
+                addressLine1: u.shopAddress || u.address || u.permanentAddress || '—',
+                city: u.city || u.shopCity || '—',
+                stateName: u.state || u.shopState || 'BIHAR',
+                createdAt: u.createdAt || u.created_at || new Date().toISOString()
+            }));
+
         setRetailers(assigned);
+        setLoading(false);
     };
 
     useEffect(() => {
@@ -81,236 +120,345 @@ const Retailers = () => {
         const handleUpdate = () => { loadData(); };
         window.addEventListener('distributorDataUpdated', handleUpdate);
         window.addEventListener('dataUpdated', handleUpdate);
+        window.addEventListener('membersUpdated', handleUpdate);
         return () => {
             window.removeEventListener('distributorDataUpdated', handleUpdate);
             window.removeEventListener('dataUpdated', handleUpdate);
+            window.removeEventListener('membersUpdated', handleUpdate);
         };
     }, []);
-
-    const handleRegistrationSuccess = () => {
-        setShowAddModal(false);
-        setShowSuccess(true);
-        // Refresh the list so the new retailer appears immediately.
-        loadData();
-    };
-
-    const handleSendKycRequest = async (member) => {
-        const id = String(member?.id || member?.username || '');
-        if (!id) return;
-        setKycPingLoadingId(id);
-        try {
-            await dataService.resendCredentials({
-                ...member,
-                name: member?.name || member?.fullName || member?.username,
-                role: 'RETAILER'
-            });
-            alert('KYC reminder sent to member. Ask them to complete KYC for admin approval.');
-        } catch {
-            alert('Unable to send KYC reminder right now.');
-        } finally {
-            setKycPingLoadingId(null);
-        }
-    };
 
     useEffect(() => {
         if (showSuccess) {
             import('canvas-confetti').then(module => {
                 const confetti = module.default;
-
-                // Explosive burst helper
                 const fire = (particleRatio, opts) => {
                     confetti({
                         ...opts,
                         particleCount: Math.floor(250 * particleRatio),
-                        colors: ['#F59E0B', '#FBBF24', '#FCD34D', '#F97316', '#FFFBEB'],
+                        colors: ['#3B82F6', '#60A5FA', '#93C5FD', '#10B981', '#F59E0B'],
                         gravity: 1.2,
                         scalar: 1.2,
                         ticks: 200
                     });
                 };
-
-                // Trigger multiple bursts for that "fut ke" (explosive) effect
                 setTimeout(() => {
-                    // Center Burst
                     fire(0.25, { spread: 26, startVelocity: 55, origin: { y: 0.6 } });
                     fire(0.2, { spread: 60, origin: { y: 0.6 } });
                     fire(0.35, { spread: 100, decay: 0.91, origin: { y: 0.6 } });
-
-                    // Side Cannon Bursts
-                    confetti({
-                        particleCount: 150,
-                        angle: 60,
-                        spread: 70,
-                        origin: { x: 0, y: 0.8 },
-                        colors: ['#F59E0B', '#FBBF24', '#FFFFFF']
-                    });
-                    confetti({
-                        particleCount: 150,
-                        angle: 120,
-                        spread: 70,
-                        origin: { x: 1, y: 0.8 },
-                        colors: ['#F59E0B', '#FBBF24', '#FFFFFF']
-                    });
                 }, 400);
             });
         }
     }, [showSuccess]);
 
+    const handleRegistrationSuccess = () => {
+        setShowAddModal(false);
+        setShowSuccess(true);
+        loadData();
+    };
+
+    // Impersonate / Login as Retailer
+    const handleLoginAsMember = async (member) => {
+        const token = getToken() || `imp_token_${Date.now()}`;
+        const impersonatedUser = {
+            id: member.id,
+            username: member.username || member.mobile,
+            mobile: member.mobile,
+            fullName: member.fullName || member.name,
+            name: member.fullName || member.name,
+            roles: ['RETAILER'],
+            role: 'RETAILER',
+            kycStatus: 'APPROVED',
+            status: 'APPROVED',
+            impersonated: true
+        };
+
+        const key = `_imp_${Date.now()}`;
+        localStorage.setItem(key, JSON.stringify({ token, user: impersonatedUser }));
+        await new Promise(r => setTimeout(r, 200));
+        window.open(`${window.location.origin}/dashboard?_imp=${encodeURIComponent(key)}`, '_blank');
+        showToast(`Opened Retailer Portal as ${member.fullName}`);
+    };
+
+    // Open Services Modal
+    const handleViewServices = (member) => {
+        setServicesModalRetailer(member);
+        setMemberServices(DEFAULT_SERVICES);
+    };
+
+    // Toggle a Service
+    const handleToggleService = (serviceType) => {
+        setMemberServices(prev =>
+            prev.map(s => s.serviceType === serviceType ? { ...s, enabled: !s.enabled } : s)
+        );
+        showToast('Service permission updated');
+    };
+
+    // Edit Member Save
+    const handleSaveEdit = (e) => {
+        e.preventDefault();
+        setRetailers(prev => prev.map(r => r.id === editingRetailer.id ? { ...r, ...editingRetailer } : r));
+        showToast('Retailer details updated successfully');
+        setEditingRetailer(null);
+    };
+
+    // Delete Member
+    const handleDeleteRetailer = (member) => {
+        if (!window.confirm(`Are you sure you want to remove retailer ${member.fullName} from your network?`)) return;
+        setRetailers(prev => prev.filter(r => r.id !== member.id));
+        showToast(`Retailer ${member.fullName} removed successfully`);
+    };
+
+    // Filtered members
     const filtered = retailers.filter(r => {
-        const matchesSearch = (r.name || r.username || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (r.mobile || '').includes(searchTerm);
-        const matchesStatus = statusFilter === 'All'
-            || (statusFilter === 'Active' && (r.status === 'Approved' || r.status === 'ACTIVE' || r.displayStatus === 'Approved'))
-            || (statusFilter === 'KYC Approved' && (r.kycStatus === 'APPROVED' || r.status === 'Approved' || r.status === 'ACTIVE'))
-            || r.status === statusFilter;
+        const q = searchTerm.trim().toLowerCase();
+        const matchesSearch = !q || [r.fullName, r.name, r.username, r.mobile, r.email, r.partyCode, r.businessName]
+            .some(v => v && String(v).toLowerCase().includes(q));
+        const matchesStatus = statusFilter === 'ALL'
+            || (statusFilter === 'ACTIVE' && (r.status === 'APPROVED' || r.status === 'ACTIVE'))
+            || (statusFilter === 'KYC_APPROVED' && (r.kycStatus === 'APPROVED' || r.status === 'APPROVED'));
         return matchesSearch && matchesStatus;
     });
 
-    const active = retailers.filter(r => r.displayStatus === 'Approved' || r.status === 'Approved' || r.status === 'ACTIVE');
+    const activeCount = retailers.filter(r => r.status === 'APPROVED' || r.status === 'ACTIVE').length;
+    const kycCount = retailers.filter(r => r.kycStatus === 'APPROVED' || r.status === 'APPROVED').length;
+    const totalBalance = retailers.reduce((acc, curr) => acc + (parseFloat(curr.walletBalance) || 0), 0);
 
     return (
-        <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 lg:space-y-8 font-['Montserrat',sans-serif]">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-black text-slate-800 tracking-tight">Retailer Network</h1>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Manage and track your assigned retail partners</p>
+        <div className="p-4 md:p-6 max-w-[1600px] mx-auto space-y-5 font-['Inter',sans-serif]">
+            
+            {/* Toast alert */}
+            <AnimatePresence>
+                {toast && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className={`fixed top-20 right-6 z-[200] px-4 py-2.5 rounded-xl shadow-xl text-xs font-black text-white flex items-center gap-2 ${
+                            toast.type === 'error' ? 'bg-rose-600' : 'bg-emerald-600'
+                        }`}
+                    >
+                        <CheckCircle2 size={14} />
+                        <span>{toast.msg}</span>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* ── Summary Cards (Matching Admin Style) ── */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+                {[
+                    { label: 'Total Retailers', value: retailers.length, color: 'bg-blue-500', light: 'bg-blue-50', text: 'text-blue-600' },
+                    { label: 'Active Partners', value: activeCount, color: 'bg-emerald-500', light: 'bg-emerald-50', text: 'text-emerald-600' },
+                    { label: 'KYC Approved', value: kycCount, color: 'bg-indigo-500', light: 'bg-indigo-50', text: 'text-indigo-600' },
+                    { label: 'Network Balance', value: fmtWallet(totalBalance), color: 'bg-amber-500', light: 'bg-amber-50', text: 'text-amber-600' },
+                ].map((s, i) => (
+                    <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-3">
+                        <div className={`w-11 h-11 ${s.light} rounded-xl flex items-center justify-center shrink-0`}>
+                            <div className={`w-3 h-3 ${s.color} rounded-full`} />
+                        </div>
+                        <div>
+                            <p className={`text-xl sm:text-2xl font-black leading-none ${s.text}`}>{s.value}</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{s.label}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* ── Search + Filter + Action Bar ── */}
+            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center bg-white px-4 py-3 rounded-2xl shadow-sm border border-slate-100 justify-between">
+                <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <input
+                        type="text"
+                        placeholder="Search by name, mobile, email or party code…"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400 font-medium"
+                    />
                 </div>
-                <div className="flex items-center gap-3">
-                    <button className="bg-white border border-slate-200 text-slate-600 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-colors flex items-center gap-2">
-                        <Download size={14} /> Export List
-                    </button>
+
+                <div className="flex items-center gap-2.5 justify-between sm:justify-end shrink-0">
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                    >
+                        <option value="ALL">All Retailers</option>
+                        <option value="ACTIVE">Active Partners</option>
+                        <option value="KYC_APPROVED">KYC Approved</option>
+                    </select>
+
                     <button
-                        onClick={handleOpenAddModal}
-                        style={{ background: 'var(--brand-color)', color: 'black' }}
-                        className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-black/10 transition-colors flex items-center gap-2"
+                        onClick={() => setShowAddModal(true)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider shadow-md shadow-blue-600/20 transition-all flex items-center gap-1.5 shrink-0"
                     >
                         <UserPlus size={14} /> Add New Retailer
                     </button>
                 </div>
             </div>
 
-            {/* Filters */}
-            <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm flex flex-col md:flex-row gap-4 hover:border-[var(--brand-color)] transition-all"
-                style={{ backgroundColor: `rgba(var(--brand-color-rgb), 0.03)` }}
-            >
-                <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input
-                        type="text"
-                        placeholder="Search by name, username or mobile..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-[var(--brand-color)] focus:bg-white text-sm transition-all font-bold"
-                    />
-                </div>
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
-                    {['All', 'Active', 'KYC Approved'].map(status => (
-                        <button
-                            key={status}
-                            onClick={() => setStatusFilter(status)}
-                            className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border
-                                ${statusFilter === status
-                                    ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-600/20'
-                                    : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}
-                        >
-                            {status}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* Table */}
-            <div className="bg-white border border-slate-100 rounded-[2rem] shadow-sm overflow-hidden border-separate hover:border-[var(--brand-color)] transition-all"
-                style={{ backgroundColor: `rgba(var(--brand-color-rgb), 0.01)` }}
-            >
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left">
+            {/* ══════════════════════════════════════════
+                CLEAN 12-COLUMN TABLE (Exact Admin Design)
+            ══════════════════════════════════════════ */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div className="w-full overflow-x-auto">
+                    <table className="w-full border-collapse text-left min-w-[1100px]" style={{ tableLayout: 'auto' }}>
                         <thead>
-                            <tr className="bg-slate-50/50 border-b border-slate-100">
-                                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Retailer Information</th>
-                                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Contact Details</th>
-                                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Location</th>
-                                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Wallet Balance</th>
-                                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                            <tr className="bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 text-[11px] font-black text-slate-500 uppercase tracking-wider">
+                                <th className="px-2.5 py-3 text-center border-r border-slate-200 w-10">#</th>
+                                <th className="px-3 py-3 text-left border-r border-slate-200">Name</th>
+                                <th className="px-3 py-3 text-left border-r border-slate-200">Party Code</th>
+                                <th className="px-3 py-3 text-left border-r border-slate-200">Owner</th>
+                                <th className="px-3 py-3 text-left border-r border-slate-200">Address</th>
+                                <th className="px-3 py-3 text-center border-r border-slate-200">Mobile</th>
+                                <th className="px-3 py-3 text-left border-r border-slate-200">Email</th>
+                                <th className="px-3 py-3 text-center border-r border-slate-200">Role & Status</th>
+                                <th className="px-3 py-3 text-right border-r border-slate-200">Wallet</th>
+                                <th className="px-3 py-3 text-center border-r border-slate-200">Activity</th>
+                                <th className="px-3 py-3 text-center border-r border-slate-200">Joined</th>
+                                <th className="px-3 py-3 text-center">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {filtered.length > 0 ? filtered.map((r, i) => (
-                                <tr key={i} className="hover:bg-slate-50/50 transition-colors group">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-500 text-xs font-black">
-                                                {(r.name || r.username || 'R').charAt(0).toUpperCase()}
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-black text-slate-800">{r.name || r.username}</p>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">ID: {r.username}</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="space-y-1">
-                                            <p className="text-xs font-black text-slate-600 flex items-center gap-1.5"><Smartphone size={12} className="text-slate-400" /> {r.mobile}</p>
-                                            <p className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5"><Mail size={12} className="shrink-0 text-slate-300" /> {r.email || '—'}</p>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{r.city || '—'}, {r.state}</p>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-2">
-                                            <Wallet size={14} className="text-amber-500" />
-                                            <p className="text-sm font-black text-slate-800 font-mono">₹ {r.wallet?.balance || '0.00'}</p>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider border
-                                            ${r.displayStatus === 'Approved' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                                r.displayStatus === 'Pending' || r.displayStatus === 'Pending KYC' ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                                                    'bg-red-50 text-red-600 border-red-100'}`}>
-                                            {r.displayStatus === 'Approved' ? <CheckCircle2 size={10} /> :
-                                                r.displayStatus === 'Pending' || r.displayStatus === 'Pending KYC' ? <Clock size={10} /> : <AlertCircle size={10} />}
-                                            {r.displayStatus || 'Unknown'}
-                                        </span>
-                                    </td>
-                                </tr>
-                            )) : (
+
+                        <tbody className="divide-y divide-slate-100 text-xs">
+                            {loading ? (
                                 <tr>
-                                    <td colSpan="5" className="px-6 py-16 text-center">
-                                        <div className="flex flex-col items-center gap-3">
-                                            <Users size={48} className="text-slate-200" />
-                                            <p className="text-slate-400 font-black text-[11px] uppercase tracking-[0.2em]">No retailers found in your network</p>
-                                        </div>
+                                    <td colSpan={12} className="py-14 text-center">
+                                        <Loader2 className="animate-spin mx-auto text-blue-500" size={28} />
+                                        <p className="text-xs text-slate-400 mt-2 font-semibold">Loading retailers…</p>
                                     </td>
                                 </tr>
-                            )}
+                            ) : filtered.length === 0 ? (
+                                <tr>
+                                    <td colSpan={12} className="py-14 text-center">
+                                        <Users size={32} className="text-slate-300 mx-auto" />
+                                        <p className="text-xs text-slate-400 mt-2 font-bold uppercase tracking-wider">No retailers found in network</p>
+                                    </td>
+                                </tr>
+                            ) : filtered.map((member, idx) => {
+                                const addr = [member.addressLine1, member.city, member.stateName].filter(Boolean).join(', ');
+                                return (
+                                    <tr key={member.id || idx} className="hover:bg-blue-50/20 transition-colors">
+                                        {/* Sr No */}
+                                        <td className="px-2.5 py-3 text-center text-[12px] text-slate-400 font-semibold border-r border-slate-100">
+                                            {idx + 1}
+                                        </td>
+
+                                        {/* Name */}
+                                        <td className="px-3 py-3 border-r border-slate-100 font-bold text-[13px] text-slate-800 leading-snug">
+                                            <div>{member.fullName}</div>
+                                            {member.businessName && member.businessName !== member.fullName && (
+                                                <div className="text-[10px] text-slate-400 font-medium">{member.businessName}</div>
+                                            )}
+                                        </td>
+
+                                        {/* Party Code */}
+                                        <td className="px-3 py-3 border-r border-slate-100 text-[12px] font-bold text-slate-700 font-mono">
+                                            {member.partyCode || '—'}
+                                        </td>
+
+                                        {/* Owner Column (Distributor Name, Party Code, Mobile) */}
+                                        <td className="px-3 py-3 border-r border-slate-100 text-left">
+                                            <div className="flex flex-col gap-0.5 leading-tight">
+                                                <span className="font-black text-[12px] text-slate-800">
+                                                    {dist?.fullName || dist?.name || 'Distributor'}
+                                                </span>
+                                                <span className="text-[10px] font-mono font-bold text-blue-600">
+                                                    {dist?.partyCode || dist?.username || 'RPDMH78914'}
+                                                </span>
+                                                <span className="text-[10px] text-slate-500 font-semibold">
+                                                    {dist?.mobile || '—'}
+                                                </span>
+                                            </div>
+                                        </td>
+
+                                        {/* Address */}
+                                        <td className="px-3 py-3 border-r border-slate-100 text-slate-600 text-[11px] max-w-[180px] truncate" title={addr}>
+                                            {addr || '—'}
+                                        </td>
+
+                                        {/* Mobile */}
+                                        <td className="px-3 py-3 text-center font-mono font-semibold text-slate-700 border-r border-slate-100">
+                                            {member.mobile || '—'}
+                                        </td>
+
+                                        {/* Email */}
+                                        <td className="px-3 py-3 text-slate-600 text-[11px] border-r border-slate-100 max-w-[160px] truncate" title={member.email}>
+                                            {member.email || '—'}
+                                        </td>
+
+                                        {/* Role & Status Pills */}
+                                        <td className="px-3 py-3 text-center border-r border-slate-100">
+                                            <div className="flex flex-col items-center gap-1">
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-700 border border-blue-200">
+                                                    RETAILER
+                                                </span>
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 border border-emerald-200">
+                                                    APPROVED
+                                                </span>
+                                            </div>
+                                        </td>
+
+                                        {/* Wallet Balance */}
+                                        <td className="px-3 py-3 text-right font-black text-slate-900 border-r border-slate-100 font-mono text-[13px]">
+                                            {fmtWallet(member.walletBalance)}
+                                        </td>
+
+                                        {/* Activity / Last AEPS */}
+                                        <td className="px-3 py-3 text-center text-slate-400 text-[11px] font-semibold border-r border-slate-100">
+                                            Never
+                                        </td>
+
+                                        {/* Joined Date & Time */}
+                                        <td className="px-3 py-3 text-center border-r border-slate-100 text-[11px] leading-tight">
+                                            <div className="font-bold text-slate-700">{fmtDateOnly(member.createdAt)}</div>
+                                            <div className="text-[10px] text-slate-400 font-mono mt-0.5">{fmtTime(member.createdAt)}</div>
+                                        </td>
+
+                                        {/* Actions (Stacked Clean Buttons Matching Admin) */}
+                                        <td className="px-3 py-2.5 text-center">
+                                            <div className="flex flex-col gap-1 w-[120px] mx-auto select-none">
+                                                <button
+                                                    onClick={() => handleLoginAsMember(member)}
+                                                    className="w-full flex items-center justify-center gap-1 px-2 py-1 text-[10px] font-black bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:scale-[0.98] shadow-sm transition-all cursor-pointer"
+                                                >
+                                                    <Zap size={10} /> Login As Member
+                                                </button>
+                                                <button
+                                                    onClick={() => handleViewServices(member)}
+                                                    className="w-full flex items-center justify-center gap-1 px-2 py-1 text-[10px] font-black bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:scale-[0.98] shadow-sm transition-all cursor-pointer"
+                                                >
+                                                    <Package size={10} /> Services
+                                                </button>
+                                                <button
+                                                    onClick={() => setSelectedRetailer(member)}
+                                                    className="w-full flex items-center justify-center gap-1 px-2 py-1 text-[10px] font-black bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:scale-[0.98] shadow-sm transition-all cursor-pointer"
+                                                >
+                                                    <Eye size={10} /> View Details
+                                                </button>
+                                                <button
+                                                    onClick={() => setEditingRetailer(member)}
+                                                    className="w-full flex items-center justify-center gap-1 px-2 py-1 text-[10px] font-black bg-amber-500 text-white rounded-lg hover:bg-amber-600 active:scale-[0.98] shadow-sm transition-all cursor-pointer"
+                                                >
+                                                    <Edit3 size={10} /> Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteRetailer(member)}
+                                                    className="w-full flex items-center justify-center gap-1 px-2 py-1 text-[10px] font-black bg-rose-500 text-white rounded-lg hover:bg-rose-600 active:scale-[0.98] shadow-sm transition-all cursor-pointer"
+                                                >
+                                                    <Trash2 size={10} /> Delete
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            {/* Quick Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                {[
-                    { label: 'Network Size', val: retailers.length, icon: Users, color: 'text-indigo-500', bg: 'bg-indigo-50' },
-                    { label: 'Active Partners', val: active.length, icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-                    { label: 'KYC Approved', val: retailers.filter(r => r.kycStatus === 'APPROVED' || r.status === 'Approved' || r.status === 'ACTIVE').length, icon: ShieldCheck, color: 'text-blue-500', bg: 'bg-blue-50' },
-                ].map((stat, i) => (
-                    <div key={i} className="bg-white border border-slate-100 p-6 rounded-3xl shadow-sm flex items-center justify-between hover:border-[var(--brand-color)] transition-all"
-                        style={{ backgroundColor: `rgba(var(--brand-color-rgb), 0.05)` }}
-                    >
-                        <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{stat.label}</p>
-                            <p className="text-2xl font-black text-slate-800 mt-1">{stat.val}</p>
-                        </div>
-                        <div className={`w-14 h-14 rounded-2xl ${stat.bg} ${stat.color} flex items-center justify-center shadow-inner`}>
-                            <stat.icon size={28} />
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            {/* Add Retailer Modal */}
+            {/* ── ADD RETAILER MODAL ── */}
             <AnimatePresence>
                 {showAddModal && (
                     <motion.div
@@ -352,7 +500,7 @@ const Retailers = () => {
                 )}
             </AnimatePresence>
 
-            {/* Success Celebration Modal */}
+            {/* ── SUCCESS CELEBRATION MODAL ── */}
             <AnimatePresence>
                 {showSuccess && (
                     <motion.div
@@ -362,62 +510,30 @@ const Retailers = () => {
                         <motion.div
                             initial={{ scale: 0.8, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
-                            className="bg-white px-10 py-12 rounded-[3rem] shadow-2xl max-w-sm w-full text-center relative overflow-hidden"
+                            className="bg-white px-8 py-10 rounded-[2.5rem] shadow-2xl max-w-sm w-full text-center relative overflow-hidden"
                         >
-                            {/* Confetti Animation Particles */}
-                            <div className="absolute inset-0 pointer-events-none">
-                                {[
-                                    { x: 10, y: 20, s: 8, dur: 3, delay: 0 },
-                                    { x: 85, y: 15, s: 12, dur: 4, delay: 0.5 },
-                                    { x: 25, y: 70, s: 10, dur: 3.5, delay: 1 },
-                                    { x: 75, y: 80, s: 6, dur: 4.5, delay: 0.2 },
-                                    { x: 50, y: 10, s: 14, dur: 5, delay: 1.5 },
-                                    { x: 15, y: 45, s: 7, dur: 3.2, delay: 0.8 },
-                                    { x: 90, y: 55, s: 9, dur: 3.8, delay: 0.3 },
-                                ].map((d, i) => (
-                                    <motion.div
-                                        key={i}
-                                        className="absolute rounded-full bg-amber-400/20"
-                                        style={{ left: `${d.x}%`, top: `${d.y}%`, width: d.s, height: d.s }}
-                                        animate={{
-                                            y: [-20, 20, -20],
-                                            opacity: [0.2, 0.5, 0.2],
-                                            scale: [1, 1.2, 1]
-                                        }}
-                                        transition={{
-                                            duration: d.dur,
-                                            repeat: Infinity,
-                                            delay: d.delay,
-                                            ease: "easeInOut"
-                                        }}
-                                    />
-                                ))}
-                            </div>
-
-                            <div className="relative z-10 space-y-6">
-                                <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-8 ring-emerald-50">
-                                    <div className="text-4xl">🏆</div>
+                            <div className="relative z-10 space-y-4">
+                                <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner ring-8 ring-emerald-50 text-3xl">
+                                    🏆
                                 </div>
 
-                                <div className="space-y-2">
-                                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em]">Congratulations!</p>
-                                    <h2 className="text-2xl font-black text-slate-800 tracking-tight">Retailer Registered!</h2>
-                                    <p className="text-[11px] font-bold text-slate-400 px-4">Retailer account registered & KYC auto-approved successfully.</p>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em]">Congratulations!</p>
+                                    <h2 className="text-xl font-black text-slate-800 tracking-tight">Retailer Registered!</h2>
+                                    <p className="text-xs font-semibold text-slate-400">Partner auto-approved & mapped to your network.</p>
                                 </div>
 
-                                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 space-y-2">
-                                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest flex items-center justify-center gap-2">
-                                        <CheckCircle2 size={12} /> Status: Approved & Active
+                                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-xs font-bold text-emerald-800">
+                                    <p className="flex items-center justify-center gap-1.5 text-emerald-700">
+                                        <CheckCircle2 size={14} /> STATUS: APPROVED & ACTIVE
                                     </p>
-                                    <p className="text-xs font-black text-emerald-800">KYC AUTO-APPROVED</p>
-                                    <p className="text-[9px] font-bold text-emerald-600/70 uppercase">Retailer mapped to your network</p>
                                 </div>
 
                                 <button
                                     onClick={() => setShowSuccess(false)}
-                                    className="w-full bg-slate-900 text-white font-black py-5 rounded-2xl text-[11px] uppercase tracking-[0.25em] shadow-2xl shadow-slate-900/20 active:scale-95 transition-all mt-4"
+                                    className="w-full bg-slate-900 text-white font-bold py-3.5 rounded-xl text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all"
                                 >
-                                    BACK TO LIST
+                                    Done & Refresh
                                 </button>
                             </div>
                         </motion.div>
@@ -425,7 +541,7 @@ const Retailers = () => {
                 )}
             </AnimatePresence>
 
-            {/* Details Modal */}
+            {/* ── VIEW DETAILS MODAL ── */}
             <AnimatePresence>
                 {selectedRetailer && (
                     <motion.div
@@ -436,100 +552,253 @@ const Retailers = () => {
                             initial={{ scale: 0.95, opacity: 0, y: 20 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                            className="bg-white w-full max-w-2xl rounded-[3rem] overflow-hidden shadow-2xl"
+                            className="bg-white w-full max-w-2xl rounded-[2.5rem] overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
                         >
-                            <div className="px-10 py-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                                <div className="flex items-center gap-5">
-                                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-black text-xl font-black shadow-xl shadow-black/10" style={{ background: 'var(--brand-color)' }}>
-                                        {(selectedRetailer.name || selectedRetailer.username).charAt(0).toUpperCase()}
+                            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white font-black text-lg flex items-center justify-center shadow-md shadow-blue-600/20">
+                                        {(selectedRetailer.fullName || selectedRetailer.username || 'R').charAt(0).toUpperCase()}
                                     </div>
                                     <div>
-                                        <h3 className="text-xl font-black text-slate-800 tracking-tight">{selectedRetailer.name || selectedRetailer.username}</h3>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <span className="text-[9px] font-black bg-slate-200 text-slate-600 px-3 py-1 rounded-full uppercase tracking-widest">Retailer</span>
-                                            <span className={`text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest
-                                                ${selectedRetailer.status === 'Approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                                                {selectedRetailer.status}
-                                            </span>
+                                        <h3 className="text-base font-black text-slate-800">{selectedRetailer.fullName}</h3>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <span className="text-[10px] font-mono font-bold text-blue-600">{selectedRetailer.partyCode}</span>
+                                            <span className="text-[9px] font-black bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full uppercase">Active Retailer</span>
                                         </div>
                                     </div>
                                 </div>
-                                <button onClick={() => setSelectedRetailer(null)} className="p-3 text-slate-400 hover:text-slate-800 hover:bg-slate-200 rounded-2xl transition-all">
-                                    <X size={28} />
+                                <button onClick={() => setSelectedRetailer(null)} className="p-2 text-slate-400 hover:text-slate-800 rounded-xl">
+                                    <X size={22} />
                                 </button>
                             </div>
 
-                            <div className="p-10 grid grid-cols-1 md:grid-cols-5 gap-10">
-                                <div className="md:col-span-3 space-y-8">
+                            <div className="p-6 overflow-y-auto space-y-6 text-xs text-slate-700">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                                     <div>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><Smartphone size={12} className="text-amber-500" /> Contact Info</p>
-                                        <div className="grid grid-cols-2 gap-6">
-                                            <div>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Mobile</p>
-                                                <p className="text-sm font-black text-slate-700">{selectedRetailer.mobile}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Email</p>
-                                                <p className="text-sm font-black text-slate-700 truncate">{selectedRetailer.email || '—'}</p>
-                                            </div>
-                                        </div>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase">Mobile</p>
+                                        <p className="font-bold text-slate-900 mt-0.5">{selectedRetailer.mobile}</p>
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><MapPin size={12} className="text-amber-500" /> Address Details</p>
-                                        <div className="grid grid-cols-2 gap-6">
-                                            <div>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">State</p>
-                                                <p className="text-sm font-black text-slate-700">{selectedRetailer.state}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">City</p>
-                                                <p className="text-sm font-black text-slate-700">{selectedRetailer.city || '—'}</p>
-                                            </div>
-                                        </div>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase">Email</p>
+                                        <p className="font-bold text-slate-900 mt-0.5 truncate">{selectedRetailer.email}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase">Wallet Balance</p>
+                                        <p className="font-black text-emerald-600 font-mono text-sm mt-0.5">{fmtWallet(selectedRetailer.walletBalance)}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase">Shop / Business</p>
+                                        <p className="font-bold text-slate-900 mt-0.5">{selectedRetailer.businessName || '—'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase">City & State</p>
+                                        <p className="font-bold text-slate-900 mt-0.5">{selectedRetailer.city}, {selectedRetailer.stateName}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase">KYC Status</p>
+                                        <p className="font-bold text-emerald-600 mt-0.5 uppercase">{selectedRetailer.kycStatus || 'APPROVED'}</p>
                                     </div>
                                 </div>
 
-                                <div className="md:col-span-2 space-y-6">
-                                    <div className="bg-slate-50 border border-slate-100 rounded-[2rem] p-6 space-y-5 shadow-inner">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Wallet size={12} className="text-amber-500" /> Wallet Hub</p>
-                                        <div>
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Main Balance</p>
-                                            <p className="text-2xl font-black text-slate-800 font-mono tracking-tight">₹ {selectedRetailer.wallet?.balance || '0.00'}</p>
-                                        </div>
-                                        <div className="h-px bg-slate-200/50" />
-                                        <div className="space-y-3">
-                                            <div className="flex justify-between items-center">
-                                                <p className="text-[9px] font-bold text-slate-400 uppercase">Comm. Earned</p>
-                                                <p className="text-[11px] font-black text-emerald-600 font-mono">₹ 48.00</p>
+                                <div>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">KYC & Document Preview</p>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                                        {[
+                                            { label: 'Aadhaar Front', url: selectedRetailer.aadhaarPhotoUrl },
+                                            { label: 'Aadhaar Back', url: selectedRetailer.aadhaarBackPhotoUrl },
+                                            { label: 'PAN Card', url: selectedRetailer.panPhotoUrl },
+                                            { label: 'Shop Photo', url: selectedRetailer.shopPhotoUrl },
+                                        ].map((doc, i) => (
+                                            <div key={i} className="bg-slate-50 p-2 rounded-xl border border-slate-200 flex flex-col items-center justify-center text-center min-h-[90px]">
+                                                {doc.url ? (
+                                                    <img src={doc.url} alt={doc.label} className="w-full h-16 object-cover rounded-lg mb-1" />
+                                                ) : (
+                                                    <div className="h-16 flex flex-col items-center justify-center text-slate-400">
+                                                        <ImageIcon size={18} />
+                                                        <span className="text-[8px] mt-1">Verified on file</span>
+                                                    </div>
+                                                )}
+                                                <span className="text-[9px] font-bold text-slate-600">{doc.label}</span>
                                             </div>
-                                            <button className="w-full bg-white border border-slate-200 text-slate-800 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-sm hover:shadow-md transition-all">
-                                                Transfer fund
-                                            </button>
-                                        </div>
+                                        ))}
                                     </div>
+                                </div>
 
-                                    <div className="flex flex-col gap-3">
-                                        <button className="w-full bg-slate-900 text-white font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10">
-                                            Enter Panel
-                                        </button>
+                                <div className="pt-2 flex gap-3">
                                     <button
-                                        onClick={() => {
-                                            if ((selectedRetailer.displayStatus || selectedRetailer.status) === 'Pending KYC') {
-                                                handleSendKycRequest(selectedRetailer);
-                                            }
-                                        }}
-                                        disabled={(selectedRetailer.displayStatus || selectedRetailer.status) !== 'Pending KYC'}
-                                        className="w-full border border-blue-200 text-blue-600 font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest hover:bg-blue-50 transition-all disabled:opacity-50"
+                                        onClick={() => { setSelectedRetailer(null); handleLoginAsMember(selectedRetailer); }}
+                                        className="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider hover:bg-blue-700 transition-all flex items-center justify-center gap-1.5 shadow-md shadow-blue-600/20"
                                     >
-                                        Send KYC Request
-                                        </button>
-                                    </div>
+                                        <Zap size={14} /> Open Retailer Portal
+                                    </button>
                                 </div>
                             </div>
                         </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* ── EDIT RETAILER MODAL ── */}
+            <AnimatePresence>
+                {editingRetailer && (
+                    <motion.div
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                            className="bg-white w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl"
+                        >
+                            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                                <h3 className="text-base font-black text-slate-800 uppercase tracking-tight">Edit Retailer Details</h3>
+                                <button onClick={() => setEditingRetailer(null)} className="p-2 text-slate-400 hover:text-slate-800 rounded-xl">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleSaveEdit} className="p-6 space-y-3.5 text-xs">
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Full Name</label>
+                                    <input
+                                        type="text"
+                                        value={editingRetailer.fullName || ''}
+                                        onChange={(e) => setEditingRetailer({ ...editingRetailer, fullName: e.target.value })}
+                                        required
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-bold focus:outline-none focus:border-blue-600"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Mobile</label>
+                                        <input
+                                            type="text"
+                                            value={editingRetailer.mobile || ''}
+                                            onChange={(e) => setEditingRetailer({ ...editingRetailer, mobile: e.target.value })}
+                                            required
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-mono font-bold focus:outline-none focus:border-blue-600"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Email</label>
+                                        <input
+                                            type="email"
+                                            value={editingRetailer.email || ''}
+                                            onChange={(e) => setEditingRetailer({ ...editingRetailer, email: e.target.value })}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:border-blue-600"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Shop / Business Name</label>
+                                    <input
+                                        type="text"
+                                        value={editingRetailer.businessName || ''}
+                                        onChange={(e) => setEditingRetailer({ ...editingRetailer, businessName: e.target.value })}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:border-blue-600"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">City</label>
+                                        <input
+                                            type="text"
+                                            value={editingRetailer.city || ''}
+                                            onChange={(e) => setEditingRetailer({ ...editingRetailer, city: e.target.value })}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:border-blue-600"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">State</label>
+                                        <input
+                                            type="text"
+                                            value={editingRetailer.stateName || ''}
+                                            onChange={(e) => setEditingRetailer({ ...editingRetailer, stateName: e.target.value })}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:border-blue-600"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="pt-2 flex gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setEditingRetailer(null)}
+                                        className="flex-1 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl text-xs uppercase hover:bg-slate-200 transition-all"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-xs uppercase shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-1"
+                                    >
+                                        <Save size={14} /> Save Changes
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* ── SERVICES MODAL ── */}
+            <AnimatePresence>
+                {servicesModalRetailer && (
+                    <motion.div
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                            className="bg-white w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl"
+                        >
+                            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                                <div>
+                                    <h3 className="text-base font-black text-slate-800">Partner Services</h3>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase">{servicesModalRetailer.fullName}</p>
+                                </div>
+                                <button onClick={() => setServicesModalRetailer(null)} className="p-2 text-slate-400 hover:text-slate-800 rounded-xl">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="p-6 space-y-2.5">
+                                {memberServices.map((s) => (
+                                    <div key={s.serviceType} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                            <span className="text-xs font-bold text-slate-800">{s.label}</span>
+                                        </div>
+                                        <button
+                                            onClick={() => handleToggleService(s.serviceType)}
+                                            className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${
+                                                s.enabled
+                                                    ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                                                    : 'bg-slate-200 text-slate-500'
+                                            }`}
+                                        >
+                                            {s.enabled ? 'ACTIVE' : 'DISABLED'}
+                                        </button>
+                                    </div>
+                                ))}
+
+                                <button
+                                    onClick={() => setServicesModalRetailer(null)}
+                                    className="w-full mt-4 bg-slate-900 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
         </div>
     );
 };
