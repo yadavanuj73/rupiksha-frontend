@@ -68,9 +68,7 @@ const DistributorLayout = () => {
     }, [user, loading, navigate]);
 
     return (
-        <div className="h-screen bg-[#eef3ff] overflow-hidden font-['Inter',sans-serif]">
-            <DistributorTopBar onMenuClick={() => setShowMobileSidebar(v => !v)} />
-
+        <div className="flex h-screen bg-[#eef3ff] overflow-hidden font-['Inter',sans-serif]">
             <DistributorSidebar
                 showMobile={showMobileSidebar}
                 onClose={() => setShowMobileSidebar(false)}
@@ -81,32 +79,34 @@ const DistributorLayout = () => {
                 isExpanded={isExpanded}
             />
 
-            <div className={`h-full flex flex-col overflow-hidden min-w-0 pt-[76px] transition-all duration-300 ${isSidebarLocked ? 'lg:ml-64' : 'lg:ml-[72px]'}`}>
+            <div className="flex-1 flex flex-col h-screen min-w-0 overflow-hidden bg-[#eef3ff]">
+                <DistributorTopBar onMenuClick={() => setShowMobileSidebar(v => !v)} />
+
                 {/* Security Session Monitor */}
-                <div className="bg-blue-50 text-slate-700 h-9 flex items-center px-6 shrink-0 border-b border-blue-100">
-                    <div className="flex items-center gap-6 w-full max-w-7xl mx-auto">
-                        <div className="flex items-center gap-2">
+                <div className="bg-blue-50 text-slate-700 h-9 flex items-center px-4 md:px-6 shrink-0 border-b border-blue-100">
+                    <div className="flex items-center gap-4 md:gap-6 w-full max-w-7xl mx-auto overflow-x-auto scrollbar-none">
+                        <div className="flex items-center gap-2 shrink-0">
                             <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></div>
                             <span className="text-[9px] font-black text-amber-600 uppercase tracking-widest">Pin Lock Countdown</span>
                             <span className="text-[11px] font-black text-slate-700 font-mono bg-white px-2.5 py-0.5 rounded-lg border border-blue-100">{formatTime(lockTimeLeft)}</span>
                         </div>
-                        <div className="h-4 w-px bg-blue-200"></div>
-                        <div className="flex items-center gap-2">
+                        <div className="h-4 w-px bg-blue-200 shrink-0"></div>
+                        <div className="flex items-center gap-2 shrink-0">
                             <Lock size={12} className="text-slate-500" />
                             <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Auto Logout In</span>
                             <span className="text-[11px] font-black text-slate-600 font-mono italic">{formatTime(logoutTimeLeft)}</span>
                         </div>
-                        <div className="flex-1 flex justify-end items-center gap-4">
+                        <div className="flex-1 flex justify-end items-center gap-4 shrink-0">
                             <span className="bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-full px-3 py-0.5 text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5">
                                 <Shield size={10} /> Encryption Active
                             </span>
-                            <span className="text-slate-400 text-[9px] font-black uppercase tracking-[0.2em] hidden sm:block">Distributor Node v4.2</span>
+                            <span className="text-slate-400 text-[9px] font-black uppercase tracking-[0.2em] hidden md:block">Distributor Node v4.2</span>
                         </div>
                     </div>
                 </div>
 
                 {/* Tab Navigation */}
-                <div className="bg-white border-b border-slate-100 px-4 flex items-center gap-1 shrink-0 overflow-x-auto shadow-sm">
+                <div className="bg-white border-b border-slate-100 px-4 flex items-center gap-1 shrink-0 overflow-x-auto shadow-sm scrollbar-none">
                     {[
                         { to: '/distributor', label: 'Dashboard', end: true },
                         { to: '/distributor/retailers', label: 'Retailers' },
@@ -120,7 +120,7 @@ const DistributorLayout = () => {
                             className={({ isActive }) =>
                                 `px-4 py-3 text-[10px] font-black uppercase tracking-wider whitespace-nowrap border-b-2 transition-all
                                 ${isActive
-                                    ? 'border-amber-500 text-amber-600'
+                                    ? 'border-blue-600 text-blue-600 font-black'
                                     : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
                                 }`
                             }
@@ -130,8 +130,8 @@ const DistributorLayout = () => {
                     ))}
                 </div>
 
-                {/* Main Content */}
-                <main className="flex-1 overflow-y-auto">
+                {/* Main Content Area */}
+                <main className="flex-1 overflow-y-auto min-w-0">
                     <Outlet />
                 </main>
             </div>

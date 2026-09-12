@@ -2,9 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Bell, Menu, LogOut, ChevronDown, Wallet, User, BadgeCheck, Clock3, OctagonAlert } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { sharedDataService } from '../../services/sharedDataService';
-// Using logo from public folder
-const logo = '/rupiksha logo.jpeg';
-
 const DistributorTopBar = ({ onMenuClick }) => {
     const navigate = useNavigate();
     const [dist, setDist] = useState(null);
@@ -59,24 +56,20 @@ const DistributorTopBar = ({ onMenuClick }) => {
     ];
 
     return (
-        <header className="fixed top-0 left-0 right-0 h-[76px] bg-white border-b border-slate-200 shadow-sm flex items-center justify-between px-3 md:px-5 shrink-0 z-[60]">
+        <header className="h-16 bg-white border-b border-slate-200 shadow-sm flex items-center justify-between px-3 md:px-6 shrink-0 z-30 sticky top-0">
 
-            {/* Left */}
+            {/* Left: Mobile Menu Toggle & Portal Breadcrumbs */}
             <div className="flex items-center gap-3">
                 <button onClick={onMenuClick}
-                    className="lg:hidden p-2 rounded-xl hover:bg-slate-100 text-slate-700 transition-colors">
-                    <Menu size={20} />
+                    className="lg:hidden p-2 rounded-xl hover:bg-slate-100 text-slate-700 transition-colors border border-slate-200"
+                    title="Toggle menu">
+                    <Menu size={18} />
                 </button>
-                <button onClick={() => navigate('/distributor')} className="flex items-center gap-2.5">
-                    <div className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center shadow-sm">
-                        <img src={logo} alt="Rupiksha logo" className="h-8 w-8 object-contain" />
-                    </div>
-                    <div className="hidden sm:block">
-                        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-600">Rupiksha Services Private Limited</p>
-                        <p className="text-slate-800 text-[13px] font-black tracking-wide">Distributor Portal</p>
-                    </div>
-                </button>
-
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hidden sm:inline-block">Distributor</span>
+                    <span className="text-slate-300 hidden sm:inline-block">/</span>
+                    <span className="text-slate-800 text-[13px] font-black tracking-wide">Distributor Portal</span>
+                </div>
             </div>
 
             {/* Right */}

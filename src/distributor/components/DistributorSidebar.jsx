@@ -44,28 +44,32 @@ const DistributorSidebar = ({
                 onMouseEnter={() => setIsSidebarHovered(true)}
                 onMouseLeave={() => setIsSidebarHovered(false)}
                 className={`
-                    fixed top-0 left-0 h-screen z-50 flex flex-col
                     bg-white text-slate-700
-                    border-r border-slate-200 shadow-[4px_0_24px_rgba(15,23,42,0.05)]
-                    transition-all duration-300 ease-in-out
+                    border-r border-slate-200 shadow-[2px_0_12px_rgba(15,23,42,0.04)]
+                    flex flex-col h-screen transition-all duration-300 ease-in-out shrink-0
+                    fixed lg:relative z-50
                     ${showMobile ? 'translate-x-0 w-64' : '-translate-x-full lg:translate-x-0'}
-                    ${isExpanded ? 'lg:w-64' : 'lg:w-[72px]'}
                 `}
+                style={{
+                    width: typeof window !== 'undefined' && window.innerWidth < 1024
+                        ? '256px'
+                        : (isExpanded ? '240px' : '72px')
+                }}
             >
                 {/* Header with Big Logo & Lock Toggle */}
-                <div className={`h-[76px] flex items-center shrink-0 border-b border-slate-100 px-3 transition-all duration-300 ${isExpanded ? 'justify-between px-4' : 'justify-center'}`}>
-                    <div className="flex items-center gap-2.5 overflow-hidden">
+                <div className={`h-16 flex items-center shrink-0 border-b border-slate-100 transition-all duration-300 ${isExpanded ? 'justify-between px-4' : 'justify-center px-2'}`}>
+                    <div className="flex items-center gap-2 overflow-hidden">
                         <img
                             src={logo}
                             alt="Rupiksha"
-                            className={`object-contain rounded-xl transition-all duration-300 ${isExpanded ? 'h-9 w-auto max-w-[140px]' : 'h-8 w-8'}`}
+                            className={`object-contain transition-all duration-300 ${isExpanded ? 'h-9 w-auto max-w-[150px]' : 'h-8 w-8 rounded-lg'}`}
                         />
                     </div>
 
                     {isExpanded && (
                         <button
                             onClick={toggleSidebarLock}
-                            className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition-all cursor-pointer shrink-0"
+                            className="hidden lg:flex p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition-all cursor-pointer shrink-0"
                             title={isSidebarLocked ? "Unlock Sidebar (Auto-collapse on hover leave)" : "Lock Sidebar (Keep expanded)"}
                         >
                             {isSidebarLocked ? <Lock size={16} className="text-blue-600" /> : <Unlock size={16} className="text-slate-400" />}

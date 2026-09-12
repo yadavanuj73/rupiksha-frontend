@@ -24,7 +24,7 @@ function getEffectiveToken() {
     if (isAdminTab) {
         return localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token');
     }
-    return localStorage.getItem('rupiksha_imp_token') || localStorage.getItem('rupiksha_token');
+    return localStorage.getItem('rupiksha_imp_token') || localStorage.getItem('rupiksha_distributor_token') || localStorage.getItem('rupiksha_token') || localStorage.getItem('rupiksha_admin_token');
 }
 
 // ── Auth-aware fetch: clears stale token and redirects to login on 401 ──────

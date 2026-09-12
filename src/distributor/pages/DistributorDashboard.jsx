@@ -103,14 +103,58 @@ const DistributorDashboard = () => {
         setDist(fresh);
 
         // Fetch all users to find assigned retailers
-        const allUsers = await dataService.getAllUsers();
-        const myRetailers = allUsers.filter(r =>
-            (fresh.assignedRetailers || []).includes(r.username) || r.ownerId === fresh.id
-        );
+        let allUsers = [];
+        try {
+            allUsers = await dataService.getAllUsers();
+            if (!Array.isArray(allUsers)) allUsers = [];
+        } catch {
+            allUsers = dataService.getData().users || [];
+        }
+
+        const distId = String(fresh.id || fresh._id || fresh.userId || '').trim().toLowerCase();
+        const distPartyCode = String(fresh.partyCode || fresh.userCode || '').trim().toUpperCase();
+        const distMobile = String(fresh.mobile || fresh.phone || '').trim();
+        const distUsername = String(fresh.username || '').trim().toLowerCase();
+        const distName = String(fresh.name || fresh.fullName || '').trim().toLowerCase();
+        const assignedList = (fresh.assignedRetailers || []).map(x => String(x || '').trim());
+        const assignedSet = new Set(assignedList.map(x => x.toLowerCase()));
+
+        const localUsers = dataService.getData().users || [];
+        const cachedUsersRaw = typeof localStorage !== 'undefined' ? localStorage.getItem('rupiksha_users_cache') : null;
+        let cachedUsers = [];
+        try { if (cachedUsersRaw) cachedUsers = JSON.parse(cachedUsersRaw); } catch {}
+
+        const userMap = new Map();
+        [...allUsers, ...localUsers, ...cachedUsers].forEach((u) => {
+            if (!u) return;
+            const key = String(u.id || u._id || u.username || u.mobile || u.partyCode || '');
+            if (key && !userMap.has(key)) userMap.set(key, u);
+        });
+
+        const myRetailers = Array.from(userMap.values()).filter(r => {
+            const rRole = String(r?.role || (r?.roles && r.roles[0]) || '').replace(/^ROLE_/i, '').toUpperCase();
+            if (rRole !== 'RETAILER' && rRole !== 'RETAILERS') return false;
+
+            const rId = String(r.id || r._id || r.userId || '').trim().toLowerCase();
+            const rUsername = String(r.username || '').trim().toLowerCase();
+            const rMobile = String(r.mobile || r.phone || '').trim();
+            const rPartyCode = String(r.partyCode || r.userCode || '').trim().toUpperCase();
+
+            const rParentId = String(r.parentUserId || r.ownerId || r.addedByUserRef || r.parent_id || r.parentId || '').trim().toLowerCase();
+            const rParentPartyCode = String(r.parentPartyCode || r.addedByPartyCode || r.ownerPartyCode || '').trim().toUpperCase();
+            const rParentName = String(r.parentName || r.addedByName || r.ownerName || '').trim().toLowerCase();
+            const rParentMobile = String(r.parentMobile || r.ownerMobile || r.addedByMobile || '').trim();
+
+            return (assignedSet.has(rUsername) || (rMobile && assignedSet.has(rMobile)) || (rPartyCode && assignedSet.has(rPartyCode.toLowerCase())) || (rId && assignedSet.has(rId))) ||
+                (distId && (rParentId === distId || rParentId.includes(distId))) ||
+                (distPartyCode && rParentPartyCode && rParentPartyCode === distPartyCode) ||
+                (distMobile && (rParentMobile === distMobile || rParentId === distMobile.toLowerCase())) ||
+                (distUsername && (rParentId === distUsername || rParentName === distUsername)) ||
+                (distName && rParentName && (rParentName.includes(distName) || distName.includes(rParentName)));
+        });
         setRetailers(myRetailers);
 
         // Fetch transactions for this distributor's network if needed
-        // For now, let's just use user transactions for the personal wallet
         const personalTxns = await dataService.getUserTransactions(s.id);
         setTransactions(personalTxns);
         setLoading(false);
