@@ -1,14 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Bell, Menu, LogOut, ChevronDown, Wallet, User, BadgeCheck, Clock3, OctagonAlert } from 'lucide-react';
+import { Plus, Bell, Menu, LogOut, ChevronDown, Wallet, User, BadgeCheck, Clock3, OctagonAlert, Shield, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { sharedDataService } from '../../services/sharedDataService';
+import { useAuth } from '../../context/AuthContext';
+
 const DistributorTopBar = ({ onMenuClick }) => {
     const navigate = useNavigate();
+    const { lockTimeLeft, logoutTimeLeft } = useAuth();
     const [dist, setDist] = useState(null);
     const [showProfile, setShowProfile] = useState(false);
     const [showNotif, setShowNotif] = useState(false);
     const profileRef = useRef(null);
     const notifRef = useRef(null);
+
+    const formatTime = (ms) => {
+        const totalSecs = Math.floor(ms / 1000);
+        const mins = Math.floor(totalSecs / 60);
+        const secs = totalSecs % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
 
     const loadDist = () => {
         const session = sharedDataService.getCurrentDistributor();
@@ -70,8 +80,27 @@ const DistributorTopBar = ({ onMenuClick }) => {
                 </div>
             </div>
 
-            {/* Right */}
-            <div className="flex items-center gap-2">
+            {/* Right: Security Countdown, KYC, Wallet, Notifications & Profile */}
+            <div className="flex items-center gap-2 sm:gap-3">
+                {/* Clean Session & Security Monitor Pill */}
+                <div className="hidden lg:flex items-center gap-2.5 bg-slate-50 border border-slate-200/90 rounded-xl px-3 py-1.5 text-[10px] font-bold text-slate-500 shadow-xs">
+                    <div className="flex items-center gap-1.5" title="Pin Lock Countdown">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                        <span className="text-[9px] font-black text-amber-600 uppercase tracking-tight">PIN Lock</span>
+                        <span className="font-mono text-slate-700 font-bold bg-white px-1.5 py-0.5 rounded border border-slate-200/60">{formatTime(lockTimeLeft)}</span>
+                    </div>
+                    <span className="text-slate-200">|</span>
+                    <div className="flex items-center gap-1.5" title="Auto Logout Countdown">
+                        <Lock size={11} className="text-slate-400" />
+                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-tight">Auto Logout</span>
+                        <span className="font-mono text-slate-600 italic">{formatTime(logoutTimeLeft)}</span>
+                    </div>
+                    <span className="text-slate-200">|</span>
+                    <div className="flex items-center gap-1 text-emerald-600 font-black text-[9px] uppercase tracking-wider">
+                        <Shield size={11} /> Active
+                    </div>
+                </div>
+
                 <div className={`hidden sm:flex items-center gap-1.5 border rounded-full px-2.5 py-1 ${kycChip.className}`}>
                     <KycIcon size={12} />
                     <span className="text-[9px] font-black uppercase tracking-[0.15em]">KYC {kycChip.label}</span>
