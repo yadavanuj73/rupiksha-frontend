@@ -572,26 +572,26 @@ const Retailers = () => {
                             initial={{ scale: 0.9, opacity: 0, y: 40 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.9, opacity: 0, y: 40 }}
-                            className="bg-white w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl relative"
+                            className="bg-white w-full max-w-2xl sm:max-w-3xl rounded-[2.5rem] overflow-hidden shadow-2xl relative max-h-[92vh] flex flex-col"
                         >
-                            <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                            <div className="px-6 sm:px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10 shrink-0">
                                 <div>
-                                    <h3 className="text-xl font-black text-slate-800 uppercase italic tracking-tight">Naya Retailer Jodo</h3>
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Same form as portal sign-up · Admin approval required</p>
+                                    <h3 className="text-lg sm:text-xl font-black text-slate-800 uppercase italic tracking-tight">Register Partner Retailer</h3>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Direct Partner Onboarding · Instant Auto-Approval</p>
                                 </div>
-                                <button onClick={() => setShowAddModal(false)} className="p-3 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-2xl transition-all">
-                                    <X size={24} />
+                                <button onClick={() => setShowAddModal(false)} className="p-2.5 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-2xl transition-all">
+                                    <X size={22} />
                                 </button>
                             </div>
 
-                            <div className="p-8">
+                            <div className="p-4 sm:p-6 overflow-y-auto">
                                 <NetworkRegistrationForm
                                     roleLock="RETAILER"
                                     uplineId={(sharedDataService.getCurrentSuperDistributor() || {}).id}
                                     uplineRole="SUPER_DISTRIBUTOR"
                                     onCancel={() => setShowAddModal(false)}
                                     onSuccess={handleRegistrationSuccess}
-                                    submitLabel="Submit for Admin Approval"
+                                    submitLabel="Register Retailer (Auto-Approved)"
                                 />
                             </div>
                         </motion.div>
