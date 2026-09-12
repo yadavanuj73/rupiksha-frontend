@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Bell, ChevronRight, Send, Plus, ArrowUpRight, ArrowDownRight,
     Wallet, TrendingUp, Users, Activity, CheckCircle2, AlertCircle,
-    CreditCard, Target, MoreHorizontal, RefreshCcw, MapPin
+    MoreHorizontal, RefreshCcw, MapPin
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { sharedDataService } from '../../services/sharedDataService';
@@ -39,12 +39,6 @@ const quickContacts = [
     { name: 'Priya\nSingh', initials: 'PS', color: 'from-rose-400 to-rose-600' },
     { name: 'Mohit\nVerma', initials: 'MV', color: 'from-emerald-400 to-emerald-600' },
     { name: 'Sunita\nPatel', initials: 'SP', color: 'from-amber-400 to-amber-600' },
-];
-
-const goals = [
-    { label: 'Monthly Target', sub: '₹5,00,000 goal', pct: 68, color: '#6366f1' },
-    { label: 'Active Retailers', sub: '20 retailer goal', pct: 45, color: '#10b981' },
-    { label: 'Commission Goal', sub: '₹20,000 goal', pct: 82, color: '#f59e0b' },
 ];
 
 /* ─── Custom chart tooltip ─────────────────────────────────── */
@@ -87,7 +81,6 @@ const DistributorDashboard = () => {
     const [retailers, setRetailers] = useState([]);
     const [transferAmt, setTransferAmt] = useState('');
     const [selectedContact, setSelectedContact] = useState(null);
-    const [cardIdx, setCardIdx] = useState(0);
 
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -186,21 +179,7 @@ const DistributorDashboard = () => {
         },
     ];
 
-    /* wallet cards (demo) */
-    const cards = [
-        {
-            num: '5995  7474  1103  7513  0014',
-            exp: '11/27',
-            holder: distName,
-            bg: 'from-slate-700 to-slate-900',
-        },
-        {
-            num: '4231  8821  4455  9900  0023',
-            exp: '08/26',
-            holder: distName,
-            bg: 'from-indigo-600 to-purple-800',
-        },
-    ];
+
 
     return (
         /* outer wrapper — light gray page bg */
@@ -354,66 +333,7 @@ const DistributorDashboard = () => {
                     {/* ════════════ RIGHT COLUMN ════════════ */}
                     <div className="space-y-5">
 
-                        {/* My Card */}
-                        <motion.div
-                            initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.15 }}
-                            className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:border-[var(--brand-color)] transition-all"
-                            style={{ backgroundColor: `rgba(var(--brand-color-rgb), 0.05)` }}
-                        >
-                            <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-base font-black text-slate-900">My Card</h2>
-                                <button onClick={() => navigate('/distributor/transactions/add-money')}
-                                    className="bg-slate-900 hover:bg-slate-700 text-white text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5">
-                                    <Plus size={11} /> Add Card
-                                </button>
-                            </div>
 
-                            {/* Card carousel */}
-                            <div className="relative overflow-hidden">
-                                <AnimatePresence mode="wait">
-                                    <motion.div
-                                        key={cardIdx}
-                                        initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, x: -30 }}
-                                        transition={{ duration: 0.25 }}
-                                        className={`bg-gradient-to-br ${cards[cardIdx].bg} rounded-2xl p-5 text-white shadow-xl relative overflow-hidden`}
-                                        style={{ minHeight: 150 }}
-                                    >
-                                        {/* Decorative circles */}
-                                        <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/5 rounded-full" />
-                                        <div className="absolute -right-2 top-10 w-20 h-20 bg-white/5 rounded-full" />
-
-                                        <div className="flex justify-between items-start mb-6">
-                                            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                                                <Wallet size={14} />
-                                            </div>
-                                            <CreditCard size={18} className="text-white/50" />
-                                        </div>
-                                        <p className="text-[10px] font-black text-white/60 tracking-widest mb-1">WALLET BALANCE</p>
-                                        <p className="text-xl font-black text-white mb-4">₹ {walletBal}</p>
-                                        <div className="flex justify-between items-end">
-                                            <p className="text-[9px] font-black text-white/50 tracking-widest uppercase">{distId}</p>
-                                            <p className="text-[10px] font-black text-white/70">{cards[cardIdx].exp}</p>
-                                        </div>
-                                    </motion.div>
-                                </AnimatePresence>
-
-                                {/* Carousel dot indicators */}
-                                <div className="flex items-center justify-between mt-3">
-                                    <div className="flex gap-1.5">
-                                        {cards.map((_, i) => (
-                                            <button key={i} onClick={() => setCardIdx(i)}
-                                                className={`h-1.5 rounded-full transition-all ${i === cardIdx ? 'w-4 bg-slate-800' : 'w-1.5 bg-slate-200'}`} />
-                                        ))}
-                                    </div>
-                                    <button onClick={() => setCardIdx(i => (i + 1) % cards.length)}
-                                        className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-all">
-                                        <ChevronRight size={14} className="text-slate-600" />
-                                    </button>
-                                </div>
-                            </div>
-                        </motion.div>
 
                         {/* Managed Retailers */}
                         <motion.div
@@ -533,75 +453,7 @@ const DistributorDashboard = () => {
                             </div>
                         </motion.div>
 
-                        {/* My Goals */}
-                        <motion.div
-                            initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.2 }}
-                            className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100"
-                        >
-                            <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-base font-black text-slate-900">My Goals</h2>
-                                <button onClick={() => navigate('/distributor/plans')}
-                                    className="bg-slate-900 hover:bg-slate-700 text-white text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5">
-                                    <Plus size={11} /> Add
-                                </button>
-                            </div>
 
-                            <div className="space-y-4">
-                                {goals.map((g, i) => (
-                                    <motion.div key={i}
-                                        initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                                        transition={{ delay: 0.3 + i * 0.08 }}
-                                        className="flex items-center gap-3"
-                                    >
-                                        {/* Icon */}
-                                        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${g.color}18` }}>
-                                            <Target size={15} style={{ color: g.color }} />
-                                        </div>
-
-                                        {/* Progress */}
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex justify-between items-center mb-1.5">
-                                                <p className="text-[11px] font-black text-slate-800 truncate">{g.label}</p>
-                                                <p className="text-[10px] font-black ml-2 shrink-0" style={{ color: g.color }}>{g.pct}%</p>
-                                            </div>
-                                            <div className="bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                                                <motion.div
-                                                    initial={{ width: 0 }}
-                                                    animate={{ width: `${g.pct}%` }}
-                                                    transition={{ delay: 0.4 + i * 0.1, duration: 0.9, ease: 'easeOut' }}
-                                                    className="h-1.5 rounded-full"
-                                                    style={{ background: g.color }}
-                                                />
-                                            </div>
-                                            <p className="text-[9px] font-bold text-slate-400 mt-1">{g.sub}</p>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </div>
-                        </motion.div>
-
-                        {/* Mini action buttons */}
-                        <motion.div
-                            initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.3 }}
-                            className="grid grid-cols-3 gap-3"
-                        >
-                            {[
-                                { label: 'Add Money', icon: Plus, path: '/distributor/transactions/add-money', color: '#6366f1' },
-                                { label: 'Reports', icon: TrendingUp, path: '/distributor/reports/commission', color: '#10b981' },
-                                { label: 'Retailers', icon: Users, path: '/distributor/retailers/details', color: '#f59e0b' },
-                            ].map((a, i) => (
-                                <motion.button key={i} whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.95 }}
-                                    onClick={() => navigate(a.path)}
-                                    className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col items-center gap-2.5 hover:shadow-md transition-all group">
-                                    <div className="w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform" style={{ background: 'var(--brand-color)', opacity: 0.2 }}>
-                                        <a.icon size={16} className="text-black" />
-                                    </div>
-                                    <span className="text-[9px] font-black text-slate-600 uppercase tracking-tight text-center">{a.label}</span>
-                                </motion.button>
-                            ))}
-                        </motion.div>
 
                     </div>
                     {/* ════════════ END RIGHT COLUMN ════════════ */}
