@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Bell, ChevronRight, Send, Plus, ArrowUpRight, ArrowDownRight,
+    ChevronRight, Send, Plus, ArrowUpRight, ArrowDownRight,
     Wallet, TrendingUp, Users, Activity, CheckCircle2, AlertCircle,
     MoreHorizontal, RefreshCcw, MapPin
 } from 'lucide-react';
@@ -9,22 +9,8 @@ import { useNavigate } from 'react-router-dom';
 import { sharedDataService } from '../../services/sharedDataService';
 import { dataService } from '../../services/dataService';
 import { getDistributorPlan, getRemainingRetailerSlots } from '../config/planConfig';
-import {
-    LineChart, Line, XAxis, YAxis, CartesianGrid,
-    Tooltip, ResponsiveContainer, Area, AreaChart
-} from 'recharts';
 
-/* ─── Static demo data ──────────────────────────────────────── */
-const financeData = [
-    { date: '1 Feb', credit: 220, debit: 580 },
-    { date: '2 Feb', credit: 450, debit: 340 },
-    { date: '3 Feb', credit: 280, debit: 620 },
-    { date: '4 Feb', credit: 780, debit: 178 },
-    { date: '5 Feb', credit: 390, debit: 450 },
-    { date: '6 Feb', credit: 860, debit: 300 },
-    { date: '7 Feb', credit: 540, debit: 680 },
-    { date: '8 Feb', credit: 920, debit: 240 },
-];
+
 
 const recentTxns = [
     { name: 'AEPS Withdrawal', type: 'AEPS', date: 'Feb 20, 2025', amount: '+₹4.00', up: true, color: '#6366f1' },
@@ -41,21 +27,7 @@ const quickContacts = [
     { name: 'Sunita\nPatel', initials: 'SP', color: 'from-amber-400 to-amber-600' },
 ];
 
-/* ─── Custom chart tooltip ─────────────────────────────────── */
-const ChartTooltip = ({ active, payload, label }) => {
-    if (!active || !payload?.length) return null;
-    return (
-        <div className="bg-[#1e293b] text-white rounded-xl px-4 py-3 shadow-2xl text-[10px] space-y-1 border border-white/10">
-            <p className="font-black text-white/60 uppercase tracking-widest">{label}</p>
-            {payload.map((p, i) => (
-                <p key={i} className="font-black flex items-center gap-1.5" style={{ color: p.color }}>
-                    <span className="w-2 h-2 rounded-full inline-block" style={{ background: p.color }} />
-                    {p.name === 'credit' ? 'Credit' : 'Debit'}: ₹{p.value.toLocaleString('en-IN')}
-                </p>
-            ))}
-        </div>
-    );
-};
+
 
 /* ─── Animated number ─────────────────────────────────────── */
 const AnimNum = ({ n, prefix = '' }) => {
@@ -190,21 +162,6 @@ const DistributorDashboard = () => {
                 <div className="flex items-center justify-between mb-7">
                     <div>
                         <h1 className="text-2xl font-black text-slate-900 tracking-tight">Dashboard</h1>
-                        <span
-                            className="inline-flex items-center gap-1.5 mt-1 text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full text-white"
-                            style={{ background: 'var(--brand-color)', color: 'black' }}
-                        >
-                            {planCfg.label}
-                        </span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <button className="relative p-2 text-slate-500 hover:text-slate-800 transition-colors">
-                            <Bell size={20} />
-                            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
-                        </button>
-                        <button className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-[11px] font-black shadow-md shadow-amber-400/30">
-                            {distName.charAt(0)}
-                        </button>
                     </div>
                 </div>
 
@@ -235,53 +192,7 @@ const DistributorDashboard = () => {
                             ))}
                         </div>
 
-                        {/* Finances chart */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.25 }}
-                            className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:border-[var(--brand-color)] transition-all"
-                            style={{ backgroundColor: `rgba(var(--brand-color-rgb), 0.05)` }}
-                        >
-                            <div className="flex items-center justify-between mb-5">
-                                <h2 className="text-base font-black text-slate-900">Finances</h2>
-                                <div className="flex items-center gap-4 text-[10px] font-black">
-                                    <span className="flex items-center gap-1.5 text-slate-500">
-                                        <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 inline-block" />
-                                        Credit
-                                    </span>
-                                    <span className="flex items-center gap-1.5 text-slate-500">
-                                        <span className="w-2.5 h-2.5 rounded-full bg-rose-400 inline-block" />
-                                        Debit
-                                    </span>
-                                </div>
-                            </div>
-                            <ResponsiveContainer width="100%" height={220}>
-                                <LineChart data={financeData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                                    <XAxis
-                                        dataKey="date"
-                                        tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }}
-                                        axisLine={false} tickLine={false}
-                                    />
-                                    <YAxis
-                                        tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }}
-                                        axisLine={false} tickLine={false}
-                                        tickFormatter={v => `₹${v}`}
-                                    />
-                                    <Tooltip content={<ChartTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 2 }} />
-                                    <Line
-                                        type="monotone" dataKey="credit" stroke="#6366f1"
-                                        strokeWidth={2.5} dot={false}
-                                        activeDot={{ r: 5, fill: '#6366f1', strokeWidth: 0 }}
-                                    />
-                                    <Line
-                                        type="monotone" dataKey="debit" stroke="#f87171"
-                                        strokeWidth={2.5} dot={false} strokeDasharray="0"
-                                        activeDot={{ r: 5, fill: '#f87171', strokeWidth: 0 }}
-                                    />
-                                </LineChart>
-                            </ResponsiveContainer>
-                        </motion.div>
+
 
                         {/* Transaction History */}
                         <motion.div
@@ -393,65 +304,7 @@ const DistributorDashboard = () => {
                             </div>
                         </motion.div>
 
-                        {/* Plan Status Card */}
-                        <motion.div
-                            initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.18 }}
-                            className="rounded-2xl p-5 shadow-lg text-black relative overflow-hidden"
-                            style={{ background: 'var(--brand-color)' }}
-                        >
-                            <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/5 rounded-full" />
-                            <div className="absolute -right-2 bottom-2 w-16 h-16 bg-white/5 rounded-full" />
-                            <div className="relative z-10">
-                                <p className="text-[9px] font-black uppercase tracking-widest text-white/50 mb-1">Active Plan</p>
-                                <h3 className="text-lg font-black text-white uppercase tracking-tight">{planCfg.label}</h3>
 
-                                {/* Retailer usage bar */}
-                                <div className="mt-4">
-                                    <div className="flex justify-between items-center mb-1.5">
-                                        <p className="text-[9px] font-black text-white/60 uppercase tracking-wider">Retailer IDs Used</p>
-                                        <p className="text-[10px] font-black text-white">
-                                            {retailers.length} / {maxR === Infinity ? '∞' : maxR}
-                                        </p>
-                                    </div>
-                                    <div className="bg-white/10 rounded-full h-1.5 overflow-hidden">
-                                        <motion.div
-                                            initial={{ width: 0 }}
-                                            animate={{ width: maxR === Infinity ? '30%' : `${usagePct}%` }}
-                                            transition={{ delay: 0.5, duration: 0.8, ease: 'easeOut' }}
-                                            className="h-1.5 rounded-full bg-white/80"
-                                        />
-                                    </div>
-                                    {maxR !== Infinity && remainingSlots <= 2 && remainingSlots > 0 && (
-                                        <p className="text-[9px] font-black text-yellow-300 mt-1.5">⚠ Only {remainingSlots} slot{remainingSlots > 1 ? 's' : ''} left!</p>
-                                    )}
-                                    {maxR !== Infinity && remainingSlots === 0 && (
-                                        <p className="text-[9px] font-black text-red-300 mt-1.5">✕ Retailer limit reached — Upgrade plan</p>
-                                    )}
-                                </div>
-
-                                {/* Sub-distributor */}
-                                {planCfg.features.subDistributors && (
-                                    <div className="mt-3">
-                                        <div className="flex justify-between items-center">
-                                            <p className="text-[9px] font-black text-white/60 uppercase tracking-wider">Sub-Distributor IDs</p>
-                                            <p className="text-[10px] font-black text-white">
-                                                0 / {planCfg.maxSubDistributors === Infinity ? '∞' : planCfg.maxSubDistributors}
-                                            </p>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {planCfg.id !== 'premium' && (
-                                    <button
-                                        onClick={() => navigate('/distributor-plans')}
-                                        className="mt-4 w-full bg-white/15 hover:bg-white/25 text-white text-[9px] font-black uppercase tracking-widest py-2 rounded-xl border border-white/20 transition-all"
-                                    >
-                                        ↑ Upgrade Plan
-                                    </button>
-                                )}
-                            </div>
-                        </motion.div>
 
 
 
