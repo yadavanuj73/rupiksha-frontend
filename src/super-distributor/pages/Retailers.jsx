@@ -155,18 +155,17 @@ const Retailers = () => {
     };
 
     const filtered = retailers.filter(r => {
-        const matchesSearch =
-            String(r.name || r.username || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        const matchesSearch = String(r.name || r.fullName || r.username || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             String(r.mobile || '').includes(searchTerm) ||
             String(r.businessName || r.shopName || '').toLowerCase().includes(searchTerm.toLowerCase());
         const matchesStatus = statusFilter === 'All'
-            || r.status === statusFilter
-            || (statusFilter === 'Pending KYC' && r.status === 'Approved' && r.kycStatus !== 'APPROVED')
-            || (statusFilter === 'KYC Approved' && r.status === 'Approved' && r.kycStatus === 'APPROVED');
+            || (statusFilter === 'Active' && (r.status === 'Approved' || r.status === 'ACTIVE' || r.displayStatus === 'Approved'))
+            || (statusFilter === 'KYC Approved' && (r.kycStatus === 'APPROVED' || r.status === 'Approved' || r.status === 'ACTIVE'))
+            || r.status === statusFilter;
         return matchesSearch && matchesStatus;
     });
 
-    const active = retailers.filter(r => r.displayStatus === 'Approved');
+    const active = retailers.filter(r => r.displayStatus === 'Approved' || r.status === 'Approved' || r.status === 'ACTIVE');
 
     return (
         <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 font-['Montserrat',sans-serif]">
@@ -201,7 +200,7 @@ const Retailers = () => {
                 {[
                     { label: 'Total Retailers', val: retailers.length, icon: Users, color: 'text-indigo-500', bg: 'bg-indigo-50' },
                     { label: 'Active / Verified', val: active.length, icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-                    { label: 'Pending KYC', val: retailers.filter(r => r.status === 'Pending' || r.status === 'PENDING').length, icon: Clock, color: 'text-amber-500', bg: 'bg-amber-50' },
+                    { label: 'KYC Approved', val: retailers.filter(r => r.kycStatus === 'APPROVED' || r.status === 'Approved' || r.status === 'ACTIVE').length, icon: ShieldCheck, color: 'text-blue-500', bg: 'bg-blue-50' },
                 ].map((stat, i) => (
                     <div key={i} className="bg-white border border-slate-100 p-5 rounded-2xl shadow-sm flex items-center justify-between">
                         <div>
@@ -228,15 +227,13 @@ const Retailers = () => {
                     />
                 </div>
                 <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
-                    {['All', 'Pending', 'Pending KYC', 'KYC Approved', 'Rejected'].map(status => (
+                    {['All', 'Active', 'KYC Approved'].map(status => (
                         <button
                             key={status}
                             onClick={() => setStatusFilter(status)}
                             className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border
                                 ${statusFilter === status
-                                    ? (status === 'All' ? 'bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20' :
-                                       status === 'Approved' ? 'bg-amber-400 border-amber-400 text-black shadow-md shadow-amber-400/20' :
-                                       'bg-red-500 border-red-500 text-white shadow-md shadow-red-500/20')
+                                    ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-600/20'
                                     : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}
                         >
                             {status}

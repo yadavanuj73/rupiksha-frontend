@@ -74,9 +74,9 @@ const Distributors = () => {
         const matchesSearch = String(d.name || d.username || d.businessName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             String(d.mobile || '').includes(searchTerm);
         const matchesStatus = statusFilter === 'All'
-            || d.status === statusFilter
-            || (statusFilter === 'Pending KYC' && d.status === 'Approved' && d.kycStatus !== 'APPROVED')
-            || (statusFilter === 'KYC Approved' && d.status === 'Approved' && d.kycStatus === 'APPROVED');
+            || (statusFilter === 'Active' && (d.status === 'Approved' || d.status === 'ACTIVE' || d.displayStatus === 'Approved'))
+            || (statusFilter === 'KYC Approved' && (d.kycStatus === 'APPROVED' || d.status === 'Approved' || d.status === 'ACTIVE'))
+            || d.status === statusFilter;
         return matchesSearch && matchesStatus;
     });
 
@@ -133,15 +133,13 @@ const Distributors = () => {
                     />
                 </div>
                 <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
-                    {['All', 'Pending', 'Pending KYC', 'KYC Approved'].map(status => (
+                    {['All', 'Active', 'KYC Approved'].map(status => (
                         <button
                             key={status}
                             onClick={() => setStatusFilter(status)}
                             className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border
                                 ${statusFilter === status
-                                    ? (status === 'All' ? 'bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20' :
-                                       status === 'Approved' ? 'bg-amber-400 border-amber-400 text-black shadow-md shadow-amber-400/20' :
-                                       'bg-red-500 border-red-500 text-white shadow-md shadow-red-500/20')
+                                    ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-600/20'
                                     : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}
                         >
                             {status}
@@ -255,7 +253,7 @@ const Distributors = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 {[
                     { label: 'Network Reach', val: active.length, icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50', sub: 'Active Distributors' },
-                    { label: 'Pending Apps', val: distributors.filter(d => d.displayStatus === 'Pending' || d.displayStatus === 'Pending KYC').length, icon: Clock, color: 'text-amber-500', bg: 'bg-amber-50', sub: 'Applications' },
+                    { label: 'KYC Approved', val: distributors.filter(d => d.kycStatus === 'APPROVED' || d.status === 'Approved' || d.status === 'ACTIVE').length, icon: ShieldCheck, color: 'text-blue-500', bg: 'bg-blue-50', sub: 'Verified Partners' },
                     { label: 'Retailer Base', val: filtered.reduce((acc, curr) => acc + (curr.assignedRetailers?.length || 0), 0), icon: Users, color: 'text-blue-500', bg: 'bg-blue-50', sub: 'Linked Retailers' },
                 ].map((stat, i) => (
                     <div key={i} className="bg-white border border-slate-100 p-6 rounded-[2rem] shadow-sm flex items-center justify-between group hover:border-amber-500 transition-all">
