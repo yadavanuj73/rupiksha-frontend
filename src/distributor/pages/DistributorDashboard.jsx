@@ -7,7 +7,7 @@ import { getDistributorPlan } from '../config/planConfig';
 import {
     CheckCircle2, XCircle, Clock, Search, RefreshCw, AlertTriangle,
     X, Building2, ShieldCheck, User, Mail, Phone, ExternalLink, Check, Copy,
-    ChevronRight, Wallet, Users, Activity
+    ChevronRight, Wallet, Users, Activity, Eye
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -213,16 +213,13 @@ const DistributorDashboard = () => {
     const [lastFetch, setLastFetch] = useState(null);
     const [time, setTime] = useState(new Date());
 
-    // Beneficiary Approval State for Mapped Retailers
+    // Beneficiary Approval State for Mapped Retailers (View-Only)
     const [beneStats, setBeneStats] = useState({ pending: 0, approved: 0, rejected: 0, total: 0 });
     const [beneList, setBeneList] = useState([]);
     const [beneLoading, setBeneLoading] = useState(false);
     const [showBeneModal, setShowBeneModal] = useState(false);
     const [beneFilter, setBeneFilter] = useState('ALL');
     const [beneSearch, setBeneSearch] = useState('');
-    const [rejectTargetBene, setRejectTargetBene] = useState(null);
-    const [rejectReason, setRejectReason] = useState('');
-    const [actionLoadingId, setActionLoadingId] = useState(null);
     const [copiedField, setCopiedField] = useState('');
 
     const distRef = useRef(null);
@@ -238,27 +235,36 @@ const DistributorDashboard = () => {
     // Load Distributor, Mapped Retailers, Transactions, and Beneficiaries
     const loadDashboardData = useCallback(async () => {
         try {
-            const currentDist = sharedDataService.getCurrentDistributor() || dataService.getCurrentUser();
-            if (!currentDist) return;
+            const session = sharedDataService.getCurrentDistributor();
+            if (!session) return;
 
-            distRef.current = currentDist;
-            const distBal = await dataService.getWalletBalance(currentDist.id || currentDist.userId);
-            const freshDist = { ...currentDist, wallet: { balance: distBal } };
-            setDist(freshDist);
+            const freshDist = sharedDataService.getDistributorById(session.id) || session;
+            distRef.current = freshDist;
+            
+            // Get live wallet balance
+            let distBal = freshDist?.wallet?.balance || 0;
+            try {
+                distBal = await dataService.getWalletBalance(freshDist.id || freshDist.userId);
+            } catch (_) {}
 
-            const distId = String(currentDist.id || currentDist._id || currentDist.userId || '').trim().toLowerCase();
-            const distPartyCode = String(currentDist.partyCode || currentDist.userCode || '').trim().toUpperCase();
-            const distUsername = String(currentDist.username || '').trim().toLowerCase();
-            const distMobile = String(currentDist.mobile || currentDist.phone || '').trim();
-            const distName = String(currentDist.name || '').trim().toLowerCase();
+            setDist({ ...freshDist, wallet: { balance: distBal } });
 
-            // Fetch all users to filter mapped retailers
+            const distId = String(freshDist.id || freshDist._id || freshDist.userId || '').trim().toLowerCase();
+            const distPartyCode = String(freshDist.partyCode || freshDist.userCode || '').trim().toUpperCase();
+            const distMobile = String(freshDist.mobile || freshDist.phone || '').trim();
+            const distUsername = String(freshDist.username || '').trim().toLowerCase();
+            const distName = String(freshDist.name || freshDist.fullName || '').trim().toLowerCase();
+            const assignedList = (freshDist.assignedRetailers || []).map(x => String(x || '').trim());
+            const assignedSet = new Set(assignedList.map(x => x.toLowerCase()));
+
+            // Fetch all users using getAllUsers() identical to Retailers.jsx
             let allUsers = [];
             try {
-                const res = await dataService.getUsers();
-                if (Array.isArray(res)) allUsers = res;
-                else if (res?.users && Array.isArray(res.users)) allUsers = res.users;
-            } catch (_) {}
+                allUsers = await dataService.getAllUsers();
+                if (!Array.isArray(allUsers)) allUsers = [];
+            } catch {
+                allUsers = dataService.getData().users || [];
+            }
 
             const localUsers = dataService.getData().users || [];
             const cachedUsersRaw = typeof localStorage !== 'undefined' ? localStorage.getItem('rupiksha_users_cache') : null;
@@ -272,31 +278,57 @@ const DistributorDashboard = () => {
                 if (key && !userMap.has(key)) userMap.set(key, u);
             });
 
-            const assignedList = Array.isArray(currentDist.assignedRetailers) ? currentDist.assignedRetailers : [];
-            const assignedSet = new Set(assignedList.map(x => String(x).toLowerCase()));
+            const combinedList = Array.from(userMap.values());
 
-            // Multi-factor mapping filter
-            const mapped = Array.from(userMap.values()).filter(r => {
-                const rRole = String(r?.role || (r?.roles && r.roles[0]) || '').replace(/^ROLE_/i, '').toUpperCase();
-                if (rRole !== 'RETAILER' && rRole !== 'RETAILERS') return false;
+            // Multi-factor mapping filter (exact match with Retailers.jsx)
+            const mapped = combinedList
+                .filter((u) => {
+                    const rRole = String(u?.role || (u?.roles && u.roles[0]) || '').replace(/^ROLE_/i, '').toUpperCase();
+                    return rRole === 'RETAILER' || rRole === 'RETAILERS';
+                })
+                .filter((r) => {
+                    const rId = String(r.id || r._id || r.userId || '').trim().toLowerCase();
+                    const rUsername = String(r.username || '').trim().toLowerCase();
+                    const rMobile = String(r.mobile || r.phone || '').trim();
+                    const rPartyCode = String(r.partyCode || r.userCode || '').trim().toUpperCase();
 
-                const rId = String(r.id || r._id || r.userId || '').trim().toLowerCase();
-                const rUsername = String(r.username || '').trim().toLowerCase();
-                const rMobile = String(r.mobile || r.phone || '').trim();
-                const rPartyCode = String(r.partyCode || r.userCode || '').trim().toUpperCase();
+                    const rParentId = String(r.parentUserId || r.ownerId || r.addedByUserRef || r.parent_id || r.parentId || '').trim().toLowerCase();
+                    const rParentPartyCode = String(r.parentPartyCode || r.addedByPartyCode || r.ownerPartyCode || '').trim().toUpperCase();
+                    const rParentName = String(r.parentName || r.addedByName || r.ownerName || '').trim().toLowerCase();
+                    const rParentMobile = String(r.parentMobile || r.ownerMobile || r.addedByMobile || '').trim();
 
-                const rParentId = String(r.parentUserId || r.ownerId || r.addedByUserRef || r.parent_id || r.parentId || '').trim().toLowerCase();
-                const rParentPartyCode = String(r.parentPartyCode || r.addedByPartyCode || r.ownerPartyCode || '').trim().toUpperCase();
-                const rParentName = String(r.parentName || r.addedByName || r.ownerName || '').trim().toLowerCase();
-                const rParentMobile = String(r.parentMobile || r.ownerMobile || r.addedByMobile || '').trim();
+                    // Direct assignment list check
+                    if (assignedSet.has(rUsername) || (rMobile && assignedSet.has(rMobile)) || (rPartyCode && assignedSet.has(rPartyCode.toLowerCase())) || (rId && assignedSet.has(rId))) {
+                        return true;
+                    }
 
-                return (assignedSet.has(rUsername) || (rMobile && assignedSet.has(rMobile)) || (rPartyCode && assignedSet.has(rPartyCode.toLowerCase())) || (rId && assignedSet.has(rId))) ||
-                    (distId && (rParentId === distId || rParentId.includes(distId))) ||
-                    (distPartyCode && rParentPartyCode && rParentPartyCode === distPartyCode) ||
-                    (distMobile && (rParentMobile === distMobile || rParentId === distMobile.toLowerCase())) ||
-                    (distUsername && (rParentId === distUsername || rParentName === distUsername)) ||
-                    (distName && rParentName && (rParentName.includes(distName) || distName.includes(rParentName)));
-            });
+                    // ID link check
+                    if (distId && (rParentId === distId || rParentId.includes(distId))) {
+                        return true;
+                    }
+
+                    // Party Code link check (e.g. RPDMH78914)
+                    if (distPartyCode && rParentPartyCode && rParentPartyCode === distPartyCode) {
+                        return true;
+                    }
+
+                    // Mobile link check
+                    if (distMobile && (rParentMobile === distMobile || rParentId === distMobile.toLowerCase())) {
+                        return true;
+                    }
+
+                    // Username link check
+                    if (distUsername && (rParentId === distUsername || rParentName === distUsername)) {
+                        return true;
+                    }
+
+                    // Name link check
+                    if (distName && rParentName && (rParentName.includes(distName) || distName.includes(rParentName))) {
+                        return true;
+                    }
+
+                    return false;
+                });
 
             setRetailers(mapped);
             retailersRef.current = mapped;
@@ -316,10 +348,10 @@ const DistributorDashboard = () => {
             if (distPartyCode) mappedKeySet.add(distPartyCode.toLowerCase());
             if (distUsername) mappedKeySet.add(distUsername);
 
-            // Fetch transactions & filter to mapped retailers + distributor
+            // Fetch transactions & filter to mapped network
             let allTxns = [];
             try {
-                const userTxns = await dataService.getUserTransactions(currentDist.id || currentDist.userId);
+                const userTxns = await dataService.getUserTransactions(freshDist.id || freshDist.userId);
                 if (Array.isArray(userTxns)) allTxns.push(...userTxns);
             } catch (_) {}
 
@@ -358,24 +390,43 @@ const DistributorDashboard = () => {
             setTransactions(filteredTxns);
 
             // Fetch Beneficiaries and filter to mapped network
+            let beneItems = [];
             try {
                 const allBene = await payoutService.getAdminBeneficiaries();
                 if (Array.isArray(allBene)) {
-                    const mappedBene = allBene.filter(b => {
+                    beneItems = allBene.filter(b => {
                         const bCode = String(b.userPartyCode || '').toLowerCase();
                         const bMobile = String(b.userMobile || '');
                         const bEmail = String(b.userEmail || '').toLowerCase();
                         const bUser = String(b.userId || b.username || '').toLowerCase();
                         return mappedKeySet.has(bCode) || mappedKeySet.has(bMobile) || mappedKeySet.has(bEmail) || mappedKeySet.has(bUser);
                     });
-
-                    setBeneList(mappedBene);
-                    const pending = mappedBene.filter(b => b.status === 'PENDING').length;
-                    const approved = mappedBene.filter(b => b.status === 'APPROVED').length;
-                    const rejected = mappedBene.filter(b => b.status === 'REJECTED').length;
-                    setBeneStats({ pending, approved, rejected, total: mappedBene.length });
                 }
             } catch (_) {}
+
+            // Also include profile bank accounts of mapped retailers if not in beneItems
+            mapped.forEach(r => {
+                if (r.bankAccountNumber && !beneItems.some(b => b.accountNumber === r.bankAccountNumber)) {
+                    beneItems.push({
+                        id: `prof_${r.id || r.username}`,
+                        userPartyCode: r.partyCode || 'RETAILER',
+                        userFullName: r.name || r.fullName || r.username,
+                        userEmail: r.email,
+                        userMobile: r.mobile,
+                        beneficiaryName: r.bankAccountHolder || r.name || r.username,
+                        bankName: r.bankName || 'Bank Account',
+                        accountNumber: r.bankAccountNumber,
+                        ifsc: r.bankIfsc || 'N/A',
+                        status: r.status === 'Approved' ? 'APPROVED' : 'PENDING'
+                    });
+                }
+            });
+
+            setBeneList(beneItems);
+            const pending = beneItems.filter(b => b.status === 'PENDING').length;
+            const approved = beneItems.filter(b => b.status === 'APPROVED').length;
+            const rejected = beneItems.filter(b => b.status === 'REJECTED').length;
+            setBeneStats({ pending, approved, rejected, total: beneItems.length });
 
             setConnected(true);
             setLastFetch(new Date());
@@ -383,34 +434,6 @@ const DistributorDashboard = () => {
             setConnected(false);
         }
     }, []);
-
-    const handleApproveBene = async (id) => {
-        setActionLoadingId(id);
-        try {
-            await payoutService.adminApproveBeneficiary(id);
-            await loadDashboardData();
-        } catch (err) {
-            alert(err?.message || 'Failed to approve beneficiary');
-        } finally {
-            setActionLoadingId(null);
-        }
-    };
-
-    const handleRejectBene = async (e) => {
-        if (e) e.preventDefault();
-        if (!rejectTargetBene) return;
-        setActionLoadingId(rejectTargetBene.id);
-        try {
-            await payoutService.adminRejectBeneficiary(rejectTargetBene.id, rejectReason);
-            setRejectTargetBene(null);
-            setRejectReason('');
-            await loadDashboardData();
-        } catch (err) {
-            alert(err?.message || 'Failed to reject beneficiary');
-        } finally {
-            setActionLoadingId(null);
-        }
-    };
 
     const filteredBeneList = useMemo(() => {
         let list = beneList;
@@ -460,11 +483,10 @@ const DistributorDashboard = () => {
 
     // Computed Scoped Metrics
     const distBal = parseFloat(dist?.wallet?.balance || 0);
-    const planCfg = getDistributorPlan(dist);
 
     // Mapped Retailers Status
-    const activeRetailers = retailers.filter(r => r.status === 'Approved').length;
-    const pendingRetailers = retailers.filter(r => r.status !== 'Approved').length;
+    const activeRetailers = retailers.filter(r => r.status === 'Approved' || r.status === 'ACTIVE').length;
+    const pendingRetailers = retailers.filter(r => r.status !== 'Approved' && r.status !== 'ACTIVE').length;
 
     // Profile KYC of Mapped Retailers
     const kycDone = retailers.filter(r => r.kycStatus === 'Approved' || r.kycStatus === 'DONE' || r.isKycDone).length;
@@ -601,7 +623,7 @@ const DistributorDashboard = () => {
                 </div>
             </div>
 
-            {/* ── KPI Cards Row (4 Columns with Payout Beneficiary Approval) ── */}
+            {/* ── KPI Cards Row (4 Columns with Payout Beneficiary Status) ── */}
             <div className="live-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', marginBottom: 16 }}>
                 <KpiCard title="User Network" icon="👥" accent="#0ea5e9">
                     <StatRow label="Total Registered" value={fmt(retailers.length)} accent="#0ea5e9" />
@@ -610,7 +632,7 @@ const DistributorDashboard = () => {
                 </KpiCard>
 
                 <div onClick={() => setShowBeneModal(true)} style={{ cursor: 'pointer' }}>
-                    <KpiCard title="Payout Bank Beneficiary Approval" icon="🏦" accent="#059669">
+                    <KpiCard title="Payout Bank Beneficiary Status" icon="🏦" accent="#059669">
                         <StatRow label="Approved" value={fmt(beneStats.approved)} accent="#10b981" />
                         <StatRow label="Pending Review" value={fmt(beneStats.pending)} accent="#f59e0b" />
                         <StatRow label="Rejected" value={fmt(beneStats.rejected)} accent="#ef4444" />
@@ -620,7 +642,7 @@ const DistributorDashboard = () => {
                                 background: '#ecfdf5', padding: '3px 8px', borderRadius: 6,
                                 border: '1px solid #a7f3d0'
                             }}>
-                                Review Approvals →
+                                View Details →
                             </span>
                         </div>
                     </KpiCard>
@@ -639,31 +661,33 @@ const DistributorDashboard = () => {
                 </KpiCard>
             </div>
 
-            {/* ── Network Summary ── */}
-            <div className="live-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 16 }}>
-                {[
-                    { label: 'Super Distributor', count: dist?.parentName || dist?.parentPartyCode || 'Parent Node', sub: dist?.parentMobile || 'Assigned Channel', icon: '👑', color: '#6366f1' },
-                    { label: 'Distributor Node', count: dist?.partyCode || dist?.name || 'Active Node', sub: planCfg?.label || 'Distributor Plan', icon: '🏪', color: '#f59e0b' },
-                    { label: 'Retailers Network', count: retailers.length, sub: `✓ ${activeRetailers} Approved`, icon: '🛒', color: '#10b981' },
-                ].map(({ label, count, sub, icon, color }) => (
-                    <div key={label} style={{
-                        background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(10px)',
-                        borderRadius: 14, padding: '18px 20px',
-                        border: `1px solid ${color}25`, borderLeft: `4px solid ${color}`,
-                        boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                    }}>
-                        <div>
-                            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>{label}</div>
-                            <div style={{ fontSize: typeof count === 'number' ? 28 : 20, fontWeight: 900, color, letterSpacing: -0.5 }}>{count}</div>
-                            <div style={{ fontSize: 11, color: '#10b981', fontWeight: 700, marginTop: 2 }}>{sub}</div>
+            {/* ── Network Summary (Retailers Network Card) ── */}
+            <div className="live-grid" style={{ gridTemplateColumns: '1fr', marginBottom: 16 }}>
+                <div style={{
+                    background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(10px)',
+                    borderRadius: 14, padding: '18px 24px',
+                    border: '1px solid rgba(16,185,129,0.25)', borderLeft: '5px solid #10b981',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                }}>
+                    <div>
+                        <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+                            Retailers Network
                         </div>
-                        <div style={{
-                            fontSize: 36, width: 56, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: `${color}12`, borderRadius: 14, border: `1px solid ${color}25`
-                        }}>{icon}</div>
+                        <div style={{ fontSize: 28, fontWeight: 900, color: '#10b981', letterSpacing: -0.5 }}>
+                            {retailers.length}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#10b981', fontWeight: 700, marginTop: 2 }}>
+                            ✓ {activeRetailers} Approved
+                        </div>
                     </div>
-                ))}
+                    <div style={{
+                        fontSize: 36, width: 60, height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: 'rgba(16,185,129,0.12)', borderRadius: 16, border: '1px solid rgba(16,185,129,0.25)'
+                    }}>
+                        🛒
+                    </div>
+                </div>
             </div>
 
             {/* ── Service Transaction Grid ── */}
@@ -699,7 +723,7 @@ const DistributorDashboard = () => {
                 <ActivityFeed transactions={transactions} />
             </div>
 
-            {/* ─── Payout Beneficiary Approvals Management Modal ─── */}
+            {/* ─── Payout Beneficiary Status Modal (View-Only for Distributor) ─── */}
             {showBeneModal && (
                 <div style={{
                     position: 'fixed', inset: 0, zIndex: 9999,
@@ -731,7 +755,7 @@ const DistributorDashboard = () => {
                                         Payout Bank Beneficiary Approvals
                                     </h3>
                                     <p style={{ fontSize: 11, color: '#64748b', fontWeight: 600, margin: 0 }}>
-                                        Review and approve mapped retailer bank beneficiaries for instant payouts
+                                        View mapped retailer bank beneficiaries and their approval status (Approvals managed by Admin)
                                     </p>
                                 </div>
                             </div>
@@ -752,7 +776,7 @@ const DistributorDashboard = () => {
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => { setShowBeneModal(false); setRejectTargetBene(null); }}
+                                    onClick={() => setShowBeneModal(false)}
                                     style={{
                                         background: '#f1f5f9', border: 'none', borderRadius: '50%',
                                         width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -822,14 +846,13 @@ const DistributorDashboard = () => {
                                 <div style={{ textAlign: 'center', padding: '48px 0', color: '#94a3b8' }}>
                                     <Building2 size={36} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
                                     <div style={{ fontSize: 14, fontWeight: 800, color: '#475569' }}>No Beneficiary Records Found</div>
-                                    <p style={{ fontSize: 11, marginTop: 4 }}>No beneficiary requests from mapped retailers match the selected filter</p>
+                                    <p style={{ fontSize: 11, marginTop: 4 }}>No beneficiary records found for mapped retailers under the selected filter</p>
                                 </div>
                             ) : (
                                 filteredBeneList.map((bene) => {
                                     const isPending = bene.status === 'PENDING';
                                     const isApproved = bene.status === 'APPROVED';
                                     const isRejected = bene.status === 'REJECTED';
-                                    const isProcessing = actionLoadingId === bene.id;
 
                                     return (
                                         <div
@@ -939,38 +962,22 @@ const DistributorDashboard = () => {
                                                 </div>
                                             )}
 
-                                            {/* Action Buttons */}
-                                            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, paddingTop: 4, borderTop: '1px solid #f1f5f9' }}>
+                                            {/* View-only Status Footer Notice */}
+                                            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', paddingTop: 4, borderTop: '1px solid #f1f5f9' }}>
                                                 {isPending && (
-                                                    <>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => { setRejectTargetBene(bene); setRejectReason(''); }}
-                                                            disabled={isProcessing}
-                                                            style={{
-                                                                padding: '6px 14px', borderRadius: 10, background: '#fee2e2',
-                                                                border: '1px solid #fca5a5', color: '#b91c1c', fontSize: 11, fontWeight: 900,
-                                                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
-                                                            }}
-                                                        >
-                                                            <XCircle size={13} />
-                                                            Reject Request
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleApproveBene(bene.id)}
-                                                            disabled={isProcessing}
-                                                            style={{
-                                                                padding: '6px 16px', borderRadius: 10, background: '#10b981',
-                                                                border: '1px solid #059669', color: '#ffffff', fontSize: 11, fontWeight: 900,
-                                                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-                                                                boxShadow: '0 2px 8px rgba(16,185,129,0.3)'
-                                                            }}
-                                                        >
-                                                            <CheckCircle2 size={13} />
-                                                            {isProcessing ? 'Approving...' : 'Approve Beneficiary'}
-                                                        </button>
-                                                    </>
+                                                    <span style={{ fontSize: 10.5, color: '#b45309', background: '#fef3c7', padding: '4px 10px', borderRadius: 8, fontWeight: 700 }}>
+                                                        ⏳ Under Review by Admin
+                                                    </span>
+                                                )}
+                                                {isApproved && (
+                                                    <span style={{ fontSize: 10.5, color: '#047857', background: '#d1fae5', padding: '4px 10px', borderRadius: 8, fontWeight: 700 }}>
+                                                        ✓ Verified & Approved by Admin
+                                                    </span>
+                                                )}
+                                                {isRejected && (
+                                                    <span style={{ fontSize: 10.5, color: '#b91c1c', background: '#fee2e2', padding: '4px 10px', borderRadius: 8, fontWeight: 700 }}>
+                                                        ✕ Rejected by Admin
+                                                    </span>
                                                 )}
                                             </div>
                                         </div>
@@ -978,63 +985,6 @@ const DistributorDashboard = () => {
                                 })
                             )}
                         </div>
-
-                        {/* Rejection Reason Sub-modal */}
-                        {rejectTargetBene && (
-                            <div style={{
-                                position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)',
-                                backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                padding: 20, zIndex: 100
-                            }}>
-                                <div style={{
-                                    background: '#ffffff', borderRadius: 18, border: '1px solid #fca5a5',
-                                    padding: 24, maxWidth: 440, width: '100%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)'
-                                }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#dc2626', marginBottom: 12 }}>
-                                        <AlertTriangle size={20} />
-                                        <h4 style={{ margin: 0, fontSize: 15, fontWeight: 900 }}>Reject Beneficiary Request</h4>
-                                    </div>
-                                    <p style={{ fontSize: 11.5, color: '#64748b', marginBottom: 12 }}>
-                                        Specify the reason for rejecting <strong>{rejectTargetBene.beneficiaryName}</strong> ({rejectTargetBene.accountNumber}):
-                                    </p>
-                                    <textarea
-                                        rows={3}
-                                        value={rejectReason}
-                                        onChange={(e) => setRejectReason(e.target.value)}
-                                        placeholder="e.g. Invalid account holder name or IFSC mismatch..."
-                                        style={{
-                                            width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #cbd5e1',
-                                            fontSize: 11.5, fontWeight: 600, outline: 'none', resize: 'none', boxSizing: 'border-box',
-                                            marginBottom: 16
-                                        }}
-                                    />
-                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                                        <button
-                                            type="button"
-                                            onClick={() => setRejectTargetBene(null)}
-                                            style={{
-                                                padding: '8px 16px', borderRadius: 10, background: '#f1f5f9',
-                                                border: '1px solid #cbd5e1', fontSize: 11, fontWeight: 800, color: '#475569', cursor: 'pointer'
-                                            }}
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={handleRejectBene}
-                                            disabled={!rejectReason.trim()}
-                                            style={{
-                                                padding: '8px 18px', borderRadius: 10, background: '#dc2626',
-                                                border: '1px solid #b91c1c', fontSize: 11, fontWeight: 900, color: '#ffffff',
-                                                cursor: rejectReason.trim() ? 'pointer' : 'not-allowed', opacity: rejectReason.trim() ? 1 : 0.6
-                                            }}
-                                        >
-                                            Confirm Rejection
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
             )}
