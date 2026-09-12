@@ -66,7 +66,7 @@ const DistributorTopBar = ({ onMenuClick }) => {
     ];
 
     return (
-        <header className="h-16 bg-white border-b border-slate-200 shadow-sm flex items-center justify-between px-3 md:px-6 shrink-0 z-30 sticky top-0">
+        <header className="h-16 bg-white border-b border-slate-200 shadow-sm flex items-center justify-between px-3 md:px-6 shrink-0 z-40 fixed top-0 left-0 right-0">
 
             {/* Left: Mobile Menu Toggle & Portal Title */}
             <div className="flex items-center gap-3">

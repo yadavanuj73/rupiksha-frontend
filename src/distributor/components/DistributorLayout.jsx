@@ -60,7 +60,9 @@ const DistributorLayout = () => {
     }, [user, loading, navigate]);
 
     return (
-        <div className="flex h-screen bg-[#eef3ff] overflow-hidden font-['Inter',sans-serif]">
+        <div className="h-screen bg-[#eef3ff] font-['Inter',sans-serif] overflow-hidden relative">
+            <DistributorTopBar onMenuClick={() => setShowMobileSidebar(v => !v)} />
+
             <DistributorSidebar
                 showMobile={showMobileSidebar}
                 onClose={() => setShowMobileSidebar(false)}
@@ -71,9 +73,9 @@ const DistributorLayout = () => {
                 isExpanded={isExpanded}
             />
 
-            <div className="flex-1 flex flex-col h-screen min-w-0 overflow-hidden bg-[#eef3ff]">
-                <DistributorTopBar onMenuClick={() => setShowMobileSidebar(v => !v)} />
-
+            <div className={`h-full flex flex-col overflow-hidden relative pt-16 transition-all duration-300 ${
+                isExpanded ? 'lg:ml-[220px]' : 'lg:ml-[58px]'
+            }`}>
                 {/* Main Content Area */}
                 <main className="flex-1 overflow-y-auto min-w-0">
                     <Outlet />

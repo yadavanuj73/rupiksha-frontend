@@ -79,7 +79,7 @@ const DistributorSidebar = ({
                         : 0
                 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-                className={`fixed top-0 left-0 flex-shrink-0 border-r border-slate-300 flex flex-col h-screen font-['Inter',sans-serif] z-50 transition-colors duration-300 lg:top-[76px] lg:h-[calc(100vh-76px)] bg-slate-50 shadow-md ${
+                className={`fixed top-0 left-0 flex-shrink-0 border-r border-slate-300 flex flex-col h-screen font-['Inter',sans-serif] z-50 transition-colors duration-300 lg:top-16 lg:h-[calc(100vh-64px)] bg-slate-50 shadow-md ${
                     !isSidebarLocked && isSidebarHovered ? 'shadow-2xl ring-1 ring-black/5 z-50' : ''
                 }`}
             >
