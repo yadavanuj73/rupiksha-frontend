@@ -603,6 +603,7 @@ const DistributorDashboard = () => {
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                     {[
+                        { label: 'Retailers Network', value: `${retailers.length} (${activeRetailers} Approved)`, color: '#10b981', bg: '#f0fdf4' },
                         { label: 'Charges', value: `₹${fmtCur(0)}`, color: '#ea580c', bg: '#fff7ed' },
                         { label: 'Commission', value: `₹${fmtCur(totalTodayComm)}`, color: '#059669', bg: '#f0fdf4' },
                         { label: 'Wallet Balance', value: `₹${fmtCur(distBal)}`, color: '#4f46e5', bg: '#eef2ff' },
@@ -661,34 +662,7 @@ const DistributorDashboard = () => {
                 </KpiCard>
             </div>
 
-            {/* ── Network Summary (Retailers Network Card) ── */}
-            <div className="live-grid" style={{ gridTemplateColumns: '1fr', marginBottom: 16 }}>
-                <div style={{
-                    background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(10px)',
-                    borderRadius: 14, padding: '18px 24px',
-                    border: '1px solid rgba(16,185,129,0.25)', borderLeft: '5px solid #10b981',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                }}>
-                    <div>
-                        <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
-                            Retailers Network
-                        </div>
-                        <div style={{ fontSize: 28, fontWeight: 900, color: '#10b981', letterSpacing: -0.5 }}>
-                            {retailers.length}
-                        </div>
-                        <div style={{ fontSize: 12, color: '#10b981', fontWeight: 700, marginTop: 2 }}>
-                            ✓ {activeRetailers} Approved
-                        </div>
-                    </div>
-                    <div style={{
-                        fontSize: 36, width: 60, height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        background: 'rgba(16,185,129,0.12)', borderRadius: 16, border: '1px solid rgba(16,185,129,0.25)'
-                    }}>
-                        🛒
-                    </div>
-                </div>
-            </div>
+
 
             {/* ── Service Transaction Grid ── */}
             <div className="live-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)', marginBottom: 16 }}>
