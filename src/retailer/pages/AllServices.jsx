@@ -171,47 +171,41 @@ const ServiceCard = ({ service, readOnly, onClick, index }) => {
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, delay: index * 0.02 }}
-            whileHover={!readOnly ? { y: -6, scale: 1.02 } : undefined}
-            whileTap={!readOnly ? { scale: 0.96 } : undefined}
+            whileHover={{ y: -6, scale: 1.02 }}
+            whileTap={!readOnly ? { scale: 0.96 } : { scale: 0.99 }}
             onClick={onClick}
-            className={`group relative overflow-hidden text-left rounded-3xl border p-5 bg-white/90 backdrop-blur-md shadow-[0_10px_30px_rgba(15,23,42,0.06)] transition-all duration-300 ${
-                readOnly
-                    ? 'cursor-default border-slate-200'
-                    : 'cursor-pointer hover:border-indigo-300 hover:shadow-[0_20px_40px_rgba(79,70,229,0.18)] border-slate-200/80'
-            }`}
+            className="group relative overflow-hidden text-left rounded-3xl border border-slate-200/80 p-5 bg-white/95 backdrop-blur-md shadow-[0_10px_30px_rgba(15,23,42,0.06)] hover:border-indigo-300 hover:shadow-[0_20px_40px_rgba(79,70,229,0.16)] transition-all duration-300 cursor-pointer"
         >
             {/* BUTTON BUBBLE EFFECT - Animated background circles & hover liquid fill */}
-            {!readOnly && (
-                <>
-                    {/* Primary Expanding Liquid Bubble Fill on Hover */}
-                    <div className={`pointer-events-none absolute -bottom-12 -right-12 w-44 h-44 rounded-full bg-gradient-to-tr ${gradient} opacity-0 group-hover:opacity-15 group-hover:scale-[3.2] transition-all duration-700 ease-out blur-xl`} />
+            {/* Primary Expanding Liquid Bubble Fill on Hover */}
+            <div className={`pointer-events-none absolute -bottom-12 -right-12 w-44 h-44 rounded-full bg-gradient-to-tr ${gradient} opacity-0 group-hover:opacity-15 group-hover:scale-[3.2] transition-all duration-700 ease-out blur-xl`} />
 
-                    {/* Floating Bubble Particles */}
-                    <motion.div
-                        animate={{ y: [0, -6, 0], scale: [1, 1.15, 1] }}
-                        transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: (index % 5) * 0.3 }}
-                        className={`pointer-events-none absolute top-3 right-8 w-6 h-6 rounded-full bg-gradient-to-br ${gradient} opacity-25 blur-[1px] group-hover:scale-150 group-hover:opacity-40 transition-all duration-500`}
-                    />
-                    <motion.div
-                        animate={{ y: [0, -8, 0], scale: [1, 1.2, 1] }}
-                        transition={{ duration: 4.2, repeat: Infinity, ease: 'easeInOut', delay: (index % 4) * 0.4 }}
-                        className={`pointer-events-none absolute bottom-4 left-6 w-8 h-8 rounded-full bg-gradient-to-tr ${gradient} opacity-20 blur-[2px] group-hover:scale-125 group-hover:opacity-35 transition-all duration-500`}
-                    />
-                    <motion.div
-                        animate={{ y: [0, -5, 0], scale: [1, 1.1, 1] }}
-                        transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: (index % 3) * 0.5 }}
-                        className="pointer-events-none absolute top-12 left-10 w-4 h-4 rounded-full bg-white/60 blur-[1px] opacity-40 group-hover:opacity-70 transition-opacity"
-                    />
+            {/* Floating Bubble Particles */}
+            <motion.div
+                animate={{ y: [0, -6, 0], scale: [1, 1.15, 1] }}
+                transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: (index % 5) * 0.3 }}
+                className={`pointer-events-none absolute top-3 right-8 w-6 h-6 rounded-full bg-gradient-to-br ${gradient} opacity-25 blur-[1px] group-hover:scale-150 group-hover:opacity-40 transition-all duration-500`}
+            />
+            <motion.div
+                animate={{ y: [0, -8, 0], scale: [1, 1.2, 1] }}
+                transition={{ duration: 4.2, repeat: Infinity, ease: 'easeInOut', delay: (index % 4) * 0.4 }}
+                className={`pointer-events-none absolute bottom-4 left-6 w-8 h-8 rounded-full bg-gradient-to-tr ${gradient} opacity-20 blur-[2px] group-hover:scale-125 group-hover:opacity-35 transition-all duration-500`}
+            />
+            <motion.div
+                animate={{ y: [0, -5, 0], scale: [1, 1.1, 1] }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: (index % 3) * 0.5 }}
+                className="pointer-events-none absolute top-12 left-10 w-4 h-4 rounded-full bg-white/60 blur-[1px] opacity-40 group-hover:opacity-70 transition-opacity"
+            />
 
-                    {/* Interactive Bubble Ring Glow */}
-                    <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-indigo-500/0 group-hover:ring-indigo-500/30 transition-all duration-500" />
-                </>
-            )}
+            {/* Interactive Bubble Ring Glow */}
+            <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-indigo-500/0 group-hover:ring-indigo-500/30 transition-all duration-500" />
 
             <div className="relative z-10 flex items-start justify-between gap-3">
                 <ServiceIcon service={service} />
-                <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full backdrop-blur-sm ${
-                    readOnly ? 'bg-slate-100 text-slate-500' : 'bg-emerald-50/90 text-emerald-700 border border-emerald-200/50 shadow-sm'
+                <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full backdrop-blur-sm shadow-sm border ${
+                    readOnly
+                        ? 'bg-blue-50 text-blue-700 border-blue-200/60'
+                        : 'bg-emerald-50/90 text-emerald-700 border-emerald-200/50'
                 }`}>
                     {readOnly ? 'View only' : 'Active'}
                 </span>
@@ -222,10 +216,12 @@ const ServiceCard = ({ service, readOnly, onClick, index }) => {
             </h3>
 
             <div className={`relative z-10 mt-4 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider transition-colors ${
-                readOnly ? 'text-slate-400' : 'text-indigo-600 group-hover:text-indigo-700'
+                readOnly
+                    ? 'text-blue-600 group-hover:text-blue-700'
+                    : 'text-indigo-600 group-hover:text-indigo-700'
             }`}>
-                {readOnly ? 'Visible in this panel' : 'Open service'}
-                {!readOnly && <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1.5" />}
+                {readOnly ? 'View only' : 'Open service'}
+                <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1.5" />
             </div>
         </motion.button>
     );

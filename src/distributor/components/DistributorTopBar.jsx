@@ -58,7 +58,7 @@ const DistributorTopBar = ({ onMenuClick }) => {
     return (
         <header className="h-16 bg-white border-b border-slate-200 shadow-sm flex items-center justify-between px-3 md:px-6 shrink-0 z-30 sticky top-0">
 
-            {/* Left: Mobile Menu Toggle & Portal Breadcrumbs */}
+            {/* Left: Mobile Menu Toggle & Portal Title */}
             <div className="flex items-center gap-3">
                 <button onClick={onMenuClick}
                     className="lg:hidden p-2 rounded-xl hover:bg-slate-100 text-slate-700 transition-colors border border-slate-200"
@@ -66,9 +66,7 @@ const DistributorTopBar = ({ onMenuClick }) => {
                     <Menu size={18} />
                 </button>
                 <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hidden sm:inline-block">Distributor</span>
-                    <span className="text-slate-300 hidden sm:inline-block">/</span>
-                    <span className="text-slate-800 text-[13px] font-black tracking-wide">Distributor Portal</span>
+                    <span className="text-slate-800 text-[14px] font-black tracking-wide">Distributor Portal</span>
                 </div>
             </div>
 
