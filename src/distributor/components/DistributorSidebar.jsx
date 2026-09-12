@@ -8,8 +8,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { sharedDataService } from '../../services/sharedDataService';
 import { dataService } from '../../services/dataService';
-
-const logo = '/rupiksha logo.jpeg';
+import logo from '../../assets/rupiksha_new_logo.png';
 
 const DistributorSidebar = ({
     showMobile,

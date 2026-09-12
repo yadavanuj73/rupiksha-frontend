@@ -8,8 +8,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { dataService } from '../../services/dataService';
-
-const mainLogo = '/rupiksha logo.jpeg';
+import mainLogo from '../../assets/rupiksha_new_logo.png';
 
 // Standalone MenuItem component with mini/expanded support
 const MenuItem = ({ item, isActive, onClick, isExpanded, toggleExpand, activeTab, setActiveTab, isSidebarOpen }) => {

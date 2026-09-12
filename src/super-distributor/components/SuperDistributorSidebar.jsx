@@ -1,9 +1,10 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { menuItems } from '../data/menuItems';
 import { ChevronDown, ChevronRight, Phone, Smartphone, LayoutDashboard, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { sharedDataService } from '../../services/sharedDataService';
+import rupikshaNewLogo from '../../assets/rupiksha_new_logo.png';
 
 const SuperDistributorSidebar = ({ showMobile, onClose }) => {
     const [openMenus, setOpenMenus] = useState({});
@@ -46,8 +47,13 @@ const SuperDistributorSidebar = ({ showMobile, onClose }) => {
                     lg:top-[76px] lg:h-[calc(100vh-76px)] lg:translate-x-0
                 `}
             >
-                <div className="px-4 py-3 border-b border-slate-200">
-                    <span className="inline-flex items-center rounded-full bg-blue-50 border border-blue-100 text-blue-700 px-3 py-1 text-[10px] font-black uppercase tracking-widest">
+                <div className="px-4 py-3 border-b border-slate-200 flex flex-col items-center justify-center gap-1.5">
+                    <img
+                        src={rupikshaNewLogo}
+                        alt="Rupiksha"
+                        className="h-16 w-auto object-contain max-w-[150px]"
+                    />
+                    <span className="inline-flex items-center rounded-full bg-blue-50 border border-blue-100 text-blue-700 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest">
                         Super Distributor Panel
                     </span>
                 </div>
