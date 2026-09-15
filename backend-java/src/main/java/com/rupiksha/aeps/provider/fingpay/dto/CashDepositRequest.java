@@ -16,11 +16,17 @@ public class CashDepositRequest {
     private String merchantUserName;
     private String merchantPin;
 
-    // Biometric fields
+    // Biometric & VID fields
+    private String virtualId;
+    private Integer indicatorforUID;
+    private boolean isIrisTxn;
+    private boolean isFacialTan;
     private String errorCode;
     private String errorInfo;
     private String fCount;
     private String fType;
+    private String iCount;
+    private String iType;
     private String nmPoints;
     private String qScore;
     private String dpId;
@@ -35,3 +41,4 @@ public class CashDepositRequest {
     private String pidType;
     private String pidData;
 }
+

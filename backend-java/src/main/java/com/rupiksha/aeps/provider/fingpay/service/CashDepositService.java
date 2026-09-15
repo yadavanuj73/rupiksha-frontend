@@ -99,14 +99,14 @@ public class CashDepositService {
                 rawPin = "1234";
             }
 
-            // 3. captureResponse — null-safe defaults for every field (mirrors CW)
+            // 3. captureResponse — null-safe defaults for every field (mirrors CW & Fingpay specification)
             Map<String, Object> captureResponse = new LinkedHashMap<>();
             captureResponse.put("errCode",     req.getErrorCode()   != null ? req.getErrorCode()   : "0");
             captureResponse.put("errInfo",     req.getErrorInfo()   != null ? req.getErrorInfo()   : "Image Capture Success");
             captureResponse.put("fCount",      req.getFCount()      != null ? req.getFCount()      : "1");
             captureResponse.put("fType",       req.getFType()       != null ? req.getFType()       : "0");
-            captureResponse.put("iCount",      "0");
-            captureResponse.put("iType",       "0");
+            captureResponse.put("iCount",      req.getICount()      != null ? req.getICount()      : "0");
+            captureResponse.put("iType",       req.getIType()       != null ? req.getIType()       : "0");
             captureResponse.put("pCount",      "0");
             captureResponse.put("pType",       "0");
             captureResponse.put("nmPoints",    req.getNmPoints()    != null ? req.getNmPoints()    : "46");
@@ -123,16 +123,21 @@ public class CashDepositService {
             captureResponse.put("PidDatatype", req.getPidType()     != null ? req.getPidType()     : "X");
             captureResponse.put("Piddata",     req.getPidData()     != null ? req.getPidData()     : "");
 
-            // 4. cardnumberORUID (VID or Aadhaar)
+            // 4. cardnumberORUID (VID or Aadhaar per Fingpay Java documentation)
             Map<String, Object> cardOrUID = new LinkedHashMap<>();
-            if (req.getAadhar() != null && req.getAadhar().length() == 16) {
+            boolean isVirtualId = (req.getAadhar() != null && req.getAadhar().length() == 16)
+                    || (req.getVirtualId() != null && !req.getVirtualId().isBlank());
+            if (isVirtualId) {
+                String vid = (req.getVirtualId() != null && !req.getVirtualId().isBlank())
+                        ? req.getVirtualId().trim()
+                        : req.getAadhar().trim();
                 cardOrUID.put("nationalBankIdentificationNumber", bank.getIinno());
                 cardOrUID.put("indicatorforUID", 2);
                 cardOrUID.put("adhaarNumber", "999999999999");
-                cardOrUID.put("virtualId", req.getAadhar());
+                cardOrUID.put("virtualId", vid);
             } else {
                 cardOrUID.put("nationalBankIdentificationNumber", bank.getIinno());
-                cardOrUID.put("indicatorforUID", 0);
+                cardOrUID.put("indicatorforUID", req.getIndicatorforUID() != null ? req.getIndicatorforUID() : 0);
                 cardOrUID.put("adhaarNumber", req.getAadhar());
             }
 
@@ -145,7 +150,7 @@ public class CashDepositService {
                 log.warn("CD coordinate parse warning: {}", e.getMessage());
             }
 
-            // 5. Main payload (matches updated Fingpay CD API doc 15.10.2024 exactly)
+            // 5. Main payload (matches Fingpay CD API doc exactly)
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("merchantTranId", transactionId);
             payload.put("languageCode", "en");
@@ -155,8 +160,8 @@ public class CashDepositService {
             payload.put("paymentType", "B");
             payload.put("requestRemarks", req.getRequestRemarks() != null && !req.getRequestRemarks().isBlank()
                     ? req.getRequestRemarks() : "CD");
-            payload.put("isFacialTan", false);
-            payload.put("isIRISTxn", false);
+            payload.put("isFacialTan", req.isFacialTan());
+            payload.put("isIRISTxn", req.isIrisTxn() || "1".equals(req.getICount()));
             payload.put("transactionAmount", req.getAmount());
             String timestamp = encryptionUtil.timestamp();
             payload.put("timestamp", timestamp);
@@ -184,7 +189,7 @@ public class CashDepositService {
                     ? req.getDeviceId().trim() : deviceImei;
 
             HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.TEXT_PLAIN);
+            headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("trnTimestamp", timestamp);
             headers.set("hash", hash);
             headers.set("deviceIMEI", effectiveImei);
@@ -202,7 +207,7 @@ public class CashDepositService {
             JsonNode root = objectMapper.readTree(httpResp.getBody());
             JsonNode data = root.path("data");
 
-            // 10. Success condition
+            // 10. Status resolution
             boolean success = isSuccess(root, data);
 
             // 11. Save transaction to iaepstxn table
@@ -246,8 +251,6 @@ public class CashDepositService {
             log.error("CD error uid={} txnId={} cause={} msg={}", req.getUid(), transactionId, e.getClass().getSimpleName(), e.getMessage(), e);
             CashDepositResponse resp = new CashDepositResponse();
             resp.setStatus("FAILED");
-            // Expose actual exception type and message for diagnosing production issues.
-            // TODO: sanitize this before GA release.
             resp.setMessage("[CD-ERR:" + e.getClass().getSimpleName() + "] " + e.getMessage() + " (Ref: " + transactionId + ")");
             resp.setTxnId(transactionId);
             return resp;
@@ -260,7 +263,9 @@ public class CashDepositService {
                 || "SUCCESS".equalsIgnoreCase(s)
                 || root.path("status").asBoolean(false);
 
-        if (data.isMissingNode() || data.isNull()) return false;
+        if (data.isMissingNode() || data.isNull()) {
+            return false;
+        }
 
         String txnStatus = data.path("transactionStatus").asText("");
         if ("failed".equalsIgnoreCase(txnStatus)) return false;
@@ -268,8 +273,8 @@ public class CashDepositService {
         String rrn = data.path("bankRRN").asText(data.path("bankRrn").asText(""));
         String rc = data.path("responseCode").asText(data.path("statusCode").asText(""));
         
-        // Success if 00, or deemed success on 91, 52, 08 as per Fingpay specification
-        boolean isSuccessCode = "00".equals(rc) || "91".equals(rc) || "52".equals(rc) || "08".equals(rc);
+        // Success if 00 or 0, or deemed success on 91, 52, 08 as per Fingpay specification
+        boolean isSuccessCode = "00".equals(rc) || "0".equals(rc) || "91".equals(rc) || "52".equals(rc) || "08".equals(rc);
         return (!rrn.isEmpty() && isSuccessCode) || (statusFlag && "successful".equalsIgnoreCase(txnStatus));
     }
 
@@ -356,14 +361,19 @@ public class CashDepositService {
             resp.setBalanceAmount(txn.getAmount());
             resp.setResponseCode(data.path("responseCode").asText("00"));
         } else {
-            resp.setStatus("FAILED");
+            String rc = data.path("responseCode").asText("");
+            if (rc.isEmpty()) rc = data.path("statusCode").asText("");
+            if (rc.isEmpty()) rc = root.path("statusCode").asText("FP009");
+            
+            if ("1".equals(rc) || "FP009".equalsIgnoreCase(rc)) {
+                resp.setStatus("PENDING");
+            } else {
+                resp.setStatus("FAILED");
+            }
             resp.setMessage(txn.getMessage());
             resp.setTxnId(txn.getTxnid());
             resp.setFpTxnId(txn.getFtxnin());
             resp.setBankRRN(data.path("bankRRN").asText(null));
-            String rc = data.path("responseCode").asText("");
-            if (rc.isEmpty()) rc = data.path("statusCode").asText("");
-            if (rc.isEmpty()) rc = root.path("statusCode").asText("FP009");
             resp.setResponseCode(rc);
         }
         return resp;

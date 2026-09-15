@@ -819,6 +819,11 @@ public class FingpayProvider implements AepsProvider {
         req.setErrorInfo(parsed.get("errInfo"));
         req.setFCount(parsed.get("fCount"));
         req.setFType(parsed.get("fType"));
+        req.setICount(parsed.get("iCount"));
+        req.setIType(parsed.get("iType"));
+        if ("1".equals(parsed.get("iCount"))) {
+            req.setIrisTxn(true);
+        }
         req.setNmPoints(parsed.getOrDefault("nmPoints", "0"));
         req.setQScore(parsed.getOrDefault("qScore", "0"));
         req.setDpId(parsed.get("dpID"));
