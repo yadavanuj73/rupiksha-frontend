@@ -377,22 +377,16 @@ export default function BankingTerminal({ provider, status, setStatus }) {
         if (!formData.mobile || formData.mobile.length !== 10) {
             return "Please enter a valid 10-digit customer mobile number.";
         }
-        if (isDeposit && depositMode === 'OTP') {
-            if (!formData.accountNumber || formData.accountNumber.trim().length < 6) {
-                return "Please enter a valid customer bank account number.";
-            }
-        } else {
-            const expectedLen = idType === 'VID' ? 16 : 12;
-            if (!formData.aadhar || formData.aadhar.length !== expectedLen) {
-                return idType === 'VID' 
-                    ? "Please enter a valid 16-digit Virtual ID (VID)." 
-                    : "Please enter a valid 12-digit Aadhaar number.";
-            }
-            if (!isAadhaarChecksumValid) {
-                return idType === 'VID'
-                    ? "Invalid Virtual ID (VID). Please verify the 16 digits."
-                    : "Invalid Aadhaar number checksum (Verhoeff algorithm failed). Please re-check the 12 digits.";
-            }
+        const expectedLen = idType === 'VID' ? 16 : 12;
+        if (!formData.aadhar || formData.aadhar.length !== expectedLen) {
+            return idType === 'VID' 
+                ? "Please enter a valid 16-digit Virtual ID (VID)." 
+                : "Please enter a valid 12-digit Aadhaar number.";
+        }
+        if (!isAadhaarChecksumValid) {
+            return idType === 'VID'
+                ? "Invalid Virtual ID (VID). Please verify the 16 digits."
+                : "Invalid Aadhaar number checksum (Verhoeff algorithm failed). Please re-check the 12 digits.";
         }
         if (!formData.bankName && !formData.bankIin) {
             return "Please select a customer bank from the list.";
@@ -625,10 +619,6 @@ export default function BankingTerminal({ provider, status, setStatus }) {
             return;
         }
 
-        if (isDeposit && depositMode === 'OTP') {
-            triggerGenerateCdoOtp();
-            return;
-        }
 
         // Check if Amount > 5000 for Cash Withdrawal or Aadhaar Pay (NPCI Mandate for Fingpay)
         const isEligibleForOtp = isFingpay && (activeTab === 'CASH_WITHDRAWAL' || activeTab === 'AADHAAR_PAY') && parseFloat(formData.amount) > 5000;
@@ -1033,36 +1023,6 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                         </span>
                                     </div>
 
-                                    {/* Mode Selector for Cash Deposit: Biometric vs OTP (Fingpay Section 1 & 2) */}
-                                    {isDeposit && (
-                                        <div className="bg-slate-100 p-1 rounded-2xl border border-slate-300 grid grid-cols-2 gap-1 mb-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => setDepositMode('AADHAAR')}
-                                                className={`py-2 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                                                    depositMode === 'AADHAAR'
-                                                        ? 'bg-black text-white shadow-md'
-                                                        : 'text-slate-700 hover:bg-slate-200'
-                                                }`}
-                                            >
-                                                <Fingerprint size={14} />
-                                                <span>Aadhaar Biometric Deposit</span>
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setDepositMode('OTP')}
-                                                className={`py-2 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                                                    depositMode === 'OTP'
-                                                        ? 'bg-emerald-700 text-white shadow-md'
-                                                        : 'text-slate-700 hover:bg-slate-200'
-                                                }`}
-                                            >
-                                                <KeyRound size={14} />
-                                                <span>Account Deposit with OTP (CDO)</span>
-                                            </button>
-                                        </div>
-                                    )}
-
                                     {/* Row 1: Mobile & Identification (Big, comfortable, bold) */}
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         {/* Customer Mobile Number */}
@@ -1088,83 +1048,59 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                             />
                                         </div>
 
-                                        {/* Aadhaar / VID Switcher OR Account Number (for CDO) */}
-                                        {isDeposit && depositMode === 'OTP' ? (
-                                            <div className="space-y-1">
-                                                <label className="text-xs font-black text-black flex items-center justify-between">
-                                                    <span className="flex items-center gap-1 text-black">
-                                                        <CreditCard size={13} className="text-emerald-700 font-bold" />
-                                                        Bank Account Number
-                                                    </span>
-                                                    <span className="text-[9px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded uppercase">
-                                                        OTP Mode
-                                                    </span>
+                                        {/* Aadhaar / VID Switcher */}
+                                        <div className="space-y-1">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-xs font-black text-black flex items-center gap-1">
+                                                    <Fingerprint size={13} className="text-blue-700 font-bold" />
+                                                    Identity ({idType})
                                                 </label>
-                                                <input
-                                                    type="text"
-                                                    name="accountNumber"
-                                                    maxLength="24"
-                                                    placeholder="Enter bank account number"
-                                                    value={formData.accountNumber}
-                                                    onChange={handleFormChange}
-                                                    className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-slate-300 text-sm font-black text-black placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-600 transition tracking-wider bg-slate-50/70"
-                                                    required
-                                                />
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-1">
-                                                <div className="flex items-center justify-between">
-                                                    <label className="text-xs font-black text-black flex items-center gap-1">
-                                                        <Fingerprint size={13} className="text-blue-700 font-bold" />
-                                                        Identity ({idType})
-                                                    </label>
-                                                    <div className="flex items-center gap-1 bg-slate-200 p-0.5 rounded-lg text-[9px] font-black">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleIdTypeChange('AADHAAR')}
-                                                            className={`px-2 py-0.5 rounded-md transition ${
-                                                                idType === 'AADHAAR' ? 'bg-black text-white shadow-xs' : 'text-slate-800'
-                                                            }`}
-                                                        >
-                                                            12D Aadhaar
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleIdTypeChange('VID')}
-                                                            className={`px-2 py-0.5 rounded-md transition ${
-                                                                idType === 'VID' ? 'bg-black text-white shadow-xs' : 'text-slate-800'
-                                                            }`}
-                                                        >
-                                                            16D VID
-                                                        </button>
-                                                    </div>
-                                                </div>
-
-                                                <div className="relative">
-                                                    <input
-                                                        type={showAadhaar ? "text" : "password"}
-                                                        name="aadhar"
-                                                        maxLength={idType === 'VID' ? 16 : 12}
-                                                        placeholder={idType === 'VID' ? "16-digit Virtual ID" : "12-digit Aadhaar Number"}
-                                                        value={formData.aadhar}
-                                                        onChange={handleFormChange}
-                                                        className="w-full px-3.5 pr-10 py-2.5 rounded-2xl border-2 border-slate-300 text-sm font-black text-black placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 transition tracking-wider bg-slate-50/70"
-                                                        required
-                                                    />
+                                                <div className="flex items-center gap-1 bg-slate-200 p-0.5 rounded-lg text-[9px] font-black">
                                                     <button
                                                         type="button"
-                                                        onClick={() => setShowAadhaar(!showAadhaar)}
-                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-black p-0.5 cursor-pointer"
+                                                        onClick={() => handleIdTypeChange('AADHAAR')}
+                                                        className={`px-2 py-0.5 rounded-md transition ${
+                                                            idType === 'AADHAAR' ? 'bg-black text-white shadow-xs' : 'text-slate-800'
+                                                        }`}
                                                     >
-                                                        {showAadhaar ? <EyeOff size={15} /> : <Eye size={15} />}
+                                                        12D Aadhaar
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleIdTypeChange('VID')}
+                                                        className={`px-2 py-0.5 rounded-md transition ${
+                                                            idType === 'VID' ? 'bg-black text-white shadow-xs' : 'text-slate-800'
+                                                        }`}
+                                                    >
+                                                        16D VID
                                                     </button>
                                                 </div>
                                             </div>
-                                        )}
+
+                                            <div className="relative">
+                                                <input
+                                                    type={showAadhaar ? "text" : "password"}
+                                                    name="aadhar"
+                                                    maxLength={idType === 'VID' ? 16 : 12}
+                                                    placeholder={idType === 'VID' ? "16-digit Virtual ID" : "12-digit Aadhaar Number"}
+                                                    value={formData.aadhar}
+                                                    onChange={handleFormChange}
+                                                    className="w-full px-3.5 pr-10 py-2.5 rounded-2xl border-2 border-slate-300 text-sm font-black text-black placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 transition tracking-wider bg-slate-50/70"
+                                                    required
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowAadhaar(!showAadhaar)}
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-black p-0.5 cursor-pointer"
+                                                >
+                                                    {showAadhaar ? <EyeOff size={15} /> : <Eye size={15} />}
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
 
-                                    {/* Inline Verhoeff Status Indicator (only for Aadhaar Mode) */}
-                                    {(!isDeposit || depositMode === 'AADHAAR') && formData.aadhar.length > 0 && (
+                                    {/* Inline Verhoeff Status Indicator */}
+                                    {formData.aadhar.length > 0 && (
                                         <div className="flex items-center justify-between text-[10px] px-1 font-bold">
                                             <span className="text-black font-extrabold">
                                                 Digits: {formData.aadhar.length}/{idType === 'VID' ? 16 : 12}
