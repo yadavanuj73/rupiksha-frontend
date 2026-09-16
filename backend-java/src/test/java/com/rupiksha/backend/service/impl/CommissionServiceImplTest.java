@@ -471,4 +471,38 @@ public class CommissionServiceImplTest {
         assertEquals("FREE", activePlanDto.planCode());
         assertTrue(activePlanDto.isExpired());
     }
+
+    @Test
+    @DisplayName("CASE 18: Hierarchy Fallback via addedByUserRef - Distributor Credited")
+    void testHierarchyFallbackViaAddedByUserRef() {
+        retailer.setParentUser(null);
+        retailer.setAddedByUserRef(distributor.getId().toString());
+
+        AepsTransactionEngine txn = AepsTransactionEngine.builder()
+                .transactionId("TXN_FALLBACK_001")
+                .serviceType("CASH_WITHDRAWAL")
+                .userId(retailer.getId())
+                .amount(new BigDecimal("1200.00"))
+                .status("SUCCESS")
+                .ipAddress("127.0.0.1")
+                .build();
+
+        when(commissionTransactionRepository.existsByOriginalTransactionId("TXN_FALLBACK_001")).thenReturn(false);
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+        when(userRepository.findById(distributor.getId())).thenReturn(Optional.of(distributor));
+        when(commissionPlanRepository.findByServiceTypeAndIsDefaultTrue("AEPS_1")).thenReturn(Optional.of(freePlan));
+        when(commissionSlabRepository.findMatchingSlabs(freePlan.getId(), new BigDecimal("1200.00"))).thenReturn(List.of(defaultSlabs.get(1)));
+
+        commissionService.processAepsCommission(txn);
+
+        // Retailer: +₹2.00
+        verify(walletService, times(1)).creditForService(
+                eq(retailer.getId()), eq(new BigDecimal("2.00")), anyString(), eq(WalletTransactionContext.COMMISSION), anyString(), anyString(), anyString()
+        );
+
+        // Distributor: +₹0.50
+        verify(walletService, times(1)).creditForService(
+                eq(distributor.getId()), eq(new BigDecimal("0.50")), anyString(), eq(WalletTransactionContext.COMMISSION), anyString(), anyString(), anyString()
+        );
+    }
 }

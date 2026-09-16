@@ -50,6 +50,32 @@ public class CommissionServiceImpl implements CommissionService {
         }
     }
 
+    private User resolveParentUser(User user) {
+        if (user == null) return null;
+        if (user.getParentUser() != null) {
+            return user.getParentUser();
+        }
+        if (user.getAddedByUserRef() != null && !user.getAddedByUserRef().isBlank()) {
+            String ref = user.getAddedByUserRef().trim();
+            try {
+                UUID parentId = UUID.fromString(ref);
+                Optional<User> found = userRepository.findById(parentId);
+                if (found.isPresent()) return found.get();
+            } catch (Exception ignored) {}
+            Optional<User> byMobile = userRepository.findByMobile(ref);
+            if (byMobile.isPresent()) return byMobile.get();
+            Optional<User> byPartyCode = userRepository.findByPartyCode(ref);
+            if (byPartyCode.isPresent()) return byPartyCode.get();
+            Optional<User> byUsername = userRepository.findByUsername(ref);
+            if (byUsername.isPresent()) return byUsername.get();
+        }
+        if (user.getAddedByPartyCode() != null && !user.getAddedByPartyCode().isBlank()) {
+            Optional<User> byPartyCode = userRepository.findByPartyCode(user.getAddedByPartyCode().trim());
+            if (byPartyCode.isPresent()) return byPartyCode.get();
+        }
+        return null;
+    }
+
     @Override
     @Transactional
     public void processAepsCommission(AepsTransactionEngine txn) {
@@ -122,11 +148,11 @@ public class CommissionServiceImpl implements CommissionService {
         log.info("Matching slab found: [{}-{}] for plan: {} on txn: {}", 
                 slab.getMinAmount(), slab.getMaxAmount(), plan.getPlanName(), txnId);
 
-        // 4. Resolve Hierarchy
+        // 4. Resolve Hierarchy with resilient multi-factor fallback
         User distributor = null;
         User superDistributor = null;
 
-        User parent = retailer.getParentUser();
+        User parent = resolveParentUser(retailer);
         if (parent != null) {
             boolean isDist = parent.getRoles().stream()
                     .anyMatch(r -> r.getName() == RoleName.DISTRIBUTOR);
@@ -135,7 +161,7 @@ public class CommissionServiceImpl implements CommissionService {
 
             if (isDist) {
                 distributor = parent;
-                User grandParent = distributor.getParentUser();
+                User grandParent = resolveParentUser(distributor);
                 if (grandParent != null && grandParent.getRoles().stream().anyMatch(r -> r.getName() == RoleName.SUPER_DISTRIBUTOR)) {
                     superDistributor = grandParent;
                 }

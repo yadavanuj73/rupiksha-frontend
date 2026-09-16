@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Bell, Menu, LogOut, ChevronDown, Wallet, User, BadgeCheck, Clock3, OctagonAlert, Shield, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { sharedDataService } from '../../services/sharedDataService';
+import { dataService } from '../../services/dataService';
 import { useAuth } from '../../context/AuthContext';
 
 const DistributorTopBar = ({ onMenuClick }) => {
@@ -20,11 +21,22 @@ const DistributorTopBar = ({ onMenuClick }) => {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const loadDist = () => {
+    const loadDist = async () => {
         const session = sharedDataService.getCurrentDistributor();
         if (!session) return;
         const fresh = sharedDataService.getDistributorById(session.id) || session;
         setDist(fresh);
+
+        // Fetch live wallet balance from server
+        try {
+            const liveBal = await dataService.getWalletBalance(fresh.id || fresh.userId);
+            if (liveBal !== undefined && liveBal !== null) {
+                setDist(prev => ({
+                    ...(prev || fresh),
+                    wallet: { ...(prev?.wallet || {}), balance: liveBal }
+                }));
+            }
+        } catch (_) {}
     };
 
     useEffect(() => {
