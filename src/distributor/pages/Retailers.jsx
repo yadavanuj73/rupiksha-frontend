@@ -43,15 +43,15 @@ const DEFAULT_SERVICES = [
 ];
 
 const BUSINESS_SERVICES = [
-    { key: 'AEPS_1', label: 'AEPS 1', subLabel: 'Cash Withdrawal & Mini Statement', icon: '🏦', bgIcon: 'bg-[#DCFCE7]', color: 'bg-blue-500', bgLight: 'bg-blue-50', text: 'text-blue-600', badge: 'bg-blue-100 text-blue-800' },
-    { key: 'AEPS_2', label: 'AEPS 2', subLabel: 'Aadhaar Pay & Cash Deposit', icon: '🏧', bgIcon: 'bg-[#FFE4E6]', color: 'bg-indigo-500', bgLight: 'bg-indigo-50', text: 'text-indigo-600', badge: 'bg-indigo-100 text-indigo-800' },
-    { key: 'DMT', label: 'DMT (Money Transfer)', subLabel: 'Domestic Money Transfer & Remittance', icon: '💸', bgIcon: 'bg-[#FEF3C7]', color: 'bg-emerald-500', bgLight: 'bg-emerald-50', text: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-800' },
-    { key: 'BBPS', label: 'BBPS & Utilities', subLabel: 'Electricity, Water, Gas & Bill Pay', icon: '💡', bgIcon: 'bg-[#E0F2FE]', color: 'bg-amber-500', bgLight: 'bg-amber-50', text: 'text-amber-600', badge: 'bg-amber-100 text-amber-800' },
-    { key: 'RECHARGE', label: 'Mobile & DTH Recharge', subLabel: 'Prepaid, Postpaid & DTH Services', icon: '📱', bgIcon: 'bg-[#CFFAFE]', color: 'bg-cyan-500', bgLight: 'bg-cyan-50', text: 'text-cyan-600', badge: 'bg-cyan-100 text-cyan-800' },
-    { key: 'MATM', label: 'Micro ATM (MATM)', subLabel: 'Card Withdrawal & Balance Inquiry', icon: '💳', bgIcon: 'bg-[#F3E8FF]', color: 'bg-purple-500', bgLight: 'bg-purple-50', text: 'text-purple-600', badge: 'bg-purple-100 text-purple-800' },
-    { key: 'PAYOUT', label: 'Payout / Settlement', subLabel: 'Instant Bank Payout & Settlement', icon: '🏛️', bgIcon: 'bg-[#FCE7F3]', color: 'bg-rose-500', bgLight: 'bg-rose-50', text: 'text-rose-600', badge: 'bg-rose-100 text-rose-800' },
-    { key: 'CMS', label: 'CMS (Cash Collection)', subLabel: 'Cash Management Services', icon: '📦', bgIcon: 'bg-[#CCFBF1]', color: 'bg-teal-500', bgLight: 'bg-teal-50', text: 'text-teal-600', badge: 'bg-teal-100 text-teal-800' },
-    { key: 'OTHER', label: 'Other Services', subLabel: 'Wallet, QR & Miscellaneous', icon: '✨', bgIcon: 'bg-[#F1F5F9]', color: 'bg-slate-500', bgLight: 'bg-slate-100', text: 'text-slate-600', badge: 'bg-slate-200 text-slate-800' }
+    { key: 'AEPS_1', label: 'Aeps 1', icon: '🏦', bgIcon: 'bg-[#DCFCE7]', color: 'bg-blue-500', bgLight: 'bg-blue-50', text: 'text-blue-600', badge: 'bg-blue-100 text-blue-800' },
+    { key: 'AEPS_2', label: 'Aeps 2', icon: '🏧', bgIcon: 'bg-[#FFE4E6]', color: 'bg-indigo-500', bgLight: 'bg-indigo-50', text: 'text-indigo-600', badge: 'bg-indigo-100 text-indigo-800' },
+    { key: 'DMT', label: 'Dmt (Money Transfer)', icon: '💸', bgIcon: 'bg-[#FEF3C7]', color: 'bg-emerald-500', bgLight: 'bg-emerald-50', text: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-800' },
+    { key: 'BBPS', label: 'Bbps & Utilities', icon: '💡', bgIcon: 'bg-[#E0F2FE]', color: 'bg-amber-500', bgLight: 'bg-amber-50', text: 'text-amber-600', badge: 'bg-amber-100 text-amber-800' },
+    { key: 'RECHARGE', label: 'Mobile & Dth Recharge', icon: '📱', bgIcon: 'bg-[#CFFAFE]', color: 'bg-cyan-500', bgLight: 'bg-cyan-50', text: 'text-cyan-600', badge: 'bg-cyan-100 text-cyan-800' },
+    { key: 'MATM', label: 'Micro Atm (Matm)', icon: '💳', bgIcon: 'bg-[#F3E8FF]', color: 'bg-purple-500', bgLight: 'bg-purple-50', text: 'text-purple-600', badge: 'bg-purple-100 text-purple-800' },
+    { key: 'PAYOUT', label: 'Payout / Settlement', icon: '🏛️', bgIcon: 'bg-[#FCE7F3]', color: 'bg-rose-500', bgLight: 'bg-rose-50', text: 'text-rose-600', badge: 'bg-rose-100 text-rose-800' },
+    { key: 'CMS', label: 'Cms (Cash Collection)', icon: '📦', bgIcon: 'bg-[#CCFBF1]', color: 'bg-teal-500', bgLight: 'bg-teal-50', text: 'text-teal-600', badge: 'bg-teal-100 text-teal-800' },
+    { key: 'OTHER', label: 'Other Services', icon: '✨', bgIcon: 'bg-[#F1F5F9]', color: 'bg-slate-500', bgLight: 'bg-slate-100', text: 'text-slate-600', badge: 'bg-slate-200 text-slate-800' }
 ];
 
 const isTodayDate = (d) => {
@@ -655,11 +655,11 @@ const Retailers = () => {
 
             doc.setTextColor(15, 23, 42);
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(7.5);
-            doc.text('SERVICES', col1X + 3, currentY + 5.2);
-            doc.text("TODAY'S TRANSACTION", col2Center, currentY + 5.2, { align: 'center' });
-            doc.text("YESTERDAY TRANSACTION", col3Center, currentY + 5.2, { align: 'center' });
-            doc.text("LIFETIME TRANSACTION", col4Center, currentY + 5.2, { align: 'center' });
+            doc.setFontSize(8);
+            doc.text('Services', col1X + 3, currentY + 5.2);
+            doc.text("Today's Transaction", col2Center, currentY + 5.2, { align: 'center' });
+            doc.text("Yesterday Transaction", col3Center, currentY + 5.2, { align: 'center' });
+            doc.text("Lifetime Transaction", col4Center, currentY + 5.2, { align: 'center' });
 
             // Header bottom line
             currentY += headerHeight;
@@ -671,15 +671,11 @@ const Retailers = () => {
                 doc.setFillColor(rowBg, rowBg, rowBg);
                 doc.rect(tableX, currentY, tableWidth, rowHeight, 'F');
 
-                // Service Name & Sublabel
+                // Service Name (No subLabel)
                 doc.setTextColor(15, 23, 42);
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(8);
-                doc.text(srv.label, col1X + 3, currentY + 3.8);
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(6.2);
-                doc.setTextColor(100, 116, 139);
-                doc.text(srv.subLabel, col1X + 3, currentY + 7.4);
+                doc.text(srv.label, col1X + 3, currentY + 5.5);
 
                 // Today (Center Aligned)
                 doc.setTextColor(15, 23, 42);
@@ -715,18 +711,14 @@ const Retailers = () => {
             });
 
             // Grand Total Row
-            const totalRowHeight = 11;
+            const totalRowHeight = 9.5;
             doc.setFillColor(241, 245, 249);
             doc.rect(tableX, currentY, tableWidth, totalRowHeight, 'F');
 
             doc.setTextColor(15, 23, 42);
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(8);
-            doc.text('GRAND TOTAL BUSINESS', col1X + 3, currentY + 4.8);
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(6.2);
-            doc.setTextColor(100, 116, 139);
-            doc.text('Consolidated Category Volume', col1X + 3, currentY + 8.8);
+            doc.text('Grand Total Business', col1X + 3, currentY + 5.5);
 
             doc.setTextColor(29, 78, 216);
             doc.setFont('helvetica', 'bold');
@@ -1630,29 +1622,29 @@ const Retailers = () => {
 
                                 {/* ── TAB 1: EXACT 4-COLUMN SERVICES TABLE ── */}
                                 {businessActiveTab === 'matrix' && (
-                                    <div className="bg-white rounded-[14px] border border-[#E2E8F0] overflow-hidden shadow-xs">
+                                    <div className="bg-white rounded-[14px] border border-black overflow-hidden shadow-xs">
                                         <div className="w-full overflow-x-auto">
-                                            <table className="w-full border-collapse text-left min-w-[760px]">
+                                            <table className="w-full border-collapse text-left min-w-[760px] border border-black">
                                                 <thead>
-                                                    <tr className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[12px] sm:text-[13px] font-bold text-[#1E3A5F] uppercase tracking-[0.3px]">
-                                                        <th className="px-6 py-4 text-left">SERVICES</th>
-                                                        <th className="px-6 py-4 text-center">TODAY'S TRANSACTION</th>
-                                                        <th className="px-6 py-4 text-center">YESTERDAY TRANSACTION</th>
-                                                        <th className="px-6 py-4 text-center">LIFETIME TRANSACTION</th>
+                                                    <tr className="bg-[#F8FAFC] border-b border-black text-[13px] font-bold text-black">
+                                                        <th className="px-6 py-4 text-left border-r border-black">Services</th>
+                                                        <th className="px-6 py-4 text-center border-r border-black">Today's Transaction</th>
+                                                        <th className="px-6 py-4 text-center border-r border-black">Yesterday Transaction</th>
+                                                        <th className="px-6 py-4 text-center">Lifetime Transaction</th>
                                                     </tr>
                                                 </thead>
 
-                                                <tbody className="divide-y divide-[#F1F5F9] text-xs">
+                                                <tbody className="text-xs">
                                                     {loadingBusiness ? (
                                                         <tr>
-                                                            <td colSpan={4} className="py-16 text-center">
+                                                            <td colSpan={4} className="py-16 text-center border-b border-black">
                                                                 <Loader2 className="animate-spin mx-auto text-[#2563EB]" size={30} />
                                                                 <p className="text-[13px] text-[#64748B] mt-2.5 font-semibold">Aggregating live category transactions…</p>
                                                             </td>
                                                         </tr>
                                                     ) : filteredBusinessServices.length === 0 ? (
                                                         <tr>
-                                                            <td colSpan={4} className="py-14 text-center text-[#64748B]">
+                                                            <td colSpan={4} className="py-14 text-center text-[#64748B] border-b border-black">
                                                                 <p className="font-semibold text-sm">No services matching "{businessServiceSearch}"</p>
                                                             </td>
                                                         </tr>
@@ -1665,28 +1657,25 @@ const Retailers = () => {
                                                             };
 
                                                             return (
-                                                                <tr key={srv.key} className="h-[76px] hover:bg-[#F8FAFC] transition-colors duration-150">
-                                                                    {/* Column 1: SERVICES */}
-                                                                    <td className="px-6 py-3.5">
-                                                                        <div className="flex items-center gap-3.5">
-                                                                            <div className={`w-11 h-11 rounded-[10px] flex items-center justify-center text-xl shrink-0 shadow-xs ${srv.bgIcon || 'bg-slate-100'}`}>
+                                                                <tr key={srv.key} className="h-[64px] hover:bg-[#F8FAFC] transition-colors duration-150 border-b border-black">
+                                                                    {/* Column 1: Services */}
+                                                                    <td className="px-6 py-3 border-r border-black">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className={`w-10 h-10 rounded-[10px] flex items-center justify-center text-xl shrink-0 shadow-xs ${srv.bgIcon || 'bg-slate-100'}`}>
                                                                                 <span>{srv.icon}</span>
                                                                             </div>
                                                                             <div>
-                                                                                <p className="font-bold text-[#0F172A] text-[15px] leading-snug">
+                                                                                <p className="font-bold text-black text-[14px] leading-snug">
                                                                                     {srv.label}
-                                                                                </p>
-                                                                                <p className="text-[12px] text-[#64748B] font-normal mt-0.5">
-                                                                                    {srv.subLabel}
                                                                                 </p>
                                                                             </div>
                                                                         </div>
                                                                     </td>
 
-                                                                    {/* Column 2: TODAY'S TRANSACTION */}
-                                                                    <td className="px-6 py-3.5 text-center font-mono">
+                                                                    {/* Column 2: Today's Transaction */}
+                                                                    <td className="px-6 py-3 text-center font-mono border-r border-black">
                                                                         <div className="flex items-center justify-center gap-2.5">
-                                                                            <span className="font-bold text-[15px] text-[#0F172A]">
+                                                                            <span className="font-bold text-[15px] text-black">
                                                                                 {fmtWallet(stat.todayAmt)}
                                                                             </span>
                                                                             <span className="inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-[8px] bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]">
@@ -1695,10 +1684,10 @@ const Retailers = () => {
                                                                         </div>
                                                                     </td>
 
-                                                                    {/* Column 3: YESTERDAY TRANSACTION */}
-                                                                    <td className="px-6 py-3.5 text-center font-mono">
+                                                                    {/* Column 3: Yesterday Transaction */}
+                                                                    <td className="px-6 py-3 text-center font-mono border-r border-black">
                                                                         <div className="flex items-center justify-center gap-2.5">
-                                                                            <span className="font-bold text-[15px] text-[#0F172A]">
+                                                                            <span className="font-bold text-[15px] text-black">
                                                                                 {fmtWallet(stat.yesterdayAmt)}
                                                                             </span>
                                                                             <span className="inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-[8px] bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]">
@@ -1707,10 +1696,10 @@ const Retailers = () => {
                                                                         </div>
                                                                     </td>
 
-                                                                    {/* Column 4: LIFETIME TRANSACTION */}
-                                                                    <td className="px-6 py-3.5 text-center font-mono">
+                                                                    {/* Column 4: Lifetime Transaction */}
+                                                                    <td className="px-6 py-3 text-center font-mono">
                                                                         <div className="flex items-center justify-center gap-2.5">
-                                                                            <span className="font-bold text-[15px] text-[#0F172A]">
+                                                                            <span className="font-bold text-[15px] text-black">
                                                                                 {fmtWallet(stat.lifetimeAmt)}
                                                                             </span>
                                                                             <span className="inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-[8px] bg-[#F5F3FF] text-[#7C3AED] border border-[#DDD6FE]">
@@ -1726,17 +1715,16 @@ const Retailers = () => {
 
                                                 {/* Grand Total Footer */}
                                                 <tfoot>
-                                                    <tr className="bg-[#F8FAFC] border-t-2 border-[#E2E8F0] font-bold text-[#0F172A]">
-                                                        <td className="px-6 py-4">
+                                                    <tr className="bg-[#F8FAFC] border-t-2 border-black font-bold text-black">
+                                                        <td className="px-6 py-4 border-r border-black">
                                                             <div className="flex items-center gap-2.5">
                                                                 <Award size={20} className="text-[#2563EB]" />
                                                                 <div>
-                                                                    <span className="text-[13px] uppercase tracking-wider block text-[#0F172A] font-bold">Grand Total Business</span>
-                                                                    <span className="text-[11px] text-[#64748B] font-normal uppercase tracking-wider block">Consolidated Category Volume</span>
+                                                                    <span className="text-[14px] block text-black font-bold">Grand Total Business</span>
                                                                 </div>
                                                             </div>
                                                         </td>
-                                                        <td className="px-6 py-4 text-center font-mono">
+                                                        <td className="px-6 py-4 text-center font-mono border-r border-black">
                                                             <div className="flex items-center justify-center gap-2.5">
                                                                 <span className="text-[16px] font-[800] text-[#1D4ED8]">
                                                                     {fmtWallet(businessStats.totals.todayAmt)}
@@ -1746,7 +1734,7 @@ const Retailers = () => {
                                                                 </span>
                                                             </div>
                                                         </td>
-                                                        <td className="px-6 py-4 text-center font-mono">
+                                                        <td className="px-6 py-4 text-center font-mono border-r border-black">
                                                             <div className="flex items-center justify-center gap-2.5">
                                                                 <span className="text-[16px] font-[800] text-[#047857]">
                                                                     {fmtWallet(businessStats.totals.yesterdayAmt)}
