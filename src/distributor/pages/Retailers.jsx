@@ -1123,189 +1123,184 @@ const Retailers = () => {
                 )}
             </AnimatePresence>
 
-            {/* ── SEE BUSINESS MODAL (INDUSTRY FINTECH GRADE) ── */}
+            {/* ── SEE BUSINESS MODAL (MINIMALIST FINTECH DESIGN) ── */}
             <AnimatePresence>
                 {businessModalRetailer && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[110] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-2.5 sm:p-4"
+                        className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4"
                     >
                         <motion.div
-                            initial={{ scale: 0.94, opacity: 0, y: 25 }}
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
-                            exit={{ scale: 0.94, opacity: 0, y: 25 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
                             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                            className="bg-white w-full max-w-5xl rounded-[2.5rem] overflow-hidden shadow-2xl max-h-[94vh] flex flex-col border border-slate-100/80"
+                            className="bg-white w-full max-w-5xl rounded-2xl overflow-hidden shadow-2xl max-h-[94vh] flex flex-col border-2 border-black text-black"
                         >
-                            {/* Modal Header Bar */}
-                            <div className="px-5 sm:px-7 py-4 sm:py-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white shrink-0 relative overflow-hidden">
-                                <div className="absolute right-0 top-0 bottom-0 w-80 bg-gradient-to-l from-blue-600/15 via-indigo-600/10 to-transparent pointer-events-none" />
-
-                                <div className="flex items-center gap-3.5 relative z-10">
-                                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-500 to-indigo-500 text-white font-black text-xl flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0 ring-2 ring-white/10">
+                            {/* Modal Header Bar - Minimalist White & Solid Black */}
+                            <div className="px-5 sm:px-7 py-4 border-b-2 border-black flex items-center justify-between bg-white text-black shrink-0">
+                                <div className="flex items-center gap-3.5">
+                                    <div className="w-12 h-12 rounded-xl bg-black text-white font-black text-xl flex items-center justify-center shadow-sm shrink-0 border border-black">
                                         {(businessModalRetailer.fullName || 'R').charAt(0).toUpperCase()}
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2 flex-wrap">
-                                            <h3 className="text-base sm:text-lg font-black text-white tracking-tight">
+                                            <h3 className="text-base sm:text-lg font-black text-black tracking-tight">
                                                 {businessModalRetailer.fullName}
                                             </h3>
                                             <button
                                                 onClick={() => handleCopyPartyCode(businessModalRetailer.partyCode)}
-                                                className="inline-flex items-center gap-1 text-[10px] font-mono font-bold bg-white/15 hover:bg-white/25 text-blue-200 px-2.5 py-0.5 rounded-lg border border-white/10 transition-all cursor-pointer"
+                                                className="inline-flex items-center gap-1 text-[11px] font-mono font-black bg-slate-100 hover:bg-slate-200 text-black px-2.5 py-0.5 rounded-md border border-black transition-all cursor-pointer"
                                                 title="Click to copy Party Code"
                                             >
                                                 <span>{businessModalRetailer.partyCode}</span>
-                                                {copiedPartyCode ? <CheckCheck size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                                                {copiedPartyCode ? <CheckCheck size={12} className="text-black" /> : <Copy size={12} />}
                                             </button>
-                                            <span className="text-[9px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
-                                                <ShieldCheck size={10} /> Active Network Partner
+                                            <span className="text-[10px] font-black bg-slate-100 text-black border border-black px-2 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-1">
+                                                <ShieldCheck size={11} /> Active Network Partner
                                             </span>
                                         </div>
-                                        <p className="text-[11px] text-slate-300 font-medium mt-1 flex items-center gap-3 flex-wrap">
+                                        <p className="text-xs text-black font-bold mt-1 flex items-center gap-3 flex-wrap">
                                             <span>📱 {businessModalRetailer.mobile}</span>
-                                            <span className="text-white/30">•</span>
-                                            <span className="flex items-center gap-1 text-emerald-300 font-semibold">
-                                                <Wallet size={12} /> Float: <strong className="text-white font-mono font-bold">{fmtWallet(businessModalRetailer.walletBalance)}</strong>
+                                            <span className="text-black/40">•</span>
+                                            <span className="flex items-center gap-1 text-black font-black">
+                                                <Wallet size={13} /> Float: <strong className="text-black font-mono font-black">{fmtWallet(businessModalRetailer.walletBalance)}</strong>
                                             </span>
-                                            <span className="text-white/30">•</span>
-                                            <span>📍 {businessModalRetailer.city || 'BIHAR'}, {businessModalRetailer.stateName || 'INDIA'}</span>
+                                            <span className="text-black/40">•</span>
+                                            <span>📍 {businessModalRetailer.city || 'Bihar'}, {businessModalRetailer.stateName || 'India'}</span>
                                         </p>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-2 relative z-10">
+                                <div className="flex items-center gap-2">
                                     <button
                                         onClick={handleExportBusinessExcel}
-                                        className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl border border-white/10 shadow-sm transition-all flex items-center gap-1.5 text-xs font-bold active:scale-95"
+                                        className="px-3.5 py-2 bg-white hover:bg-slate-100 text-black rounded-xl border-2 border-black shadow-sm transition-all flex items-center gap-1.5 text-xs font-black active:scale-95 cursor-pointer"
                                         title="Export Category Breakdown to Excel"
                                     >
-                                        <FileSpreadsheet size={14} className="text-emerald-400" />
+                                        <FileSpreadsheet size={15} className="text-black" />
                                         <span className="hidden md:inline">Export Excel</span>
                                     </button>
                                     <button
                                         onClick={() => handleOpenBusinessModal(businessModalRetailer)}
                                         disabled={loadingBusiness}
-                                        className="p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl border border-white/10 shadow-sm transition-all flex items-center gap-1.5 text-xs font-bold active:scale-95"
+                                        className="p-2 sm:px-3 sm:py-2 bg-white hover:bg-slate-100 text-black rounded-xl border-2 border-black shadow-sm transition-all flex items-center gap-1.5 text-xs font-black active:scale-95 cursor-pointer"
                                         title="Refresh live transactions"
                                     >
-                                        <RefreshCw size={14} className={loadingBusiness ? 'animate-spin text-blue-400' : 'text-blue-300'} />
+                                        <RefreshCw size={14} className={loadingBusiness ? 'animate-spin text-black' : 'text-black'} />
                                         <span className="hidden sm:inline">Sync</span>
                                     </button>
                                     <button
                                         onClick={() => setBusinessModalRetailer(null)}
-                                        className="p-2.5 text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+                                        className="p-2 text-black hover:bg-slate-100 rounded-xl border-2 border-black transition-all cursor-pointer"
                                     >
-                                        <X size={20} />
+                                        <X size={18} />
                                     </button>
                                 </div>
                             </div>
 
                             {/* Modal Body Content */}
-                            <div className="p-4 sm:p-6 overflow-y-auto space-y-5 text-xs bg-slate-50/40">
+                            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs bg-white text-black">
 
-                                {/* Top 3 Fintech KPI Pillars */}
+                                {/* Top 3 KPI Cards - Solid Dark Black Minimalist */}
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                                     {/* Today Card */}
-                                    <div className="bg-white rounded-2xl p-4 border border-emerald-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
-                                        <div className="absolute -right-3 -bottom-3 text-emerald-50 text-6xl font-black select-none pointer-events-none">₹</div>
-                                        <div className="flex items-center justify-between relative z-10">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 flex items-center gap-1.5">
-                                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                    <div className="bg-white rounded-xl p-4 border-2 border-black shadow-sm">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs font-black uppercase tracking-wider text-black flex items-center gap-1.5">
+                                                <span className="w-2 h-2 rounded-full bg-black" />
                                                 Today's Turnover
                                             </span>
-                                            <span className="text-[10px] font-black font-mono bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                            <span className="text-xs font-black font-mono bg-slate-100 text-black px-2.5 py-0.5 rounded-md border border-black">
                                                 {businessStats.totals.todayCount} {businessStats.totals.todayCount === 1 ? 'Txn' : 'Txns'}
                                             </span>
                                         </div>
-                                        <p className="text-2xl sm:text-3xl font-black font-mono text-slate-900 mt-2.5 tracking-tight relative z-10">
+                                        <p className="text-2xl sm:text-3xl font-black font-mono text-black mt-2 tracking-tight">
                                             {fmtWallet(businessStats.totals.todayAmt)}
                                         </p>
-                                        <p className="text-[10px] text-slate-400 font-medium mt-1 relative z-10 flex items-center gap-1">
-                                            <Clock size={11} className="text-emerald-500" />
-                                            <span>Current day 24-hr settlement window</span>
+                                        <p className="text-xs text-black font-bold mt-1 flex items-center gap-1">
+                                            <Clock size={12} className="text-black" />
+                                            <span>Current Day 24-Hr Settlement Window</span>
                                         </p>
                                     </div>
 
                                     {/* Yesterday Card */}
-                                    <div className="bg-white rounded-2xl p-4 border border-amber-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
-                                        <div className="absolute -right-3 -bottom-3 text-amber-50 text-6xl font-black select-none pointer-events-none">₹</div>
-                                        <div className="flex items-center justify-between relative z-10">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 flex items-center gap-1.5">
-                                                <TrendingUp size={12} className="text-amber-500" />
+                                    <div className="bg-white rounded-xl p-4 border-2 border-black shadow-sm">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs font-black uppercase tracking-wider text-black flex items-center gap-1.5">
+                                                <TrendingUp size={13} className="text-black" />
                                                 Yesterday's Turnover
                                             </span>
-                                            <span className="text-[10px] font-black font-mono bg-amber-50 text-amber-700 px-2.5 py-0.5 rounded-full border border-amber-200">
+                                            <span className="text-xs font-black font-mono bg-slate-100 text-black px-2.5 py-0.5 rounded-md border border-black">
                                                 {businessStats.totals.yesterdayCount} {businessStats.totals.yesterdayCount === 1 ? 'Txn' : 'Txns'}
                                             </span>
                                         </div>
-                                        <p className="text-2xl sm:text-3xl font-black font-mono text-slate-900 mt-2.5 tracking-tight relative z-10">
+                                        <p className="text-2xl sm:text-3xl font-black font-mono text-black mt-2 tracking-tight">
                                             {fmtWallet(businessStats.totals.yesterdayAmt)}
                                         </p>
-                                        <p className="text-[10px] text-slate-400 font-medium mt-1 relative z-10 flex items-center gap-1">
-                                            <Clock size={11} className="text-amber-500" />
-                                            <span>Previous day completed business volume</span>
+                                        <p className="text-xs text-black font-bold mt-1 flex items-center gap-1">
+                                            <Clock size={12} className="text-black" />
+                                            <span>Previous Day Completed Business Volume</span>
                                         </p>
                                     </div>
 
                                     {/* Lifetime Card */}
-                                    <div className="bg-white rounded-2xl p-4 border border-indigo-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
-                                        <div className="absolute -right-3 -bottom-3 text-indigo-50 text-6xl font-black select-none pointer-events-none">₹</div>
-                                        <div className="flex items-center justify-between relative z-10">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 flex items-center gap-1.5">
-                                                <Award size={12} className="text-indigo-500" />
+                                    <div className="bg-white rounded-xl p-4 border-2 border-black shadow-sm">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs font-black uppercase tracking-wider text-black flex items-center gap-1.5">
+                                                <Award size={13} className="text-black" />
                                                 Lifetime Network GMV
                                             </span>
-                                            <span className="text-[10px] font-black font-mono bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full border border-indigo-200">
+                                            <span className="text-xs font-black font-mono bg-slate-100 text-black px-2.5 py-0.5 rounded-md border border-black">
                                                 {businessStats.totals.lifetimeCount} {businessStats.totals.lifetimeCount === 1 ? 'Txn' : 'Txns'}
                                             </span>
                                         </div>
-                                        <p className="text-2xl sm:text-3xl font-black font-mono text-slate-900 mt-2.5 tracking-tight relative z-10">
+                                        <p className="text-2xl sm:text-3xl font-black font-mono text-black mt-2 tracking-tight">
                                             {fmtWallet(businessStats.totals.lifetimeAmt)}
                                         </p>
-                                        <p className="text-[10px] text-slate-400 font-medium mt-1 relative z-10 flex items-center gap-1">
-                                            <ShieldCheck size={11} className="text-indigo-500" />
-                                            <span>All-time processed transactional volume</span>
+                                        <p className="text-xs text-black font-bold mt-1 flex items-center gap-1">
+                                            <ShieldCheck size={12} className="text-black" />
+                                            <span>All-Time Processed Transactional Volume</span>
                                         </p>
                                     </div>
                                 </div>
 
-                                {/* Tab Controls + Table Header Bar */}
-                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm">
-                                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                                {/* Tab Controls + Search Bar */}
+                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-2 rounded-xl border-2 border-black shadow-sm">
+                                    <div className="flex items-center gap-2">
                                         <button
                                             onClick={() => setBusinessActiveTab('matrix')}
-                                            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 ${businessActiveTab === 'matrix'
-                                                    ? 'bg-white text-blue-600 shadow-sm'
-                                                    : 'text-slate-500 hover:text-slate-800'
+                                            className={`px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${businessActiveTab === 'matrix'
+                                                    ? 'bg-black text-white shadow-sm'
+                                                    : 'bg-white text-black hover:bg-slate-100 border border-black'
                                                 }`}
                                         >
-                                            <Layers size={13} />
+                                            <Layers size={14} />
                                             <span>Service Matrix ({BUSINESS_SERVICES.length})</span>
                                         </button>
                                         <button
                                             onClick={() => setBusinessActiveTab('logs')}
-                                            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 ${businessActiveTab === 'logs'
-                                                    ? 'bg-white text-blue-600 shadow-sm'
-                                                    : 'text-slate-500 hover:text-slate-800'
+                                            className={`px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${businessActiveTab === 'logs'
+                                                    ? 'bg-black text-white shadow-sm'
+                                                    : 'bg-white text-black hover:bg-slate-100 border border-black'
                                                 }`}
                                         >
-                                            <Activity size={13} />
+                                            <Activity size={14} />
                                             <span>Live Audit Stream ({retailerBusinessTxns.length})</span>
                                         </button>
                                     </div>
 
                                     {businessActiveTab === 'matrix' && (
                                         <div className="relative flex-1 max-w-xs">
-                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-black" size={14} />
                                             <input
                                                 type="text"
                                                 placeholder="Filter services (e.g. AEPS, DMT, BBPS)..."
                                                 value={businessServiceSearch}
                                                 onChange={(e) => setBusinessServiceSearch(e.target.value)}
-                                                className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400 font-medium"
+                                                className="w-full pl-8 pr-3 py-1.5 bg-white border-2 border-black rounded-lg text-xs text-black placeholder:text-black/60 font-bold focus:outline-none focus:ring-2 focus:ring-black"
                                             />
                                         </div>
                                     )}
@@ -1313,30 +1308,30 @@ const Retailers = () => {
 
                                 {/* TAB 1: CATEGORY MATRIX TABLE */}
                                 {businessActiveTab === 'matrix' && (
-                                    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                                    <div className="bg-white rounded-xl border-2 border-black overflow-hidden shadow-sm">
                                         <div className="w-full overflow-x-auto">
-                                            <table className="w-full border-collapse text-left min-w-[760px]">
+                                            <table className="w-full border-collapse text-left min-w-[760px] border border-black">
                                                 <thead>
-                                                    <tr className="bg-gradient-to-r from-slate-100 to-slate-100 border-b-2 border-slate-200 text-[11px] font-black text-slate-600 uppercase tracking-wider">
-                                                        <th className="px-4 py-3 text-left border-r border-slate-200">Services</th>
-                                                        <th className="px-4 py-3 text-right border-r border-slate-200">Today's Transaction</th>
-                                                        <th className="px-4 py-3 text-right border-r border-slate-200">Yesterday Transaction</th>
-                                                        <th className="px-4 py-3 text-right">Lifetime Transaction</th>
+                                                    <tr className="bg-slate-100 border-b-2 border-black text-xs font-black text-black uppercase tracking-wider">
+                                                        <th className="px-4 py-3 text-left border-r-2 border-black border-b-2 border-black text-black font-black">Services</th>
+                                                        <th className="px-4 py-3 text-right border-r-2 border-black border-b-2 border-black text-black font-black">Today's Transaction</th>
+                                                        <th className="px-4 py-3 text-right border-r-2 border-black border-b-2 border-black text-black font-black">Yesterday Transaction</th>
+                                                        <th className="px-4 py-3 text-right border-b-2 border-black text-black font-black">Lifetime Transaction</th>
                                                     </tr>
                                                 </thead>
 
-                                                <tbody className="divide-y divide-slate-100 text-xs">
+                                                <tbody className="divide-y divide-black text-xs">
                                                     {loadingBusiness ? (
                                                         <tr>
-                                                            <td colSpan={4} className="py-14 text-center">
-                                                                <Loader2 className="animate-spin mx-auto text-blue-500" size={28} />
-                                                                <p className="text-xs text-slate-400 mt-2 font-bold uppercase tracking-wider">Aggregating live category transactions…</p>
+                                                            <td colSpan={4} className="py-14 text-center border-b border-black">
+                                                                <Loader2 className="animate-spin mx-auto text-black" size={28} />
+                                                                <p className="text-xs text-black mt-2 font-black uppercase tracking-wider">Aggregating live category transactions…</p>
                                                             </td>
                                                         </tr>
                                                     ) : filteredBusinessServices.length === 0 ? (
                                                         <tr>
-                                                            <td colSpan={4} className="py-12 text-center text-slate-400">
-                                                                <p className="font-semibold">No services matching "{businessServiceSearch}"</p>
+                                                            <td colSpan={4} className="py-12 text-center text-black border-b border-black">
+                                                                <p className="font-black text-sm">No services matching "{businessServiceSearch}"</p>
                                                             </td>
                                                         </tr>
                                                     ) : (
@@ -1348,16 +1343,16 @@ const Retailers = () => {
                                                             };
 
                                                             return (
-                                                                <tr key={srv.key} className="hover:bg-blue-50/20 transition-colors">
+                                                                <tr key={srv.key} className="hover:bg-slate-50 transition-colors border-b border-black">
                                                                     {/* Service Column */}
-                                                                    <td className="px-4 py-3.5 border-r border-slate-100">
+                                                                    <td className="px-4 py-3.5 border-r border-black">
                                                                         <div className="flex items-center gap-3">
                                                                             <span className="text-2xl shrink-0">{srv.icon}</span>
                                                                             <div>
-                                                                                <p className="font-black text-slate-800 text-[13px] leading-tight">
+                                                                                <p className="font-black text-black text-sm leading-tight">
                                                                                     {srv.label}
                                                                                 </p>
-                                                                                <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                                                                                <p className="text-xs text-black font-bold mt-0.5">
                                                                                     {srv.subLabel}
                                                                                 </p>
                                                                             </div>
@@ -1365,46 +1360,37 @@ const Retailers = () => {
                                                                     </td>
 
                                                                     {/* Today's Transaction Column */}
-                                                                    <td className="px-4 py-3.5 text-right border-r border-slate-100 font-mono">
-                                                                        <div className={`font-black text-[13px] ${stat.todayAmt > 0 ? 'text-emerald-700' : 'text-slate-800'}`}>
+                                                                    <td className="px-4 py-3.5 text-right border-r border-black font-mono">
+                                                                        <div className="font-black text-sm text-black">
                                                                             {fmtWallet(stat.todayAmt)}
                                                                         </div>
                                                                         <div className="mt-1">
-                                                                            <span className={`inline-block text-[9px] font-black px-2.5 py-0.5 rounded-full ${stat.todayCount > 0
-                                                                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-xs'
-                                                                                    : 'bg-slate-100 text-slate-400'
-                                                                                }`}>
-                                                                                {stat.todayCount} {stat.todayCount === 1 ? 'txn' : 'txns'}
+                                                                            <span className="inline-block text-[10px] font-black px-2 py-0.5 rounded-md border border-black bg-slate-100 text-black">
+                                                                                {stat.todayCount} {stat.todayCount === 1 ? 'Txn' : 'Txns'}
                                                                             </span>
                                                                         </div>
                                                                     </td>
 
                                                                     {/* Yesterday Transaction Column */}
-                                                                    <td className="px-4 py-3.5 text-right border-r border-slate-100 font-mono">
-                                                                        <div className={`font-black text-[13px] ${stat.yesterdayAmt > 0 ? 'text-amber-700' : 'text-slate-800'}`}>
+                                                                    <td className="px-4 py-3.5 text-right border-r border-black font-mono">
+                                                                        <div className="font-black text-sm text-black">
                                                                             {fmtWallet(stat.yesterdayAmt)}
                                                                         </div>
                                                                         <div className="mt-1">
-                                                                            <span className={`inline-block text-[9px] font-black px-2.5 py-0.5 rounded-full ${stat.yesterdayCount > 0
-                                                                                    ? 'bg-amber-100 text-amber-800 border border-amber-200 shadow-xs'
-                                                                                    : 'bg-slate-100 text-slate-400'
-                                                                                }`}>
-                                                                                {stat.yesterdayCount} {stat.yesterdayCount === 1 ? 'txn' : 'txns'}
+                                                                            <span className="inline-block text-[10px] font-black px-2 py-0.5 rounded-md border border-black bg-slate-100 text-black">
+                                                                                {stat.yesterdayCount} {stat.yesterdayCount === 1 ? 'Txn' : 'Txns'}
                                                                             </span>
                                                                         </div>
                                                                     </td>
 
                                                                     {/* Lifetime Transaction Column */}
                                                                     <td className="px-4 py-3.5 text-right font-mono">
-                                                                        <div className={`font-black text-[13px] ${stat.lifetimeAmt > 0 ? 'text-indigo-700' : 'text-slate-900'}`}>
+                                                                        <div className="font-black text-sm text-black">
                                                                             {fmtWallet(stat.lifetimeAmt)}
                                                                         </div>
                                                                         <div className="mt-1">
-                                                                            <span className={`inline-block text-[9px] font-black px-2.5 py-0.5 rounded-full ${stat.lifetimeCount > 0
-                                                                                    ? 'bg-indigo-100 text-indigo-800 border border-indigo-200 shadow-xs'
-                                                                                    : 'bg-slate-100 text-slate-400'
-                                                                                }`}>
-                                                                                {stat.lifetimeCount} {stat.lifetimeCount === 1 ? 'txn' : 'txns'}
+                                                                            <span className="inline-block text-[10px] font-black px-2 py-0.5 rounded-md border border-black bg-slate-100 text-black">
+                                                                                {stat.lifetimeCount} {stat.lifetimeCount === 1 ? 'Txn' : 'Txns'}
                                                                             </span>
                                                                         </div>
                                                                     </td>
@@ -1416,38 +1402,38 @@ const Retailers = () => {
 
                                                 {/* Grand Total Footer */}
                                                 <tfoot>
-                                                    <tr className="bg-gradient-to-r from-slate-100 via-slate-100 to-slate-200 border-t-2 border-slate-300 font-black text-slate-800">
-                                                        <td className="px-4 py-4 border-r border-slate-300">
+                                                    <tr className="bg-slate-100 border-t-2 border-black font-black text-black">
+                                                        <td className="px-4 py-3.5 border-r-2 border-black">
                                                             <div className="flex items-center gap-2">
-                                                                <Award size={18} className="text-blue-600" />
+                                                                <Award size={18} className="text-black" />
                                                                 <div>
-                                                                    <span className="text-xs uppercase tracking-wider block">Grand Total Business</span>
-                                                                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest block">Consolidated Category Volume</span>
+                                                                    <span className="text-xs uppercase tracking-wider block text-black font-black">Grand Total Business</span>
+                                                                    <span className="text-[10px] text-black font-bold uppercase tracking-widest block">Consolidated Category Volume</span>
                                                                 </div>
                                                             </div>
                                                         </td>
-                                                        <td className="px-4 py-4 text-right border-r border-slate-300 font-mono">
-                                                            <div className="text-sm sm:text-base font-black text-emerald-800">
+                                                        <td className="px-4 py-3.5 text-right border-r-2 border-black font-mono">
+                                                            <div className="text-base font-black text-black">
                                                                 {fmtWallet(businessStats.totals.todayAmt)}
                                                             </div>
-                                                            <span className="text-[10px] font-bold text-emerald-600">
-                                                                {businessStats.totals.todayCount} total txns
+                                                            <span className="text-xs font-black text-black">
+                                                                {businessStats.totals.todayCount} Total Txns
                                                             </span>
                                                         </td>
-                                                        <td className="px-4 py-4 text-right border-r border-slate-300 font-mono">
-                                                            <div className="text-sm sm:text-base font-black text-amber-800">
+                                                        <td className="px-4 py-3.5 text-right border-r-2 border-black font-mono">
+                                                            <div className="text-base font-black text-black">
                                                                 {fmtWallet(businessStats.totals.yesterdayAmt)}
                                                             </div>
-                                                            <span className="text-[10px] font-bold text-amber-600">
-                                                                {businessStats.totals.yesterdayCount} total txns
+                                                            <span className="text-xs font-black text-black">
+                                                                {businessStats.totals.yesterdayCount} Total Txns
                                                             </span>
                                                         </td>
-                                                        <td className="px-4 py-4 text-right font-mono">
-                                                            <div className="text-sm sm:text-base font-black text-blue-900">
+                                                        <td className="px-4 py-3.5 text-right font-mono">
+                                                            <div className="text-base font-black text-black">
                                                                 {fmtWallet(businessStats.totals.lifetimeAmt)}
                                                             </div>
-                                                            <span className="text-[10px] font-bold text-blue-700">
-                                                                {businessStats.totals.lifetimeCount} total txns
+                                                            <span className="text-xs font-black text-black">
+                                                                {businessStats.totals.lifetimeCount} Total Txns
                                                             </span>
                                                         </td>
                                                     </tr>
@@ -1459,25 +1445,25 @@ const Retailers = () => {
 
                                 {/* TAB 2: LIVE AUDIT STREAM */}
                                 {businessActiveTab === 'logs' && (
-                                    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                                    <div className="bg-white rounded-xl border-2 border-black overflow-hidden shadow-sm">
                                         <div className="w-full overflow-x-auto">
-                                            <table className="w-full border-collapse text-left min-w-[700px]">
+                                            <table className="w-full border-collapse text-left min-w-[700px] border border-black">
                                                 <thead>
-                                                    <tr className="bg-slate-100 border-b border-slate-200 text-[11px] font-black text-slate-600 uppercase tracking-wider">
-                                                        <th className="px-4 py-3 border-r border-slate-200">#</th>
-                                                        <th className="px-4 py-3 border-r border-slate-200">Date & Time</th>
-                                                        <th className="px-4 py-3 border-r border-slate-200">Service Domain</th>
-                                                        <th className="px-4 py-3 border-r border-slate-200">Ref / Txn ID</th>
-                                                        <th className="px-4 py-3 text-right border-r border-slate-200">Amount (₹)</th>
-                                                        <th className="px-4 py-3 text-center">Status</th>
+                                                    <tr className="bg-slate-100 border-b-2 border-black text-xs font-black text-black uppercase tracking-wider">
+                                                        <th className="px-4 py-3 border-r border-black border-b-2 border-black text-black font-black">#</th>
+                                                        <th className="px-4 py-3 border-r border-black border-b-2 border-black text-black font-black">Date & Time</th>
+                                                        <th className="px-4 py-3 border-r border-black border-b-2 border-black text-black font-black">Service Domain</th>
+                                                        <th className="px-4 py-3 border-r border-black border-b-2 border-black text-black font-black">Ref / Txn ID</th>
+                                                        <th className="px-4 py-3 text-right border-r border-black border-b-2 border-black text-black font-black">Amount (₹)</th>
+                                                        <th className="px-4 py-3 text-center border-b-2 border-black text-black font-black">Status</th>
                                                     </tr>
                                                 </thead>
-                                                <tbody className="divide-y divide-slate-100 text-xs">
+                                                <tbody className="divide-y divide-black text-xs">
                                                     {retailerBusinessTxns.length === 0 ? (
                                                         <tr>
-                                                            <td colSpan={6} className="py-12 text-center text-slate-400">
-                                                                <Activity size={28} className="mx-auto text-slate-300 mb-2" />
-                                                                <p className="font-bold uppercase tracking-wider">No individual transaction records logged yet for this retailer.</p>
+                                                            <td colSpan={6} className="py-12 text-center text-black border-b border-black">
+                                                                <Activity size={28} className="mx-auto text-black mb-2" />
+                                                                <p className="font-black uppercase tracking-wider">No Individual Transaction Records Logged Yet For This Retailer.</p>
                                                             </td>
                                                         </tr>
                                                     ) : (
@@ -1488,24 +1474,24 @@ const Retailers = () => {
                                                             const amt = parseFloat(String(rawAmt).replace(/,/g, '')) || 0;
 
                                                             return (
-                                                                <tr key={t.id || idx} className="hover:bg-slate-50/80 transition-colors">
-                                                                    <td className="px-4 py-3 text-slate-400 font-semibold border-r border-slate-100">{idx + 1}</td>
-                                                                    <td className="px-4 py-3 border-r border-slate-100 font-mono text-[11px] text-slate-600">
+                                                                <tr key={t.id || idx} className="hover:bg-slate-50 transition-colors border-b border-black">
+                                                                    <td className="px-4 py-3 text-black font-black border-r border-black">{idx + 1}</td>
+                                                                    <td className="px-4 py-3 border-r border-black font-mono text-xs text-black font-black">
                                                                         {fmtDateOnly(t.created_at || t.createdAt || t.date)} {fmtTime(t.created_at || t.createdAt || t.date)}
                                                                     </td>
-                                                                    <td className="px-4 py-3 border-r border-slate-100 font-bold text-slate-800">
-                                                                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px]">
+                                                                    <td className="px-4 py-3 border-r border-black font-black text-black">
+                                                                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-black border border-black text-xs font-black">
                                                                             <span>{srv.icon}</span> {srv.label}
                                                                         </span>
                                                                     </td>
-                                                                    <td className="px-4 py-3 border-r border-slate-100 font-mono text-[11px] text-slate-500">
+                                                                    <td className="px-4 py-3 border-r border-black font-mono text-xs text-black font-black">
                                                                         {t.id || t.order_id || t.txnid || '—'}
                                                                     </td>
-                                                                    <td className="px-4 py-3 text-right font-black font-mono text-[12px] text-slate-900 border-r border-slate-100">
+                                                                    <td className="px-4 py-3 text-right font-black font-mono text-sm text-black border-r border-black">
                                                                         {fmtWallet(amt)}
                                                                     </td>
                                                                     <td className="px-4 py-3 text-center">
-                                                                        <span className="inline-block text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+                                                                        <span className="inline-block text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-slate-100 text-black border border-black">
                                                                             {t.status || 'SUCCESS'}
                                                                         </span>
                                                                     </td>
@@ -1520,9 +1506,9 @@ const Retailers = () => {
                                 )}
 
                                 {/* Modal Footer Quick Actions */}
-                                <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-slate-200/80">
-                                    <div className="text-[11px] text-slate-500 flex items-center gap-2">
-                                        <ShieldCheck size={14} className="text-emerald-500" />
+                                <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t-2 border-black text-black">
+                                    <div className="text-xs text-black font-black flex items-center gap-2">
+                                        <ShieldCheck size={15} className="text-black" />
                                         <span>256-Bit Encrypted Financial Ledger · Real-Time Network Sync</span>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -1532,7 +1518,7 @@ const Retailers = () => {
                                                 setBusinessModalRetailer(null);
                                                 setSelectedRetailer(retailer);
                                             }}
-                                            className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-bold transition-all cursor-pointer"
+                                            className="px-4 py-2 rounded-xl border-2 border-black hover:bg-slate-100 text-black text-xs font-black transition-all cursor-pointer"
                                         >
                                             View Full Profile
                                         </button>
@@ -1540,15 +1526,14 @@ const Retailers = () => {
                                             onClick={() => {
                                                 const retailer = businessModalRetailer;
                                                 setBusinessModalRetailer(null);
-                                                handleLoginAsMember(retailer);
+                                                handleEditRetailer(retailer);
                                             }}
-                                            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-md shadow-blue-600/20 flex items-center gap-1.5 cursor-pointer"
+                                            className="px-4 py-2 rounded-xl border-2 border-black bg-black hover:bg-slate-800 text-white text-xs font-black transition-all cursor-pointer"
                                         >
-                                            <Zap size={13} /> Open Retailer Portal
+                                            Edit Partner Details
                                         </button>
                                     </div>
                                 </div>
-
                             </div>
                         </motion.div>
                     </motion.div>
