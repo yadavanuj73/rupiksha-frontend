@@ -567,78 +567,82 @@ const Retailers = () => {
             doc.setFillColor(248, 250, 252);
             doc.setDrawColor(0, 0, 0);
             doc.setLineWidth(0.3);
-            doc.roundedRect(14, 28, pageWidth - 28, 20, 2.5, 2.5, 'FD');
+            doc.roundedRect(12, 28, pageWidth - 24, 20, 2.5, 2.5, 'FD');
 
             doc.setTextColor(15, 23, 42);
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(11.5);
-            doc.text(businessModalRetailer.fullName || 'Retailer Partner', 18, 34.5);
+            doc.text(businessModalRetailer.fullName || 'Retailer Partner', 16, 34.5);
 
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(8);
             doc.setTextColor(51, 65, 85);
-            doc.text(`Party Code: ${businessModalRetailer.partyCode || '—'}    |    Mobile: ${businessModalRetailer.mobile || '—'}    |    Float: ${fmtPDF(businessModalRetailer.walletBalance)}`, 18, 40);
-            doc.text(`Location: ${businessModalRetailer.city || 'Siwan'}, ${businessModalRetailer.stateName || 'BIHAR'}    |    Status: Active Network Partner`, 18, 45);
+            doc.text(`Party Code: ${businessModalRetailer.partyCode || '—'}    |    Mobile: ${businessModalRetailer.mobile || '—'}    |    Float: ${fmtPDF(businessModalRetailer.walletBalance)}`, 16, 40);
+            doc.text(`Location: ${businessModalRetailer.city || 'Siwan'}, ${businessModalRetailer.stateName || 'BIHAR'}    |    Status: Active Network Partner`, 16, 45);
 
             // 3. KPI Turnover Boxes (3 Columns)
-            const kpiWidth = (pageWidth - 28 - 8) / 3;
+            const kpiWidth = (pageWidth - 24 - 8) / 3;
 
             // KPI 1: Today
             doc.setFillColor(239, 246, 255);
             doc.setDrawColor(0, 0, 0);
             doc.setLineWidth(0.3);
-            doc.roundedRect(14, 52, kpiWidth, 20, 2, 2, 'FD');
+            doc.roundedRect(12, 52, kpiWidth, 20, 2, 2, 'FD');
             doc.setTextColor(29, 78, 216);
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(7.5);
-            doc.text("TODAY'S TURNOVER", 17, 57.5);
+            doc.text("TODAY'S TURNOVER", 16, 57.5);
             doc.setFontSize(12);
-            doc.text(fmtPDF(businessStats.totals.todayAmt), 17, 64);
+            doc.text(fmtPDF(businessStats.totals.todayAmt), 16, 64);
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(7);
             doc.setTextColor(71, 85, 105);
-            doc.text(`${businessStats.totals.todayCount} Txns (24h Window)`, 17, 69);
+            doc.text(`${businessStats.totals.todayCount} Txns (24h Window)`, 16, 69);
 
             // KPI 2: Yesterday
             doc.setFillColor(236, 253, 245);
             doc.setDrawColor(0, 0, 0);
             doc.setLineWidth(0.3);
-            doc.roundedRect(14 + kpiWidth + 4, 52, kpiWidth, 20, 2, 2, 'FD');
+            doc.roundedRect(12 + kpiWidth + 4, 52, kpiWidth, 20, 2, 2, 'FD');
             doc.setTextColor(4, 120, 87);
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(7.5);
-            doc.text("YESTERDAY'S TURNOVER", 17 + kpiWidth + 4, 57.5);
+            doc.text("YESTERDAY'S TURNOVER", 16 + kpiWidth + 4, 57.5);
             doc.setFontSize(12);
-            doc.text(fmtPDF(businessStats.totals.yesterdayAmt), 17 + kpiWidth + 4, 64);
+            doc.text(fmtPDF(businessStats.totals.yesterdayAmt), 16 + kpiWidth + 4, 64);
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(7);
             doc.setTextColor(71, 85, 105);
-            doc.text(`${businessStats.totals.yesterdayCount} Txns (Completed)`, 17 + kpiWidth + 4, 69);
+            doc.text(`${businessStats.totals.yesterdayCount} Txns (Completed)`, 16 + kpiWidth + 4, 69);
 
             // KPI 3: Lifetime
             doc.setFillColor(245, 243, 255);
             doc.setDrawColor(0, 0, 0);
             doc.setLineWidth(0.3);
-            doc.roundedRect(14 + (kpiWidth + 4) * 2, 52, kpiWidth, 20, 2, 2, 'FD');
+            doc.roundedRect(12 + (kpiWidth + 4) * 2, 52, kpiWidth, 20, 2, 2, 'FD');
             doc.setTextColor(91, 33, 182);
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(7.5);
-            doc.text("LIFETIME NETWORK GMV", 17 + (kpiWidth + 4) * 2, 57.5);
+            doc.text("LIFETIME NETWORK GMV", 16 + (kpiWidth + 4) * 2, 57.5);
             doc.setFontSize(12);
-            doc.text(fmtPDF(businessStats.totals.lifetimeAmt), 17 + (kpiWidth + 4) * 2, 64);
+            doc.text(fmtPDF(businessStats.totals.lifetimeAmt), 16 + (kpiWidth + 4) * 2, 64);
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(7);
             doc.setTextColor(71, 85, 105);
-            doc.text(`${businessStats.totals.lifetimeCount} Total All-Time Txns`, 17 + (kpiWidth + 4) * 2, 69);
+            doc.text(`${businessStats.totals.lifetimeCount} Total All-Time Txns`, 16 + (kpiWidth + 4) * 2, 69);
 
-            // 4. Matrix Table with Full Dark Black Grid Lines
-            const tableX = 14;
-            const tableWidth = pageWidth - 28; // 182mm
-            const col1X = tableX;            // 14mm
-            const col2X = tableX + 66;       // 80mm
-            const col3X = col2X + 38;        // 118mm
-            const col4X = col3X + 38;        // 156mm
-            const tableEndX = tableX + tableWidth; // 196mm
+            // 4. Matrix Table with Full Dark Black Grid Lines & Balanced Columns
+            const tableX = 12;
+            const tableWidth = pageWidth - 24; // 186mm
+            const col1X = tableX;              // 12mm
+            const col2X = tableX + 54;         // 66mm (col 1 width = 54mm)
+            const col3X = col2X + 44;          // 110mm (col 2 width = 44mm)
+            const col4X = col3X + 44;          // 154mm (col 3 width = 44mm)
+            const tableEndX = tableX + tableWidth; // 198mm (col 4 width = 44mm)
+
+            const col2Center = col2X + 22;     // 88mm
+            const col3Center = col3X + 22;     // 132mm
+            const col4Center = col4X + 22;     // 176mm
 
             const tableTopY = 76;
             const headerHeight = 8;
@@ -651,11 +655,11 @@ const Retailers = () => {
 
             doc.setTextColor(15, 23, 42);
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(8);
-            doc.text('SERVICES', col1X + 3, currentY + 5.5);
-            doc.text("TODAY'S TRANSACTION", col2X + 3, currentY + 5.5);
-            doc.text('YESTERDAY TRANSACTION', col3X + 3, currentY + 5.5);
-            doc.text('LIFETIME TRANSACTION', col4X + 3, currentY + 5.5);
+            doc.setFontSize(7.5);
+            doc.text('SERVICES', col1X + 3, currentY + 5.2);
+            doc.text("TODAY'S TRANSACTION", col2Center, currentY + 5.2, { align: 'center' });
+            doc.text("YESTERDAY TRANSACTION", col3Center, currentY + 5.2, { align: 'center' });
+            doc.text("LIFETIME TRANSACTION", col4Center, currentY + 5.2, { align: 'center' });
 
             // Header bottom line
             currentY += headerHeight;
@@ -671,41 +675,41 @@ const Retailers = () => {
                 doc.setTextColor(15, 23, 42);
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(8);
-                doc.text(srv.label, col1X + 3, currentY + 4);
+                doc.text(srv.label, col1X + 3, currentY + 3.8);
                 doc.setFont('helvetica', 'normal');
-                doc.setFontSize(6.5);
+                doc.setFontSize(6.2);
                 doc.setTextColor(100, 116, 139);
-                doc.text(srv.subLabel, col1X + 3, currentY + 7.6);
+                doc.text(srv.subLabel, col1X + 3, currentY + 7.4);
 
-                // Today
+                // Today (Center Aligned)
                 doc.setTextColor(15, 23, 42);
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(8);
-                doc.text(fmtPDF(stat.todayAmt), col2X + 3, currentY + 4);
+                doc.text(fmtPDF(stat.todayAmt), col2Center, currentY + 3.8, { align: 'center' });
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(6.5);
                 doc.setTextColor(37, 99, 235);
-                doc.text(`${stat.todayCount} Txns`, col2X + 3, currentY + 7.6);
+                doc.text(`${stat.todayCount} Txns`, col2Center, currentY + 7.4, { align: 'center' });
 
-                // Yesterday
+                // Yesterday (Center Aligned)
                 doc.setTextColor(15, 23, 42);
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(8);
-                doc.text(fmtPDF(stat.yesterdayAmt), col3X + 3, currentY + 4);
+                doc.text(fmtPDF(stat.yesterdayAmt), col3Center, currentY + 3.8, { align: 'center' });
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(6.5);
                 doc.setTextColor(5, 150, 105);
-                doc.text(`${stat.yesterdayCount} Txns`, col3X + 3, currentY + 7.6);
+                doc.text(`${stat.yesterdayCount} Txns`, col3Center, currentY + 7.4, { align: 'center' });
 
-                // Lifetime
+                // Lifetime (Center Aligned)
                 doc.setTextColor(15, 23, 42);
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(8);
-                doc.text(fmtPDF(stat.lifetimeAmt), col4X + 3, currentY + 4);
+                doc.text(fmtPDF(stat.lifetimeAmt), col4Center, currentY + 3.8, { align: 'center' });
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(6.5);
                 doc.setTextColor(124, 58, 237);
-                doc.text(`${stat.lifetimeCount} Txns`, col4X + 3, currentY + 7.6);
+                doc.text(`${stat.lifetimeCount} Txns`, col4Center, currentY + 7.4, { align: 'center' });
 
                 currentY += rowHeight;
             });
@@ -717,33 +721,33 @@ const Retailers = () => {
 
             doc.setTextColor(15, 23, 42);
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(8.5);
+            doc.setFontSize(8);
             doc.text('GRAND TOTAL BUSINESS', col1X + 3, currentY + 4.8);
             doc.setFont('helvetica', 'normal');
-            doc.setFontSize(6.5);
+            doc.setFontSize(6.2);
             doc.setTextColor(100, 116, 139);
             doc.text('Consolidated Category Volume', col1X + 3, currentY + 8.8);
 
             doc.setTextColor(29, 78, 216);
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(8.5);
-            doc.text(fmtPDF(businessStats.totals.todayAmt), col2X + 3, currentY + 4.8);
+            doc.text(fmtPDF(businessStats.totals.todayAmt), col2Center, currentY + 4.8, { align: 'center' });
             doc.setFontSize(6.5);
-            doc.text(`${businessStats.totals.todayCount} Total Txns`, col2X + 3, currentY + 8.8);
+            doc.text(`${businessStats.totals.todayCount} Total Txns`, col2Center, currentY + 8.8, { align: 'center' });
 
             doc.setTextColor(4, 120, 87);
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(8.5);
-            doc.text(fmtPDF(businessStats.totals.yesterdayAmt), col3X + 3, currentY + 4.8);
+            doc.text(fmtPDF(businessStats.totals.yesterdayAmt), col3Center, currentY + 4.8, { align: 'center' });
             doc.setFontSize(6.5);
-            doc.text(`${businessStats.totals.yesterdayCount} Total Txns`, col3X + 3, currentY + 8.8);
+            doc.text(`${businessStats.totals.yesterdayCount} Total Txns`, col3Center, currentY + 8.8, { align: 'center' });
 
             doc.setTextColor(91, 33, 182);
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(8.5);
-            doc.text(fmtPDF(businessStats.totals.lifetimeAmt), col4X + 3, currentY + 4.8);
+            doc.text(fmtPDF(businessStats.totals.lifetimeAmt), col4Center, currentY + 4.8, { align: 'center' });
             doc.setFontSize(6.5);
-            doc.text(`${businessStats.totals.lifetimeCount} Total Txns`, col4X + 3, currentY + 8.8);
+            doc.text(`${businessStats.totals.lifetimeCount} Total Txns`, col4Center, currentY + 8.8, { align: 'center' });
 
             const tableBottomY = currentY + totalRowHeight;
 
@@ -772,7 +776,7 @@ const Retailers = () => {
             doc.setFont('helvetica', 'italic');
             doc.setFontSize(7.5);
             doc.setTextColor(100, 116, 139);
-            doc.text('Official Confidential Report generated from Rupiksha Enterprise Financial Network · 256-Bit Encrypted Ledger', 14, pageHeight - 10);
+            doc.text('Official Confidential Report generated from Rupiksha Enterprise Financial Network · 256-Bit Encrypted Ledger', 12, pageHeight - 10);
 
             const cleanName = (businessModalRetailer.fullName || 'Retailer').replace(/[^a-zA-Z0-9]/g, '_');
             doc.save(`Rupiksha_Business_${cleanName}_${new Date().toISOString().slice(0, 10)}.pdf`);
