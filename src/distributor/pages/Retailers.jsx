@@ -42,15 +42,15 @@ const DEFAULT_SERVICES = [
 ];
 
 const BUSINESS_SERVICES = [
-    { key: 'AEPS_1', label: 'AEPS 1', subLabel: 'Cash Withdrawal & Mini Statement', icon: '🏦', color: 'bg-blue-500', bgLight: 'bg-blue-50', text: 'text-blue-600', badge: 'bg-blue-100 text-blue-800' },
-    { key: 'AEPS_2', label: 'AEPS 2', subLabel: 'Aadhaar Pay & Cash Deposit', icon: '🏧', color: 'bg-indigo-500', bgLight: 'bg-indigo-50', text: 'text-indigo-600', badge: 'bg-indigo-100 text-indigo-800' },
-    { key: 'DMT', label: 'DMT (Money Transfer)', subLabel: 'Domestic Money Transfer & Remittance', icon: '💸', color: 'bg-emerald-500', bgLight: 'bg-emerald-50', text: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-800' },
-    { key: 'BBPS', label: 'BBPS & Utilities', subLabel: 'Electricity, Water, Gas & Bill Pay', icon: '💡', color: 'bg-amber-500', bgLight: 'bg-amber-50', text: 'text-amber-600', badge: 'bg-amber-100 text-amber-800' },
-    { key: 'RECHARGE', label: 'Mobile & DTH Recharge', subLabel: 'Prepaid, Postpaid & DTH Services', icon: '📱', color: 'bg-cyan-500', bgLight: 'bg-cyan-50', text: 'text-cyan-600', badge: 'bg-cyan-100 text-cyan-800' },
-    { key: 'MATM', label: 'Micro ATM (MATM)', subLabel: 'Card Withdrawal & Balance Inquiry', icon: '💳', color: 'bg-purple-500', bgLight: 'bg-purple-50', text: 'text-purple-600', badge: 'bg-purple-100 text-purple-800' },
-    { key: 'PAYOUT', label: 'Payout / Settlement', subLabel: 'Instant Bank Payout & Settlement', icon: '🏛️', color: 'bg-rose-500', bgLight: 'bg-rose-50', text: 'text-rose-600', badge: 'bg-rose-100 text-rose-800' },
-    { key: 'CMS', label: 'CMS (Cash Collection)', subLabel: 'Cash Management Services', icon: '📦', color: 'bg-teal-500', bgLight: 'bg-teal-50', text: 'text-teal-600', badge: 'bg-teal-100 text-teal-800' },
-    { key: 'OTHER', label: 'Other Services', subLabel: 'Wallet, QR & Miscellaneous', icon: '✨', color: 'bg-slate-500', bgLight: 'bg-slate-100', text: 'text-slate-600', badge: 'bg-slate-200 text-slate-800' }
+    { key: 'AEPS_1', label: 'AEPS 1', subLabel: 'Cash Withdrawal & Mini Statement', icon: '🏦', bgIcon: 'bg-[#DCFCE7]', color: 'bg-blue-500', bgLight: 'bg-blue-50', text: 'text-blue-600', badge: 'bg-blue-100 text-blue-800' },
+    { key: 'AEPS_2', label: 'AEPS 2', subLabel: 'Aadhaar Pay & Cash Deposit', icon: '🏧', bgIcon: 'bg-[#FFE4E6]', color: 'bg-indigo-500', bgLight: 'bg-indigo-50', text: 'text-indigo-600', badge: 'bg-indigo-100 text-indigo-800' },
+    { key: 'DMT', label: 'DMT (Money Transfer)', subLabel: 'Domestic Money Transfer & Remittance', icon: '💸', bgIcon: 'bg-[#FEF3C7]', color: 'bg-emerald-500', bgLight: 'bg-emerald-50', text: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-800' },
+    { key: 'BBPS', label: 'BBPS & Utilities', subLabel: 'Electricity, Water, Gas & Bill Pay', icon: '💡', bgIcon: 'bg-[#E0F2FE]', color: 'bg-amber-500', bgLight: 'bg-amber-50', text: 'text-amber-600', badge: 'bg-amber-100 text-amber-800' },
+    { key: 'RECHARGE', label: 'Mobile & DTH Recharge', subLabel: 'Prepaid, Postpaid & DTH Services', icon: '📱', bgIcon: 'bg-[#CFFAFE]', color: 'bg-cyan-500', bgLight: 'bg-cyan-50', text: 'text-cyan-600', badge: 'bg-cyan-100 text-cyan-800' },
+    { key: 'MATM', label: 'Micro ATM (MATM)', subLabel: 'Card Withdrawal & Balance Inquiry', icon: '💳', bgIcon: 'bg-[#F3E8FF]', color: 'bg-purple-500', bgLight: 'bg-purple-50', text: 'text-purple-600', badge: 'bg-purple-100 text-purple-800' },
+    { key: 'PAYOUT', label: 'Payout / Settlement', subLabel: 'Instant Bank Payout & Settlement', icon: '🏛️', bgIcon: 'bg-[#FCE7F3]', color: 'bg-rose-500', bgLight: 'bg-rose-50', text: 'text-rose-600', badge: 'bg-rose-100 text-rose-800' },
+    { key: 'CMS', label: 'CMS (Cash Collection)', subLabel: 'Cash Management Services', icon: '📦', bgIcon: 'bg-[#CCFBF1]', color: 'bg-teal-500', bgLight: 'bg-teal-50', text: 'text-teal-600', badge: 'bg-teal-100 text-teal-800' },
+    { key: 'OTHER', label: 'Other Services', subLabel: 'Wallet, QR & Miscellaneous', icon: '✨', bgIcon: 'bg-[#F1F5F9]', color: 'bg-slate-500', bgLight: 'bg-slate-100', text: 'text-slate-600', badge: 'bg-slate-200 text-slate-800' }
 ];
 
 const isTodayDate = (d) => {
@@ -1123,78 +1123,88 @@ const Retailers = () => {
                 )}
             </AnimatePresence>
 
-            {/* ── SEE BUSINESS MODAL (MINIMALIST FINTECH DESIGN) ── */}
+            {/* ── SEE BUSINESS MODAL (PREMIUM FINTECH DASHBOARD UI) ── */}
             <AnimatePresence>
                 {businessModalRetailer && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4"
+                        className="fixed inset-0 z-[110] bg-[#0F172A]/45 backdrop-blur-[6px] flex items-center justify-center p-3 sm:p-6"
                     >
                         <motion.div
-                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            initial={{ scale: 0.95, opacity: 0, y: 15 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
-                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                            className="bg-white w-full max-w-5xl rounded-2xl overflow-hidden shadow-2xl max-h-[94vh] flex flex-col border-2 border-black text-black"
+                            exit={{ scale: 0.95, opacity: 0, y: 15 }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 320 }}
+                            className="bg-white w-[95vw] max-w-[1520px] rounded-[20px] overflow-hidden shadow-[0_20px_60px_rgba(15,23,42,0.18)] max-h-[90vh] flex flex-col border border-[#E5EAF2] text-[#0F172A]"
                         >
-                            {/* Modal Header Bar - Minimalist White & Solid Black */}
-                            <div className="px-5 sm:px-7 py-4 border-b-2 border-black flex items-center justify-between bg-white text-black shrink-0">
-                                <div className="flex items-center gap-3.5">
-                                    <div className="w-12 h-12 rounded-xl bg-black text-white font-black text-xl flex items-center justify-center shadow-sm shrink-0 border border-black">
-                                        {(businessModalRetailer.fullName || 'R').charAt(0).toUpperCase()}
+                            {/* Modal Header Bar */}
+                            <div className="px-6 sm:px-8 py-5 border-b border-[#E8EDF3] flex items-center justify-between bg-white text-[#0F172A] shrink-0">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 rounded-[14px] bg-[#0F172A] text-white font-bold text-2xl flex items-center justify-center shrink-0 shadow-xs">
+                                        {(businessModalRetailer.fullName || 'T').charAt(0).toUpperCase()}
                                     </div>
                                     <div>
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <h3 className="text-base sm:text-lg font-black text-black tracking-tight">
+                                        <div className="flex items-center gap-2.5 flex-wrap">
+                                            <h3 className="text-[20px] sm:text-[22px] font-bold text-[#0F172A] tracking-tight">
                                                 {businessModalRetailer.fullName}
                                             </h3>
                                             <button
                                                 onClick={() => handleCopyPartyCode(businessModalRetailer.partyCode)}
-                                                className="inline-flex items-center gap-1 text-[11px] font-mono font-black bg-slate-100 hover:bg-slate-200 text-black px-2.5 py-0.5 rounded-md border border-black transition-all cursor-pointer"
-                                                title="Click to copy Party Code"
+                                                className="p-1 text-[#64748B] hover:text-[#0F172A] rounded-md transition-colors cursor-pointer"
+                                                title="Copy Party Code"
                                             >
-                                                <span>{businessModalRetailer.partyCode}</span>
-                                                {copiedPartyCode ? <CheckCheck size={12} className="text-black" /> : <Copy size={12} />}
+                                                {copiedPartyCode ? <CheckCheck size={16} className="text-[#059669]" /> : <Copy size={16} />}
                                             </button>
-                                            <span className="text-[10px] font-black bg-slate-100 text-black border border-black px-2 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-1">
-                                                <ShieldCheck size={11} /> Active Network Partner
+                                            <span className="inline-flex items-center font-mono text-[12px] font-semibold bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE] px-2.5 py-0.5 rounded-[8px]">
+                                                {businessModalRetailer.partyCode}
+                                            </span>
+                                            <span className="inline-flex items-center gap-1.5 text-[12px] font-medium bg-[#ECFDF3] text-[#047857] border border-[#A7F3D0] px-3 py-0.5 rounded-full">
+                                                <span className="w-2 h-2 rounded-full bg-[#10B981]" />
+                                                Active Network Partner
                                             </span>
                                         </div>
-                                        <p className="text-xs text-black font-bold mt-1 flex items-center gap-3 flex-wrap">
-                                            <span>📱 {businessModalRetailer.mobile}</span>
-                                            <span className="text-black/40">•</span>
-                                            <span className="flex items-center gap-1 text-black font-black">
-                                                <Wallet size={13} /> Float: <strong className="text-black font-mono font-black">{fmtWallet(businessModalRetailer.walletBalance)}</strong>
+                                        <p className="text-[13px] sm:text-[14px] text-[#475569] font-medium mt-1.5 flex items-center gap-3.5 flex-wrap">
+                                            <span className="flex items-center gap-1.5">
+                                                <Smartphone size={15} className="text-[#2563EB]" />
+                                                <span>{businessModalRetailer.mobile}</span>
                                             </span>
-                                            <span className="text-black/40">•</span>
-                                            <span>📍 {businessModalRetailer.city || 'Bihar'}, {businessModalRetailer.stateName || 'India'}</span>
+                                            <span className="text-[#CBD5E1]">|</span>
+                                            <span className="flex items-center gap-1.5">
+                                                <Wallet size={15} className="text-[#2563EB]" />
+                                                <span>Float: <strong className="text-[#0F172A] font-bold">{fmtWallet(businessModalRetailer.walletBalance)}</strong></span>
+                                            </span>
+                                            <span className="text-[#CBD5E1]">|</span>
+                                            <span className="flex items-center gap-1.5">
+                                                <MapPin size={15} className="text-[#2563EB]" />
+                                                <span>{businessModalRetailer.city || 'Siwan'}, {businessModalRetailer.stateName || 'BIHAR'}</span>
+                                            </span>
                                         </p>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2.5">
                                     <button
                                         onClick={handleExportBusinessExcel}
-                                        className="px-3.5 py-2 bg-white hover:bg-slate-100 text-black rounded-xl border-2 border-black shadow-sm transition-all flex items-center gap-1.5 text-xs font-black active:scale-95 cursor-pointer"
+                                        className="h-[44px] px-4 bg-white hover:bg-[#F8FAFC] text-[#0F172A] font-medium text-[13px] rounded-[10px] border border-[#CBD5E1] shadow-xs flex items-center gap-2 transition-colors cursor-pointer"
                                         title="Export Category Breakdown to Excel"
                                     >
-                                        <FileSpreadsheet size={15} className="text-black" />
+                                        <Download size={16} className="text-[#0F172A]" />
                                         <span className="hidden md:inline">Export Excel</span>
                                     </button>
                                     <button
                                         onClick={() => handleOpenBusinessModal(businessModalRetailer)}
                                         disabled={loadingBusiness}
-                                        className="p-2 sm:px-3 sm:py-2 bg-white hover:bg-slate-100 text-black rounded-xl border-2 border-black shadow-sm transition-all flex items-center gap-1.5 text-xs font-black active:scale-95 cursor-pointer"
+                                        className="h-[44px] px-4 bg-white hover:bg-[#F8FAFC] text-[#0F172A] font-medium text-[13px] rounded-[10px] border border-[#CBD5E1] shadow-xs flex items-center gap-2 transition-colors cursor-pointer"
                                         title="Refresh live transactions"
                                     >
-                                        <RefreshCw size={14} className={loadingBusiness ? 'animate-spin text-black' : 'text-black'} />
+                                        <RefreshCw size={16} className={loadingBusiness ? 'animate-spin text-[#2563EB]' : 'text-[#0F172A]'} />
                                         <span className="hidden sm:inline">Sync</span>
                                     </button>
                                     <button
                                         onClick={() => setBusinessModalRetailer(null)}
-                                        className="p-2 text-black hover:bg-slate-100 rounded-xl border-2 border-black transition-all cursor-pointer"
+                                        className="w-[44px] h-[44px] bg-white hover:bg-[#F8FAFC] text-[#0F172A] rounded-[10px] border border-[#CBD5E1] shadow-xs flex items-center justify-center transition-colors cursor-pointer"
                                     >
                                         <X size={18} />
                                     </button>
@@ -1202,136 +1212,187 @@ const Retailers = () => {
                             </div>
 
                             {/* Modal Body Content */}
-                            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs bg-white text-black">
+                            <div className="p-6 sm:p-8 overflow-y-auto space-y-6 text-xs bg-white text-[#0F172A]">
 
-                                {/* Top 3 KPI Cards - Solid Dark Black Minimalist */}
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                                    {/* Today Card */}
-                                    <div className="bg-white rounded-xl p-4 border-2 border-black shadow-sm">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-xs font-black uppercase tracking-wider text-black flex items-center gap-1.5">
-                                                <span className="w-2 h-2 rounded-full bg-black" />
-                                                Today's Turnover
-                                            </span>
-                                            <span className="text-xs font-black font-mono bg-slate-100 text-black px-2.5 py-0.5 rounded-md border border-black">
+                                {/* ── TOP 3 KPI / TURNOVER CARDS (PASTEL FINTECH GRADE) ── */}
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
+                                    {/* CARD 1 — BLUE: TODAY'S TURNOVER */}
+                                    <div className="bg-gradient-to-br from-[#F8FBFF] to-[#EFF6FF] border border-[#BFDBFE] rounded-[16px] p-5 relative overflow-hidden shadow-[0_4px_16px_rgba(15,23,42,0.04)] hover:shadow-[0_6px_20px_rgba(15,23,42,0.08)] transition-all duration-200">
+                                        <div className="flex items-center justify-between relative z-10">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-11 h-11 rounded-[12px] bg-[#DBEAFE] text-[#1D4ED8] flex items-center justify-center shadow-xs shrink-0">
+                                                    <Wallet size={20} />
+                                                </div>
+                                                <span className="text-[13px] font-bold uppercase tracking-[0.4px] text-[#1D4ED8]">
+                                                    TODAY'S TURNOVER
+                                                </span>
+                                            </div>
+                                            <span className="inline-block text-xs font-semibold px-3 py-1 rounded-full bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE]">
                                                 {businessStats.totals.todayCount} {businessStats.totals.todayCount === 1 ? 'Txn' : 'Txns'}
                                             </span>
                                         </div>
-                                        <p className="text-2xl sm:text-3xl font-black font-mono text-black mt-2 tracking-tight">
-                                            {fmtWallet(businessStats.totals.todayAmt)}
-                                        </p>
-                                        <p className="text-xs text-black font-bold mt-1 flex items-center gap-1">
-                                            <Clock size={12} className="text-black" />
-                                            <span>Current Day 24-Hr Settlement Window</span>
-                                        </p>
+
+                                        <div className="flex items-end justify-between mt-3 relative z-10">
+                                            <div>
+                                                <p className="text-3xl sm:text-[36px] font-[800] text-[#1D4ED8] tracking-tight leading-tight">
+                                                    {fmtWallet(businessStats.totals.todayAmt)}
+                                                </p>
+                                                <p className="text-[13px] text-[#475569] font-medium mt-1 flex items-center gap-1.5">
+                                                    <Clock size={14} className="text-[#2563EB]" />
+                                                    <span>Current Day 24-Hr Settlement Window</span>
+                                                </p>
+                                            </div>
+
+                                            {/* Decorative subtle mini bar chart graphic */}
+                                            <div className="flex items-end gap-1 pointer-events-none opacity-40 mb-1">
+                                                <div className="w-2.5 h-6 bg-[#93C5FD] rounded-t-[3px]" />
+                                                <div className="w-2.5 h-10 bg-[#60A5FA] rounded-t-[3px]" />
+                                                <div className="w-2.5 h-8 bg-[#3B82F6] rounded-t-[3px]" />
+                                                <div className="w-2.5 h-14 bg-[#1D4ED8] rounded-t-[3px]" />
+                                            </div>
+                                        </div>
                                     </div>
 
-                                    {/* Yesterday Card */}
-                                    <div className="bg-white rounded-xl p-4 border-2 border-black shadow-sm">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-xs font-black uppercase tracking-wider text-black flex items-center gap-1.5">
-                                                <TrendingUp size={13} className="text-black" />
-                                                Yesterday's Turnover
-                                            </span>
-                                            <span className="text-xs font-black font-mono bg-slate-100 text-black px-2.5 py-0.5 rounded-md border border-black">
+                                    {/* CARD 2 — GREEN: YESTERDAY'S TURNOVER */}
+                                    <div className="bg-gradient-to-br from-[#F7FFFB] to-[#ECFDF5] border border-[#A7F3D0] rounded-[16px] p-5 relative overflow-hidden shadow-[0_4px_16px_rgba(15,23,42,0.04)] hover:shadow-[0_6px_20px_rgba(15,23,42,0.08)] transition-all duration-200">
+                                        <div className="flex items-center justify-between relative z-10">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-11 h-11 rounded-[12px] bg-[#D1FAE5] text-[#047857] flex items-center justify-center shadow-xs shrink-0">
+                                                    <TrendingUp size={20} />
+                                                </div>
+                                                <span className="text-[13px] font-bold uppercase tracking-[0.4px] text-[#047857]">
+                                                    YESTERDAY'S TURNOVER
+                                                </span>
+                                            </div>
+                                            <span className="inline-block text-xs font-semibold px-3 py-1 rounded-full bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]">
                                                 {businessStats.totals.yesterdayCount} {businessStats.totals.yesterdayCount === 1 ? 'Txn' : 'Txns'}
                                             </span>
                                         </div>
-                                        <p className="text-2xl sm:text-3xl font-black font-mono text-black mt-2 tracking-tight">
-                                            {fmtWallet(businessStats.totals.yesterdayAmt)}
-                                        </p>
-                                        <p className="text-xs text-black font-bold mt-1 flex items-center gap-1">
-                                            <Clock size={12} className="text-black" />
-                                            <span>Previous Day Completed Business Volume</span>
-                                        </p>
+
+                                        <div className="flex items-end justify-between mt-3 relative z-10">
+                                            <div>
+                                                <p className="text-3xl sm:text-[36px] font-[800] text-[#047857] tracking-tight leading-tight">
+                                                    {fmtWallet(businessStats.totals.yesterdayAmt)}
+                                                </p>
+                                                <p className="text-[13px] text-[#475569] font-medium mt-1 flex items-center gap-1.5">
+                                                    <Clock size={14} className="text-[#059669]" />
+                                                    <span>Previous Day Completed Business Volume</span>
+                                                </p>
+                                            </div>
+
+                                            {/* Decorative subtle mini bar chart graphic */}
+                                            <div className="flex items-end gap-1 pointer-events-none opacity-40 mb-1">
+                                                <div className="w-2.5 h-6 bg-[#A7F3D0] rounded-t-[3px]" />
+                                                <div className="w-2.5 h-11 bg-[#6EE7B7] rounded-t-[3px]" />
+                                                <div className="w-2.5 h-7 bg-[#34D399] rounded-t-[3px]" />
+                                                <div className="w-2.5 h-13 bg-[#047857] rounded-t-[3px]" />
+                                            </div>
+                                        </div>
                                     </div>
 
-                                    {/* Lifetime Card */}
-                                    <div className="bg-white rounded-xl p-4 border-2 border-black shadow-sm">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-xs font-black uppercase tracking-wider text-black flex items-center gap-1.5">
-                                                <Award size={13} className="text-black" />
-                                                Lifetime Network GMV
-                                            </span>
-                                            <span className="text-xs font-black font-mono bg-slate-100 text-black px-2.5 py-0.5 rounded-md border border-black">
+                                    {/* CARD 3 — PURPLE: LIFETIME NETWORK GMV */}
+                                    <div className="bg-gradient-to-br from-[#FCFAFF] to-[#F5F3FF] border border-[#DDD6FE] rounded-[16px] p-5 relative overflow-hidden shadow-[0_4px_16px_rgba(15,23,42,0.04)] hover:shadow-[0_6px_20px_rgba(15,23,42,0.08)] transition-all duration-200">
+                                        <div className="flex items-center justify-between relative z-10">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-11 h-11 rounded-[12px] bg-[#EDE9FE] text-[#5B21B6] flex items-center justify-center shadow-xs shrink-0">
+                                                    <Award size={20} />
+                                                </div>
+                                                <span className="text-[13px] font-bold uppercase tracking-[0.4px] text-[#5B21B6]">
+                                                    LIFETIME NETWORK GMV
+                                                </span>
+                                            </div>
+                                            <span className="inline-block text-xs font-semibold px-3 py-1 rounded-full bg-[#F5F3FF] text-[#5B21B6] border border-[#DDD6FE]">
                                                 {businessStats.totals.lifetimeCount} {businessStats.totals.lifetimeCount === 1 ? 'Txn' : 'Txns'}
                                             </span>
                                         </div>
-                                        <p className="text-2xl sm:text-3xl font-black font-mono text-black mt-2 tracking-tight">
-                                            {fmtWallet(businessStats.totals.lifetimeAmt)}
-                                        </p>
-                                        <p className="text-xs text-black font-bold mt-1 flex items-center gap-1">
-                                            <ShieldCheck size={12} className="text-black" />
-                                            <span>All-Time Processed Transactional Volume</span>
-                                        </p>
+
+                                        <div className="flex items-end justify-between mt-3 relative z-10">
+                                            <div>
+                                                <p className="text-3xl sm:text-[36px] font-[800] text-[#5B21B6] tracking-tight leading-tight">
+                                                    {fmtWallet(businessStats.totals.lifetimeAmt)}
+                                                </p>
+                                                <p className="text-[13px] text-[#475569] font-medium mt-1 flex items-center gap-1.5">
+                                                    <Clock size={14} className="text-[#7C3AED]" />
+                                                    <span>All-Time Processed Transactional Volume</span>
+                                                </p>
+                                            </div>
+
+                                            {/* Decorative subtle mini bar chart graphic */}
+                                            <div className="flex items-end gap-1 pointer-events-none opacity-40 mb-1">
+                                                <div className="w-2.5 h-6 bg-[#DDD6FE] rounded-t-[3px]" />
+                                                <div className="w-2.5 h-10 bg-[#C4B5FD] rounded-t-[3px]" />
+                                                <div className="w-2.5 h-8 bg-[#A78BFA] rounded-t-[3px]" />
+                                                <div className="w-2.5 h-14 bg-[#5B21B6] rounded-t-[3px]" />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Tab Controls + Search Bar */}
-                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-2 rounded-xl border-2 border-black shadow-sm">
+                                {/* ── SECTION TABS & SEARCH BAR ── */}
+                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                                     <div className="flex items-center gap-2">
                                         <button
                                             onClick={() => setBusinessActiveTab('matrix')}
-                                            className={`px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${businessActiveTab === 'matrix'
-                                                    ? 'bg-black text-white shadow-sm'
-                                                    : 'bg-white text-black hover:bg-slate-100 border border-black'
+                                            className={`px-5 py-2.5 rounded-[10px] text-[13px] font-bold transition-all flex items-center gap-2 cursor-pointer ${businessActiveTab === 'matrix'
+                                                    ? 'bg-[#1557D6] text-white shadow-xs'
+                                                    : 'bg-white hover:bg-[#F8FAFC] border border-[#CBD5E1] text-[#334155]'
                                                 }`}
                                         >
-                                            <Layers size={14} />
+                                            <Layers size={16} />
                                             <span>Service Matrix ({BUSINESS_SERVICES.length})</span>
                                         </button>
                                         <button
                                             onClick={() => setBusinessActiveTab('logs')}
-                                            className={`px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${businessActiveTab === 'logs'
-                                                    ? 'bg-black text-white shadow-sm'
-                                                    : 'bg-white text-black hover:bg-slate-100 border border-black'
+                                            className={`px-5 py-2.5 rounded-[10px] text-[13px] font-bold transition-all flex items-center gap-2 cursor-pointer ${businessActiveTab === 'logs'
+                                                    ? 'bg-[#1557D6] text-white shadow-xs'
+                                                    : 'bg-white hover:bg-[#F8FAFC] border border-[#CBD5E1] text-[#334155]'
                                                 }`}
                                         >
-                                            <Activity size={14} />
+                                            <Activity size={16} />
                                             <span>Live Audit Stream ({retailerBusinessTxns.length})</span>
                                         </button>
                                     </div>
 
                                     {businessActiveTab === 'matrix' && (
-                                        <div className="relative flex-1 max-w-xs">
-                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-black" size={14} />
+                                        <div className="relative flex-1 max-w-sm">
+                                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#475569]" size={16} />
                                             <input
                                                 type="text"
                                                 placeholder="Filter services (e.g. AEPS, DMT, BBPS)..."
                                                 value={businessServiceSearch}
                                                 onChange={(e) => setBusinessServiceSearch(e.target.value)}
-                                                className="w-full pl-8 pr-3 py-1.5 bg-white border-2 border-black rounded-lg text-xs text-black placeholder:text-black/60 font-bold focus:outline-none focus:ring-2 focus:ring-black"
+                                                className="h-[46px] w-full bg-white border border-[#CBD5E1] focus:border-[#2563EB] focus:ring-4 focus:ring-blue-500/10 rounded-[10px] pl-10 pr-4 text-[13px] text-[#0F172A] placeholder:text-[#64748B] outline-none transition-all"
                                             />
                                         </div>
                                     )}
                                 </div>
 
-                                {/* TAB 1: CATEGORY MATRIX TABLE */}
+                                {/* ── TAB 1: EXACT 4-COLUMN SERVICES TABLE ── */}
                                 {businessActiveTab === 'matrix' && (
-                                    <div className="bg-white rounded-xl border-2 border-black overflow-hidden shadow-sm">
+                                    <div className="bg-white rounded-[14px] border border-[#E2E8F0] overflow-hidden shadow-xs">
                                         <div className="w-full overflow-x-auto">
-                                            <table className="w-full border-collapse text-left min-w-[760px] border border-black">
+                                            <table className="w-full border-collapse text-left min-w-[760px]">
                                                 <thead>
-                                                    <tr className="bg-slate-100 border-b-2 border-black text-xs font-black text-black uppercase tracking-wider">
-                                                        <th className="px-4 py-3 text-left border-r-2 border-black border-b-2 border-black text-black font-black">Services</th>
-                                                        <th className="px-4 py-3 text-right border-r-2 border-black border-b-2 border-black text-black font-black">Today's Transaction</th>
-                                                        <th className="px-4 py-3 text-right border-r-2 border-black border-b-2 border-black text-black font-black">Yesterday Transaction</th>
-                                                        <th className="px-4 py-3 text-right border-b-2 border-black text-black font-black">Lifetime Transaction</th>
+                                                    <tr className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[12px] sm:text-[13px] font-bold text-[#1E3A5F] uppercase tracking-[0.3px]">
+                                                        <th className="px-6 py-4 text-left">SERVICES</th>
+                                                        <th className="px-6 py-4 text-center">TODAY'S TRANSACTION</th>
+                                                        <th className="px-6 py-4 text-center">YESTERDAY TRANSACTION</th>
+                                                        <th className="px-6 py-4 text-center">LIFETIME TRANSACTION</th>
                                                     </tr>
                                                 </thead>
 
-                                                <tbody className="divide-y divide-black text-xs">
+                                                <tbody className="divide-y divide-[#F1F5F9] text-xs">
                                                     {loadingBusiness ? (
                                                         <tr>
-                                                            <td colSpan={4} className="py-14 text-center border-b border-black">
-                                                                <Loader2 className="animate-spin mx-auto text-black" size={28} />
-                                                                <p className="text-xs text-black mt-2 font-black uppercase tracking-wider">Aggregating live category transactions…</p>
+                                                            <td colSpan={4} className="py-16 text-center">
+                                                                <Loader2 className="animate-spin mx-auto text-[#2563EB]" size={30} />
+                                                                <p className="text-[13px] text-[#64748B] mt-2.5 font-semibold">Aggregating live category transactions…</p>
                                                             </td>
                                                         </tr>
                                                     ) : filteredBusinessServices.length === 0 ? (
                                                         <tr>
-                                                            <td colSpan={4} className="py-12 text-center text-black border-b border-black">
-                                                                <p className="font-black text-sm">No services matching "{businessServiceSearch}"</p>
+                                                            <td colSpan={4} className="py-14 text-center text-[#64748B]">
+                                                                <p className="font-semibold text-sm">No services matching "{businessServiceSearch}"</p>
                                                             </td>
                                                         </tr>
                                                     ) : (
@@ -1343,53 +1404,55 @@ const Retailers = () => {
                                                             };
 
                                                             return (
-                                                                <tr key={srv.key} className="hover:bg-slate-50 transition-colors border-b border-black">
-                                                                    {/* Service Column */}
-                                                                    <td className="px-4 py-3.5 border-r border-black">
-                                                                        <div className="flex items-center gap-3">
-                                                                            <span className="text-2xl shrink-0">{srv.icon}</span>
+                                                                <tr key={srv.key} className="h-[76px] hover:bg-[#F8FAFC] transition-colors duration-150">
+                                                                    {/* Column 1: SERVICES */}
+                                                                    <td className="px-6 py-3.5">
+                                                                        <div className="flex items-center gap-3.5">
+                                                                            <div className={`w-11 h-11 rounded-[10px] flex items-center justify-center text-xl shrink-0 shadow-xs ${srv.bgIcon || 'bg-slate-100'}`}>
+                                                                                <span>{srv.icon}</span>
+                                                                            </div>
                                                                             <div>
-                                                                                <p className="font-black text-black text-sm leading-tight">
+                                                                                <p className="font-bold text-[#0F172A] text-[15px] leading-snug">
                                                                                     {srv.label}
                                                                                 </p>
-                                                                                <p className="text-xs text-black font-bold mt-0.5">
+                                                                                <p className="text-[12px] text-[#64748B] font-normal mt-0.5">
                                                                                     {srv.subLabel}
                                                                                 </p>
                                                                             </div>
                                                                         </div>
                                                                     </td>
 
-                                                                    {/* Today's Transaction Column */}
-                                                                    <td className="px-4 py-3.5 text-right border-r border-black font-mono">
-                                                                        <div className="font-black text-sm text-black">
-                                                                            {fmtWallet(stat.todayAmt)}
-                                                                        </div>
-                                                                        <div className="mt-1">
-                                                                            <span className="inline-block text-[10px] font-black px-2 py-0.5 rounded-md border border-black bg-slate-100 text-black">
+                                                                    {/* Column 2: TODAY'S TRANSACTION */}
+                                                                    <td className="px-6 py-3.5 text-center font-mono">
+                                                                        <div className="flex items-center justify-center gap-2.5">
+                                                                            <span className="font-bold text-[15px] text-[#0F172A]">
+                                                                                {fmtWallet(stat.todayAmt)}
+                                                                            </span>
+                                                                            <span className="inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-[8px] bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]">
                                                                                 {stat.todayCount} {stat.todayCount === 1 ? 'Txn' : 'Txns'}
                                                                             </span>
                                                                         </div>
                                                                     </td>
 
-                                                                    {/* Yesterday Transaction Column */}
-                                                                    <td className="px-4 py-3.5 text-right border-r border-black font-mono">
-                                                                        <div className="font-black text-sm text-black">
-                                                                            {fmtWallet(stat.yesterdayAmt)}
-                                                                        </div>
-                                                                        <div className="mt-1">
-                                                                            <span className="inline-block text-[10px] font-black px-2 py-0.5 rounded-md border border-black bg-slate-100 text-black">
+                                                                    {/* Column 3: YESTERDAY TRANSACTION */}
+                                                                    <td className="px-6 py-3.5 text-center font-mono">
+                                                                        <div className="flex items-center justify-center gap-2.5">
+                                                                            <span className="font-bold text-[15px] text-[#0F172A]">
+                                                                                {fmtWallet(stat.yesterdayAmt)}
+                                                                            </span>
+                                                                            <span className="inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-[8px] bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]">
                                                                                 {stat.yesterdayCount} {stat.yesterdayCount === 1 ? 'Txn' : 'Txns'}
                                                                             </span>
                                                                         </div>
                                                                     </td>
 
-                                                                    {/* Lifetime Transaction Column */}
-                                                                    <td className="px-4 py-3.5 text-right font-mono">
-                                                                        <div className="font-black text-sm text-black">
-                                                                            {fmtWallet(stat.lifetimeAmt)}
-                                                                        </div>
-                                                                        <div className="mt-1">
-                                                                            <span className="inline-block text-[10px] font-black px-2 py-0.5 rounded-md border border-black bg-slate-100 text-black">
+                                                                    {/* Column 4: LIFETIME TRANSACTION */}
+                                                                    <td className="px-6 py-3.5 text-center font-mono">
+                                                                        <div className="flex items-center justify-center gap-2.5">
+                                                                            <span className="font-bold text-[15px] text-[#0F172A]">
+                                                                                {fmtWallet(stat.lifetimeAmt)}
+                                                                            </span>
+                                                                            <span className="inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-[8px] bg-[#F5F3FF] text-[#7C3AED] border border-[#DDD6FE]">
                                                                                 {stat.lifetimeCount} {stat.lifetimeCount === 1 ? 'Txn' : 'Txns'}
                                                                             </span>
                                                                         </div>
@@ -1402,39 +1465,45 @@ const Retailers = () => {
 
                                                 {/* Grand Total Footer */}
                                                 <tfoot>
-                                                    <tr className="bg-slate-100 border-t-2 border-black font-black text-black">
-                                                        <td className="px-4 py-3.5 border-r-2 border-black">
-                                                            <div className="flex items-center gap-2">
-                                                                <Award size={18} className="text-black" />
+                                                    <tr className="bg-[#F8FAFC] border-t-2 border-[#E2E8F0] font-bold text-[#0F172A]">
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex items-center gap-2.5">
+                                                                <Award size={20} className="text-[#2563EB]" />
                                                                 <div>
-                                                                    <span className="text-xs uppercase tracking-wider block text-black font-black">Grand Total Business</span>
-                                                                    <span className="text-[10px] text-black font-bold uppercase tracking-widest block">Consolidated Category Volume</span>
+                                                                    <span className="text-[13px] uppercase tracking-wider block text-[#0F172A] font-bold">Grand Total Business</span>
+                                                                    <span className="text-[11px] text-[#64748B] font-normal uppercase tracking-wider block">Consolidated Category Volume</span>
                                                                 </div>
                                                             </div>
                                                         </td>
-                                                        <td className="px-4 py-3.5 text-right border-r-2 border-black font-mono">
-                                                            <div className="text-base font-black text-black">
-                                                                {fmtWallet(businessStats.totals.todayAmt)}
+                                                        <td className="px-6 py-4 text-center font-mono">
+                                                            <div className="flex items-center justify-center gap-2.5">
+                                                                <span className="text-[16px] font-[800] text-[#1D4ED8]">
+                                                                    {fmtWallet(businessStats.totals.todayAmt)}
+                                                                </span>
+                                                                <span className="inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-[8px] bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE]">
+                                                                    {businessStats.totals.todayCount} Total
+                                                                </span>
                                                             </div>
-                                                            <span className="text-xs font-black text-black">
-                                                                {businessStats.totals.todayCount} Total Txns
-                                                            </span>
                                                         </td>
-                                                        <td className="px-4 py-3.5 text-right border-r-2 border-black font-mono">
-                                                            <div className="text-base font-black text-black">
-                                                                {fmtWallet(businessStats.totals.yesterdayAmt)}
+                                                        <td className="px-6 py-4 text-center font-mono">
+                                                            <div className="flex items-center justify-center gap-2.5">
+                                                                <span className="text-[16px] font-[800] text-[#047857]">
+                                                                    {fmtWallet(businessStats.totals.yesterdayAmt)}
+                                                                </span>
+                                                                <span className="inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-[8px] bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]">
+                                                                    {businessStats.totals.yesterdayCount} Total
+                                                                </span>
                                                             </div>
-                                                            <span className="text-xs font-black text-black">
-                                                                {businessStats.totals.yesterdayCount} Total Txns
-                                                            </span>
                                                         </td>
-                                                        <td className="px-4 py-3.5 text-right font-mono">
-                                                            <div className="text-base font-black text-black">
-                                                                {fmtWallet(businessStats.totals.lifetimeAmt)}
+                                                        <td className="px-6 py-4 text-center font-mono">
+                                                            <div className="flex items-center justify-center gap-2.5">
+                                                                <span className="text-[16px] font-[800] text-[#5B21B6]">
+                                                                    {fmtWallet(businessStats.totals.lifetimeAmt)}
+                                                                </span>
+                                                                <span className="inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-[8px] bg-[#F5F3FF] text-[#5B21B6] border border-[#DDD6FE]">
+                                                                    {businessStats.totals.lifetimeCount} Total
+                                                                </span>
                                                             </div>
-                                                            <span className="text-xs font-black text-black">
-                                                                {businessStats.totals.lifetimeCount} Total Txns
-                                                            </span>
                                                         </td>
                                                     </tr>
                                                 </tfoot>
@@ -1443,55 +1512,55 @@ const Retailers = () => {
                                     </div>
                                 )}
 
-                                {/* TAB 2: LIVE AUDIT STREAM */}
+                                {/* ── TAB 2: LIVE AUDIT STREAM ── */}
                                 {businessActiveTab === 'logs' && (
-                                    <div className="bg-white rounded-xl border-2 border-black overflow-hidden shadow-sm">
+                                    <div className="bg-white rounded-[14px] border border-[#E2E8F0] overflow-hidden shadow-xs">
                                         <div className="w-full overflow-x-auto">
-                                            <table className="w-full border-collapse text-left min-w-[700px] border border-black">
+                                            <table className="w-full border-collapse text-left min-w-[700px]">
                                                 <thead>
-                                                    <tr className="bg-slate-100 border-b-2 border-black text-xs font-black text-black uppercase tracking-wider">
-                                                        <th className="px-4 py-3 border-r border-black border-b-2 border-black text-black font-black">#</th>
-                                                        <th className="px-4 py-3 border-r border-black border-b-2 border-black text-black font-black">Date & Time</th>
-                                                        <th className="px-4 py-3 border-r border-black border-b-2 border-black text-black font-black">Service Domain</th>
-                                                        <th className="px-4 py-3 border-r border-black border-b-2 border-black text-black font-black">Ref / Txn ID</th>
-                                                        <th className="px-4 py-3 text-right border-r border-black border-b-2 border-black text-black font-black">Amount (₹)</th>
-                                                        <th className="px-4 py-3 text-center border-b-2 border-black text-black font-black">Status</th>
+                                                    <tr className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[12px] sm:text-[13px] font-bold text-[#1E3A5F] uppercase tracking-[0.3px]">
+                                                        <th className="px-5 py-3.5">#</th>
+                                                        <th className="px-5 py-3.5">Date & Time</th>
+                                                        <th className="px-5 py-3.5">Service Domain</th>
+                                                        <th className="px-5 py-3.5">Ref / Txn ID</th>
+                                                        <th className="px-5 py-3.5 text-right">Amount (₹)</th>
+                                                        <th className="px-5 py-3.5 text-center">Status</th>
                                                     </tr>
                                                 </thead>
-                                                <tbody className="divide-y divide-black text-xs">
+                                                <tbody className="divide-y divide-[#F1F5F9] text-xs">
                                                     {retailerBusinessTxns.length === 0 ? (
                                                         <tr>
-                                                            <td colSpan={6} className="py-12 text-center text-black border-b border-black">
-                                                                <Activity size={28} className="mx-auto text-black mb-2" />
-                                                                <p className="font-black uppercase tracking-wider">No Individual Transaction Records Logged Yet For This Retailer.</p>
+                                                            <td colSpan={6} className="py-14 text-center text-[#64748B]">
+                                                                <Activity size={28} className="mx-auto text-[#94A3B8] mb-2" />
+                                                                <p className="font-semibold text-[13px]">No Individual Transaction Records Logged Yet For This Retailer.</p>
                                                             </td>
                                                         </tr>
                                                     ) : (
                                                         retailerBusinessTxns.map((t, idx) => {
                                                             const sKey = categorizeTxn(t);
-                                                            const srv = BUSINESS_SERVICES.find(s => s.key === sKey) || { label: 'Service', icon: '⚡' };
+                                                            const srv = BUSINESS_SERVICES.find(s => s.key === sKey) || { label: 'Service', icon: '⚡', bgIcon: 'bg-slate-100' };
                                                             const rawAmt = t.amount ?? t.txnAmount ?? t.transactionAmount ?? 0;
                                                             const amt = parseFloat(String(rawAmt).replace(/,/g, '')) || 0;
 
                                                             return (
-                                                                <tr key={t.id || idx} className="hover:bg-slate-50 transition-colors border-b border-black">
-                                                                    <td className="px-4 py-3 text-black font-black border-r border-black">{idx + 1}</td>
-                                                                    <td className="px-4 py-3 border-r border-black font-mono text-xs text-black font-black">
+                                                                <tr key={t.id || idx} className="h-[60px] hover:bg-[#F8FAFC] transition-colors">
+                                                                    <td className="px-5 py-3 text-[#64748B] font-medium">{idx + 1}</td>
+                                                                    <td className="px-5 py-3 font-mono text-[12px] text-[#475569]">
                                                                         {fmtDateOnly(t.created_at || t.createdAt || t.date)} {fmtTime(t.created_at || t.createdAt || t.date)}
                                                                     </td>
-                                                                    <td className="px-4 py-3 border-r border-black font-black text-black">
-                                                                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-black border border-black text-xs font-black">
+                                                                    <td className="px-5 py-3 font-semibold text-[#0F172A]">
+                                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[#F1F5F9] text-[#0F172A] text-[12px]">
                                                                             <span>{srv.icon}</span> {srv.label}
                                                                         </span>
                                                                     </td>
-                                                                    <td className="px-4 py-3 border-r border-black font-mono text-xs text-black font-black">
+                                                                    <td className="px-5 py-3 font-mono text-[12px] text-[#64748B]">
                                                                         {t.id || t.order_id || t.txnid || '—'}
                                                                     </td>
-                                                                    <td className="px-4 py-3 text-right font-black font-mono text-sm text-black border-r border-black">
+                                                                    <td className="px-5 py-3 text-right font-bold font-mono text-[14px] text-[#0F172A]">
                                                                         {fmtWallet(amt)}
                                                                     </td>
-                                                                    <td className="px-4 py-3 text-center">
-                                                                        <span className="inline-block text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-slate-100 text-black border border-black">
+                                                                    <td className="px-5 py-3 text-center">
+                                                                        <span className="inline-block text-[11px] font-semibold uppercase px-2.5 py-0.5 rounded-full bg-[#ECFDF3] text-[#047857] border border-[#A7F3D0]">
                                                                             {t.status || 'SUCCESS'}
                                                                         </span>
                                                                     </td>
@@ -1506,19 +1575,19 @@ const Retailers = () => {
                                 )}
 
                                 {/* Modal Footer Quick Actions */}
-                                <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t-2 border-black text-black">
-                                    <div className="text-xs text-black font-black flex items-center gap-2">
-                                        <ShieldCheck size={15} className="text-black" />
+                                <div className="pt-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-[#E8EDF3] text-[#0F172A]">
+                                    <div className="text-[13px] text-[#64748B] font-medium flex items-center gap-2">
+                                        <ShieldCheck size={16} className="text-[#059669]" />
                                         <span>256-Bit Encrypted Financial Ledger · Real-Time Network Sync</span>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2.5">
                                         <button
                                             onClick={() => {
                                                 const retailer = businessModalRetailer;
                                                 setBusinessModalRetailer(null);
                                                 setSelectedRetailer(retailer);
                                             }}
-                                            className="px-4 py-2 rounded-xl border-2 border-black hover:bg-slate-100 text-black text-xs font-black transition-all cursor-pointer"
+                                            className="px-4 py-2 rounded-[10px] border border-[#CBD5E1] hover:bg-[#F8FAFC] text-[#0F172A] text-[13px] font-medium transition-colors cursor-pointer"
                                         >
                                             View Full Profile
                                         </button>
@@ -1528,7 +1597,7 @@ const Retailers = () => {
                                                 setBusinessModalRetailer(null);
                                                 handleEditRetailer(retailer);
                                             }}
-                                            className="px-4 py-2 rounded-xl border-2 border-black bg-black hover:bg-slate-800 text-white text-xs font-black transition-all cursor-pointer"
+                                            className="px-4 py-2 rounded-[10px] bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-[13px] font-semibold shadow-xs transition-colors cursor-pointer"
                                         >
                                             Edit Partner Details
                                         </button>
@@ -1539,7 +1608,6 @@ const Retailers = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
-
         </div>
     );
 };
