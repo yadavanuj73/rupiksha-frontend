@@ -5,14 +5,28 @@ const BASE_URL = rawApiUrl.endsWith('/api/v1') ? rawApiUrl : `${rawApiUrl}/api/v
 // Token helper — admin path always uses admin token, member imp-tab uses imp token
 const getToken = () => {
   const isAdminTab = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
-  if (isAdminTab) return localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token');
-  return localStorage.getItem('rupiksha_imp_token') || localStorage.getItem('rupiksha_token');
+  if (isAdminTab) {
+    const adminToken = localStorage.getItem('rupiksha_admin_token');
+    if (adminToken) return adminToken;
+    const savedUserStr = localStorage.getItem('rupiksha_user');
+    if (savedUserStr) {
+      try {
+        const u = JSON.parse(savedUserStr);
+        const roles = Array.isArray(u.roles) ? u.roles : [u.role];
+        const isAdmin = roles.some(r => ['ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(String(r).toUpperCase()));
+        if (isAdmin) return localStorage.getItem('rupiksha_token');
+      } catch {}
+    }
+    return localStorage.getItem('rupiksha_admin_token') || null;
+  }
+  return localStorage.getItem('rupiksha_imp_token') || localStorage.getItem('rupiksha_distributor_token') || localStorage.getItem('rupiksha_token');
 };
 const makeIdempotencyKey = () =>
   (globalThis.crypto?.randomUUID?.() || `idem_${Date.now()}_${Math.random().toString(16).slice(2)}`);
 
 // Common fetch with JWT
 export const apiFetch = async (endpoint, options = {}) => {
+  const isAdminTab = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
   const token = getToken();
   const res = await fetch(`${BASE_URL}${endpoint}`, {
     ...options,
@@ -22,8 +36,7 @@ export const apiFetch = async (endpoint, options = {}) => {
       ...options.headers,
     },
   });
-  if (res.status === 401) {
-    const isAdminTab = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+  if (res.status === 401 || (isAdminTab && res.status === 403)) {
     const isImp = !!localStorage.getItem("rupiksha_imp_token");
     if (!isAdminTab) {
       // Member tab: clear only relevant session keys and redirect

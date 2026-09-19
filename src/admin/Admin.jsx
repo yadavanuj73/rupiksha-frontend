@@ -57,7 +57,7 @@ const Admin = () => {
             ? currentUser.roles.map((r) => String(r || '').toUpperCase())
             : [String(currentUser?.role || '').toUpperCase()];
         const hasAdminRole = roles.some((r) =>
-            ['ADMIN', 'SUPER_DISTRIBUTOR', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(r)
+            ['ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(r)
         );
 
         if (!currentUser || !hasAdminRole) {

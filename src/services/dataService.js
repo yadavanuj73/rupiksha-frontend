@@ -22,12 +22,23 @@ async function safeJson(res, fallback = {}) {
 function getEffectiveToken() {
     const isAdminTab = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
     if (isAdminTab) {
-        return localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token');
+        const adminToken = localStorage.getItem('rupiksha_admin_token');
+        if (adminToken) return adminToken;
+        const savedUserStr = localStorage.getItem('rupiksha_user');
+        if (savedUserStr) {
+            try {
+                const u = JSON.parse(savedUserStr);
+                const roles = Array.isArray(u.roles) ? u.roles : [u.role];
+                const isAdmin = roles.some(r => ['ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(String(r).toUpperCase()));
+                if (isAdmin) return localStorage.getItem('rupiksha_token');
+            } catch {}
+        }
+        return localStorage.getItem('rupiksha_admin_token') || null;
     }
     return localStorage.getItem('rupiksha_imp_token') || localStorage.getItem('rupiksha_distributor_token') || localStorage.getItem('rupiksha_token') || localStorage.getItem('rupiksha_admin_token');
 }
 
-// ── Auth-aware fetch: clears stale token and redirects to login on 401 ──────
+// ── Auth-aware fetch: clears stale token and redirects to login on 401 / 403 ──────
 async function authFetch(url, options = {}) {
     const isAdminTab = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
     const token = getEffectiveToken();
@@ -36,14 +47,14 @@ async function authFetch(url, options = {}) {
         ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     };
     const res = await fetch(url, { ...options, headers });
-    if (res.status === 401) {
+    if (res.status === 401 || (isAdminTab && res.status === 403)) {
         if (!isAdminTab) {
             console.warn('[authFetch] 401 on', url, '— token expired, clearing session');
             localStorage.removeItem('rupiksha_token');
             localStorage.removeItem('rupiksha_user');
             window.location.href = '/login';
         } else {
-            console.warn('[authFetch] 401 on admin path', url, '— clearing admin session');
+            console.warn('[authFetch] 401/403 on admin path', url, '— clearing admin session');
             localStorage.removeItem('rupiksha_admin_token');
             localStorage.removeItem('rupiksha_admin_user');
             sessionStorage.removeItem('admin_auth');

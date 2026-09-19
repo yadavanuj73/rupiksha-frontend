@@ -98,7 +98,7 @@ const ProtectedRoute = ({ children, role, allowKycPending = false }) => {
 
         // Handle pseudoroles
         if (role === 'ADMIN_OR_EMPLOYEE') {
-            if (isEmployee || userRoles.includes('ADMIN') || userRoles.includes('SUPER_DISTRIBUTOR')) return children;
+            if (isEmployee || userRoles.includes('ADMIN')) return children;
         }
         
         if (role === 'DISTRIBUTOR') {

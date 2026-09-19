@@ -5,12 +5,31 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import dataService, { BACKEND_URL } from '../../services/dataService';
-const getToken = () => localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token');
+const getToken = () => {
+    const adminToken = localStorage.getItem('rupiksha_admin_token');
+    if (adminToken) return adminToken;
+    const savedUserStr = localStorage.getItem('rupiksha_user');
+    if (savedUserStr) {
+        try {
+            const u = JSON.parse(savedUserStr);
+            const roles = Array.isArray(u.roles) ? u.roles : [u.role];
+            const isAdmin = roles.some(r => ['ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(String(r).toUpperCase()));
+            if (isAdmin) return localStorage.getItem('rupiksha_token');
+        } catch {}
+    }
+    return localStorage.getItem('rupiksha_admin_token') || null;
+};
 
 async function authFetch(url, options = {}) {
     const token = getToken();
     const headers = { ...(options.headers || {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) };
     const res = await fetch(url, { ...options, headers });
+    if (res.status === 401 || res.status === 403) {
+        localStorage.removeItem('rupiksha_admin_token');
+        localStorage.removeItem('rupiksha_admin_user');
+        sessionStorage.removeItem('admin_auth');
+        window.location.href = '/admin-login';
+    }
     return res;
 }
 
