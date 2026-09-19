@@ -578,10 +578,25 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                 setReceiptOpen(true);
                 setSuccessMsg("Cash Deposit executed successfully!");
 
-                // Refresh wallet
-                if (refreshWallet) refreshWallet();
-                window.dispatchEvent(new Event('walletUpdated'));
-                window.dispatchEvent(new Event('dataUpdated'));
+                // Refresh wallet and record latest AEPS timestamp
+                try {
+                    const rawUser = localStorage.getItem('rupiksha_imp_user') || localStorage.getItem('rupiksha_user');
+                    const uObj = rawUser ? JSON.parse(rawUser) : {};
+                    const nowIso = new Date().toISOString();
+                    const existingMap = JSON.parse(localStorage.getItem('rupiksha_last_aeps_map') || '{}');
+                    const keys = [uObj.id, uObj.userId, uObj._id, uObj.username, uObj.mobile, uObj.partyCode, receipt.mobile].filter(Boolean);
+                    keys.forEach(k => {
+                        existingMap[String(k).trim().toLowerCase()] = nowIso;
+                    });
+                    localStorage.setItem('rupiksha_last_aeps_map', JSON.stringify(existingMap));
+
+                    if (refreshWallet) refreshWallet();
+                    window.dispatchEvent(new Event('walletUpdated'));
+                    window.dispatchEvent(new Event('dataUpdated'));
+                    window.dispatchEvent(new CustomEvent('membersUpdated', { detail: { type: 'AEPS_TRANSACTION', timestamp: nowIso } }));
+                } catch (we) {
+                    console.warn("Wallet refresh trigger:", we);
+                }
 
                 // Reset form
                 setFormData({
@@ -701,11 +716,22 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                 setReceiptOpen(true);
                 setSuccessMsg("Transaction executed successfully!");
                 
-                // Trigger real-time wallet balance sync for retailer
+                // Trigger real-time wallet balance sync for retailer and record latest AEPS timestamp
                 try {
+                    const rawUser = localStorage.getItem('rupiksha_imp_user') || localStorage.getItem('rupiksha_user');
+                    const uObj = rawUser ? JSON.parse(rawUser) : {};
+                    const nowIso = new Date().toISOString();
+                    const existingMap = JSON.parse(localStorage.getItem('rupiksha_last_aeps_map') || '{}');
+                    const keys = [uObj.id, uObj.userId, uObj._id, uObj.username, uObj.mobile, uObj.partyCode, receipt.mobile].filter(Boolean);
+                    keys.forEach(k => {
+                        existingMap[String(k).trim().toLowerCase()] = nowIso;
+                    });
+                    localStorage.setItem('rupiksha_last_aeps_map', JSON.stringify(existingMap));
+
                     if (refreshWallet) refreshWallet();
                     window.dispatchEvent(new Event('walletUpdated'));
                     window.dispatchEvent(new Event('dataUpdated'));
+                    window.dispatchEvent(new CustomEvent('membersUpdated', { detail: { type: 'AEPS_TRANSACTION', timestamp: nowIso } }));
                 } catch (we) {
                     console.warn("Wallet refresh trigger:", we);
                 }

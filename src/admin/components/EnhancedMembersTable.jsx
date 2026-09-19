@@ -205,6 +205,69 @@ const EnhancedMembersTable = () => {
                 return s;
             };
 
+            // Build lookup map for latest AEPS transaction timestamp (AEPS 1 or AEPS 2)
+            const aepsMap = {};
+
+            // 1. Read locally tracked AEPS records
+            try {
+                const rawAepsMap = localStorage.getItem('rupiksha_last_aeps_map');
+                if (rawAepsMap) {
+                    const parsed = JSON.parse(rawAepsMap);
+                    Object.entries(parsed).forEach(([k, v]) => {
+                        if (k && v) aepsMap[String(k).trim().toLowerCase()] = v;
+                    });
+                }
+            } catch {}
+
+            // 2. Scan dataService transactions for AEPS 1 and AEPS 2 activity
+            try {
+                const localTxns = dataService.getData().transactions || [];
+                localTxns.forEach(t => {
+                    const s = String(t.service || t.serviceType || t.type || t.operator || '').toUpperCase();
+                    const isAeps = s.includes('AEPS') || s.includes('CASH_WITHDRAWAL') || s.includes('BALANCE_INQUIRY') || s.includes('MINI_STATEMENT') || s.includes('AADHAAR_PAY') || s.includes('CDO');
+                    if (isAeps) {
+                        const dateStr = t.created_at || t.createdAt || t.date || t.timestamp || t.updated_at;
+                        if (dateStr) {
+                            const keys = [t.userId, t.user_id, t.username, t.mobile, t.partyCode, t.customerMobile, t.phone].filter(Boolean);
+                            keys.forEach(k => {
+                                const normK = String(k).trim().toLowerCase();
+                                if (!aepsMap[normK] || new Date(dateStr) > new Date(aepsMap[normK])) {
+                                    aepsMap[normK] = dateStr;
+                                }
+                            });
+                        }
+                    }
+                });
+            } catch {}
+
+            // 3. Scan live dashboard recent transactions
+            try {
+                const token = getToken();
+                const liveRes = await fetch(`${BACKEND_URL}/dashboard/live`, {
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                });
+                if (liveRes.ok) {
+                    const liveData = await liveRes.json();
+                    const txns = Array.isArray(liveData.recentTransactions) ? liveData.recentTransactions : [];
+                    txns.forEach(t => {
+                        const s = String(t.service || t.serviceType || t.type || t.category || '').toUpperCase();
+                        const isAeps = s.includes('AEPS') || s.includes('CASH_WITHDRAWAL') || s.includes('BALANCE_INQUIRY') || s.includes('MINI_STATEMENT') || s.includes('AADHAAR_PAY') || s.includes('CDO');
+                        if (isAeps) {
+                            const dateStr = t.created_at || t.createdAt || t.date || t.timestamp;
+                            if (dateStr) {
+                                const keys = [t.userId, t.user_id, t.username, t.mobile, t.partyCode, t.customerMobile].filter(Boolean);
+                                keys.forEach(k => {
+                                    const normK = String(k).trim().toLowerCase();
+                                    if (!aepsMap[normK] || new Date(dateStr) > new Date(aepsMap[normK])) {
+                                        aepsMap[normK] = dateStr;
+                                    }
+                                });
+                            }
+                        }
+                    });
+                }
+            } catch {}
+
             const list = (rawList || []).map((u, idx) => {
                 const rawRoles = Array.isArray(u.roles) ? u.roles : [];
                 const rolesArr = rawRoles
@@ -214,6 +277,20 @@ const EnhancedMembersTable = () => {
 
                 const primaryRole = normalizeRole(u.role) || rolesArr[0] || 'RETAILER';
                 const finalRoles = Array.from(new Set(rolesArr.length ? rolesArr : [primaryRole]));
+
+                // Resolve latest AEPS timestamp across direct backend properties and aggregated activity
+                const directAepsDate = u.lastAepsTxnDate || u.lastAepsDate || u.last_aeps_date || u.lastAeps || u.last_aeps || u.lastAepsTime || u.last_aeps_time || u.lastAepsTransaction || u.last_aeps_transaction || u.lastAepsAt || u.last_aeps_at || u.lastAeps1Date || u.lastAeps2Date || u.lastAeps1 || u.lastAeps2 || u.aepsLastTxn || u.aeps_last_txn || null;
+
+                const uKeys = [u.id, u._id, u.userId, u.username, u.mobile, u.phone, u.partyCode, u.userCode].filter(Boolean).map(k => String(k).trim().toLowerCase());
+
+                let resolvedAepsDate = directAepsDate;
+                uKeys.forEach(k => {
+                    if (aepsMap[k]) {
+                        if (!resolvedAepsDate || new Date(aepsMap[k]) > new Date(resolvedAepsDate)) {
+                            resolvedAepsDate = aepsMap[k];
+                        }
+                    }
+                });
 
                 return {
                     ...u,
@@ -226,6 +303,7 @@ const EnhancedMembersTable = () => {
                     role: primaryRole,
                     status: String(u.status || 'APPROVED').toUpperCase(),
                     walletBalance: parseFloat(String(u.walletBalance ?? u.balance ?? u.wallet?.balance ?? 0).replace(/,/g, '')) || 0,
+                    lastAepsTxnDate: resolvedAepsDate,
                     createdAt: u.createdAt || u.created_at || new Date().toISOString()
                 };
             }).filter(u => !(u.roles || []).includes('ADMIN') && u.username !== 'admin' && String(u.role).toUpperCase() !== 'ADMIN');
@@ -653,9 +731,18 @@ const EnhancedMembersTable = () => {
 
                                         {/* Last AEPS */}
                                         <td className="px-2 py-3 border-r border-slate-100 text-center text-[11px]">
-                                            {member.lastAepsTxnDate
-                                                ? <span className="text-emerald-600 font-semibold">{fmtDateOnly(member.lastAepsTxnDate)}</span>
-                                                : <span className="text-slate-300">Never</span>}
+                                            {member.lastAepsTxnDate ? (
+                                                <div className="flex flex-col gap-0.5 items-center">
+                                                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                                        {fmtDateOnly(member.lastAepsTxnDate)}
+                                                    </span>
+                                                    <span className="text-[10px] text-slate-400 font-mono">
+                                                        {fmtTime(member.lastAepsTxnDate)}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-slate-300 font-medium">Never</span>
+                                            )}
                                         </td>
 
                                         {/* Joined Date */}
@@ -925,7 +1012,7 @@ const EnhancedMembersTable = () => {
                                         {[
                                             { label: 'Balance',   val: `₹${selectedMember.walletBalance?.toLocaleString('en-IN') || '0'}` },
                                             { label: 'AEPS Txns', val: selectedMember.totalAepsTxnCount || 0 },
-                                            { label: 'Last AEPS', val: fmtDateOnly(selectedMember.lastAepsTxnDate) },
+                                            { label: 'Last AEPS', val: selectedMember.lastAepsTxnDate ? `${fmtDateOnly(selectedMember.lastAepsTxnDate)} ${fmtTime(selectedMember.lastAepsTxnDate)}` : 'Never' },
                                         ].map(({ label, val }) => (
                                             <div key={label} className="bg-slate-50 rounded-xl p-3">
                                                 <p className="text-[10px] font-semibold text-slate-400 uppercase mb-1">{label}</p>

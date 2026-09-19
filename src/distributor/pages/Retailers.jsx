@@ -231,24 +231,40 @@ const Retailers = () => {
 
                 return false;
             })
-            .map((u, idx) => ({
-                ...u,
-                id: u.id || u._id || u.userId || u.username || u.mobile || `ret-${idx}`,
-                fullName: u.fullName || u.name || (u.firstName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : (u.username || 'Retailer')),
-                username: u.username || u.mobile || `user_${idx}`,
-                mobile: u.mobile || u.phone || '—',
-                email: u.email || '—',
-                partyCode: u.partyCode || u.userCode || `RPRBR${70000 + idx}`,
-                role: 'RETAILER',
-                roles: ['RETAILER'],
-                status: normalizeStatus(u.status),
-                kycStatus: String(u.kycStatus || 'APPROVED').toUpperCase(),
-                walletBalance: parseFloat(String(u.walletBalance ?? u.balance ?? u.wallet?.balance ?? 0).replace(/,/g, '')) || 0,
-                addressLine1: u.shopAddress || u.address || u.permanentAddress || '—',
-                city: u.city || u.shopCity || '—',
-                stateName: u.state || u.shopState || 'BIHAR',
-                createdAt: u.createdAt || u.created_at || new Date().toISOString()
-            }));
+            .map((u, idx) => {
+                let localAepsMap = {};
+                try { localAepsMap = JSON.parse(localStorage.getItem('rupiksha_last_aeps_map') || '{}'); } catch {}
+                const directAepsDate = u.lastAepsTxnDate || u.lastAepsDate || u.last_aeps_date || u.lastAeps || u.last_aeps || u.lastAepsTime || u.last_aeps_time || u.lastAepsTransaction || u.last_aeps_transaction || u.lastAepsAt || u.last_aeps_at || u.lastAeps1Date || u.lastAeps2Date || u.lastAeps1 || u.lastAeps2 || null;
+                const uKeys = [u.id, u._id, u.userId, u.username, u.mobile, u.phone, u.partyCode, u.userCode].filter(Boolean).map(k => String(k).trim().toLowerCase());
+                let resolvedAepsDate = directAepsDate;
+                uKeys.forEach(k => {
+                    if (localAepsMap[k]) {
+                        if (!resolvedAepsDate || new Date(localAepsMap[k]) > new Date(resolvedAepsDate)) {
+                            resolvedAepsDate = localAepsMap[k];
+                        }
+                    }
+                });
+
+                return {
+                    ...u,
+                    id: u.id || u._id || u.userId || u.username || u.mobile || `ret-${idx}`,
+                    fullName: u.fullName || u.name || (u.firstName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : (u.username || 'Retailer')),
+                    username: u.username || u.mobile || `user_${idx}`,
+                    mobile: u.mobile || u.phone || '—',
+                    email: u.email || '—',
+                    partyCode: u.partyCode || u.userCode || `RPRBR${70000 + idx}`,
+                    role: 'RETAILER',
+                    roles: ['RETAILER'],
+                    status: normalizeStatus(u.status),
+                    kycStatus: String(u.kycStatus || 'APPROVED').toUpperCase(),
+                    walletBalance: parseFloat(String(u.walletBalance ?? u.balance ?? u.wallet?.balance ?? 0).replace(/,/g, '')) || 0,
+                    addressLine1: u.shopAddress || u.address || u.permanentAddress || '—',
+                    city: u.city || u.shopCity || '—',
+                    stateName: u.state || u.shopState || 'BIHAR',
+                    lastAepsTxnDate: resolvedAepsDate,
+                    createdAt: u.createdAt || u.created_at || new Date().toISOString()
+                };
+            });
 
         setRetailers(assigned);
         setLoading(false);
@@ -742,8 +758,19 @@ const Retailers = () => {
                                         </td>
 
                                         {/* Activity / Last AEPS */}
-                                        <td className="px-3 py-3 text-center text-slate-400 text-[11px] font-semibold border-r border-slate-100">
-                                            Never
+                                        <td className="px-3 py-3 text-center border-r border-slate-100 text-[11px]">
+                                            {member.lastAepsTxnDate ? (
+                                                <div className="flex flex-col gap-0.5 items-center">
+                                                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                                        {fmtDateOnly(member.lastAepsTxnDate)}
+                                                    </span>
+                                                    <span className="text-[10px] text-slate-400 font-mono">
+                                                        {fmtTime(member.lastAepsTxnDate)}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-slate-400 font-medium">Never</span>
+                                            )}
                                         </td>
 
                                         {/* Joined Date & Time */}
