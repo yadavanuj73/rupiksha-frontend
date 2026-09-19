@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { BACKEND_URL } from '../../services/dataService';
 import { sharedDataService } from '../../services/sharedDataService';
 import { dataService } from '../../services/dataService';
-import { payoutService } from '../../services/apiService';
+import { payoutService, transactionService } from '../../services/apiService';
 import { getDistributorPlan } from '../config/planConfig';
 import {
     CheckCircle2, XCircle, Clock, Search, RefreshCw, AlertTriangle,
@@ -356,12 +356,11 @@ const DistributorDashboard = () => {
             } catch (_) {}
 
             try {
-                const liveRes = await fetch(`${BACKEND_URL}/dashboard/live`);
-                if (liveRes.ok) {
-                    const liveJson = await liveRes.json();
-                    if (Array.isArray(liveJson.recentTransactions)) {
-                        allTxns.push(...liveJson.recentTransactions);
-                    }
+                const historyRes = await transactionService.getHistory({ size: 100 });
+                if (historyRes?.transactions && Array.isArray(historyRes.transactions)) {
+                    allTxns.push(...historyRes.transactions);
+                } else if (Array.isArray(historyRes)) {
+                    allTxns.push(...historyRes);
                 }
             } catch (_) {}
 

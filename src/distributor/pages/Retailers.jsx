@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { dataService, BACKEND_URL } from '../../services/dataService';
+import { transactionService } from '../../services/apiService';
 import { sharedDataService } from '../../services/sharedDataService';
 import NetworkRegistrationForm from '../../components/shared/NetworkRegistrationForm';
 
@@ -381,14 +382,13 @@ const Retailers = () => {
                 if (Array.isArray(userTxns)) txns.push(...userTxns);
             } catch (_) { }
 
-            // 2. Fetch from live dashboard recentTransactions if available
+            // 2. Fetch from transaction history
             try {
-                const liveRes = await fetch(`${BACKEND_URL}/dashboard/live`);
-                if (liveRes.ok) {
-                    const liveJson = await liveRes.json();
-                    if (Array.isArray(liveJson.recentTransactions)) {
-                        txns.push(...liveJson.recentTransactions);
-                    }
+                const historyRes = await transactionService.getHistory({ userId: member.id, size: 200 });
+                if (historyRes?.transactions && Array.isArray(historyRes.transactions)) {
+                    txns.push(...historyRes.transactions);
+                } else if (Array.isArray(historyRes)) {
+                    txns.push(...historyRes);
                 }
             } catch (_) { }
 
