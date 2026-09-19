@@ -1,11 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Users, Search, Download, UserPlus, ShieldCheck,
     CheckCircle2, AlertCircle, Clock, X, Eye, Wallet,
     Smartphone, Mail, MapPin, Zap, Package, Edit3, Trash2,
-    Lock, Save, Loader2, Image as ImageIcon
+    Lock, Save, Loader2, Image as ImageIcon, TrendingUp,
+    BarChart3, RefreshCw, IndianRupee, Layers, Check,
+    Building2, Landmark, Coins, ArrowUpRight, Award, Shield,
+    FileSpreadsheet, Activity, ChevronRight, Copy, CheckCheck
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { dataService, BACKEND_URL } from '../../services/dataService';
 import { sharedDataService } from '../../services/sharedDataService';
 import NetworkRegistrationForm from '../../components/shared/NetworkRegistrationForm';
@@ -36,6 +40,68 @@ const DEFAULT_SERVICES = [
     { serviceType: 'TICKET_SUPPORT', label: 'Ticket Support', enabled: true }
 ];
 
+const BUSINESS_SERVICES = [
+    { key: 'AEPS_1', label: 'AEPS 1', subLabel: 'Cash Withdrawal & Mini Statement', icon: '🏦', color: 'bg-blue-500', bgLight: 'bg-blue-50', text: 'text-blue-600', badge: 'bg-blue-100 text-blue-800' },
+    { key: 'AEPS_2', label: 'AEPS 2', subLabel: 'Aadhaar Pay & Cash Deposit', icon: '🏧', color: 'bg-indigo-500', bgLight: 'bg-indigo-50', text: 'text-indigo-600', badge: 'bg-indigo-100 text-indigo-800' },
+    { key: 'DMT', label: 'DMT (Money Transfer)', subLabel: 'Domestic Money Transfer & Remittance', icon: '💸', color: 'bg-emerald-500', bgLight: 'bg-emerald-50', text: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-800' },
+    { key: 'BBPS', label: 'BBPS & Utilities', subLabel: 'Electricity, Water, Gas & Bill Pay', icon: '💡', color: 'bg-amber-500', bgLight: 'bg-amber-50', text: 'text-amber-600', badge: 'bg-amber-100 text-amber-800' },
+    { key: 'RECHARGE', label: 'Mobile & DTH Recharge', subLabel: 'Prepaid, Postpaid & DTH Services', icon: '📱', color: 'bg-cyan-500', bgLight: 'bg-cyan-50', text: 'text-cyan-600', badge: 'bg-cyan-100 text-cyan-800' },
+    { key: 'MATM', label: 'Micro ATM (MATM)', subLabel: 'Card Withdrawal & Balance Inquiry', icon: '💳', color: 'bg-purple-500', bgLight: 'bg-purple-50', text: 'text-purple-600', badge: 'bg-purple-100 text-purple-800' },
+    { key: 'PAYOUT', label: 'Payout / Settlement', subLabel: 'Instant Bank Payout & Settlement', icon: '🏛️', color: 'bg-rose-500', bgLight: 'bg-rose-50', text: 'text-rose-600', badge: 'bg-rose-100 text-rose-800' },
+    { key: 'CMS', label: 'CMS (Cash Collection)', subLabel: 'Cash Management Services', icon: '📦', color: 'bg-teal-500', bgLight: 'bg-teal-50', text: 'text-teal-600', badge: 'bg-teal-100 text-teal-800' },
+    { key: 'OTHER', label: 'Other Services', subLabel: 'Wallet, QR & Miscellaneous', icon: '✨', color: 'bg-slate-500', bgLight: 'bg-slate-100', text: 'text-slate-600', badge: 'bg-slate-200 text-slate-800' }
+];
+
+const isTodayDate = (d) => {
+    if (!d) return false;
+    const dateObj = new Date(d);
+    if (isNaN(dateObj.getTime())) return false;
+    const now = new Date();
+    return dateObj.getDate() === now.getDate() &&
+        dateObj.getMonth() === now.getMonth() &&
+        dateObj.getFullYear() === now.getFullYear();
+};
+
+const isYesterdayDate = (d) => {
+    if (!d) return false;
+    const dateObj = new Date(d);
+    if (isNaN(dateObj.getTime())) return false;
+    const yest = new Date();
+    yest.setDate(yest.getDate() - 1);
+    return dateObj.getDate() === yest.getDate() &&
+        dateObj.getMonth() === yest.getMonth() &&
+        dateObj.getFullYear() === yest.getFullYear();
+};
+
+const categorizeTxn = (t) => {
+    const raw = String(t.service_type || t.serviceType || t.type || t.service || t.particulars || '').toUpperCase();
+    if (raw.includes('AEPS 2') || raw.includes('AEPS_2') || raw.includes('AADHAAR_PAY') || raw.includes('AADHAAR PAY') || raw.includes('DEPOSIT')) {
+        return 'AEPS_2';
+    }
+    if (raw.includes('AEPS') || raw.includes('CASH_WITHDRAWAL') || raw.includes('AEPS 1') || raw.includes('AEPS_1') || raw.includes('MINI_STATEMENT') || raw.includes('BALANCE')) {
+        return 'AEPS_1';
+    }
+    if (raw.includes('DMT') || raw.includes('TRANSFER') || raw.includes('REMIT') || raw.includes('MONEY_TRANSFER')) {
+        return 'DMT';
+    }
+    if (raw.includes('BBPS') || raw.includes('BILL') || raw.includes('ELECTRICITY') || raw.includes('GAS') || raw.includes('WATER') || raw.includes('FASTAG') || raw.includes('BHARAT')) {
+        return 'BBPS';
+    }
+    if (raw.includes('RECHARGE') || raw.includes('MOBILE') || raw.includes('DTH') || raw.includes('TOPUP')) {
+        return 'RECHARGE';
+    }
+    if (raw.includes('MATM') || raw.includes('MICRO_ATM') || raw.includes('MICRO ATM') || raw.includes('ATM')) {
+        return 'MATM';
+    }
+    if (raw.includes('PAYOUT') || raw.includes('SETTLEMENT')) {
+        return 'PAYOUT';
+    }
+    if (raw.includes('CMS') || raw.includes('CASH_MANAGEMENT') || raw.includes('COLLECTION')) {
+        return 'CMS';
+    }
+    return 'OTHER';
+};
+
 const Retailers = () => {
     const [retailers, setRetailers] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -49,6 +115,14 @@ const Retailers = () => {
     const [showSuccess, setShowSuccess] = useState(false);
     const [loading, setLoading] = useState(false);
     const [toast, setToast] = useState(null);
+
+    // Business Modal State
+    const [businessModalRetailer, setBusinessModalRetailer] = useState(null);
+    const [retailerBusinessTxns, setRetailerBusinessTxns] = useState([]);
+    const [loadingBusiness, setLoadingBusiness] = useState(false);
+    const [businessActiveTab, setBusinessActiveTab] = useState('matrix'); // 'matrix' | 'logs'
+    const [businessServiceSearch, setBusinessServiceSearch] = useState('');
+    const [copiedPartyCode, setCopiedPartyCode] = useState(false);
 
     const showToast = (msg, type = 'success') => {
         setToast({ msg, type });
@@ -96,7 +170,7 @@ const Retailers = () => {
         let cachedUsers = [];
         try {
             if (cachedUsersRaw) cachedUsers = JSON.parse(cachedUsersRaw);
-        } catch {}
+        } catch { }
 
         const userMap = new Map();
         [...allUsers, ...localUsers, ...cachedUsers].forEach((u) => {
@@ -267,6 +341,234 @@ const Retailers = () => {
         setEditingRetailer(null);
     };
 
+    // Open See Business Modal & load retailer transactions
+    const handleOpenBusinessModal = async (member) => {
+        setBusinessModalRetailer(member);
+        setLoadingBusiness(true);
+        setRetailerBusinessTxns([]);
+
+        try {
+            const memberIds = new Set([
+                String(member.id || '').toLowerCase(),
+                String(member._id || '').toLowerCase(),
+                String(member.userId || '').toLowerCase(),
+                String(member.username || '').toLowerCase(),
+                String(member.mobile || '').trim(),
+                String(member.partyCode || '').toLowerCase()
+            ].filter(Boolean));
+
+            let txns = [];
+
+            // 1. Fetch user transactions from backend API
+            try {
+                const userTxns = await dataService.getUserTransactions(member.id || member.userId);
+                if (Array.isArray(userTxns)) txns.push(...userTxns);
+            } catch (_) { }
+
+            // 2. Fetch from live dashboard recentTransactions if available
+            try {
+                const liveRes = await fetch(`${BACKEND_URL}/dashboard/live`);
+                if (liveRes.ok) {
+                    const liveJson = await liveRes.json();
+                    if (Array.isArray(liveJson.recentTransactions)) {
+                        txns.push(...liveJson.recentTransactions);
+                    }
+                }
+            } catch (_) { }
+
+            // 3. Fetch from commission history for this retailer
+            try {
+                const commRes = await fetch(`${BACKEND_URL}/retailer/commissions/history?search=${encodeURIComponent(member.partyCode || member.username || member.mobile || '')}&size=200`, {
+                    headers: { 'Authorization': `Bearer ${getToken()}` }
+                });
+                if (commRes.ok) {
+                    const commJson = await commRes.json();
+                    const commItems = commJson?.content || (Array.isArray(commJson) ? commJson : []);
+                    commItems.forEach(ci => {
+                        txns.push({
+                            id: ci.id || ci.commissionReference,
+                            service_type: ci.serviceType,
+                            amount: ci.transactionAmount || ci.amount,
+                            created_at: ci.createdAt,
+                            partyCode: ci.retailerPartyCode || member.partyCode,
+                            userId: ci.retailerId || member.id
+                        });
+                    });
+                }
+            } catch (_) { }
+
+            // 4. Incorporate local storage transactions
+            const localTxns = dataService.getData().transactions || [];
+            txns.push(...localTxns);
+
+            // Deduplicate & filter strictly to this retailer
+            const memberPartyCode = member.partyCode && member.partyCode !== '—' ? String(member.partyCode).trim().toUpperCase() : null;
+            const txnMap = new Map();
+
+            txns.forEach(t => {
+                if (!t) return;
+                const tUser = String(t.user_id || t.userId || t.userName || t.user_name || t.partyCode || t.mobile || '').trim().toLowerCase();
+                const tPartyCode = t.partyCode ? String(t.partyCode).trim().toUpperCase() : '';
+
+                const isThisRetailer = (tUser && memberIds.has(tUser)) || (memberPartyCode && tPartyCode && tPartyCode === memberPartyCode);
+
+                if (isThisRetailer) {
+                    const idKey = t.id || t.order_id || t.txnid || `${t.amount}_${t.created_at || t.date}_${tUser}`;
+                    if (!txnMap.has(idKey)) txnMap.set(idKey, t);
+                }
+            });
+
+            const memberTxnList = Array.from(txnMap.values()).sort((a, b) => {
+                const dA = new Date(a.created_at || a.date || 0);
+                const dB = new Date(b.created_at || b.date || 0);
+                return dB - dA;
+            });
+
+            setRetailerBusinessTxns(memberTxnList);
+        } catch (err) {
+            console.error('Error loading retailer business:', err);
+        } finally {
+            setLoadingBusiness(false);
+        }
+    };
+
+    // Calculate category-wise business statistics
+    const businessStats = useMemo(() => {
+        const stats = {};
+        BUSINESS_SERVICES.forEach(s => {
+            stats[s.key] = {
+                todayAmt: 0,
+                todayCount: 0,
+                yesterdayAmt: 0,
+                yesterdayCount: 0,
+                lifetimeAmt: 0,
+                lifetimeCount: 0
+            };
+        });
+
+        let totalTodayAmt = 0;
+        let totalTodayCount = 0;
+        let totalYesterdayAmt = 0;
+        let totalYesterdayCount = 0;
+        let totalLifetimeAmt = 0;
+        let totalLifetimeCount = 0;
+
+        retailerBusinessTxns.forEach(t => {
+            // Exclude explicitly failed or rejected transactions from business volume
+            const status = String(t.status || t.txnStatus || 'SUCCESS').trim().toUpperCase();
+            if (status === 'FAILED' || status === 'REJECTED' || status === 'CANCELLED' || status === 'DECLINED') {
+                return;
+            }
+
+            const sKey = categorizeTxn(t);
+            const rawAmt = t.amount ?? t.txnAmount ?? t.transactionAmount ?? 0;
+            const amt = Math.abs(parseFloat(String(rawAmt).replace(/,/g, '')) || 0);
+            const txnDate = t.created_at || t.createdAt || t.date;
+
+            // Lifetime
+            if (stats[sKey]) {
+                stats[sKey].lifetimeAmt += amt;
+                stats[sKey].lifetimeCount += 1;
+            }
+            totalLifetimeAmt += amt;
+            totalLifetimeCount += 1;
+
+            // Today
+            if (isTodayDate(txnDate)) {
+                if (stats[sKey]) {
+                    stats[sKey].todayAmt += amt;
+                    stats[sKey].todayCount += 1;
+                }
+                totalTodayAmt += amt;
+                totalTodayCount += 1;
+            }
+
+            // Yesterday
+            if (isYesterdayDate(txnDate)) {
+                if (stats[sKey]) {
+                    stats[sKey].yesterdayAmt += amt;
+                    stats[sKey].yesterdayCount += 1;
+                }
+                totalYesterdayAmt += amt;
+                totalYesterdayCount += 1;
+            }
+        });
+
+        return {
+            byService: stats,
+            totals: {
+                todayAmt: totalTodayAmt,
+                todayCount: totalTodayCount,
+                yesterdayAmt: totalYesterdayAmt,
+                yesterdayCount: totalYesterdayCount,
+                lifetimeAmt: totalLifetimeAmt,
+                lifetimeCount: totalLifetimeCount
+            }
+        };
+    }, [retailerBusinessTxns]);
+
+    // Export Category-wise Business Matrix to Excel
+    const handleExportBusinessExcel = () => {
+        if (!businessModalRetailer) return;
+        try {
+            const rows = BUSINESS_SERVICES.map(srv => {
+                const stat = businessStats.byService[srv.key] || { todayAmt: 0, todayCount: 0, yesterdayAmt: 0, yesterdayCount: 0, lifetimeAmt: 0, lifetimeCount: 0 };
+                return {
+                    "Service Name": srv.label,
+                    "Service Category": srv.subLabel,
+                    "Today's Volume (₹)": stat.todayAmt,
+                    "Today Txn Count": stat.todayCount,
+                    "Yesterday's Volume (₹)": stat.yesterdayAmt,
+                    "Yesterday Txn Count": stat.yesterdayCount,
+                    "Lifetime Volume (₹)": stat.lifetimeAmt,
+                    "Lifetime Txn Count": stat.lifetimeCount
+                };
+            });
+
+            // Summary row
+            rows.push({
+                "Service Name": "GRAND TOTAL BUSINESS",
+                "Service Category": "All Monitored Services Aggregated",
+                "Today's Volume (₹)": businessStats.totals.todayAmt,
+                "Today Txn Count": businessStats.totals.todayCount,
+                "Yesterday's Volume (₹)": businessStats.totals.yesterdayAmt,
+                "Yesterday Txn Count": businessStats.totals.yesterdayCount,
+                "Lifetime Volume (₹)": businessStats.totals.lifetimeAmt,
+                "Lifetime Txn Count": businessStats.totals.lifetimeCount
+            });
+
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Business_Analytics");
+            const fileName = `Rupiksha_Business_${businessModalRetailer.partyCode || businessModalRetailer.username}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+            showToast('Business report downloaded successfully');
+        } catch (err) {
+            console.error('Failed to export Excel:', err);
+            showToast('Failed to export report', 'error');
+        }
+    };
+
+    // Copy Party Code Helper
+    const handleCopyPartyCode = (code) => {
+        if (!code) return;
+        navigator.clipboard.writeText(code);
+        setCopiedPartyCode(true);
+        setTimeout(() => setCopiedPartyCode(false), 2000);
+        showToast('Party Code copied to clipboard');
+    };
+
+    // Filtered services for the matrix search
+    const filteredBusinessServices = useMemo(() => {
+        const q = businessServiceSearch.trim().toLowerCase();
+        if (!q) return BUSINESS_SERVICES;
+        return BUSINESS_SERVICES.filter(s =>
+            s.label.toLowerCase().includes(q) ||
+            s.subLabel.toLowerCase().includes(q) ||
+            s.key.toLowerCase().includes(q)
+        );
+    }, [businessServiceSearch]);
+
     // Delete Member
     const handleDeleteRetailer = (member) => {
         if (!window.confirm(`Are you sure you want to remove retailer ${member.fullName} from your network?`)) return;
@@ -291,7 +593,7 @@ const Retailers = () => {
 
     return (
         <div className="p-4 md:p-6 max-w-[1600px] mx-auto space-y-5 font-['Inter',sans-serif]">
-            
+
             {/* Toast alert */}
             <AnimatePresence>
                 {toast && (
@@ -299,9 +601,8 @@ const Retailers = () => {
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
-                        className={`fixed top-20 right-6 z-[200] px-4 py-2.5 rounded-xl shadow-xl text-xs font-black text-white flex items-center gap-2 ${
-                            toast.type === 'error' ? 'bg-rose-600' : 'bg-emerald-600'
-                        }`}
+                        className={`fixed top-20 right-6 z-[200] px-4 py-2.5 rounded-xl shadow-xl text-xs font-black text-white flex items-center gap-2 ${toast.type === 'error' ? 'bg-rose-600' : 'bg-emerald-600'
+                            }`}
                     >
                         <CheckCircle2 size={14} />
                         <span>{toast.msg}</span>
@@ -367,7 +668,7 @@ const Retailers = () => {
             ══════════════════════════════════════════ */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                 <div className="w-full overflow-x-auto">
-                    <table className="w-full border-collapse text-left min-w-[900px]" style={{ tableLayout: 'auto' }}>
+                    <table className="w-full border-collapse text-left min-w-[960px]" style={{ tableLayout: 'auto' }}>
                         <thead>
                             <tr className="bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 text-[11px] font-black text-slate-500 uppercase tracking-wider">
                                 <th className="px-2.5 py-3 text-center border-r border-slate-200 w-10">#</th>
@@ -378,21 +679,22 @@ const Retailers = () => {
                                 <th className="px-3 py-3 text-left border-r border-slate-200">Email</th>
                                 <th className="px-3 py-3 text-right border-r border-slate-200">Wallet</th>
                                 <th className="px-3 py-3 text-center border-r border-slate-200">Activity</th>
-                                <th className="px-3 py-3 text-center">Joined</th>
+                                <th className="px-3 py-3 text-center border-r border-slate-200">Joined</th>
+                                <th className="px-3 py-3 text-center">Action</th>
                             </tr>
                         </thead>
 
                         <tbody className="divide-y divide-slate-100 text-xs">
                             {loading ? (
                                 <tr>
-                                    <td colSpan={9} className="py-14 text-center">
+                                    <td colSpan={10} className="py-14 text-center">
                                         <Loader2 className="animate-spin mx-auto text-blue-500" size={28} />
                                         <p className="text-xs text-slate-400 mt-2 font-semibold">Loading retailers…</p>
                                     </td>
                                 </tr>
                             ) : filtered.length === 0 ? (
                                 <tr>
-                                    <td colSpan={9} className="py-14 text-center">
+                                    <td colSpan={10} className="py-14 text-center">
                                         <Users size={32} className="text-slate-300 mx-auto" />
                                         <p className="text-xs text-slate-400 mt-2 font-bold uppercase tracking-wider">No retailers found in network</p>
                                     </td>
@@ -445,9 +747,37 @@ const Retailers = () => {
                                         </td>
 
                                         {/* Joined Date & Time */}
-                                        <td className="px-3 py-3 text-center text-[11px] leading-tight">
+                                        <td className="px-3 py-3 text-center text-[11px] leading-tight border-r border-slate-100">
                                             <div className="font-bold text-slate-700">{fmtDateOnly(member.createdAt)}</div>
                                             <div className="text-[10px] text-slate-400 font-mono mt-0.5">{fmtTime(member.createdAt)}</div>
+                                        </td>
+
+                                        {/* Action Column with See Business Button */}
+                                        <td className="px-3 py-3 text-center">
+                                            <div className="flex items-center justify-center gap-1.5">
+                                                <button
+                                                    onClick={() => handleOpenBusinessModal(member)}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-black shadow-md shadow-blue-500/20 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+                                                    title={`View ${member.fullName}'s Category-wise Business Transactions`}
+                                                >
+                                                    <TrendingUp size={13} />
+                                                    <span>See Business</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => setSelectedRetailer(member)}
+                                                    className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-all"
+                                                    title="View Profile Details"
+                                                >
+                                                    <Eye size={14} />
+                                                </button>
+                                                <button
+                                                    onClick={() => setEditingRetailer(member)}
+                                                    className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                                    title="Edit Details"
+                                                >
+                                                    <Edit3 size={14} />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 );
@@ -775,11 +1105,10 @@ const Retailers = () => {
                                         </div>
                                         <button
                                             onClick={() => handleToggleService(s.serviceType)}
-                                            className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${
-                                                s.enabled
+                                            className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${s.enabled
                                                     ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
                                                     : 'bg-slate-200 text-slate-500'
-                                            }`}
+                                                }`}
                                         >
                                             {s.enabled ? 'ACTIVE' : 'DISABLED'}
                                         </button>
@@ -798,8 +1127,442 @@ const Retailers = () => {
                 )}
             </AnimatePresence>
 
+            {/* ── SEE BUSINESS MODAL (INDUSTRY FINTECH GRADE) ── */}
+            <AnimatePresence>
+                {businessModalRetailer && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[110] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-2.5 sm:p-4"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.94, opacity: 0, y: 25 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.94, opacity: 0, y: 25 }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                            className="bg-white w-full max-w-5xl rounded-[2.5rem] overflow-hidden shadow-2xl max-h-[94vh] flex flex-col border border-slate-100/80"
+                        >
+                            {/* Modal Header Bar */}
+                            <div className="px-5 sm:px-7 py-4 sm:py-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white shrink-0 relative overflow-hidden">
+                                <div className="absolute right-0 top-0 bottom-0 w-80 bg-gradient-to-l from-blue-600/15 via-indigo-600/10 to-transparent pointer-events-none" />
+
+                                <div className="flex items-center gap-3.5 relative z-10">
+                                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-500 to-indigo-500 text-white font-black text-xl flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0 ring-2 ring-white/10">
+                                        {(businessModalRetailer.fullName || 'R').charAt(0).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <h3 className="text-base sm:text-lg font-black text-white tracking-tight">
+                                                {businessModalRetailer.fullName}
+                                            </h3>
+                                            <button
+                                                onClick={() => handleCopyPartyCode(businessModalRetailer.partyCode)}
+                                                className="inline-flex items-center gap-1 text-[10px] font-mono font-bold bg-white/15 hover:bg-white/25 text-blue-200 px-2.5 py-0.5 rounded-lg border border-white/10 transition-all cursor-pointer"
+                                                title="Click to copy Party Code"
+                                            >
+                                                <span>{businessModalRetailer.partyCode}</span>
+                                                {copiedPartyCode ? <CheckCheck size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                                            </button>
+                                            <span className="text-[9px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
+                                                <ShieldCheck size={10} /> Active Network Partner
+                                            </span>
+                                        </div>
+                                        <p className="text-[11px] text-slate-300 font-medium mt-1 flex items-center gap-3 flex-wrap">
+                                            <span>📱 {businessModalRetailer.mobile}</span>
+                                            <span className="text-white/30">•</span>
+                                            <span className="flex items-center gap-1 text-emerald-300 font-semibold">
+                                                <Wallet size={12} /> Float: <strong className="text-white font-mono font-bold">{fmtWallet(businessModalRetailer.walletBalance)}</strong>
+                                            </span>
+                                            <span className="text-white/30">•</span>
+                                            <span>📍 {businessModalRetailer.city || 'BIHAR'}, {businessModalRetailer.stateName || 'INDIA'}</span>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 relative z-10">
+                                    <button
+                                        onClick={handleExportBusinessExcel}
+                                        className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl border border-white/10 shadow-sm transition-all flex items-center gap-1.5 text-xs font-bold active:scale-95"
+                                        title="Export Category Breakdown to Excel"
+                                    >
+                                        <FileSpreadsheet size={14} className="text-emerald-400" />
+                                        <span className="hidden md:inline">Export Excel</span>
+                                    </button>
+                                    <button
+                                        onClick={() => handleOpenBusinessModal(businessModalRetailer)}
+                                        disabled={loadingBusiness}
+                                        className="p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl border border-white/10 shadow-sm transition-all flex items-center gap-1.5 text-xs font-bold active:scale-95"
+                                        title="Refresh live transactions"
+                                    >
+                                        <RefreshCw size={14} className={loadingBusiness ? 'animate-spin text-blue-400' : 'text-blue-300'} />
+                                        <span className="hidden sm:inline">Sync</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setBusinessModalRetailer(null)}
+                                        className="p-2.5 text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+                                    >
+                                        <X size={20} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Modal Body Content */}
+                            <div className="p-4 sm:p-6 overflow-y-auto space-y-5 text-xs bg-slate-50/40">
+
+                                {/* Top 3 Fintech KPI Pillars */}
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                                    {/* Today Card */}
+                                    <div className="bg-white rounded-2xl p-4 border border-emerald-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+                                        <div className="absolute -right-3 -bottom-3 text-emerald-50 text-6xl font-black select-none pointer-events-none">₹</div>
+                                        <div className="flex items-center justify-between relative z-10">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 flex items-center gap-1.5">
+                                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                                Today's Turnover
+                                            </span>
+                                            <span className="text-[10px] font-black font-mono bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                                {businessStats.totals.todayCount} {businessStats.totals.todayCount === 1 ? 'Txn' : 'Txns'}
+                                            </span>
+                                        </div>
+                                        <p className="text-2xl sm:text-3xl font-black font-mono text-slate-900 mt-2.5 tracking-tight relative z-10">
+                                            {fmtWallet(businessStats.totals.todayAmt)}
+                                        </p>
+                                        <p className="text-[10px] text-slate-400 font-medium mt-1 relative z-10 flex items-center gap-1">
+                                            <Clock size={11} className="text-emerald-500" />
+                                            <span>Current day 24-hr settlement window</span>
+                                        </p>
+                                    </div>
+
+                                    {/* Yesterday Card */}
+                                    <div className="bg-white rounded-2xl p-4 border border-amber-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+                                        <div className="absolute -right-3 -bottom-3 text-amber-50 text-6xl font-black select-none pointer-events-none">₹</div>
+                                        <div className="flex items-center justify-between relative z-10">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 flex items-center gap-1.5">
+                                                <TrendingUp size={12} className="text-amber-500" />
+                                                Yesterday's Turnover
+                                            </span>
+                                            <span className="text-[10px] font-black font-mono bg-amber-50 text-amber-700 px-2.5 py-0.5 rounded-full border border-amber-200">
+                                                {businessStats.totals.yesterdayCount} {businessStats.totals.yesterdayCount === 1 ? 'Txn' : 'Txns'}
+                                            </span>
+                                        </div>
+                                        <p className="text-2xl sm:text-3xl font-black font-mono text-slate-900 mt-2.5 tracking-tight relative z-10">
+                                            {fmtWallet(businessStats.totals.yesterdayAmt)}
+                                        </p>
+                                        <p className="text-[10px] text-slate-400 font-medium mt-1 relative z-10 flex items-center gap-1">
+                                            <Clock size={11} className="text-amber-500" />
+                                            <span>Previous day completed business volume</span>
+                                        </p>
+                                    </div>
+
+                                    {/* Lifetime Card */}
+                                    <div className="bg-white rounded-2xl p-4 border border-indigo-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+                                        <div className="absolute -right-3 -bottom-3 text-indigo-50 text-6xl font-black select-none pointer-events-none">₹</div>
+                                        <div className="flex items-center justify-between relative z-10">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 flex items-center gap-1.5">
+                                                <Award size={12} className="text-indigo-500" />
+                                                Lifetime Network GMV
+                                            </span>
+                                            <span className="text-[10px] font-black font-mono bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full border border-indigo-200">
+                                                {businessStats.totals.lifetimeCount} {businessStats.totals.lifetimeCount === 1 ? 'Txn' : 'Txns'}
+                                            </span>
+                                        </div>
+                                        <p className="text-2xl sm:text-3xl font-black font-mono text-slate-900 mt-2.5 tracking-tight relative z-10">
+                                            {fmtWallet(businessStats.totals.lifetimeAmt)}
+                                        </p>
+                                        <p className="text-[10px] text-slate-400 font-medium mt-1 relative z-10 flex items-center gap-1">
+                                            <ShieldCheck size={11} className="text-indigo-500" />
+                                            <span>All-time processed transactional volume</span>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Tab Controls + Table Header Bar */}
+                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm">
+                                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                                        <button
+                                            onClick={() => setBusinessActiveTab('matrix')}
+                                            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 ${businessActiveTab === 'matrix'
+                                                    ? 'bg-white text-blue-600 shadow-sm'
+                                                    : 'text-slate-500 hover:text-slate-800'
+                                                }`}
+                                        >
+                                            <Layers size={13} />
+                                            <span>Service Matrix ({BUSINESS_SERVICES.length})</span>
+                                        </button>
+                                        <button
+                                            onClick={() => setBusinessActiveTab('logs')}
+                                            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 ${businessActiveTab === 'logs'
+                                                    ? 'bg-white text-blue-600 shadow-sm'
+                                                    : 'text-slate-500 hover:text-slate-800'
+                                                }`}
+                                        >
+                                            <Activity size={13} />
+                                            <span>Live Audit Stream ({retailerBusinessTxns.length})</span>
+                                        </button>
+                                    </div>
+
+                                    {businessActiveTab === 'matrix' && (
+                                        <div className="relative flex-1 max-w-xs">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
+                                            <input
+                                                type="text"
+                                                placeholder="Filter services (e.g. AEPS, DMT, BBPS)..."
+                                                value={businessServiceSearch}
+                                                onChange={(e) => setBusinessServiceSearch(e.target.value)}
+                                                className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400 font-medium"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* TAB 1: CATEGORY MATRIX TABLE */}
+                                {businessActiveTab === 'matrix' && (
+                                    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                                        <div className="w-full overflow-x-auto">
+                                            <table className="w-full border-collapse text-left min-w-[760px]">
+                                                <thead>
+                                                    <tr className="bg-gradient-to-r from-slate-100 to-slate-100 border-b-2 border-slate-200 text-[11px] font-black text-slate-600 uppercase tracking-wider">
+                                                        <th className="px-4 py-3 text-left border-r border-slate-200">Services</th>
+                                                        <th className="px-4 py-3 text-right border-r border-slate-200">Today's Transaction</th>
+                                                        <th className="px-4 py-3 text-right border-r border-slate-200">Yesterday Transaction</th>
+                                                        <th className="px-4 py-3 text-right">Lifetime Transaction</th>
+                                                    </tr>
+                                                </thead>
+
+                                                <tbody className="divide-y divide-slate-100 text-xs">
+                                                    {loadingBusiness ? (
+                                                        <tr>
+                                                            <td colSpan={4} className="py-14 text-center">
+                                                                <Loader2 className="animate-spin mx-auto text-blue-500" size={28} />
+                                                                <p className="text-xs text-slate-400 mt-2 font-bold uppercase tracking-wider">Aggregating live category transactions…</p>
+                                                            </td>
+                                                        </tr>
+                                                    ) : filteredBusinessServices.length === 0 ? (
+                                                        <tr>
+                                                            <td colSpan={4} className="py-12 text-center text-slate-400">
+                                                                <p className="font-semibold">No services matching "{businessServiceSearch}"</p>
+                                                            </td>
+                                                        </tr>
+                                                    ) : (
+                                                        filteredBusinessServices.map((srv) => {
+                                                            const stat = businessStats.byService[srv.key] || {
+                                                                todayAmt: 0, todayCount: 0,
+                                                                yesterdayAmt: 0, yesterdayCount: 0,
+                                                                lifetimeAmt: 0, lifetimeCount: 0
+                                                            };
+
+                                                            return (
+                                                                <tr key={srv.key} className="hover:bg-blue-50/20 transition-colors">
+                                                                    {/* Service Column */}
+                                                                    <td className="px-4 py-3.5 border-r border-slate-100">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <span className="text-2xl shrink-0">{srv.icon}</span>
+                                                                            <div>
+                                                                                <p className="font-black text-slate-800 text-[13px] leading-tight">
+                                                                                    {srv.label}
+                                                                                </p>
+                                                                                <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                                                                                    {srv.subLabel}
+                                                                                </p>
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+
+                                                                    {/* Today's Transaction Column */}
+                                                                    <td className="px-4 py-3.5 text-right border-r border-slate-100 font-mono">
+                                                                        <div className={`font-black text-[13px] ${stat.todayAmt > 0 ? 'text-emerald-700' : 'text-slate-800'}`}>
+                                                                            {fmtWallet(stat.todayAmt)}
+                                                                        </div>
+                                                                        <div className="mt-1">
+                                                                            <span className={`inline-block text-[9px] font-black px-2.5 py-0.5 rounded-full ${stat.todayCount > 0
+                                                                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-xs'
+                                                                                    : 'bg-slate-100 text-slate-400'
+                                                                                }`}>
+                                                                                {stat.todayCount} {stat.todayCount === 1 ? 'txn' : 'txns'}
+                                                                            </span>
+                                                                        </div>
+                                                                    </td>
+
+                                                                    {/* Yesterday Transaction Column */}
+                                                                    <td className="px-4 py-3.5 text-right border-r border-slate-100 font-mono">
+                                                                        <div className={`font-black text-[13px] ${stat.yesterdayAmt > 0 ? 'text-amber-700' : 'text-slate-800'}`}>
+                                                                            {fmtWallet(stat.yesterdayAmt)}
+                                                                        </div>
+                                                                        <div className="mt-1">
+                                                                            <span className={`inline-block text-[9px] font-black px-2.5 py-0.5 rounded-full ${stat.yesterdayCount > 0
+                                                                                    ? 'bg-amber-100 text-amber-800 border border-amber-200 shadow-xs'
+                                                                                    : 'bg-slate-100 text-slate-400'
+                                                                                }`}>
+                                                                                {stat.yesterdayCount} {stat.yesterdayCount === 1 ? 'txn' : 'txns'}
+                                                                            </span>
+                                                                        </div>
+                                                                    </td>
+
+                                                                    {/* Lifetime Transaction Column */}
+                                                                    <td className="px-4 py-3.5 text-right font-mono">
+                                                                        <div className={`font-black text-[13px] ${stat.lifetimeAmt > 0 ? 'text-indigo-700' : 'text-slate-900'}`}>
+                                                                            {fmtWallet(stat.lifetimeAmt)}
+                                                                        </div>
+                                                                        <div className="mt-1">
+                                                                            <span className={`inline-block text-[9px] font-black px-2.5 py-0.5 rounded-full ${stat.lifetimeCount > 0
+                                                                                    ? 'bg-indigo-100 text-indigo-800 border border-indigo-200 shadow-xs'
+                                                                                    : 'bg-slate-100 text-slate-400'
+                                                                                }`}>
+                                                                                {stat.lifetimeCount} {stat.lifetimeCount === 1 ? 'txn' : 'txns'}
+                                                                            </span>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })
+                                                    )}
+                                                </tbody>
+
+                                                {/* Grand Total Footer */}
+                                                <tfoot>
+                                                    <tr className="bg-gradient-to-r from-slate-100 via-slate-100 to-slate-200 border-t-2 border-slate-300 font-black text-slate-800">
+                                                        <td className="px-4 py-4 border-r border-slate-300">
+                                                            <div className="flex items-center gap-2">
+                                                                <Award size={18} className="text-blue-600" />
+                                                                <div>
+                                                                    <span className="text-xs uppercase tracking-wider block">Grand Total Business</span>
+                                                                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest block">Consolidated Category Volume</span>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-4 text-right border-r border-slate-300 font-mono">
+                                                            <div className="text-sm sm:text-base font-black text-emerald-800">
+                                                                {fmtWallet(businessStats.totals.todayAmt)}
+                                                            </div>
+                                                            <span className="text-[10px] font-bold text-emerald-600">
+                                                                {businessStats.totals.todayCount} total txns
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-4 text-right border-r border-slate-300 font-mono">
+                                                            <div className="text-sm sm:text-base font-black text-amber-800">
+                                                                {fmtWallet(businessStats.totals.yesterdayAmt)}
+                                                            </div>
+                                                            <span className="text-[10px] font-bold text-amber-600">
+                                                                {businessStats.totals.yesterdayCount} total txns
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-4 text-right font-mono">
+                                                            <div className="text-sm sm:text-base font-black text-blue-900">
+                                                                {fmtWallet(businessStats.totals.lifetimeAmt)}
+                                                            </div>
+                                                            <span className="text-[10px] font-bold text-blue-700">
+                                                                {businessStats.totals.lifetimeCount} total txns
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* TAB 2: LIVE AUDIT STREAM */}
+                                {businessActiveTab === 'logs' && (
+                                    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                                        <div className="w-full overflow-x-auto">
+                                            <table className="w-full border-collapse text-left min-w-[700px]">
+                                                <thead>
+                                                    <tr className="bg-slate-100 border-b border-slate-200 text-[11px] font-black text-slate-600 uppercase tracking-wider">
+                                                        <th className="px-4 py-3 border-r border-slate-200">#</th>
+                                                        <th className="px-4 py-3 border-r border-slate-200">Date & Time</th>
+                                                        <th className="px-4 py-3 border-r border-slate-200">Service Domain</th>
+                                                        <th className="px-4 py-3 border-r border-slate-200">Ref / Txn ID</th>
+                                                        <th className="px-4 py-3 text-right border-r border-slate-200">Amount (₹)</th>
+                                                        <th className="px-4 py-3 text-center">Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100 text-xs">
+                                                    {retailerBusinessTxns.length === 0 ? (
+                                                        <tr>
+                                                            <td colSpan={6} className="py-12 text-center text-slate-400">
+                                                                <Activity size={28} className="mx-auto text-slate-300 mb-2" />
+                                                                <p className="font-bold uppercase tracking-wider">No individual transaction records logged yet for this retailer.</p>
+                                                            </td>
+                                                        </tr>
+                                                    ) : (
+                                                        retailerBusinessTxns.map((t, idx) => {
+                                                            const sKey = categorizeTxn(t);
+                                                            const srv = BUSINESS_SERVICES.find(s => s.key === sKey) || { label: 'Service', icon: '⚡' };
+                                                            const rawAmt = t.amount ?? t.txnAmount ?? t.transactionAmount ?? 0;
+                                                            const amt = parseFloat(String(rawAmt).replace(/,/g, '')) || 0;
+
+                                                            return (
+                                                                <tr key={t.id || idx} className="hover:bg-slate-50/80 transition-colors">
+                                                                    <td className="px-4 py-3 text-slate-400 font-semibold border-r border-slate-100">{idx + 1}</td>
+                                                                    <td className="px-4 py-3 border-r border-slate-100 font-mono text-[11px] text-slate-600">
+                                                                        {fmtDateOnly(t.created_at || t.createdAt || t.date)} {fmtTime(t.created_at || t.createdAt || t.date)}
+                                                                    </td>
+                                                                    <td className="px-4 py-3 border-r border-slate-100 font-bold text-slate-800">
+                                                                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px]">
+                                                                            <span>{srv.icon}</span> {srv.label}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="px-4 py-3 border-r border-slate-100 font-mono text-[11px] text-slate-500">
+                                                                        {t.id || t.order_id || t.txnid || '—'}
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-right font-black font-mono text-[12px] text-slate-900 border-r border-slate-100">
+                                                                        {fmtWallet(amt)}
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-center">
+                                                                        <span className="inline-block text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+                                                                            {t.status || 'SUCCESS'}
+                                                                        </span>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Modal Footer Quick Actions */}
+                                <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-slate-200/80">
+                                    <div className="text-[11px] text-slate-500 flex items-center gap-2">
+                                        <ShieldCheck size={14} className="text-emerald-500" />
+                                        <span>256-Bit Encrypted Financial Ledger · Real-Time Network Sync</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => {
+                                                const retailer = businessModalRetailer;
+                                                setBusinessModalRetailer(null);
+                                                setSelectedRetailer(retailer);
+                                            }}
+                                            className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-bold transition-all cursor-pointer"
+                                        >
+                                            View Full Profile
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                const retailer = businessModalRetailer;
+                                                setBusinessModalRetailer(null);
+                                                handleLoginAsMember(retailer);
+                                            }}
+                                            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-md shadow-blue-600/20 flex items-center gap-1.5 cursor-pointer"
+                                        >
+                                            <Zap size={13} /> Open Retailer Portal
+                                        </button>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
         </div>
     );
 };
 
 export default Retailers;
+
+
