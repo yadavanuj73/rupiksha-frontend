@@ -7,9 +7,10 @@ import {
     Lock, Save, Loader2, Image as ImageIcon, TrendingUp,
     BarChart3, RefreshCw, IndianRupee, Layers, Check,
     Building2, Landmark, Coins, ArrowUpRight, Award, Shield,
-    FileSpreadsheet, Activity, ChevronRight, Copy, CheckCheck
+    FileSpreadsheet, Activity, ChevronRight, Copy, CheckCheck, FileText
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
 import { dataService, BACKEND_URL } from '../../services/dataService';
 import { transactionService } from '../../services/apiService';
 import { sharedDataService } from '../../services/sharedDataService';
@@ -531,6 +532,210 @@ const Retailers = () => {
         } catch (err) {
             console.error('Failed to export Excel:', err);
             showToast('Failed to export report', 'error');
+        }
+    };
+
+    // Export Category-wise Business Matrix to PDF
+    const handleExportBusinessPDF = () => {
+        if (!businessModalRetailer) return;
+        try {
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+
+            // Brand Header (Deep Slate Navy)
+            doc.setFillColor(15, 23, 42); // #0F172A
+            doc.rect(0, 0, pageWidth, 28, 'F');
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(16);
+            doc.text('RUPIKSHA FINANCIAL SERVICES', 14, 11);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8.5);
+            doc.setTextColor(203, 213, 225); // #CBD5E1
+            doc.text('RETAILER BUSINESS PERFORMANCE & TURNOVER REPORT', 14, 17);
+            doc.text(`Generated on: ${new Date().toLocaleString('en-IN')}`, 14, 22);
+
+            // Partner Info Card Box
+            doc.setFillColor(248, 250, 252); // #F8FAFC
+            doc.setDrawColor(226, 232, 240); // #E2E8F0
+            doc.roundedRect(14, 33, pageWidth - 28, 23, 3, 3, 'FD');
+
+            doc.setTextColor(15, 23, 42);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.text(businessModalRetailer.fullName || 'Retailer Partner', 20, 41);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8.5);
+            doc.setTextColor(71, 85, 105);
+            doc.text(`Party Code: ${businessModalRetailer.partyCode || '—'}    |    Mobile: ${businessModalRetailer.mobile || '—'}    |    Float: ${fmtWallet(businessModalRetailer.walletBalance)}`, 20, 47);
+            doc.text(`Location: ${businessModalRetailer.city || 'Siwan'}, ${businessModalRetailer.stateName || 'BIHAR'}    |    Status: Active Network Partner`, 20, 52);
+
+            // KPI Summary Boxes (3 Columns)
+            const kpiWidth = (pageWidth - 28 - 8) / 3;
+
+            // KPI 1: Today
+            doc.setFillColor(239, 246, 255); // #EFF6FF
+            doc.setDrawColor(191, 219, 254); // #BFDBFE
+            doc.roundedRect(14, 61, kpiWidth, 22, 2, 2, 'FD');
+            doc.setTextColor(29, 78, 216); // #1D4ED8
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8);
+            doc.text("TODAY'S TURNOVER", 18, 67);
+            doc.setFontSize(13);
+            doc.text(fmtWallet(businessStats.totals.todayAmt), 18, 74);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7.5);
+            doc.setTextColor(71, 85, 105);
+            doc.text(`${businessStats.totals.todayCount} Txns (24h Window)`, 18, 79);
+
+            // KPI 2: Yesterday
+            doc.setFillColor(236, 253, 245); // #ECFDF5
+            doc.setDrawColor(167, 243, 208); // #A7F3D0
+            doc.roundedRect(14 + kpiWidth + 4, 61, kpiWidth, 22, 2, 2, 'FD');
+            doc.setTextColor(4, 120, 87); // #047857
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8);
+            doc.text("YESTERDAY'S TURNOVER", 18 + kpiWidth + 4, 67);
+            doc.setFontSize(13);
+            doc.text(fmtWallet(businessStats.totals.yesterdayAmt), 18 + kpiWidth + 4, 74);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7.5);
+            doc.setTextColor(71, 85, 105);
+            doc.text(`${businessStats.totals.yesterdayCount} Txns (Completed)`, 18 + kpiWidth + 4, 79);
+
+            // KPI 3: Lifetime
+            doc.setFillColor(245, 243, 255); // #F5F3FF
+            doc.setDrawColor(221, 214, 254); // #DDD6FE
+            doc.roundedRect(14 + (kpiWidth + 4) * 2, 61, kpiWidth, 22, 2, 2, 'FD');
+            doc.setTextColor(91, 33, 182); // #5B21B6
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8);
+            doc.text("LIFETIME NETWORK GMV", 18 + (kpiWidth + 4) * 2, 67);
+            doc.setFontSize(13);
+            doc.text(fmtWallet(businessStats.totals.lifetimeAmt), 18 + (kpiWidth + 4) * 2, 74);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7.5);
+            doc.setTextColor(71, 85, 105);
+            doc.text(`${businessStats.totals.lifetimeCount} Total All-Time Txns`, 18 + (kpiWidth + 4) * 2, 79);
+
+            // Table Header
+            let startY = 89;
+            doc.setFillColor(241, 245, 249); // #F1F5F9
+            doc.setDrawColor(203, 213, 225); // #CBD5E1
+            doc.rect(14, startY, pageWidth - 28, 8, 'FD');
+
+            doc.setTextColor(30, 58, 95); // #1E3A5F
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8);
+            doc.text('SERVICES', 18, startY + 5.5);
+            doc.text("TODAY'S TRANSACTION", 80, startY + 5.5);
+            doc.text('YESTERDAY TRANSACTION', 125, startY + 5.5);
+            doc.text('LIFETIME TRANSACTION', 170, startY + 5.5);
+
+            startY += 8;
+
+            // Table Rows
+            BUSINESS_SERVICES.forEach((srv, idx) => {
+                const stat = businessStats.byService[srv.key] || { todayAmt: 0, todayCount: 0, yesterdayAmt: 0, yesterdayCount: 0, lifetimeAmt: 0, lifetimeCount: 0 };
+                const rowBg = idx % 2 === 0 ? 255 : 249;
+                doc.setFillColor(rowBg, rowBg, rowBg);
+                doc.setDrawColor(226, 232, 240);
+                doc.rect(14, startY, pageWidth - 28, 12, 'FD');
+
+                // Service column
+                doc.setTextColor(15, 23, 42);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(8.5);
+                doc.text(srv.label, 18, startY + 4.8);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(6.8);
+                doc.setTextColor(100, 116, 139);
+                doc.text(srv.subLabel, 18, startY + 9.2);
+
+                // Today column
+                doc.setTextColor(15, 23, 42);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(8.5);
+                doc.text(fmtWallet(stat.todayAmt), 80, startY + 4.8);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(6.8);
+                doc.setTextColor(37, 99, 235);
+                doc.text(`${stat.todayCount} Txns`, 80, startY + 9.2);
+
+                // Yesterday column
+                doc.setTextColor(15, 23, 42);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(8.5);
+                doc.text(fmtWallet(stat.yesterdayAmt), 125, startY + 4.8);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(6.8);
+                doc.setTextColor(5, 150, 105);
+                doc.text(`${stat.yesterdayCount} Txns`, 125, startY + 9.2);
+
+                // Lifetime column
+                doc.setTextColor(15, 23, 42);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(8.5);
+                doc.text(fmtWallet(stat.lifetimeAmt), 170, startY + 4.8);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(6.8);
+                doc.setTextColor(124, 58, 237);
+                doc.text(`${stat.lifetimeCount} Txns`, 170, startY + 9.2);
+
+                startY += 12;
+            });
+
+            // Grand Total Row
+            doc.setFillColor(241, 245, 249);
+            doc.setDrawColor(203, 213, 225);
+            doc.rect(14, startY, pageWidth - 28, 13, 'FD');
+
+            doc.setTextColor(15, 23, 42);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8.5);
+            doc.text('GRAND TOTAL BUSINESS', 18, startY + 5.5);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(6.8);
+            doc.setTextColor(100, 116, 139);
+            doc.text('Consolidated Category Volume', 18, startY + 9.8);
+
+            doc.setTextColor(29, 78, 216);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8.5);
+            doc.text(fmtWallet(businessStats.totals.todayAmt), 80, startY + 5.5);
+            doc.setFontSize(6.8);
+            doc.text(`${businessStats.totals.todayCount} Total Txns`, 80, startY + 9.8);
+
+            doc.setTextColor(4, 120, 87);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8.5);
+            doc.text(fmtWallet(businessStats.totals.yesterdayAmt), 125, startY + 5.5);
+            doc.setFontSize(6.8);
+            doc.text(`${businessStats.totals.yesterdayCount} Total Txns`, 125, startY + 9.8);
+
+            doc.setTextColor(91, 33, 182);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8.5);
+            doc.text(fmtWallet(businessStats.totals.lifetimeAmt), 170, startY + 5.5);
+            doc.setFontSize(6.8);
+            doc.text(`${businessStats.totals.lifetimeCount} Total Txns`, 170, startY + 9.8);
+
+            // Footer Security Note
+            doc.setFont('helvetica', 'italic');
+            doc.setFontSize(7.5);
+            doc.setTextColor(148, 163, 184);
+            doc.text('Official Confidential Report generated from Rupiksha Enterprise Financial Network · 256-Bit Encrypted Ledger', 14, pageHeight - 8);
+
+            const cleanName = (businessModalRetailer.fullName || 'Retailer').replace(/[^a-zA-Z0-9]/g, '_');
+            doc.save(`Rupiksha_Business_${cleanName}_${new Date().toISOString().slice(0, 10)}.pdf`);
+            showToast('Business report PDF generated successfully!');
+        } catch (err) {
+            console.error('Failed to export PDF:', err);
+            showToast('Failed to export PDF report', 'error');
         }
     };
 
@@ -1192,6 +1397,14 @@ const Retailers = () => {
                                     >
                                         <Download size={16} className="text-[#0F172A]" />
                                         <span className="hidden md:inline">Export Excel</span>
+                                    </button>
+                                    <button
+                                        onClick={handleExportBusinessPDF}
+                                        className="h-[44px] px-4 bg-white hover:bg-[#F8FAFC] text-[#0F172A] font-medium text-[13px] rounded-[10px] border border-[#CBD5E1] shadow-xs flex items-center gap-2 transition-colors cursor-pointer"
+                                        title="Export Category Breakdown to PDF"
+                                    >
+                                        <FileText size={16} className="text-[#DC2626]" />
+                                        <span className="hidden md:inline">Export PDF</span>
                                     </button>
                                     <button
                                         onClick={() => handleOpenBusinessModal(businessModalRetailer)}
