@@ -229,15 +229,11 @@ export const transactionService = {
     }).catch(() => null),
   getAeps: (territory) => apiFetch(`/transactions/aeps?territory=${territory}`).catch(() => []),
   getDmt: (territory) => apiFetch(`/transactions/aeps?territory=${territory}`).catch(() => []),
-  getMine: async (userId) => {
+  getMine: async () => {
     try {
-      const url = userId ? `/transactions/mine?userId=${encodeURIComponent(userId)}` : '/transactions/mine';
-      const res = await apiFetch(url);
+      const res = await apiFetch('/transactions/mine');
       if (res && (res.success || res.transactions || res.data || Array.isArray(res))) return res;
-    } catch (_) {}
-    // Resilient fallback without query param
-    try {
-      return await apiFetch('/transactions/mine');
+      return res || { success: false, transactions: [] };
     } catch (_) {
       return { success: false, transactions: [] };
     }

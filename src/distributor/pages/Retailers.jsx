@@ -376,24 +376,13 @@ const Retailers = () => {
 
             let txns = [];
 
-            // 1. Fetch user transactions from backend API
+            // 1. Fetch network transactions from backend API
             try {
                 const userTxns = await dataService.getUserTransactions(member.id || member.userId);
                 if (Array.isArray(userTxns)) txns.push(...userTxns);
             } catch (_) { }
 
-            // 2. Fetch from transaction history
-            try {
-                const historyRes = await transactionService.getHistory({
-                    reportType: 'ALL',
-                    search: member.partyCode || member.username || member.mobile || '',
-                    size: 100
-                });
-                const histList = historyRes?.data || historyRes?.transactions || (Array.isArray(historyRes) ? historyRes : []);
-                if (Array.isArray(histList)) txns.push(...histList);
-            } catch (_) { }
-
-            // 4. Incorporate local storage transactions
+            // 2. Incorporate local and shared transactions
             const localTxns = dataService.getData().transactions || [];
             txns.push(...localTxns);
 
