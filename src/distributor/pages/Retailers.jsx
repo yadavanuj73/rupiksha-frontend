@@ -384,33 +384,13 @@ const Retailers = () => {
 
             // 2. Fetch from transaction history
             try {
-                const historyRes = await transactionService.getHistory({ userId: member.id, size: 200 });
-                if (historyRes?.transactions && Array.isArray(historyRes.transactions)) {
-                    txns.push(...historyRes.transactions);
-                } else if (Array.isArray(historyRes)) {
-                    txns.push(...historyRes);
-                }
-            } catch (_) { }
-
-            // 3. Fetch from commission history for this retailer
-            try {
-                const commRes = await fetch(`${BACKEND_URL}/retailer/commissions/history?search=${encodeURIComponent(member.partyCode || member.username || member.mobile || '')}&size=200`, {
-                    headers: { 'Authorization': `Bearer ${getToken()}` }
+                const historyRes = await transactionService.getHistory({
+                    reportType: 'ALL',
+                    search: member.partyCode || member.username || member.mobile || '',
+                    size: 100
                 });
-                if (commRes.ok) {
-                    const commJson = await commRes.json();
-                    const commItems = commJson?.content || (Array.isArray(commJson) ? commJson : []);
-                    commItems.forEach(ci => {
-                        txns.push({
-                            id: ci.id || ci.commissionReference,
-                            service_type: ci.serviceType,
-                            amount: ci.transactionAmount || ci.amount,
-                            created_at: ci.createdAt,
-                            partyCode: ci.retailerPartyCode || member.partyCode,
-                            userId: ci.retailerId || member.id
-                        });
-                    });
-                }
+                const histList = historyRes?.data || historyRes?.transactions || (Array.isArray(historyRes) ? historyRes : []);
+                if (Array.isArray(histList)) txns.push(...histList);
             } catch (_) { }
 
             // 4. Incorporate local storage transactions

@@ -621,8 +621,28 @@ export const dataService = {
         }
         try {
             const data = await transactionService.getMine(userId);
-            return data?.transactions || [];
-        } catch (e) { return []; }
+            if (data?.transactions && Array.isArray(data.transactions) && data.transactions.length > 0) {
+                return data.transactions;
+            }
+            if (data?.data && Array.isArray(data.data) && data.data.length > 0) {
+                return data.data;
+            }
+            if (Array.isArray(data) && data.length > 0) {
+                return data;
+            }
+        } catch (e) {}
+
+        try {
+            const local = this.getData().transactions || [];
+            if (!userId) return local;
+            const normId = String(userId).toLowerCase().trim();
+            return local.filter(t => {
+                const tKeys = [t.userId, t.user_id, t.username, t.mobile, t.partyCode].filter(Boolean).map(k => String(k).toLowerCase().trim());
+                return tKeys.includes(normId);
+            });
+        } catch (e) {
+            return [];
+        }
     },
 
     adjustUserWalletBalance: function (userId, amount, type = 'CREDIT', remark = '') {

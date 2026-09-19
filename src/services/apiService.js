@@ -219,38 +219,58 @@ export const walletService = {
 export const transactionService = {
   getAll: (filters = {}) => {
     const params = new URLSearchParams(filters).toString();
-    return apiFetch(`/transactions?${params}`);
+    return apiFetch(`/transactions${params ? `?${params}` : ''}`).catch(() => []);
   },
-  getBalance: () => apiFetch("/transactions/balance"),
+  getBalance: () => apiFetch("/transactions/balance").catch(() => ({ balance: 0 })),
   logTransaction: (data) =>
     apiFetch("/transactions/log", {
       method: "POST",
       body: JSON.stringify(data),
-    }),
-  getAeps: (territory) => apiFetch(`/transactions/aeps?territory=${territory}`),
-  getDmt: (territory) => apiFetch(`/transactions/aeps?territory=${territory}`), // note: keeping existing mapping
-  getMine: (userId) => apiFetch(`/transactions/mine?userId=${encodeURIComponent(userId)}`),
-  getStatus: (txnId) => apiFetch(`/transactions/${encodeURIComponent(txnId)}`),
-  getHistory: (filters = {}) => {
-    const cleanFilters = {};
-    Object.entries(filters).forEach(([k, v]) => {
-      if (v !== undefined && v !== null && v !== '') {
-        cleanFilters[k] = v;
-      }
-    });
-    const params = new URLSearchParams(cleanFilters).toString();
-    return apiFetch(`/transactions/history?${params}`);
+    }).catch(() => null),
+  getAeps: (territory) => apiFetch(`/transactions/aeps?territory=${territory}`).catch(() => []),
+  getDmt: (territory) => apiFetch(`/transactions/aeps?territory=${territory}`).catch(() => []),
+  getMine: async (userId) => {
+    try {
+      const url = userId ? `/transactions/mine?userId=${encodeURIComponent(userId)}` : '/transactions/mine';
+      const res = await apiFetch(url);
+      if (res && (res.success || res.transactions || res.data || Array.isArray(res))) return res;
+    } catch (_) {}
+    // Resilient fallback without query param
+    try {
+      return await apiFetch('/transactions/mine');
+    } catch (_) {
+      return { success: false, transactions: [] };
+    }
   },
-  getHistoryDetail: (txnId) => apiFetch(`/transactions/history/${encodeURIComponent(txnId)}`),
-  getHistoryExport: (filters = {}) => {
-    const cleanFilters = {};
-    Object.entries(filters).forEach(([k, v]) => {
+  getStatus: (txnId) => apiFetch(`/transactions/${encodeURIComponent(txnId)}`).catch(() => null),
+  getHistory: (filters = {}) => {
+    const cleanFilters = {
+      reportType: filters.reportType || 'ALL',
+      page: filters.page ?? 0,
+      size: filters.size ?? 20,
+      ...filters
+    };
+    const params = new URLSearchParams();
+    Object.entries(cleanFilters).forEach(([k, v]) => {
       if (v !== undefined && v !== null && v !== '') {
-        cleanFilters[k] = v;
+        params.append(k, v);
       }
     });
-    const params = new URLSearchParams(cleanFilters).toString();
-    return apiFetch(`/transactions/history/export?${params}`);
+    return apiFetch(`/transactions/history?${params.toString()}`).catch(() => ({ success: false, data: [] }));
+  },
+  getHistoryDetail: (txnId) => apiFetch(`/transactions/history/${encodeURIComponent(txnId)}`).catch(() => null),
+  getHistoryExport: (filters = {}) => {
+    const cleanFilters = {
+      reportType: filters.reportType || 'ALL',
+      ...filters
+    };
+    const params = new URLSearchParams();
+    Object.entries(cleanFilters).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') {
+        params.append(k, v);
+      }
+    });
+    return apiFetch(`/transactions/history/export?${params.toString()}`).catch(() => []);
   },
 };
 
