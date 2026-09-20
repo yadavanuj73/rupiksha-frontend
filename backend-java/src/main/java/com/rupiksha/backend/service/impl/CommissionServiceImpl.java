@@ -22,6 +22,9 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import jakarta.persistence.criteria.Predicate;
+import org.springframework.data.jpa.domain.Specification;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -489,9 +492,43 @@ public class CommissionServiceImpl implements CommissionService {
             log.warn("Could not parse date range: start={}, end={}", startDate, endDate);
         }
 
-        Page<CommissionTransaction> page = commissionTransactionRepository.findWithFilters(
-                beneficiaryId, st, stat, pc, start, end, searchStr, pageable
-        );
+        final Instant finalStart = start;
+        final Instant finalEnd = end;
+
+        Specification<CommissionTransaction> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (beneficiaryId != null) {
+                predicates.add(cb.equal(root.get("beneficiaryUser").get("id"), beneficiaryId));
+            }
+            if (st != null) {
+                predicates.add(cb.equal(root.get("serviceType"), st));
+            }
+            if (stat != null) {
+                predicates.add(cb.equal(root.get("status"), stat));
+            }
+            if (pc != null) {
+                predicates.add(cb.equal(root.get("planCode"), pc));
+            }
+            if (finalStart != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), finalStart));
+            }
+            if (finalEnd != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), finalEnd));
+            }
+            if (searchStr != null && !searchStr.isEmpty()) {
+                String pattern = "%" + searchStr.toLowerCase() + "%";
+                Predicate origTxn = cb.like(cb.lower(root.get("originalTransactionId")), pattern);
+                Predicate commRef = cb.like(cb.lower(root.get("commissionReference")), pattern);
+                Predicate userName = cb.like(cb.lower(root.get("beneficiaryUser").get("username")), pattern);
+                Predicate fullName = cb.like(cb.lower(root.get("beneficiaryUser").get("fullName")), pattern);
+                predicates.add(cb.or(origTxn, commRef, userName, fullName));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<CommissionTransaction> page = commissionTransactionRepository.findAll(spec, pageable);
 
         return page.map(this::mapTransactionToDto);
     }

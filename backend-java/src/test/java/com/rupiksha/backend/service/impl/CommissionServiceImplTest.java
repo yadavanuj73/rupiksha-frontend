@@ -574,7 +574,7 @@ public class CommissionServiceImplTest {
                 .build();
 
         org.springframework.data.domain.Page<CommissionTransaction> mockPage = new org.springframework.data.domain.PageImpl<>(List.of(commTxn), pageRequest, 1);
-        when(commissionTransactionRepository.findWithFilters(eq(retailer.getId()), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageRequest)))
+        when(commissionTransactionRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class), eq(pageRequest)))
                 .thenReturn(mockPage);
 
         org.springframework.data.domain.Page<CommissionDtos.CommissionTransactionDto> page = commissionService.getTransactions(
