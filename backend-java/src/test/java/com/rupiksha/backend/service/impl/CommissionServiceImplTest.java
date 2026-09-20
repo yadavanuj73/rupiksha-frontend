@@ -551,4 +551,38 @@ public class CommissionServiceImplTest {
                 eq(distributor.getId()), eq(new BigDecimal("0.50")), anyString(), eq(WalletTransactionContext.COMMISSION), anyString(), anyString(), anyString()
         );
     }
+
+    @Test
+    @DisplayName("CASE 19: Get Transactions with Null Filters Returns Correct Page")
+    void testGetTransactionsRetailerFilters() {
+        org.springframework.data.domain.PageRequest pageRequest = org.springframework.data.domain.PageRequest.of(0, 10);
+        CommissionTransaction commTxn = CommissionTransaction.builder()
+                .id(UUID.randomUUID())
+                .commissionReference("COMM-20260920-TEST01")
+                .originalTransactionId("TXN_001")
+                .serviceType("AEPS_1")
+                .planCode("FREE")
+                .slabMin(new BigDecimal("500.00"))
+                .slabMax(new BigDecimal("999.00"))
+                .transactionAmount(new BigDecimal("700.00"))
+                .beneficiaryUser(retailer)
+                .beneficiaryRole("RETAILER")
+                .retailerUser(retailer)
+                .commissionAmount(new BigDecimal("1.00"))
+                .status("SUCCESS")
+                .createdAt(Instant.now())
+                .build();
+
+        org.springframework.data.domain.Page<CommissionTransaction> mockPage = new org.springframework.data.domain.PageImpl<>(List.of(commTxn), pageRequest, 1);
+        when(commissionTransactionRepository.findWithFilters(eq(retailer.getId()), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageRequest)))
+                .thenReturn(mockPage);
+
+        org.springframework.data.domain.Page<CommissionDtos.CommissionTransactionDto> page = commissionService.getTransactions(
+                retailer.getId(), false, null, null, null, null, null, null, pageRequest
+        );
+
+        assertNotNull(page);
+        assertEquals(1, page.getTotalElements());
+        assertEquals("COMM-20260920-TEST01", page.getContent().get(0).commissionReference());
+    }
 }

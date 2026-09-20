@@ -29,7 +29,7 @@ public interface CommissionTransactionRepository extends JpaRepository<Commissio
 
     Optional<CommissionTransaction> findByCommissionReference(String commissionReference);
 
-    Page<CommissionTransaction> findByBeneficiaryUserId(UUID beneficiaryUserId, Pageable pageable);
+    Page<CommissionTransaction> findByBeneficiaryUser_Id(UUID beneficiaryUserId, Pageable pageable);
 
     @Query(value = "SELECT ct FROM CommissionTransaction ct " +
             "LEFT JOIN FETCH ct.beneficiaryUser " +

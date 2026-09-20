@@ -474,7 +474,7 @@ public class CommissionServiceImpl implements CommissionService {
         String st = (serviceType != null && !serviceType.isBlank() && !"ALL".equalsIgnoreCase(serviceType)) ? serviceType.toUpperCase() : null;
         String stat = (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status)) ? status.toUpperCase() : null;
         String pc = (planCode != null && !planCode.isBlank() && !"ALL".equalsIgnoreCase(planCode)) ? planCode.toUpperCase() : null;
-        String searchStr = (search != null && !search.isBlank()) ? "%" + search.trim() + "%" : null;
+        String searchStr = (search != null && !search.isBlank()) ? search.trim() : null;
 
         Instant start = null;
         Instant end = null;
