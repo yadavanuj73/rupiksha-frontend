@@ -19,6 +19,7 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -324,22 +325,43 @@ public class CommissionServiceImpl implements CommissionService {
         // Validate slabs
         validateSlabs(slabDtos);
 
-        // Clear existing slabs and rebuild
-        plan.getSlabs().clear();
-        commissionPlanRepository.saveAndFlush(plan);
+        // Update existing slabs in-place to preserve entity IDs and avoid foreign key constraint violations
+        Map<UUID, CommissionSlab> existingSlabsMap = plan.getSlabs().stream()
+                .filter(s -> s.getId() != null)
+                .collect(Collectors.toMap(CommissionSlab::getId, Function.identity()));
+
+        Set<UUID> incomingIds = new HashSet<>();
+        List<CommissionSlab> newSlabsToAdd = new ArrayList<>();
 
         for (CommissionDtos.CommissionSlabDto dto : slabDtos) {
-            CommissionSlab slab = CommissionSlab.builder()
-                    .commissionPlan(plan)
-                    .minAmount(dto.minAmount())
-                    .maxAmount(dto.maxAmount())
-                    .retailerCommission(dto.retailerCommission())
-                    .distributorCommission(dto.distributorCommission() != null ? dto.distributorCommission() : BigDecimal.ZERO)
-                    .superDistributorCommission(dto.superDistributorCommission() != null ? dto.superDistributorCommission() : BigDecimal.ZERO)
-                    .enabled(dto.enabled() != null ? dto.enabled() : true)
-                    .build();
-            plan.getSlabs().add(slab);
+            if (dto.id() != null && existingSlabsMap.containsKey(dto.id())) {
+                CommissionSlab slab = existingSlabsMap.get(dto.id());
+                slab.setMinAmount(dto.minAmount());
+                slab.setMaxAmount(dto.maxAmount());
+                slab.setRetailerCommission(dto.retailerCommission());
+                slab.setDistributorCommission(dto.distributorCommission() != null ? dto.distributorCommission() : BigDecimal.ZERO);
+                slab.setSuperDistributorCommission(dto.superDistributorCommission() != null ? dto.superDistributorCommission() : BigDecimal.ZERO);
+                slab.setEnabled(dto.enabled() != null ? dto.enabled() : true);
+                incomingIds.add(dto.id());
+            } else {
+                CommissionSlab newSlab = CommissionSlab.builder()
+                        .commissionPlan(plan)
+                        .minAmount(dto.minAmount())
+                        .maxAmount(dto.maxAmount())
+                        .retailerCommission(dto.retailerCommission())
+                        .distributorCommission(dto.distributorCommission() != null ? dto.distributorCommission() : BigDecimal.ZERO)
+                        .superDistributorCommission(dto.superDistributorCommission() != null ? dto.superDistributorCommission() : BigDecimal.ZERO)
+                        .enabled(dto.enabled() != null ? dto.enabled() : true)
+                        .build();
+                newSlabsToAdd.add(newSlab);
+            }
         }
+
+        // Remove slabs that were deleted by admin in UI
+        plan.getSlabs().removeIf(s -> s.getId() != null && !incomingIds.contains(s.getId()));
+
+        // Add newly created slabs
+        plan.getSlabs().addAll(newSlabsToAdd);
 
         CommissionPlan saved = commissionPlanRepository.save(plan);
         log.info("Admin {} updated commission slabs for plan {} ({})", admin.getUsername(), plan.getPlanName(), plan.getId());

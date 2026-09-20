@@ -307,6 +307,52 @@ public class CommissionServiceImplTest {
     }
 
     @Test
+    @DisplayName("CASE 12B: Admin Updates Slabs In-Place and Preserves Existing Slab IDs")
+    void testAdminUpdatePlanSlabsInPlace() {
+        UUID adminId = UUID.randomUUID();
+        User admin = new User();
+        admin.setId(adminId);
+        Role aRole = new Role();
+        aRole.setName(RoleName.ADMIN);
+        admin.setRoles(Set.of(aRole));
+
+        CommissionSlab existingSlab = CommissionSlab.builder()
+                .id(UUID.randomUUID())
+                .commissionPlan(freePlan)
+                .minAmount(new BigDecimal("500.00"))
+                .maxAmount(new BigDecimal("999.00"))
+                .retailerCommission(new BigDecimal("1.00"))
+                .distributorCommission(BigDecimal.ZERO)
+                .superDistributorCommission(BigDecimal.ZERO)
+                .enabled(true)
+                .build();
+        freePlan.setSlabs(new ArrayList<>(List.of(existingSlab)));
+
+        when(userRepository.findById(adminId)).thenReturn(Optional.of(admin));
+        when(commissionPlanRepository.findByIdWithSlabs(freePlan.getId())).thenReturn(Optional.of(freePlan));
+        when(commissionPlanRepository.save(any(CommissionPlan.class))).thenAnswer(i -> i.getArgument(0));
+
+        // Update existing slab amounts and add a new slab
+        CommissionDtos.CommissionSlabDto updatedExisting = new CommissionDtos.CommissionSlabDto(
+                existingSlab.getId(), new BigDecimal("500.00"), new BigDecimal("999.00"), new BigDecimal("2.50"), new BigDecimal("0.50"), new BigDecimal("0.50"), null, true
+        );
+        CommissionDtos.CommissionSlabDto newSlabDto = new CommissionDtos.CommissionSlabDto(
+                null, new BigDecimal("1000.00"), new BigDecimal("1499.00"), new BigDecimal("3.00"), new BigDecimal("1.00"), new BigDecimal("1.00"), null, true
+        );
+
+        CommissionDtos.UpdateSlabsRequest updateReq = new CommissionDtos.UpdateSlabsRequest(List.of(updatedExisting, newSlabDto));
+        CommissionDtos.CommissionPlanDto result = commissionService.updatePlanSlabs(freePlan.getId(), updateReq, adminId, "127.0.0.1");
+
+        assertNotNull(result);
+        assertEquals(2, freePlan.getSlabs().size());
+        assertEquals(existingSlab.getId(), freePlan.getSlabs().get(0).getId());
+        assertEquals(new BigDecimal("2.50"), freePlan.getSlabs().get(0).getRetailerCommission());
+        assertEquals(new BigDecimal("0.50"), freePlan.getSlabs().get(0).getDistributorCommission());
+        assertNull(freePlan.getSlabs().get(1).getId()); // New slab to be persisted
+        assertEquals(new BigDecimal("3.00"), freePlan.getSlabs().get(1).getRetailerCommission());
+    }
+
+    @Test
     @DisplayName("CASE 13: Upgrade Plan - Paid Plan Debits Wallet and Updates User Plan")
     void testUpgradeRetailerPlanPaid() {
         UUID planId = UUID.randomUUID();
