@@ -535,8 +535,8 @@ export const dataService = {
             const res = await fetch(url, { headers });
             if (res.ok) {
                 const data = await res.json();
-                if (data && (data.user || data.data)) {
-                    const serverUser = data.user || data.data;
+                const serverUser = data?.user || data?.data || data;
+                if (serverUser && typeof serverUser === 'object' && Object.keys(serverUser).length > 0 && !serverUser.status) {
                     const savedPhoto = localStorage.getItem('rupiksha_profile_photo');
                     const resolvedPhoto = serverUser.profilePhoto || serverUser.photoUrl || currentUser?.profilePhoto || currentUser?.photoUrl || savedPhoto;
                     const merged = {

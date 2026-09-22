@@ -175,71 +175,13 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
         const CLOUD_RUN = 'https://rupiksha-backend-java-53431955516.asia-south1.run.app/api/v1';
 
         const doFetch = async () => {
-            // Try dataService first (uses BACKEND_URL from config)
             try {
                 const fresh = await dataService.fetchUserProfile();
-                // Update if server returned any non-empty user object
                 if (fresh && typeof fresh === 'object' && Object.keys(fresh).length > 0) {
                     syncUserData(fresh);
-                    setIsDataLoading(false);
-                    return;
                 }
             } catch (e) {
-                console.warn('[Profile] dataService.fetchUserProfile failed, trying direct fetch:', e);
-            }
-
-            // Fallback: direct call to Cloud Run bypassing any proxy/env issues
-            try {
-                const cu = getCurrentUserData();
-                const uid = cu?.id || cu?.userId;
-                const uname = cu?.username;
-                const umobile = cu?.mobile || cu?.phone;
-                const token = (() => {
-                    const candidates = [
-                        localStorage.getItem('rupiksha_token'),
-                        localStorage.getItem('rupiksha_distributor_token'),
-                        localStorage.getItem('rupiksha_token_distributor'),
-                        localStorage.getItem('rupiksha_token_retailer'),
-                        localStorage.getItem('rupiksha_imp_token'),
-                        localStorage.getItem('rupiksha_admin_token'),
-                        localStorage.getItem('token'),
-                    ];
-                    return candidates.find(t => t && t.length > 10 && t !== 'null') || null;
-                })();
-
-                const params = new URLSearchParams();
-                if (uid) params.append('userId', uid);
-                if (uname) params.append('username', uname);
-                if (umobile) params.append('mobile', umobile);
-                // Also try stripping role suffix from username to find user
-                if (uname && uname.includes('_')) {
-                    params.append('mobile', uname.split('_')[0]);
-                }
-
-                const res = await fetch(`${CLOUD_RUN}/user/profile?${params.toString()}`, {
-                    headers: {
-                        'Accept': 'application/json',
-                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                    }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    const serverUser = data.user || data.data || data;
-                    // Update if server returned any non-empty user object
-                    if (serverUser && typeof serverUser === 'object' && Object.keys(serverUser).length > 0) {
-                        const savedPhoto = localStorage.getItem('rupiksha_profile_photo');
-                        const merged = {
-                            ...cu,
-                            ...serverUser,
-                            photoUrl: serverUser.photoUrl || savedPhoto || cu?.photoUrl,
-                            profilePhoto: serverUser.profilePhoto || savedPhoto || cu?.profilePhoto,
-                        };
-                        localStorage.setItem('rupiksha_user', JSON.stringify(merged));
-                        syncUserData(merged);
-                    }
-                }
-            } catch (e2) {
-                console.warn('[Profile] Direct Cloud Run fetch also failed:', e2);
+                console.warn('[Profile] dataService.fetchUserProfile failed:', e);
             }
             setIsDataLoading(false);
         };
