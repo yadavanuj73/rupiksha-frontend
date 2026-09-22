@@ -296,7 +296,7 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
     const [isSendingOtp, setIsSendingOtp] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
     const [timer, setTimer] = useState(0);
-    const [isDataLoading, setIsDataLoading] = useState(false);
+    const [isDataLoading, setIsDataLoading] = useState(true);
 
     const currentUser = getCurrentUserData() || appData.currentUser || {};
     const initialExtracted = extractUserProfileFields(currentUser);
@@ -633,16 +633,44 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
         return null;
     };
 
-    if (isDataLoading) {
-        return (
-            <div className="flex flex-col h-full bg-[#f4f7fa] font-['Inter',sans-serif] w-full overflow-hidden items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loading Profile Data...</p>
+    const ProfileSkeletonLoader = () => (
+        <div className="w-full bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/80 shadow-xs animate-pulse">
+            {/* Skeleton Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-6 mb-8">
+                <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-100/70 flex items-center justify-center">
+                        <RefreshCw className="w-5 h-5 text-[#1e3a8a] animate-spin" />
+                    </div>
+                    <div className="space-y-2">
+                        <div className="h-5 w-48 bg-slate-200 rounded-lg"></div>
+                        <div className="h-3.5 w-64 bg-slate-100 rounded-md"></div>
+                    </div>
+                </div>
+                <div className="hidden sm:flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-[#1e3a8a] text-xs font-semibold">
+                    <RefreshCw size={13} className="animate-spin text-[#1e3a8a]" />
+                    <span>Loading profile details...</span>
                 </div>
             </div>
-        );
-    }
+
+            {/* Skeleton Form Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+                {[...Array(6)].map((_, i) => (
+                    <div key={i} className="space-y-2.5">
+                        <div className="h-3.5 w-28 bg-slate-200 rounded-md"></div>
+                        <div className="h-12 w-full bg-slate-100/90 rounded-xl border border-slate-200/60 flex items-center px-4">
+                            <div className="h-4 w-2/3 bg-slate-200/70 rounded"></div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Skeleton Footer */}
+            <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
+                <div className="h-3 w-40 bg-slate-100 rounded"></div>
+                <div className="h-11 w-32 bg-slate-200 rounded-xl"></div>
+            </div>
+        </div>
+    );
 
     return (
         <div className="flex flex-col h-full bg-[#f4f7fa] font-['Inter',sans-serif] w-full overflow-hidden">
@@ -681,8 +709,11 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
 
             {/* Main Content Area (Full Width, No Sidebar) */}
             <div className="flex-1 min-w-0 overflow-y-auto bg-[#f4f7fa] p-4 sm:p-6 lg:p-8">
-                <AnimatePresence mode="wait">
-                    <motion.div key={activeSubTab} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }} className="w-full">
+                {isDataLoading ? (
+                    <ProfileSkeletonLoader />
+                ) : (
+                    <AnimatePresence mode="wait">
+                        <motion.div key={activeSubTab} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }} className="w-full">
                         {activeSubTab === 'business' && <BusinessInfo formData={formData} handleInputChange={handleInputChange} handleSave={handleSave} isSaving={isSaving} />}
                         {activeSubTab === 'personal' && (
                             <PersonalInfo
@@ -870,6 +901,7 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
                         )}
                     </motion.div>
                 </AnimatePresence>
+                )}
             </div>
             {/* Email Verification Modal */}
             <AnimatePresence>
