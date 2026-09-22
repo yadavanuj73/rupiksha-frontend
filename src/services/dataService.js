@@ -476,19 +476,7 @@ export const dataService = {
         }
     },
 
-    getCurrentUser: function () {
-        try {
-            const distUser = localStorage.getItem('rupiksha_distributor_user');
-            if (distUser) return JSON.parse(distUser);
-            const retUser = localStorage.getItem('rupiksha_user');
-            if (retUser) return JSON.parse(retUser);
-            const adminUser = localStorage.getItem('rupiksha_admin_user');
-            if (adminUser) return JSON.parse(adminUser);
-            const authUser = localStorage.getItem('user');
-            if (authUser) return JSON.parse(authUser);
-        } catch (e) {}
-        return this.getData().currentUser || {};
-    },
+
 
     fetchUserProfile: async function () {
         let currentUser = this.getCurrentUser() || {};

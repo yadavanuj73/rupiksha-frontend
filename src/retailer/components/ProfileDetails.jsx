@@ -23,28 +23,7 @@ import Settings from './profile/Settings';
 
 const getCurrentUserData = () => {
     try {
-        let user = null;
-        const keys = [
-            'rupiksha_user',
-            'rupiksha_user_distributor',
-            'rupiksha_user_retailer',
-            'rupiksha_user_super_distributor',
-            'rupiksha_distributor_user',
-            'rupiksha_admin_user',
-            'rupiksha_imp_user'
-        ];
-        for (const k of keys) {
-            try {
-                const raw = localStorage.getItem(k);
-                if (raw) {
-                    const parsed = JSON.parse(raw);
-                    if (parsed && (parsed.username || parsed.mobile || parsed.id)) {
-                        user = parsed;
-                        break;
-                    }
-                }
-            } catch (e) {}
-        }
+        let user = dataService.getCurrentUser();
         if (!user) {
             user = dataService.getData().currentUser || {};
         }
