@@ -467,216 +467,230 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
 
     return (
         <div className="flex flex-col h-full bg-[#f4f7fa] font-['Inter',sans-serif] w-full overflow-hidden">
-            <div className="bg-white px-4 md:px-8 py-4 md:py-6 border-b border-slate-200 shrink-0">
-                <h1 className="text-xl md:text-3xl font-bold text-[#4e5d78] tracking-tight">Profile Details</h1>
-            </div>
-            <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
-                {/* Responsive Left Navigation Tabs */}
-                <div className="w-full lg:w-[250px] xl:w-[280px] bg-white border-b lg:border-b-0 lg:border-r border-slate-200 overflow-x-auto lg:overflow-y-auto flex lg:flex-col no-scrollbar shrink-0">
-                    {menuItems.map((item) => (
-                        <div
-                            key={item.id}
-                            onClick={() => setActiveSubTab(item.id)}
-                            className={`flex items-center justify-between px-5 lg:px-6 py-3 lg:py-3.5 cursor-pointer border-r lg:border-r-0 lg:border-b border-slate-100 transition-all whitespace-nowrap lg:whitespace-normal shrink-0 ${activeSubTab === item.id ? 'bg-[#f8fafc] border-b-2 lg:border-b-0 border-blue-600 font-bold' : 'hover:bg-slate-50'}`}
-                        >
-                            <span className={`text-[13px] lg:text-[14px] ${activeSubTab === item.id ? 'text-[#334e68] font-bold' : 'text-[#718096]'}`}>{item.label}</span>
-                            <div className="hidden lg:flex items-center ms-2">{getStatusIcon(item.status)}</div>
-                        </div>
-                    ))}
+            {/* Top Navigation Bar: Title Aligned Left + 5 Horizontal Navigation Tabs */}
+            <div className="bg-white border-b border-slate-200/90 px-4 sm:px-6 lg:px-8 py-3.5 shrink-0 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3 shadow-xs">
+                <div className="flex items-center space-x-3 shrink-0">
+                    <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">Profile Details</h1>
                 </div>
 
-                {/* Main Content Area */}
-                <div className="flex-1 min-w-0 overflow-y-auto bg-[#f4f7fa] p-4 md:p-6 lg:p-8">
-                    <AnimatePresence mode="wait">
-                        <motion.div key={activeSubTab} initial={{ opacity: 0, scale: 0.99 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.99 }}>
-                            {activeSubTab === 'business' && <BusinessInfo formData={formData} handleInputChange={handleInputChange} handleSave={handleSave} isSaving={isSaving} />}
-                            {activeSubTab === 'personal' && (
-                                <PersonalInfo
-                                    formData={formData}
-                                    handleInputChange={handleInputChange}
-                                    handleSave={handleSave}
-                                    isSaving={isSaving}
-                                    isSendingOtp={isSendingOtp}
-                                    profilePhoto={profilePhoto}
-                                    fileInputRef={fileInputRef}
-                                    handlePhotoChange={handlePhotoChange}
-                                    onVerifyEmail={handleSendOtp}
-                                    onVerifyPan={handlePanVerify}
-                                    isVerifyingPan={isVerifyingPan}
-                                />
-                            )}
-                            {activeSubTab === 'banking' && (
-                                <BankingInfo
-                                    formData={formData}
-                                    handleInputChange={handleInputChange}
-                                    handleSave={handleSave}
-                                    isSaving={isSaving}
-                                    isFetchingIFSC={isFetchingIFSC}
-                                    isVerifyingAccount={isVerifyingAccount}
-                                    setFormData={setFormData}
-                                    currentUser={currentUser}
-                                />
-                            )}
-                            {activeSubTab === 'settings' && <Settings formData={formData} handleInputChange={handleInputChange} handleSave={handleSave} />}
-                            {activeSubTab === 'visiting_card' && (
-                                <div className="flex flex-col items-center justify-center space-y-8 py-6 w-full overflow-hidden">
-                                    <div className="text-center">
-                                        <h3 className="text-2xl md:text-3xl font-black text-slate-800 uppercase tracking-tighter">Professional Identity</h3>
-                                        <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-1">Official RuPiKsha Partner Card</p>
+                {/* Horizontal Navigation Buttons */}
+                <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar py-0.5">
+                    {menuItems.map((item) => {
+                        const isActive = activeSubTab === item.id;
+                        return (
+                            <button
+                                key={item.id}
+                                onClick={() => setActiveSubTab(item.id)}
+                                className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs sm:text-[13px] font-bold transition-all whitespace-nowrap cursor-pointer shrink-0 ${
+                                    isActive
+                                        ? 'bg-[#1e3a8a] text-white shadow-md shadow-blue-900/20 active:scale-95'
+                                        : 'bg-slate-50/90 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/70 active:scale-95'
+                                }`}
+                            >
+                                <span>{item.label}</span>
+                                {item.status !== 'none' && (
+                                    <div className="flex items-center">
+                                        {item.status === 'verified' && <CheckCircle2 size={15} className={isActive ? "text-emerald-300" : "text-emerald-500"} />}
+                                        {item.status === 'missing' && <AlertCircle size={15} className={isActive ? "text-rose-300" : "text-rose-500"} />}
                                     </div>
+                                )}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
 
-                                    {/* Responsive Visiting Card */}
-                                    <div className="w-full flex justify-center overflow-x-auto py-2">
-                                        <div ref={cardRef} className="card-container shrink-0 w-full max-w-[620px]">
-                                            <motion.div
-                                                initial={{ scale: 0.98, opacity: 0 }}
-                                                animate={{ scale: 1, opacity: 1 }}
-                                                className="w-full aspect-[1.8/1] min-w-[320px] sm:min-w-[480px] bg-white rounded-xl shadow-xl overflow-hidden relative border border-sky-100"
-                                            >
-                                                {/* Geometric Background Overlay (Sky Blue) */}
-                                                <div className="absolute inset-0 opacity-[0.08] pointer-events-none">
-                                                    <svg width="100%" height="100%">
-                                                        <pattern id="pattern-hex-sky" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
-                                                            <path d="M20 0l20 10v20l-20 10-20-10v-20z" fill="none" stroke="#0ea5e9" strokeWidth="1" />
-                                                        </pattern>
-                                                        <rect width="100%" height="100%" fill="url(#pattern-hex-sky)" />
-                                                    </svg>
-                                                </div>
-                                                <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-sky-100/40 via-white to-white pointer-events-none"></div>
+            {/* Main Content Area (Full Width, No Sidebar) */}
+            <div className="flex-1 min-w-0 overflow-y-auto bg-[#f4f7fa] p-4 sm:p-6 lg:p-8">
+                <AnimatePresence mode="wait">
+                    <motion.div key={activeSubTab} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }} className="w-full">
+                        {activeSubTab === 'business' && <BusinessInfo formData={formData} handleInputChange={handleInputChange} handleSave={handleSave} isSaving={isSaving} />}
+                        {activeSubTab === 'personal' && (
+                            <PersonalInfo
+                                formData={formData}
+                                handleInputChange={handleInputChange}
+                                handleSave={handleSave}
+                                isSaving={isSaving}
+                                isSendingOtp={isSendingOtp}
+                                profilePhoto={profilePhoto}
+                                fileInputRef={fileInputRef}
+                                handlePhotoChange={handlePhotoChange}
+                                onVerifyEmail={handleSendOtp}
+                                onVerifyPan={handlePanVerify}
+                                isVerifyingPan={isVerifyingPan}
+                            />
+                        )}
+                        {activeSubTab === 'banking' && (
+                            <BankingInfo
+                                formData={formData}
+                                handleInputChange={handleInputChange}
+                                handleSave={handleSave}
+                                isSaving={isSaving}
+                                isFetchingIFSC={isFetchingIFSC}
+                                isVerifyingAccount={isVerifyingAccount}
+                                setFormData={setFormData}
+                                currentUser={currentUser}
+                            />
+                        )}
+                        {activeSubTab === 'settings' && <Settings formData={formData} handleInputChange={handleInputChange} handleSave={handleSave} />}
+                        {activeSubTab === 'visiting_card' && (
+                            <div className="flex flex-col items-center justify-center space-y-8 py-6 w-full overflow-hidden">
+                                <div className="text-center">
+                                    <h3 className="text-2xl md:text-3xl font-black text-slate-800 uppercase tracking-tighter">Professional Identity</h3>
+                                    <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-1">Official RuPiKsha Partner Card</p>
+                                </div>
 
-                                                <div className="p-4 sm:p-7 h-full flex flex-col justify-between relative z-10">
-                                                    {/* Top Row: Name & QR */}
-                                                    <div className="flex justify-between items-start mb-2">
-                                                        <div className="flex items-center space-x-3 sm:space-x-4">
-                                                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden border-2 border-sky-200 bg-white flex items-center justify-center shrink-0 shadow-sm">
-                                                                {profilePhoto ? (
-                                                                    <img src={profilePhoto} alt="" className="w-full h-full object-cover" />
-                                                                ) : (
-                                                                    <User className="text-sky-300" size={20} />
-                                                                )}
-                                                            </div>
-                                                            <div>
-                                                                <h4 className="text-base sm:text-xl font-bold text-sky-900 leading-none tracking-tight">
-                                                                    {formData.name || currentUser?.name || 'Partner Name'}
-                                                                </h4>
-                                                                <p className="text-xs sm:text-sm font-medium text-sky-600 mt-1 uppercase tracking-tight">
-                                                                    {formData.businessName || currentUser?.businessName || 'Your Business Name'}
-                                                                </p>
-                                                            </div>
+                                {/* Responsive Visiting Card */}
+                                <div className="w-full flex justify-center overflow-x-auto py-2">
+                                    <div ref={cardRef} className="card-container shrink-0 w-full max-w-[620px]">
+                                        <motion.div
+                                            initial={{ scale: 0.98, opacity: 0 }}
+                                            animate={{ scale: 1, opacity: 1 }}
+                                            className="w-full aspect-[1.8/1] min-w-[320px] sm:min-w-[480px] bg-white rounded-xl shadow-xl overflow-hidden relative border border-sky-100"
+                                        >
+                                            {/* Geometric Background Overlay (Sky Blue) */}
+                                            <div className="absolute inset-0 opacity-[0.08] pointer-events-none">
+                                                <svg width="100%" height="100%">
+                                                    <pattern id="pattern-hex-sky" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+                                                        <path d="M20 0l20 10v20l-20 10-20-10v-20z" fill="none" stroke="#0ea5e9" strokeWidth="1" />
+                                                    </pattern>
+                                                    <rect width="100%" height="100%" fill="url(#pattern-hex-sky)" />
+                                                </svg>
+                                            </div>
+                                            <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-sky-100/40 via-white to-white pointer-events-none"></div>
+
+                                            <div className="p-4 sm:p-7 h-full flex flex-col justify-between relative z-10">
+                                                {/* Top Row: Name & QR */}
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div className="flex items-center space-x-3 sm:space-x-4">
+                                                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden border-2 border-sky-200 bg-white flex items-center justify-center shrink-0 shadow-sm">
+                                                            {profilePhoto ? (
+                                                                <img src={profilePhoto} alt="" className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <User className="text-sky-300" size={20} />
+                                                            )}
                                                         </div>
-
-                                                        <div className="bg-white p-1 rounded-lg shadow-sm border border-sky-50 shrink-0">
-                                                            <img 
-                                                                src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=tel:${formData.mobile || currentUser?.mobile}`} 
-                                                                alt="Call QR" 
-                                                                className="w-10 h-10 sm:w-14 sm:h-14"
-                                                            />
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Separator Line */}
-                                                    <div className="w-full h-1 bg-sky-500/30 rounded-full my-2 relative overflow-hidden">
-                                                        <div className="absolute inset-0 bg-gradient-to-r from-sky-400 to-indigo-400 opacity-50"></div>
-                                                    </div>
-
-                                                    {/* Middle: Address Section */}
-                                                    <div className="flex-1 flex flex-col justify-center my-1">
-                                                        <div className="flex items-start space-x-3">
-                                                            <div className="bg-sky-500 p-1.5 rounded-full shadow-md shrink-0">
-                                                                <Building2 size={14} className="text-white" />
-                                                            </div>
-                                                            <p className="text-xs sm:text-sm font-semibold text-sky-800 leading-snug max-w-[85%] uppercase line-clamp-2">
-                                                                {formData.address1 ? 
-                                                                    `${formData.address1}${formData.address2 ? `, ${formData.address2}` : ''} ${formData.area || ''} ${formData.pincode || ''}` : 
-                                                                    (currentUser?.address || currentUser?.address1 ? 
-                                                                        `${currentUser.address || currentUser.address1} ${currentUser.pincode || ''}` : 
-                                                                        'Shop Address Not Registered')}
+                                                        <div>
+                                                            <h4 className="text-base sm:text-xl font-bold text-sky-900 leading-none tracking-tight">
+                                                                {formData.name || currentUser?.name || 'Partner Name'}
+                                                            </h4>
+                                                            <p className="text-xs sm:text-sm font-medium text-sky-600 mt-1 uppercase tracking-tight">
+                                                                {formData.businessName || currentUser?.businessName || 'Your Business Name'}
                                                             </p>
                                                         </div>
                                                     </div>
 
-                                                    {/* Bottom Row: Contact info & Logo */}
-                                                    <div className="flex items-center justify-between border-t border-sky-100 pt-3">
-                                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:text-sm font-bold text-sky-900">
-                                                            <div className="flex items-center space-x-1.5">
-                                                                <Phone size={12} className="text-sky-600" />
-                                                                <span>+91 {formData.mobile || currentUser?.mobile || 'XXXXXXXXXX'}</span>
-                                                            </div>
-                                                            <div className="flex items-center space-x-1.5">
-                                                                <Mail size={12} className="text-sky-600" />
-                                                                <span className="truncate max-w-[150px] sm:max-w-none">{formData.email || currentUser?.email || 'partner@rupiksha.com'}</span>
-                                                            </div>
-                                                        </div>
+                                                    <div className="bg-white p-1 rounded-lg shadow-sm border border-sky-50 shrink-0">
+                                                        <img 
+                                                            src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=tel:${formData.mobile || currentUser?.mobile}`} 
+                                                            alt="Call QR" 
+                                                            className="w-10 h-10 sm:w-14 sm:h-14"
+                                                        />
+                                                    </div>
+                                                </div>
 
-                                                        <div className="text-right shrink-0">
-                                                            <div className="flex flex-col items-end">
-                                                                <span className="text-sm sm:text-base font-black text-sky-600 tracking-tighter uppercase italic leading-none">Rupiksha</span>
-                                                                <span className="text-[6px] sm:text-[7px] font-black text-sky-900 uppercase tracking-[0.3em] mt-0.5">Making Life Simple</span>
-                                                            </div>
+                                                {/* Separator Line */}
+                                                <div className="w-full h-1 bg-sky-500/30 rounded-full my-2 relative overflow-hidden">
+                                                    <div className="absolute inset-0 bg-gradient-to-r from-sky-400 to-indigo-400 opacity-50"></div>
+                                                </div>
+
+                                                {/* Middle: Address Section */}
+                                                <div className="flex-1 flex flex-col justify-center my-1">
+                                                    <div className="flex items-start space-x-3">
+                                                        <div className="bg-sky-500 p-1.5 rounded-full shadow-md shrink-0">
+                                                            <Building2 size={14} className="text-white" />
+                                                        </div>
+                                                        <p className="text-xs sm:text-sm font-semibold text-sky-800 leading-snug max-w-[85%] uppercase line-clamp-2">
+                                                            {formData.address1 ? 
+                                                                `${formData.address1}${formData.address2 ? `, ${formData.address2}` : ''} ${formData.area || ''} ${formData.pincode || ''}` : 
+                                                                (currentUser?.address || currentUser?.address1 ? 
+                                                                    `${currentUser.address || currentUser.address1} ${currentUser.pincode || ''}` : 
+                                                                    'Shop Address Not Registered')}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Bottom Row: Contact info & Logo */}
+                                                <div className="flex items-center justify-between border-t border-sky-100 pt-3">
+                                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:text-sm font-bold text-sky-900">
+                                                        <div className="flex items-center space-x-1.5">
+                                                            <Phone size={12} className="text-sky-600" />
+                                                            <span>+91 {formData.mobile || currentUser?.mobile || 'XXXXXXXXXX'}</span>
+                                                        </div>
+                                                        <div className="flex items-center space-x-1.5">
+                                                            <Mail size={12} className="text-sky-600" />
+                                                            <span className="truncate max-w-[150px] sm:max-w-none">{formData.email || currentUser?.email || 'partner@rupiksha.com'}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="text-right shrink-0">
+                                                        <div className="flex flex-col items-end">
+                                                            <span className="text-sm sm:text-base font-black text-sky-600 tracking-tighter uppercase italic leading-none">Rupiksha</span>
+                                                            <span className="text-[6px] sm:text-[7px] font-black text-sky-900 uppercase tracking-[0.3em] mt-0.5">Making Life Simple</span>
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </motion.div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-wrap gap-4 w-full justify-center px-4">
-                                        <button 
-                                            onClick={async () => {
-                                                const element = cardRef.current;
-                                                const canvas = await html2canvas(element, { scale: 3, backgroundColor: null });
-                                                const imgData = canvas.toDataURL('image/png');
-                                                const pdf = new jsPDF('l', 'mm', 'a4');
-                                                const imgProps = pdf.getImageProperties(imgData);
-                                                const pdfWidth = pdf.internal.pageSize.getWidth();
-                                                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-                                                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-                                                pdf.save(`${formData.name || 'User'}_Visiting_Card.pdf`);
-                                            }}
-                                            className="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold uppercase text-[11px] tracking-widest shadow-xl flex items-center justify-center space-x-2 hover:bg-black transition-all hover:-translate-y-0.5 active:scale-95"
-                                        >
-                                            <Download size={16} />
-                                            <span>Download PDF</span>
-                                        </button>
-                                        
-                                        <button 
-                                            onClick={async () => {
-                                                setIsSharing(true);
-                                                try {
-                                                    const element = cardRef.current;
-                                                    const canvas = await html2canvas(element, { scale: 2 });
-                                                    const imgData = canvas.toDataURL('image/png');
-                                                    
-                                                    const res = await fetch(`${BACKEND_URL}/user/share-visiting-card`, {
-                                                        method: 'POST',
-                                                        headers: { 'Content-Type': 'application/json' },
-                                                        body: JSON.stringify({
-                                                            email: formData.email,
-                                                            name: formData.name,
-                                                            image: imgData
-                                                        })
-                                                    });
-                                                    
-                                                    if (res.ok) alert("Card shared to your registered email!");
-                                                    else throw new Error("Backend failed");
-                                                } catch (err) {
-                                                    window.location.href = `mailto:${formData.email}?subject=My Rupiksha Visiting Card&body=Hello, please find my digital visiting card attached. Name: ${formData.name}, Mobile: ${formData.mobile}`;
-                                                } finally {
-                                                    setIsSharing(false);
-                                                }
-                                            }}
-                                            disabled={isSharing}
-                                            className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold uppercase text-[11px] tracking-widest shadow-xl shadow-indigo-600/20 flex items-center justify-center space-x-2 hover:bg-indigo-700 transition-all hover:-translate-y-0.5 active:scale-95"
-                                        >
-                                            <Mail size={16} />
-                                            <span>{isSharing ? 'Sharing...' : 'Share on Email'}</span>
-                                        </button>
+                                            </div>
+                                        </motion.div>
                                     </div>
                                 </div>
-                            )}
-                        </motion.div>
-                    </AnimatePresence>
-                </div>
+
+                                <div className="flex flex-wrap gap-4 w-full justify-center px-4">
+                                    <button 
+                                        onClick={async () => {
+                                            const element = cardRef.current;
+                                            const canvas = await html2canvas(element, { scale: 3, backgroundColor: null });
+                                            const imgData = canvas.toDataURL('image/png');
+                                            const pdf = new jsPDF('l', 'mm', 'a4');
+                                            const imgProps = pdf.getImageProperties(imgData);
+                                            const pdfWidth = pdf.internal.pageSize.getWidth();
+                                            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                                            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                                            pdf.save(`${formData.name || 'User'}_Visiting_Card.pdf`);
+                                        }}
+                                        className="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold uppercase text-[11px] tracking-widest shadow-xl flex items-center justify-center space-x-2 hover:bg-black transition-all hover:-translate-y-0.5 active:scale-95"
+                                    >
+                                        <Download size={16} />
+                                        <span>Download PDF</span>
+                                    </button>
+                                    
+                                    <button 
+                                        onClick={async () => {
+                                            setIsSharing(true);
+                                            try {
+                                                const element = cardRef.current;
+                                                const canvas = await html2canvas(element, { scale: 2 });
+                                                const imgData = canvas.toDataURL('image/png');
+                                                
+                                                const res = await fetch(`${BACKEND_URL}/user/share-visiting-card`, {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({
+                                                        email: formData.email,
+                                                        name: formData.name,
+                                                        image: imgData
+                                                    })
+                                                });
+                                                
+                                                if (res.ok) alert("Card shared to your registered email!");
+                                                else throw new Error("Backend failed");
+                                            } catch (err) {
+                                                window.location.href = `mailto:${formData.email}?subject=My Rupiksha Visiting Card&body=Hello, please find my digital visiting card attached. Name: ${formData.name}, Mobile: ${formData.mobile}`;
+                                            } finally {
+                                                setIsSharing(false);
+                                            }
+                                        }}
+                                        disabled={isSharing}
+                                        className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold uppercase text-[11px] tracking-widest shadow-xl shadow-indigo-600/20 flex items-center justify-center space-x-2 hover:bg-indigo-700 transition-all hover:-translate-y-0.5 active:scale-95"
+                                    >
+                                        <Mail size={16} />
+                                        <span>{isSharing ? 'Sharing...' : 'Share on Email'}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </motion.div>
+                </AnimatePresence>
             </div>
             {/* Email Verification Modal */}
             <AnimatePresence>
