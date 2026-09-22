@@ -109,7 +109,13 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
     useEffect(() => {
         const updateData = () => setAppData(dataService.getData());
         window.addEventListener('dataUpdated', updateData);
-        return () => window.removeEventListener('dataUpdated', updateData);
+        window.addEventListener('distributorDataUpdated', updateData);
+        window.addEventListener('profileUpdated', updateData);
+        return () => {
+            window.removeEventListener('dataUpdated', updateData);
+            window.removeEventListener('distributorDataUpdated', updateData);
+            window.removeEventListener('profileUpdated', updateData);
+        };
     }, []);
 
     const toggleExpand = (id) => setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }));
@@ -310,8 +316,8 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
                 <div className={`flex items-center ${isExpanded ? 'justify-between' : 'justify-center'} px-1 py-1`}>
                     <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center border border-slate-300 overflow-hidden shrink-0 shadow-xs">
-                            {currentUser?.profilePhoto ? (
-                                <img src={currentUser.profilePhoto} alt="U" className="w-full h-full object-cover" />
+                            {currentUser?.profilePhoto || currentUser?.photoUrl || localStorage.getItem('rupiksha_profile_photo') ? (
+                                <img src={currentUser?.profilePhoto || currentUser?.photoUrl || localStorage.getItem('rupiksha_profile_photo')} alt="U" className="w-full h-full object-cover" />
                             ) : (
                                 <span className="text-[10px] font-black text-black">{getInitials()}</span>
                             )}

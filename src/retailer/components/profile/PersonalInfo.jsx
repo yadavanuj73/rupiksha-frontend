@@ -36,11 +36,13 @@ const PersonalInfo = ({
                                     className="w-full h-full object-cover"
                                     onError={(e) => {
                                         e.target.onerror = null;
-                                        e.target.src = "https://ui-avatars.com/api/?name=" + encodeURIComponent(formData.name || 'User') + "&background=0ea5e9&color=fff";
+                                        e.target.src = "https://ui-avatars.com/api/?name=" + encodeURIComponent(formData.name || formData.username || 'User') + "&background=0ea5e9&color=fff";
                                     }}
                                 />
                             ) : (
-                                <User size={42} className="text-slate-400" />
+                                <div className="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-2xl sm:text-3xl font-black">
+                                    {(formData.name || formData.username || 'U').split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                </div>
                             )}
                             <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-bold">
                                 <Camera size={18} />

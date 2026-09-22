@@ -300,7 +300,8 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
 
     const currentUser = getCurrentUserData() || appData.currentUser || {};
     const initialExtracted = extractUserProfileFields(currentUser);
-    const [profilePhoto, setProfilePhoto] = useState(initialExtracted.profilePhoto || initialExtracted.photoUrl || "https://ui-avatars.com/api/?name=User&background=A0A0A0&color=fff");
+    const savedPhoto = localStorage.getItem('rupiksha_profile_photo');
+    const [profilePhoto, setProfilePhoto] = useState(initialExtracted.profilePhoto || initialExtracted.photoUrl || savedPhoto || null);
     const [formData, setFormData] = useState(initialExtracted);
 
     const syncUserData = (customUser = null) => {
@@ -351,9 +352,11 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
         const handleUpdate = () => syncUserData();
         window.addEventListener('dataUpdated', handleUpdate);
         window.addEventListener('distributorDataUpdated', handleUpdate);
+        window.addEventListener('profileUpdated', handleUpdate);
         return () => {
             window.removeEventListener('dataUpdated', handleUpdate);
             window.removeEventListener('distributorDataUpdated', handleUpdate);
+            window.removeEventListener('profileUpdated', handleUpdate);
         };
     }, []);
 
@@ -556,9 +559,12 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
                 photoUrl: photoToSave
             };
             if (photoToSave) {
-                localStorage.setItem('rupiksha_profile_photo', photoToSave);
+                try {
+                    localStorage.setItem('rupiksha_profile_photo', photoToSave);
+                } catch (_) {}
             }
             const success = await dataService.updateUserProfile(payload);
+            window.dispatchEvent(new Event('profileUpdated'));
             if (success) {
                 setShowSavedToast(true);
                 setTimeout(() => setShowSavedToast(false), 3000);
@@ -585,11 +591,14 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
                 } catch (err) {
                     console.warn("Storage write:", err);
                 }
-                await dataService.updateUserProfile({
+                const updated = {
                     ...formData,
                     profilePhoto: photoBase64,
                     photoUrl: photoBase64
-                });
+                };
+                setFormData(updated);
+                await dataService.updateUserProfile(updated);
+                window.dispatchEvent(new Event('profileUpdated'));
                 setShowSavedToast(true);
                 setTimeout(() => setShowSavedToast(false), 3000);
             };

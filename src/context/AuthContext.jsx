@@ -194,9 +194,38 @@ export function AuthProvider({ children }) {
         logout();
       }
     }
+    // Update last activity on interaction
     setLoading(false);
     }; // end initAuth
     initAuth();
+  }, []);
+
+  // Sync user state immediately when profile or data is updated anywhere in the app
+  useEffect(() => {
+    const handleUserDataUpdate = () => {
+      const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+      const impUser = localStorage.getItem("rupiksha_imp_user");
+      const adminUser = localStorage.getItem("rupiksha_admin_user");
+      const savedUser = localStorage.getItem("rupiksha_user");
+      const userToParse = (isAdminPath && adminUser) ? adminUser : (impUser && !isAdminPath ? impUser : savedUser);
+      if (userToParse) {
+        try {
+          const parsed = normalizeUserSession(JSON.parse(userToParse));
+          if (parsed) {
+            setUser(prev => ({ ...(prev || {}), ...parsed }));
+          }
+        } catch (_) {}
+      }
+    };
+
+    window.addEventListener('dataUpdated', handleUserDataUpdate);
+    window.addEventListener('distributorDataUpdated', handleUserDataUpdate);
+    window.addEventListener('profileUpdated', handleUserDataUpdate);
+    return () => {
+      window.removeEventListener('dataUpdated', handleUserDataUpdate);
+      window.removeEventListener('distributorDataUpdated', handleUserDataUpdate);
+      window.removeEventListener('profileUpdated', handleUserDataUpdate);
+    };
   }, []);
 
   // Keep-alive ping: hits backend every 5 minutes only when active

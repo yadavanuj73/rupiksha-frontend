@@ -9,6 +9,7 @@ const DistributorTopBar = ({ onMenuClick }) => {
     const navigate = useNavigate();
     const { lockTimeLeft, logoutTimeLeft } = useAuth();
     const [dist, setDist] = useState(null);
+    const [imgError, setImgError] = useState(false);
     const [showProfile, setShowProfile] = useState(false);
     const [showNotif, setShowNotif] = useState(false);
     const profileRef = useRef(null);
@@ -26,11 +27,13 @@ const DistributorTopBar = ({ onMenuClick }) => {
         if (!session) return;
         const fresh = (session.id && sharedDataService.getDistributorById(session.id)) || session;
         const savedPhoto = localStorage.getItem('rupiksha_profile_photo');
+        const photo = fresh.profilePhoto || fresh.photoUrl || savedPhoto || null;
         setDist({
             ...fresh,
-            profilePhoto: fresh.profilePhoto || fresh.photoUrl || savedPhoto,
-            photoUrl: fresh.photoUrl || fresh.profilePhoto || savedPhoto
+            profilePhoto: photo,
+            photoUrl: photo
         });
+        setImgError(false);
 
         // Fetch live wallet balance from server
         try {
@@ -48,9 +51,11 @@ const DistributorTopBar = ({ onMenuClick }) => {
         loadDist();
         window.addEventListener('distributorDataUpdated', loadDist);
         window.addEventListener('dataUpdated', loadDist);
+        window.addEventListener('profileUpdated', loadDist);
         return () => {
             window.removeEventListener('distributorDataUpdated', loadDist);
             window.removeEventListener('dataUpdated', loadDist);
+            window.removeEventListener('profileUpdated', loadDist);
         };
     }, []);
 
@@ -175,11 +180,16 @@ const DistributorTopBar = ({ onMenuClick }) => {
                 <div className="relative" ref={profileRef}>
                     <button onClick={() => setShowProfile(v => !v)}
                         className="flex items-center gap-2 p-1.5 pr-2.5 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all">
-                        <div className="w-8 h-8 rounded-xl overflow-hidden bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-[11px] font-black shadow-md shadow-amber-500/30 shrink-0 border border-amber-200">
-                            {dist?.profilePhoto || dist?.photoUrl ? (
-                                <img src={dist.profilePhoto || dist.photoUrl} alt="Profile" className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} />
+                        <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-[11px] font-black shadow-md shadow-amber-500/30 shrink-0 border border-amber-200">
+                            {userPhoto && !imgError ? (
+                                <img
+                                    src={userPhoto}
+                                    alt="Profile"
+                                    className="w-full h-full object-cover"
+                                    onError={() => setImgError(true)}
+                                />
                             ) : (
-                                initials
+                                <span>{initials}</span>
                             )}
                         </div>
                         <div className="hidden md:block text-left">
@@ -190,11 +200,20 @@ const DistributorTopBar = ({ onMenuClick }) => {
                     </button>
 
                     {showProfile && (
-                        <div className="absolute right-0 top-12 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50">
-                            <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 border-b border-amber-100">
-                                <p className="text-[10px] font-black text-slate-700 uppercase tracking-tight">{distName}</p>
-                                <p className="text-[9px] font-bold text-slate-400 mt-0.5">{dist?.id}</p>
-                                <p className="text-[9px] font-bold text-amber-600 mt-1">Wallet: ₹ {walletBal}</p>
+                        <div className="absolute right-0 top-12 w-60 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50">
+                            <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 border-b border-amber-100 flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-[12px] font-black shadow-sm shrink-0 border border-amber-200">
+                                    {userPhoto && !imgError ? (
+                                        <img src={userPhoto} alt="Profile" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <span>{initials}</span>
+                                    )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-[11px] font-black text-slate-800 uppercase tracking-tight truncate">{distName}</p>
+                                    <p className="text-[9px] font-bold text-slate-400 mt-0.5 truncate">{dist?.id || dist?.username || 'Distributor'}</p>
+                                    <p className="text-[10px] font-black text-amber-600 mt-0.5">Wallet: ₹ {walletBal}</p>
+                                </div>
                             </div>
                             <button onClick={() => { setShowProfile(false); navigate('/distributor/profile'); }}
                                 className="w-full flex items-center gap-3 px-4 py-3 text-[10px] font-black text-slate-600 hover:bg-slate-50 hover:text-amber-600 transition-colors uppercase tracking-wider">

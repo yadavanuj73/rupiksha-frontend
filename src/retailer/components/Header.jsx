@@ -13,6 +13,7 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
     const [notifications, setNotifications] = useState([]);
+    const [imgError, setImgError] = useState(false);
 
     const { balance, isWalletLoading, walletError } = useWallet();
 
@@ -22,6 +23,7 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
         const updateData = () => {
             const data = dataService.getData();
             setAppData(data);
+            setImgError(false);
 
             const systemNotifs = [];
             if (data.currentUser?.aeps_kyc_status !== 'DONE') {
@@ -38,10 +40,17 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
         };
         updateData();
         window.addEventListener('dataUpdated', updateData);
-        return () => window.removeEventListener('dataUpdated', updateData);
+        window.addEventListener('distributorDataUpdated', updateData);
+        window.addEventListener('profileUpdated', updateData);
+        return () => {
+            window.removeEventListener('dataUpdated', updateData);
+            window.removeEventListener('distributorDataUpdated', updateData);
+            window.removeEventListener('profileUpdated', updateData);
+        };
     }, []);
 
     const currentUser = authUser || appData.currentUser || dataService.getCurrentUser();
+    const userPhoto = currentUser?.profilePhoto || currentUser?.photoUrl || localStorage.getItem('rupiksha_profile_photo');
     const retailerName = currentUser?.fullName || currentUser?.name || currentUser?.businessName || currentUser?.username || 'Anujkumar Yadav';
 
     const getInitials = () => {
@@ -148,9 +157,18 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
                             onClick={() => setShowProfileMenu(!showProfileMenu)}
                             className="flex items-center gap-2 cursor-pointer bg-slate-50 border border-slate-200 pl-1.5 pr-4 py-1.5 rounded-full transition-all hover:bg-slate-100 shadow-sm"
                         >
-                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-slate-200 to-slate-400 p-0.5">
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 p-0.5 shadow-sm">
                                 <div className="w-full h-full rounded-full bg-white overflow-hidden flex items-center justify-center">
-                                    <span className="text-[10px] font-black text-slate-800 uppercase">{getInitials()}</span>
+                                    {userPhoto && !imgError ? (
+                                        <img
+                                            src={userPhoto}
+                                            alt="Profile"
+                                            className="w-full h-full object-cover"
+                                            onError={() => setImgError(true)}
+                                        />
+                                    ) : (
+                                        <span className="text-[10px] font-black text-slate-800 uppercase">{getInitials()}</span>
+                                    )}
                                 </div>
                             </div>
                             <div className="hidden md:block text-left">
@@ -171,10 +189,21 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
                                         className="absolute right-0 mt-3 w-64 bg-white rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-200 z-50 overflow-hidden"
                                     >
                                         <div className="p-2">
-                                            <div className="px-5 py-5 bg-slate-50 rounded-t-[20px] mb-2 border-b border-slate-100">
-                                                <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Session Active</p>
-                                                <p className="text-sm font-black text-slate-800 truncate">{retailerName}</p>
-                                                <p className="text-[11px] font-bold text-slate-400 mt-0.5">{currentUser?.username}</p>
+                                            <div className="px-5 py-5 bg-slate-50 rounded-t-[20px] mb-2 border-b border-slate-100 flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 p-0.5 shadow-sm shrink-0">
+                                                    <div className="w-full h-full rounded-full bg-white overflow-hidden flex items-center justify-center">
+                                                        {userPhoto && !imgError ? (
+                                                            <img src={userPhoto} alt="Profile" className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <span className="text-[11px] font-black text-blue-700 uppercase">{getInitials()}</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-0.5">Session Active</p>
+                                                    <p className="text-sm font-black text-slate-800 truncate">{retailerName}</p>
+                                                    <p className="text-[11px] font-bold text-slate-400 mt-0.5 truncate">{currentUser?.username}</p>
+                                                </div>
                                             </div>
                                             <div className="space-y-0.5 px-1">
                                                 {[

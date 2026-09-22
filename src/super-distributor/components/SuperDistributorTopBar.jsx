@@ -2,12 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Bell, Menu, LogOut, ChevronDown, Wallet, User, BadgeCheck, Clock3, OctagonAlert } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { sharedDataService } from '../../services/sharedDataService';
+import { dataService } from '../../services/dataService';
 // Using logo from public folder
 const logo = '/rupiksha logo.jpeg';
 
 const SuperDistributorTopBar = ({ onMenuClick }) => {
     const navigate = useNavigate();
     const [dist, setDist] = useState(null);
+    const [imgError, setImgError] = useState(false);
     const [showProfile, setShowProfile] = useState(false);
     const [showNotif, setShowNotif] = useState(false);
     const profileRef = useRef(null);
@@ -18,20 +20,24 @@ const SuperDistributorTopBar = ({ onMenuClick }) => {
         if (!session) return;
         const fresh = (session.id && sharedDataService.getSuperDistributorById(session.id)) || session;
         const savedPhoto = localStorage.getItem('rupiksha_profile_photo');
+        const photo = fresh.profilePhoto || fresh.photoUrl || savedPhoto || null;
         setDist({
             ...fresh,
-            profilePhoto: fresh.profilePhoto || fresh.photoUrl || savedPhoto,
-            photoUrl: fresh.photoUrl || fresh.profilePhoto || savedPhoto
+            profilePhoto: photo,
+            photoUrl: photo
         });
+        setImgError(false);
     };
 
     useEffect(() => {
         loadDist();
         window.addEventListener('SuperDistributorDataUpdated', loadDist);
         window.addEventListener('dataUpdated', loadDist);
+        window.addEventListener('profileUpdated', loadDist);
         return () => {
             window.removeEventListener('SuperDistributorDataUpdated', loadDist);
             window.removeEventListener('dataUpdated', loadDist);
+            window.removeEventListener('profileUpdated', loadDist);
         };
     }, []);
 
@@ -51,6 +57,7 @@ const SuperDistributorTopBar = ({ onMenuClick }) => {
     };
 
     const initials = (dist?.name || 'D').charAt(0).toUpperCase();
+    const userPhoto = dist?.profilePhoto || dist?.photoUrl || localStorage.getItem('rupiksha_profile_photo');
     const walletBal = dist?.wallet?.balance || '0.00';
     const distName = dist?.name || 'SUPER_DISTRIBUTOR';
     const rawKyc = String(dist?.kycStatus || dist?.profile_kyc_status || '').toUpperCase();
@@ -137,32 +144,44 @@ const SuperDistributorTopBar = ({ onMenuClick }) => {
                             </button>
                         </div>
                     )}
-                </div>
-
-                {/* Profile Dropdown */}
+                </div>                {/* Profile Dropdown */}
                 <div className="relative" ref={profileRef}>
                     <button onClick={() => setShowProfile(v => !v)}
                         className="flex items-center gap-2 p-1.5 pr-2.5 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all">
-                        <div className="w-8 h-8 rounded-xl overflow-hidden bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-[11px] font-black shadow-md shadow-amber-500/30 shrink-0 border border-amber-200">
-                            {dist?.profilePhoto || dist?.photoUrl ? (
-                                <img src={dist.profilePhoto || dist.photoUrl} alt="Profile" className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} />
+                        <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-[11px] font-black shadow-md shadow-amber-500/30 shrink-0 border border-amber-200">
+                            {userPhoto && !imgError ? (
+                                <img
+                                    src={userPhoto}
+                                    alt="Profile"
+                                    className="w-full h-full object-cover"
+                                    onError={() => setImgError(true)}
+                                />
                             ) : (
-                                initials
+                                <span>{initials}</span>
                             )}
                         </div>
                         <div className="hidden md:block text-left">
                             <p className="text-[10px] font-black text-slate-800 leading-none uppercase tracking-tight max-w-[100px] truncate">{distName}</p>
-                            <p className="text-[8px] font-bold text-emerald-500 mt-0.5 uppercase tracking-widest">â— Online</p>
+                            <p className="text-[8px] font-bold text-emerald-500 mt-0.5 uppercase tracking-widest">● Online</p>
                         </div>
                         <ChevronDown size={12} className={`text-slate-400 transition-transform hidden md:block ${showProfile ? 'rotate-180' : ''}`} />
                     </button>
 
                     {showProfile && (
-                        <div className="absolute right-0 top-12 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50">
-                            <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 border-b border-amber-100">
-                                <p className="text-[10px] font-black text-slate-700 uppercase tracking-tight">{distName}</p>
-                                <p className="text-[9px] font-bold text-slate-400 mt-0.5">{dist?.id}</p>
-                                <p className="text-[9px] font-bold text-amber-600 mt-1">Wallet: ₹ {walletBal}</p>
+                        <div className="absolute right-0 top-12 w-60 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50">
+                            <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 border-b border-amber-100 flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-[12px] font-black shadow-sm shrink-0 border border-amber-200">
+                                    {userPhoto && !imgError ? (
+                                        <img src={userPhoto} alt="Profile" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <span>{initials}</span>
+                                    )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-[11px] font-black text-slate-700 uppercase tracking-tight truncate">{distName}</p>
+                                    <p className="text-[9px] font-bold text-slate-400 mt-0.5 truncate">{dist?.id || 'Super Distributor'}</p>
+                                    <p className="text-[10px] font-black text-amber-600 mt-0.5">Wallet: ₹ {walletBal}</p>
+                                </div>
                             </div>
                             <button onClick={() => { setShowProfile(false); navigate('/super-distributor'); }}
                                 className="w-full flex items-center gap-3 px-4 py-3 text-[10px] font-black text-slate-600 hover:bg-slate-50 hover:text-amber-600 transition-colors uppercase tracking-wider">
