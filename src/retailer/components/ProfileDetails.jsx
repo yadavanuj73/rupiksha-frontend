@@ -19,10 +19,6 @@ const BACKEND_URL = IMPORTED_BACKEND_URL || `/api`;
 import BusinessInfo from './profile/BusinessInfo';
 import PersonalInfo from './profile/PersonalInfo';
 import BankingInfo from './profile/BankingInfo';
-import AdditionalDetails from './profile/AdditionalDetails';
-import UPIDetails from './profile/UPIDetails';
-import Documents from './profile/Documents';
-import PasswordDetails from './profile/PasswordDetails';
 import Settings from './profile/Settings';
 
 const getCurrentUserData = () => {
@@ -44,7 +40,6 @@ const VALID_PROFILE_TABS = ['business', 'personal', 'banking', 'visiting_card', 
 const ProfileDetails = ({ activeTab = 'personal' }) => {
     const initialTab = VALID_PROFILE_TABS.includes(activeTab) ? activeTab : 'personal';
     const [activeSubTab, setActiveSubTab] = useState(initialTab);
-    const [additionalTab, setAdditionalTab] = useState('personal');
     const [isSaving, setIsSaving] = useState(false);
     const [showSavedToast, setShowSavedToast] = useState(false);
     const [appData, setAppData] = useState(dataService.getData());
@@ -98,35 +93,6 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
         confirmAccountNumber: currentUser?.bankAccountNumber || '',
         ifscCode: currentUser?.bankIfsc || '',
         branchName: currentUser?.bankBranch || '',
-        // Additional Personal
-        altNumber: currentUser?.altNumber || '',
-        addEducation: currentUser?.addEducation || '',
-        handicapped: currentUser?.handicapped || 'NO',
-        nomineeDetails: currentUser?.nomineeDetails || '',
-        nomineeName: currentUser?.nomineeName || '',
-        nomineeAge: currentUser?.nomineeAge || '',
-        marriedStatus: currentUser?.marriedStatus || 'Single',
-        spouseName: currentUser?.spouseName || '',
-        weddingDate: currentUser?.weddingDate || '',
-        // Additional Business
-        expectedBizRs: currentUser?.expectedBizRs || '',
-        expectedBizTxn: currentUser?.expectedBizTxn || '',
-        weeklyOff: currentUser?.weeklyOff || 'Sunday',
-        monthlyIncome: currentUser?.monthlyIncome || '',
-        bizExperience: currentUser?.bizExperience || '',
-        footFall: currentUser?.footFall || '',
-        // General
-        servicesRequired: currentUser?.servicesRequired || 'NO',
-        selectServices: currentUser?.selectServices || '',
-        competitorId: currentUser?.competitorId || 'NO',
-        competitors: currentUser?.competitors || '',
-        referenceFrom: currentUser?.referenceFrom || '',
-        // UPI
-        upiId: currentUser?.upiId || '',
-        // Password
-        otp: '',
-        newPassword: '',
-        confirmPassword: '',
         // Settings
         emailNotifications: currentUser?.emailNotifications ?? true,
         whatsappUpdates: currentUser?.whatsappUpdates ?? true,
@@ -173,9 +139,7 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
                 accountNumber: user.accountNumber || user.bankAccountNumber || prev.accountNumber,
                 confirmAccountNumber: user.accountNumber || user.bankAccountNumber || prev.confirmAccountNumber,
                 ifscCode: user.ifscCode || user.bankIfsc || prev.ifscCode,
-                branchName: user.branchName || user.bankBranch || prev.branchName,
-                // UPI
-                upiId: user.upiId || prev.upiId
+                branchName: user.branchName || user.bankBranch || prev.branchName
             }));
             if (user.profilePhoto || user.photoUrl) {
                 setProfilePhoto(user.profilePhoto || user.photoUrl);
@@ -229,7 +193,6 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
                 throw new Error(data.message || "Failed to send OTP");
             }
         } catch (error) {
-            // If backend send-otp isn't reached, allow testing fallback
             setShowVerifyModal(true);
             setTimer(60);
         } finally {
@@ -261,7 +224,6 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
                 alert(data.message || "Invalid OTP. Please try again.");
             }
         } catch (error) {
-            // Local fallback verification
             const updatedData = { ...formData, emailVerified: true };
             await dataService.updateUserProfile(updatedData);
             setFormData(updatedData);
@@ -305,7 +267,6 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
                 alert(errorMsg);
             }
         } catch (error) {
-            // Local fallback simulation if endpoint offline
             const updatedData = {
                 ...formData,
                 isPanVerified: true,
@@ -319,39 +280,6 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
         }
     };
 
-    const [isVerifyingUpi, setIsVerifyingUpi] = useState(false);
-
-    const handleUpiVerify = async () => {
-        if (!formData.upiId || !formData.upiId.includes('@')) {
-            alert("Please enter a valid UPI ID (e.g. name@bank).");
-            return;
-        }
-
-        setIsVerifyingUpi(true);
-        try {
-            const response = await fetch(`${BACKEND_URL}/verify-upi`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ vpa: formData.upiId })
-            });
-
-            const result = await response.json();
-            if (result.success) {
-                const upiData = result.data;
-                alert(`UPI Verified Successfully! Name: ${upiData.name || 'Verified'}`);
-                handleInputChange('isUpiVerified', true);
-            } else {
-                alert(result.message || "UPI verification failed. Please check the ID.");
-            }
-        } catch (error) {
-            handleInputChange('isUpiVerified', true);
-            alert("UPI verified and linked successfully!");
-        } finally {
-            setIsVerifyingUpi(false);
-        }
-    };
-
-    const [showPasswords, setShowPasswords] = useState(false);
     const [isFetchingIFSC, setIsFetchingIFSC] = useState(false);
     const [isVerifyingAccount, setIsVerifyingAccount] = useState(false);
 
@@ -448,7 +376,6 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
             reader.onload = async () => {
                 const photoBase64 = reader.result;
                 setProfilePhoto(photoBase64);
-                // Also update profile directly with the photo
                 await dataService.updateUserProfile({
                     ...formData,
                     profilePhoto: photoBase64,
@@ -547,39 +474,6 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
                                     isVerifyingAccount={isVerifyingAccount}
                                     setFormData={setFormData}
                                     currentUser={currentUser}
-                                />
-                            )}
-                            {activeSubTab === 'additional' && (
-                                <AdditionalDetails
-                                    formData={formData}
-                                    handleInputChange={handleInputChange}
-                                    handleSave={handleSave}
-                                    isSaving={isSaving}
-                                    additionalTab={additionalTab}
-                                    setAdditionalTab={setAdditionalTab}
-                                />
-                            )}
-                            {activeSubTab === 'upi' && (
-                                <UPIDetails
-                                    formData={formData}
-                                    handleInputChange={handleInputChange}
-                                    handleSave={handleSave}
-                                    isSaving={isSaving}
-                                    onVerifyUpi={handleUpiVerify}
-                                    isVerifyingUpi={isVerifyingUpi}
-                                />
-                            )}
-                            {activeSubTab === 'documents' && <Documents currentUser={currentUser} />}
-                            {activeSubTab === 'password' && (
-                                <PasswordDetails
-                                    formData={formData}
-                                    handleInputChange={handleInputChange}
-                                    handleSave={handleSave}
-                                    isSaving={isSaving}
-                                    isSendingOtp={isSendingOtp}
-                                    onVerifyEmail={handleSendOtp}
-                                    showPasswords={showPasswords}
-                                    setShowPasswords={setShowPasswords}
                                 />
                             )}
                             {activeSubTab === 'settings' && <Settings formData={formData} handleInputChange={handleInputChange} handleSave={handleSave} />}
@@ -737,140 +631,6 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
                                             <span>{isSharing ? 'Sharing...' : 'Share on Email'}</span>
                                         </button>
                                     </div>
-                                </div>
-                            )}
-                            {activeSubTab === 'gst_certification' && (
-                                <div className="flex flex-col items-center justify-center space-y-6 py-6 w-full">
-                                    <div className="text-center">
-                                        <h3 className="text-2xl font-black text-slate-800 uppercase tracking-tighter">GST Certification</h3>
-                                        <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-1">Government of India - GST Registration</p>
-                                    </div>
-                                    {currentUser?.gst_certificate ? (
-                                        <div className="w-full max-w-[800px] bg-white border-2 border-slate-100 rounded-[2rem] p-4 shadow-xl">
-                                            <img src={currentUser.gst_certificate} alt="GST Certificate" className="w-full h-auto rounded-xl" />
-                                        </div>
-                                    ) : (
-                                        <div className="w-full max-w-[600px] bg-white border-4 border-slate-900 p-6 sm:p-10 shadow-2xl relative overflow-hidden">
-                                            <div className="absolute top-0 right-0 w-20 h-20 bg-blue-600/10 rotate-45 -mr-10 -mt-10"></div>
-                                            <div className="text-center border-b-2 border-slate-200 pb-6 mb-8">
-                                                <p className="text-base sm:text-lg font-black uppercase tracking-widest text-slate-800">Form GST REG-06</p>
-                                                <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Registration Certificate</p>
-                                            </div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 sm:gap-y-6 text-sm">
-                                                <div>
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase">Registration Number</p>
-                                                    <p className="font-black text-slate-800 mt-1">{currentUser?.panNumber ? `10${currentUser.panNumber}1Z5` : 'PENDING'}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase">Legal Name</p>
-                                                    <p className="font-black text-slate-800 mt-1">{formData.name || currentUser?.name || 'USER NAME'}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase">Trade Name</p>
-                                                    <p className="font-black text-slate-800 mt-1">{formData.businessName || currentUser?.businessName || 'BUSINESS NAME'}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase">Constitution of Business</p>
-                                                    <p className="font-black text-slate-800 mt-1">{formData.businessType || 'Proprietorship'}</p>
-                                                </div>
-                                                <div className="sm:col-span-2">
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase">Address</p>
-                                                    <p className="font-black text-slate-800 mt-1 uppercase text-xs">{formData.address1 || 'N/A'}, {formData.address2 || ''} {formData.pincode || ''}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase">Mobile No.</p>
-                                                    <p className="font-black text-slate-800 mt-1">{formData.mobile || currentUser?.mobile || 'No Mobile'}</p>
-                                                </div>
-                                            </div>
-                                            <div className="mt-8 pt-6 border-t-2 border-slate-100 flex justify-between items-end">
-                                                <div className="text-[8px] font-bold text-slate-400 uppercase">Generated by RuPiKsha Auth System</div>
-                                                <div className="text-right">
-                                                    <div className="w-24 h-1 bg-slate-800 mb-2"></div>
-                                                    <p className="text-[10px] font-black uppercase">Authorized Signatory</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                    <button className="bg-slate-900 text-white px-8 py-3 rounded-xl font-bold uppercase text-[11px] tracking-widest shadow-xl flex items-center space-x-2">
-                                        <Download size={16} />
-                                        <span>Download PDF</span>
-                                    </button>
-                                </div>
-                            )}
-                            {activeSubTab === 'tds_certificate' && (
-                                <div className="flex flex-col items-center justify-center space-y-6 py-6 w-full">
-                                    <div className="text-center">
-                                        <h3 className="text-2xl font-black text-slate-800 uppercase tracking-tighter">TDS Certificate</h3>
-                                        <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-1">Income Tax Department - Form 16A</p>
-                                    </div>
-                                    {currentUser?.tds_certificate ? (
-                                        <div className="w-full max-w-[800px] bg-white border-2 border-slate-100 rounded-[2rem] p-4 shadow-xl">
-                                            <img src={currentUser.tds_certificate} alt="TDS Certificate" className="w-full h-auto rounded-xl" />
-                                        </div>
-                                    ) : (
-                                        <div className="w-full max-w-[600px] bg-white border-4 border-blue-900 p-6 sm:p-10 shadow-2xl relative">
-                                            <div className="text-center border-b-2 border-blue-100 pb-6 mb-8 text-blue-900">
-                                                <p className="text-base sm:text-lg font-black uppercase tracking-widest">Certificate of Tax Deducted at Source</p>
-                                                <p className="text-[10px] font-bold uppercase mt-1">Under Section 203 of the Income Tax Act, 1961</p>
-                                            </div>
-                                            <div className="space-y-5 text-sm">
-                                                <div className="flex justify-between border-b border-slate-50 pb-3">
-                                                    <div>
-                                                        <p className="text-[10px] font-black text-slate-400 uppercase">Deductor Name</p>
-                                                        <p className="font-black text-blue-900 mt-1 uppercase text-xs sm:text-sm">RuPiKsha Solutions Pvt Ltd</p>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <p className="text-[10px] font-black text-slate-400 uppercase">TAN of Deductor</p>
-                                                        <p className="font-black text-blue-900 mt-1">MUMR12345B</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex justify-between border-b border-slate-50 pb-3">
-                                                    <div>
-                                                        <p className="text-[10px] font-black text-slate-400 uppercase">Deductee Name</p>
-                                                        <p className="font-black text-slate-800 mt-1 text-xs sm:text-sm">{formData.name || currentUser?.name || 'USER NAME'}</p>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <p className="text-[10px] font-black text-slate-400 uppercase">PAN of Deductee</p>
-                                                        <p className="font-black text-slate-800 mt-1">{currentUser?.panNumber || 'PENDING'}</p>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase">Registered Mobile</p>
-                                                    <p className="font-black text-slate-800 mt-1">{formData.mobile || currentUser?.mobile || 'No Mobile'}</p>
-                                                </div>
-                                                <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                                                    <p className="text-[10px] font-black text-blue-400 uppercase text-center mb-3">Deduction Details</p>
-                                                    <div className="grid grid-cols-2 gap-4">
-                                                        <p className="text-xs font-bold text-slate-500 uppercase">Current Fin. Year</p>
-                                                        <p className="text-xs font-black text-slate-800 text-right">2023-24</p>
-                                                        <p className="text-xs font-bold text-slate-500 uppercase">Total TDS Deducted</p>
-                                                        <p className="text-xs font-black text-slate-800 text-right">₹ {currentUser?.total_tds_paid || '0.00'}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="mt-8 flex justify-between items-center">
-                                                <div className="w-16 h-16 sm:w-20 sm:h-20 border-2 border-blue-100 rounded-lg flex items-center justify-center p-2">
-                                                    <div className="w-full h-full bg-slate-50 rounded flex items-center justify-center">
-                                                        <p className="text-[8px] text-slate-300 font-black rotate-45 uppercase">Verified QR</p>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase mb-2">Digitally Signed By</p>
-                                                    <p className="text-xs sm:text-sm font-black text-blue-900 uppercase">Compliance Officer</p>
-                                                    <p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">RuPiKsha Corporate Team</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                    <button className="bg-blue-900 text-white px-8 py-3 rounded-xl font-bold uppercase text-[11px] tracking-widest shadow-xl flex items-center space-x-2">
-                                        <Download size={16} />
-                                        <span>Download Certificate</span>
-                                    </button>
-                                </div>
-                            )}
-                            {!['business', 'personal', 'additional', 'banking', 'upi', 'documents', 'password', 'settings', 'visiting_card'].includes(activeSubTab) && (
-                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-20 text-center">
-                                    <h3 className="text-xl font-bold text-slate-400 uppercase tracking-widest">{activeSubTab} SECTION</h3>
                                 </div>
                             )}
                         </motion.div>
