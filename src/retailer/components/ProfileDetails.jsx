@@ -58,6 +58,7 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
     const [isSendingOtp, setIsSendingOtp] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
     const [timer, setTimer] = useState(0);
+    const [isDataLoading, setIsDataLoading] = useState(true);
 
     const currentUser = getCurrentUserData() || appData.currentUser || {};
     const [profilePhoto, setProfilePhoto] = useState(currentUser?.profilePhoto || currentUser?.photoUrl || localStorage.getItem('rupiksha_profile_photo') || "https://ui-avatars.com/api/?name=User&background=A0A0A0&color=fff");
@@ -180,6 +181,7 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
                 // Update if server returned any non-empty user object
                 if (fresh && typeof fresh === 'object' && Object.keys(fresh).length > 0) {
                     syncUserData(fresh);
+                    setIsDataLoading(false);
                     return;
                 }
             } catch (e) {
@@ -239,6 +241,7 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
             } catch (e2) {
                 console.warn('[Profile] Direct Cloud Run fetch also failed:', e2);
             }
+            setIsDataLoading(false);
         };
 
         doFetch();
@@ -527,6 +530,17 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
         if (status === 'missing') return <AlertCircle size={16} className="text-rose-500" />;
         return null;
     };
+
+    if (isDataLoading) {
+        return (
+            <div className="flex flex-col h-full bg-[#f4f7fa] font-['Inter',sans-serif] w-full overflow-hidden items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loading Profile Data...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col h-full bg-[#f4f7fa] font-['Inter',sans-serif] w-full overflow-hidden">
