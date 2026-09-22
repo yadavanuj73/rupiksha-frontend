@@ -536,9 +536,18 @@ export const dataService = {
             if (res.ok) {
                 const data = await res.json();
                 const serverUser = data?.user || data?.data || data;
-                if (serverUser && typeof serverUser === 'object' && Object.keys(serverUser).length > 0 && !serverUser.status) {
+                if (serverUser && typeof serverUser === 'object' && Object.keys(serverUser).length > 0 && !serverUser.error) {
                     const savedPhoto = localStorage.getItem('rupiksha_profile_photo');
-                    const resolvedPhoto = serverUser.profilePhoto || serverUser.photoUrl || currentUser?.profilePhoto || currentUser?.photoUrl || savedPhoto;
+                    let docPhoto = null;
+                    if (Array.isArray(serverUser.documents)) {
+                        const selfieDoc = serverUser.documents.find(d => 
+                            (d.type && ['SELFIE', 'PHOTO', 'LIVE_SELFIE', 'PROFILE_PHOTO'].includes(String(d.type).toUpperCase())) ||
+                            (d.name && String(d.name).toLowerCase().includes('selfie')) ||
+                            (d.name && String(d.name).toLowerCase().includes('photo'))
+                        );
+                        if (selfieDoc) docPhoto = selfieDoc.file || selfieDoc.url || selfieDoc.image;
+                    }
+                    const resolvedPhoto = serverUser.profilePhoto || serverUser.photoUrl || serverUser.liveSelfieUrl || docPhoto || currentUser?.profilePhoto || currentUser?.photoUrl || savedPhoto;
                     const merged = {
                         ...currentUser,
                         ...serverUser,
@@ -548,6 +557,9 @@ export const dataService = {
                     localStorage.setItem('rupiksha_user', JSON.stringify(merged));
                     if (localStorage.getItem('rupiksha_distributor_user') || merged.role === 'DISTRIBUTOR') {
                         localStorage.setItem('rupiksha_distributor_user', JSON.stringify(merged));
+                    }
+                    if (resolvedPhoto) {
+                        try { localStorage.setItem('rupiksha_profile_photo', resolvedPhoto); } catch (_) {}
                     }
                     const localData = this.getData();
                     localData.currentUser = merged;

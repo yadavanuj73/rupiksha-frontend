@@ -14,16 +14,25 @@ const SuperDistributorTopBar = ({ onMenuClick }) => {
     const notifRef = useRef(null);
 
     const loadDist = () => {
-        const session = sharedDataService.getCurrentSuperDistributor();
+        const session = sharedDataService.getCurrentSuperDistributor() || dataService.getCurrentUser();
         if (!session) return;
-        const fresh = sharedDataService.getSuperDistributorById(session.id) || session;
-        setDist(fresh);
+        const fresh = (session.id && sharedDataService.getSuperDistributorById(session.id)) || session;
+        const savedPhoto = localStorage.getItem('rupiksha_profile_photo');
+        setDist({
+            ...fresh,
+            profilePhoto: fresh.profilePhoto || fresh.photoUrl || savedPhoto,
+            photoUrl: fresh.photoUrl || fresh.profilePhoto || savedPhoto
+        });
     };
 
     useEffect(() => {
         loadDist();
         window.addEventListener('SuperDistributorDataUpdated', loadDist);
-        return () => window.removeEventListener('SuperDistributorDataUpdated', loadDist);
+        window.addEventListener('dataUpdated', loadDist);
+        return () => {
+            window.removeEventListener('SuperDistributorDataUpdated', loadDist);
+            window.removeEventListener('dataUpdated', loadDist);
+        };
     }, []);
 
     // Close dropdowns on outside click
@@ -134,8 +143,12 @@ const SuperDistributorTopBar = ({ onMenuClick }) => {
                 <div className="relative" ref={profileRef}>
                     <button onClick={() => setShowProfile(v => !v)}
                         className="flex items-center gap-2 p-1.5 pr-2.5 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all">
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-[11px] font-black shadow-md shadow-amber-500/30">
-                            {initials}
+                        <div className="w-8 h-8 rounded-xl overflow-hidden bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-[11px] font-black shadow-md shadow-amber-500/30 shrink-0 border border-amber-200">
+                            {dist?.profilePhoto || dist?.photoUrl ? (
+                                <img src={dist.profilePhoto || dist.photoUrl} alt="Profile" className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} />
+                            ) : (
+                                initials
+                            )}
                         </div>
                         <div className="hidden md:block text-left">
                             <p className="text-[10px] font-black text-slate-800 leading-none uppercase tracking-tight max-w-[100px] truncate">{distName}</p>

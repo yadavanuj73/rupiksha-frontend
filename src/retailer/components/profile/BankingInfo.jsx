@@ -3,7 +3,24 @@ import { Plus, ShieldCheck, RefreshCw, X, Landmark } from 'lucide-react';
 import { InputField, SelectField } from './ProfileShared';
 
 const BankingInfo = ({ formData, handleInputChange, handleSave, isSaving, isFetchingIFSC, isVerifyingAccount, setFormData, currentUser }) => {
-    const banks = currentUser?.banks || [];
+    const rawBanks = (currentUser?.banks && Array.isArray(currentUser.banks) && currentUser.banks.length > 0)
+        ? currentUser.banks
+        : ((formData?.banks && Array.isArray(formData.banks) && formData.banks.length > 0)
+            ? formData.banks
+            : []);
+
+    const banks = rawBanks.length > 0
+        ? rawBanks
+        : ((formData?.bankName || formData?.accountNumber)
+            ? [{
+                id: 'bank_registered',
+                bankName: formData.bankName || 'Registered Bank',
+                accountNumber: formData.accountNumber || '',
+                ifscCode: formData.ifscCode || '',
+                branchName: formData.branchName || '',
+                accHolderName: formData.accHolderName || ''
+            }]
+            : []);
 
     const handleAddBank = () => {
         if (!formData.bankName || !formData.accountNumber) {

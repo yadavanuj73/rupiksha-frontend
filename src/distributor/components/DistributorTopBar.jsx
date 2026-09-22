@@ -22,10 +22,15 @@ const DistributorTopBar = ({ onMenuClick }) => {
     };
 
     const loadDist = async () => {
-        const session = sharedDataService.getCurrentDistributor();
+        const session = sharedDataService.getCurrentDistributor() || dataService.getCurrentUser();
         if (!session) return;
-        const fresh = sharedDataService.getDistributorById(session.id) || session;
-        setDist(fresh);
+        const fresh = (session.id && sharedDataService.getDistributorById(session.id)) || session;
+        const savedPhoto = localStorage.getItem('rupiksha_profile_photo');
+        setDist({
+            ...fresh,
+            profilePhoto: fresh.profilePhoto || fresh.photoUrl || savedPhoto,
+            photoUrl: fresh.photoUrl || fresh.profilePhoto || savedPhoto
+        });
 
         // Fetch live wallet balance from server
         try {
@@ -42,7 +47,11 @@ const DistributorTopBar = ({ onMenuClick }) => {
     useEffect(() => {
         loadDist();
         window.addEventListener('distributorDataUpdated', loadDist);
-        return () => window.removeEventListener('distributorDataUpdated', loadDist);
+        window.addEventListener('dataUpdated', loadDist);
+        return () => {
+            window.removeEventListener('distributorDataUpdated', loadDist);
+            window.removeEventListener('dataUpdated', loadDist);
+        };
     }, []);
 
     // Close dropdowns on outside click
@@ -166,8 +175,12 @@ const DistributorTopBar = ({ onMenuClick }) => {
                 <div className="relative" ref={profileRef}>
                     <button onClick={() => setShowProfile(v => !v)}
                         className="flex items-center gap-2 p-1.5 pr-2.5 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all">
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-[11px] font-black shadow-md shadow-amber-500/30">
-                            {initials}
+                        <div className="w-8 h-8 rounded-xl overflow-hidden bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-[11px] font-black shadow-md shadow-amber-500/30 shrink-0 border border-amber-200">
+                            {dist?.profilePhoto || dist?.photoUrl ? (
+                                <img src={dist.profilePhoto || dist.photoUrl} alt="Profile" className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} />
+                            ) : (
+                                initials
+                            )}
                         </div>
                         <div className="hidden md:block text-left">
                             <p className="text-[10px] font-black text-slate-800 leading-none uppercase tracking-tight max-w-[100px] truncate">{distName}</p>

@@ -42,6 +42,166 @@ const getCurrentUserData = () => {
 
 const VALID_PROFILE_TABS = ['business', 'personal', 'banking', 'visiting_card', 'settings'];
 
+const normalizeDate = (val) => {
+    if (!val) return '';
+    const str = String(val).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    if (str.includes('T')) return str.split('T')[0];
+    if (str.includes('/')) {
+        const parts = str.split('/');
+        if (parts.length === 3) {
+            if (parts[2].length === 4) return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+            if (parts[0].length === 4) return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+        }
+    }
+    if (str.includes('-')) {
+        const parts = str.split('-');
+        if (parts.length === 3 && parts[0].length === 2 && parts[2].length === 4) {
+            return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+    }
+    try {
+        const d = new Date(str);
+        if (!isNaN(d.getTime())) {
+            return d.toISOString().split('T')[0];
+        }
+    } catch (_) {}
+    return str;
+};
+
+const extractUserProfileFields = (user, prev = {}) => {
+    if (!user) return prev;
+    
+    let aadhaarImage = user.aadhaarImage || user.aadhaarPhoto || user.aadhaarPhotoUrl || prev.aadhaarImage || null;
+    let aadhaarNumber = user.aadhaarNumber || user.aadhaar || user.aadhar || user.aadharNumber || user.aadhaar_number || user.aadhar_number || user.aadhaarNo || prev.aadhaarNumber || '';
+    let panNumber = user.panNumber || user.pan || user.pan_number || user.panNo || prev.panNumber || '';
+    let photoUrl = user.profilePhoto || user.photoUrl || user.liveSelfieUrl || user.avatar || user.profile_photo || prev.profilePhoto || prev.photoUrl || localStorage.getItem('rupiksha_profile_photo') || null;
+
+    if (Array.isArray(user.documents) && user.documents.length > 0) {
+        user.documents.forEach(d => {
+            if (!d) return;
+            const type = String(d.type || '').toUpperCase();
+            const name = String(d.name || '').toLowerCase();
+            const file = d.file || d.url || d.image;
+            if (!aadhaarImage && (type.includes('AADHAAR') || name.includes('aadhaar') || name.includes('aadhar'))) {
+                aadhaarImage = file;
+            }
+            if (!aadhaarNumber && (d.docNumber || d.number || d.documentNumber)) {
+                if (type.includes('AADHAAR') || name.includes('aadhaar') || name.includes('aadhar')) {
+                    aadhaarNumber = String(d.docNumber || d.number || d.documentNumber);
+                }
+            }
+            if (!panNumber && (d.docNumber || d.number || d.documentNumber)) {
+                if (type.includes('PAN') || name.includes('pan')) {
+                    panNumber = String(d.docNumber || d.number || d.documentNumber);
+                }
+            }
+            if (!photoUrl && (type.includes('SELFIE') || type.includes('PHOTO') || name.includes('selfie') || name.includes('photo'))) {
+                photoUrl = file;
+            }
+        });
+    }
+
+    const rawBanks = Array.isArray(user.banks) && user.banks.length > 0 ? user.banks : (Array.isArray(prev.banks) ? prev.banks : []);
+    const primaryBank = rawBanks[0] || {};
+    const bankName = user.bankName || user.bank_name || primaryBank.bankName || prev.bankName || '';
+    const accountNumber = user.accountNumber || user.bankAccountNumber || user.account_number || user.bank_account_number || primaryBank.accountNumber || prev.accountNumber || '';
+    const ifscCode = user.ifscCode || user.bankIfsc || user.ifsc || user.ifsc_code || primaryBank.ifscCode || prev.ifscCode || '';
+    const branchName = user.branchName || user.bankBranch || user.branch || user.branch_name || primaryBank.branchName || prev.branchName || '';
+    const accHolderName = user.accHolderName || user.bankAccountHolder || user.bankAccountName || user.accountHolderName || user.account_holder_name || primaryBank.accHolderName || primaryBank.bankAccountHolder || user.name || user.fullName || prev.accHolderName || '';
+
+    // Synchronize banks list on user object if single bank fields are present
+    if (rawBanks.length === 0 && (bankName || accountNumber)) {
+        user.banks = [{
+            id: 'bank_primary',
+            bankName,
+            accountNumber,
+            ifscCode,
+            branchName,
+            accHolderName
+        }];
+    }
+
+    const businessName = user.businessName || user.shopName || user.companyName || user.business_name || user.shop_name || user.business || prev.businessName || '';
+    const businessType = user.businessType || user.business_type || prev.businessType || 'Sole proprietorship';
+    const category = user.category || user.businessCategory || user.business_category || prev.category || 'Retail';
+    const gstNumber = user.gstNumber || user.gstin || user.gst_number || user.gst || prev.gstNumber || '';
+    const address1 = user.address1 || user.addressLine1 || user.shopAddress || user.businessAddress || user.address || user.shop_address || user.business_address || user.permanentAddress || prev.address1 || '';
+    const address2 = user.address2 || user.addressLine2 || user.shopLandmark || user.landmark || user.business_address_2 || prev.address2 || '';
+    const pincode = user.pincode || user.shopPincode || user.businessPincode || user.personalPincode || user.permPincode || user.shop_pincode || prev.pincode || '';
+    const area = user.area || user.city || user.shopCity || user.businessCity || user.personalArea || user.district || user.state || user.shop_city || prev.area || '';
+    const salesName = user.salesName || user.salesExecutiveName || user.sales_name || user.sales_executive_name || prev.salesName || '';
+    const salesContact = user.salesContact || user.salesExecutiveContact || user.sales_contact || user.sales_executive_mobile || prev.salesContact || '';
+
+    const name = user.name || user.fullName || user.full_name || (user.firstName ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : prev.name) || '';
+    const fatherName = user.fatherName || user.father_name || user.father || prev.fatherName || '';
+    const mobile = user.mobile || user.phone || user.username || user.mobileNumber || user.contactNumber || prev.mobile || '';
+    const email = user.email || user.emailId || user.email_id || prev.email || '';
+    const emailVerified = user.emailVerified !== undefined ? user.emailVerified : (user.isEmailVerified !== undefined ? user.isEmailVerified : (user.email_verified !== undefined ? user.email_verified : prev.emailVerified));
+    const gender = user.gender || prev.gender || 'Male';
+    const maritalStatus = user.maritalStatus || user.marital_status || user.marriedStatus || prev.maritalStatus || 'Single';
+    const dob = normalizeDate(user.dob || user.dateOfBirth || user.date_of_birth || user.birthDate || prev.dob || '');
+    const residentialAddress1 = user.residentialAddress1 || user.permanentAddress || user.residentialAddress || user.residential_address_1 || user.residential_address || user.address || user.address1 || user.shopAddress || prev.residentialAddress1 || '';
+    const residentialAddress2 = user.residentialAddress2 || user.residential_address_2 || user.address2 || prev.residentialAddress2 || '';
+    const personalPincode = user.personalPincode || user.permPincode || user.personal_pincode || user.pincode || user.shopPincode || prev.personalPincode || '';
+    const personalArea = user.personalArea || user.personalCity || user.permCity || user.personal_area || user.city || user.area || user.district || user.state || prev.personalArea || '';
+    const partyCode = user.partyCode || user.party_code || prev.partyCode || 'PENDING';
+    const username = user.username || user.loginId || user.mobile || prev.username || '';
+
+    return {
+        ...prev,
+        ...user,
+        // Business
+        businessName,
+        businessType,
+        category,
+        gstNumber,
+        address1,
+        address2,
+        pincode,
+        area,
+        salesName,
+        salesContact,
+        // Personal
+        name,
+        fatherName,
+        mobile,
+        email,
+        emailVerified,
+        gender,
+        maritalStatus,
+        dob,
+        residentialAddress1,
+        residentialAddress2,
+        personalPincode,
+        personalArea,
+        username,
+        partyCode,
+        // PAN & Aadhaar
+        panNumber,
+        isPanVerified: user.isPanVerified !== undefined ? user.isPanVerified : (!!panNumber),
+        panName: user.panName || user.pan_name || name || prev.panName || '',
+        aadhaarNumber,
+        aadhaarImage,
+        // Banking
+        accHolderName,
+        bankName,
+        accountNumber,
+        confirmAccountNumber: user.confirmAccountNumber || accountNumber || prev.confirmAccountNumber || '',
+        ifscCode,
+        branchName,
+        // Settings
+        emailNotifications: user.emailNotifications ?? prev.emailNotifications ?? true,
+        whatsappUpdates: user.whatsappUpdates ?? prev.whatsappUpdates ?? true,
+        twoStepAuth: user.twoStepAuth ?? prev.twoStepAuth ?? false,
+        theme: user.theme || prev.theme || 'light',
+        language: user.language || prev.language || 'English',
+        // Photos
+        profilePhoto: photoUrl,
+        photoUrl: photoUrl
+    };
+};
+
 const ProfileDetails = ({ activeTab = 'personal' }) => {
     const initialTab = VALID_PROFILE_TABS.includes(activeTab) ? activeTab : 'personal';
     const [activeSubTab, setActiveSubTab] = useState(initialTab);
@@ -61,109 +221,20 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
     const [isDataLoading, setIsDataLoading] = useState(true);
 
     const currentUser = getCurrentUserData() || appData.currentUser || {};
-    const [profilePhoto, setProfilePhoto] = useState(currentUser?.profilePhoto || currentUser?.photoUrl || localStorage.getItem('rupiksha_profile_photo') || "https://ui-avatars.com/api/?name=User&background=A0A0A0&color=fff");
-
-    const [formData, setFormData] = useState({
-        // Business
-        businessName: currentUser?.businessName || currentUser?.shopName || '',
-        businessType: currentUser?.businessType || 'Sole proprietorship',
-        category: currentUser?.category || 'Retail',
-        address1: currentUser?.address1 || currentUser?.address || currentUser?.shopAddress || '',
-        address2: currentUser?.address2 || currentUser?.shopLandmark || '',
-        pincode: currentUser?.pincode || currentUser?.shopPincode || '',
-        area: currentUser?.area || currentUser?.city || currentUser?.shopCity || '',
-        salesName: currentUser?.salesName || '',
-        salesContact: currentUser?.salesContact || '',
-        // Personal
-        name: currentUser?.name || currentUser?.fullName || '',
-        gender: currentUser?.gender || 'Male',
-        maritalStatus: currentUser?.maritalStatus || 'Single',
-        dob: currentUser?.dob || '',
-        residentialAddress1: currentUser?.residentialAddress1 || currentUser?.permanentAddress || currentUser?.address || '',
-        residentialAddress2: currentUser?.residentialAddress2 || '',
-        personalPincode: currentUser?.personalPincode || currentUser?.permPincode || currentUser?.pincode || '',
-        personalArea: currentUser?.personalArea || currentUser?.permCity || currentUser?.city || '',
-        email: currentUser?.email || '',
-        mobile: currentUser?.mobile || currentUser?.phone || currentUser?.username || '',
-        username: currentUser?.username || '',
-        partyCode: currentUser?.partyCode || '',
-        emailVerified: currentUser?.emailVerified || false,
-        // PAN & Aadhaar
-        panNumber: currentUser?.panNumber || '',
-        isPanVerified: currentUser?.isPanVerified || false,
-        panName: currentUser?.panName || '',
-        aadhaarNumber: currentUser?.aadhaarNumber || '',
-        // Banking
-        accHolderName: currentUser?.accHolderName || currentUser?.bankAccountName || currentUser?.bankAccountHolder || '',
-        bankName: currentUser?.bankName || '',
-        accountNumber: currentUser?.bankAccountNumber || currentUser?.accountNumber || '',
-        confirmAccountNumber: currentUser?.bankAccountNumber || currentUser?.accountNumber || '',
-        ifscCode: currentUser?.bankIfsc || currentUser?.ifscCode || '',
-        branchName: currentUser?.bankBranch || currentUser?.branchName || '',
-        // Settings
-        emailNotifications: currentUser?.emailNotifications ?? true,
-        whatsappUpdates: currentUser?.whatsappUpdates ?? true,
-        twoStepAuth: currentUser?.twoStepAuth ?? false,
-        theme: currentUser?.theme || 'light',
-        language: currentUser?.language || 'English'
-    });
+    const initialExtracted = extractUserProfileFields(currentUser);
+    const [profilePhoto, setProfilePhoto] = useState(initialExtracted.profilePhoto || initialExtracted.photoUrl || "https://ui-avatars.com/api/?name=User&background=A0A0A0&color=fff");
+    const [formData, setFormData] = useState(initialExtracted);
 
     const syncUserData = (customUser = null) => {
         setAppData(dataService.getData());
         const user = customUser || getCurrentUserData();
         if (user) {
-            // Extract Aadhaar image from documents array if present
-            let aadhaarImage = user.aadhaarImage || user.aadhaarPhoto || null;
-            if (!aadhaarImage && Array.isArray(user.documents) && user.documents.length > 0) {
-                const doc = user.documents.find(d => d.type === 'AADHAAR' || d.type === 'aadhaar') || user.documents[0];
-                if (doc) aadhaarImage = doc.file || doc.url || doc.image || null;
-            }
-
-            setFormData(prev => ({
-                ...prev,
-                ...user,
-                // Business
-                businessName: user.businessName || user.shopName || prev.businessName || '',
-                businessType: user.businessType || prev.businessType || 'Sole proprietorship',
-                category: user.category || prev.category || 'Retail',
-                address1: user.address1 || user.addressLine1 || user.shopAddress || user.address || prev.address1 || '',
-                address2: user.address2 || user.shopLandmark || prev.address2 || '',
-                pincode: user.pincode || user.shopPincode || prev.pincode || '',
-                area: user.area || user.city || user.shopCity || prev.area || '',
-                salesName: user.salesName || prev.salesName || '',
-                salesContact: user.salesContact || prev.salesContact || '',
-                // Personal
-                name: user.name || user.fullName || (user.firstName ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : prev.name) || '',
-                fatherName: user.fatherName || prev.fatherName || '',
-                mobile: user.mobile || user.phone || user.username || prev.mobile || '',
-                email: user.email || prev.email || '',
-                emailVerified: user.emailVerified !== undefined ? user.emailVerified : prev.emailVerified,
-                gender: user.gender || prev.gender || 'Male',
-                maritalStatus: user.maritalStatus || user.marriedStatus || prev.maritalStatus || 'Single',
-                dob: user.dob || prev.dob || '',
-                residentialAddress1: user.residentialAddress1 || user.permanentAddress || user.address1 || user.address || prev.residentialAddress1 || '',
-                residentialAddress2: user.residentialAddress2 || prev.residentialAddress2 || '',
-                personalPincode: user.personalPincode || user.permPincode || user.pincode || prev.personalPincode || '',
-                personalArea: user.personalArea || user.permCity || user.city || prev.personalArea || '',
-                partyCode: user.partyCode || prev.partyCode || '',
-                // PAN & Aadhaar
-                panNumber: user.panNumber || prev.panNumber || '',
-                isPanVerified: user.isPanVerified !== undefined ? user.isPanVerified : (!!user.panNumber),
-                panName: user.panName || user.fullName || user.name || prev.panName || '',
-                aadhaarNumber: user.aadhaarNumber || prev.aadhaarNumber || '',
-                aadhaarImage: aadhaarImage || prev.aadhaarImage || null,
-                // Banking
-                accHolderName: user.accHolderName || (user.banks && user.banks.length > 0 ? user.banks[0].accHolderName : null) || user.bankAccountHolder || user.bankAccountName || user.name || user.fullName || prev.accHolderName || '',
-                bankName: user.bankName || (user.banks && user.banks.length > 0 ? user.banks[0].bankName : null) || prev.bankName || '',
-                accountNumber: user.accountNumber || (user.banks && user.banks.length > 0 ? user.banks[0].accountNumber : null) || user.bankAccountNumber || prev.accountNumber || '',
-                confirmAccountNumber: user.confirmAccountNumber || (user.banks && user.banks.length > 0 ? user.banks[0].accountNumber : null) || user.accountNumber || user.bankAccountNumber || prev.confirmAccountNumber || '',
-                ifscCode: user.ifscCode || (user.banks && user.banks.length > 0 ? user.banks[0].ifscCode : null) || user.bankIfsc || prev.ifscCode || '',
-                branchName: user.branchName || (user.banks && user.banks.length > 0 ? user.banks[0].branchName : null) || user.bankBranch || prev.branchName || ''
-            }));
-            const photo = user.profilePhoto || user.photoUrl || localStorage.getItem('rupiksha_profile_photo');
-            if (photo) {
-                setProfilePhoto(photo);
-            }
+            setFormData(prev => {
+                const updated = extractUserProfileFields(user, prev);
+                const photo = updated.profilePhoto || updated.photoUrl || localStorage.getItem('rupiksha_profile_photo');
+                if (photo) setProfilePhoto(photo);
+                return updated;
+            });
         }
     };
 
@@ -172,8 +243,6 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
         syncUserData();
 
         // 2. Fetch fresh data from the live backend
-        const CLOUD_RUN = 'https://rupiksha-backend-java-53431955516.asia-south1.run.app/api/v1';
-
         const doFetch = async () => {
             try {
                 const fresh = await dataService.fetchUserProfile();
@@ -182,8 +251,9 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
                 }
             } catch (e) {
                 console.warn('[Profile] dataService.fetchUserProfile failed:', e);
+            } finally {
+                setIsDataLoading(false);
             }
-            setIsDataLoading(false);
         };
 
         doFetch();
