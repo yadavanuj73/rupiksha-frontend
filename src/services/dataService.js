@@ -516,6 +516,9 @@ export const dataService = {
             if (!mobile && typeof username === 'string' && username.match(/^\d{10}/)) {
                 mobile = username.match(/^\d{10}/)[0];
             }
+            if (!mobile && typeof username === 'string' && username.includes('_')) {
+                mobile = username.split('_')[0];
+            }
 
             let url = `${BACKEND_URL}/user/profile`;
             const params = new URLSearchParams();
@@ -557,7 +560,7 @@ export const dataService = {
         } catch (e) {
             console.warn("fetchUserProfile error:", e);
         }
-        return currentUser;
+        return null;
     },
 
     updateUserProfile: async function (profileData) {
