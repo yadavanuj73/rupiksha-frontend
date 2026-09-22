@@ -121,7 +121,8 @@ public class KycController {
     public Map<String, Object> getProfile(
             @AuthenticationPrincipal JwtPrincipal principal,
             @RequestParam(required = false) String userId,
-            @RequestParam(required = false) String username
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) String mobile
     ) {
         User user = null;
         if (principal != null && principal.userId() != null) {
@@ -131,8 +132,21 @@ public class KycController {
             try { user = userRepository.findById(UUID.fromString(userId.trim())).orElse(null); } catch (Exception ignored) {}
         }
         if (user == null && username != null && !username.isBlank()) {
-            user = userRepository.findByUsername(username.trim())
-                    .or(() -> userRepository.findByMobile(username.trim()))
+            String u = username.trim();
+            user = userRepository.findByUsername(u)
+                    .or(() -> userRepository.findByMobile(u))
+                    .orElse(null);
+            if (user == null && u.contains("_")) {
+                String base = u.split("_")[0];
+                user = userRepository.findByUsername(base)
+                        .or(() -> userRepository.findByMobile(base))
+                        .orElse(null);
+            }
+        }
+        if (user == null && mobile != null && !mobile.isBlank()) {
+            String m = mobile.trim();
+            user = userRepository.findByMobile(m)
+                    .or(() -> userRepository.findByUsername(m))
                     .orElse(null);
         }
         if (user == null && principal != null && principal.username() != null) {

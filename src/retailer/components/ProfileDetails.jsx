@@ -24,30 +24,26 @@ import Settings from './profile/Settings';
 const getCurrentUserData = () => {
     try {
         let user = null;
-        const retUser = localStorage.getItem('rupiksha_user');
-        if (retUser) {
+        const keys = [
+            'rupiksha_user',
+            'rupiksha_user_distributor',
+            'rupiksha_user_retailer',
+            'rupiksha_user_super_distributor',
+            'rupiksha_distributor_user',
+            'rupiksha_admin_user',
+            'rupiksha_imp_user'
+        ];
+        for (const k of keys) {
             try {
-                const parsed = JSON.parse(retUser);
-                if (parsed && (parsed.username || parsed.mobile || parsed.id)) user = parsed;
+                const raw = localStorage.getItem(k);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && (parsed.username || parsed.mobile || parsed.id)) {
+                        user = parsed;
+                        break;
+                    }
+                }
             } catch (e) {}
-        }
-        if (!user) {
-            const distUser = localStorage.getItem('rupiksha_distributor_user');
-            if (distUser) {
-                try {
-                    const parsed = JSON.parse(distUser);
-                    if (parsed && (parsed.username || parsed.mobile || parsed.id)) user = parsed;
-                } catch (e) {}
-            }
-        }
-        if (!user) {
-            const adminUser = localStorage.getItem('rupiksha_admin_user');
-            if (adminUser) {
-                try {
-                    const parsed = JSON.parse(adminUser);
-                    if (parsed && (parsed.username || parsed.mobile || parsed.id)) user = parsed;
-                } catch (e) {}
-            }
         }
         if (!user) {
             user = dataService.getData().currentUser || {};

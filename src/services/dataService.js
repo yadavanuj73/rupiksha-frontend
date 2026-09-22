@@ -491,22 +491,57 @@ export const dataService = {
     },
 
     fetchUserProfile: async function () {
-        const currentUser = this.getCurrentUser();
+        let currentUser = this.getCurrentUser() || {};
         try {
             const token = getEffectiveToken();
-            const userId = currentUser?.id || currentUser?.userId;
-            const username = currentUser?.username || currentUser?.mobile;
+            let userId = currentUser?.id || currentUser?.userId;
+            let username = currentUser?.username;
+            let mobile = currentUser?.mobile || currentUser?.phone;
+
+            if (!username && !mobile && !userId) {
+                const searchKeys = [
+                    'rupiksha_user',
+                    'rupiksha_user_distributor',
+                    'rupiksha_user_retailer',
+                    'rupiksha_user_super_distributor',
+                    'rupiksha_distributor_user',
+                    'rupiksha_admin_user',
+                    'rupiksha_imp_user'
+                ];
+                for (const k of searchKeys) {
+                    try {
+                        const raw = localStorage.getItem(k);
+                        if (raw) {
+                            const parsed = JSON.parse(raw);
+                            if (parsed && (parsed.id || parsed.username || parsed.mobile)) {
+                                userId = userId || parsed.id || parsed.userId;
+                                username = username || parsed.username;
+                                mobile = mobile || parsed.mobile || parsed.phone;
+                                currentUser = { ...parsed, ...currentUser };
+                                break;
+                            }
+                        }
+                    } catch (e) {}
+                }
+            }
+
+            if (!mobile && typeof username === 'string' && username.match(/^\d{10}/)) {
+                mobile = username.match(/^\d{10}/)[0];
+            }
+
             let url = `${BACKEND_URL}/user/profile`;
             const params = new URLSearchParams();
             if (userId) params.append('userId', userId);
             if (username) params.append('username', username);
+            if (mobile) params.append('mobile', mobile);
             if (params.toString()) url += `?${params.toString()}`;
 
-            const res = await fetch(url, {
-                headers: {
-                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                }
-            });
+            const headers = {
+                'Accept': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            };
+
+            const res = await fetch(url, { headers });
             if (res.ok) {
                 const data = await res.json();
                 if (data && (data.user || data.data)) {
