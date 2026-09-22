@@ -39,8 +39,11 @@ const getCurrentUserData = () => {
     return dataService.getData().currentUser || {};
 };
 
+const VALID_PROFILE_TABS = ['business', 'personal', 'banking', 'visiting_card', 'settings'];
+
 const ProfileDetails = ({ activeTab = 'personal' }) => {
-    const [activeSubTab, setActiveSubTab] = useState(activeTab);
+    const initialTab = VALID_PROFILE_TABS.includes(activeTab) ? activeTab : 'personal';
+    const [activeSubTab, setActiveSubTab] = useState(initialTab);
     const [additionalTab, setAdditionalTab] = useState('personal');
     const [isSaving, setIsSaving] = useState(false);
     const [showSavedToast, setShowSavedToast] = useState(false);
@@ -191,7 +194,9 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
     }, []);
 
     useEffect(() => {
-        setActiveSubTab(activeTab);
+        if (VALID_PROFILE_TABS.includes(activeTab)) {
+            setActiveSubTab(activeTab);
+        }
     }, [activeTab]);
 
     useEffect(() => {
@@ -470,14 +475,8 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
                 return (formData.businessName && formData.address1 && formData.pincode) ? 'verified' : 'missing';
             case 'personal':
                 return (formData.name && formData.email && formData.dob && formData.gender && formData.emailVerified) ? 'verified' : 'missing';
-            case 'additional':
-                return (formData.nomineeName && formData.marriedStatus) ? 'verified' : 'missing';
             case 'banking':
                 return (currentUser.banks?.length > 0 || formData.accountNumber) ? 'verified' : 'missing';
-            case 'documents':
-                return (currentUser.documents?.length >= 3) ? 'verified' : 'missing';
-            case 'upi':
-                return formData.upiId ? 'verified' : 'none';
             default:
                 return 'none';
         }
@@ -486,13 +485,7 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
     const menuItems = [
         { id: 'business', label: 'Business Information', status: getSectionStatus('business') },
         { id: 'personal', label: 'Personal Information', status: getSectionStatus('personal') },
-        { id: 'additional', label: 'Additional Details', status: getSectionStatus('additional') },
         { id: 'banking', label: 'Banking Details', status: getSectionStatus('banking') },
-        { id: 'upi', label: 'UPI', status: getSectionStatus('upi') },
-        { id: 'documents', label: 'My Documents', status: getSectionStatus('documents') },
-        { id: 'password', label: 'Password', status: 'none' },
-        { id: 'gst_certification', label: 'GST Certification', status: 'none' },
-        { id: 'tds_certificate', label: 'TDS Certificate', status: 'none' },
         { id: 'visiting_card', label: 'Visiting Card', status: 'none' },
         { id: 'settings', label: 'Settings', status: 'none' },
     ];
