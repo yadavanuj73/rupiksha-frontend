@@ -11,11 +11,14 @@ const BACKEND_URL = IMPORTED_BACKEND_URL || `/api`;
 
 const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
     const cardRef = useRef(null);
+    const printCardRef = useRef(null);
     const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
+    const [safePhotoUrl, setSafePhotoUrl] = useState(null);
+    const [safeLogoUrl, setSafeLogoUrl] = useState(null);
     const [isDownloading, setIsDownloading] = useState(false);
     const [isSharing, setIsSharing] = useState(false);
 
-    // 1. Role detection
+    // 1. Detect dynamic role
     const getPartnerRoleTitle = () => {
         const rawRole = (
             currentUser?.role ||
@@ -43,7 +46,7 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
     const partnerMobile = formData?.mobile || currentUser?.mobile ? `+91 ${formData.mobile || currentUser?.mobile}` : '';
     const partnerEmail = formData?.email || currentUser?.email || 'partner@rupiksha.com';
 
-    // 2. Multiline QR data string
+    // 2. Multiline QR text format
     const qrCardData = [
         'Rupiksha Partner',
         partnerName,
@@ -54,11 +57,11 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
         partnerEmail
     ].filter(Boolean).join('\n');
 
-    // 3. Generate QR Code locally as Data URL (0 CORS risk, 0 external network calls)
+    // 3. Pre-generate QR code in memory (100% local Base64, 0 CORS)
     useEffect(() => {
         let isMounted = true;
         QRCode.toDataURL(qrCardData, {
-            width: 320,
+            width: 360,
             margin: 1,
             color: {
                 dark: '#0B0F14',
@@ -78,25 +81,73 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
         };
     }, [qrCardData]);
 
-    // 4. Robust Download Handler with standard visiting card sizing
+    // 4. Convert logo to safe Data URL for guaranteed canvas rendering
+    useEffect(() => {
+        const img = new Image();
+        img.src = rupikshaNewLogo;
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth || 300;
+                canvas.height = img.naturalHeight || 300;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                setSafeLogoUrl(canvas.toDataURL('image/png'));
+            } catch {
+                setSafeLogoUrl(rupikshaNewLogo);
+            }
+        };
+        img.onerror = () => setSafeLogoUrl(rupikshaNewLogo);
+    }, []);
+
+    // 5. Convert profile photo safely
+    useEffect(() => {
+        if (!profilePhoto) {
+            setSafePhotoUrl(null);
+            return;
+        }
+        if (profilePhoto.startsWith('data:')) {
+            setSafePhotoUrl(profilePhoto);
+            return;
+        }
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth || 200;
+                canvas.height = img.naturalHeight || 200;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                setSafePhotoUrl(canvas.toDataURL('image/png'));
+            } catch {
+                setSafePhotoUrl(profilePhoto);
+            }
+        };
+        img.onerror = () => setSafePhotoUrl(profilePhoto);
+        img.src = profilePhoto;
+    }, [profilePhoto]);
+
+    // 6. Download exact 1:1 High-Res Visiting Card (Standard 85.6mm x 54mm)
     const handleDownloadCard = async () => {
-        if (!cardRef.current || isDownloading) return;
+        const targetElement = printCardRef.current || cardRef.current;
+        if (!targetElement || isDownloading) return;
         setIsDownloading(true);
 
         try {
-            const element = cardRef.current;
-            const canvas = await html2canvas(element, {
+            const canvas = await html2canvas(targetElement, {
                 scale: 3,
                 backgroundColor: '#ffffff',
                 useCORS: true,
                 allowTaint: true,
                 logging: false,
-                imageTimeout: 5000,
+                windowWidth: targetElement.scrollWidth || 1011,
+                windowHeight: targetElement.scrollHeight || 638,
             });
 
             const imgData = canvas.toDataURL('image/png', 1.0);
 
-            // Standard Business Card Size (85.6mm x 54mm - ISO 7810 ID-1 standard)
+            // Exact standard ID-1 card size: 85.6mm x 54.0mm
             const cardWidthMM = 85.6;
             const cardHeightMM = 54.0;
 
@@ -110,100 +161,19 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
             const safeName = (partnerName || 'RuPiksha_Partner').replace(/[^a-zA-Z0-9_-]/g, '_');
             pdf.save(`${safeName}_Visiting_Card.pdf`);
         } catch (err) {
-            console.error('[VisitingCard] Primary PDF render failed, falling back:', err);
-            try {
-                // Fallback: Programmatic Canvas Render
-                const fallbackCanvas = document.createElement('canvas');
-                fallbackCanvas.width = 1011; // 85.6mm at 300 DPI
-                fallbackCanvas.height = 638; // 54mm at 300 DPI
-                const ctx = fallbackCanvas.getContext('2d');
-                
-                // Background
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillRect(0, 0, fallbackCanvas.width, fallbackCanvas.height);
-                
-                // Top Header Gradient Bar
-                const grad = ctx.createLinearGradient(0, 0, fallbackCanvas.width, 0);
-                grad.addColorStop(0, '#2563EB');
-                grad.addColorStop(1, '#2146A3');
-                ctx.fillStyle = grad;
-                ctx.fillRect(0, 0, fallbackCanvas.width, 10);
-
-                // Text details
-                ctx.fillStyle = '#0B0F14';
-                ctx.font = 'bold 36px sans-serif';
-                ctx.fillText(partnerName, 50, 100);
-
-                ctx.fillStyle = '#2563EB';
-                ctx.font = 'bold 24px sans-serif';
-                ctx.fillText((partnerShop + ' (' + partnerRole + ')').toUpperCase(), 50, 145);
-
-                // Divider
-                ctx.strokeStyle = '#E3EAF3';
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-                ctx.moveTo(50, 180);
-                ctx.lineTo(fallbackCanvas.width - 50, 180);
-                ctx.stroke();
-
-                // Address
-                ctx.fillStyle = '#334155';
-                ctx.font = '22px sans-serif';
-                ctx.fillText(partnerAddress.slice(0, 60), 50, 240);
-                if (partnerAddress.length > 60) {
-                    ctx.fillText(partnerAddress.slice(60, 120), 50, 275);
-                }
-
-                // Phone & Email
-                ctx.fillStyle = '#0B0F14';
-                ctx.font = 'bold 24px sans-serif';
-                ctx.fillText(partnerMobile, 50, 480);
-                ctx.fillText(partnerEmail, 50, 525);
-
-                // Company brand
-                ctx.fillStyle = '#2146A3';
-                ctx.font = 'bold 26px sans-serif';
-                ctx.textAlign = 'right';
-                ctx.fillText('Rupiksha Services Private Limited', fallbackCanvas.width - 50, 480);
-                ctx.fillStyle = '#64748B';
-                ctx.font = 'bold 16px sans-serif';
-                ctx.fillText('MAKING LIFE SIMPLE', fallbackCanvas.width - 50, 515);
-
-                // Draw QR if available
-                if (qrCodeDataUrl) {
-                    const qrImg = new Image();
-                    qrImg.src = qrCodeDataUrl;
-                    await new Promise((resolve) => {
-                        qrImg.onload = () => {
-                            ctx.drawImage(qrImg, fallbackCanvas.width - 230, 40, 180, 180);
-                            resolve();
-                        };
-                        qrImg.onerror = resolve;
-                    });
-                }
-
-                const fallbackData = fallbackCanvas.toDataURL('image/png');
-                const pdf = new jsPDF({
-                    orientation: 'landscape',
-                    unit: 'mm',
-                    format: [85.6, 54.0]
-                });
-                pdf.addImage(fallbackData, 'PNG', 0, 0, 85.6, 54.0);
-                pdf.save(`${(partnerName || 'RuPiksha_Partner').replace(/[^a-zA-Z0-9_-]/g, '_')}_Visiting_Card.pdf`);
-            } catch (fallbackErr) {
-                console.error('[VisitingCard] Fallback also failed:', fallbackErr);
-                alert("Failed to download visiting card. Please check your browser permissions.");
-            }
+            console.error('[VisitingCard] Download error:', err);
+            alert("Could not generate card. Please try again.");
         } finally {
             setIsDownloading(false);
         }
     };
 
     const handleShareEmail = async () => {
+        const targetElement = printCardRef.current || cardRef.current;
+        if (!targetElement) return;
         setIsSharing(true);
         try {
-            const element = cardRef.current;
-            const canvas = await html2canvas(element, { scale: 2, useCORS: true, allowTaint: true });
+            const canvas = await html2canvas(targetElement, { scale: 2, useCORS: true, allowTaint: true });
             const imgData = canvas.toDataURL('image/png');
 
             const res = await fetch(`${BACKEND_URL}/user/share-visiting-card`, {
@@ -254,7 +224,7 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
 
                 {/* 2-Part Grid: Card (Left) & Actions (Right) */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-7 items-center relative z-10">
-                    {/* Part 1 (Left 7 cols): Responsive Visiting Card */}
+                    {/* Part 1 (Left 7 cols): Responsive Visiting Card UI Display */}
                     <div className="lg:col-span-7 flex justify-center w-full">
                         <div ref={cardRef} className="card-container shrink-0 w-full max-w-[500px]">
                             <motion.div
@@ -274,16 +244,16 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
 
                                 {/* Watermark Background Logo */}
                                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.07] overflow-hidden">
-                                    <img src={rupikshaNewLogo} alt="" className="w-[45%] max-w-[210px] object-contain select-none" />
+                                    <img src={safeLogoUrl || rupikshaNewLogo} alt="" className="w-[45%] max-w-[210px] object-contain select-none" />
                                 </div>
 
                                 <div className="p-4 sm:p-5 h-full flex flex-col justify-between relative z-10">
-                                    {/* Top Row: Name & QR */}
+                                    {/* Top Row: Name, Shop/Role & QR */}
                                     <div className="flex justify-between items-start mb-1">
                                         <div className="flex items-center space-x-3">
                                             <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full overflow-hidden border-2 border-[#D7E3F2] bg-white flex items-center justify-center shrink-0 shadow-sm">
-                                                {profilePhoto ? (
-                                                    <img src={profilePhoto} alt="" className="w-full h-full object-cover" crossOrigin="anonymous" />
+                                                {safePhotoUrl ? (
+                                                    <img src={safePhotoUrl} alt="" className="w-full h-full object-cover" />
                                                 ) : (
                                                     <User className="text-[#2563EB]" size={18} />
                                                 )}
@@ -292,9 +262,14 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
                                                 <h4 className="text-[14px] sm:text-[16px] font-[800] text-[#0B0F14] leading-none tracking-tight">
                                                     {partnerName}
                                                 </h4>
-                                                <p className="text-[11px] sm:text-[12px] font-bold text-[#2563EB] mt-1 uppercase tracking-tight">
-                                                    {partnerShop}
-                                                </p>
+                                                <div className="flex items-center gap-1.5 mt-1">
+                                                    <span className="text-[11px] sm:text-[12px] font-bold text-[#2563EB] uppercase tracking-tight">
+                                                        {partnerShop}
+                                                    </span>
+                                                    <span className="text-[9.5px] font-extrabold text-[#2563EB] bg-[#EAF4FF] px-1.5 py-0.2 rounded border border-[#2563EB]/20 uppercase">
+                                                        {partnerRole}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
 
@@ -398,6 +373,213 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
                                 <Mail size={15} />
                                 <span>{isSharing ? 'Sharing...' : 'Share on Email'}</span>
                             </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Hidden High-Definition Print Template for 100% Identical 1:1 PDF Export */}
+            <div style={{ position: 'absolute', top: -99999, left: -99999, overflow: 'hidden' }}>
+                <div 
+                    ref={printCardRef}
+                    style={{
+                        width: '1011px',
+                        height: '638px',
+                        backgroundColor: '#ffffff',
+                        position: 'relative',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        padding: '36px 44px',
+                        boxSizing: 'border-box',
+                        fontFamily: 'system-ui, -apple-system, sans-serif'
+                    }}
+                >
+                    {/* Background Dot Grid */}
+                    <div 
+                        style={{
+                            position: 'absolute',
+                            inset: 0,
+                            opacity: 0.04,
+                            backgroundImage: 'radial-gradient(#0ea5e9 2px, transparent 2px)',
+                            backgroundSize: '24px 24px',
+                            pointerEvents: 'none'
+                        }}
+                    />
+
+                    {/* Gradient Tint */}
+                    <div 
+                        style={{
+                            position: 'absolute',
+                            top: 0,
+                            right: 0,
+                            width: '100%',
+                            height: '100%',
+                            background: 'linear-gradient(to bottom right, rgba(234, 244, 255, 0.6), #ffffff)',
+                            pointerEvents: 'none'
+                        }}
+                    />
+
+                    {/* Watermark Logo */}
+                    <div 
+                        style={{
+                            position: 'absolute',
+                            inset: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            opacity: 0.075,
+                            pointerEvents: 'none'
+                        }}
+                    >
+                        <img 
+                            src={safeLogoUrl || rupikshaNewLogo} 
+                            alt="" 
+                            style={{ width: '420px', objectFit: 'contain' }} 
+                        />
+                    </div>
+
+                    {/* Content Top: Avatar, Name, Shop, Role, QR */}
+                    <div style={{ position: 'relative', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '22px' }}>
+                            <div 
+                                style={{
+                                    width: '90px',
+                                    height: '90px',
+                                    borderRadius: '50%',
+                                    overflow: 'hidden',
+                                    border: '4px solid #D7E3F2',
+                                    backgroundColor: '#ffffff',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    boxShadow: '0 4px 10px rgba(0,0,0,0.06)'
+                                }}
+                            >
+                                {safePhotoUrl ? (
+                                    <img src={safePhotoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                ) : (
+                                    <div style={{ color: '#2563EB', fontWeight: 'bold', fontSize: '32px' }}>
+                                        {partnerName?.charAt(0) || 'P'}
+                                    </div>
+                                )}
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: '30px', fontWeight: 800, color: '#0B0F14', letterSpacing: '-0.5px' }}>
+                                    {partnerName}
+                                </h3>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
+                                    <span style={{ fontSize: '20px', fontWeight: 800, color: '#2563EB', textTransform: 'uppercase' }}>
+                                        {partnerShop}
+                                    </span>
+                                    <span style={{ fontSize: '14px', fontWeight: 800, color: '#2563EB', backgroundColor: '#EAF4FF', border: '1.5px solid rgba(37,99,235,0.3)', padding: '2px 8px', borderRadius: '6px', textTransform: 'uppercase' }}>
+                                        {partnerRole}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Top Right QR */}
+                        <div 
+                            style={{
+                                backgroundColor: '#ffffff',
+                                padding: '8px',
+                                borderRadius: '14px',
+                                border: '2px solid #D7E3F2',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+                            }}
+                        >
+                            {qrCodeDataUrl && (
+                                <img 
+                                    src={qrCodeDataUrl} 
+                                    alt="QR" 
+                                    style={{ width: '100px', height: '100px', display: 'block' }} 
+                                />
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Middle: Blue Divider + Address */}
+                    <div style={{ position: 'relative', zIndex: 10, margin: '14px 0' }}>
+                        <div 
+                            style={{
+                                width: '100%',
+                                height: '4px',
+                                borderRadius: '4px',
+                                background: 'linear-gradient(to right, #2563EB, #2146A3)',
+                                opacity: 0.8,
+                                marginBottom: '20px'
+                            }}
+                        />
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+                            <div 
+                                style={{
+                                    width: '32px',
+                                    height: '32px',
+                                    borderRadius: '50%',
+                                    backgroundColor: '#2563EB',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0,
+                                    marginTop: '2px'
+                                }}
+                            >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>
+                                    <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/>
+                                    <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/>
+                                    <path d="M10 6h4"/>
+                                    <path d="M10 10h4"/>
+                                    <path d="M10 14h4"/>
+                                    <path d="M10 18h4"/>
+                                </svg>
+                            </div>
+                            <p style={{ margin: 0, fontSize: '20px', fontWeight: 600, color: '#1A2433', textTransform: 'uppercase', lineHeight: 1.4, maxWidth: '88%' }}>
+                                {partnerAddress}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Bottom Row: Phone, Email, Brand & Logo */}
+                    <div 
+                        style={{
+                            position: 'relative',
+                            zIndex: 10,
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'flex-end',
+                            borderTop: '2px solid #E3EAF3',
+                            paddingTop: '18px'
+                        }}
+                    >
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                                </svg>
+                                <span style={{ fontSize: '21px', fontWeight: 800, color: '#0B0F14' }}>
+                                    {partnerMobile || '+91 XXXXXXXXXX'}
+                                </span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect width="20" height="16" x="2" y="4" rx="2"/>
+                                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                                </svg>
+                                <span style={{ fontSize: '20px', fontWeight: 800, color: '#0B0F14' }}>
+                                    {partnerEmail}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '22px', fontWeight: 900, color: '#2146A3', letterSpacing: '-0.3px', lineHeight: 1.1 }}>
+                                Rupiksha Services Private Limited
+                            </div>
+                            <div style={{ fontSize: '13px', fontWeight: 800, color: '#64748B', letterSpacing: '0.25em', textTransform: 'uppercase', marginTop: '4px' }}>
+                                Making Life Simple
+                            </div>
                         </div>
                     </div>
                 </div>
