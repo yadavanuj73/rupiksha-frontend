@@ -3,38 +3,48 @@ import { Plus, ShieldCheck, RefreshCw, X, Landmark } from 'lucide-react';
 import { InputField, SelectField } from './ProfileShared';
 
 const BankingInfo = ({ formData, handleInputChange, handleSave, isSaving, isFetchingIFSC, isVerifyingAccount, setFormData, currentUser }) => {
-    const rawBanks = (currentUser?.banks && Array.isArray(currentUser.banks) && currentUser.banks.length > 0)
-        ? currentUser.banks
-        : ((formData?.banks && Array.isArray(formData.banks) && formData.banks.length > 0)
-            ? formData.banks
+    const rawBanks = (formData?.banks && Array.isArray(formData.banks) && formData.banks.length > 0)
+        ? formData.banks
+        : ((currentUser?.banks && Array.isArray(currentUser.banks) && currentUser.banks.length > 0)
+            ? currentUser.banks
             : []);
+
+    const primaryBank = rawBanks[0] || {};
+    const effectiveAccHolderName = formData?.accHolderName || primaryBank.accHolderName || primaryBank.bankAccountHolder || currentUser?.accHolderName || currentUser?.name || currentUser?.fullName || '';
+    const effectiveBankName = formData?.bankName || primaryBank.bankName || currentUser?.bankName || currentUser?.companyBankName || '';
+    const effectiveIfscCode = formData?.ifscCode || primaryBank.ifscCode || currentUser?.ifscCode || currentUser?.bankIfsc || currentUser?.bankIfscCode || '';
+    const effectiveBranchName = formData?.branchName || primaryBank.branchName || currentUser?.branchName || currentUser?.bankBranch || '';
+    const effectiveAccountNumber = formData?.accountNumber || primaryBank.accountNumber || currentUser?.accountNumber || currentUser?.bankAccountNumber || currentUser?.companyBankAccountNumber || '';
+    const effectiveConfirmAccountNumber = formData?.confirmAccountNumber || effectiveAccountNumber;
 
     const banks = rawBanks.length > 0
         ? rawBanks
-        : ((formData?.bankName || formData?.accountNumber)
+        : ((effectiveBankName || effectiveAccountNumber)
             ? [{
                 id: 'bank_registered',
-                bankName: formData.bankName || 'Registered Bank',
-                accountNumber: formData.accountNumber || '',
-                ifscCode: formData.ifscCode || '',
-                branchName: formData.branchName || '',
-                accHolderName: formData.accHolderName || ''
+                bankName: effectiveBankName || 'Registered Bank',
+                accountNumber: effectiveAccountNumber || '',
+                ifscCode: effectiveIfscCode || '',
+                branchName: effectiveBranchName || '',
+                accHolderName: effectiveAccHolderName || ''
             }]
             : []);
 
     const handleAddBank = () => {
-        if (!formData.bankName || !formData.accountNumber) {
+        const bankNameToAdd = formData.bankName || effectiveBankName;
+        const accountNumToAdd = formData.accountNumber || effectiveAccountNumber;
+        if (!bankNameToAdd || !accountNumToAdd) {
             alert("Please fill bank details first");
             return;
         }
 
         const newBank = {
             id: 'bank_' + Date.now(),
-            bankName: formData.bankName,
-            accountNumber: formData.accountNumber,
-            ifscCode: formData.ifscCode,
-            branchName: formData.branchName,
-            accHolderName: formData.accHolderName
+            bankName: bankNameToAdd,
+            accountNumber: accountNumToAdd,
+            ifscCode: formData.ifscCode || effectiveIfscCode,
+            branchName: formData.branchName || effectiveBranchName,
+            accHolderName: formData.accHolderName || effectiveAccHolderName
         };
 
         const success = dataService.addUserBank(currentUser?.username || 'current', newBank);
@@ -70,16 +80,16 @@ const BankingInfo = ({ formData, handleInputChange, handleSave, isSaving, isFetc
                         <div className="sm:col-span-2">
                             <InputField
                                 label="Account Holder Name"
-                                value={formData.accHolderName || ''}
+                                value={formData.accHolderName ?? effectiveAccHolderName ?? ''}
                                 onChange={(e) => handleInputChange('accHolderName', e.target.value)}
                                 placeholder={isVerifyingAccount ? "Verifying..." : "Account owner name as per passbook"}
-                                icon={isVerifyingAccount ? <RefreshCw size={14} className="animate-spin text-sky-500" /> : (formData.accHolderName && <ShieldCheck size={14} className="text-emerald-500" />)}
+                                icon={isVerifyingAccount ? <RefreshCw size={14} className="animate-spin text-sky-500" /> : ((formData.accHolderName || effectiveAccHolderName) && <ShieldCheck size={14} className="text-emerald-500" />)}
                             />
                         </div>
                         <div>
                             <InputField
                                 label="IFSC Code"
-                                value={formData.ifscCode || ''}
+                                value={formData.ifscCode ?? effectiveIfscCode ?? ''}
                                 onChange={(e) => handleInputChange('ifscCode', e.target.value.toUpperCase())}
                                 placeholder="e.g. SBIN0001234"
                             />
@@ -87,25 +97,25 @@ const BankingInfo = ({ formData, handleInputChange, handleSave, isSaving, isFetc
                         <div>
                             <InputField
                                 label="Bank Name"
-                                value={formData.bankName || ''}
+                                value={formData.bankName ?? effectiveBankName ?? ''}
                                 onChange={(e) => handleInputChange('bankName', e.target.value)}
                                 placeholder="Fetched automatically via IFSC"
-                                icon={formData.bankName && <ShieldCheck size={14} className="text-emerald-500" />}
+                                icon={(formData.bankName || effectiveBankName) && <ShieldCheck size={14} className="text-emerald-500" />}
                             />
                         </div>
                         <div className="sm:col-span-2">
                             <InputField
                                 label="Branch Name"
-                                value={formData.branchName || ''}
+                                value={formData.branchName ?? effectiveBranchName ?? ''}
                                 readOnly
                                 placeholder="Branch will be fetched automatically via IFSC"
-                                icon={isFetchingIFSC ? <RefreshCw size={14} className="animate-spin text-sky-500" /> : (formData.branchName && <ShieldCheck size={14} className="text-emerald-500" />)}
+                                icon={isFetchingIFSC ? <RefreshCw size={14} className="animate-spin text-sky-500" /> : ((formData.branchName || effectiveBranchName) && <ShieldCheck size={14} className="text-emerald-500" />)}
                             />
                         </div>
                         <div>
                             <InputField
                                 label="Account Number"
-                                value={formData.accountNumber || ''}
+                                value={formData.accountNumber ?? effectiveAccountNumber ?? ''}
                                 onChange={(e) => handleInputChange('accountNumber', e.target.value)}
                                 placeholder="Enter 9 to 18 digit account number"
                             />
@@ -113,7 +123,7 @@ const BankingInfo = ({ formData, handleInputChange, handleSave, isSaving, isFetc
                         <div>
                             <InputField
                                 label="Confirm Account Number"
-                                value={formData.confirmAccountNumber || ''}
+                                value={formData.confirmAccountNumber ?? effectiveConfirmAccountNumber ?? ''}
                                 onChange={(e) => handleInputChange('confirmAccountNumber', e.target.value)}
                                 placeholder="Re-enter account number"
                             />

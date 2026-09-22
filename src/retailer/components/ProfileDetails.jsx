@@ -25,6 +25,30 @@ const getCurrentUserData = () => {
     try {
         let user = dataService.getCurrentUser();
         if (!user) {
+            const searchKeys = [
+                'rupiksha_distributor_user',
+                'rupiksha_user',
+                'rupiksha_user_distributor',
+                'rupiksha_user_retailer',
+                'rupiksha_user_super_distributor',
+                'rupiksha_super_distributor_user',
+                'rupiksha_admin_user',
+                'rupiksha_imp_user'
+            ];
+            for (const k of searchKeys) {
+                try {
+                    const raw = localStorage.getItem(k);
+                    if (raw) {
+                        const parsed = JSON.parse(raw);
+                        if (parsed && typeof parsed === 'object') {
+                            user = parsed;
+                            break;
+                        }
+                    }
+                } catch (_) {}
+            }
+        }
+        if (!user) {
             user = dataService.getData().currentUser || {};
         }
 
@@ -69,16 +93,34 @@ const normalizeDate = (val) => {
     return str;
 };
 
-const extractUserProfileFields = (user, prev = {}) => {
-    if (!user) return prev;
+const flattenUserData = (raw) => {
+    if (!raw || typeof raw !== 'object') return {};
+    const nested = {
+        ...(raw.data && typeof raw.data === 'object' && !Array.isArray(raw.data) ? raw.data : {}),
+        ...(raw.user && typeof raw.user === 'object' && !Array.isArray(raw.user) ? raw.user : {}),
+        ...(raw.kyc && typeof raw.kyc === 'object' && !Array.isArray(raw.kyc) ? raw.kyc : {}),
+        ...(raw.kycData && typeof raw.kycData === 'object' && !Array.isArray(raw.kycData) ? raw.kycData : {}),
+        ...(raw.bankDetails && typeof raw.bankDetails === 'object' && !Array.isArray(raw.bankDetails) ? raw.bankDetails : {}),
+        ...(raw.businessDetails && typeof raw.businessDetails === 'object' && !Array.isArray(raw.businessDetails) ? raw.businessDetails : {}),
+        ...(raw.merchant && typeof raw.merchant === 'object' && !Array.isArray(raw.merchant) ? raw.merchant : {}),
+        ...(raw.profile && typeof raw.profile === 'object' && !Array.isArray(raw.profile) ? raw.profile : {}),
+        ...(raw.aeps_kyc_details && typeof raw.aeps_kyc_details === 'object' && !Array.isArray(raw.aeps_kyc_details) ? raw.aeps_kyc_details : {}),
+    };
+    return { ...nested, ...raw };
+};
+
+const extractUserProfileFields = (rawUser, prev = {}) => {
+    if (!rawUser && !prev) return {};
+    const user = { ...prev, ...flattenUserData(rawUser) };
     
-    let aadhaarImage = user.aadhaarImage || user.aadhaarPhoto || user.aadhaarPhotoUrl || prev.aadhaarImage || null;
+    let aadhaarImage = user.aadhaarImage || user.aadhaarPhoto || user.aadhaarPhotoUrl || user.aadhaarDoc || prev.aadhaarImage || null;
     let aadhaarNumber = user.aadhaarNumber || user.aadhaar || user.aadhar || user.aadharNumber || user.aadhaar_number || user.aadhar_number || user.aadhaarNo || prev.aadhaarNumber || '';
-    let panNumber = user.panNumber || user.pan || user.pan_number || user.panNo || prev.panNumber || '';
+    let panNumber = user.panNumber || user.pan || user.pan_number || user.panNo || user.userPan || user.companyOrShopPan || prev.panNumber || '';
     let photoUrl = user.profilePhoto || user.photoUrl || user.liveSelfieUrl || user.avatar || user.profile_photo || prev.profilePhoto || prev.photoUrl || localStorage.getItem('rupiksha_profile_photo') || null;
 
-    if (Array.isArray(user.documents) && user.documents.length > 0) {
-        user.documents.forEach(d => {
+    const allDocs = Array.isArray(user.documents) ? user.documents : (Array.isArray(rawUser?.documents) ? rawUser.documents : []);
+    if (allDocs.length > 0) {
+        allDocs.forEach(d => {
             if (!d) return;
             const type = String(d.type || '').toUpperCase();
             const name = String(d.name || '').toLowerCase();
@@ -102,19 +144,21 @@ const extractUserProfileFields = (user, prev = {}) => {
         });
     }
 
-    const rawBanks = Array.isArray(user.banks) && user.banks.length > 0 ? user.banks : (Array.isArray(prev.banks) ? prev.banks : []);
+    const rawBanks = (Array.isArray(user.banks) && user.banks.length > 0)
+        ? user.banks
+        : (Array.isArray(prev.banks) && prev.banks.length > 0 ? prev.banks : []);
     const primaryBank = rawBanks[0] || {};
-    const bankName = user.bankName || user.bank_name || primaryBank.bankName || prev.bankName || '';
-    const accountNumber = user.accountNumber || user.bankAccountNumber || user.account_number || user.bank_account_number || primaryBank.accountNumber || prev.accountNumber || '';
-    const ifscCode = user.ifscCode || user.bankIfsc || user.ifsc || user.ifsc_code || primaryBank.ifscCode || prev.ifscCode || '';
-    const branchName = user.branchName || user.bankBranch || user.branch || user.branch_name || primaryBank.branchName || prev.branchName || '';
-    const accHolderName = user.accHolderName || user.bankAccountHolder || user.bankAccountName || user.accountHolderName || user.account_holder_name || primaryBank.accHolderName || primaryBank.bankAccountHolder || user.name || user.fullName || prev.accHolderName || '';
+    const bankName = user.bankName || user.companyBankName || user.bank_name || user.company_bank_name || user.bank || primaryBank.bankName || prev.bankName || '';
+    const accountNumber = user.accountNumber || user.bankAccountNumber || user.companyBankAccountNumber || user.account_number || user.bank_account_number || user.company_bank_account_number || user.accNo || user.accountNo || primaryBank.accountNumber || prev.accountNumber || '';
+    const ifscCode = user.ifscCode || user.bankIfsc || user.bankIfscCode || user.ifsc || user.ifsc_code || user.bank_ifsc || user.bank_ifsc_code || user.companyBankIfsc || primaryBank.ifscCode || prev.ifscCode || '';
+    const branchName = user.branchName || user.bankBranch || user.bankBranchName || user.branch || user.branch_name || user.bank_branch || primaryBank.branchName || prev.branchName || '';
+    const accHolderName = user.accHolderName || user.bankAccountHolder || user.bankAccountHolderName || user.bankAccountName || user.accountHolderName || user.companyBankAccountHolderName || user.account_holder_name || primaryBank.accHolderName || primaryBank.bankAccountHolder || user.name || user.fullName || prev.accHolderName || '';
 
-    // Synchronize banks list on user object if single bank fields are present
-    if (rawBanks.length === 0 && (bankName || accountNumber)) {
-        user.banks = [{
+    let banks = rawBanks;
+    if (banks.length === 0 && (bankName || accountNumber)) {
+        banks = [{
             id: 'bank_primary',
-            bankName,
+            bankName: bankName || 'Primary Bank',
             accountNumber,
             ifscCode,
             branchName,
@@ -122,35 +166,36 @@ const extractUserProfileFields = (user, prev = {}) => {
         }];
     }
 
-    const businessName = user.businessName || user.shopName || user.companyName || user.business_name || user.shop_name || user.business || prev.businessName || '';
-    const businessType = user.businessType || user.business_type || prev.businessType || 'Sole proprietorship';
+    const businessName = user.businessName || user.companyLegalName || user.shopName || user.companyName || user.business_name || user.shop_name || user.firmName || user.tradeName || user.business || prev.businessName || '';
+    const businessType = user.businessType || user.companyType || user.business_type || user.shopType || prev.businessType || 'Sole proprietorship';
     const category = user.category || user.businessCategory || user.business_category || prev.category || 'Retail';
-    const gstNumber = user.gstNumber || user.gstin || user.gst_number || user.gst || prev.gstNumber || '';
-    const address1 = user.address1 || user.addressLine1 || user.shopAddress || user.businessAddress || user.address || user.shop_address || user.business_address || user.permanentAddress || prev.address1 || '';
-    const address2 = user.address2 || user.addressLine2 || user.shopLandmark || user.landmark || user.business_address_2 || prev.address2 || '';
-    const pincode = user.pincode || user.shopPincode || user.businessPincode || user.personalPincode || user.permPincode || user.shop_pincode || prev.pincode || '';
-    const area = user.area || user.city || user.shopCity || user.businessCity || user.personalArea || user.district || user.state || user.shop_city || prev.area || '';
-    const salesName = user.salesName || user.salesExecutiveName || user.sales_name || user.sales_executive_name || prev.salesName || '';
+    const gstNumber = user.gstNumber || user.gstinNumber || user.gstin || user.gst_number || user.gst || user.gstNo || prev.gstNumber || '';
+    const address1 = user.address1 || user.addressLine1 || user.shopAddress || user.businessAddress || user.merchantAddress1 || user.address || user.shop_address || user.business_address || user.permanentAddress || prev.address1 || '';
+    const address2 = user.address2 || user.addressLine2 || user.shopLandmark || user.merchantAddress2 || user.landmark || user.business_address_2 || prev.address2 || '';
+    const pincode = user.pincode || user.shopPincode || user.merchantPinCode || user.businessPincode || user.personalPincode || user.permPincode || user.shop_pincode || user.pin || user.postalCode || prev.pincode || '';
+    const area = user.area || user.city || user.shopCity || user.merchantCityName || user.businessCity || user.personalArea || user.district || user.merchantDistrictName || user.state || user.stateName || user.merchantState || user.shop_city || prev.area || '';
+    const salesName = user.salesName || user.salesExecutiveName || user.sales_name || user.sales_executive_name || user.salesPerson || prev.salesName || '';
     const salesContact = user.salesContact || user.salesExecutiveContact || user.sales_contact || user.sales_executive_mobile || prev.salesContact || '';
 
-    const name = user.name || user.fullName || user.full_name || (user.firstName ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : prev.name) || '';
-    const fatherName = user.fatherName || user.father_name || user.father || prev.fatherName || '';
-    const mobile = user.mobile || user.phone || user.username || user.mobileNumber || user.contactNumber || prev.mobile || '';
-    const email = user.email || user.emailId || user.email_id || prev.email || '';
+    const name = user.name || user.fullName || user.full_name || (user.firstName ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '') || user.merchantName || prev.name || '';
+    const fatherName = user.fatherName || user.father_name || user.father || user.guardianName || prev.fatherName || '';
+    const mobile = user.mobile || user.phone || user.mobileNumber || user.merchantPhoneNumber || user.contactNumber || user.phoneNumber || user.username || prev.mobile || '';
+    const email = user.email || user.emailId || user.email_id || user.merchantEmail || user.mail || prev.email || '';
     const emailVerified = user.emailVerified !== undefined ? user.emailVerified : (user.isEmailVerified !== undefined ? user.isEmailVerified : (user.email_verified !== undefined ? user.email_verified : prev.emailVerified));
     const gender = user.gender || prev.gender || 'Male';
     const maritalStatus = user.maritalStatus || user.marital_status || user.marriedStatus || prev.maritalStatus || 'Single';
     const dob = normalizeDate(user.dob || user.dateOfBirth || user.date_of_birth || user.birthDate || prev.dob || '');
-    const residentialAddress1 = user.residentialAddress1 || user.permanentAddress || user.residentialAddress || user.residential_address_1 || user.residential_address || user.address || user.address1 || user.shopAddress || prev.residentialAddress1 || '';
-    const residentialAddress2 = user.residentialAddress2 || user.residential_address_2 || user.address2 || prev.residentialAddress2 || '';
-    const personalPincode = user.personalPincode || user.permPincode || user.personal_pincode || user.pincode || user.shopPincode || prev.personalPincode || '';
-    const personalArea = user.personalArea || user.personalCity || user.permCity || user.personal_area || user.city || user.area || user.district || user.state || prev.personalArea || '';
-    const partyCode = user.partyCode || user.party_code || prev.partyCode || 'PENDING';
+    const residentialAddress1 = user.residentialAddress1 || user.permanentAddress || user.residentialAddress || user.residential_address_1 || user.residential_address || user.address || user.address1 || user.addressLine1 || user.merchantAddress1 || user.shopAddress || prev.residentialAddress1 || '';
+    const residentialAddress2 = user.residentialAddress2 || user.residential_address_2 || user.address2 || user.merchantAddress2 || prev.residentialAddress2 || '';
+    const personalPincode = user.personalPincode || user.permPincode || user.personal_pincode || user.pincode || user.merchantPinCode || user.shopPincode || prev.personalPincode || '';
+    const personalArea = user.personalArea || user.personalCity || user.permCity || user.personal_area || user.city || user.area || user.district || user.merchantCityName || user.state || prev.personalArea || '';
+    const partyCode = user.partyCode || user.party_code || user.party_id || prev.partyCode || 'PENDING';
     const username = user.username || user.loginId || user.mobile || prev.username || '';
 
     return {
         ...prev,
         ...user,
+        banks,
         // Business
         businessName,
         businessType,
@@ -180,7 +225,7 @@ const extractUserProfileFields = (user, prev = {}) => {
         // PAN & Aadhaar
         panNumber,
         isPanVerified: user.isPanVerified !== undefined ? user.isPanVerified : (!!panNumber),
-        panName: user.panName || user.pan_name || name || prev.panName || '',
+        panName: user.panName || user.pan_name || user.nameOnPan || user.panHolderName || name || prev.panName || '',
         aadhaarNumber,
         aadhaarImage,
         // Banking
@@ -202,8 +247,8 @@ const extractUserProfileFields = (user, prev = {}) => {
     };
 };
 
-const ProfileDetails = ({ activeTab = 'personal' }) => {
-    const initialTab = VALID_PROFILE_TABS.includes(activeTab) ? activeTab : 'personal';
+const ProfileDetails = ({ activeTab = 'business' }) => {
+    const initialTab = VALID_PROFILE_TABS.includes(activeTab) ? activeTab : 'business';
     const [activeSubTab, setActiveSubTab] = useState(initialTab);
     const [isSaving, setIsSaving] = useState(false);
     const [showSavedToast, setShowSavedToast] = useState(false);
@@ -218,7 +263,7 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
     const [isSendingOtp, setIsSendingOtp] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
     const [timer, setTimer] = useState(0);
-    const [isDataLoading, setIsDataLoading] = useState(true);
+    const [isDataLoading, setIsDataLoading] = useState(false);
 
     const currentUser = getCurrentUserData() || appData.currentUser || {};
     const initialExtracted = extractUserProfileFields(currentUser);

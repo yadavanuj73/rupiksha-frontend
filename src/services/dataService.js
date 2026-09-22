@@ -488,11 +488,12 @@ export const dataService = {
 
             if (!username && !mobile && !userId) {
                 const searchKeys = [
+                    'rupiksha_distributor_user',
                     'rupiksha_user',
                     'rupiksha_user_distributor',
                     'rupiksha_user_retailer',
                     'rupiksha_user_super_distributor',
-                    'rupiksha_distributor_user',
+                    'rupiksha_super_distributor_user',
                     'rupiksha_admin_user',
                     'rupiksha_imp_user'
                 ];
@@ -501,7 +502,7 @@ export const dataService = {
                         const raw = localStorage.getItem(k);
                         if (raw) {
                             const parsed = JSON.parse(raw);
-                            if (parsed && (parsed.id || parsed.username || parsed.mobile)) {
+                            if (parsed && (parsed.id || parsed.userId || parsed.username || parsed.mobile)) {
                                 userId = userId || parsed.id || parsed.userId;
                                 username = username || parsed.username;
                                 mobile = mobile || parsed.mobile || parsed.phone;
@@ -535,12 +536,34 @@ export const dataService = {
             const res = await fetch(url, { headers });
             if (res.ok) {
                 const data = await res.json();
-                const serverUser = data?.user || data?.data || data;
+                const rawPayload = (data && typeof data === 'object') ? data : {};
+                const nestedData = (rawPayload.data && typeof rawPayload.data === 'object' && !Array.isArray(rawPayload.data)) ? rawPayload.data : {};
+                const nestedUser = (rawPayload.user && typeof rawPayload.user === 'object' && !Array.isArray(rawPayload.user)) ? rawPayload.user : ((nestedData.user && typeof nestedData.user === 'object' && !Array.isArray(nestedData.user)) ? nestedData.user : {});
+                const nestedKyc = (rawPayload.kyc && typeof rawPayload.kyc === 'object' && !Array.isArray(rawPayload.kyc)) ? rawPayload.kyc : ((nestedData.kyc && typeof nestedData.kyc === 'object' && !Array.isArray(nestedData.kyc)) ? nestedData.kyc : {});
+                const nestedKycData = (rawPayload.kycData && typeof rawPayload.kycData === 'object' && !Array.isArray(rawPayload.kycData)) ? rawPayload.kycData : ((nestedData.kycData && typeof nestedData.kycData === 'object' && !Array.isArray(nestedData.kycData)) ? nestedData.kycData : {});
+                const nestedBank = (rawPayload.bankDetails && typeof rawPayload.bankDetails === 'object' && !Array.isArray(rawPayload.bankDetails)) ? rawPayload.bankDetails : ((nestedData.bankDetails && typeof nestedData.bankDetails === 'object' && !Array.isArray(nestedData.bankDetails)) ? nestedData.bankDetails : {});
+                const nestedProfile = (rawPayload.profile && typeof rawPayload.profile === 'object' && !Array.isArray(rawPayload.profile)) ? rawPayload.profile : ((nestedData.profile && typeof nestedData.profile === 'object' && !Array.isArray(nestedData.profile)) ? nestedData.profile : {});
+                const nestedMerchant = (rawPayload.merchant && typeof rawPayload.merchant === 'object' && !Array.isArray(rawPayload.merchant)) ? rawPayload.merchant : ((nestedData.merchant && typeof nestedData.merchant === 'object' && !Array.isArray(nestedData.merchant)) ? nestedData.merchant : {});
+
+                const serverUser = {
+                    ...nestedKyc,
+                    ...nestedKycData,
+                    ...nestedBank,
+                    ...nestedMerchant,
+                    ...nestedProfile,
+                    ...nestedData,
+                    ...nestedUser,
+                    ...(typeof rawPayload.data === 'object' && !Array.isArray(rawPayload.data) ? rawPayload.data : {}),
+                    ...(typeof rawPayload.user === 'object' && !Array.isArray(rawPayload.user) ? rawPayload.user : {}),
+                    ...rawPayload
+                };
+
                 if (serverUser && typeof serverUser === 'object' && Object.keys(serverUser).length > 0 && !serverUser.error) {
                     const savedPhoto = localStorage.getItem('rupiksha_profile_photo');
                     let docPhoto = null;
-                    if (Array.isArray(serverUser.documents)) {
-                        const selfieDoc = serverUser.documents.find(d => 
+                    const allDocs = Array.isArray(serverUser.documents) ? serverUser.documents : (Array.isArray(nestedData.documents) ? nestedData.documents : (Array.isArray(nestedUser.documents) ? nestedUser.documents : []));
+                    if (allDocs.length > 0) {
+                        const selfieDoc = allDocs.find(d => 
                             (d.type && ['SELFIE', 'PHOTO', 'LIVE_SELFIE', 'PROFILE_PHOTO'].includes(String(d.type).toUpperCase())) ||
                             (d.name && String(d.name).toLowerCase().includes('selfie')) ||
                             (d.name && String(d.name).toLowerCase().includes('photo'))
@@ -551,12 +574,18 @@ export const dataService = {
                     const merged = {
                         ...currentUser,
                         ...serverUser,
-                        photoUrl: resolvedPhoto,
-                        profilePhoto: resolvedPhoto
+                        ...(docPhoto ? { photoUrl: docPhoto, profilePhoto: docPhoto } : {}),
+                        ...(resolvedPhoto ? { photoUrl: resolvedPhoto, profilePhoto: resolvedPhoto } : {})
                     };
                     localStorage.setItem('rupiksha_user', JSON.stringify(merged));
                     if (localStorage.getItem('rupiksha_distributor_user') || merged.role === 'DISTRIBUTOR') {
                         localStorage.setItem('rupiksha_distributor_user', JSON.stringify(merged));
+                    }
+                    if (localStorage.getItem('rupiksha_super_distributor_user') || merged.role === 'SUPER_DISTRIBUTOR') {
+                        localStorage.setItem('rupiksha_super_distributor_user', JSON.stringify(merged));
+                    }
+                    if (localStorage.getItem('rupiksha_admin_user') && window.location.pathname.startsWith('/admin')) {
+                        localStorage.setItem('rupiksha_admin_user', JSON.stringify(merged));
                     }
                     if (resolvedPhoto) {
                         try { localStorage.setItem('rupiksha_profile_photo', resolvedPhoto); } catch (_) {}
