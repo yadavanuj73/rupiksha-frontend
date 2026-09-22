@@ -505,7 +505,14 @@ export const dataService = {
                 const data = await res.json();
                 if (data && (data.user || data.data)) {
                     const serverUser = data.user || data.data;
-                    const merged = { ...currentUser, ...serverUser };
+                    const savedPhoto = localStorage.getItem('rupiksha_profile_photo');
+                    const resolvedPhoto = serverUser.profilePhoto || serverUser.photoUrl || currentUser?.profilePhoto || currentUser?.photoUrl || savedPhoto;
+                    const merged = {
+                        ...currentUser,
+                        ...serverUser,
+                        photoUrl: resolvedPhoto,
+                        profilePhoto: resolvedPhoto
+                    };
                     localStorage.setItem('rupiksha_user', JSON.stringify(merged));
                     if (localStorage.getItem('rupiksha_distributor_user') || merged.role === 'DISTRIBUTOR') {
                         localStorage.setItem('rupiksha_distributor_user', JSON.stringify(merged));

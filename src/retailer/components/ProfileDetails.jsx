@@ -23,12 +23,42 @@ import Settings from './profile/Settings';
 
 const getCurrentUserData = () => {
     try {
-        const distUser = localStorage.getItem('rupiksha_distributor_user');
-        if (distUser) return JSON.parse(distUser);
+        let user = null;
         const retUser = localStorage.getItem('rupiksha_user');
-        if (retUser) return JSON.parse(retUser);
-        const adminUser = localStorage.getItem('rupiksha_admin_user');
-        if (adminUser) return JSON.parse(adminUser);
+        if (retUser) {
+            try {
+                const parsed = JSON.parse(retUser);
+                if (parsed && (parsed.username || parsed.mobile || parsed.id)) user = parsed;
+            } catch (e) {}
+        }
+        if (!user) {
+            const distUser = localStorage.getItem('rupiksha_distributor_user');
+            if (distUser) {
+                try {
+                    const parsed = JSON.parse(distUser);
+                    if (parsed && (parsed.username || parsed.mobile || parsed.id)) user = parsed;
+                } catch (e) {}
+            }
+        }
+        if (!user) {
+            const adminUser = localStorage.getItem('rupiksha_admin_user');
+            if (adminUser) {
+                try {
+                    const parsed = JSON.parse(adminUser);
+                    if (parsed && (parsed.username || parsed.mobile || parsed.id)) user = parsed;
+                } catch (e) {}
+            }
+        }
+        if (!user) {
+            user = dataService.getData().currentUser || {};
+        }
+
+        const savedPhoto = localStorage.getItem('rupiksha_profile_photo');
+        if (savedPhoto && (!user.profilePhoto || !user.photoUrl)) {
+            user.profilePhoto = savedPhoto;
+            user.photoUrl = savedPhoto;
+        }
+        return user;
     } catch (e) {
         console.error("Error reading stored user data:", e);
     }
@@ -55,44 +85,45 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
     const [timer, setTimer] = useState(0);
 
     const currentUser = getCurrentUserData() || appData.currentUser || {};
-    const [profilePhoto, setProfilePhoto] = useState(currentUser?.profilePhoto || currentUser?.photoUrl || "https://ui-avatars.com/api/?name=User&background=A0A0A0&color=fff");
+    const [profilePhoto, setProfilePhoto] = useState(currentUser?.profilePhoto || currentUser?.photoUrl || localStorage.getItem('rupiksha_profile_photo') || "https://ui-avatars.com/api/?name=User&background=A0A0A0&color=fff");
 
     const [formData, setFormData] = useState({
         // Business
         businessName: currentUser?.businessName || '',
         businessType: currentUser?.businessType || 'Sole proprietorship',
         category: currentUser?.category || 'Retail',
-        address1: currentUser?.address1 || currentUser?.address || '',
-        address2: currentUser?.address2 || '',
-        pincode: currentUser?.pincode || '',
-        area: currentUser?.area || currentUser?.city || 'Sikandarpur (Muzaffarpur)',
+        address1: currentUser?.address1 || currentUser?.address || currentUser?.shopAddress || '',
+        address2: currentUser?.address2 || currentUser?.shopLandmark || '',
+        pincode: currentUser?.pincode || currentUser?.shopPincode || '',
+        area: currentUser?.area || currentUser?.city || currentUser?.shopCity || 'Sikandarpur (Muzaffarpur)',
         salesName: currentUser?.salesName || '',
         salesContact: currentUser?.salesContact || '',
         // Personal
-        name: currentUser?.name || '',
+        name: currentUser?.name || currentUser?.fullName || '',
         gender: currentUser?.gender || 'Male',
         maritalStatus: currentUser?.maritalStatus || 'Single',
         dob: currentUser?.dob || '',
-        residentialAddress1: currentUser?.residentialAddress1 || currentUser?.address || '',
+        residentialAddress1: currentUser?.residentialAddress1 || currentUser?.permanentAddress || currentUser?.address || '',
         residentialAddress2: currentUser?.residentialAddress2 || '',
-        personalPincode: currentUser?.personalPincode || currentUser?.pincode || '',
-        personalArea: currentUser?.personalArea || currentUser?.city || 'Muzaffarpur',
+        personalPincode: currentUser?.personalPincode || currentUser?.permPincode || currentUser?.pincode || '',
+        personalArea: currentUser?.personalArea || currentUser?.permCity || currentUser?.city || 'Muzaffarpur',
         email: currentUser?.email || '',
         mobile: currentUser?.mobile || currentUser?.phone || currentUser?.username || '',
         username: currentUser?.username || '',
         partyCode: currentUser?.partyCode || '',
         emailVerified: currentUser?.emailVerified || false,
-        // PAN
+        // PAN & Aadhaar
         panNumber: currentUser?.panNumber || '',
         isPanVerified: currentUser?.isPanVerified || false,
         panName: currentUser?.panName || '',
+        aadhaarNumber: currentUser?.aadhaarNumber || '',
         // Banking
-        accHolderName: currentUser?.bankAccountName || '',
+        accHolderName: currentUser?.bankAccountName || currentUser?.bankAccountHolder || currentUser?.accHolderName || '',
         bankName: currentUser?.bankName || '',
-        accountNumber: currentUser?.bankAccountNumber || '',
-        confirmAccountNumber: currentUser?.bankAccountNumber || '',
-        ifscCode: currentUser?.bankIfsc || '',
-        branchName: currentUser?.bankBranch || '',
+        accountNumber: currentUser?.bankAccountNumber || currentUser?.accountNumber || '',
+        confirmAccountNumber: currentUser?.bankAccountNumber || currentUser?.accountNumber || '',
+        ifscCode: currentUser?.bankIfsc || currentUser?.ifscCode || '',
+        branchName: currentUser?.bankBranch || currentUser?.branchName || '',
         // Settings
         emailNotifications: currentUser?.emailNotifications ?? true,
         whatsappUpdates: currentUser?.whatsappUpdates ?? true,
@@ -141,8 +172,9 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
                 ifscCode: user.ifscCode || user.bankIfsc || prev.ifscCode,
                 branchName: user.branchName || user.bankBranch || prev.branchName
             }));
-            if (user.profilePhoto || user.photoUrl) {
-                setProfilePhoto(user.profilePhoto || user.photoUrl);
+            const photo = user.profilePhoto || user.photoUrl || localStorage.getItem('rupiksha_profile_photo');
+            if (photo) {
+                setProfilePhoto(photo);
             }
         }
     };
@@ -349,11 +381,15 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
     const handleSave = async () => {
         setIsSaving(true);
         try {
+            const photoToSave = profilePhoto || localStorage.getItem('rupiksha_profile_photo');
             const payload = {
                 ...formData,
-                profilePhoto: profilePhoto,
-                photoUrl: profilePhoto
+                profilePhoto: photoToSave,
+                photoUrl: photoToSave
             };
+            if (photoToSave) {
+                localStorage.setItem('rupiksha_profile_photo', photoToSave);
+            }
             const success = await dataService.updateUserProfile(payload);
             if (success) {
                 setShowSavedToast(true);
@@ -376,6 +412,11 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
             reader.onload = async () => {
                 const photoBase64 = reader.result;
                 setProfilePhoto(photoBase64);
+                try {
+                    localStorage.setItem('rupiksha_profile_photo', photoBase64);
+                } catch (err) {
+                    console.warn("Storage write:", err);
+                }
                 await dataService.updateUserProfile({
                     ...formData,
                     profilePhoto: photoBase64,

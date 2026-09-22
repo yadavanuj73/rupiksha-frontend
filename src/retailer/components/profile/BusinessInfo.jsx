@@ -4,8 +4,8 @@ import { InputField, SelectField } from './ProfileShared';
 
 const BusinessInfo = ({ formData, handleInputChange, handleSave, isSaving }) => {
     return (
-        <div className="flex flex-col xl:flex-row gap-6">
-            <div className="flex-1 bg-white rounded-2xl shadow-xs border border-slate-200/80 p-5 sm:p-7 lg:p-8 space-y-6">
+        <div className="w-full">
+            <div className="bg-white rounded-2xl shadow-xs border border-slate-200/80 p-5 sm:p-7 lg:p-8 space-y-6 w-full">
                 <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
                     <div className="p-2 bg-sky-50 text-[#0ea5e9] rounded-xl">
                         <Building2 size={20} />
@@ -16,16 +16,19 @@ const BusinessInfo = ({ formData, handleInputChange, handleSave, isSaving }) => 
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
-                    <div className="sm:col-span-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+                    <div className="sm:col-span-2 lg:col-span-3">
                         <InputField label="Business / Shop Name" value={formData.businessName || ''} onChange={(e) => handleInputChange('businessName', e.target.value)} placeholder="Enter registered business name" />
                     </div>
                     <SelectField label="Business Type" value={formData.businessType || 'Sole proprietorship'} options={['Sole proprietorship', 'Partnership', 'Private Limited', 'Public Limited', 'Individual']} onChange={(e) => handleInputChange('businessType', e.target.value)} />
                     <SelectField label="Business Category" value={formData.category || 'Retail'} options={['Retail', 'Telecom', 'Fintech', 'Hosting', 'E-Commerce', 'Wholesale']} onChange={(e) => handleInputChange('category', e.target.value)} />
-                    <div className="sm:col-span-2">
+                    <div>
+                        <InputField label="GST Number" value={formData.gstNumber || ''} onChange={(e) => handleInputChange('gstNumber', e.target.value.toUpperCase())} placeholder="GSTIN (Optional)" />
+                    </div>
+                    <div className="sm:col-span-2 lg:col-span-2">
                         <InputField label="Business Address Line 1" value={formData.address1 || formData.shopAddress || ''} onChange={(e) => handleInputChange('address1', e.target.value)} placeholder="Building, Street, Landmark" />
                     </div>
-                    <div className="sm:col-span-2">
+                    <div>
                         <InputField label="Business Address Line 2" value={formData.address2 || ''} onChange={(e) => handleInputChange('address2', e.target.value)} placeholder="Area, Landmark (Optional)" />
                     </div>
                     <div>
@@ -54,23 +57,6 @@ const BusinessInfo = ({ formData, handleInputChange, handleSave, isSaving }) => 
                         <span>{isSaving ? 'Saving Changes...' : 'Save & Submit'}</span>
                         {isSaving ? <RefreshCw size={16} className="animate-spin" /> : <ArrowRight size={16} />}
                     </button>
-                </div>
-            </div>
-
-            {/* Helper Guide Card */}
-            <div className="w-full xl:w-[340px] shrink-0 bg-white rounded-2xl shadow-xs border border-slate-200/80 p-5 sm:p-6 lg:p-7 self-start">
-                <h3 className="text-base font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100">Business Detail Completion</h3>
-                <div className="space-y-4 text-xs">
-                    {[
-                        { title: 'Geographical Location', desc: 'Ensure your business location is accurate as per your active store address.' },
-                        { title: 'Business Detail', desc: 'Enter your trade name, category, and address matching your official documents.' },
-                        { title: 'Shop/Business Address Proof', desc: 'Keep your utility bill, rent agreement, or GST registration certificate ready for verification.' }
-                    ].map((step, i) => (
-                        <div key={i} className="space-y-1 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100">
-                            <span className="font-bold text-slate-700 block">{i + 1}. {step.title}</span>
-                            <p className="text-slate-500 leading-relaxed text-[11px] font-medium">{step.desc}</p>
-                        </div>
-                    ))}
                 </div>
             </div>
         </div>

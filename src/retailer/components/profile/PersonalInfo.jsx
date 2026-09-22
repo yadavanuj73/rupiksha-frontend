@@ -1,13 +1,25 @@
 import React from 'react';
-import { Camera, Edit3, CheckCircle2, RefreshCw, ArrowRight, User, ShieldCheck } from 'lucide-react';
+import { Camera, CheckCircle2, RefreshCw, ArrowRight, User, ShieldCheck } from 'lucide-react';
 import { InputField, SelectField } from './ProfileShared';
 
-const PersonalInfo = ({ formData, handleInputChange, handleSave, isSaving, isSendingOtp, profilePhoto, fileInputRef, handlePhotoChange, onVerifyEmail, onVerifyPan, isVerifyingPan }) => {
+const PersonalInfo = ({
+    formData,
+    handleInputChange,
+    handleSave,
+    isSaving,
+    isSendingOtp,
+    profilePhoto,
+    fileInputRef,
+    handlePhotoChange,
+    onVerifyEmail,
+    onVerifyPan,
+    isVerifyingPan
+}) => {
     return (
-        <div className="flex flex-col xl:flex-row gap-6">
-            <div className="flex-1 bg-white rounded-2xl shadow-xs border border-slate-200/80 p-5 sm:p-7 lg:p-8 space-y-6">
+        <div className="w-full">
+            <div className="bg-white rounded-2xl shadow-xs border border-slate-200/80 p-5 sm:p-7 lg:p-8 space-y-6 w-full">
                 {/* Header & Avatar */}
-                <div className="flex flex-col items-center border-b border-slate-100 pb-6">
+                <div className="flex flex-col items-center border-b border-slate-100 pb-6 w-full">
                     <div className="flex items-center justify-between w-full mb-6">
                         <div>
                             <h2 className="text-base sm:text-lg font-bold text-slate-800 tracking-tight">Update Your Personal Information</h2>
@@ -51,61 +63,60 @@ const PersonalInfo = ({ formData, handleInputChange, handleSave, isSaving, isSen
                             accept="image/*"
                         />
                     </div>
-                    <p className="text-[11px] font-semibold text-slate-400 -mt-3 mb-4">Click avatar or camera to upload profile photo (JPG, PNG)</p>
+                    <p className="text-[11px] font-semibold text-slate-400 -mt-3 mb-6">Click avatar or camera to upload profile photo (JPG, PNG)</p>
 
-                    {/* Account Overview Badges (Collapsible-safe & Wrap-proof) */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full">
-                        <div className="bg-slate-50/90 rounded-xl p-3 border border-slate-100/90 flex flex-col justify-center min-w-0">
+                    {/* Account Overview Badges (Full width, auto-wrap, no truncating - shows complete details) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 w-full">
+                        <div className="bg-slate-50/90 hover:bg-slate-100/70 transition-colors rounded-xl p-3.5 border border-slate-200/70 flex flex-col justify-center min-w-0">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Username</span>
-                            <span className="text-xs font-bold text-slate-800 truncate mt-0.5" title={formData.username || 'N/A'}>
+                            <span className="text-[13px] font-bold text-slate-800 break-all select-all mt-1 leading-snug" title={formData.username || 'N/A'}>
                                 {formData.username || 'N/A'}
                             </span>
                         </div>
-                        <div className="bg-slate-50/90 rounded-xl p-3 border border-slate-100/90 flex flex-col justify-center min-w-0">
+                        <div className="bg-slate-50/90 hover:bg-slate-100/70 transition-colors rounded-xl p-3.5 border border-slate-200/70 flex flex-col justify-center min-w-0">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Registered Mobile</span>
-                            <div className="flex items-center space-x-1.5 mt-0.5">
-                                <span className="text-xs font-bold text-slate-800">{formData.mobile || 'N/A'}</span>
-                                <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
+                            <div className="flex items-center space-x-1.5 mt-1 flex-wrap">
+                                <span className="text-[13px] font-bold text-slate-800 break-all select-all leading-snug">{formData.mobile || 'N/A'}</span>
+                                <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
                             </div>
                         </div>
-                        <div className="bg-slate-50/90 rounded-xl p-3 border border-slate-100/90 flex flex-col justify-center min-w-0">
+                        <div className="bg-slate-50/90 hover:bg-slate-100/70 transition-colors rounded-xl p-3.5 border border-slate-200/70 flex flex-col justify-center min-w-0">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Email Address</span>
-                            <div className="flex items-center space-x-1.5 mt-0.5 min-w-0">
-                                <span className="text-xs font-bold text-slate-800 truncate" title={formData.email || 'N/A'}>
+                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                <span className="text-[13px] font-bold text-slate-800 break-all select-all leading-snug" title={formData.email || 'N/A'}>
                                     {formData.email || 'N/A'}
                                 </span>
                                 {formData.emailVerified ? (
-                                    <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
+                                    <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
                                 ) : (
-                                    <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.2 rounded font-bold shrink-0">Unverified</span>
+                                    <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold shrink-0">Unverified</span>
                                 )}
                             </div>
                         </div>
-                        <div className="bg-slate-50/90 rounded-xl p-3 border border-slate-100/90 flex flex-col justify-center min-w-0">
+                        <div className="bg-slate-50/90 hover:bg-slate-100/70 transition-colors rounded-xl p-3.5 border border-slate-200/70 flex flex-col justify-center min-w-0">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Party Code</span>
-                            <span className="text-xs font-bold text-sky-700 font-mono mt-0.5">
+                            <span className="text-[13px] font-bold text-sky-700 font-mono break-all select-all mt-1 leading-snug">
                                 {formData.partyCode || 'PENDING'}
                             </span>
                         </div>
                     </div>
                 </div>
 
-                {/* Editable Fields Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
+                {/* Editable Fields Grid (Full Width & Spacious) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
                     <div>
                         <InputField label="Full Name" value={formData.name || ''} onChange={(e) => handleInputChange('name', e.target.value)} placeholder="Full Name as per PAN" />
                     </div>
                     <div>
                         <InputField label="Mobile No." value={formData.mobile || ''} onChange={(e) => handleInputChange('mobile', e.target.value)} placeholder="10-digit mobile number" />
                     </div>
-                    <div className="sm:col-span-2">
+                    <div>
                         <InputField
                             label="Email ID"
                             type="email"
                             value={formData.email || ''}
                             onChange={(e) => handleInputChange('email', e.target.value)}
                             placeholder="your.email@example.com"
-                            subLabel="Official communications & receipts will be sent to this email."
                         />
                     </div>
                     <div>
@@ -145,17 +156,30 @@ const PersonalInfo = ({ formData, handleInputChange, handleSave, isSaving, isSen
                         />
                     </div>
 
-                    <div className="sm:col-span-2">
-                        <InputField label="Residential Address Line 1" value={formData.residentialAddress1 || ''} onChange={(e) => handleInputChange('residentialAddress1', e.target.value)} placeholder="Flat, House No, Building" />
+                    <div>
+                        <InputField
+                            label="Aadhaar Number"
+                            value={formData.aadhaarNumber || ''}
+                            onChange={(e) => handleInputChange('aadhaarNumber', e.target.value)}
+                            placeholder="12-digit Aadhaar Number"
+                            subLabel="Registered Aadhaar Number"
+                        />
                     </div>
-                    <div className="sm:col-span-2">
-                        <InputField label="Residential Address Line 2" value={formData.residentialAddress2 || ''} onChange={(e) => handleInputChange('residentialAddress2', e.target.value)} placeholder="Street, Sector, Landmark (Optional)" />
-                    </div>
+
                     <div>
                         <InputField label="Personal Pincode" value={formData.personalPincode || formData.pincode || ''} onChange={(e) => handleInputChange('personalPincode', e.target.value)} placeholder="6-digit pincode" />
                     </div>
+
+                    <div className="sm:col-span-2 lg:col-span-2">
+                        <InputField label="Residential Address Line 1" value={formData.residentialAddress1 || ''} onChange={(e) => handleInputChange('residentialAddress1', e.target.value)} placeholder="Flat, House No, Building" />
+                    </div>
+
                     <div>
                         <InputField label="Personal City / Area" value={formData.personalArea || formData.area || ''} onChange={(e) => handleInputChange('personalArea', e.target.value)} placeholder="City / Area" />
+                    </div>
+
+                    <div className="sm:col-span-2 lg:col-span-3">
+                        <InputField label="Residential Address Line 2" value={formData.residentialAddress2 || ''} onChange={(e) => handleInputChange('residentialAddress2', e.target.value)} placeholder="Street, Sector, Landmark (Optional)" />
                     </div>
                 </div>
 
@@ -168,24 +192,6 @@ const PersonalInfo = ({ formData, handleInputChange, handleSave, isSaving, isSen
                         <span>{isSaving ? 'Saving Changes...' : 'Save & Submit'}</span>
                         {isSaving ? <RefreshCw size={16} className="animate-spin" /> : <ArrowRight size={16} />}
                     </button>
-                </div>
-            </div>
-
-            {/* Helper Guide Card */}
-            <div className="w-full xl:w-[340px] shrink-0 bg-white rounded-2xl shadow-xs border border-slate-200/80 p-5 sm:p-6 lg:p-7 self-start">
-                <h3 className="text-base font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100">Personal Detail Completion</h3>
-                <div className="space-y-4 text-xs">
-                    {[
-                        { title: 'Profile Photo', desc: 'Upload a clear front-facing passport size photograph with a neutral background.' },
-                        { title: 'Email ID', desc: 'Ensure your email address is correct to receive monthly commission statements and OTPs.' },
-                        { title: 'Personal Details', desc: 'Enter your full name and date of birth exactly as printed on your Aadhaar / PAN card.' },
-                        { title: 'Identity Verification', desc: 'Verify your PAN to unlock instant wallet settlements and commission payouts.' }
-                    ].map((step, i) => (
-                        <div key={i} className="space-y-1 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100">
-                            <span className="font-bold text-slate-700 block">{i + 1}. {step.title}</span>
-                            <p className="text-slate-500 leading-relaxed text-[11px] font-medium">{step.desc}</p>
-                        </div>
-                    ))}
                 </div>
             </div>
         </div>
