@@ -22,20 +22,26 @@ async function safeJson(res, fallback = {}) {
 function getEffectiveToken() {
     const isAdminTab = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
     if (isAdminTab) {
-        const adminToken = localStorage.getItem('rupiksha_admin_token');
+        const adminToken = localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token_admin');
         if (adminToken) return adminToken;
-        const savedUserStr = localStorage.getItem('rupiksha_user');
-        if (savedUserStr) {
-            try {
-                const u = JSON.parse(savedUserStr);
-                const roles = Array.isArray(u.roles) ? u.roles : [u.role];
-                const isAdmin = roles.some(r => ['ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(String(r).toUpperCase()));
-                if (isAdmin) return localStorage.getItem('rupiksha_token');
-            } catch {}
-        }
-        return localStorage.getItem('rupiksha_admin_token') || null;
     }
-    return localStorage.getItem('rupiksha_imp_token') || localStorage.getItem('rupiksha_distributor_token') || localStorage.getItem('rupiksha_token') || localStorage.getItem('rupiksha_admin_token');
+    const tokenCandidates = [
+        localStorage.getItem('rupiksha_token'),
+        localStorage.getItem('rupiksha_distributor_token'),
+        localStorage.getItem('rupiksha_token_distributor'),
+        localStorage.getItem('rupiksha_token_retailer'),
+        localStorage.getItem('rupiksha_token_super_distributor'),
+        localStorage.getItem('rupiksha_imp_token'),
+        localStorage.getItem('rupiksha_admin_token'),
+        localStorage.getItem('token'),
+        sessionStorage.getItem('rupiksha_token')
+    ];
+    for (const t of tokenCandidates) {
+        if (t && typeof t === 'string' && t.trim().length > 10 && t !== 'null' && t !== 'undefined') {
+            return t.trim();
+        }
+    }
+    return null;
 }
 
 // ── Auth-aware fetch: clears stale token and redirects to login on 401 / 403 ──────

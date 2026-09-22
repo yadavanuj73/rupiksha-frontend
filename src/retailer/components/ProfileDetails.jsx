@@ -89,13 +89,13 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
 
     const [formData, setFormData] = useState({
         // Business
-        businessName: currentUser?.businessName || '',
+        businessName: currentUser?.businessName || currentUser?.shopName || '',
         businessType: currentUser?.businessType || 'Sole proprietorship',
         category: currentUser?.category || 'Retail',
         address1: currentUser?.address1 || currentUser?.address || currentUser?.shopAddress || '',
         address2: currentUser?.address2 || currentUser?.shopLandmark || '',
         pincode: currentUser?.pincode || currentUser?.shopPincode || '',
-        area: currentUser?.area || currentUser?.city || currentUser?.shopCity || 'Sikandarpur (Muzaffarpur)',
+        area: currentUser?.area || currentUser?.city || currentUser?.shopCity || '',
         salesName: currentUser?.salesName || '',
         salesContact: currentUser?.salesContact || '',
         // Personal
@@ -106,7 +106,7 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
         residentialAddress1: currentUser?.residentialAddress1 || currentUser?.permanentAddress || currentUser?.address || '',
         residentialAddress2: currentUser?.residentialAddress2 || '',
         personalPincode: currentUser?.personalPincode || currentUser?.permPincode || currentUser?.pincode || '',
-        personalArea: currentUser?.personalArea || currentUser?.permCity || currentUser?.city || 'Muzaffarpur',
+        personalArea: currentUser?.personalArea || currentUser?.permCity || currentUser?.city || '',
         email: currentUser?.email || '',
         mobile: currentUser?.mobile || currentUser?.phone || currentUser?.username || '',
         username: currentUser?.username || '',
@@ -118,7 +118,7 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
         panName: currentUser?.panName || '',
         aadhaarNumber: currentUser?.aadhaarNumber || '',
         // Banking
-        accHolderName: currentUser?.bankAccountName || currentUser?.bankAccountHolder || currentUser?.accHolderName || '',
+        accHolderName: currentUser?.accHolderName || currentUser?.bankAccountName || currentUser?.bankAccountHolder || '',
         bankName: currentUser?.bankName || '',
         accountNumber: currentUser?.bankAccountNumber || currentUser?.accountNumber || '',
         confirmAccountNumber: currentUser?.bankAccountNumber || currentUser?.accountNumber || '',
@@ -132,45 +132,48 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
         language: currentUser?.language || 'English'
     });
 
-    const syncUserData = () => {
+    const syncUserData = (customUser = null) => {
         setAppData(dataService.getData());
-        const user = getCurrentUserData();
+        const user = customUser || getCurrentUserData();
         if (user) {
             setFormData(prev => ({
                 ...prev,
                 ...user,
                 // Business
-                businessName: user.businessName || prev.businessName,
-                businessType: user.businessType || prev.businessType,
-                address1: user.address1 || user.addressLine1 || user.address || user.shopAddress || prev.address1,
-                address2: user.address2 || user.shopLandmark || prev.address2,
-                pincode: user.pincode || user.shopPincode || prev.pincode,
-                area: user.area || user.city || user.shopCity || prev.area,
+                businessName: user.businessName || user.shopName || prev.businessName || '',
+                businessType: user.businessType || prev.businessType || 'Sole proprietorship',
+                category: user.category || prev.category || 'Retail',
+                address1: user.address1 || user.addressLine1 || user.shopAddress || user.address || prev.address1 || '',
+                address2: user.address2 || user.shopLandmark || prev.address2 || '',
+                pincode: user.pincode || user.shopPincode || prev.pincode || '',
+                area: user.area || user.city || user.shopCity || prev.area || '',
+                salesName: user.salesName || prev.salesName || '',
+                salesContact: user.salesContact || prev.salesContact || '',
                 // Personal
-                name: user.name || user.fullName || prev.name,
-                mobile: user.mobile || user.phone || user.username || prev.mobile,
-                email: user.email || prev.email,
+                name: user.name || user.fullName || (user.firstName ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : prev.name) || '',
+                mobile: user.mobile || user.phone || user.username || prev.mobile || '',
+                email: user.email || prev.email || '',
                 emailVerified: user.emailVerified !== undefined ? user.emailVerified : prev.emailVerified,
-                gender: user.gender || prev.gender,
-                maritalStatus: user.maritalStatus || user.marriedStatus || prev.maritalStatus,
-                dob: user.dob || prev.dob,
-                residentialAddress1: user.residentialAddress1 || user.permanentAddress || user.address1 || user.address || prev.residentialAddress1,
-                residentialAddress2: user.residentialAddress2 || prev.residentialAddress2,
-                personalPincode: user.personalPincode || user.permPincode || user.pincode || prev.personalPincode,
-                personalArea: user.personalArea || user.permCity || user.city || prev.personalArea,
-                partyCode: user.partyCode || prev.partyCode,
+                gender: user.gender || prev.gender || 'Male',
+                maritalStatus: user.maritalStatus || user.marriedStatus || prev.maritalStatus || 'Single',
+                dob: user.dob || prev.dob || '',
+                residentialAddress1: user.residentialAddress1 || user.permanentAddress || user.address1 || user.address || prev.residentialAddress1 || '',
+                residentialAddress2: user.residentialAddress2 || prev.residentialAddress2 || '',
+                personalPincode: user.personalPincode || user.permPincode || user.pincode || prev.personalPincode || '',
+                personalArea: user.personalArea || user.permCity || user.city || prev.personalArea || '',
+                partyCode: user.partyCode || prev.partyCode || '',
                 // PAN & Aadhaar
-                panNumber: user.panNumber || prev.panNumber,
-                isPanVerified: user.isPanVerified !== undefined ? user.isPanVerified : prev.isPanVerified,
-                panName: user.panName || user.fullName || user.name || prev.panName,
-                aadhaarNumber: user.aadhaarNumber || prev.aadhaarNumber,
+                panNumber: user.panNumber || prev.panNumber || '',
+                isPanVerified: user.isPanVerified !== undefined ? user.isPanVerified : (!!user.panNumber),
+                panName: user.panName || user.fullName || user.name || prev.panName || '',
+                aadhaarNumber: user.aadhaarNumber || prev.aadhaarNumber || '',
                 // Banking
-                accHolderName: user.accHolderName || user.bankAccountHolder || user.bankAccountName || user.name || user.fullName || prev.accHolderName,
-                bankName: user.bankName || prev.bankName,
-                accountNumber: user.accountNumber || user.bankAccountNumber || prev.accountNumber,
-                confirmAccountNumber: user.accountNumber || user.bankAccountNumber || prev.confirmAccountNumber,
-                ifscCode: user.ifscCode || user.bankIfsc || prev.ifscCode,
-                branchName: user.branchName || user.bankBranch || prev.branchName
+                accHolderName: user.accHolderName || user.bankAccountHolder || user.bankAccountName || user.name || user.fullName || prev.accHolderName || '',
+                bankName: user.bankName || prev.bankName || '',
+                accountNumber: user.accountNumber || user.bankAccountNumber || prev.accountNumber || '',
+                confirmAccountNumber: user.confirmAccountNumber || user.accountNumber || user.bankAccountNumber || prev.confirmAccountNumber || '',
+                ifscCode: user.ifscCode || user.bankIfsc || prev.ifscCode || '',
+                branchName: user.branchName || user.bankBranch || prev.branchName || ''
             }));
             const photo = user.profilePhoto || user.photoUrl || localStorage.getItem('rupiksha_profile_photo');
             if (photo) {
@@ -180,12 +183,16 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
     };
 
     useEffect(() => {
-        dataService.fetchUserProfile().then(() => syncUserData());
-        window.addEventListener('dataUpdated', syncUserData);
-        window.addEventListener('distributorDataUpdated', syncUserData);
+        syncUserData();
+        dataService.fetchUserProfile().then((fresh) => {
+            if (fresh) syncUserData(fresh);
+        });
+        const handleUpdate = () => syncUserData();
+        window.addEventListener('dataUpdated', handleUpdate);
+        window.addEventListener('distributorDataUpdated', handleUpdate);
         return () => {
-            window.removeEventListener('dataUpdated', syncUserData);
-            window.removeEventListener('distributorDataUpdated', syncUserData);
+            window.removeEventListener('dataUpdated', handleUpdate);
+            window.removeEventListener('distributorDataUpdated', handleUpdate);
         };
     }, []);
 
