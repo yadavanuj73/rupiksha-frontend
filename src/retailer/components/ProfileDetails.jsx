@@ -11,6 +11,7 @@ import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { dataService, BACKEND_URL as IMPORTED_BACKEND_URL } from '../../services/dataService';
 import { userService } from '../../services/apiService';
+import rupikshaNewLogo from '../../assets/rupiksha_new_logo.png';
 // Using logo from public folder
 const mainLogo = '/rupiksha logo.jpeg';
 
@@ -814,7 +815,7 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
                                                     className="w-full aspect-[1.8/1] bg-white rounded-2xl shadow-xl overflow-hidden relative border border-[#D7E3F2]"
                                                 >
                                                     {/* Geometric Background Overlay (Sky Blue) */}
-                                                    <div className="absolute inset-0 opacity-[0.08] pointer-events-none">
+                                                    <div className="absolute inset-0 opacity-[0.06] pointer-events-none">
                                                         <svg width="100%" height="100%">
                                                             <pattern id="pattern-hex-sky" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
                                                                 <path d="M20 0l20 10v20l-20 10-20-10v-20z" fill="none" stroke="#0ea5e9" strokeWidth="1" />
@@ -823,6 +824,11 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
                                                         </svg>
                                                     </div>
                                                     <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-[#EAF4FF]/60 via-white to-white pointer-events-none"></div>
+
+                                                    {/* Watermark Background Logo */}
+                                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.07] overflow-hidden">
+                                                        <img src={rupikshaNewLogo} alt="" className="w-[45%] max-w-[210px] object-contain select-none" />
+                                                    </div>
 
                                                     <div className="p-4 sm:p-5 h-full flex flex-col justify-between relative z-10">
                                                         {/* Top Row: Name & QR */}
@@ -877,21 +883,26 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
 
                                                         {/* Bottom Row: Contact info & Logo */}
                                                         <div className="flex items-center justify-between border-t border-[#E3EAF3] pt-2">
-                                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10.5px] sm:text-[11px] font-bold text-[#0B0F14]">
+                                                            {/* Phone above & Email below */}
+                                                            <div className="flex flex-col gap-0.5 text-[10.5px] sm:text-[11px] font-bold text-[#0B0F14]">
                                                                 <div className="flex items-center space-x-1">
-                                                                    <Phone size={11} className="text-[#2563EB]" />
+                                                                    <Phone size={11} className="text-[#2563EB] shrink-0" />
                                                                     <span>+91 {formData.mobile || currentUser?.mobile || 'XXXXXXXXXX'}</span>
                                                                 </div>
                                                                 <div className="flex items-center space-x-1">
-                                                                    <Mail size={11} className="text-[#2563EB]" />
-                                                                    <span className="truncate max-w-[130px] sm:max-w-none">{formData.email || currentUser?.email || 'partner@rupiksha.com'}</span>
+                                                                    <Mail size={11} className="text-[#2563EB] shrink-0" />
+                                                                    <span className="truncate max-w-[150px] sm:max-w-[200px]">{formData.email || currentUser?.email || 'partner@rupiksha.com'}</span>
                                                                 </div>
                                                             </div>
 
                                                             <div className="text-right shrink-0">
                                                                 <div className="flex flex-col items-end">
-                                                                    <span className="text-[12px] sm:text-[13px] font-black text-[#2563EB] tracking-tighter uppercase italic leading-none">Rupiksha</span>
-                                                                    <span className="text-[6px] font-black text-[#0B0F14] uppercase tracking-[0.25em] mt-0.5">Making Life Simple</span>
+                                                                    <span className="text-[11px] sm:text-[12px] font-black text-[#2146A3] tracking-tight leading-tight">
+                                                                        Rupiksha Services Private Limited
+                                                                    </span>
+                                                                    <span className="text-[6.5px] font-bold text-[#64748B] uppercase tracking-[0.25em] mt-0.5">
+                                                                        Making Life Simple
+                                                                    </span>
                                                                 </div>
                                                             </div>
                                                         </div>

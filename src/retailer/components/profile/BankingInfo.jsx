@@ -1,7 +1,7 @@
 import React from 'react';
 import { dataService } from '../../../services/dataService';
-import { Plus, ShieldCheck, RefreshCw, X, Landmark } from 'lucide-react';
-import { InputField, SelectField } from './ProfileShared';
+import { Plus, ShieldCheck, RefreshCw, Landmark } from 'lucide-react';
+import { InputField } from './ProfileShared';
 
 const BankingInfo = ({ formData, handleInputChange, handleSave, isSaving, isFetchingIFSC, isVerifyingAccount, setFormData, currentUser }) => {
     const rawBanks = (formData?.banks && Array.isArray(formData.banks) && formData.banks.length > 0)
@@ -143,31 +143,9 @@ const BankingInfo = ({ formData, handleInputChange, handleSave, isSaving, isFetc
                             />
                         </div>
                     </div>
-
-                    {/* Footer Section */}
-                    <div className="w-full h-px bg-[#E3EAF3] mt-4 mb-4 relative z-10" />
-
-                    <div className="flex flex-wrap items-center justify-between gap-3 relative z-10">
-                        <button
-                            onClick={handleSave}
-                            disabled={isSaving}
-                            className="bg-[#2146A3] hover:bg-[#1B3A88] text-white px-6 py-2.5 sm:py-3 rounded-[11px] font-bold uppercase text-[12px] tracking-wider shadow-[0_4px_12px_rgba(33,70,163,0.20)] flex items-center space-x-2 transition-all active:scale-95 disabled:opacity-60 cursor-pointer"
-                        >
-                            <span>{isSaving ? 'Saving Changes...' : 'Save & Submit'}</span>
-                            {isSaving ? <RefreshCw size={15} className="animate-spin" /> : <ShieldCheck size={15} />}
-                        </button>
-                        <button
-                            onClick={handleAddBank}
-                            type="button"
-                            className="bg-[#16C784] hover:bg-[#13ab71] text-white px-5 py-2.5 sm:py-3 rounded-[11px] font-bold uppercase text-[12px] tracking-wider shadow-[0_4px_12px_rgba(22,199,132,0.20)] flex items-center space-x-1.5 transition-all active:scale-95 cursor-pointer"
-                        >
-                            <Plus size={15} strokeWidth={2.5} />
-                            <span>Add to Bank List</span>
-                        </button>
-                    </div>
                 </div>
 
-                {/* Part 2 (Right 5 cols): Added Banks List + Security Card */}
+                {/* Part 2 (Right 5 cols): Added Banks List + Action Buttons */}
                 <div className="lg:col-span-5 flex flex-col space-y-4">
                     {/* Added Banks List Card */}
                     <div className="bg-white rounded-[20px] border border-[#DCE6F2] shadow-[0_4px_20px_rgba(30,65,110,0.06)] p-4 sm:p-5 relative">
@@ -185,18 +163,7 @@ const BankingInfo = ({ formData, handleInputChange, handleSave, isSaving, isFetc
                             ) : (
                                 banks.map((bank, index) => (
                                     <div key={bank.id || index} className="p-3 bg-[#F8FAFD] hover:bg-[#F0F5FC] transition-colors rounded-[12px] border border-[#D7E3F2] relative group">
-                                        <button
-                                            onClick={() => {
-                                                if (window.confirm("Are you sure you want to remove this bank?")) {
-                                                    dataService.removeUserBank(currentUser?.username || 'current', bank.id);
-                                                }
-                                            }}
-                                            className="absolute top-2.5 right-2.5 text-[#FF3B5F]/60 hover:text-[#FF3B5F] transition-colors p-1 cursor-pointer"
-                                            title="Remove bank"
-                                        >
-                                            <X size={14} />
-                                        </button>
-                                        <h4 className="text-[12px] font-bold text-[#0B0F14] uppercase pr-5 truncate">{bank.bankName}</h4>
+                                        <h4 className="text-[12px] font-bold text-[#0B0F14] uppercase pr-2 truncate">{bank.bankName}</h4>
                                         <p className="text-[11px] font-semibold text-[#64748B] mt-0.5">A/C: •••• {String(bank.accountNumber || '').slice(-4)}</p>
                                         <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#E3EAF3]">
                                             <span className="text-[10.5px] font-mono font-bold text-[#2563EB] uppercase">{bank.ifscCode}</span>
@@ -208,15 +175,24 @@ const BankingInfo = ({ formData, handleInputChange, handleSave, isSaving, isFetc
                         </div>
                     </div>
 
-                    {/* Security Banner Card */}
-                    <div className="bg-gradient-to-r from-[#2146A3] to-[#2563EB] p-4 rounded-[16px] text-white flex items-center justify-between shadow-[0_6px_18px_rgba(33,70,163,0.16)]">
-                        <div className="flex items-center space-x-3">
-                            <div className="bg-white/20 p-2.5 rounded-[10px] shrink-0"><ShieldCheck size={20} /></div>
-                            <div>
-                                <h4 className="text-[13px] font-[800] uppercase tracking-tight">Bank Details Protection & Security</h4>
-                                <p className="text-[11px] text-blue-100 font-medium mt-0.5 leading-snug">All your financial records are secured with bank-grade encryption algorithms.</p>
-                            </div>
-                        </div>
+                    {/* Action Buttons moved into Right Column */}
+                    <div className="flex flex-col gap-2.5 w-full">
+                        <button
+                            onClick={handleSave}
+                            disabled={isSaving}
+                            className="w-full bg-[#2146A3] hover:bg-[#1B3A88] text-white py-3 rounded-[11px] font-bold uppercase text-[12px] tracking-wider shadow-[0_4px_12px_rgba(33,70,163,0.20)] flex items-center justify-center space-x-2 transition-all active:scale-95 disabled:opacity-60 cursor-pointer"
+                        >
+                            <span>{isSaving ? 'Saving Changes...' : 'Save & Submit'}</span>
+                            {isSaving ? <RefreshCw size={15} className="animate-spin" /> : <ShieldCheck size={15} />}
+                        </button>
+                        <button
+                            onClick={handleAddBank}
+                            type="button"
+                            className="w-full bg-[#16C784] hover:bg-[#13ab71] text-white py-3 rounded-[11px] font-bold uppercase text-[12px] tracking-wider shadow-[0_4px_12px_rgba(22,199,132,0.20)] flex items-center justify-center space-x-1.5 transition-all active:scale-95 cursor-pointer"
+                        >
+                            <Plus size={15} strokeWidth={2.5} />
+                            <span>Add to Bank List</span>
+                        </button>
                     </div>
                 </div>
             </div>
