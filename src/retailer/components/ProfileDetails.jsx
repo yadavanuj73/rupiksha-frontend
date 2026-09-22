@@ -7,8 +7,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
 import { dataService, BACKEND_URL as IMPORTED_BACKEND_URL } from '../../services/dataService';
+import { userService } from '../../services/apiService';
 // Using logo from public folder
 const mainLogo = '/rupiksha logo.jpeg';
 
@@ -141,14 +141,15 @@ const flattenUserData = (raw) => {
 
 const extractUserProfileFields = (rawUser, prev = {}) => {
     if (!rawUser && !prev) return {};
-    const user = { ...prev, ...flattenUserData(rawUser) };
+    const flat = flattenUserData(rawUser);
+    const user = { ...prev, ...flat };
     
-    let aadhaarImage = user.aadhaarImage || user.aadhaarPhoto || user.aadhaarPhotoUrl || user.aadhaarDoc || prev.aadhaarImage || null;
-    let aadhaarNumber = user.aadhaarNumber || user.aadhaar || user.aadhar || user.aadharNumber || user.aadhaar_number || user.aadhar_number || user.aadhaarNo || prev.aadhaarNumber || '';
-    let panNumber = user.panNumber || user.pan || user.pan_number || user.panNo || user.userPan || user.companyOrShopPan || prev.panNumber || '';
-    let photoUrl = user.profilePhoto || user.photoUrl || user.liveSelfieUrl || user.avatar || user.profile_photo || prev.profilePhoto || prev.photoUrl || localStorage.getItem('rupiksha_profile_photo') || null;
+    let aadhaarImage = flat.aadhaarImage || flat.aadhaarPhoto || flat.aadhaarPhotoUrl || flat.aadhaarDoc || user.aadhaarImage || prev.aadhaarImage || null;
+    let aadhaarNumber = flat.aadhaarNumber || flat.aadhaar || flat.aadhar || flat.aadharNumber || flat.aadhaar_number || flat.aadhar_number || flat.aadhaarNo || user.aadhaarNumber || prev.aadhaarNumber || '';
+    let panNumber = flat.panNumber || flat.pan || flat.pan_number || flat.panNo || flat.userPan || flat.companyOrShopPan || user.panNumber || prev.panNumber || '';
+    let photoUrl = flat.profilePhoto || flat.photoUrl || flat.liveSelfieUrl || flat.avatar || flat.profile_photo || user.profilePhoto || user.photoUrl || prev.profilePhoto || prev.photoUrl || localStorage.getItem('rupiksha_profile_photo') || null;
 
-    const allDocs = Array.isArray(user.documents) ? user.documents : (Array.isArray(rawUser?.documents) ? rawUser.documents : []);
+    const allDocs = Array.isArray(flat.documents) ? flat.documents : (Array.isArray(rawUser?.documents) ? rawUser.documents : (Array.isArray(user.documents) ? user.documents : []));
     if (allDocs.length > 0) {
         allDocs.forEach(d => {
             if (!d) return;
@@ -174,15 +175,17 @@ const extractUserProfileFields = (rawUser, prev = {}) => {
         });
     }
 
-    const rawBanks = (Array.isArray(user.banks) && user.banks.length > 0)
-        ? user.banks
-        : (Array.isArray(prev.banks) && prev.banks.length > 0 ? prev.banks : []);
+    const rawBanks = (Array.isArray(flat.banks) && flat.banks.length > 0)
+        ? flat.banks
+        : ((Array.isArray(user.banks) && user.banks.length > 0)
+            ? user.banks
+            : (Array.isArray(prev.banks) && prev.banks.length > 0 ? prev.banks : []));
     const primaryBank = rawBanks[0] || {};
-    const bankName = user.bankName || user.companyBankName || user.bank_name || user.company_bank_name || user.bank || primaryBank.bankName || prev.bankName || '';
-    const accountNumber = user.accountNumber || user.bankAccountNumber || user.companyBankAccountNumber || user.account_number || user.bank_account_number || user.company_bank_account_number || user.accNo || user.accountNo || primaryBank.accountNumber || prev.accountNumber || '';
-    const ifscCode = user.ifscCode || user.bankIfsc || user.bankIfscCode || user.ifsc || user.ifsc_code || user.bank_ifsc || user.bank_ifsc_code || user.companyBankIfsc || primaryBank.ifscCode || prev.ifscCode || '';
-    const branchName = user.branchName || user.bankBranch || user.bankBranchName || user.branch || user.branch_name || user.bank_branch || primaryBank.branchName || prev.branchName || '';
-    const accHolderName = user.accHolderName || user.bankAccountHolder || user.bankAccountHolderName || user.bankAccountName || user.accountHolderName || user.companyBankAccountHolderName || user.account_holder_name || primaryBank.accHolderName || primaryBank.bankAccountHolder || user.name || user.fullName || prev.accHolderName || '';
+    const bankName = flat.bankName || flat.companyBankName || flat.bank_name || flat.company_bank_name || flat.bank || user.bankName || primaryBank.bankName || prev.bankName || '';
+    const accountNumber = flat.accountNumber || flat.bankAccountNumber || flat.companyBankAccountNumber || flat.account_number || flat.bank_account_number || flat.company_bank_account_number || flat.accNo || flat.accountNo || user.accountNumber || primaryBank.accountNumber || prev.accountNumber || '';
+    const ifscCode = flat.ifscCode || flat.bankIfsc || flat.bankIfscCode || flat.ifsc || flat.ifsc_code || flat.bank_ifsc || flat.bank_ifsc_code || flat.companyBankIfsc || user.ifscCode || primaryBank.ifscCode || prev.ifscCode || '';
+    const branchName = flat.branchName || flat.bankBranch || flat.bankBranchName || flat.branch || flat.branch_name || flat.bank_branch || user.branchName || primaryBank.branchName || prev.branchName || '';
+    const accHolderName = flat.accHolderName || flat.bankAccountHolder || flat.bankAccountHolderName || flat.bankAccountName || flat.accountHolderName || flat.companyBankAccountHolderName || flat.account_holder_name || user.accHolderName || primaryBank.accHolderName || primaryBank.bankAccountHolder || user.name || user.fullName || prev.accHolderName || '';
 
     let banks = rawBanks;
     if (banks.length === 0 && (bankName || accountNumber)) {
@@ -196,31 +199,31 @@ const extractUserProfileFields = (rawUser, prev = {}) => {
         }];
     }
 
-    const businessName = user.businessName || user.companyLegalName || user.shopName || user.companyName || user.business_name || user.shop_name || user.firmName || user.tradeName || user.business || prev.businessName || '';
-    const businessType = user.businessType || user.companyType || user.business_type || user.shopType || prev.businessType || 'Sole proprietorship';
-    const category = user.category || user.businessCategory || user.business_category || prev.category || 'Retail';
-    const gstNumber = user.gstNumber || user.gstinNumber || user.gstin || user.gst_number || user.gst || user.gstNo || prev.gstNumber || '';
-    const address1 = user.address1 || user.addressLine1 || user.shopAddress || user.businessAddress || user.merchantAddress1 || user.address || user.shop_address || user.business_address || user.permanentAddress || prev.address1 || '';
-    const address2 = user.address2 || user.addressLine2 || user.shopLandmark || user.merchantAddress2 || user.landmark || user.business_address_2 || prev.address2 || '';
-    const pincode = user.pincode || user.shopPincode || user.merchantPinCode || user.businessPincode || user.personalPincode || user.permPincode || user.shop_pincode || user.pin || user.postalCode || prev.pincode || '';
-    const area = user.area || user.city || user.shopCity || user.merchantCityName || user.businessCity || user.personalArea || user.district || user.merchantDistrictName || user.state || user.stateName || user.merchantState || user.shop_city || prev.area || '';
-    const salesName = user.salesName || user.salesExecutiveName || user.sales_name || user.sales_executive_name || user.salesPerson || prev.salesName || '';
-    const salesContact = user.salesContact || user.salesExecutiveContact || user.sales_contact || user.sales_executive_mobile || prev.salesContact || '';
+    const businessName = flat.businessName || flat.companyLegalName || flat.shopName || flat.companyName || flat.business_name || flat.shop_name || flat.firmName || flat.tradeName || flat.business || user.businessName || prev.businessName || '';
+    const businessType = flat.businessType || flat.companyType || flat.business_type || flat.shopType || user.businessType || prev.businessType || 'Sole proprietorship';
+    const category = flat.category || flat.businessCategory || flat.business_category || user.category || prev.category || 'Retail';
+    const gstNumber = flat.gstNumber || flat.gstinNumber || flat.gstin || flat.gst_number || flat.gst || flat.gstNo || user.gstNumber || prev.gstNumber || '';
+    const address1 = flat.address1 || flat.addressLine1 || flat.shopAddress || flat.businessAddress || flat.merchantAddress1 || flat.address || flat.shop_address || flat.business_address || flat.permanentAddress || user.address1 || prev.address1 || '';
+    const address2 = flat.address2 || flat.addressLine2 || flat.shopLandmark || flat.merchantAddress2 || flat.landmark || flat.business_address_2 || user.address2 || prev.address2 || '';
+    const pincode = flat.pincode || flat.shopPincode || flat.merchantPinCode || flat.businessPincode || flat.personalPincode || flat.permPincode || flat.shop_pincode || flat.pin || flat.postalCode || user.pincode || prev.pincode || '';
+    const area = flat.area || flat.city || flat.shopCity || flat.merchantCityName || flat.businessCity || flat.personalArea || flat.district || flat.merchantDistrictName || flat.state || flat.stateName || flat.merchantState || flat.shop_city || user.area || prev.area || '';
+    const salesName = flat.salesName || flat.salesExecutiveName || flat.sales_name || flat.sales_executive_name || flat.salesPerson || user.salesName || prev.salesName || '';
+    const salesContact = flat.salesContact || flat.salesExecutiveContact || flat.sales_contact || flat.sales_executive_mobile || user.salesContact || prev.salesContact || '';
 
-    const name = user.name || user.fullName || user.full_name || (user.firstName ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '') || user.merchantName || prev.name || '';
-    const fatherName = user.fatherName || user.father_name || user.father || user.guardianName || prev.fatherName || '';
-    const mobile = user.mobile || user.phone || user.mobileNumber || user.merchantPhoneNumber || user.contactNumber || user.phoneNumber || user.username || prev.mobile || '';
-    const email = user.email || user.emailId || user.email_id || user.merchantEmail || user.mail || prev.email || '';
-    const emailVerified = user.emailVerified !== undefined ? user.emailVerified : (user.isEmailVerified !== undefined ? user.isEmailVerified : (user.email_verified !== undefined ? user.email_verified : prev.emailVerified));
-    const gender = user.gender || prev.gender || 'Male';
-    const maritalStatus = user.maritalStatus || user.marital_status || user.marriedStatus || prev.maritalStatus || 'Single';
-    const dob = normalizeDate(user.dob || user.dateOfBirth || user.date_of_birth || user.birthDate || prev.dob || '');
-    const residentialAddress1 = user.residentialAddress1 || user.permanentAddress || user.residentialAddress || user.residential_address_1 || user.residential_address || user.address || user.address1 || user.addressLine1 || user.merchantAddress1 || user.shopAddress || prev.residentialAddress1 || '';
-    const residentialAddress2 = user.residentialAddress2 || user.residential_address_2 || user.address2 || user.merchantAddress2 || prev.residentialAddress2 || '';
-    const personalPincode = user.personalPincode || user.permPincode || user.personal_pincode || user.pincode || user.merchantPinCode || user.shopPincode || prev.personalPincode || '';
-    const personalArea = user.personalArea || user.personalCity || user.permCity || user.personal_area || user.city || user.area || user.district || user.merchantCityName || user.state || prev.personalArea || '';
-    const partyCode = user.partyCode || user.party_code || user.party_id || prev.partyCode || 'PENDING';
-    const username = user.username || user.loginId || user.mobile || prev.username || '';
+    const name = flat.name || flat.fullName || flat.full_name || (flat.firstName ? `${flat.firstName || ''} ${flat.lastName || ''}`.trim() : '') || flat.merchantName || user.name || prev.name || '';
+    const fatherName = flat.fatherName || flat.father_name || flat.father || flat.guardianName || user.fatherName || prev.fatherName || '';
+    const mobile = flat.mobile || flat.phone || flat.mobileNumber || flat.merchantPhoneNumber || flat.contactNumber || flat.phoneNumber || flat.username || user.mobile || prev.mobile || '';
+    const email = flat.email || flat.emailId || flat.email_id || flat.merchantEmail || flat.mail || user.email || prev.email || '';
+    const emailVerified = flat.emailVerified !== undefined ? flat.emailVerified : (flat.isEmailVerified !== undefined ? flat.isEmailVerified : (flat.email_verified !== undefined ? flat.email_verified : (user.emailVerified ?? prev.emailVerified)));
+    const gender = flat.gender || user.gender || prev.gender || 'Male';
+    const maritalStatus = flat.maritalStatus || user.maritalStatus || prev.maritalStatus || 'Single';
+    const dob = normalizeDate(flat.dob || flat.dateOfBirth || flat.date_of_birth || flat.birthDate || user.dob || prev.dob || '');
+    const residentialAddress1 = flat.residentialAddress1 || flat.permanentAddress || flat.residentialAddress || flat.residential_address_1 || flat.residential_address || flat.address || flat.address1 || flat.addressLine1 || flat.merchantAddress1 || flat.shopAddress || user.residentialAddress1 || prev.residentialAddress1 || '';
+    const residentialAddress2 = flat.residentialAddress2 || flat.residential_address_2 || flat.address2 || flat.merchantAddress2 || user.residentialAddress2 || prev.residentialAddress2 || '';
+    const personalPincode = flat.personalPincode || flat.permPincode || flat.personal_pincode || flat.pincode || flat.merchantPinCode || flat.shopPincode || user.personalPincode || prev.personalPincode || '';
+    const personalArea = flat.personalArea || flat.personalCity || flat.permCity || flat.personal_area || flat.city || flat.area || flat.district || flat.merchantCityName || flat.state || user.personalArea || prev.personalArea || '';
+    const partyCode = flat.partyCode || flat.party_code || flat.party_id || user.partyCode || prev.partyCode || 'PENDING';
+    const username = flat.username || flat.loginId || flat.mobile || user.username || prev.username || '';
 
     return {
         ...prev,
@@ -317,15 +320,27 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
         // 1. Immediately populate from localStorage
         syncUserData();
 
-        // 2. Fetch fresh data from the live backend
+        // 2. Fetch fresh data concurrently from live backend
         const doFetch = async () => {
             try {
-                const fresh = await dataService.fetchUserProfile();
-                if (fresh && typeof fresh === 'object' && Object.keys(fresh).length > 0) {
-                    syncUserData(fresh);
+                const [dataRes, apiRes] = await Promise.allSettled([
+                    dataService.fetchUserProfile(),
+                    userService.getProfile()
+                ]);
+
+                let livePayload = {};
+                if (apiRes.status === 'fulfilled' && apiRes.value && typeof apiRes.value === 'object') {
+                    livePayload = { ...livePayload, ...flattenUserData(apiRes.value) };
+                }
+                if (dataRes.status === 'fulfilled' && dataRes.value && typeof dataRes.value === 'object') {
+                    livePayload = { ...livePayload, ...flattenUserData(dataRes.value) };
+                }
+
+                if (Object.keys(livePayload).length > 0) {
+                    syncUserData(livePayload);
                 }
             } catch (e) {
-                console.warn('[Profile] dataService.fetchUserProfile failed:', e);
+                console.warn('[Profile] Profile fetch failed:', e);
             } finally {
                 setIsDataLoading(false);
             }

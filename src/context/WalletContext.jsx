@@ -117,11 +117,13 @@ export function WalletProvider({ children }) {
           if (sessionRaw) {
             const sessionUser = JSON.parse(sessionRaw);
             if (sessionUser.id == userId || sessionUser.username === profile.username) {
-              localStorage.setItem('rupiksha_user', JSON.stringify({
+              const mergedSession = {
                 ...sessionUser,
+                ...profile,
                 balance: liveBal.toFixed(2),
                 walletBalance: liveBal.toFixed(2)
-              }));
+              };
+              localStorage.setItem('rupiksha_user', JSON.stringify(mergedSession));
             }
           }
         } catch (_) {}
