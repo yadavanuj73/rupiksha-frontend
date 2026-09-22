@@ -28,6 +28,10 @@ const SuperDistributorTopBar = ({ onMenuClick }) => {
             photoUrl: photo
         });
         setImgError(false);
+
+        if (!photo && sdUid) {
+            dataService.fetchUserProfile().catch(() => {});
+        }
     };
 
     useEffect(() => {

@@ -192,6 +192,11 @@ export function AuthProvider({ children }) {
             }
           }
         }
+
+        // Asynchronously hydrate latest profile details and profile photo from database
+        try {
+          dataService.fetchUserProfile().catch(() => {});
+        } catch (_) {}
       } catch (e) {
         logout();
       }

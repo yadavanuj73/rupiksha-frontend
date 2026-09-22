@@ -39,6 +39,10 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
             setNotifications(systemNotifs);
         };
         updateData();
+        const user = dataService.getCurrentUser();
+        if (user && (user.id || user.username)) {
+            dataService.fetchUserProfile().catch(() => {});
+        }
         window.addEventListener('dataUpdated', updateData);
         window.addEventListener('distributorDataUpdated', updateData);
         window.addEventListener('profileUpdated', updateData);

@@ -467,7 +467,8 @@ public class AuthServiceImpl implements AuthService {
                 user.getRoles().stream().map(r -> r.getName().name()).toList(),
                 pName,
                 pPartyCode,
-                user.getCreatedAt()
+                user.getCreatedAt(),
+                user.getPhotoUrl()
         );
     }
 

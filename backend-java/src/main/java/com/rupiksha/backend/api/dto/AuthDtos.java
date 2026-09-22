@@ -97,7 +97,8 @@ public class AuthDtos {
             List<String> roles,
             String parentName,
             String parentPartyCode,
-            Instant createdAt
+            Instant createdAt,
+            String photoUrl
     ) {}
 
     public record ForgotPasswordRequest(

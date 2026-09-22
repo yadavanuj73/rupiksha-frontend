@@ -383,7 +383,7 @@ export const dataService = {
             const fallbackRole = normalizeRoleForClient(backendUser.role);
             const rolesArr = Array.from(new Set([...(rolesArrRaw || []), ...(fallbackRole ? [fallbackRole] : [])]));
             const primaryRole = pickDeterministicRole(rolesArr, expectedPortalRole);
-
+            const userPhoto = backendUser.photoUrl || backendUser.profilePhoto || null;
             const normalizedUser = {
                 id: backendUser.id,
                 username: backendUser.username,
@@ -391,12 +391,19 @@ export const dataService = {
                 email: backendUser.email,
                 name: backendUser.fullName,
                 fullName: backendUser.fullName,
+                photoUrl: userPhoto,
+                profilePhoto: userPhoto,
                 status: backendUser.status,
                 kycStatus: backendUser.kycStatus,
                 roles: rolesArr,
                 role: primaryRole,
                 createdAt: backendUser.createdAt,
             };
+
+            const userUid = normalizedUser.id || normalizedUser.username;
+            if (userPhoto && userUid) {
+                try { localStorage.setItem(`rupiksha_photo_${userUid}`, userPhoto); } catch (_) {}
+            }
 
             if (!isRoleAllowedForPortal(normalizedUser.role)) {
                 return { success: false, message: 'Invalid credentials or unauthorized portal access.' };
@@ -415,6 +422,12 @@ export const dataService = {
                 localStorage.setItem('rupiksha_token', data.accessToken);
                 if (data.refreshToken) localStorage.setItem('rupiksha_refresh_token', data.refreshToken);
             }
+
+            // Immediately hydrate full profile and photo from DB in background
+            setTimeout(() => {
+                try { this.fetchUserProfile().catch(() => {}); } catch (_) {}
+            }, 50);
+
             return { success: true, user: normalizedUser, token: data.accessToken };
         } catch (e) {
             return { success: false, message: "Server connection failed: " + (e?.message || 'network error') };

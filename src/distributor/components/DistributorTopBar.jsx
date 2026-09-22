@@ -36,6 +36,10 @@ const DistributorTopBar = ({ onMenuClick }) => {
         });
         setImgError(false);
 
+        if (!photo && uid) {
+            dataService.fetchUserProfile().catch(() => {});
+        }
+
         // Fetch live wallet balance from server
         try {
             const liveBal = await dataService.getWalletBalance(fresh.id || fresh.userId);
