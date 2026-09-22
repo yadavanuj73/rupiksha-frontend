@@ -26,12 +26,7 @@ public class KycController {
     private final com.rupiksha.backend.repository.WalletRepository walletRepository;
     private final com.rupiksha.backend.repository.WalletEntryRepository walletEntryRepository;
 
-    @GetMapping("/profile")
-    public Map<String, Object> getProfile(@AuthenticationPrincipal JwtPrincipal principal) {
-        if (principal == null) throw new IllegalArgumentException("Unauthorized");
-        User user = userRepository.findById(UUID.fromString(principal.userId()))
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-
+    private Map<String, Object> toProfileMap(User user) {
         String primaryRole = user.getRoles().stream()
                 .map(r -> r.getName().name())
                 .findFirst()
@@ -39,8 +34,10 @@ public class KycController {
 
         Map<String, Object> profile = new HashMap<>();
         profile.put("id", user.getId().toString());
+        profile.put("userId", user.getId().toString());
         profile.put("username", user.getUsername());
         profile.put("fullName", user.getFullName());
+        profile.put("name", user.getFullName());
         profile.put("email", user.getEmail());
         profile.put("mobile", user.getMobile());
         profile.put("role", primaryRole);
@@ -48,8 +45,170 @@ public class KycController {
         profile.put("kycStatus", user.getKycStatus() != null ? user.getKycStatus().name() : "NOT_SUBMITTED");
         profile.put("partyCode", user.getPartyCode());
         profile.put("businessName", user.getBusinessName());
+        profile.put("businessType", user.getBusinessType());
+        profile.put("gstNumber", user.getGstNumber());
+        profile.put("gender", user.getGender());
+        profile.put("dob", user.getDob());
+        profile.put("addressLine1", user.getAddressLine1());
+        profile.put("address1", user.getAddressLine1());
+        profile.put("shopAddress", user.getShopAddress());
+        profile.put("permanentAddress", user.getPermanentAddress());
+        profile.put("city", user.getCity());
+        profile.put("area", user.getCity());
+        profile.put("stateName", user.getStateName());
+        profile.put("pincode", user.getPincode());
+        profile.put("panNumber", user.getPanNumber());
+        profile.put("aadhaarNumber", user.getAadhaarNumber());
+        profile.put("photoUrl", user.getPhotoUrl());
+        profile.put("profilePhoto", user.getPhotoUrl());
+        profile.put("bankAccountHolder", user.getBankAccountHolder());
+        profile.put("accHolderName", user.getBankAccountHolder());
+        profile.put("bankName", user.getBankName());
+        profile.put("bankAccountNumber", user.getBankAccountNumber());
+        profile.put("accountNumber", user.getBankAccountNumber());
+        profile.put("bankIfsc", user.getBankIfsc());
+        profile.put("ifscCode", user.getBankIfsc());
+        profile.put("bankBranch", user.getBankBranch());
+        profile.put("branchName", user.getBankBranch());
         profile.put("createdAt", user.getCreatedAt());
-        return Map.of("success", true, "user", profile);
+        return profile;
+    }
+
+    @GetMapping("/profile")
+    public Map<String, Object> getProfile(@AuthenticationPrincipal JwtPrincipal principal) {
+        if (principal == null) throw new IllegalArgumentException("Unauthorized");
+        User user = userRepository.findById(UUID.fromString(principal.userId()))
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        return Map.of("success", true, "user", toProfileMap(user));
+    }
+
+    @PostMapping({"/update-profile", "/profile/update", "/profile"})
+    @PutMapping("/profile")
+    public Map<String, Object> updateProfile(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @RequestBody Map<String, Object> request
+    ) {
+        UUID userId = null;
+        if (principal != null && principal.userId() != null) {
+            try { userId = UUID.fromString(principal.userId()); } catch (Exception ignored) {}
+        }
+        if (userId == null && request != null) {
+            Object reqId = request.get("userId");
+            if (reqId == null) reqId = request.get("id");
+            if (reqId != null) {
+                try { userId = UUID.fromString(reqId.toString()); } catch (Exception ignored) {}
+            }
+        }
+
+        if (userId == null) {
+            throw new IllegalArgumentException("Unauthorized: missing user identifier");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (request.containsKey("fullName") && isPresent(request.get("fullName"))) {
+            user.setFullName(request.get("fullName").toString().trim());
+        } else if (request.containsKey("name") && isPresent(request.get("name"))) {
+            user.setFullName(request.get("name").toString().trim());
+        }
+
+        if (request.containsKey("email") && isPresent(request.get("email"))) {
+            user.setEmail(request.get("email").toString().trim());
+        }
+
+        if (request.containsKey("mobile") && isPresent(request.get("mobile"))) {
+            user.setMobile(request.get("mobile").toString().trim());
+        }
+
+        if (request.containsKey("gender") && isPresent(request.get("gender"))) {
+            user.setGender(request.get("gender").toString().trim());
+        }
+
+        if (request.containsKey("dob") && isPresent(request.get("dob"))) {
+            user.setDob(request.get("dob").toString().trim());
+        }
+
+        if (request.containsKey("businessName") && isPresent(request.get("businessName"))) {
+            user.setBusinessName(request.get("businessName").toString().trim());
+        }
+
+        if (request.containsKey("businessType") && isPresent(request.get("businessType"))) {
+            user.setBusinessType(request.get("businessType").toString().trim());
+        }
+
+        if (request.containsKey("gstNumber") && isPresent(request.get("gstNumber"))) {
+            user.setGstNumber(request.get("gstNumber").toString().trim().toUpperCase());
+        }
+
+        if (request.containsKey("address1") && isPresent(request.get("address1"))) {
+            user.setAddressLine1(request.get("address1").toString().trim());
+        } else if (request.containsKey("addressLine1") && isPresent(request.get("addressLine1"))) {
+            user.setAddressLine1(request.get("addressLine1").toString().trim());
+        }
+
+        if (request.containsKey("city") && isPresent(request.get("city"))) {
+            user.setCity(request.get("city").toString().trim());
+        } else if (request.containsKey("area") && isPresent(request.get("area"))) {
+            user.setCity(request.get("area").toString().trim());
+        }
+
+        if (request.containsKey("stateName") && isPresent(request.get("stateName"))) {
+            user.setStateName(request.get("stateName").toString().trim());
+        }
+
+        if (request.containsKey("pincode") && isPresent(request.get("pincode"))) {
+            user.setPincode(request.get("pincode").toString().trim());
+        }
+
+        if (request.containsKey("shopAddress") && isPresent(request.get("shopAddress"))) {
+            user.setShopAddress(request.get("shopAddress").toString().trim());
+        }
+
+        if (request.containsKey("shopLandmark") && isPresent(request.get("shopLandmark"))) {
+            user.setShopLandmark(request.get("shopLandmark").toString().trim());
+        }
+
+        if (request.containsKey("panNumber") && isPresent(request.get("panNumber"))) {
+            user.setPanNumber(request.get("panNumber").toString().trim().toUpperCase());
+        }
+
+        if (request.containsKey("photoUrl") && isPresent(request.get("photoUrl"))) {
+            user.setPhotoUrl(request.get("photoUrl").toString().trim());
+        } else if (request.containsKey("profilePhoto") && isPresent(request.get("profilePhoto"))) {
+            user.setPhotoUrl(request.get("profilePhoto").toString().trim());
+        }
+
+        if (request.containsKey("bankAccountHolder") && isPresent(request.get("bankAccountHolder"))) {
+            user.setBankAccountHolder(request.get("bankAccountHolder").toString().trim());
+        } else if (request.containsKey("accHolderName") && isPresent(request.get("accHolderName"))) {
+            user.setBankAccountHolder(request.get("accHolderName").toString().trim());
+        }
+
+        if (request.containsKey("bankName") && isPresent(request.get("bankName"))) {
+            user.setBankName(request.get("bankName").toString().trim());
+        }
+
+        if (request.containsKey("bankAccountNumber") && isPresent(request.get("bankAccountNumber"))) {
+            user.setBankAccountNumber(request.get("bankAccountNumber").toString().trim());
+        } else if (request.containsKey("accountNumber") && isPresent(request.get("accountNumber"))) {
+            user.setBankAccountNumber(request.get("accountNumber").toString().trim());
+        }
+
+        if (request.containsKey("bankIfsc") && isPresent(request.get("bankIfsc"))) {
+            user.setBankIfsc(request.get("bankIfsc").toString().trim().toUpperCase());
+        } else if (request.containsKey("ifscCode") && isPresent(request.get("ifscCode"))) {
+            user.setBankIfsc(request.get("ifscCode").toString().trim().toUpperCase());
+        }
+
+        if (request.containsKey("bankBranch") && isPresent(request.get("bankBranch"))) {
+            user.setBankBranch(request.get("bankBranch").toString().trim());
+        } else if (request.containsKey("branchName") && isPresent(request.get("branchName"))) {
+            user.setBankBranch(request.get("branchName").toString().trim());
+        }
+
+        User saved = userRepository.save(user);
+        return Map.of("success", true, "message", "Profile updated successfully", "user", toProfileMap(saved));
     }
 
     @GetMapping("/debug-wallet/{userId}")
@@ -208,6 +367,10 @@ public class KycController {
         User user = userRepository.findById(UUID.fromString(principal.userId()))
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
         return toStatusResponse(user);
+    }
+
+    private boolean isPresent(Object val) {
+        return val != null && !val.toString().trim().isBlank();
     }
 
     private boolean isPresent(String val) {

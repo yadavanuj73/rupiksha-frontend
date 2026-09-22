@@ -1,45 +1,74 @@
 import React from 'react';
-import { ArrowRight, RefreshCw } from 'lucide-react';
+import { ArrowRight, RefreshCw, Building2 } from 'lucide-react';
 import { InputField, SelectField } from './ProfileShared';
 
 const BusinessInfo = ({ formData, handleInputChange, handleSave, isSaving }) => {
     return (
-        <div className="flex space-x-6">
-            <div className="flex-1 bg-white rounded-xl shadow-sm border border-slate-100 p-8 space-y-8">
-                <h2 className="text-lg font-bold text-[#0ea5e9] tracking-tight border-b border-slate-50 pb-4">Update Your Business Information</h2>
-                <div className="grid grid-cols-1 gap-6">
-                    <InputField label="Business Name" value={formData.businessName} onChange={(e) => handleInputChange('businessName', e.target.value)} />
-                    <SelectField label="Business Type" value={formData.businessType} options={['Sole proprietorship', 'Partnership', 'Private Limited']} onChange={(e) => handleInputChange('businessType', e.target.value)} />
-                    <SelectField label="Business Category" value={formData.category} options={['Hosting', 'Retail', 'Telecom']} onChange={(e) => handleInputChange('category', e.target.value)} />
-                    <InputField label="Business Address Line 1" value={formData.address1} onChange={(e) => handleInputChange('address1', e.target.value)} />
-                    <InputField label="Business Address Line 2" value={formData.address2} onChange={(e) => handleInputChange('address2', e.target.value)} />
-                    <div className="grid grid-cols-1 gap-6">
-                        <InputField label="Pincode" value={formData.pincode} onChange={(e) => handleInputChange('pincode', e.target.value)} />
-                        <p className="text-[10px] text-slate-400 -mt-4">You are at Muzaffarpur, BIHAR.</p>
-                        <SelectField label="Area" value={formData.area} options={['Sikandarpur (Muzaffarpur)', 'Other']} onChange={(e) => handleInputChange('area', e.target.value)} />
+        <div className="flex flex-col xl:flex-row gap-6">
+            <div className="flex-1 bg-white rounded-2xl shadow-xs border border-slate-200/80 p-5 sm:p-7 lg:p-8 space-y-6">
+                <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+                    <div className="p-2 bg-sky-50 text-[#0ea5e9] rounded-xl">
+                        <Building2 size={20} />
                     </div>
-                    <InputField label="Sales Executive Name" value={formData.salesName} onChange={(e) => handleInputChange('salesName', e.target.value)} />
-                    <InputField label="Sales Executive Contact" value={formData.salesContact} onChange={(e) => handleInputChange('salesContact', e.target.value)} />
+                    <div>
+                        <h2 className="text-base sm:text-lg font-bold text-slate-800 tracking-tight">Update Your Business Information</h2>
+                        <p className="text-xs text-slate-400 font-medium">Keep your shop and business profile updated</p>
+                    </div>
                 </div>
-                <div className="flex items-center justify-between pt-4">
-                    <button className="text-[10px] font-bold text-blue-600 uppercase tracking-widest hover:underline">View Shop Address Proof</button>
-                    <button onClick={handleSave} className="bg-[#1e3a8a] text-white px-8 py-3 rounded-full font-black uppercase text-xs flex items-center space-x-2 shadow-lg active:scale-95 transition-all">
-                        <span>{isSaving ? 'Saving...' : 'Submit'}</span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
+                    <div className="sm:col-span-2">
+                        <InputField label="Business / Shop Name" value={formData.businessName || ''} onChange={(e) => handleInputChange('businessName', e.target.value)} placeholder="Enter registered business name" />
+                    </div>
+                    <SelectField label="Business Type" value={formData.businessType || 'Sole proprietorship'} options={['Sole proprietorship', 'Partnership', 'Private Limited', 'Public Limited', 'Individual']} onChange={(e) => handleInputChange('businessType', e.target.value)} />
+                    <SelectField label="Business Category" value={formData.category || 'Retail'} options={['Retail', 'Telecom', 'Fintech', 'Hosting', 'E-Commerce', 'Wholesale']} onChange={(e) => handleInputChange('category', e.target.value)} />
+                    <div className="sm:col-span-2">
+                        <InputField label="Business Address Line 1" value={formData.address1 || formData.shopAddress || ''} onChange={(e) => handleInputChange('address1', e.target.value)} placeholder="Building, Street, Landmark" />
+                    </div>
+                    <div className="sm:col-span-2">
+                        <InputField label="Business Address Line 2" value={formData.address2 || ''} onChange={(e) => handleInputChange('address2', e.target.value)} placeholder="Area, Landmark (Optional)" />
+                    </div>
+                    <div>
+                        <InputField label="Pincode" value={formData.pincode || ''} onChange={(e) => handleInputChange('pincode', e.target.value)} placeholder="6-digit pincode" />
+                    </div>
+                    <div>
+                        <InputField label="City / Area" value={formData.area || formData.city || ''} onChange={(e) => handleInputChange('area', e.target.value)} placeholder="City / Area" />
+                    </div>
+                    <div>
+                        <InputField label="Sales Executive Name" value={formData.salesName || ''} onChange={(e) => handleInputChange('salesName', e.target.value)} placeholder="Executive Name" />
+                    </div>
+                    <div>
+                        <InputField label="Sales Executive Contact" value={formData.salesContact || ''} onChange={(e) => handleInputChange('salesContact', e.target.value)} placeholder="Executive Mobile" />
+                    </div>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-100">
+                    <button type="button" className="text-[11px] font-bold text-sky-600 uppercase tracking-wider hover:underline">
+                        Shop Address Verification
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        className="bg-[#1e3a8a] hover:bg-[#1e40af] text-white px-7 py-3 rounded-xl font-bold uppercase text-xs flex items-center space-x-2 shadow-md hover:shadow-lg active:scale-95 transition-all disabled:opacity-60"
+                    >
+                        <span>{isSaving ? 'Saving Changes...' : 'Save & Submit'}</span>
                         {isSaving ? <RefreshCw size={16} className="animate-spin" /> : <ArrowRight size={16} />}
                     </button>
                 </div>
             </div>
-            <div className="w-[380px] bg-white rounded-xl shadow-sm border border-slate-100 p-8">
-                <h3 className="text-lg font-bold text-[#334e68] mb-6">Business Detail Completion</h3>
-                <div className="space-y-6 text-[11px]">
+
+            {/* Helper Guide Card */}
+            <div className="w-full xl:w-[340px] shrink-0 bg-white rounded-2xl shadow-xs border border-slate-200/80 p-5 sm:p-6 lg:p-7 self-start">
+                <h3 className="text-base font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100">Business Detail Completion</h3>
+                <div className="space-y-4 text-xs">
                     {[
-                        { title: 'Geographical Location', desc: 'Kindly click on problem in sharing location for troubleshooting steps in case you face any issue in sharing your geographical location.' },
-                        { title: 'Business Detail', desc: 'Enter your business name and type, business category and address as per proof of business document.' },
-                        { title: 'Shop/Business Address Proof', desc: 'Upload your business proof document as per Business details' }
+                        { title: 'Geographical Location', desc: 'Ensure your business location is accurate as per your active store address.' },
+                        { title: 'Business Detail', desc: 'Enter your trade name, category, and address matching your official documents.' },
+                        { title: 'Shop/Business Address Proof', desc: 'Keep your utility bill, rent agreement, or GST registration certificate ready for verification.' }
                     ].map((step, i) => (
-                        <div key={i} className="space-y-1">
-                            <span className="font-bold text-slate-700">{i + 1}. {step.title}</span>
-                            <p className="text-slate-400 leading-relaxed font-medium">{step.desc}</p>
+                        <div key={i} className="space-y-1 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100">
+                            <span className="font-bold text-slate-700 block">{i + 1}. {step.title}</span>
+                            <p className="text-slate-500 leading-relaxed text-[11px] font-medium">{step.desc}</p>
                         </div>
                     ))}
                 </div>
