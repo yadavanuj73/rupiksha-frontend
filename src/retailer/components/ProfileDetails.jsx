@@ -132,6 +132,13 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
         setAppData(dataService.getData());
         const user = customUser || getCurrentUserData();
         if (user) {
+            // Extract Aadhaar image from documents array if present
+            let aadhaarImage = user.aadhaarImage || user.aadhaarPhoto || null;
+            if (!aadhaarImage && Array.isArray(user.documents) && user.documents.length > 0) {
+                const doc = user.documents.find(d => d.type === 'AADHAAR' || d.type === 'aadhaar') || user.documents[0];
+                if (doc) aadhaarImage = doc.file || doc.url || doc.image || null;
+            }
+
             setFormData(prev => ({
                 ...prev,
                 ...user,
@@ -147,6 +154,7 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
                 salesContact: user.salesContact || prev.salesContact || '',
                 // Personal
                 name: user.name || user.fullName || (user.firstName ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : prev.name) || '',
+                fatherName: user.fatherName || prev.fatherName || '',
                 mobile: user.mobile || user.phone || user.username || prev.mobile || '',
                 email: user.email || prev.email || '',
                 emailVerified: user.emailVerified !== undefined ? user.emailVerified : prev.emailVerified,
@@ -163,6 +171,7 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
                 isPanVerified: user.isPanVerified !== undefined ? user.isPanVerified : (!!user.panNumber),
                 panName: user.panName || user.fullName || user.name || prev.panName || '',
                 aadhaarNumber: user.aadhaarNumber || prev.aadhaarNumber || '',
+                aadhaarImage: aadhaarImage || prev.aadhaarImage || null,
                 // Banking
                 accHolderName: user.accHolderName || user.bankAccountHolder || user.bankAccountName || user.name || user.fullName || prev.accHolderName || '',
                 bankName: user.bankName || prev.bankName || '',
@@ -189,7 +198,8 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
             // Try dataService first (uses BACKEND_URL from config)
             try {
                 const fresh = await dataService.fetchUserProfile();
-                if (fresh && (fresh.businessName || fresh.panNumber || fresh.aadhaarNumber || fresh.bankName)) {
+                // Update if server returned any non-empty user object
+                if (fresh && typeof fresh === 'object' && Object.keys(fresh).length > 0) {
                     syncUserData(fresh);
                     return;
                 }
@@ -233,8 +243,9 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    const serverUser = data.user || data.data;
-                    if (serverUser && (serverUser.businessName || serverUser.panNumber || serverUser.aadhaarNumber || serverUser.bankName)) {
+                    const serverUser = data.user || data.data || data;
+                    // Update if server returned any non-empty user object
+                    if (serverUser && typeof serverUser === 'object' && Object.keys(serverUser).length > 0) {
                         const savedPhoto = localStorage.getItem('rupiksha_profile_photo');
                         const merged = {
                             ...cu,
