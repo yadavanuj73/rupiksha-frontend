@@ -1,5 +1,5 @@
 import React from 'react';
-import { Camera, CheckCircle2, RefreshCw, ArrowRight, User, ShieldCheck } from 'lucide-react';
+import { Camera, CheckCircle2, RefreshCw, ArrowRight, UserRound, ShieldCheck } from 'lucide-react';
 import { InputField, SelectField } from './ProfileShared';
 
 const PersonalInfo = ({
@@ -17,18 +17,32 @@ const PersonalInfo = ({
 }) => {
     return (
         <div className="w-full">
-            <div className="bg-white rounded-2xl shadow-xs border border-slate-200/80 p-5 sm:p-7 lg:p-8 space-y-6 w-full">
-                {/* Header & Avatar */}
-                <div className="flex flex-col items-center border-b border-slate-100 pb-6 w-full">
-                    <div className="flex items-center justify-between w-full mb-6">
-                        <div>
-                            <h2 className="text-base sm:text-lg font-bold text-slate-800 tracking-tight">Update Your Personal Information</h2>
-                            <p className="text-xs text-slate-400 font-medium">Manage your personal identification and contact details</p>
-                        </div>
-                    </div>
+            <div className="bg-white rounded-[22px] border border-[#DCE6F2] shadow-[0_8px_30px_rgba(30,65,110,0.07)] p-6 sm:p-8 lg:p-9 relative overflow-hidden w-full">
+                {/* Subtle Ambient Blue Accent */}
+                <div className="absolute top-0 right-0 w-80 sm:w-96 h-44 sm:h-52 bg-gradient-to-bl from-[#EAF4FF] via-[#EAF4FF]/40 to-transparent pointer-events-none rounded-tr-[22px]" />
 
-                    <div className="relative mb-6 group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                        <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-4 border-sky-100 shadow-lg bg-slate-100 flex items-center justify-center relative">
+                {/* Header Area */}
+                <div className="flex items-center gap-4 relative z-10">
+                    <div className="w-11 h-11 rounded-[12px] bg-[#EAF4FF] border border-[#D7E3F2]/60 flex items-center justify-center shrink-0">
+                        <UserRound size={22} strokeWidth={2} className="text-[#2563EB]" />
+                    </div>
+                    <div>
+                        <h2 className="text-[19px] sm:text-[20px] font-[800] text-[#0B0F14] tracking-tight leading-tight">
+                            Update Your Personal Information
+                        </h2>
+                        <p className="text-[13px] sm:text-[14px] font-[500] text-[#64748B] mt-0.5">
+                            Manage your personal identification and contact details
+                        </p>
+                    </div>
+                </div>
+
+                {/* Subtle Horizontal Divider */}
+                <div className="w-full h-px bg-[#E3EAF3] my-6 sm:my-7 relative z-10" />
+
+                {/* Profile Photo & Overview Section */}
+                <div className="flex flex-col items-center pb-6 sm:pb-8 w-full relative z-10">
+                    <div className="relative mb-4 group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                        <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-4 border-[#EAF4FF] shadow-md bg-[#F8FAFD] flex items-center justify-center relative">
                             {profilePhoto ? (
                                 <img
                                     src={profilePhoto}
@@ -36,23 +50,23 @@ const PersonalInfo = ({
                                     className="w-full h-full object-cover"
                                     onError={(e) => {
                                         e.target.onerror = null;
-                                        e.target.src = "https://ui-avatars.com/api/?name=" + encodeURIComponent(formData.name || formData.username || 'User') + "&background=0ea5e9&color=fff";
+                                        e.target.src = "https://ui-avatars.com/api/?name=" + encodeURIComponent(formData.name || formData.username || 'User') + "&background=2563eb&color=fff";
                                     }}
                                 />
                             ) : (
-                                <div className="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-2xl sm:text-3xl font-black">
+                                <div className="w-full h-full bg-gradient-to-br from-[#2563EB] to-[#2146A3] flex items-center justify-center text-white text-2xl sm:text-3xl font-black">
                                     {(formData.name || formData.username || 'U').split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                                 </div>
                             )}
-                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-bold">
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[11px] font-bold">
                                 <Camera size={18} />
-                                <span>Change</span>
+                                <span className="mt-1">Change</span>
                             </div>
                         </div>
                         <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-                            className="absolute bottom-1 right-1 bg-[#1e3a8a] text-white p-2.5 rounded-full border-2 border-white shadow-md hover:bg-blue-800 transition-colors"
+                            className="absolute bottom-1 right-1 bg-[#2146A3] text-white p-2.5 rounded-full border-2 border-white shadow-md hover:bg-[#1B3A88] transition-colors cursor-pointer"
                             title="Upload new photo"
                         >
                             <Camera size={14} />
@@ -65,47 +79,49 @@ const PersonalInfo = ({
                             accept="image/*"
                         />
                     </div>
-                    <p className="text-[11px] font-semibold text-slate-400 -mt-3 mb-6">Click avatar or camera to upload profile photo (JPG, PNG)</p>
+                    <p className="text-[12px] font-semibold text-[#64748B] mb-6 select-none text-center">
+                        Click avatar or camera to upload profile photo (JPG, PNG)
+                    </p>
 
-                    {/* Account Overview Badges (Full width, auto-wrap, no truncating - shows complete details) */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 w-full">
-                        <div className="bg-slate-50/90 hover:bg-slate-100/70 transition-colors rounded-xl p-3.5 border border-slate-200/70 flex flex-col justify-center min-w-0">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Username</span>
-                            <span className="text-[13px] font-bold text-slate-800 break-all select-all mt-1 leading-snug" title={formData.username || 'N/A'}>
+                    {/* Account Overview Badges */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+                        <div className="bg-[#F8FAFD] hover:bg-[#F0F5FC] transition-colors rounded-[14px] p-4 border border-[#D7E3F2] flex flex-col justify-center min-w-0">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-[#526987]">Username</span>
+                            <span className="text-[14px] sm:text-[15px] font-bold text-[#0B0F14] break-all select-all mt-1 leading-snug" title={formData.username || 'N/A'}>
                                 {formData.username || 'N/A'}
                             </span>
                         </div>
-                        <div className="bg-slate-50/90 hover:bg-slate-100/70 transition-colors rounded-xl p-3.5 border border-slate-200/70 flex flex-col justify-center min-w-0">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Registered Mobile</span>
-                            <div className="flex items-center space-x-1.5 mt-1 flex-wrap">
-                                <span className="text-[13px] font-bold text-slate-800 break-all select-all leading-snug">{formData.mobile || 'N/A'}</span>
-                                <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+                        <div className="bg-[#F8FAFD] hover:bg-[#F0F5FC] transition-colors rounded-[14px] p-4 border border-[#D7E3F2] flex flex-col justify-center min-w-0">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-[#526987]">Registered Mobile</span>
+                            <div className="flex items-center space-x-2 mt-1 flex-wrap">
+                                <span className="text-[14px] sm:text-[15px] font-bold text-[#0B0F14] break-all select-all leading-snug">{formData.mobile || 'N/A'}</span>
+                                <CheckCircle2 size={16} className="text-[#16C784] shrink-0" />
                             </div>
                         </div>
-                        <div className="bg-slate-50/90 hover:bg-slate-100/70 transition-colors rounded-xl p-3.5 border border-slate-200/70 flex flex-col justify-center min-w-0">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Email Address</span>
-                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                                <span className="text-[13px] font-bold text-slate-800 break-all select-all leading-snug" title={formData.email || 'N/A'}>
+                        <div className="bg-[#F8FAFD] hover:bg-[#F0F5FC] transition-colors rounded-[14px] p-4 border border-[#D7E3F2] flex flex-col justify-center min-w-0">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-[#526987]">Email Address</span>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                <span className="text-[14px] sm:text-[15px] font-bold text-[#0B0F14] break-all select-all leading-snug" title={formData.email || 'N/A'}>
                                     {formData.email || 'N/A'}
                                 </span>
                                 {formData.emailVerified ? (
-                                    <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+                                    <CheckCircle2 size={16} className="text-[#16C784] shrink-0" />
                                 ) : (
-                                    <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold shrink-0">Unverified</span>
+                                    <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md font-bold shrink-0">Unverified</span>
                                 )}
                             </div>
                         </div>
-                        <div className="bg-slate-50/90 hover:bg-slate-100/70 transition-colors rounded-xl p-3.5 border border-slate-200/70 flex flex-col justify-center min-w-0">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Party Code</span>
-                            <span className="text-[13px] font-bold text-sky-700 font-mono break-all select-all mt-1 leading-snug">
+                        <div className="bg-[#F8FAFD] hover:bg-[#F0F5FC] transition-colors rounded-[14px] p-4 border border-[#D7E3F2] flex flex-col justify-center min-w-0">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-[#526987]">Party Code</span>
+                            <span className="text-[14px] sm:text-[15px] font-bold text-[#2563EB] font-mono break-all select-all mt-1 leading-snug">
                                 {formData.partyCode || 'PENDING'}
                             </span>
                         </div>
                     </div>
                 </div>
 
-                {/* Editable Fields Grid (Full Width & Spacious) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+                {/* Editable Fields Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-7 relative z-10">
                     <div>
                         <InputField label="Full Name" value={formData.name || ''} onChange={(e) => handleInputChange('name', e.target.value)} placeholder="Full Name as per PAN" />
                     </div>
@@ -139,8 +155,8 @@ const PersonalInfo = ({
                             placeholder="ABCDE1234F"
                             icon={
                                 formData.isPanVerified ? (
-                                    <div className="flex items-center gap-1 text-emerald-600 text-[10px] font-bold">
-                                        <CheckCircle2 size={15} />
+                                    <div className="flex items-center gap-1.5 text-[#16C784] text-[11px] font-bold">
+                                        <CheckCircle2 size={16} />
                                         <span>Verified</span>
                                     </div>
                                 ) : (
@@ -148,7 +164,7 @@ const PersonalInfo = ({
                                         type="button"
                                         onClick={onVerifyPan}
                                         disabled={isVerifyingPan || !formData.panNumber}
-                                        className="text-[10px] font-black bg-sky-50 text-sky-600 px-3 py-1 rounded-full uppercase tracking-wider hover:bg-sky-100 disabled:opacity-50"
+                                        className="text-[11px] font-bold bg-[#EAF4FF] text-[#2563EB] px-3.5 py-1.5 rounded-full uppercase tracking-wider hover:bg-blue-100 disabled:opacity-50 cursor-pointer"
                                     >
                                         {isVerifyingPan ? 'Verifying...' : 'Verify PAN'}
                                     </button>
@@ -185,11 +201,14 @@ const PersonalInfo = ({
                     </div>
                 </div>
 
-                <div className="flex justify-end pt-4 border-t border-slate-100">
+                {/* Footer Section */}
+                <div className="w-full h-px bg-[#E3EAF3] my-6 sm:my-7 relative z-10" />
+
+                <div className="flex justify-end relative z-10">
                     <button
                         onClick={handleSave}
                         disabled={isSaving}
-                        className="bg-[#1e3a8a] hover:bg-[#1e40af] text-white px-8 py-3 rounded-xl font-bold uppercase text-xs flex items-center space-x-2 shadow-md hover:shadow-lg active:scale-95 transition-all disabled:opacity-60"
+                        className="bg-[#2146A3] hover:bg-[#1B3A88] text-white px-8 py-3.5 rounded-[12px] font-bold uppercase text-[12px] sm:text-[13px] tracking-wider shadow-[0_4px_12px_rgba(33,70,163,0.25)] flex items-center space-x-2.5 transition-all active:scale-95 disabled:opacity-60 cursor-pointer"
                     >
                         <span>{isSaving ? 'Saving Changes...' : 'Save & Submit'}</span>
                         {isSaving ? <RefreshCw size={16} className="animate-spin" /> : <ArrowRight size={16} />}
@@ -201,3 +220,4 @@ const PersonalInfo = ({
 };
 
 export default PersonalInfo;
+

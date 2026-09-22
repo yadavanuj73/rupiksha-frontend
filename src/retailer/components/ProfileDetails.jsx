@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-    CheckCircle2, AlertCircle, User,
+    CheckCircle2, AlertCircle, User, UserRound,
     Building2, MapPin, Phone, Mail, Lock,
     Save, Download, Printer, Camera, Pencil,
-    ChevronDown, ArrowRight, RefreshCw, X, Calendar, ShieldCheck, Edit3, Plus, FileText
+    ChevronDown, ArrowRight, RefreshCw, X, Calendar, ShieldCheck, Edit3, Plus, FileText,
+    Landmark, CreditCard, Settings as SettingsIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 import { dataService, BACKEND_URL as IMPORTED_BACKEND_URL } from '../../services/dataService';
 import { userService } from '../../services/apiService';
 // Using logo from public folder
@@ -628,35 +630,35 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
     };
 
     const menuItems = [
-        { id: 'business', label: 'Business Information', status: getSectionStatus('business') },
-        { id: 'personal', label: 'Personal Information', status: getSectionStatus('personal') },
-        { id: 'banking', label: 'Banking Details', status: getSectionStatus('banking') },
-        { id: 'visiting_card', label: 'Visiting Card', status: 'none' },
-        { id: 'settings', label: 'Settings', status: 'none' },
+        { id: 'business', label: 'Business Information', icon: Building2, status: getSectionStatus('business') },
+        { id: 'personal', label: 'Personal Information', icon: UserRound, status: getSectionStatus('personal') },
+        { id: 'banking', label: 'Banking Details', icon: Landmark, status: getSectionStatus('banking') },
+        { id: 'visiting_card', label: 'Visiting Card', icon: CreditCard, status: 'none' },
+        { id: 'settings', label: 'Settings', icon: SettingsIcon, status: 'none' },
     ];
 
     const getStatusIcon = (status) => {
-        if (status === 'verified') return <CheckCircle2 size={16} className="text-emerald-500" />;
+        if (status === 'verified') return <CheckCircle2 size={16} strokeWidth={2} className="text-[#16C784]" />;
         if (status === 'pending') return <div className="w-4 h-4 rounded-full border-2 border-amber-300" />;
-        if (status === 'missing') return <AlertCircle size={16} className="text-rose-500" />;
+        if (status === 'missing') return <AlertCircle size={16} strokeWidth={2} className="text-[#FF3B5F]" />;
         return null;
     };
 
     const ProfileSkeletonLoader = () => (
-        <div className="w-full bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/80 shadow-xs animate-pulse">
+        <div className="w-full bg-white rounded-[22px] p-6 sm:p-8 border border-[#DCE6F2] shadow-[0_8px_30px_rgba(30,65,110,0.07)] animate-pulse">
             {/* Skeleton Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-6 mb-8">
+            <div className="flex items-center justify-between border-b border-[#E3EAF3] pb-6 mb-8">
                 <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 rounded-2xl bg-blue-100/70 flex items-center justify-center">
-                        <RefreshCw className="w-5 h-5 text-[#1e3a8a] animate-spin" />
+                    <div className="w-12 h-12 rounded-[12px] bg-[#EAF4FF] flex items-center justify-center">
+                        <RefreshCw className="w-5 h-5 text-[#2563EB] animate-spin" />
                     </div>
                     <div className="space-y-2">
                         <div className="h-5 w-48 bg-slate-200 rounded-lg"></div>
                         <div className="h-3.5 w-64 bg-slate-100 rounded-md"></div>
                     </div>
                 </div>
-                <div className="hidden sm:flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-[#1e3a8a] text-xs font-semibold">
-                    <RefreshCw size={13} className="animate-spin text-[#1e3a8a]" />
+                <div className="hidden sm:flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-[#EAF4FF] border border-[#D7E3F2] text-[#2563EB] text-xs font-semibold">
+                    <RefreshCw size={13} className="animate-spin text-[#2563EB]" />
                     <span>Loading profile details...</span>
                 </div>
             </div>
@@ -666,7 +668,7 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
                 {[...Array(6)].map((_, i) => (
                     <div key={i} className="space-y-2.5">
                         <div className="h-3.5 w-28 bg-slate-200 rounded-md"></div>
-                        <div className="h-12 w-full bg-slate-100/90 rounded-xl border border-slate-200/60 flex items-center px-4">
+                        <div className="h-14 w-full bg-slate-50 rounded-[12px] border border-[#D7E3F2] flex items-center px-4">
                             <div className="h-4 w-2/3 bg-slate-200/70 rounded"></div>
                         </div>
                     </div>
@@ -674,7 +676,7 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
             </div>
 
             {/* Skeleton Footer */}
-            <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
+            <div className="mt-8 pt-6 border-t border-[#E3EAF3] flex items-center justify-between">
                 <div className="h-3 w-40 bg-slate-100 rounded"></div>
                 <div className="h-11 w-32 bg-slate-200 rounded-xl"></div>
             </div>
@@ -682,32 +684,46 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
     );
 
     return (
-        <div className="flex flex-col h-full bg-[#f4f7fa] font-['Inter',sans-serif] w-full overflow-hidden">
+        <div className="flex flex-col h-full bg-[#F4F8FC] font-['Inter',sans-serif] w-full overflow-hidden">
             {/* Top Navigation Bar: Title Aligned Left + 5 Horizontal Navigation Tabs */}
-            <div className="bg-white border-b border-slate-200/90 px-4 sm:px-6 lg:px-8 py-3.5 shrink-0 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3 shadow-xs">
+            <div className="bg-white border-b border-[#E5EAF1] px-4 sm:px-6 lg:px-8 py-4 shrink-0 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
                 <div className="flex items-center space-x-3 shrink-0">
-                    <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">Profile Details</h1>
+                    <h1 className="text-[24px] sm:text-[32px] font-[800] text-[#0B0F14] tracking-tight leading-tight">
+                        Profile Details
+                    </h1>
                 </div>
 
                 {/* Horizontal Navigation Buttons */}
-                <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar py-0.5">
+                <div className="flex items-center space-x-2.5 overflow-x-auto no-scrollbar py-1">
                     {menuItems.map((item) => {
                         const isActive = activeSubTab === item.id;
+                        const IconComponent = item.icon;
                         return (
                             <button
                                 key={item.id}
                                 onClick={() => setActiveSubTab(item.id)}
-                                className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs sm:text-[13px] font-bold transition-all whitespace-nowrap cursor-pointer shrink-0 ${
+                                className={`flex items-center space-x-2.5 px-4.5 py-3 rounded-[14px] text-[13px] sm:text-[14px] font-bold transition-all duration-150 whitespace-nowrap cursor-pointer shrink-0 ${
                                     isActive
-                                        ? 'bg-[#1e3a8a] text-white shadow-md shadow-blue-900/20 active:scale-95'
-                                        : 'bg-slate-50/90 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/70 active:scale-95'
+                                        ? 'bg-[#2146A3] text-white shadow-[0_5px_14px_rgba(33,70,163,0.20)] active:scale-95'
+                                        : 'bg-[#F8FAFD] text-[#172033] hover:bg-[#F0F5FC] hover:text-[#0B0F14] border border-[#D7E3F2] hover:border-[#B8CCEA] shadow-[0_2px_8px_rgba(20,45,90,0.04)] active:scale-95'
                                 }`}
                             >
+                                {IconComponent && (
+                                    <IconComponent
+                                        size={18}
+                                        strokeWidth={2}
+                                        className={isActive ? "text-white" : "text-[#2563EB]"}
+                                    />
+                                )}
                                 <span>{item.label}</span>
                                 {item.status !== 'none' && (
-                                    <div className="flex items-center">
-                                        {item.status === 'verified' && <CheckCircle2 size={15} className={isActive ? "text-emerald-300" : "text-emerald-500"} />}
-                                        {item.status === 'missing' && <AlertCircle size={15} className={isActive ? "text-rose-300" : "text-rose-500"} />}
+                                    <div className="flex items-center ml-0.5">
+                                        {item.status === 'verified' && (
+                                            <CheckCircle2 size={16} strokeWidth={2} className="text-[#16C784]" />
+                                        )}
+                                        {item.status === 'missing' && (
+                                            <AlertCircle size={16} strokeWidth={2} className="text-[#FF3B5F]" />
+                                        )}
                                     </div>
                                 )}
                             </button>
@@ -717,7 +733,7 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
             </div>
 
             {/* Main Content Area (Full Width, No Sidebar) */}
-            <div className="flex-1 min-w-0 overflow-y-auto bg-[#f4f7fa] p-4 sm:p-6 lg:p-8">
+            <div className="flex-1 min-w-0 overflow-y-auto bg-[#F4F8FC] p-4 sm:p-6 lg:p-8">
                 {isDataLoading ? (
                     <ProfileSkeletonLoader />
                 ) : (
@@ -753,158 +769,177 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
                         )}
                         {activeSubTab === 'settings' && <Settings formData={formData} handleInputChange={handleInputChange} handleSave={handleSave} />}
                         {activeSubTab === 'visiting_card' && (
-                            <div className="flex flex-col items-center justify-center space-y-8 py-6 w-full overflow-hidden">
-                                <div className="text-center">
-                                    <h3 className="text-2xl md:text-3xl font-black text-slate-800 uppercase tracking-tighter">Professional Identity</h3>
-                                    <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-1">Official RuPiKsha Partner Card</p>
-                                </div>
+                            <div className="w-full">
+                                <div className="bg-white rounded-[22px] border border-[#DCE6F2] shadow-[0_8px_30px_rgba(30,65,110,0.07)] p-6 sm:p-8 lg:p-9 relative overflow-hidden w-full flex flex-col items-center">
+                                    {/* Subtle Ambient Blue Accent */}
+                                    <div className="absolute top-0 right-0 w-80 sm:w-96 h-44 sm:h-52 bg-gradient-to-bl from-[#EAF4FF] via-[#EAF4FF]/40 to-transparent pointer-events-none rounded-tr-[22px]" />
 
-                                {/* Responsive Visiting Card */}
-                                <div className="w-full flex justify-center overflow-x-auto py-2">
-                                    <div ref={cardRef} className="card-container shrink-0 w-full max-w-[620px]">
-                                        <motion.div
-                                            initial={{ scale: 0.98, opacity: 0 }}
-                                            animate={{ scale: 1, opacity: 1 }}
-                                            className="w-full aspect-[1.8/1] min-w-[320px] sm:min-w-[480px] bg-white rounded-xl shadow-xl overflow-hidden relative border border-sky-100"
-                                        >
-                                            {/* Geometric Background Overlay (Sky Blue) */}
-                                            <div className="absolute inset-0 opacity-[0.08] pointer-events-none">
-                                                <svg width="100%" height="100%">
-                                                    <pattern id="pattern-hex-sky" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
-                                                        <path d="M20 0l20 10v20l-20 10-20-10v-20z" fill="none" stroke="#0ea5e9" strokeWidth="1" />
-                                                    </pattern>
-                                                    <rect width="100%" height="100%" fill="url(#pattern-hex-sky)" />
-                                                </svg>
-                                            </div>
-                                            <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-sky-100/40 via-white to-white pointer-events-none"></div>
+                                    {/* Header Area */}
+                                    <div className="flex items-center gap-4 relative z-10 w-full mb-6">
+                                        <div className="w-11 h-11 rounded-[12px] bg-[#EAF4FF] border border-[#D7E3F2]/60 flex items-center justify-center shrink-0">
+                                            <CreditCard size={22} strokeWidth={2} className="text-[#2563EB]" />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-[19px] sm:text-[20px] font-[800] text-[#0B0F14] tracking-tight leading-tight">
+                                                Professional Identity
+                                            </h2>
+                                            <p className="text-[13px] sm:text-[14px] font-[500] text-[#64748B] mt-0.5">
+                                                Official RuPiKsha Partner Card
+                                            </p>
+                                        </div>
+                                    </div>
 
-                                            <div className="p-4 sm:p-7 h-full flex flex-col justify-between relative z-10">
-                                                {/* Top Row: Name & QR */}
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <div className="flex items-center space-x-3 sm:space-x-4">
-                                                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden border-2 border-sky-200 bg-white flex items-center justify-center shrink-0 shadow-sm">
-                                                            {profilePhoto ? (
-                                                                <img src={profilePhoto} alt="" className="w-full h-full object-cover" />
-                                                            ) : (
-                                                                <User className="text-sky-300" size={20} />
-                                                            )}
+                                    {/* Subtle Horizontal Divider */}
+                                    <div className="w-full h-px bg-[#E3EAF3] mb-8 relative z-10" />
+
+                                    {/* Responsive Visiting Card */}
+                                    <div className="w-full flex justify-center overflow-x-auto py-2 relative z-10">
+                                        <div ref={cardRef} className="card-container shrink-0 w-full max-w-[620px]">
+                                            <motion.div
+                                                initial={{ scale: 0.98, opacity: 0 }}
+                                                animate={{ scale: 1, opacity: 1 }}
+                                                className="w-full aspect-[1.8/1] min-w-[320px] sm:min-w-[480px] bg-white rounded-2xl shadow-xl overflow-hidden relative border border-[#D7E3F2]"
+                                            >
+                                                {/* Geometric Background Overlay (Sky Blue) */}
+                                                <div className="absolute inset-0 opacity-[0.08] pointer-events-none">
+                                                    <svg width="100%" height="100%">
+                                                        <pattern id="pattern-hex-sky" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+                                                            <path d="M20 0l20 10v20l-20 10-20-10v-20z" fill="none" stroke="#0ea5e9" strokeWidth="1" />
+                                                        </pattern>
+                                                        <rect width="100%" height="100%" fill="url(#pattern-hex-sky)" />
+                                                    </svg>
+                                                </div>
+                                                <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-[#EAF4FF]/60 via-white to-white pointer-events-none"></div>
+
+                                                <div className="p-5 sm:p-7 h-full flex flex-col justify-between relative z-10">
+                                                    {/* Top Row: Name & QR */}
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <div className="flex items-center space-x-3 sm:space-x-4">
+                                                            <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-full overflow-hidden border-2 border-[#D7E3F2] bg-white flex items-center justify-center shrink-0 shadow-sm">
+                                                                {profilePhoto ? (
+                                                                    <img src={profilePhoto} alt="" className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <User className="text-[#2563EB]" size={22} />
+                                                                )}
+                                                            </div>
+                                                            <div>
+                                                                <h4 className="text-base sm:text-xl font-[800] text-[#0B0F14] leading-none tracking-tight">
+                                                                    {formData.name || currentUser?.name || 'Partner Name'}
+                                                                </h4>
+                                                                <p className="text-xs sm:text-sm font-bold text-[#2563EB] mt-1.5 uppercase tracking-tight">
+                                                                    {formData.businessName || currentUser?.businessName || 'Your Business Name'}
+                                                                </p>
+                                                            </div>
                                                         </div>
-                                                        <div>
-                                                            <h4 className="text-base sm:text-xl font-bold text-sky-900 leading-none tracking-tight">
-                                                                {formData.name || currentUser?.name || 'Partner Name'}
-                                                            </h4>
-                                                            <p className="text-xs sm:text-sm font-medium text-sky-600 mt-1 uppercase tracking-tight">
-                                                                {formData.businessName || currentUser?.businessName || 'Your Business Name'}
+
+                                                        <div className="bg-white p-1 rounded-xl shadow-xs border border-[#D7E3F2] shrink-0">
+                                                            <img 
+                                                                src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=tel:${formData.mobile || currentUser?.mobile}`} 
+                                                                alt="Call QR" 
+                                                                className="w-11 h-11 sm:w-14 sm:h-14"
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Separator Line */}
+                                                    <div className="w-full h-1 bg-[#2563EB]/20 rounded-full my-2 relative overflow-hidden">
+                                                        <div className="absolute inset-0 bg-gradient-to-r from-[#2563EB] to-[#2146A3] opacity-60"></div>
+                                                    </div>
+
+                                                    {/* Middle: Address Section */}
+                                                    <div className="flex-1 flex flex-col justify-center my-1">
+                                                        <div className="flex items-start space-x-3">
+                                                            <div className="bg-[#2563EB] p-1.5 rounded-full shadow-xs shrink-0">
+                                                                <Building2 size={14} className="text-white" />
+                                                            </div>
+                                                            <p className="text-xs sm:text-sm font-semibold text-[#1A2433] leading-snug max-w-[85%] uppercase line-clamp-2">
+                                                                {formData.address1 ? 
+                                                                    `${formData.address1}${formData.address2 ? `, ${formData.address2}` : ''} ${formData.area || ''} ${formData.pincode || ''}` : 
+                                                                    (currentUser?.address || currentUser?.address1 ? 
+                                                                        `${currentUser.address || currentUser.address1} ${currentUser.pincode || ''}` : 
+                                                                        'Shop Address Not Registered')}
                                                             </p>
                                                         </div>
                                                     </div>
 
-                                                    <div className="bg-white p-1 rounded-lg shadow-sm border border-sky-50 shrink-0">
-                                                        <img 
-                                                            src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=tel:${formData.mobile || currentUser?.mobile}`} 
-                                                            alt="Call QR" 
-                                                            className="w-10 h-10 sm:w-14 sm:h-14"
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                {/* Separator Line */}
-                                                <div className="w-full h-1 bg-sky-500/30 rounded-full my-2 relative overflow-hidden">
-                                                    <div className="absolute inset-0 bg-gradient-to-r from-sky-400 to-indigo-400 opacity-50"></div>
-                                                </div>
-
-                                                {/* Middle: Address Section */}
-                                                <div className="flex-1 flex flex-col justify-center my-1">
-                                                    <div className="flex items-start space-x-3">
-                                                        <div className="bg-sky-500 p-1.5 rounded-full shadow-md shrink-0">
-                                                            <Building2 size={14} className="text-white" />
+                                                    {/* Bottom Row: Contact info & Logo */}
+                                                    <div className="flex items-center justify-between border-t border-[#E3EAF3] pt-3">
+                                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:text-sm font-bold text-[#0B0F14]">
+                                                            <div className="flex items-center space-x-1.5">
+                                                                <Phone size={13} className="text-[#2563EB]" />
+                                                                <span>+91 {formData.mobile || currentUser?.mobile || 'XXXXXXXXXX'}</span>
+                                                            </div>
+                                                            <div className="flex items-center space-x-1.5">
+                                                                <Mail size={13} className="text-[#2563EB]" />
+                                                                <span className="truncate max-w-[150px] sm:max-w-none">{formData.email || currentUser?.email || 'partner@rupiksha.com'}</span>
+                                                            </div>
                                                         </div>
-                                                        <p className="text-xs sm:text-sm font-semibold text-sky-800 leading-snug max-w-[85%] uppercase line-clamp-2">
-                                                            {formData.address1 ? 
-                                                                `${formData.address1}${formData.address2 ? `, ${formData.address2}` : ''} ${formData.area || ''} ${formData.pincode || ''}` : 
-                                                                (currentUser?.address || currentUser?.address1 ? 
-                                                                    `${currentUser.address || currentUser.address1} ${currentUser.pincode || ''}` : 
-                                                                    'Shop Address Not Registered')}
-                                                        </p>
-                                                    </div>
-                                                </div>
 
-                                                {/* Bottom Row: Contact info & Logo */}
-                                                <div className="flex items-center justify-between border-t border-sky-100 pt-3">
-                                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:text-sm font-bold text-sky-900">
-                                                        <div className="flex items-center space-x-1.5">
-                                                            <Phone size={12} className="text-sky-600" />
-                                                            <span>+91 {formData.mobile || currentUser?.mobile || 'XXXXXXXXXX'}</span>
-                                                        </div>
-                                                        <div className="flex items-center space-x-1.5">
-                                                            <Mail size={12} className="text-sky-600" />
-                                                            <span className="truncate max-w-[150px] sm:max-w-none">{formData.email || currentUser?.email || 'partner@rupiksha.com'}</span>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="text-right shrink-0">
-                                                        <div className="flex flex-col items-end">
-                                                            <span className="text-sm sm:text-base font-black text-sky-600 tracking-tighter uppercase italic leading-none">Rupiksha</span>
-                                                            <span className="text-[6px] sm:text-[7px] font-black text-sky-900 uppercase tracking-[0.3em] mt-0.5">Making Life Simple</span>
+                                                        <div className="text-right shrink-0">
+                                                            <div className="flex flex-col items-end">
+                                                                <span className="text-sm sm:text-base font-black text-[#2563EB] tracking-tighter uppercase italic leading-none">Rupiksha</span>
+                                                                <span className="text-[7px] font-black text-[#0B0F14] uppercase tracking-[0.3em] mt-0.5">Making Life Simple</span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </motion.div>
+                                            </motion.div>
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="flex flex-wrap gap-4 w-full justify-center px-4">
-                                    <button 
-                                        onClick={async () => {
-                                            const element = cardRef.current;
-                                            const canvas = await html2canvas(element, { scale: 3, backgroundColor: null });
-                                            const imgData = canvas.toDataURL('image/png');
-                                            const pdf = new jsPDF('l', 'mm', 'a4');
-                                            const imgProps = pdf.getImageProperties(imgData);
-                                            const pdfWidth = pdf.internal.pageSize.getWidth();
-                                            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-                                            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-                                            pdf.save(`${formData.name || 'User'}_Visiting_Card.pdf`);
-                                        }}
-                                        className="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold uppercase text-[11px] tracking-widest shadow-xl flex items-center justify-center space-x-2 hover:bg-black transition-all hover:-translate-y-0.5 active:scale-95"
-                                    >
-                                        <Download size={16} />
-                                        <span>Download PDF</span>
-                                    </button>
-                                    
-                                    <button 
-                                        onClick={async () => {
-                                            setIsSharing(true);
-                                            try {
+                                    {/* Action Buttons */}
+                                    <div className="flex flex-wrap gap-4 w-full justify-center px-4 mt-8 relative z-10">
+                                        <button 
+                                            onClick={async () => {
                                                 const element = cardRef.current;
-                                                const canvas = await html2canvas(element, { scale: 2 });
+                                                const canvas = await html2canvas(element, { scale: 3, backgroundColor: null });
                                                 const imgData = canvas.toDataURL('image/png');
-                                                
-                                                const res = await fetch(`${BACKEND_URL}/user/share-visiting-card`, {
-                                                    method: 'POST',
-                                                    headers: { 'Content-Type': 'application/json' },
-                                                    body: JSON.stringify({
-                                                        email: formData.email,
-                                                        name: formData.name,
-                                                        image: imgData
-                                                    })
-                                                });
-                                                
-                                                if (res.ok) alert("Card shared to your registered email!");
-                                                else throw new Error("Backend failed");
-                                            } catch (err) {
-                                                window.location.href = `mailto:${formData.email}?subject=My Rupiksha Visiting Card&body=Hello, please find my digital visiting card attached. Name: ${formData.name}, Mobile: ${formData.mobile}`;
-                                            } finally {
-                                                setIsSharing(false);
-                                            }
-                                        }}
-                                        disabled={isSharing}
-                                        className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold uppercase text-[11px] tracking-widest shadow-xl shadow-indigo-600/20 flex items-center justify-center space-x-2 hover:bg-indigo-700 transition-all hover:-translate-y-0.5 active:scale-95"
-                                    >
-                                        <Mail size={16} />
-                                        <span>{isSharing ? 'Sharing...' : 'Share on Email'}</span>
-                                    </button>
+                                                const pdf = new jsPDF('l', 'mm', 'a4');
+                                                const imgProps = pdf.getImageProperties(imgData);
+                                                const pdfWidth = pdf.internal.pageSize.getWidth();
+                                                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                                                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                                                pdf.save(`${formData.name || 'User'}_Visiting_Card.pdf`);
+                                            }}
+                                            className="bg-[#0B0F14] hover:bg-black text-white px-7 py-3.5 rounded-[12px] font-bold uppercase text-[12px] tracking-wider shadow-lg flex items-center justify-center space-x-2 transition-all hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+                                        >
+                                            <Download size={16} />
+                                            <span>Download PDF</span>
+                                        </button>
+                                        
+                                        <button 
+                                            onClick={async () => {
+                                                setIsSharing(true);
+                                                try {
+                                                    const element = cardRef.current;
+                                                    const canvas = await html2canvas(element, { scale: 2 });
+                                                    const imgData = canvas.toDataURL('image/png');
+                                                    
+                                                    const res = await fetch(`${BACKEND_URL}/user/share-visiting-card`, {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({
+                                                            email: formData.email,
+                                                            name: formData.name,
+                                                            image: imgData
+                                                        })
+                                                    });
+                                                    
+                                                    if (res.ok) alert("Card shared to your registered email!");
+                                                    else throw new Error("Backend failed");
+                                                } catch (err) {
+                                                    window.location.href = `mailto:${formData.email}?subject=My Rupiksha Visiting Card&body=Hello, please find my digital visiting card attached. Name: ${formData.name}, Mobile: ${formData.mobile}`;
+                                                } finally {
+                                                    setIsSharing(false);
+                                                }
+                                            }}
+                                            disabled={isSharing}
+                                            className="bg-[#2146A3] hover:bg-[#1B3A88] text-white px-7 py-3.5 rounded-[12px] font-bold uppercase text-[12px] tracking-wider shadow-lg shadow-blue-900/20 flex items-center justify-center space-x-2 transition-all hover:-translate-y-0.5 active:scale-95 cursor-pointer disabled:opacity-60"
+                                        >
+                                            <Mail size={16} />
+                                            <span>{isSharing ? 'Sharing...' : 'Share on Email'}</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -912,6 +947,7 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
                 </AnimatePresence>
                 )}
             </div>
+
             {/* Email Verification Modal */}
             <AnimatePresence>
                 {showVerifyModal && (
