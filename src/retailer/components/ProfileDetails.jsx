@@ -295,6 +295,7 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
     const fileInputRef = useRef(null);
     const cardRef = useRef(null);
     const [isSharing, setIsSharing] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
 
     // Email Verification State
     const [showVerifyModal, setShowVerifyModal] = useState(false);
@@ -780,206 +781,277 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
                             />
                         )}
                         {activeSubTab === 'settings' && <Settings formData={formData} handleInputChange={handleInputChange} handleSave={handleSave} />}
-                        {activeSubTab === 'visiting_card' && (
-                            <div className="w-full">
-                                <div className="bg-white rounded-[20px] border border-[#DCE6F2] shadow-[0_4px_20px_rgba(30,65,110,0.06)] p-4 sm:p-6 lg:p-7 relative overflow-hidden w-full">
-                                    {/* Subtle Ambient Blue Accent */}
-                                    <div className="absolute top-0 right-0 w-80 sm:w-96 h-40 bg-gradient-to-bl from-[#EAF4FF] via-[#EAF4FF]/40 to-transparent pointer-events-none rounded-tr-[20px]" />
+                        {activeSubTab === 'visiting_card' && (() => {
+                            const getPartnerRoleTitle = () => {
+                                const rawRole = (currentUser?.role || currentUser?.userType || (Array.isArray(currentUser?.roles) ? currentUser.roles[0] : '') || '').toString().toUpperCase();
+                                if (rawRole.includes('SUPER')) return 'Super Distributor';
+                                if (rawRole.includes('DISTRIBUTOR')) return 'Distributor';
+                                if (rawRole.includes('ADMIN')) return 'Admin Partner';
+                                return 'Retailer';
+                            };
 
-                                    {/* Header Area */}
-                                    <div className="flex items-center gap-3 relative z-10 w-full mb-4">
-                                        <div className="w-10 h-10 rounded-[10px] bg-[#EAF4FF] border border-[#D7E3F2]/60 flex items-center justify-center shrink-0">
-                                            <CreditCard size={20} strokeWidth={2} className="text-[#2563EB]" />
+                            const partnerRole = getPartnerRoleTitle();
+                            const partnerName = formData.name || currentUser?.name || 'Partner Name';
+                            const partnerShop = formData.businessName || currentUser?.businessName || currentUser?.shopName || 'Your Business Name';
+                            const partnerAddress = formData.address1 ? 
+                                `${formData.address1}${formData.address2 ? `, ${formData.address2}` : ''} ${formData.area || ''} ${formData.city || ''} ${formData.state || ''} ${formData.pincode || ''}`.replace(/\s+/g, ' ').trim() : 
+                                (currentUser?.address || currentUser?.address1 ? 
+                                    `${currentUser.address || currentUser.address1} ${currentUser.pincode || ''}`.replace(/\s+/g, ' ').trim() : 
+                                    'Shop Address Not Registered');
+                            const partnerMobile = formData.mobile || currentUser?.mobile ? `+91 ${formData.mobile || currentUser?.mobile}` : '';
+                            const partnerEmail = formData.email || currentUser?.email || '';
+
+                            const qrCardData = [
+                                'Rupiksha Partner',
+                                partnerName,
+                                partnerRole,
+                                partnerShop,
+                                partnerAddress,
+                                partnerMobile,
+                                partnerEmail
+                            ].filter(Boolean).join('\n');
+
+                            const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrCardData)}`;
+
+                            return (
+                                <div className="w-full">
+                                    <div className="bg-white rounded-[20px] border border-[#DCE6F2] shadow-[0_4px_20px_rgba(30,65,110,0.06)] p-4 sm:p-6 lg:p-7 relative overflow-hidden w-full">
+                                        {/* Subtle Ambient Blue Accent */}
+                                        <div className="absolute top-0 right-0 w-80 sm:w-96 h-40 bg-gradient-to-bl from-[#EAF4FF] via-[#EAF4FF]/40 to-transparent pointer-events-none rounded-tr-[20px]" />
+
+                                        {/* Header Area */}
+                                        <div className="flex items-center gap-3 relative z-10 w-full mb-4">
+                                            <div className="w-10 h-10 rounded-[10px] bg-[#EAF4FF] border border-[#D7E3F2]/60 flex items-center justify-center shrink-0">
+                                                <CreditCard size={20} strokeWidth={2} className="text-[#2563EB]" />
+                                            </div>
+                                            <div>
+                                                <h2 className="text-[17px] sm:text-[18px] font-[800] text-[#0B0F14] tracking-tight leading-tight">
+                                                    Professional Identity
+                                                </h2>
+                                                <p className="text-[12px] sm:text-[13px] font-[500] text-[#64748B] mt-0.5">
+                                                    Official RuPiKsha Partner Card
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h2 className="text-[17px] sm:text-[18px] font-[800] text-[#0B0F14] tracking-tight leading-tight">
-                                                Professional Identity
-                                            </h2>
-                                            <p className="text-[12px] sm:text-[13px] font-[500] text-[#64748B] mt-0.5">
-                                                Official RuPiKsha Partner Card
-                                            </p>
-                                        </div>
-                                    </div>
 
-                                    {/* Subtle Horizontal Divider */}
-                                    <div className="w-full h-px bg-[#E3EAF3] mb-5 relative z-10" />
+                                        {/* Subtle Horizontal Divider */}
+                                        <div className="w-full h-px bg-[#E3EAF3] mb-5 relative z-10" />
 
-                                    {/* 2-Part Grid: Card (Left) & Actions (Right) */}
-                                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-7 items-center relative z-10">
-                                        {/* Part 1 (Left 7 cols): Responsive Visiting Card */}
-                                        <div className="lg:col-span-7 flex justify-center w-full">
-                                            <div ref={cardRef} className="card-container shrink-0 w-full max-w-[500px]">
-                                                <motion.div
-                                                    initial={{ scale: 0.98, opacity: 0 }}
-                                                    animate={{ scale: 1, opacity: 1 }}
-                                                    className="w-full aspect-[1.8/1] bg-white rounded-2xl shadow-xl overflow-hidden relative border border-[#D7E3F2]"
-                                                >
-                                                    {/* Geometric Background Overlay (Sky Blue) */}
-                                                    <div className="absolute inset-0 opacity-[0.06] pointer-events-none">
-                                                        <svg width="100%" height="100%">
-                                                            <pattern id="pattern-hex-sky" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
-                                                                <path d="M20 0l20 10v20l-20 10-20-10v-20z" fill="none" stroke="#0ea5e9" strokeWidth="1" />
-                                                            </pattern>
-                                                            <rect width="100%" height="100%" fill="url(#pattern-hex-sky)" />
-                                                        </svg>
-                                                    </div>
-                                                    <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-[#EAF4FF]/60 via-white to-white pointer-events-none"></div>
+                                        {/* 2-Part Grid: Card (Left) & Actions (Right) */}
+                                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-7 items-center relative z-10">
+                                            {/* Part 1 (Left 7 cols): Responsive Visiting Card */}
+                                            <div className="lg:col-span-7 flex justify-center w-full">
+                                                <div ref={cardRef} className="card-container shrink-0 w-full max-w-[500px]">
+                                                    <motion.div
+                                                        initial={{ scale: 0.98, opacity: 0 }}
+                                                        animate={{ scale: 1, opacity: 1 }}
+                                                        className="w-full aspect-[1.8/1] bg-white rounded-2xl shadow-xl overflow-hidden relative border border-[#D7E3F2]"
+                                                    >
+                                                        {/* Geometric Background Overlay (Sky Blue) */}
+                                                        <div className="absolute inset-0 opacity-[0.06] pointer-events-none">
+                                                            <svg width="100%" height="100%">
+                                                                <pattern id="pattern-hex-sky" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+                                                                    <path d="M20 0l20 10v20l-20 10-20-10v-20z" fill="none" stroke="#0ea5e9" strokeWidth="1" />
+                                                                </pattern>
+                                                                <rect width="100%" height="100%" fill="url(#pattern-hex-sky)" />
+                                                            </svg>
+                                                        </div>
+                                                        <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-[#EAF4FF]/60 via-white to-white pointer-events-none"></div>
 
-                                                    {/* Watermark Background Logo */}
-                                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.07] overflow-hidden">
-                                                        <img src={rupikshaNewLogo} alt="" className="w-[45%] max-w-[210px] object-contain select-none" />
-                                                    </div>
+                                                        {/* Watermark Background Logo */}
+                                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.07] overflow-hidden">
+                                                            <img src={rupikshaNewLogo} alt="" className="w-[45%] max-w-[210px] object-contain select-none" />
+                                                        </div>
 
-                                                    <div className="p-4 sm:p-5 h-full flex flex-col justify-between relative z-10">
-                                                        {/* Top Row: Name & QR */}
-                                                        <div className="flex justify-between items-start mb-1">
-                                                            <div className="flex items-center space-x-3">
-                                                                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full overflow-hidden border-2 border-[#D7E3F2] bg-white flex items-center justify-center shrink-0 shadow-sm">
-                                                                    {profilePhoto ? (
-                                                                        <img src={profilePhoto} alt="" className="w-full h-full object-cover" />
-                                                                    ) : (
-                                                                        <User className="text-[#2563EB]" size={18} />
-                                                                    )}
+                                                        <div className="p-4 sm:p-5 h-full flex flex-col justify-between relative z-10">
+                                                            {/* Top Row: Name & QR */}
+                                                            <div className="flex justify-between items-start mb-1">
+                                                                <div className="flex items-center space-x-3">
+                                                                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full overflow-hidden border-2 border-[#D7E3F2] bg-white flex items-center justify-center shrink-0 shadow-sm">
+                                                                        {profilePhoto ? (
+                                                                            <img src={profilePhoto} alt="" className="w-full h-full object-cover" />
+                                                                        ) : (
+                                                                            <User className="text-[#2563EB]" size={18} />
+                                                                        )}
+                                                                    </div>
+                                                                    <div>
+                                                                        <h4 className="text-[14px] sm:text-[16px] font-[800] text-[#0B0F14] leading-none tracking-tight">
+                                                                            {partnerName}
+                                                                        </h4>
+                                                                        <p className="text-[11px] sm:text-[12px] font-bold text-[#2563EB] mt-1 uppercase tracking-tight">
+                                                                            {partnerShop}
+                                                                        </p>
+                                                                    </div>
                                                                 </div>
-                                                                <div>
-                                                                    <h4 className="text-[14px] sm:text-[16px] font-[800] text-[#0B0F14] leading-none tracking-tight">
-                                                                        {formData.name || currentUser?.name || 'Partner Name'}
-                                                                    </h4>
-                                                                    <p className="text-[11px] sm:text-[12px] font-bold text-[#2563EB] mt-1 uppercase tracking-tight">
-                                                                        {formData.businessName || currentUser?.businessName || 'Your Business Name'}
+
+                                                                <div className="bg-white p-1 rounded-lg shadow-xs border border-[#D7E3F2] shrink-0">
+                                                                    <img 
+                                                                        src={qrCodeUrl} 
+                                                                        alt="Partner QR Code" 
+                                                                        className="w-9 h-9 sm:w-10 sm:h-10 object-contain"
+                                                                        crossOrigin="anonymous"
+                                                                    />
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Separator Line */}
+                                                            <div className="w-full h-0.5 bg-[#2563EB]/20 rounded-full my-1.5 relative overflow-hidden">
+                                                                <div className="absolute inset-0 bg-gradient-to-r from-[#2563EB] to-[#2146A3] opacity-60"></div>
+                                                            </div>
+
+                                                            {/* Middle: Address Section */}
+                                                            <div className="flex-1 flex flex-col justify-center my-0.5">
+                                                                <div className="flex items-start space-x-2">
+                                                                    <div className="bg-[#2563EB] p-1 rounded-full shadow-xs shrink-0 mt-0.5">
+                                                                        <Building2 size={11} className="text-white" />
+                                                                    </div>
+                                                                    <p className="text-[10.5px] sm:text-[11.5px] font-semibold text-[#1A2433] leading-tight max-w-[90%] uppercase line-clamp-2">
+                                                                        {partnerAddress}
                                                                     </p>
                                                                 </div>
                                                             </div>
 
-                                                            <div className="bg-white p-1 rounded-lg shadow-xs border border-[#D7E3F2] shrink-0">
-                                                                <img 
-                                                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=tel:${formData.mobile || currentUser?.mobile}`} 
-                                                                    alt="Call QR" 
-                                                                    className="w-9 h-9 sm:w-10 sm:h-10"
-                                                                />
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Separator Line */}
-                                                        <div className="w-full h-0.5 bg-[#2563EB]/20 rounded-full my-1.5 relative overflow-hidden">
-                                                            <div className="absolute inset-0 bg-gradient-to-r from-[#2563EB] to-[#2146A3] opacity-60"></div>
-                                                        </div>
-
-                                                        {/* Middle: Address Section */}
-                                                        <div className="flex-1 flex flex-col justify-center my-0.5">
-                                                            <div className="flex items-start space-x-2">
-                                                                <div className="bg-[#2563EB] p-1 rounded-full shadow-xs shrink-0 mt-0.5">
-                                                                    <Building2 size={11} className="text-white" />
+                                                            {/* Bottom Row: Contact info & Logo */}
+                                                            <div className="flex items-center justify-between border-t border-[#E3EAF3] pt-2">
+                                                                {/* Phone above & Email below */}
+                                                                <div className="flex flex-col gap-0.5 text-[10.5px] sm:text-[11px] font-bold text-[#0B0F14]">
+                                                                    <div className="flex items-center space-x-1">
+                                                                        <Phone size={11} className="text-[#2563EB] shrink-0" />
+                                                                        <span>{partnerMobile || '+91 XXXXXXXXXX'}</span>
+                                                                    </div>
+                                                                    <div className="flex items-center space-x-1">
+                                                                        <Mail size={11} className="text-[#2563EB] shrink-0" />
+                                                                        <span className="truncate max-w-[150px] sm:max-w-[200px]">{partnerEmail || 'partner@rupiksha.com'}</span>
+                                                                    </div>
                                                                 </div>
-                                                                <p className="text-[10.5px] sm:text-[11.5px] font-semibold text-[#1A2433] leading-tight max-w-[90%] uppercase line-clamp-2">
-                                                                    {formData.address1 ? 
-                                                                        `${formData.address1}${formData.address2 ? `, ${formData.address2}` : ''} ${formData.area || ''} ${formData.pincode || ''}` : 
-                                                                        (currentUser?.address || currentUser?.address1 ? 
-                                                                            `${currentUser.address || currentUser.address1} ${currentUser.pincode || ''}` : 
-                                                                            'Shop Address Not Registered')}
-                                                                </p>
-                                                            </div>
-                                                        </div>
 
-                                                        {/* Bottom Row: Contact info & Logo */}
-                                                        <div className="flex items-center justify-between border-t border-[#E3EAF3] pt-2">
-                                                            {/* Phone above & Email below */}
-                                                            <div className="flex flex-col gap-0.5 text-[10.5px] sm:text-[11px] font-bold text-[#0B0F14]">
-                                                                <div className="flex items-center space-x-1">
-                                                                    <Phone size={11} className="text-[#2563EB] shrink-0" />
-                                                                    <span>+91 {formData.mobile || currentUser?.mobile || 'XXXXXXXXXX'}</span>
-                                                                </div>
-                                                                <div className="flex items-center space-x-1">
-                                                                    <Mail size={11} className="text-[#2563EB] shrink-0" />
-                                                                    <span className="truncate max-w-[150px] sm:max-w-[200px]">{formData.email || currentUser?.email || 'partner@rupiksha.com'}</span>
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="text-right shrink-0">
-                                                                <div className="flex flex-col items-end">
-                                                                    <span className="text-[11px] sm:text-[12px] font-black text-[#2146A3] tracking-tight leading-tight">
-                                                                        Rupiksha Services Private Limited
-                                                                    </span>
-                                                                    <span className="text-[6.5px] font-bold text-[#64748B] uppercase tracking-[0.25em] mt-0.5">
-                                                                        Making Life Simple
-                                                                    </span>
+                                                                <div className="text-right shrink-0">
+                                                                    <div className="flex flex-col items-end">
+                                                                        <span className="text-[11px] sm:text-[12px] font-black text-[#2146A3] tracking-tight leading-tight">
+                                                                            Rupiksha Services Private Limited
+                                                                        </span>
+                                                                        <span className="text-[6.5px] font-bold text-[#64748B] uppercase tracking-[0.25em] mt-0.5">
+                                                                            Making Life Simple
+                                                                        </span>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                </motion.div>
-                                            </div>
-                                        </div>
-
-                                        {/* Part 2 (Right 5 cols): Actions & Partner Info */}
-                                        <div className="lg:col-span-5 flex flex-col space-y-3.5">
-                                            <div className="p-4 bg-[#F8FAFD] rounded-[14px] border border-[#D7E3F2]">
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#526987]">Partner Status</span>
-                                                    <span className="text-[10px] font-bold text-[#16C784] bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-md">KYC Verified</span>
+                                                    </motion.div>
                                                 </div>
-                                                <h4 className="text-[14px] font-bold text-[#0B0F14]">{formData.name || 'Verified Merchant Partner'}</h4>
-                                                <p className="text-[11px] text-[#64748B] mt-1">Download or share your official digital visiting card with customers & partners.</p>
                                             </div>
 
-                                            {/* Action Buttons */}
-                                            <div className="flex flex-col gap-2.5 w-full">
-                                                <button 
-                                                    onClick={async () => {
-                                                        const element = cardRef.current;
-                                                        const canvas = await html2canvas(element, { scale: 3, backgroundColor: null });
-                                                        const imgData = canvas.toDataURL('image/png');
-                                                        const pdf = new jsPDF('l', 'mm', 'a4');
-                                                        const imgProps = pdf.getImageProperties(imgData);
-                                                        const pdfWidth = pdf.internal.pageSize.getWidth();
-                                                        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-                                                        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-                                                        pdf.save(`${formData.name || 'User'}_Visiting_Card.pdf`);
-                                                    }}
-                                                    className="w-full bg-[#0B0F14] hover:bg-black text-white py-3 rounded-[11px] font-bold uppercase text-[12px] tracking-wider shadow-md flex items-center justify-center space-x-2 transition-all active:scale-95 cursor-pointer"
-                                                >
-                                                    <Download size={15} />
-                                                    <span>Download PDF</span>
-                                                </button>
-                                                
-                                                <button 
-                                                    onClick={async () => {
-                                                        setIsSharing(true);
-                                                        try {
-                                                            const element = cardRef.current;
-                                                            const canvas = await html2canvas(element, { scale: 2 });
-                                                            const imgData = canvas.toDataURL('image/png');
-                                                            
-                                                            const res = await fetch(`${BACKEND_URL}/user/share-visiting-card`, {
-                                                                method: 'POST',
-                                                                headers: { 'Content-Type': 'application/json' },
-                                                                body: JSON.stringify({
-                                                                    email: formData.email,
-                                                                    name: formData.name,
-                                                                    image: imgData
-                                                                })
-                                                            });
-                                                            
-                                                            if (res.ok) alert("Card shared to your registered email!");
-                                                            else throw new Error("Backend failed");
-                                                        } catch (err) {
-                                                            window.location.href = `mailto:${formData.email}?subject=My Rupiksha Visiting Card&body=Hello, please find my digital visiting card attached. Name: ${formData.name}, Mobile: ${formData.mobile}`;
-                                                        } finally {
-                                                            setIsSharing(false);
-                                                        }
-                                                    }}
-                                                    disabled={isSharing}
-                                                    className="w-full bg-[#2146A3] hover:bg-[#1B3A88] text-white py-3 rounded-[11px] font-bold uppercase text-[12px] tracking-wider shadow-md shadow-blue-900/20 flex items-center justify-center space-x-2 transition-all active:scale-95 cursor-pointer disabled:opacity-60"
-                                                >
-                                                    <Mail size={15} />
-                                                    <span>{isSharing ? 'Sharing...' : 'Share on Email'}</span>
-                                                </button>
+                                            {/* Part 2 (Right 5 cols): Actions & Partner Info */}
+                                            <div className="lg:col-span-5 flex flex-col space-y-3.5">
+                                                <div className="p-4 bg-[#F8FAFD] rounded-[14px] border border-[#D7E3F2]">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <span className="text-[11px] font-bold uppercase tracking-wider text-[#526987]">Partner Status</span>
+                                                        <span className="text-[10px] font-bold text-[#16C784] bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-md">KYC Verified</span>
+                                                    </div>
+                                                    <h4 className="text-[14px] font-bold text-[#0B0F14]">{partnerName || 'Verified Merchant Partner'}</h4>
+                                                    <p className="text-[11px] text-[#64748B] mt-1">Download or share your official digital visiting card with customers & partners.</p>
+                                                </div>
+
+                                                {/* Action Buttons */}
+                                                <div className="flex flex-col gap-2.5 w-full">
+                                                    <button 
+                                                        onClick={async () => {
+                                                            if (!cardRef.current || isDownloading) return;
+                                                            setIsDownloading(true);
+                                                            try {
+                                                                const element = cardRef.current;
+                                                                const canvas = await html2canvas(element, { 
+                                                                    scale: 3, 
+                                                                    backgroundColor: '#ffffff', 
+                                                                    useCORS: true,
+                                                                    allowTaint: true,
+                                                                    logging: false,
+                                                                });
+                                                                const imgData = canvas.toDataURL('image/png', 1.0);
+                                                                
+                                                                // Standard Visiting Card Dimensions (85.6mm x 54mm - ISO 7810 ID-1 / Business Card)
+                                                                const cardWidth = 85.6;
+                                                                const cardHeight = 54.0;
+                                                                
+                                                                const pdf = new jsPDF({
+                                                                    orientation: 'landscape',
+                                                                    unit: 'mm',
+                                                                    format: [cardWidth, cardHeight]
+                                                                });
+                                                                
+                                                                pdf.addImage(imgData, 'PNG', 0, 0, cardWidth, cardHeight, undefined, 'FAST');
+                                                                const safeFilename = `${(partnerName || 'RuPiksha_Partner').replace(/[^a-zA-Z0-9_-]/g, '_')}_Visiting_Card.pdf`;
+                                                                pdf.save(safeFilename);
+                                                            } catch (err) {
+                                                                console.error("Visiting Card Download Error:", err);
+                                                                try {
+                                                                    const canvas = await html2canvas(cardRef.current, { scale: 2, useCORS: true, allowTaint: true });
+                                                                    const link = document.createElement('a');
+                                                                    link.download = `${(partnerName || 'RuPiksha_Partner').replace(/[^a-zA-Z0-9_-]/g, '_')}_Visiting_Card.png`;
+                                                                    link.href = canvas.toDataURL('image/png');
+                                                                    link.click();
+                                                                } catch (innerErr) {
+                                                                    alert("Failed to download visiting card. Please try again.");
+                                                                }
+                                                            } finally {
+                                                                setIsDownloading(false);
+                                                            }
+                                                        }}
+                                                        disabled={isDownloading}
+                                                        className="w-full bg-[#0B0F14] hover:bg-black text-white py-3 rounded-[11px] font-bold uppercase text-[12px] tracking-wider shadow-md flex items-center justify-center space-x-2 transition-all active:scale-95 cursor-pointer disabled:opacity-60"
+                                                    >
+                                                        {isDownloading ? (
+                                                            <>
+                                                                <RefreshCw size={15} className="animate-spin" />
+                                                                <span>Generating Card...</span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Download size={15} />
+                                                                <span>Download Visiting Card</span>
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                    
+                                                    <button 
+                                                        onClick={async () => {
+                                                            setIsSharing(true);
+                                                            try {
+                                                                const element = cardRef.current;
+                                                                const canvas = await html2canvas(element, { scale: 2, useCORS: true, allowTaint: true });
+                                                                const imgData = canvas.toDataURL('image/png');
+                                                                
+                                                                const res = await fetch(`${BACKEND_URL}/user/share-visiting-card`, {
+                                                                    method: 'POST',
+                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                    body: JSON.stringify({
+                                                                        email: formData.email,
+                                                                        name: partnerName,
+                                                                        image: imgData
+                                                                    })
+                                                                });
+                                                                
+                                                                if (res.ok) alert("Card shared to your registered email!");
+                                                                else throw new Error("Backend failed");
+                                                            } catch (err) {
+                                                                window.location.href = `mailto:${formData.email}?subject=My Rupiksha Visiting Card&body=Hello, please find my digital visiting card attached. Name: ${partnerName}, Mobile: ${partnerMobile}`;
+                                                            } finally {
+                                                                setIsSharing(false);
+                                                            }
+                                                        }}
+                                                        disabled={isSharing}
+                                                        className="w-full bg-[#2146A3] hover:bg-[#1B3A88] text-white py-3 rounded-[11px] font-bold uppercase text-[12px] tracking-wider shadow-md shadow-blue-900/20 flex items-center justify-center space-x-2 transition-all active:scale-95 cursor-pointer disabled:opacity-60"
+                                                    >
+                                                        <Mail size={15} />
+                                                        <span>{isSharing ? 'Sharing...' : 'Share on Email'}</span>
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
+                            );
+                        })()}
                     </motion.div>
                 </AnimatePresence>
                 )}
