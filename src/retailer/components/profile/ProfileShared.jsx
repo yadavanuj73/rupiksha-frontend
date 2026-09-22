@@ -11,9 +11,9 @@ export const InputField = ({
     icon,
     subLabel
 }) => (
-    <div className="flex flex-col space-y-2 w-full">
+    <div className="flex flex-col space-y-1.5 w-full">
         {label && (
-            <label className="text-[12px] font-bold text-[#526987] uppercase tracking-[0.8px] block select-none">
+            <label className="text-[11px] font-bold text-[#526987] uppercase tracking-[0.6px] block select-none">
                 {label}
             </label>
         )}
@@ -24,18 +24,18 @@ export const InputField = ({
                 onChange={onChange}
                 placeholder={placeholder}
                 readOnly={readOnly}
-                className={`w-full h-[52px] sm:h-[56px] px-4.5 bg-white border border-[#D7E3F2] rounded-[12px] font-bold text-[16px] sm:text-[17px] text-[#0B0F14] placeholder-[#64748B] placeholder:font-semibold shadow-[0_2px_6px_rgba(30,65,110,0.03)] outline-none transition-all duration-200 focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10 focus:bg-white hover:border-[#B8CCEA] disabled:opacity-60 disabled:bg-[#F8FAFC] ${
-                    icon ? 'pr-12' : ''
+                className={`w-full h-[42px] sm:h-[44px] px-3.5 bg-white border border-[#D7E3F2] rounded-[11px] font-bold text-[14px] text-[#0B0F14] placeholder-[#64748B] placeholder:font-medium shadow-[0_1px_3px_rgba(30,65,110,0.03)] outline-none transition-all duration-150 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/10 focus:bg-white hover:border-[#B8CCEA] disabled:opacity-60 disabled:bg-[#F8FAFC] ${
+                    icon ? 'pr-11' : ''
                 } ${readOnly ? 'bg-[#F8FAFD] cursor-default' : ''}`}
             />
             {icon && (
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#2563EB] flex items-center">
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[#2563EB] flex items-center">
                     {icon}
                 </div>
             )}
         </div>
         {subLabel && (
-            <p className="text-[11px] font-semibold text-[#64748B] mt-0.5">
+            <p className="text-[10px] font-semibold text-[#64748B] mt-0.5 leading-tight">
                 {subLabel}
             </p>
         )}
@@ -43,9 +43,9 @@ export const InputField = ({
 );
 
 export const SelectField = ({ label, value, options, onChange }) => (
-    <div className="flex flex-col space-y-2 w-full">
+    <div className="flex flex-col space-y-1.5 w-full">
         {label && (
-            <label className="text-[12px] font-bold text-[#526987] uppercase tracking-[0.8px] block select-none">
+            <label className="text-[11px] font-bold text-[#526987] uppercase tracking-[0.6px] block select-none">
                 {label}
             </label>
         )}
@@ -53,18 +53,18 @@ export const SelectField = ({ label, value, options, onChange }) => (
             <select
                 value={value ?? ''}
                 onChange={onChange}
-                className="w-full h-[52px] sm:h-[56px] pl-4.5 pr-11 bg-white border border-[#D7E3F2] rounded-[12px] font-bold text-[16px] sm:text-[17px] text-[#0B0F14] shadow-[0_2px_6px_rgba(30,65,110,0.03)] outline-none transition-all duration-200 focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10 focus:bg-white hover:border-[#B8CCEA] appearance-none cursor-pointer"
+                className="w-full h-[42px] sm:h-[44px] pl-3.5 pr-10 bg-white border border-[#D7E3F2] rounded-[11px] font-bold text-[14px] text-[#0B0F14] shadow-[0_1px_3px_rgba(30,65,110,0.03)] outline-none transition-all duration-150 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/10 focus:bg-white hover:border-[#B8CCEA] appearance-none cursor-pointer"
             >
                 {options.map((opt) => (
-                    <option key={opt} value={opt} className="font-semibold text-[#0B0F14] py-2 bg-white">
+                    <option key={opt} value={opt} className="font-semibold text-[#0B0F14] py-1.5 bg-white">
                         {opt}
                     </option>
                 ))}
             </select>
             <ChevronDown
-                size={18}
+                size={16}
                 strokeWidth={2}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#1D3557] pointer-events-none"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#1D3557] pointer-events-none"
             />
         </div>
     </div>
