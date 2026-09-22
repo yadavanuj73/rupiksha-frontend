@@ -559,7 +559,8 @@ export const dataService = {
                 };
 
                 if (serverUser && typeof serverUser === 'object' && Object.keys(serverUser).length > 0 && !serverUser.error) {
-                    const savedPhoto = localStorage.getItem('rupiksha_profile_photo');
+                    const serverUid = serverUser.id || serverUser.userId || serverUser.username || currentUser?.id || currentUser?.username;
+                    const savedPhoto = serverUid ? localStorage.getItem(`rupiksha_photo_${serverUid}`) : null;
                     let docPhoto = null;
                     const allDocs = Array.isArray(serverUser.documents) ? serverUser.documents : (Array.isArray(nestedData.documents) ? nestedData.documents : (Array.isArray(nestedUser.documents) ? nestedUser.documents : []));
                     if (allDocs.length > 0) {
@@ -570,7 +571,7 @@ export const dataService = {
                         );
                         if (selfieDoc) docPhoto = selfieDoc.file || selfieDoc.url || selfieDoc.image;
                     }
-                    const resolvedPhoto = serverUser.profilePhoto || serverUser.photoUrl || serverUser.liveSelfieUrl || docPhoto || currentUser?.profilePhoto || currentUser?.photoUrl || savedPhoto;
+                    const resolvedPhoto = serverUser.profilePhoto || serverUser.photoUrl || serverUser.liveSelfieUrl || docPhoto || (currentUser?.id === serverUser.id ? (currentUser?.profilePhoto || currentUser?.photoUrl) : null) || savedPhoto || null;
                     const merged = {
                         ...currentUser,
                         ...serverUser,
@@ -587,9 +588,10 @@ export const dataService = {
                     if (localStorage.getItem('rupiksha_admin_user') && window.location.pathname.startsWith('/admin')) {
                         localStorage.setItem('rupiksha_admin_user', JSON.stringify(merged));
                     }
-                    if (resolvedPhoto) {
-                        try { localStorage.setItem('rupiksha_profile_photo', resolvedPhoto); } catch (_) {}
+                    if (resolvedPhoto && serverUid) {
+                        try { localStorage.setItem(`rupiksha_photo_${serverUid}`, resolvedPhoto); } catch (_) {}
                     }
+                    try { localStorage.removeItem('rupiksha_profile_photo'); } catch (_) {}
                     const localData = this.getData();
                     localData.currentUser = merged;
                     this.saveData(localData);

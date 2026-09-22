@@ -84,7 +84,8 @@ const getCurrentUserData = () => {
 
         user = { ...extraData, ...(user || localData?.currentUser || {}) };
 
-        const savedPhoto = localStorage.getItem('rupiksha_profile_photo');
+        const currentUserUid = user?.id || user?.userId || user?.username;
+        const savedPhoto = currentUserUid ? localStorage.getItem(`rupiksha_photo_${currentUserUid}`) : null;
         if (savedPhoto && (!user.profilePhoto || !user.photoUrl)) {
             user.profilePhoto = savedPhoto;
             user.photoUrl = savedPhoto;
@@ -149,7 +150,9 @@ const extractUserProfileFields = (rawUser, prev = {}) => {
     let aadhaarImage = flat.aadhaarImage || flat.aadhaarPhoto || flat.aadhaarPhotoUrl || flat.aadhaarDoc || user.aadhaarImage || prev.aadhaarImage || null;
     let aadhaarNumber = flat.aadhaarNumber || flat.aadhaar || flat.aadhar || flat.aadharNumber || flat.aadhaar_number || flat.aadhar_number || flat.aadhaarNo || user.aadhaarNumber || prev.aadhaarNumber || '';
     let panNumber = flat.panNumber || flat.pan || flat.pan_number || flat.panNo || flat.userPan || flat.companyOrShopPan || user.panNumber || prev.panNumber || '';
-    let photoUrl = flat.profilePhoto || flat.photoUrl || flat.liveSelfieUrl || flat.avatar || flat.profile_photo || user.profilePhoto || user.photoUrl || prev.profilePhoto || prev.photoUrl || localStorage.getItem('rupiksha_profile_photo') || null;
+    const userSpecificId = user?.id || user?.userId || user?.username || rawUser?.id || rawUser?.userId || rawUser?.username;
+    const userSavedPhoto = userSpecificId ? localStorage.getItem(`rupiksha_photo_${userSpecificId}`) : null;
+    let photoUrl = flat.profilePhoto || flat.photoUrl || flat.liveSelfieUrl || flat.avatar || flat.profile_photo || user.profilePhoto || user.photoUrl || prev.profilePhoto || prev.photoUrl || userSavedPhoto || null;
 
     const allDocs = Array.isArray(flat.documents) ? flat.documents : (Array.isArray(rawUser?.documents) ? rawUser.documents : (Array.isArray(user.documents) ? user.documents : []));
     if (allDocs.length > 0) {
@@ -302,7 +305,8 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
 
     const currentUser = getCurrentUserData() || appData.currentUser || {};
     const initialExtracted = extractUserProfileFields(currentUser);
-    const savedPhoto = localStorage.getItem('rupiksha_profile_photo');
+    const userInitUid = currentUser?.id || currentUser?.userId || currentUser?.username;
+    const savedPhoto = userInitUid ? localStorage.getItem(`rupiksha_photo_${userInitUid}`) : null;
     const [profilePhoto, setProfilePhoto] = useState(initialExtracted.profilePhoto || initialExtracted.photoUrl || savedPhoto || null);
     const [formData, setFormData] = useState(initialExtracted);
 
@@ -312,8 +316,9 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
         if (user) {
             setFormData(prev => {
                 const updated = extractUserProfileFields(user, prev);
-                const photo = updated.profilePhoto || updated.photoUrl || localStorage.getItem('rupiksha_profile_photo');
-                if (photo) setProfilePhoto(photo);
+                const syncUid = user?.id || user?.userId || user?.username;
+                const photo = updated.profilePhoto || updated.photoUrl || (syncUid ? localStorage.getItem(`rupiksha_photo_${syncUid}`) : null) || null;
+                setProfilePhoto(photo);
                 return updated;
             });
         }
@@ -554,17 +559,19 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            const photoToSave = profilePhoto || localStorage.getItem('rupiksha_profile_photo');
+            const uid = formData.id || formData.userId || formData.username || currentUser?.id || currentUser?.username;
+            const photoToSave = profilePhoto || (uid ? localStorage.getItem(`rupiksha_photo_${uid}`) : null) || null;
             const payload = {
                 ...formData,
                 profilePhoto: photoToSave,
                 photoUrl: photoToSave
             };
-            if (photoToSave) {
+            if (photoToSave && uid) {
                 try {
-                    localStorage.setItem('rupiksha_profile_photo', photoToSave);
+                    localStorage.setItem(`rupiksha_photo_${uid}`, photoToSave);
                 } catch (_) {}
             }
+            try { localStorage.removeItem('rupiksha_profile_photo'); } catch (_) {}
             const success = await dataService.updateUserProfile(payload);
             window.dispatchEvent(new Event('profileUpdated'));
             if (success) {
@@ -588,11 +595,15 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
             reader.onload = async () => {
                 const photoBase64 = reader.result;
                 setProfilePhoto(photoBase64);
-                try {
-                    localStorage.setItem('rupiksha_profile_photo', photoBase64);
-                } catch (err) {
-                    console.warn("Storage write:", err);
+                const uid = formData.id || formData.userId || formData.username || currentUser?.id || currentUser?.username;
+                if (uid) {
+                    try {
+                        localStorage.setItem(`rupiksha_photo_${uid}`, photoBase64);
+                    } catch (err) {
+                        console.warn("Storage write:", err);
+                    }
                 }
+                try { localStorage.removeItem('rupiksha_profile_photo'); } catch (_) {}
                 const updated = {
                     ...formData,
                     profilePhoto: photoBase64,

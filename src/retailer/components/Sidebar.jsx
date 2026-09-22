@@ -316,11 +316,15 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
                 <div className={`flex items-center ${isExpanded ? 'justify-between' : 'justify-center'} px-1 py-1`}>
                     <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center border border-slate-300 overflow-hidden shrink-0 shadow-xs">
-                            {currentUser?.profilePhoto || currentUser?.photoUrl || localStorage.getItem('rupiksha_profile_photo') ? (
-                                <img src={currentUser?.profilePhoto || currentUser?.photoUrl || localStorage.getItem('rupiksha_profile_photo')} alt="U" className="w-full h-full object-cover" />
-                            ) : (
-                                <span className="text-[10px] font-black text-black">{getInitials()}</span>
-                            )}
+                            {(() => {
+                                const sideUid = currentUser?.id || currentUser?.userId || currentUser?.username;
+                                const sidePhoto = currentUser?.profilePhoto || currentUser?.photoUrl || (sideUid ? localStorage.getItem(`rupiksha_photo_${sideUid}`) : null);
+                                return sidePhoto ? (
+                                    <img src={sidePhoto} alt="U" className="w-full h-full object-cover" />
+                                ) : (
+                                    <span className="text-[10px] font-black text-black">{getInitials()}</span>
+                                );
+                            })()}
                         </div>
                         {isExpanded && (
                             <div className="flex flex-col min-w-0">

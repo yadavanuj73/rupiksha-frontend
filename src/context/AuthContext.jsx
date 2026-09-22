@@ -65,6 +65,8 @@ export function AuthProvider({ children }) {
   // Load user on start — also handle ?_imp= impersonation handoff from admin tab
   useEffect(() => {
     const initAuth = async () => {
+    // Purge any stale legacy global photo key that bled across users
+    try { localStorage.removeItem('rupiksha_profile_photo'); } catch (_) {}
     // Check for impersonation token passed via URL query param from admin panel
     const params = new URLSearchParams(window.location.search);
     const impKey = params.get('_imp');

@@ -26,7 +26,8 @@ const DistributorTopBar = ({ onMenuClick }) => {
         const session = sharedDataService.getCurrentDistributor() || dataService.getCurrentUser();
         if (!session) return;
         const fresh = (session.id && sharedDataService.getDistributorById(session.id)) || session;
-        const savedPhoto = localStorage.getItem('rupiksha_profile_photo');
+        const uid = fresh.id || fresh.userId || fresh.username;
+        const savedPhoto = uid ? localStorage.getItem(`rupiksha_photo_${uid}`) : null;
         const photo = fresh.profilePhoto || fresh.photoUrl || savedPhoto || null;
         setDist({
             ...fresh,
@@ -74,6 +75,8 @@ const DistributorTopBar = ({ onMenuClick }) => {
         navigate('/');
     };
 
+    const distUid = dist?.id || dist?.userId || dist?.username;
+    const userPhoto = dist?.profilePhoto || dist?.photoUrl || (distUid ? localStorage.getItem(`rupiksha_photo_${distUid}`) : null);
     const initials = (dist?.name || 'D').charAt(0).toUpperCase();
     const walletBal = dist?.wallet?.balance || '0.00';
     const distName = dist?.name || 'Distributor';

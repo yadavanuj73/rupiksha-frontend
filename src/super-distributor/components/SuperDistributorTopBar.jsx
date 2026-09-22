@@ -19,7 +19,8 @@ const SuperDistributorTopBar = ({ onMenuClick }) => {
         const session = sharedDataService.getCurrentSuperDistributor() || dataService.getCurrentUser();
         if (!session) return;
         const fresh = (session.id && sharedDataService.getSuperDistributorById(session.id)) || session;
-        const savedPhoto = localStorage.getItem('rupiksha_profile_photo');
+        const sdUid = fresh.id || fresh.userId || fresh.username;
+        const savedPhoto = sdUid ? localStorage.getItem(`rupiksha_photo_${sdUid}`) : null;
         const photo = fresh.profilePhoto || fresh.photoUrl || savedPhoto || null;
         setDist({
             ...fresh,
@@ -56,8 +57,9 @@ const SuperDistributorTopBar = ({ onMenuClick }) => {
         navigate('/');
     };
 
+    const sdCurrentUid = dist?.id || dist?.userId || dist?.username;
     const initials = (dist?.name || 'D').charAt(0).toUpperCase();
-    const userPhoto = dist?.profilePhoto || dist?.photoUrl || localStorage.getItem('rupiksha_profile_photo');
+    const userPhoto = dist?.profilePhoto || dist?.photoUrl || (sdCurrentUid ? localStorage.getItem(`rupiksha_photo_${sdCurrentUid}`) : null);
     const walletBal = dist?.wallet?.balance || '0.00';
     const distName = dist?.name || 'SUPER_DISTRIBUTOR';
     const rawKyc = String(dist?.kycStatus || dist?.profile_kyc_status || '').toUpperCase();

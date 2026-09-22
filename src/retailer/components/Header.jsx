@@ -50,8 +50,9 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
     }, []);
 
     const currentUser = authUser || appData.currentUser || dataService.getCurrentUser();
-    const userPhoto = currentUser?.profilePhoto || currentUser?.photoUrl || localStorage.getItem('rupiksha_profile_photo');
-    const retailerName = currentUser?.fullName || currentUser?.name || currentUser?.businessName || currentUser?.username || 'Anujkumar Yadav';
+    const userUid = currentUser?.id || currentUser?.userId || currentUser?.username;
+    const userPhoto = currentUser?.profilePhoto || currentUser?.photoUrl || (userUid ? localStorage.getItem(`rupiksha_photo_${userUid}`) : null);
+    const retailerName = currentUser?.fullName || currentUser?.name || currentUser?.businessName || currentUser?.username || 'Retailer';
 
     const getInitials = () => {
         const displayName = currentUser?.fullName || currentUser?.name || currentUser?.username || 'Anujkumar Yadav';

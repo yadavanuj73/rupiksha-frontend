@@ -277,11 +277,15 @@ const DistributorSidebar = ({
                     <div className={`flex items-center ${isExpanded ? 'justify-between' : 'justify-center'} px-1 py-1`}>
                         <div className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center border border-slate-300 overflow-hidden shrink-0 shadow-xs">
-                                {dist?.profilePhoto || dist?.photoUrl || localStorage.getItem('rupiksha_profile_photo') ? (
-                                    <img src={dist?.profilePhoto || dist?.photoUrl || localStorage.getItem('rupiksha_profile_photo')} alt="U" className="w-full h-full object-cover" />
-                                ) : (
-                                    <span className="text-[10px] font-black text-black">{getInitials()}</span>
-                                )}
+                                {(() => {
+                                    const distSideUid = dist?.id || dist?.userId || dist?.username;
+                                    const distSidePhoto = dist?.profilePhoto || dist?.photoUrl || (distSideUid ? localStorage.getItem(`rupiksha_photo_${distSideUid}`) : null);
+                                    return distSidePhoto ? (
+                                        <img src={distSidePhoto} alt="U" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <span className="text-[10px] font-black text-black">{getInitials()}</span>
+                                    );
+                                })()}
                             </div>
                             {isExpanded && (
                                 <div className="flex flex-col min-w-0">
