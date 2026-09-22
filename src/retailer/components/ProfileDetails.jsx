@@ -153,12 +153,12 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
                 aadhaarNumber: user.aadhaarNumber || prev.aadhaarNumber || '',
                 aadhaarImage: aadhaarImage || prev.aadhaarImage || null,
                 // Banking
-                accHolderName: user.accHolderName || user.bankAccountHolder || user.bankAccountName || user.name || user.fullName || prev.accHolderName || '',
-                bankName: user.bankName || prev.bankName || '',
-                accountNumber: user.accountNumber || user.bankAccountNumber || prev.accountNumber || '',
-                confirmAccountNumber: user.confirmAccountNumber || user.accountNumber || user.bankAccountNumber || prev.confirmAccountNumber || '',
-                ifscCode: user.ifscCode || user.bankIfsc || prev.ifscCode || '',
-                branchName: user.branchName || user.bankBranch || prev.branchName || ''
+                accHolderName: user.accHolderName || (user.banks && user.banks.length > 0 ? user.banks[0].accHolderName : null) || user.bankAccountHolder || user.bankAccountName || user.name || user.fullName || prev.accHolderName || '',
+                bankName: user.bankName || (user.banks && user.banks.length > 0 ? user.banks[0].bankName : null) || prev.bankName || '',
+                accountNumber: user.accountNumber || (user.banks && user.banks.length > 0 ? user.banks[0].accountNumber : null) || user.bankAccountNumber || prev.accountNumber || '',
+                confirmAccountNumber: user.confirmAccountNumber || (user.banks && user.banks.length > 0 ? user.banks[0].accountNumber : null) || user.accountNumber || user.bankAccountNumber || prev.confirmAccountNumber || '',
+                ifscCode: user.ifscCode || (user.banks && user.banks.length > 0 ? user.banks[0].ifscCode : null) || user.bankIfsc || prev.ifscCode || '',
+                branchName: user.branchName || (user.banks && user.banks.length > 0 ? user.banks[0].branchName : null) || user.bankBranch || prev.branchName || ''
             }));
             const photo = user.profilePhoto || user.photoUrl || localStorage.getItem('rupiksha_profile_photo');
             if (photo) {

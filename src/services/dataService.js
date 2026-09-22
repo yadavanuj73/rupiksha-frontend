@@ -1957,6 +1957,23 @@ export const dataService = {
         } catch (e) {
             return { success: false, message: e.message };
         }
+    },
+
+    addUserBank: function(username, bankDetails) {
+        const user = this.getCurrentUser();
+        if (!user) return false;
+        if (!user.banks) user.banks = [];
+        user.banks.push(bankDetails);
+        this.updateUserProfile({ banks: user.banks });
+        return true;
+    },
+
+    removeUserBank: function(username, bankId) {
+        const user = this.getCurrentUser();
+        if (!user || !user.banks) return false;
+        user.banks = user.banks.filter(b => b.id !== bankId);
+        this.updateUserProfile({ banks: user.banks });
+        return true;
     }
 };
 
