@@ -470,6 +470,60 @@ export const dataService = {
         }
     },
 
+    getCurrentUser: function () {
+        try {
+            const distUser = localStorage.getItem('rupiksha_distributor_user');
+            if (distUser) return JSON.parse(distUser);
+            const retUser = localStorage.getItem('rupiksha_user');
+            if (retUser) return JSON.parse(retUser);
+            const adminUser = localStorage.getItem('rupiksha_admin_user');
+            if (adminUser) return JSON.parse(adminUser);
+            const authUser = localStorage.getItem('user');
+            if (authUser) return JSON.parse(authUser);
+        } catch (e) {}
+        return this.getData().currentUser || {};
+    },
+
+    fetchUserProfile: async function () {
+        const currentUser = this.getCurrentUser();
+        try {
+            const token = getEffectiveToken();
+            const userId = currentUser?.id || currentUser?.userId;
+            const username = currentUser?.username || currentUser?.mobile;
+            let url = `${BACKEND_URL}/user/profile`;
+            const params = new URLSearchParams();
+            if (userId) params.append('userId', userId);
+            if (username) params.append('username', username);
+            if (params.toString()) url += `?${params.toString()}`;
+
+            const res = await fetch(url, {
+                headers: {
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data && (data.user || data.data)) {
+                    const serverUser = data.user || data.data;
+                    const merged = { ...currentUser, ...serverUser };
+                    localStorage.setItem('rupiksha_user', JSON.stringify(merged));
+                    if (localStorage.getItem('rupiksha_distributor_user') || merged.role === 'DISTRIBUTOR') {
+                        localStorage.setItem('rupiksha_distributor_user', JSON.stringify(merged));
+                    }
+                    const localData = this.getData();
+                    localData.currentUser = merged;
+                    this.saveData(localData);
+                    window.dispatchEvent(new Event('dataUpdated'));
+                    window.dispatchEvent(new Event('distributorDataUpdated'));
+                    return merged;
+                }
+            }
+        } catch (e) {
+            console.warn("fetchUserProfile error:", e);
+        }
+        return currentUser;
+    },
+
     updateUserProfile: async function (profileData) {
         const currentUser = this.getCurrentUser() || {};
         const mergedUser = {
@@ -484,7 +538,7 @@ export const dataService = {
         // Always update local cache immediately for ultra-fast responsive UI
         try {
             localStorage.setItem('rupiksha_user', JSON.stringify(mergedUser));
-            if (localStorage.getItem('rupiksha_distributor_user')) {
+            if (localStorage.getItem('rupiksha_distributor_user') || mergedUser.role === 'DISTRIBUTOR') {
                 localStorage.setItem('rupiksha_distributor_user', JSON.stringify(mergedUser));
             }
             if (localStorage.getItem('rupiksha_admin_user') && window.location.pathname.startsWith('/admin')) {
@@ -508,7 +562,7 @@ export const dataService = {
             if (rawDists) {
                 try {
                     const dists = JSON.parse(rawDists);
-                    const dIdx = dists.findIndex(d => d.id === currentUser.id || d.username === currentUser.username);
+                    const dIdx = dists.findIndex(d => d.id === currentUser.id || d.username === currentUser.username || d.mobile === currentUser.mobile);
                     if (dIdx !== -1) {
                         dists[dIdx] = { ...dists[dIdx], ...mergedUser };
                         localStorage.setItem('rupiksha_distributors', JSON.stringify(dists));
@@ -528,9 +582,12 @@ export const dataService = {
 
         try {
             const token = getEffectiveToken();
-            const targetUserId = currentUser.id || currentUser.userId || profileData.userId;
+            const targetUserId = currentUser.id || currentUser.userId || profileData.id || profileData.userId;
             const payload = {
                 userId: targetUserId,
+                id: targetUserId,
+                username: currentUser.username || profileData.username,
+                mobile: currentUser.mobile || profileData.mobile,
                 ...profileData,
                 photoUrl: mergedUser.photoUrl,
                 fullName: mergedUser.fullName,
@@ -563,7 +620,7 @@ export const dataService = {
                     const serverUser = result.user || result;
                     const finalUser = { ...mergedUser, ...serverUser };
                     localStorage.setItem('rupiksha_user', JSON.stringify(finalUser));
-                    if (localStorage.getItem('rupiksha_distributor_user')) {
+                    if (localStorage.getItem('rupiksha_distributor_user') || finalUser.role === 'DISTRIBUTOR') {
                         localStorage.setItem('rupiksha_distributor_user', JSON.stringify(finalUser));
                     }
                     window.dispatchEvent(new Event('dataUpdated'));

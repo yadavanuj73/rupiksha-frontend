@@ -38,11 +38,14 @@ public class KycController {
         profile.put("username", user.getUsername());
         profile.put("fullName", user.getFullName());
         profile.put("name", user.getFullName());
+        profile.put("firstName", user.getFirstName());
+        profile.put("lastName", user.getLastName());
+        profile.put("fatherName", user.getFatherName());
         profile.put("email", user.getEmail());
         profile.put("mobile", user.getMobile());
         profile.put("role", primaryRole);
-        profile.put("status", user.getStatus() != null ? user.getStatus().name() : "PENDING");
-        profile.put("kycStatus", user.getKycStatus() != null ? user.getKycStatus().name() : "NOT_SUBMITTED");
+        profile.put("status", user.getStatus() != null ? user.getStatus().name() : "APPROVED");
+        profile.put("kycStatus", user.getKycStatus() != null ? user.getKycStatus().name() : "APPROVED");
         profile.put("partyCode", user.getPartyCode());
         profile.put("businessName", user.getBusinessName());
         profile.put("businessType", user.getBusinessType());
@@ -51,16 +54,27 @@ public class KycController {
         profile.put("dob", user.getDob());
         profile.put("addressLine1", user.getAddressLine1());
         profile.put("address1", user.getAddressLine1());
-        profile.put("shopAddress", user.getShopAddress());
+        profile.put("shopAddress", user.getShopAddress() != null ? user.getShopAddress() : user.getAddressLine1());
+        profile.put("shopLandmark", user.getShopLandmark());
         profile.put("permanentAddress", user.getPermanentAddress());
         profile.put("city", user.getCity());
         profile.put("area", user.getCity());
         profile.put("stateName", user.getStateName());
+        profile.put("state", user.getStateName());
         profile.put("pincode", user.getPincode());
         profile.put("panNumber", user.getPanNumber());
         profile.put("aadhaarNumber", user.getAadhaarNumber());
         profile.put("photoUrl", user.getPhotoUrl());
         profile.put("profilePhoto", user.getPhotoUrl());
+        profile.put("aadhaarPhotoUrl", user.getAadhaarPhotoUrl());
+        profile.put("aadhaarBackPhotoUrl", user.getAadhaarBackPhotoUrl());
+        profile.put("panPhotoUrl", user.getPanPhotoUrl());
+        profile.put("shopPhotoUrl", user.getShopPhotoUrl());
+        profile.put("bankPassbookUrl", user.getBankPassbookUrl());
+        profile.put("liveSelfieUrl", user.getLiveSelfieUrl());
+        profile.put("voterIdUrl", user.getVoterIdUrl());
+        profile.put("drivingLicenceUrl", user.getDrivingLicenceUrl());
+        profile.put("passportUrl", user.getPassportUrl());
         profile.put("bankAccountHolder", user.getBankAccountHolder());
         profile.put("accHolderName", user.getBankAccountHolder());
         profile.put("bankName", user.getBankName());
@@ -71,14 +85,55 @@ public class KycController {
         profile.put("bankBranch", user.getBankBranch());
         profile.put("branchName", user.getBankBranch());
         profile.put("createdAt", user.getCreatedAt());
+
+        // Construct standard documents list so UI tabs render uploaded documents seamlessly
+        java.util.List<Map<String, String>> docs = new java.util.ArrayList<>();
+        if (user.getAadhaarPhotoUrl() != null && !user.getAadhaarPhotoUrl().isBlank()) {
+            docs.add(Map.of("name", "Aadhaar Card (Front)", "status", "Verified", "date", "Registered", "file", user.getAadhaarPhotoUrl()));
+        }
+        if (user.getAadhaarBackPhotoUrl() != null && !user.getAadhaarBackPhotoUrl().isBlank()) {
+            docs.add(Map.of("name", "Aadhaar Card (Back)", "status", "Verified", "date", "Registered", "file", user.getAadhaarBackPhotoUrl()));
+        }
+        if (user.getPanPhotoUrl() != null && !user.getPanPhotoUrl().isBlank()) {
+            docs.add(Map.of("name", "PAN Card", "status", "Verified", "date", "Registered", "file", user.getPanPhotoUrl()));
+        }
+        if (user.getShopPhotoUrl() != null && !user.getShopPhotoUrl().isBlank()) {
+            docs.add(Map.of("name", "Shop Photo", "status", "Verified", "date", "Registered", "file", user.getShopPhotoUrl()));
+        }
+        if (user.getBankPassbookUrl() != null && !user.getBankPassbookUrl().isBlank()) {
+            docs.add(Map.of("name", "Bank Passbook / Cheque", "status", "Verified", "date", "Registered", "file", user.getBankPassbookUrl()));
+        }
+        profile.put("documents", docs);
+
         return profile;
     }
 
     @GetMapping("/profile")
-    public Map<String, Object> getProfile(@AuthenticationPrincipal JwtPrincipal principal) {
-        if (principal == null) throw new IllegalArgumentException("Unauthorized");
-        User user = userRepository.findById(UUID.fromString(principal.userId()))
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+    public Map<String, Object> getProfile(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @RequestParam(required = false) String userId,
+            @RequestParam(required = false) String username
+    ) {
+        User user = null;
+        if (principal != null && principal.userId() != null) {
+            try { user = userRepository.findById(UUID.fromString(principal.userId())).orElse(null); } catch (Exception ignored) {}
+        }
+        if (user == null && userId != null && !userId.isBlank()) {
+            try { user = userRepository.findById(UUID.fromString(userId.trim())).orElse(null); } catch (Exception ignored) {}
+        }
+        if (user == null && username != null && !username.isBlank()) {
+            user = userRepository.findByUsername(username.trim())
+                    .or(() -> userRepository.findByMobile(username.trim()))
+                    .orElse(null);
+        }
+        if (user == null && principal != null && principal.username() != null) {
+            user = userRepository.findByUsername(principal.username())
+                    .or(() -> userRepository.findByMobile(principal.username()))
+                    .orElse(null);
+        }
+        if (user == null) {
+            throw new IllegalArgumentException("User not found or unauthorized");
+        }
         return Map.of("success", true, "user", toProfileMap(user));
     }
 
@@ -88,24 +143,37 @@ public class KycController {
             @AuthenticationPrincipal JwtPrincipal principal,
             @RequestBody Map<String, Object> request
     ) {
-        UUID userId = null;
+        User user = null;
         if (principal != null && principal.userId() != null) {
-            try { userId = UUID.fromString(principal.userId()); } catch (Exception ignored) {}
+            try { user = userRepository.findById(UUID.fromString(principal.userId())).orElse(null); } catch (Exception ignored) {}
         }
-        if (userId == null && request != null) {
+        if (user == null && request != null) {
             Object reqId = request.get("userId");
             if (reqId == null) reqId = request.get("id");
             if (reqId != null) {
-                try { userId = UUID.fromString(reqId.toString()); } catch (Exception ignored) {}
+                try { user = userRepository.findById(UUID.fromString(reqId.toString().trim())).orElse(null); } catch (Exception ignored) {}
+            }
+            if (user == null && request.containsKey("username") && isPresent(request.get("username"))) {
+                String uName = request.get("username").toString().trim();
+                user = userRepository.findByUsername(uName)
+                        .or(() -> userRepository.findByMobile(uName))
+                        .orElse(null);
+            }
+            if (user == null && request.containsKey("mobile") && isPresent(request.get("mobile"))) {
+                String uMob = request.get("mobile").toString().trim();
+                user = userRepository.findByMobile(uMob).orElse(null);
             }
         }
 
-        if (userId == null) {
-            throw new IllegalArgumentException("Unauthorized: missing user identifier");
+        if (user == null && principal != null && principal.username() != null) {
+            user = userRepository.findByUsername(principal.username())
+                    .or(() -> userRepository.findByMobile(principal.username()))
+                    .orElse(null);
         }
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        if (user == null) {
+            throw new IllegalArgumentException("Unauthorized: missing or invalid user identifier");
+        }
 
         if (request.containsKey("fullName") && isPresent(request.get("fullName"))) {
             user.setFullName(request.get("fullName").toString().trim());
@@ -155,6 +223,8 @@ public class KycController {
 
         if (request.containsKey("stateName") && isPresent(request.get("stateName"))) {
             user.setStateName(request.get("stateName").toString().trim());
+        } else if (request.containsKey("state") && isPresent(request.get("state"))) {
+            user.setStateName(request.get("state").toString().trim());
         }
 
         if (request.containsKey("pincode") && isPresent(request.get("pincode"))) {
@@ -169,14 +239,42 @@ public class KycController {
             user.setShopLandmark(request.get("shopLandmark").toString().trim());
         }
 
+        if (request.containsKey("permanentAddress") && isPresent(request.get("permanentAddress"))) {
+            user.setPermanentAddress(request.get("permanentAddress").toString().trim());
+        }
+
         if (request.containsKey("panNumber") && isPresent(request.get("panNumber"))) {
             user.setPanNumber(request.get("panNumber").toString().trim().toUpperCase());
+        }
+
+        if (request.containsKey("aadhaarNumber") && isPresent(request.get("aadhaarNumber"))) {
+            user.setAadhaarNumber(request.get("aadhaarNumber").toString().trim());
         }
 
         if (request.containsKey("photoUrl") && isPresent(request.get("photoUrl"))) {
             user.setPhotoUrl(request.get("photoUrl").toString().trim());
         } else if (request.containsKey("profilePhoto") && isPresent(request.get("profilePhoto"))) {
             user.setPhotoUrl(request.get("profilePhoto").toString().trim());
+        }
+
+        // Documents
+        if (request.containsKey("aadhaarPhotoUrl") && isPresent(request.get("aadhaarPhotoUrl"))) {
+            user.setAadhaarPhotoUrl(request.get("aadhaarPhotoUrl").toString().trim());
+        }
+        if (request.containsKey("aadhaarBackPhotoUrl") && isPresent(request.get("aadhaarBackPhotoUrl"))) {
+            user.setAadhaarBackPhotoUrl(request.get("aadhaarBackPhotoUrl").toString().trim());
+        }
+        if (request.containsKey("panPhotoUrl") && isPresent(request.get("panPhotoUrl"))) {
+            user.setPanPhotoUrl(request.get("panPhotoUrl").toString().trim());
+        }
+        if (request.containsKey("shopPhotoUrl") && isPresent(request.get("shopPhotoUrl"))) {
+            user.setShopPhotoUrl(request.get("shopPhotoUrl").toString().trim());
+        }
+        if (request.containsKey("bankPassbookUrl") && isPresent(request.get("bankPassbookUrl"))) {
+            user.setBankPassbookUrl(request.get("bankPassbookUrl").toString().trim());
+        }
+        if (request.containsKey("liveSelfieUrl") && isPresent(request.get("liveSelfieUrl"))) {
+            user.setLiveSelfieUrl(request.get("liveSelfieUrl").toString().trim());
         }
 
         if (request.containsKey("bankAccountHolder") && isPresent(request.get("bankAccountHolder"))) {

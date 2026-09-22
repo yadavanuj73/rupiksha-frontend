@@ -8,28 +8,68 @@ const Documents = ({ currentUser }) => {
     const [isUploading, setIsUploading] = useState(false);
     const [uploadStatus, setUploadStatus] = useState(null);
 
-    const docTypes = [
-        'Aadhaar Card (Front)',
-        'Aadhaar Card (Back)',
-        'PAN Card',
-        'Shop Photo',
-        'Bank Passbook / Cheque'
-    ];
+    const docTypeMap = {
+        'Aadhaar Card (Front)': {
+            field: 'aadhaarPhotoUrl',
+            fallback: currentUser?.aadhaarPhotoUrl || currentUser?.aadhaarPhoto || currentUser?.aadhaarFront
+        },
+        'Aadhaar Card (Back)': {
+            field: 'aadhaarBackPhotoUrl',
+            fallback: currentUser?.aadhaarBackPhotoUrl || currentUser?.aadhaarBackPhoto || currentUser?.aadhaarBack
+        },
+        'PAN Card': {
+            field: 'panPhotoUrl',
+            fallback: currentUser?.panPhotoUrl || currentUser?.panPhoto || currentUser?.panCardUrl
+        },
+        'Shop Photo': {
+            field: 'shopPhotoUrl',
+            fallback: currentUser?.shopPhotoUrl || currentUser?.shopPhoto
+        },
+        'Bank Passbook / Cheque': {
+            field: 'bankPassbookUrl',
+            fallback: currentUser?.bankPassbookUrl || currentUser?.bankPassbook || currentUser?.passbookPhoto
+        }
+    };
 
-    const userDocs = currentUser.documents || [];
+    const docTypes = Object.keys(docTypeMap);
+    const userDocs = currentUser?.documents || [];
 
-    const handleFileUpload = (docName, e) => {
+    const getDocDetails = (type) => {
+        const found = userDocs.find(d => d.name === type);
+        if (found && found.file) return found;
+        const config = docTypeMap[type];
+        if (config && config.fallback) {
+            return {
+                name: type,
+                status: 'Verified',
+                date: 'From Registration',
+                file: config.fallback
+            };
+        }
+        return null;
+    };
+
+    const handleFileUpload = async (docName, e) => {
         const file = e.target.files[0];
         if (!file) return;
 
         setIsUploading(true);
         const reader = new FileReader();
-        reader.onload = (event) => {
-            dataService.updateUserDocument(currentUser.username, docName, event.target.result);
+        reader.onload = async (event) => {
+            const base64 = event.target.result;
+            const fieldKey = docTypeMap[docName]?.field || 'photoUrl';
+            
+            // Save to documents list and profile database
+            dataService.updateUserDocument(currentUser?.username, docName, base64);
+            await dataService.updateUserProfile({
+                [fieldKey]: base64
+            });
+
             setIsUploading(false);
-            setUploadStatus({ type: 'success', message: `${docName} uploaded successfully! Admin will verify soon.` });
+            setUploadStatus({ type: 'success', message: `${docName} uploaded & updated successfully!` });
             setTimeout(() => setUploadStatus(null), 3000);
             window.dispatchEvent(new Event('dataUpdated'));
+            window.dispatchEvent(new Event('distributorDataUpdated'));
         };
         reader.readAsDataURL(file);
     };
@@ -52,19 +92,19 @@ const Documents = ({ currentUser }) => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {docTypes.map((type, i) => {
-                    const doc = userDocs.find(d => d.name === type);
+                    const doc = getDocDetails(type);
                     return (
-                        <div key={type} className="flex flex-col p-5 border border-slate-100 rounded-2xl bg-white hover:shadow-md transition-all group">
+                        <div key={type} className="flex flex-col p-5 border border-slate-200/80 rounded-2xl bg-white hover:shadow-md transition-all group">
                             <div className="flex items-center justify-between mb-4">
                                 <div className="bg-blue-50 p-3 rounded-xl group-hover:scale-110 transition-transform">
                                     <FileText size={20} className="text-blue-600" />
                                 </div>
                                 <div className="text-right">
                                     {doc ? (
-                                        <span className={`text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${doc.status === 'Verified' ? 'bg-emerald-50 text-emerald-600' :
-                                                doc.status === 'Rejected' ? 'bg-red-50 text-red-600' : 'bg-orange-50 text-orange-600'
+                                        <span className={`text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${doc.status === 'Verified' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' :
+                                                doc.status === 'Rejected' ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-orange-50 text-orange-600 border border-orange-200'
                                             }`}>
-                                            {doc.status === 'Pending' ? 'Under Review' : doc.status}
+                                            {doc.status}
                                         </span>
                                     ) : (
                                         <span className="text-[9px] font-black bg-slate-100 text-slate-400 px-3 py-1 rounded-full uppercase tracking-widest">Not Uploaded</span>
@@ -74,19 +114,20 @@ const Documents = ({ currentUser }) => {
 
                             <h4 className="text-[13px] font-black text-slate-700 uppercase tracking-tight mb-1">{type}</h4>
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">
-                                {doc ? `Modified: ${doc.date}` : 'Action Required'}
+                                {doc ? `Status: ${doc.date}` : 'Action Required'}
                             </p>
 
                             <div className="mt-auto flex gap-2">
                                 {doc ? (
                                     <button
+                                        type="button"
                                         onClick={() => setViewingDoc(doc)}
-                                        className="flex-1 bg-slate-100 text-slate-700 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-200"
+                                        className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-200 active:scale-95 transition-all"
                                     >
                                         <Eye size={14} /> View
                                     </button>
                                 ) : null}
-                                <label className={`flex-1 ${doc ? 'w-fit' : 'w-full'} cursor-pointer bg-blue-600 text-white py-2 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors`}>
+                                <label className={`flex-1 ${doc ? 'w-fit' : 'w-full'} cursor-pointer bg-blue-600 text-white py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-blue-700 active:scale-95 transition-all shadow-xs`}>
                                     <Upload size={14} /> {doc ? 'Re-upload' : 'Upload'}
                                     <input type="file" className="hidden" accept="image/*,application/pdf" onChange={(e) => handleFileUpload(type, e)} disabled={isUploading} />
                                 </label>

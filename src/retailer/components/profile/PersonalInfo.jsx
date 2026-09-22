@@ -53,33 +53,39 @@ const PersonalInfo = ({ formData, handleInputChange, handleSave, isSaving, isSen
                     </div>
                     <p className="text-[11px] font-semibold text-slate-400 -mt-3 mb-4">Click avatar or camera to upload profile photo (JPG, PNG)</p>
 
-                    {/* Account Overview Mini Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full text-xs bg-slate-50/80 p-4 rounded-xl border border-slate-100 font-medium">
-                        <div className="flex justify-between items-center py-1">
-                            <span className="text-slate-400">Username:</span>
-                            <span className="text-slate-800 font-bold">{formData.username || 'N/A'}</span>
+                    {/* Account Overview Badges (Collapsible-safe & Wrap-proof) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full">
+                        <div className="bg-slate-50/90 rounded-xl p-3 border border-slate-100/90 flex flex-col justify-center min-w-0">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Username</span>
+                            <span className="text-xs font-bold text-slate-800 truncate mt-0.5" title={formData.username || 'N/A'}>
+                                {formData.username || 'N/A'}
+                            </span>
                         </div>
-                        <div className="flex justify-between items-center py-1">
-                            <span className="text-slate-400">Registered Mobile:</span>
-                            <div className="flex items-center space-x-1.5 font-bold text-slate-800">
-                                <span>{formData.mobile || 'N/A'}</span>
+                        <div className="bg-slate-50/90 rounded-xl p-3 border border-slate-100/90 flex flex-col justify-center min-w-0">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Registered Mobile</span>
+                            <div className="flex items-center space-x-1.5 mt-0.5">
+                                <span className="text-xs font-bold text-slate-800">{formData.mobile || 'N/A'}</span>
                                 <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
                             </div>
                         </div>
-                        <div className="flex justify-between items-center py-1">
-                            <span className="text-slate-400">Email:</span>
-                            <div className="flex items-center space-x-1.5 font-bold text-slate-800">
-                                <span className="truncate max-w-[150px]">{formData.email || 'N/A'}</span>
+                        <div className="bg-slate-50/90 rounded-xl p-3 border border-slate-100/90 flex flex-col justify-center min-w-0">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Email Address</span>
+                            <div className="flex items-center space-x-1.5 mt-0.5 min-w-0">
+                                <span className="text-xs font-bold text-slate-800 truncate" title={formData.email || 'N/A'}>
+                                    {formData.email || 'N/A'}
+                                </span>
                                 {formData.emailVerified ? (
                                     <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
                                 ) : (
-                                    <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold">Unverified</span>
+                                    <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.2 rounded font-bold shrink-0">Unverified</span>
                                 )}
                             </div>
                         </div>
-                        <div className="flex justify-between items-center py-1">
-                            <span className="text-slate-400">Party Code:</span>
-                            <span className="text-sky-700 font-bold font-mono">{formData.partyCode || 'PENDING'}</span>
+                        <div className="bg-slate-50/90 rounded-xl p-3 border border-slate-100/90 flex flex-col justify-center min-w-0">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Party Code</span>
+                            <span className="text-xs font-bold text-sky-700 font-mono mt-0.5">
+                                {formData.partyCode || 'PENDING'}
+                            </span>
                         </div>
                     </div>
                 </div>

@@ -139,12 +139,40 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
             setFormData(prev => ({
                 ...prev,
                 ...user,
-                name: user.name || prev.name,
+                // Business
+                businessName: user.businessName || prev.businessName,
+                businessType: user.businessType || prev.businessType,
+                address1: user.address1 || user.addressLine1 || user.address || user.shopAddress || prev.address1,
+                address2: user.address2 || user.shopLandmark || prev.address2,
+                pincode: user.pincode || user.shopPincode || prev.pincode,
+                area: user.area || user.city || user.shopCity || prev.area,
+                // Personal
+                name: user.name || user.fullName || prev.name,
                 mobile: user.mobile || user.phone || user.username || prev.mobile,
                 email: user.email || prev.email,
                 emailVerified: user.emailVerified !== undefined ? user.emailVerified : prev.emailVerified,
+                gender: user.gender || prev.gender,
+                maritalStatus: user.maritalStatus || user.marriedStatus || prev.maritalStatus,
+                dob: user.dob || prev.dob,
+                residentialAddress1: user.residentialAddress1 || user.permanentAddress || user.address1 || user.address || prev.residentialAddress1,
+                residentialAddress2: user.residentialAddress2 || prev.residentialAddress2,
+                personalPincode: user.personalPincode || user.permPincode || user.pincode || prev.personalPincode,
+                personalArea: user.personalArea || user.permCity || user.city || prev.personalArea,
+                partyCode: user.partyCode || prev.partyCode,
+                // PAN & Aadhaar
                 panNumber: user.panNumber || prev.panNumber,
-                isPanVerified: user.isPanVerified !== undefined ? user.isPanVerified : prev.isPanVerified
+                isPanVerified: user.isPanVerified !== undefined ? user.isPanVerified : prev.isPanVerified,
+                panName: user.panName || user.fullName || user.name || prev.panName,
+                aadhaarNumber: user.aadhaarNumber || prev.aadhaarNumber,
+                // Banking
+                accHolderName: user.accHolderName || user.bankAccountHolder || user.bankAccountName || user.name || user.fullName || prev.accHolderName,
+                bankName: user.bankName || prev.bankName,
+                accountNumber: user.accountNumber || user.bankAccountNumber || prev.accountNumber,
+                confirmAccountNumber: user.accountNumber || user.bankAccountNumber || prev.confirmAccountNumber,
+                ifscCode: user.ifscCode || user.bankIfsc || prev.ifscCode,
+                branchName: user.branchName || user.bankBranch || prev.branchName,
+                // UPI
+                upiId: user.upiId || prev.upiId
             }));
             if (user.profilePhoto || user.photoUrl) {
                 setProfilePhoto(user.profilePhoto || user.photoUrl);
@@ -153,6 +181,7 @@ const ProfileDetails = ({ activeTab = 'personal' }) => {
     };
 
     useEffect(() => {
+        dataService.fetchUserProfile().then(() => syncUserData());
         window.addEventListener('dataUpdated', syncUserData);
         window.addEventListener('distributorDataUpdated', syncUserData);
         return () => {
