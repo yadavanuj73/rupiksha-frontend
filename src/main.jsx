@@ -54,14 +54,55 @@ class ErrorBoundary extends React.Component {
   }
   componentDidCatch(error) {
     console.error("React Error:", error);
+    const msg = error?.message || '';
+    if (
+      msg.includes('Failed to fetch dynamically imported module') ||
+      msg.includes('Importing a module script failed') ||
+      msg.includes('Loading chunk') ||
+      msg.includes('error loading dynamically imported module')
+    ) {
+      const reloadKey = 'chunk_reload_retry_' + window.location.pathname;
+      const retries = parseInt(sessionStorage.getItem(reloadKey) || '0', 10);
+      if (retries < 2) {
+        sessionStorage.setItem(reloadKey, String(retries + 1));
+        window.location.reload();
+        return;
+      }
+    }
   }
   render() {
     if (this.state.hasError) {
+      const isChunkError = 
+        this.state.error?.message?.includes('Failed to fetch dynamically imported module') ||
+        this.state.error?.message?.includes('Importing a module script failed') ||
+        this.state.error?.message?.includes('Loading chunk');
+
       return (
-        <div style={{ padding: '20px', background: '#fff', color: '#000', border: '5px solid red' }}>
-          <h2>UI Crash Detected</h2>
-          <pre>{this.state.error?.stack || this.state.error?.message}</pre>
-          <button onClick={() => window.location.reload()}>Refresh Page</button>
+        <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-6 font-['Inter',sans-serif]">
+          <div className="bg-white max-w-md w-full rounded-2xl shadow-xl border border-slate-100 p-8 text-center">
+            <div className="w-14 h-14 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-100">
+              <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-slate-800 tracking-tight mb-2">
+              {isChunkError ? 'New Version Available' : 'Something Went Wrong'}
+            </h2>
+            <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+              {isChunkError
+                ? 'A newer version of the application has been deployed. Please refresh to load the latest updates.'
+                : (this.state.error?.message || 'An unexpected error occurred.')}
+            </p>
+            <button
+              onClick={() => {
+                sessionStorage.clear();
+                window.location.reload();
+              }}
+              className="w-full bg-[#1e3a8a] hover:bg-blue-900 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-md text-xs uppercase tracking-wider"
+            >
+              Refresh & Update
+            </button>
+          </div>
         </div>
       );
     }
@@ -71,10 +112,18 @@ class ErrorBoundary extends React.Component {
 
 // Global detection for dynamic import failures
 window.addEventListener('unhandledrejection', (event) => {
-  if (event.reason && event.reason.message && 
-      (event.reason.message.includes('Failed to fetch dynamically imported module') ||
-       event.reason.message.includes('Importing a module script failed'))) {
-    location.reload();
+  const msg = event?.reason?.message || '';
+  if (
+    msg.includes('Failed to fetch dynamically imported module') ||
+    msg.includes('Importing a module script failed') ||
+    msg.includes('error loading dynamically imported module')
+  ) {
+    const reloadKey = 'chunk_reload_retry_' + window.location.pathname;
+    const retries = parseInt(sessionStorage.getItem(reloadKey) || '0', 10);
+    if (retries < 2) {
+      sessionStorage.setItem(reloadKey, String(retries + 1));
+      window.location.reload();
+    }
   }
 });
 
