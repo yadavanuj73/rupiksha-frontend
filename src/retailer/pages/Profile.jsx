@@ -5,7 +5,7 @@ import { useLocation } from 'react-router-dom';
 const ProfilePage = () => {
     const location = useLocation();
     const queryParams = new URLSearchParams(location.search);
-    const tab = queryParams.get('tab') || 'personal';
+    const tab = queryParams.get('tab') || 'business';
 
     return <ProfileDetails activeTab={tab} />;
 };

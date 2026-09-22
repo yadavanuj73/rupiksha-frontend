@@ -24,23 +24,23 @@ import Settings from './profile/Settings';
 const getCurrentUserData = () => {
     try {
         let user = dataService.getCurrentUser();
+        const searchKeys = [
+            'rupiksha_distributor_user',
+            'rupiksha_user',
+            'rupiksha_user_distributor',
+            'rupiksha_user_retailer',
+            'rupiksha_user_super_distributor',
+            'rupiksha_super_distributor_user',
+            'rupiksha_admin_user',
+            'rupiksha_imp_user'
+        ];
         if (!user) {
-            const searchKeys = [
-                'rupiksha_distributor_user',
-                'rupiksha_user',
-                'rupiksha_user_distributor',
-                'rupiksha_user_retailer',
-                'rupiksha_user_super_distributor',
-                'rupiksha_super_distributor_user',
-                'rupiksha_admin_user',
-                'rupiksha_imp_user'
-            ];
             for (const k of searchKeys) {
                 try {
                     const raw = localStorage.getItem(k);
                     if (raw) {
                         const parsed = JSON.parse(raw);
-                        if (parsed && typeof parsed === 'object') {
+                        if (parsed && typeof parsed === 'object' && (parsed.id || parsed.username || parsed.mobile)) {
                             user = parsed;
                             break;
                         }
@@ -48,9 +48,39 @@ const getCurrentUserData = () => {
                 } catch (_) {}
             }
         }
-        if (!user) {
-            user = dataService.getData().currentUser || {};
+
+        const uname = user?.username;
+        const uid = user?.id || user?.userId;
+        const mob = user?.mobile || user?.phone;
+
+        let extraData = {};
+        const localData = dataService.getData();
+        if (localData?.users && Array.isArray(localData.users)) {
+            const found = localData.users.find(u => (uid && u.id === uid) || (uname && u.username === uname) || (mob && u.mobile === mob));
+            if (found) extraData = { ...found, ...extraData };
         }
+        try {
+            const rawDists = localStorage.getItem('rupiksha_distributors');
+            if (rawDists) {
+                const dists = JSON.parse(rawDists);
+                if (Array.isArray(dists)) {
+                    const foundDist = dists.find(d => (uid && (d.id === uid || d.userId === uid)) || (uname && d.username === uname) || (mob && d.mobile === mob));
+                    if (foundDist) extraData = { ...foundDist, ...extraData };
+                }
+            }
+        } catch (_) {}
+        try {
+            const rawCache = localStorage.getItem('rupiksha_users_cache');
+            if (rawCache) {
+                const cache = JSON.parse(rawCache);
+                if (Array.isArray(cache)) {
+                    const foundCache = cache.find(c => (uid && (c.id === uid || c.userId === uid)) || (uname && c.username === uname) || (mob && c.mobile === mob));
+                    if (foundCache) extraData = { ...foundCache, ...extraData };
+                }
+            }
+        } catch (_) {}
+
+        user = { ...extraData, ...(user || localData?.currentUser || {}) };
 
         const savedPhoto = localStorage.getItem('rupiksha_profile_photo');
         if (savedPhoto && (!user.profilePhoto || !user.photoUrl)) {
