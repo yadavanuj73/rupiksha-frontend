@@ -60,7 +60,7 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
     useEffect(() => {
         let isMounted = true;
         QRCode.toDataURL(qrCardData, {
-            width: 480,
+            width: 560,
             margin: 1,
             color: {
                 dark: '#0B1833',
@@ -272,10 +272,10 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
                                 </div>
 
                                 {/* ── Card Foreground Content ── */}
-                                <div className="p-3.5 sm:p-4.5 h-full flex flex-col justify-between relative z-10">
-                                    {/* Top Section: Avatar, Name, Business, Role Badge & Enlarged QR Code */}
-                                    <div className="flex justify-between items-center">
-                                        <div className="flex items-center gap-2.5 sm:gap-3">
+                                <div className="p-4 sm:p-5 h-full flex flex-col justify-between relative z-10">
+                                    {/* Top Section: Avatar, Name, Business, Role Badge & +30% Enlarged QR Code */}
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex items-center gap-2.5 sm:gap-3.5">
                                             {/* Circular Profile Photo with Blue Ring */}
                                             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full p-0.5 bg-white border-[2.5px] border-[#1457E6] shadow-[0_2px_8px_rgba(20,87,230,0.18)] flex items-center justify-center shrink-0 overflow-hidden">
                                                 {safePhotoUrl ? (
@@ -303,40 +303,37 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
                                             </div>
                                         </div>
 
-                                        {/* Top-Right Enlarged QR Code Container */}
-                                        <div className="bg-white p-1 sm:p-1.5 rounded-xl shadow-[0_2px_10px_rgba(11,24,51,0.08)] border border-[#BFD7FF] shrink-0">
+                                        {/* Top-Right 30% Enlarged QR Code Container */}
+                                        <div className="bg-white p-1.5 rounded-xl shadow-[0_2px_12px_rgba(11,24,51,0.09)] border border-[#BFD7FF] shrink-0">
                                             {qrCodeDataUrl ? (
                                                 <img 
                                                     src={qrCodeDataUrl} 
                                                     alt="QR" 
-                                                    className="w-14 h-14 sm:w-16 sm:h-16 md:w-[68px] md:h-[68px] object-contain"
+                                                    className="w-[76px] h-[76px] sm:w-[88px] sm:h-[88px] object-contain"
                                                 />
                                             ) : (
-                                                <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-[68px] md:h-[68px] bg-slate-100 animate-pulse rounded-lg" />
+                                                <div className="w-[76px] h-[76px] sm:w-[88px] sm:h-[88px] bg-slate-100 animate-pulse rounded-lg" />
                                             )}
                                         </div>
                                     </div>
 
-                                    {/* Horizontal Divider Line Directly Above Address */}
-                                    <div className="w-full h-[2px] bg-gradient-to-r from-[#1457E6] via-[#60A5FA] to-[#DCEBFF] my-1 sm:my-1.5 rounded-full" />
-
-                                    {/* Bottom: Left (Address, Phone, Email) & Right (Company Name in Dark Black) */}
-                                    <div className="flex items-end justify-between gap-2">
+                                    {/* Bottom Section: Left (Full Address, Phone, Email) & Right (Company Name in Dark Black) */}
+                                    <div className="flex items-end justify-between gap-3 pt-2">
                                         {/* Left Stack: Address -> Mobile -> Email */}
-                                        <div className="flex flex-col gap-1 sm:gap-1.5 max-w-[62%] sm:max-w-[66%]">
-                                            {/* Address (Just Above Mobile Number) */}
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-6 h-6 sm:w-6.5 sm:h-6.5 rounded-full bg-[#1457E6] flex items-center justify-center shrink-0 shadow-xs">
+                                        <div className="flex flex-col gap-1.5 flex-1 max-w-[60%] sm:max-w-[63%]">
+                                            {/* Address (Wraps cleanly to full text without truncation) */}
+                                            <div className="flex items-start gap-2">
+                                                <div className="w-5.5 h-5.5 sm:w-6 sm:h-6 rounded-full bg-[#1457E6] flex items-center justify-center shrink-0 shadow-xs mt-0.5">
                                                     <Building2 size={11} className="text-white" />
                                                 </div>
-                                                <p className="text-[9.5px] sm:text-[11px] font-[800] text-[#0B1833] uppercase leading-snug truncate">
+                                                <p className="text-[9.5px] sm:text-[11px] font-[800] text-[#0B1833] uppercase leading-tight line-clamp-2">
                                                     {partnerAddress}
                                                 </p>
                                             </div>
 
                                             {/* Mobile Number */}
                                             <div className="flex items-center gap-2">
-                                                <div className="w-6 h-6 sm:w-6.5 sm:h-6.5 rounded-full bg-[#1457E6] flex items-center justify-center shrink-0 shadow-xs">
+                                                <div className="w-5.5 h-5.5 sm:w-6 sm:h-6 rounded-full bg-[#1457E6] flex items-center justify-center shrink-0 shadow-xs">
                                                     <Phone size={11} className="text-white" />
                                                 </div>
                                                 <span className="text-[10px] sm:text-[11.5px] font-[800] text-[#0B1833] tracking-tight">
@@ -346,7 +343,7 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
 
                                             {/* Email */}
                                             <div className="flex items-center gap-2">
-                                                <div className="w-6 h-6 sm:w-6.5 sm:h-6.5 rounded-full bg-[#1457E6] flex items-center justify-center shrink-0 shadow-xs">
+                                                <div className="w-5.5 h-5.5 sm:w-6 sm:h-6 rounded-full bg-[#1457E6] flex items-center justify-center shrink-0 shadow-xs">
                                                     <Mail size={11} className="text-white" />
                                                 </div>
                                                 <span className="text-[9.5px] sm:text-[11px] font-[800] text-[#0B1833] truncate">
@@ -355,9 +352,9 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
                                             </div>
                                         </div>
 
-                                        {/* Company Name Right (Dark Black Text for maximum contrast) */}
-                                        <div className="text-right shrink-0 pb-0.5">
-                                            <h4 className="text-[12px] sm:text-[14px] font-[900] text-[#0B1833] tracking-tight leading-tight">
+                                        {/* Company Name Right (Dark Black Text, fully fitted without cutting off) */}
+                                        <div className="text-right shrink-0 max-w-[38%] sm:max-w-[35%] pb-0.5">
+                                            <h4 className="text-[11.5px] sm:text-[13.5px] font-[900] text-[#0B1833] tracking-tight leading-tight">
                                                 Rupiksha Services Private Limited
                                             </h4>
                                         </div>
