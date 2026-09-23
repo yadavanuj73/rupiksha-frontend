@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { sharedDataService } from '../../services/sharedDataService';
 import { dataService } from '../../services/dataService';
 // Using logo from public folder
-const logo = '/rupiksha logo.jpeg';
+const logo = '/logo rupiksha.png';
 
 const SuperDistributorTopBar = ({ onMenuClick }) => {
     const navigate = useNavigate();

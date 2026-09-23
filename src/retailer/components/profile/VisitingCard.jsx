@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import QRCode from 'qrcode';
-import rupikshaNewLogo from '../../../assets/rupiksha_new_logo.png';
+import rupikshaNewLogo from '../../../assets/logo rupiksha.png';
 import { BACKEND_URL as IMPORTED_BACKEND_URL } from '../../../services/dataService';
 
 const BACKEND_URL = IMPORTED_BACKEND_URL || `/api`;

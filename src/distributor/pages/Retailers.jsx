@@ -7,7 +7,8 @@ import {
     Lock, Save, Loader2, Image as ImageIcon, TrendingUp,
     BarChart3, RefreshCw, IndianRupee, Layers, Check,
     Building2, Landmark, Coins, ArrowUpRight, Award, Shield,
-    FileSpreadsheet, Activity, ChevronRight, Copy, CheckCheck, FileText
+    FileSpreadsheet, Activity, ChevronRight, Copy, CheckCheck, FileText,
+    Calendar
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -53,6 +54,43 @@ const BUSINESS_SERVICES = [
     { key: 'CMS', label: 'Cms (Cash Collection)', icon: '📦', bgIcon: 'bg-[#CCFBF1]', color: 'bg-teal-500', bgLight: 'bg-teal-50', text: 'text-teal-600', badge: 'bg-teal-100 text-teal-800' },
     { key: 'OTHER', label: 'Other Services', icon: '✨', bgIcon: 'bg-[#F1F5F9]', color: 'bg-slate-500', bgLight: 'bg-slate-100', text: 'text-slate-600', badge: 'bg-slate-200 text-slate-800' }
 ];
+
+const getStartOfMonthStr = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}-01`;
+};
+
+const getTodayDateStr = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+};
+
+const isWithinDateRange = (d, startDateStr, endDateStr) => {
+    if (!d) return false;
+    if (!startDateStr && !endDateStr) return false;
+    const dateObj = new Date(d);
+    if (isNaN(dateObj.getTime())) return false;
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const dStr = `${year}-${month}-${day}`;
+
+    if (startDateStr && endDateStr) {
+        return dStr >= startDateStr && dStr <= endDateStr;
+    }
+    if (startDateStr) {
+        return dStr >= startDateStr;
+    }
+    if (endDateStr) {
+        return dStr <= endDateStr;
+    }
+    return false;
+};
 
 const isTodayDate = (d) => {
     if (!d) return false;
@@ -124,6 +162,8 @@ const Retailers = () => {
     const [loadingBusiness, setLoadingBusiness] = useState(false);
     const [businessActiveTab, setBusinessActiveTab] = useState('matrix'); // 'matrix' | 'logs'
     const [businessServiceSearch, setBusinessServiceSearch] = useState('');
+    const [customStartDate, setCustomStartDate] = useState(getStartOfMonthStr);
+    const [customEndDate, setCustomEndDate] = useState(getTodayDateStr);
     const [copiedPartyCode, setCopiedPartyCode] = useState(false);
 
     const showToast = (msg, type = 'success') => {
@@ -428,7 +468,9 @@ const Retailers = () => {
                 yesterdayAmt: 0,
                 yesterdayCount: 0,
                 lifetimeAmt: 0,
-                lifetimeCount: 0
+                lifetimeCount: 0,
+                customAmt: 0,
+                customCount: 0
             };
         });
 
@@ -438,6 +480,8 @@ const Retailers = () => {
         let totalYesterdayCount = 0;
         let totalLifetimeAmt = 0;
         let totalLifetimeCount = 0;
+        let totalCustomAmt = 0;
+        let totalCustomCount = 0;
 
         retailerBusinessTxns.forEach(t => {
             // Exclude explicitly failed or rejected transactions from business volume
@@ -478,6 +522,16 @@ const Retailers = () => {
                 totalYesterdayAmt += amt;
                 totalYesterdayCount += 1;
             }
+
+            // Custom Range / Selected Date
+            if (isWithinDateRange(txnDate, customStartDate, customEndDate)) {
+                if (stats[sKey]) {
+                    stats[sKey].customAmt += amt;
+                    stats[sKey].customCount += 1;
+                }
+                totalCustomAmt += amt;
+                totalCustomCount += 1;
+            }
         });
 
         return {
@@ -488,17 +542,23 @@ const Retailers = () => {
                 yesterdayAmt: totalYesterdayAmt,
                 yesterdayCount: totalYesterdayCount,
                 lifetimeAmt: totalLifetimeAmt,
-                lifetimeCount: totalLifetimeCount
+                lifetimeCount: totalLifetimeCount,
+                customAmt: totalCustomAmt,
+                customCount: totalCustomCount
             }
         };
-    }, [retailerBusinessTxns]);
+    }, [retailerBusinessTxns, customStartDate, customEndDate]);
 
     // Export Category-wise Business Matrix to Excel
     const handleExportBusinessExcel = () => {
         if (!businessModalRetailer) return;
         try {
+            const dateRangeLabel = (customStartDate || customEndDate)
+                ? `${customStartDate || 'Start'} to ${customEndDate || 'End'}`
+                : 'Selected Date';
+
             const rows = BUSINESS_SERVICES.map(srv => {
-                const stat = businessStats.byService[srv.key] || { todayAmt: 0, todayCount: 0, yesterdayAmt: 0, yesterdayCount: 0, lifetimeAmt: 0, lifetimeCount: 0 };
+                const stat = businessStats.byService[srv.key] || { todayAmt: 0, todayCount: 0, yesterdayAmt: 0, yesterdayCount: 0, lifetimeAmt: 0, lifetimeCount: 0, customAmt: 0, customCount: 0 };
                 return {
                     "Service Name": srv.label,
                     "Service Category": srv.subLabel,
@@ -507,7 +567,9 @@ const Retailers = () => {
                     "Yesterday's Volume (₹)": stat.yesterdayAmt,
                     "Yesterday Txn Count": stat.yesterdayCount,
                     "Lifetime Volume (₹)": stat.lifetimeAmt,
-                    "Lifetime Txn Count": stat.lifetimeCount
+                    "Lifetime Txn Count": stat.lifetimeCount,
+                    [`Selected Date (${dateRangeLabel}) Volume (₹)`]: stat.customAmt,
+                    [`Selected Date (${dateRangeLabel}) Txn Count`]: stat.customCount
                 };
             });
 
@@ -520,7 +582,9 @@ const Retailers = () => {
                 "Yesterday's Volume (₹)": businessStats.totals.yesterdayAmt,
                 "Yesterday Txn Count": businessStats.totals.yesterdayCount,
                 "Lifetime Volume (₹)": businessStats.totals.lifetimeAmt,
-                "Lifetime Txn Count": businessStats.totals.lifetimeCount
+                "Lifetime Txn Count": businessStats.totals.lifetimeCount,
+                [`Selected Date (${dateRangeLabel}) Volume (₹)`]: businessStats.totals.customAmt,
+                [`Selected Date (${dateRangeLabel}) Txn Count`]: businessStats.totals.customCount
             });
 
             const ws = XLSX.utils.json_to_sheet(rows);
@@ -631,18 +695,20 @@ const Retailers = () => {
             doc.setTextColor(71, 85, 105);
             doc.text(`${businessStats.totals.lifetimeCount} Total All-Time Txns`, 16 + (kpiWidth + 4) * 2, 69);
 
-            // 4. Matrix Table with Full Dark Black Grid Lines & Balanced Columns
+            // 4. Matrix Table with Full Dark Black Grid Lines & 5 Balanced Columns
             const tableX = 12;
             const tableWidth = pageWidth - 24; // 186mm
-            const col1X = tableX;              // 12mm
-            const col2X = tableX + 54;         // 66mm (col 1 width = 54mm)
-            const col3X = col2X + 44;          // 110mm (col 2 width = 44mm)
-            const col4X = col3X + 44;          // 154mm (col 3 width = 44mm)
-            const tableEndX = tableX + tableWidth; // 198mm (col 4 width = 44mm)
+            const col1X = tableX;              // 12mm (width: 46mm)
+            const col2X = tableX + 46;         // 58mm (width: 35mm)
+            const col3X = col2X + 35;          // 93mm (width: 35mm)
+            const col4X = col3X + 35;          // 128mm (width: 35mm)
+            const col5X = col4X + 35;          // 163mm (width: 35mm)
+            const tableEndX = tableX + tableWidth; // 198mm
 
-            const col2Center = col2X + 22;     // 88mm
-            const col3Center = col3X + 22;     // 132mm
-            const col4Center = col4X + 22;     // 176mm
+            const col2Center = col2X + 17.5;   // 75.5mm
+            const col3Center = col3X + 17.5;   // 110.5mm
+            const col4Center = col4X + 17.5;   // 145.5mm
+            const col5Center = col5X + 17.5;   // 180.5mm
 
             const tableTopY = 76;
             const headerHeight = 8;
@@ -655,57 +721,68 @@ const Retailers = () => {
 
             doc.setTextColor(15, 23, 42);
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(8);
+            doc.setFontSize(7.5);
             doc.text('Services', col1X + 3, currentY + 5.2);
-            doc.text("Today's Transaction", col2Center, currentY + 5.2, { align: 'center' });
-            doc.text("Yesterday Transaction", col3Center, currentY + 5.2, { align: 'center' });
-            doc.text("Lifetime Transaction", col4Center, currentY + 5.2, { align: 'center' });
+            doc.text("Today's Txn", col2Center, currentY + 5.2, { align: 'center' });
+            doc.text("Yesterday Txn", col3Center, currentY + 5.2, { align: 'center' });
+            doc.text("Lifetime Txn", col4Center, currentY + 5.2, { align: 'center' });
+            doc.text("Select Date", col5Center, currentY + 5.2, { align: 'center' });
 
             // Header bottom line
             currentY += headerHeight;
 
             // Table Service Rows
             BUSINESS_SERVICES.forEach((srv, idx) => {
-                const stat = businessStats.byService[srv.key] || { todayAmt: 0, todayCount: 0, yesterdayAmt: 0, yesterdayCount: 0, lifetimeAmt: 0, lifetimeCount: 0 };
+                const stat = businessStats.byService[srv.key] || { todayAmt: 0, todayCount: 0, yesterdayAmt: 0, yesterdayCount: 0, lifetimeAmt: 0, lifetimeCount: 0, customAmt: 0, customCount: 0 };
                 const rowBg = idx % 2 === 0 ? 255 : 249;
                 doc.setFillColor(rowBg, rowBg, rowBg);
                 doc.rect(tableX, currentY, tableWidth, rowHeight, 'F');
 
-                // Service Name (No subLabel)
+                // Service Name
                 doc.setTextColor(15, 23, 42);
                 doc.setFont('helvetica', 'bold');
-                doc.setFontSize(8);
+                doc.setFontSize(7.5);
                 doc.text(srv.label, col1X + 3, currentY + 5.5);
 
                 // Today (Center Aligned)
                 doc.setTextColor(15, 23, 42);
                 doc.setFont('helvetica', 'bold');
-                doc.setFontSize(8);
+                doc.setFontSize(7.5);
                 doc.text(fmtPDF(stat.todayAmt), col2Center, currentY + 3.8, { align: 'center' });
                 doc.setFont('helvetica', 'normal');
-                doc.setFontSize(6.5);
+                doc.setFontSize(6);
                 doc.setTextColor(37, 99, 235);
                 doc.text(`${stat.todayCount} Txns`, col2Center, currentY + 7.4, { align: 'center' });
 
                 // Yesterday (Center Aligned)
                 doc.setTextColor(15, 23, 42);
                 doc.setFont('helvetica', 'bold');
-                doc.setFontSize(8);
+                doc.setFontSize(7.5);
                 doc.text(fmtPDF(stat.yesterdayAmt), col3Center, currentY + 3.8, { align: 'center' });
                 doc.setFont('helvetica', 'normal');
-                doc.setFontSize(6.5);
+                doc.setFontSize(6);
                 doc.setTextColor(5, 150, 105);
                 doc.text(`${stat.yesterdayCount} Txns`, col3Center, currentY + 7.4, { align: 'center' });
 
                 // Lifetime (Center Aligned)
                 doc.setTextColor(15, 23, 42);
                 doc.setFont('helvetica', 'bold');
-                doc.setFontSize(8);
+                doc.setFontSize(7.5);
                 doc.text(fmtPDF(stat.lifetimeAmt), col4Center, currentY + 3.8, { align: 'center' });
                 doc.setFont('helvetica', 'normal');
-                doc.setFontSize(6.5);
+                doc.setFontSize(6);
                 doc.setTextColor(124, 58, 237);
                 doc.text(`${stat.lifetimeCount} Txns`, col4Center, currentY + 7.4, { align: 'center' });
+
+                // Select Date / Custom Range (Center Aligned)
+                doc.setTextColor(15, 23, 42);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(7.5);
+                doc.text(fmtPDF(stat.customAmt), col5Center, currentY + 3.8, { align: 'center' });
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(6);
+                doc.setTextColor(194, 65, 12);
+                doc.text(`${stat.customCount} Txns`, col5Center, currentY + 7.4, { align: 'center' });
 
                 currentY += rowHeight;
             });
@@ -717,29 +794,36 @@ const Retailers = () => {
 
             doc.setTextColor(15, 23, 42);
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(8);
+            doc.setFontSize(7.5);
             doc.text('Grand Total Business', col1X + 3, currentY + 5.5);
 
             doc.setTextColor(29, 78, 216);
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(8.5);
+            doc.setFontSize(7.5);
             doc.text(fmtPDF(businessStats.totals.todayAmt), col2Center, currentY + 4.8, { align: 'center' });
-            doc.setFontSize(6.5);
+            doc.setFontSize(6);
             doc.text(`${businessStats.totals.todayCount} Total Txns`, col2Center, currentY + 8.8, { align: 'center' });
 
             doc.setTextColor(4, 120, 87);
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(8.5);
+            doc.setFontSize(7.5);
             doc.text(fmtPDF(businessStats.totals.yesterdayAmt), col3Center, currentY + 4.8, { align: 'center' });
-            doc.setFontSize(6.5);
+            doc.setFontSize(6);
             doc.text(`${businessStats.totals.yesterdayCount} Total Txns`, col3Center, currentY + 8.8, { align: 'center' });
 
             doc.setTextColor(91, 33, 182);
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(8.5);
+            doc.setFontSize(7.5);
             doc.text(fmtPDF(businessStats.totals.lifetimeAmt), col4Center, currentY + 4.8, { align: 'center' });
-            doc.setFontSize(6.5);
+            doc.setFontSize(6);
             doc.text(`${businessStats.totals.lifetimeCount} Total Txns`, col4Center, currentY + 8.8, { align: 'center' });
+
+            doc.setTextColor(194, 65, 12);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(7.5);
+            doc.text(fmtPDF(businessStats.totals.customAmt), col5Center, currentY + 4.8, { align: 'center' });
+            doc.setFontSize(6);
+            doc.text(`${businessStats.totals.customCount} Total Txns`, col5Center, currentY + 8.8, { align: 'center' });
 
             const tableBottomY = currentY + totalRowHeight;
 
@@ -763,6 +847,7 @@ const Retailers = () => {
             doc.line(col2X, tableTopY, col2X, tableBottomY);
             doc.line(col3X, tableTopY, col3X, tableBottomY);
             doc.line(col4X, tableTopY, col4X, tableBottomY);
+            doc.line(col5X, tableTopY, col5X, tableBottomY);
 
             // 6. Footer Security & Confidentiality Stamp
             doc.setFont('helvetica', 'italic');
@@ -1620,31 +1705,65 @@ const Retailers = () => {
                                     )}
                                 </div>
 
-                                {/* ── TAB 1: EXACT 4-COLUMN SERVICES TABLE ── */}
+                                {/* ── TAB 1: EXACT 5-COLUMN SERVICES TABLE ── */}
                                 {businessActiveTab === 'matrix' && (
                                     <div className="bg-white rounded-[14px] border border-black overflow-hidden shadow-xs">
                                         <div className="w-full overflow-x-auto">
-                                            <table className="w-full border-collapse text-left min-w-[760px] border border-black">
+                                            <table className="w-full border-collapse text-left min-w-[920px] border border-black">
                                                 <thead>
                                                     <tr className="bg-[#F8FAFC] border-b border-black text-[13px] font-bold text-black">
                                                         <th className="px-6 py-4 text-left border-r border-black">Services</th>
                                                         <th className="px-6 py-4 text-center border-r border-black">Today's Transaction</th>
                                                         <th className="px-6 py-4 text-center border-r border-black">Yesterday Transaction</th>
-                                                        <th className="px-6 py-4 text-center">Lifetime Transaction</th>
+                                                        <th className="px-6 py-4 text-center border-r border-black">Lifetime Transaction</th>
+                                                        <th className="px-5 py-3 text-center min-w-[250px]">
+                                                            <div className="flex flex-col items-center gap-1.5">
+                                                                <div className="flex items-center gap-1.5 font-bold text-black text-[13px]">
+                                                                    <Calendar size={15} className="text-[#2563EB]" />
+                                                                    <span>Select Date</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-[8px] border border-[#CBD5E1] shadow-2xs">
+                                                                    <input
+                                                                        type="date"
+                                                                        value={customStartDate}
+                                                                        onChange={(e) => setCustomStartDate(e.target.value)}
+                                                                        className="text-[11px] font-mono text-[#0F172A] bg-transparent border-0 outline-none cursor-pointer p-0"
+                                                                        title="From Date"
+                                                                    />
+                                                                    <span className="text-[#94A3B8] text-[10px] font-bold">to</span>
+                                                                    <input
+                                                                        type="date"
+                                                                        value={customEndDate}
+                                                                        onChange={(e) => setCustomEndDate(e.target.value)}
+                                                                        className="text-[11px] font-mono text-[#0F172A] bg-transparent border-0 outline-none cursor-pointer p-0"
+                                                                        title="To Date"
+                                                                    />
+                                                                    {(customStartDate || customEndDate) && (
+                                                                        <button
+                                                                            onClick={() => { setCustomStartDate(''); setCustomEndDate(''); }}
+                                                                            className="text-[#94A3B8] hover:text-[#EF4444] p-0.5 transition-colors cursor-pointer"
+                                                                            title="Clear date filter"
+                                                                        >
+                                                                            <X size={12} />
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </th>
                                                     </tr>
                                                 </thead>
 
                                                 <tbody className="text-xs">
                                                     {loadingBusiness ? (
                                                         <tr>
-                                                            <td colSpan={4} className="py-16 text-center border-b border-black">
+                                                            <td colSpan={5} className="py-16 text-center border-b border-black">
                                                                 <Loader2 className="animate-spin mx-auto text-[#2563EB]" size={30} />
                                                                 <p className="text-[13px] text-[#64748B] mt-2.5 font-semibold">Aggregating live category transactions…</p>
                                                             </td>
                                                         </tr>
                                                     ) : filteredBusinessServices.length === 0 ? (
                                                         <tr>
-                                                            <td colSpan={4} className="py-14 text-center text-[#64748B] border-b border-black">
+                                                            <td colSpan={5} className="py-14 text-center text-[#64748B] border-b border-black">
                                                                 <p className="font-semibold text-sm">No services matching "{businessServiceSearch}"</p>
                                                             </td>
                                                         </tr>
@@ -1653,7 +1772,8 @@ const Retailers = () => {
                                                             const stat = businessStats.byService[srv.key] || {
                                                                 todayAmt: 0, todayCount: 0,
                                                                 yesterdayAmt: 0, yesterdayCount: 0,
-                                                                lifetimeAmt: 0, lifetimeCount: 0
+                                                                lifetimeAmt: 0, lifetimeCount: 0,
+                                                                customAmt: 0, customCount: 0
                                                             };
 
                                                             return (
@@ -1697,13 +1817,25 @@ const Retailers = () => {
                                                                     </td>
 
                                                                     {/* Column 4: Lifetime Transaction */}
-                                                                    <td className="px-6 py-3 text-center font-mono">
+                                                                    <td className="px-6 py-3 text-center font-mono border-r border-black">
                                                                         <div className="flex items-center justify-center gap-2.5">
                                                                             <span className="font-bold text-[15px] text-black">
                                                                                 {fmtWallet(stat.lifetimeAmt)}
                                                                             </span>
                                                                             <span className="inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-[8px] bg-[#F5F3FF] text-[#7C3AED] border border-[#DDD6FE]">
                                                                                 {stat.lifetimeCount} {stat.lifetimeCount === 1 ? 'Txn' : 'Txns'}
+                                                                            </span>
+                                                                        </div>
+                                                                    </td>
+
+                                                                    {/* Column 5: Select Date / Custom Range Transaction */}
+                                                                    <td className="px-6 py-3 text-center font-mono">
+                                                                        <div className="flex items-center justify-center gap-2.5">
+                                                                            <span className="font-bold text-[15px] text-black">
+                                                                                {fmtWallet(stat.customAmt)}
+                                                                            </span>
+                                                                            <span className="inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-[8px] bg-[#FFF7ED] text-[#EA580C] border border-[#FED7AA]">
+                                                                                {stat.customCount} {stat.customCount === 1 ? 'Txn' : 'Txns'}
                                                                             </span>
                                                                         </div>
                                                                     </td>
@@ -1744,13 +1876,23 @@ const Retailers = () => {
                                                                 </span>
                                                             </div>
                                                         </td>
-                                                        <td className="px-6 py-4 text-center font-mono">
+                                                        <td className="px-6 py-4 text-center font-mono border-r border-black">
                                                             <div className="flex items-center justify-center gap-2.5">
                                                                 <span className="text-[16px] font-[800] text-[#5B21B6]">
                                                                     {fmtWallet(businessStats.totals.lifetimeAmt)}
                                                                 </span>
                                                                 <span className="inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-[8px] bg-[#F5F3FF] text-[#5B21B6] border border-[#DDD6FE]">
                                                                     {businessStats.totals.lifetimeCount} Total
+                                                                </span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-center font-mono">
+                                                            <div className="flex items-center justify-center gap-2.5">
+                                                                <span className="text-[16px] font-[800] text-[#EA580C]">
+                                                                    {fmtWallet(businessStats.totals.customAmt)}
+                                                                </span>
+                                                                <span className="inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-[8px] bg-[#FFF7ED] text-[#EA580C] border border-[#FED7AA]">
+                                                                    {businessStats.totals.customCount} Total
                                                                 </span>
                                                             </div>
                                                         </td>

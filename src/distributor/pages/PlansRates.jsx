@@ -5,7 +5,7 @@ import {
     Info, Users, Building2, HelpCircle, Sparkles
 } from 'lucide-react';
 // Using logo from public folder
-const logo = '/rupiksha logo.jpeg';
+const logo = '/logo rupiksha.png';
 import { sharedDataService } from '../../services/sharedDataService';
 import { getDistributorPlan, PLAN_CONFIG } from '../config/planConfig';
 import { planService } from '../../services/planService';

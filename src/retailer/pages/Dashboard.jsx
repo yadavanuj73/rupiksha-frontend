@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 // Using logo from public folder
-const logo = '/rupiksha logo.jpeg';
+const logo = '/logo rupiksha.png';
 import { dataService } from '../../services/dataService';
 import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';

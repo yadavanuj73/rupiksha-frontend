@@ -10,7 +10,7 @@ import { authService, otpService, adminService } from '../services/apiService';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 
-const logo = '/rupiksha logo.jpeg';
+const logo = '/logo rupiksha.png';
 
 const INDIAN_STATES = [
   "BIHAR",
@@ -71,7 +71,7 @@ const PROMO_SLIDES = [
     desc: 'High commission on mobile, DTH, electricity, water & gas bill payments.'
   },
   {
-    src: '/rupiksha logo.jpeg',
+    src: '/logo rupiksha.png',
     title: 'Rupiksha Partner Network',
     badge: 'JOIN 50K+ MERCHANTS',
     desc: 'Start your digital banking enterprise with instant auto-approval.'

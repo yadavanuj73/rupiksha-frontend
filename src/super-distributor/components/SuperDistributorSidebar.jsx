@@ -4,7 +4,7 @@ import { menuItems } from '../data/menuItems';
 import { ChevronDown, ChevronRight, Phone, Smartphone, LayoutDashboard, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { sharedDataService } from '../../services/sharedDataService';
-import rupikshaNewLogo from '../../assets/rupiksha_new_logo.png';
+import rupikshaNewLogo from '../../assets/logo rupiksha.png';
 
 const SuperDistributorSidebar = ({ showMobile, onClose }) => {
     const [openMenus, setOpenMenus] = useState({});

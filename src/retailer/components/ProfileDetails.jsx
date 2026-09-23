@@ -11,9 +11,9 @@ import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { dataService, BACKEND_URL as IMPORTED_BACKEND_URL } from '../../services/dataService';
 import { userService } from '../../services/apiService';
-import rupikshaNewLogo from '../../assets/rupiksha_new_logo.png';
+import rupikshaNewLogo from '../../assets/logo rupiksha.png';
 // Using logo from public folder
-const mainLogo = '/rupiksha logo.jpeg';
+const mainLogo = '/logo rupiksha.png';
 
 // Fallback if import system has issues with named exports in some environments
 const BACKEND_URL = IMPORTED_BACKEND_URL || `/api`;

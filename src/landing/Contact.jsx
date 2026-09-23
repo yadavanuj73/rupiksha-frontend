@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Mail, Phone, MessageSquare, Send, CheckCircle, Loader2 } from 'lucide-react';
 // Using logo from public folder
-const logo = '/rupiksha logo.jpeg';
+const logo = '/logo rupiksha.png';
 import Footer from '../components/Footer';
 import Navbar from '../components/Navbar';
 

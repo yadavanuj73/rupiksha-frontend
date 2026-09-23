@@ -13,7 +13,7 @@ import { dataService, BACKEND_URL } from '../services/dataService';
 import { sharedDataService } from '../services/sharedDataService';
 import { sendApprovalEmail } from '../services/emailService';
 // Using logo from public folder
-const mainLogo = '/rupiksha logo.jpeg';
+const mainLogo = '/logo rupiksha.png';
 import AdminPlanManager from './AdminPlanManager';
 import OurMap from '../super-distributor/pages/OurMap';
 import LiveDashboard from './components/LiveDashboard';
@@ -22,7 +22,7 @@ import LandingCMS from '../super-distributor/pages/LandingCMS';
 import ReportsAnalyst from './components/ReportsAnalyst';
 import WalletManager from './components/WalletManager';
 import Overview from './components/Overview';
-import rupikshaNewLogo from '../assets/rupiksha_new_logo.png';
+import rupikshaNewLogo from '../assets/logo rupiksha.png';
 import EnhancedMembersTable from './components/EnhancedMembersTable';
 import CommissionManagement from './components/CommissionManagement';
 import PayoutChargeManagement from './components/PayoutChargeManagement';

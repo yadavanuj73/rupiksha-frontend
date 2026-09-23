@@ -29,7 +29,7 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
     const serviceTitle = txnData.serviceLabel || txnData.serviceType || 'AEPS Banking';
 
     const handlePrint = () => {
-        const logoUrl = window.location.origin + '/rupiksha logo.jpeg';
+        const logoUrl = window.location.origin + '/logo rupiksha.png';
         
         let miniStatementHtml = '';
         if (isMiniStatement && miniStatement && miniStatement.length > 0) {
@@ -491,7 +491,7 @@ export default function ReceiptModal({ isOpen, onClose, txnData }) {
                                 {/* Branding Header */}
                                 <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-300 rounded-2xl shadow-2xs">
                                     <img
-                                        src="/rupiksha logo.jpeg"
+                                        src="/logo rupiksha.png"
                                         alt="Rupiksha Logo"
                                         className="h-11 w-11 object-contain rounded-xl border border-slate-300 p-0.5 bg-white shrink-0 shadow-xs"
                                     />

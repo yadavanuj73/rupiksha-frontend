@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldCheck, CheckCircle2, Zap, ArrowRight, X, Info, Sparkles, Building2 } from 'lucide-react';
 import { planService } from '../../services/planService';
 // Using logo from public folder
-const logo = '/rupiksha logo.jpeg';
+const logo = '/logo rupiksha.png';
 import { useNavigate } from 'react-router-dom';
 
 const SuperDistributorPlans = () => {

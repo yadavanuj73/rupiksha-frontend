@@ -4,7 +4,7 @@ import { generateUniquePartyCode } from '../database/partyCode';
 import { mockApiService } from '../database/mockApiService';
 import { walletService, transactionService, supportService } from './apiService';
 // Using logo from public folder - referenced directly in code
-const mainLogo = '/rupiksha logo.jpeg';
+const mainLogo = '/logo rupiksha.png';
 export { BACKEND_URL };
 
 // ── Safe JSON parser: prevents "Unexpected end of JSON input" crashes ──────

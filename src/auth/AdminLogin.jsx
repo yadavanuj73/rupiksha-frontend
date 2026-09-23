@@ -6,7 +6,7 @@ import {
     Lock, User, KeyRound, CheckCircle2, AlertCircle, Loader2, ChevronLeft, Check, Palette,
     Clock, MapPin, Users, Network, BarChart3
 } from 'lucide-react';
-import logo from '../assets/rupiksha_new_logo.png';
+import logo from '../assets/logo rupiksha.png';
 import { dataService } from '../services/dataService';
 import { useAuth } from '../context/AuthContext';
 
