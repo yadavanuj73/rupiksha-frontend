@@ -212,8 +212,8 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
                         <h2 className="text-[17px] sm:text-[18px] font-[800] text-[#0B1833] tracking-tight leading-tight">
                             Professional Identity
                         </h2>
-                        <p className="text-[12px] sm:text-[13px] font-[500] text-[#64748B] mt-0.5">
-                            Official RuPiKsha Partner Business Card
+                        <p className="text-[12px] sm:text-[13px] font-[600] text-[#0B1833] mt-0.5">
+                            Official Rupiksha Partner Business Card
                         </p>
                     </div>
                 </div>
