@@ -233,28 +233,28 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
                             >
                                 {/* ── Top-Left Layered Geometric Curves ── */}
                                 <svg 
-                                    className="absolute top-0 left-0 w-[46%] h-[52%] pointer-events-none z-0" 
+                                    className="absolute top-0 left-0 pointer-events-none z-0" 
+                                    style={{ width: '48%', height: '54%' }}
                                     viewBox="0 0 240 160" 
                                     preserveAspectRatio="none" 
-                                    fill="none"
                                 >
                                     <path d="M0 0 L170 0 C125 45 75 100 0 145 Z" fill="#EEF6FF" />
                                     <path d="M0 0 L125 0 C95 40 55 85 0 115 Z" fill="#DCEBFF" />
-                                    <path d="M0 0 L88 0 C62 30 35 65 0 90 Z" fill="#60A5FA" opacity="0.45" />
+                                    <path d="M0 0 L88 0 C62 30 35 65 0 90 Z" fill="#60A5FA" fillOpacity="0.45" />
                                     <path d="M0 0 L55 0 C35 22 20 48 0 70 Z" fill="#1457E6" />
                                 </svg>
 
-                                {/* ── Bottom-Right Layered Wave Curves ── */}
+                                {/* ── Bottom-Right Layered Wave Curves (4-layer strip) ── */}
                                 <svg 
-                                    className="absolute bottom-0 right-0 w-[72%] h-[65%] pointer-events-none z-0" 
-                                    viewBox="0 0 400 200" 
+                                    className="absolute bottom-0 right-0 pointer-events-none z-0" 
+                                    style={{ width: '70%', height: '65%' }}
+                                    viewBox="0 0 350 180" 
                                     preserveAspectRatio="none" 
-                                    fill="none"
                                 >
-                                    <path d="M0 200 C110 180 210 135 310 75 C355 48 380 25 400 0 L400 200 Z" fill="#EEF6FF" />
-                                    <path d="M50 200 C150 185 240 140 330 90 C370 68 388 45 400 20 L400 200 Z" fill="#DCEBFF" />
-                                    <path d="M130 200 C210 190 280 150 350 105 C380 85 392 65 400 45 L400 200 Z" fill="#60A5FA" opacity="0.45" />
-                                    <path d="M210 200 C270 200 320 168 368 125 C388 108 396 90 400 75 L400 200 Z" fill="#1457E6" />
+                                    <path d="M0 180 C90 160 180 120 270 65 C310 40 335 20 350 0 L350 180 Z" fill="#EEF6FF" />
+                                    <path d="M50 180 C130 165 210 125 290 80 C325 60 340 35 350 15 L350 180 Z" fill="#DCEBFF" />
+                                    <path d="M120 180 C190 170 250 135 310 95 C335 75 345 55 350 35 L350 180 Z" fill="#60A5FA" fillOpacity="0.45" />
+                                    <path d="M190 180 C245 180 290 150 330 110 C345 95 348 80 350 65 L350 180 Z" fill="#1457E6" />
                                 </svg>
 
                                 {/* ── Central Subtle Logo Watermark (logo rupiksha.png) ── */}
@@ -272,17 +272,17 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
                                 </div>
 
                                 {/* ── Card Foreground Content ── */}
-                                <div className="p-4 sm:p-5 h-full flex flex-col justify-between relative z-10">
-                                    {/* Top Section: Avatar (+60%), 3-Line Info (Name, Shop, Role) & QR Code (+20%) */}
+                                <div className="p-3.5 sm:p-4.5 h-full flex flex-col justify-between relative z-10 box-border">
+                                    {/* Top Section: Avatar, 3-Line Info (Name, Shop, Role) & QR Code */}
                                     <div className="flex justify-between items-center">
-                                        <div className="flex items-center gap-3 sm:gap-4">
-                                            {/* Circular Profile Photo Enlarged by 60% with Blue Ring */}
-                                            <div className="w-[74px] h-[74px] sm:w-[86px] sm:h-[86px] rounded-full p-0.5 bg-white border-[3px] border-[#1457E6] shadow-[0_3px_12px_rgba(20,87,230,0.22)] flex items-center justify-center shrink-0 overflow-hidden">
+                                        <div className="flex items-center gap-2.5 sm:gap-3.5">
+                                            {/* Circular Profile Photo with Blue Ring */}
+                                            <div className="w-[64px] h-[64px] sm:w-[72px] sm:h-[72px] rounded-full p-0.5 bg-white border-[2.5px] border-[#1457E6] shadow-[0_3px_10px_rgba(20,87,230,0.2)] flex items-center justify-center shrink-0 overflow-hidden">
                                                 {safePhotoUrl ? (
                                                     <img src={safePhotoUrl} alt={partnerName} className="w-full h-full object-cover rounded-full" />
                                                 ) : (
-                                                    <div className="w-full h-full bg-[#EEF6FF] rounded-full flex items-center justify-center text-[#1457E6] font-bold text-2xl">
-                                                        <User size={36} className="text-[#1457E6]" />
+                                                    <div className="w-full h-full bg-[#EEF6FF] rounded-full flex items-center justify-center text-[#1457E6] font-bold text-xl">
+                                                        <User size={30} className="text-[#1457E6]" />
                                                     </div>
                                                 )}
                                             </div>
@@ -290,72 +290,74 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
                                             {/* 3-Line Stack: 1. Name -> 2. Shop Name -> 3. Role */}
                                             <div className="flex flex-col items-start justify-center gap-0.5">
                                                 {/* Line 1: Name */}
-                                                <h3 className="text-[15px] sm:text-[18px] font-[900] text-[#0B1833] uppercase tracking-tight leading-tight">
+                                                <h3 className="text-[14.5px] sm:text-[17px] font-[900] text-[#0B1833] uppercase tracking-tight leading-tight">
                                                     {partnerName}
                                                 </h3>
                                                 {/* Line 2: Shop Name */}
-                                                <span className="text-[12px] sm:text-[14px] font-[800] text-[#1457E6] uppercase tracking-tight leading-tight">
+                                                <span className="text-[11.5px] sm:text-[13px] font-[800] text-[#1457E6] uppercase tracking-tight leading-tight">
                                                     {partnerShop}
                                                 </span>
-                                                {/* Line 3: Role Badge */}
-                                                <span className="text-[9.5px] sm:text-[10.5px] font-[800] text-[#1457E6] bg-[#E0EDFF] border border-[#BFD7FF] px-2.5 py-0.5 rounded-[6px] uppercase tracking-wide mt-0.5">
-                                                    {partnerRole}
-                                                </span>
+                                                {/* Line 3: Role Badge (Clean container with no overflow) */}
+                                                <div className="inline-flex items-center justify-center bg-[#E0EDFF] border border-[#BFD7FF] px-2.5 py-0.5 rounded-[5px] mt-0.5 self-start">
+                                                    <span className="text-[9.5px] sm:text-[10.5px] font-[800] text-[#1457E6] uppercase tracking-wide leading-none">
+                                                        {partnerRole}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
 
-                                        {/* Top-Right QR Code (+20% Enlarged) */}
-                                        <div className="bg-white p-1.5 rounded-xl shadow-[0_2px_14px_rgba(11,24,51,0.09)] border border-[#BFD7FF] shrink-0">
+                                        {/* Top-Right QR Code */}
+                                        <div className="bg-white p-1 sm:p-1.5 rounded-xl shadow-[0_2px_12px_rgba(11,24,51,0.08)] border border-[#BFD7FF] shrink-0">
                                             {qrCodeDataUrl ? (
                                                 <img 
                                                     src={qrCodeDataUrl} 
                                                     alt="QR" 
-                                                    className="w-[90px] h-[90px] sm:w-[104px] sm:h-[104px] object-contain"
+                                                    className="w-[78px] h-[78px] sm:w-[88px] sm:h-[88px] object-contain"
                                                 />
                                             ) : (
-                                                <div className="w-[90px] h-[90px] sm:w-[104px] sm:h-[104px] bg-slate-100 animate-pulse rounded-lg" />
+                                                <div className="w-[78px] h-[78px] sm:w-[88px] sm:h-[88px] bg-slate-100 animate-pulse rounded-lg" />
                                             )}
                                         </div>
                                     </div>
 
                                     {/* Bottom Section: Left (Full Address, Phone, Email) & Right (Company Name in Dark Black) */}
-                                    <div className="flex items-end justify-between gap-3 pt-2">
+                                    <div className="flex items-end justify-between gap-2.5 pt-1">
                                         {/* Left Stack: Address -> Mobile -> Email */}
-                                        <div className="flex flex-col gap-1.5 flex-1 max-w-[60%] sm:max-w-[63%]">
-                                            {/* Address (Wraps cleanly to full text without truncation) */}
-                                            <div className="flex items-start gap-2">
-                                                <div className="w-5.5 h-5.5 sm:w-6 sm:h-6 rounded-full bg-[#1457E6] flex items-center justify-center shrink-0 shadow-xs mt-0.5">
-                                                    <Building2 size={11} className="text-white" />
+                                        <div className="flex flex-col gap-1 sm:gap-1.5 flex-1 max-w-[62%] sm:max-w-[64%]">
+                                            {/* Address (Wraps cleanly without clipping) */}
+                                            <div className="flex items-start gap-1.5 sm:gap-2">
+                                                <div className="w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-full bg-[#1457E6] flex items-center justify-center shrink-0 shadow-xs mt-0.5">
+                                                    <Building2 size={10.5} className="text-white" />
                                                 </div>
-                                                <p className="text-[9.5px] sm:text-[11px] font-[800] text-[#0B1833] uppercase leading-tight line-clamp-2">
+                                                <p className="text-[9px] sm:text-[10.5px] font-[800] text-[#0B1833] uppercase leading-tight line-clamp-2">
                                                     {partnerAddress}
                                                 </p>
                                             </div>
 
                                             {/* Mobile Number */}
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-5.5 h-5.5 sm:w-6 sm:h-6 rounded-full bg-[#1457E6] flex items-center justify-center shrink-0 shadow-xs">
-                                                    <Phone size={11} className="text-white" />
+                                            <div className="flex items-center gap-1.5 sm:gap-2">
+                                                <div className="w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-full bg-[#1457E6] flex items-center justify-center shrink-0 shadow-xs">
+                                                    <Phone size={10.5} className="text-white" />
                                                 </div>
-                                                <span className="text-[10px] sm:text-[11.5px] font-[800] text-[#0B1833] tracking-tight">
+                                                <span className="text-[9.5px] sm:text-[11px] font-[800] text-[#0B1833] tracking-tight leading-none">
                                                     {partnerMobile || '+91 7292987918'}
                                                 </span>
                                             </div>
 
                                             {/* Email */}
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-5.5 h-5.5 sm:w-6 sm:h-6 rounded-full bg-[#1457E6] flex items-center justify-center shrink-0 shadow-xs">
-                                                    <Mail size={11} className="text-white" />
+                                            <div className="flex items-center gap-1.5 sm:gap-2">
+                                                <div className="w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-full bg-[#1457E6] flex items-center justify-center shrink-0 shadow-xs">
+                                                    <Mail size={10.5} className="text-white" />
                                                 </div>
-                                                <span className="text-[9.5px] sm:text-[11px] font-[800] text-[#0B1833] truncate">
+                                                <span className="text-[9px] sm:text-[10.5px] font-[800] text-[#0B1833] truncate leading-none">
                                                     {partnerEmail}
                                                 </span>
                                             </div>
                                         </div>
 
                                         {/* Company Name Right (Dark Black Text, fully fitted without cutting off) */}
-                                        <div className="text-right shrink-0 max-w-[38%] sm:max-w-[35%] pb-0.5">
-                                            <h4 className="text-[11.5px] sm:text-[13.5px] font-[900] text-[#0B1833] tracking-tight leading-tight">
+                                        <div className="text-right shrink-0 max-w-[36%] pb-0.5">
+                                            <h4 className="text-[11px] sm:text-[13px] font-[900] text-[#0B1833] tracking-tight leading-snug">
                                                 Rupiksha Services Private Limited
                                             </h4>
                                         </div>
