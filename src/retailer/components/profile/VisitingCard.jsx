@@ -11,7 +11,6 @@ const BACKEND_URL = IMPORTED_BACKEND_URL || `/api`;
 
 const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
     const cardRef = useRef(null);
-    const printCardRef = useRef(null);
     const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
     const [safePhotoUrl, setSafePhotoUrl] = useState(null);
     const [safeLogoUrl, setSafeLogoUrl] = useState(null);
@@ -35,7 +34,7 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
 
     const partnerRole = getPartnerRoleTitle();
     const partnerName = formData?.name || currentUser?.name || currentUser?.fullName || 'RuPiksha Partner';
-    const partnerShop = formData?.businessName || currentUser?.businessName || currentUser?.shopName || 'Your Business Name';
+    const partnerShop = formData?.businessName || currentUser?.businessName || currentUser?.shopName || 'AJ Enterprises';
     
     const partnerAddress = formData?.address1 ? 
         `${formData.address1}${formData.address2 ? `, ${formData.address2}` : ''} ${formData.area || ''} ${formData.city || ''} ${formData.state || ''} ${formData.pincode || ''}`.replace(/\s+/g, ' ').trim() : 
@@ -84,7 +83,8 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
     // 4. Convert logo to safe Data URL for guaranteed canvas rendering
     useEffect(() => {
         const img = new Image();
-        img.src = rupikshaNewLogo;
+        img.crossOrigin = 'anonymous';
+        img.src = '/logo rupiksha.png';
         img.onload = () => {
             try {
                 const canvas = document.createElement('canvas');
@@ -94,10 +94,10 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
                 ctx.drawImage(img, 0, 0);
                 setSafeLogoUrl(canvas.toDataURL('image/png'));
             } catch {
-                setSafeLogoUrl(rupikshaNewLogo);
+                setSafeLogoUrl(rupikshaNewLogo || '/logo rupiksha.png');
             }
         };
-        img.onerror = () => setSafeLogoUrl(rupikshaNewLogo);
+        img.onerror = () => setSafeLogoUrl(rupikshaNewLogo || '/logo rupiksha.png');
     }, []);
 
     // 5. Convert profile photo safely
@@ -130,24 +130,23 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
 
     // 6. Download exact 1:1 High-Res Visiting Card (Standard 85.6mm x 54mm)
     const handleDownloadCard = async () => {
-        const targetElement = printCardRef.current || cardRef.current;
-        if (!targetElement || isDownloading) return;
+        const cardElement = cardRef.current ? (cardRef.current.querySelector('.visiting-card-inner') || cardRef.current) : null;
+        if (!cardElement || isDownloading) return;
         setIsDownloading(true);
 
         try {
-            const canvas = await html2canvas(targetElement, {
-                scale: 3,
+            // High resolution capture (scale: 3.5 for 300+ DPI razor sharp render)
+            const canvas = await html2canvas(cardElement, {
+                scale: 3.5,
                 backgroundColor: '#ffffff',
                 useCORS: true,
                 allowTaint: true,
                 logging: false,
-                windowWidth: 1011,
-                windowHeight: 638,
             });
 
             const imgData = canvas.toDataURL('image/png', 1.0);
 
-            // Exact standard ID-1 card size: 85.6mm x 54.0mm
+            // Exact standard ID-1 card size: 85.6mm x 54.0mm (landscape)
             const cardWidthMM = 85.6;
             const cardHeightMM = 54.0;
 
@@ -169,11 +168,11 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
     };
 
     const handleShareEmail = async () => {
-        const targetElement = printCardRef.current || cardRef.current;
-        if (!targetElement) return;
+        const cardElement = cardRef.current ? (cardRef.current.querySelector('.visiting-card-inner') || cardRef.current) : null;
+        if (!cardElement || isSharing) return;
         setIsSharing(true);
         try {
-            const canvas = await html2canvas(targetElement, { scale: 2, useCORS: true, allowTaint: true });
+            const canvas = await html2canvas(cardElement, { scale: 3, useCORS: true, allowTaint: true });
             const imgData = canvas.toDataURL('image/png');
 
             const res = await fetch(`${BACKEND_URL}/user/share-visiting-card`, {
@@ -230,7 +229,7 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
                             <motion.div
                                 initial={{ scale: 0.98, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
-                                className="w-full aspect-[1.586/1] bg-gradient-to-br from-[#F8FBFF] via-[#FFFFFF] to-[#FFFFFF] rounded-2xl shadow-[0_10px_30px_rgba(11,24,51,0.1)] overflow-hidden relative border border-[#BFD7FF]"
+                                className="visiting-card-inner w-full aspect-[1.586/1] bg-gradient-to-br from-[#F8FBFF] via-[#FFFFFF] to-[#FFFFFF] rounded-2xl shadow-[0_10px_30px_rgba(11,24,51,0.1)] overflow-hidden relative border border-[#BFD7FF]"
                             >
                                 {/* ── Top-Left Layered Geometric Curves ── */}
                                 <svg 
@@ -258,21 +257,16 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
                                     <path d="M210 200 C270 200 320 168 368 125 C388 108 396 90 400 75 L400 200 Z" fill="#1457E6" />
                                 </svg>
 
-                                {/* ── Central Subtle Watermark ── */}
+                                {/* ── Central Subtle Logo Watermark (logo rupiksha.png) ── */}
                                 <div 
                                     className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none z-0"
-                                    style={{ opacity: 0.08 }}
                                 >
-                                    <svg width="150" height="150" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <circle cx="100" cy="100" r="85" stroke="#1457E6" strokeWidth="6" strokeDasharray="14 8" />
-                                        <circle cx="100" cy="100" r="65" stroke="#1457E6" strokeWidth="5" strokeDasharray="10 6" />
-                                        <circle cx="100" cy="100" r="45" stroke="#1457E6" strokeWidth="4" />
-                                        <path d="M80 68 H120 M80 82 H120 M80 68 V110 C80 125 105 125 105 125 L125 145 M105 110 H80" stroke="#1457E6" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                    <span className="text-[34px] font-[900] text-[#1457E6] tracking-tight -mt-4">
-                                        Rupiksha
-                                    </span>
-                                    <span className="text-[9px] font-bold text-[#1457E6] tracking-[0.2em] uppercase">
+                                    <img 
+                                        src={safeLogoUrl || "/logo rupiksha.png"} 
+                                        alt="Rupiksha Logo" 
+                                        className="w-[44%] max-w-[210px] object-contain opacity-[0.09] filter select-none"
+                                    />
+                                    <span className="text-[9.5px] sm:text-[10.5px] font-[900] text-[#1457E6] opacity-[0.16] tracking-[0.25em] uppercase mt-1 select-none">
                                         Making Life Digital
                                     </span>
                                 </div>
@@ -415,258 +409,6 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
                                 <Mail size={15} />
                                 <span>{isSharing ? 'Sharing...' : 'Share on Email'}</span>
                             </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* ══ HIDDEN 1:1 HIGH-DEFINITION PRINT TEMPLATE (1011px x 638px) FOR EXACT MATCH PDF ══ */}
-            <div style={{ position: 'absolute', top: -99999, left: -99999, overflow: 'hidden' }}>
-                <div 
-                    ref={printCardRef}
-                    style={{
-                        width: '1011px',
-                        height: '638px',
-                        background: 'linear-gradient(135deg, #F8FBFF 0%, #FFFFFF 50%, #FFFFFF 100%)',
-                        position: 'relative',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                        padding: '38px 46px',
-                        boxSizing: 'border-box',
-                        fontFamily: 'system-ui, -apple-system, sans-serif',
-                        overflow: 'hidden'
-                    }}
-                >
-                    {/* Top-Left Waves */}
-                    <svg 
-                        style={{ position: 'absolute', top: 0, left: 0, width: '460px', height: '330px', pointerEvents: 'none', zIndex: 1 }} 
-                        viewBox="0 0 460 330" 
-                        fill="none"
-                    >
-                        <path d="M0 0 L330 0 C240 90 140 200 0 290 Z" fill="#EEF6FF" />
-                        <path d="M0 0 L240 0 C180 80 105 170 0 230 Z" fill="#DCEBFF" />
-                        <path d="M0 0 L170 0 C120 60 70 130 0 180 Z" fill="#60A5FA" opacity="0.45" />
-                        <path d="M0 0 L110 0 C70 45 40 95 0 140 Z" fill="#1457E6" />
-                    </svg>
-
-                    {/* Bottom-Right Waves */}
-                    <svg 
-                        style={{ position: 'absolute', bottom: 0, right: 0, width: '720px', height: '420px', pointerEvents: 'none', zIndex: 1 }} 
-                        viewBox="0 0 720 420" 
-                        fill="none"
-                    >
-                        <path d="M0 420 C200 380 380 290 560 160 C640 100 685 50 720 0 L720 420 Z" fill="#EEF6FF" />
-                        <path d="M90 420 C270 390 435 300 595 190 C665 145 700 95 720 40 L720 420 Z" fill="#DCEBFF" />
-                        <path d="M235 420 C380 400 505 320 630 220 C685 180 705 140 720 90 L720 420 Z" fill="#60A5FA" opacity="0.45" />
-                        <path d="M380 420 C485 420 575 355 660 265 C698 230 712 190 720 160 L720 420 Z" fill="#1457E6" />
-                    </svg>
-
-                    {/* Central Watermark */}
-                    <div 
-                        style={{ 
-                            position: 'absolute', 
-                            inset: 0, 
-                            display: 'flex', 
-                            flexDirection: 'column', 
-                            alignItems: 'center', 
-                            justifyContent: 'center', 
-                            opacity: 0.08, 
-                            pointerEvents: 'none', 
-                            zIndex: 2 
-                        }}
-                    >
-                        <svg width="280" height="280" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="100" cy="100" r="85" stroke="#1457E6" strokeWidth="6" strokeDasharray="14 8" />
-                            <circle cx="100" cy="100" r="65" stroke="#1457E6" strokeWidth="5" strokeDasharray="10 6" />
-                            <circle cx="100" cy="100" r="45" stroke="#1457E6" strokeWidth="4" />
-                            <path d="M80 68 H120 M80 82 H120 M80 68 V110 C80 125 105 125 105 125 L125 145 M105 110 H80" stroke="#1457E6" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                        <span style={{ fontSize: '62px', fontWeight: 900, color: '#1457E6', letterSpacing: '-1px', marginTop: '-24px' }}>
-                            Rupiksha
-                        </span>
-                        <span style={{ fontSize: '17px', fontWeight: 800, color: '#1457E6', letterSpacing: '0.22em', textTransform: 'uppercase' }}>
-                            Making Life Digital
-                        </span>
-                    </div>
-
-                    {/* Top Row: Avatar, Name, Business, Role Badge & QR Code */}
-                    <div style={{ position: 'relative', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '22px' }}>
-                            {/* Photo with double border */}
-                            <div 
-                                style={{
-                                    width: '100px',
-                                    height: '100px',
-                                    borderRadius: '50%',
-                                    padding: '3px',
-                                    backgroundColor: '#ffffff',
-                                    border: '4px solid #1457E6',
-                                    boxShadow: '0 4px 14px rgba(20,87,230,0.22)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    overflow: 'hidden',
-                                    flexShrink: 0
-                                }}
-                            >
-                                {safePhotoUrl ? (
-                                    <img src={safePhotoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-                                ) : (
-                                    <div style={{ width: '100%', height: '100%', backgroundColor: '#EEF6FF', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1457E6', fontWeight: 'bold', fontSize: '38px' }}>
-                                        {partnerName?.charAt(0) || 'P'}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Name & Business Name & Role */}
-                            <div>
-                                <h2 style={{ margin: 0, fontSize: '32px', fontWeight: 900, color: '#0B1833', letterSpacing: '-0.5px', textTransform: 'uppercase' }}>
-                                    {partnerName}
-                                </h2>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '6px' }}>
-                                    <span style={{ fontSize: '22px', fontWeight: 900, color: '#1457E6', textTransform: 'uppercase' }}>
-                                        {partnerShop}
-                                    </span>
-                                    <span style={{ fontSize: '15px', fontWeight: 900, color: '#1457E6', backgroundColor: '#E0EDFF', border: '1.5px solid #BFD7FF', padding: '3px 12px', borderRadius: '8px', textTransform: 'uppercase' }}>
-                                        {partnerRole}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Top-Right QR Code */}
-                        <div 
-                            style={{
-                                backgroundColor: '#ffffff',
-                                padding: '8px',
-                                borderRadius: '16px',
-                                border: '2px solid #BFD7FF',
-                                boxShadow: '0 4px 14px rgba(11,24,51,0.08)'
-                            }}
-                        >
-                            {qrCodeDataUrl && (
-                                <img 
-                                    src={qrCodeDataUrl} 
-                                    alt="QR" 
-                                    style={{ width: '100px', height: '100px', display: 'block' }} 
-                                />
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Horizontal Divider */}
-                    <div 
-                        style={{
-                            position: 'relative',
-                            zIndex: 10,
-                            width: '100%',
-                            height: '3.5px',
-                            borderRadius: '4px',
-                            background: 'linear-gradient(to right, #1457E6, #60A5FA, #DCEBFF)',
-                            margin: '12px 0 16px 0'
-                        }}
-                    />
-
-                    {/* Middle: Address Section */}
-                    <div style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', gap: '18px' }}>
-                        <div 
-                            style={{
-                                width: '42px',
-                                height: '42px',
-                                borderRadius: '50%',
-                                backgroundColor: '#1457E6',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                flexShrink: 0
-                            }}
-                        >
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>
-                                <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/>
-                                <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/>
-                                <path d="M10 6h4"/>
-                                <path d="M10 10h4"/>
-                                <path d="M10 14h4"/>
-                                <path d="M10 18h4"/>
-                            </svg>
-                        </div>
-                        <p style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: '#0B1833', textTransform: 'uppercase', lineHeight: 1.35, maxWidth: '90%' }}>
-                            {partnerAddress}
-                        </p>
-                    </div>
-
-                    {/* Bottom Row: Phone, Email, Separator & Company Name */}
-                    <div 
-                        style={{
-                            position: 'relative',
-                            zIndex: 10,
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            paddingTop: '10px'
-                        }}
-                    >
-                        {/* Contacts */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                                <div 
-                                    style={{
-                                        width: '38px',
-                                        height: '38px',
-                                        borderRadius: '50%',
-                                        backgroundColor: '#1457E6',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        flexShrink: 0
-                                    }}
-                                >
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-                                    </svg>
-                                </div>
-                                <span style={{ fontSize: '21px', fontWeight: 900, color: '#0B1833', letterSpacing: '-0.3px' }}>
-                                    {partnerMobile || '+91 7292987918'}
-                                </span>
-                            </div>
-
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                                <div 
-                                    style={{
-                                        width: '38px',
-                                        height: '38px',
-                                        borderRadius: '50%',
-                                        backgroundColor: '#1457E6',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        flexShrink: 0
-                                    }}
-                                >
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                        <rect width="20" height="16" x="2" y="4" rx="2"/>
-                                        <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
-                                    </svg>
-                                </div>
-                                <span style={{ fontSize: '20px', fontWeight: 900, color: '#0B1833' }}>
-                                    {partnerEmail}
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Vertical Separator */}
-                        <div style={{ width: '2px', height: '56px', backgroundColor: '#CBD5E1', margin: '0 20px' }} />
-
-                        {/* Company Name & Tagline */}
-                        <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '24px', fontWeight: 900, color: '#1457E6', letterSpacing: '-0.4px', lineHeight: 1.1 }}>
-                                Rupiksha Services Private Limited
-                            </div>
-                            <div style={{ fontSize: '13px', fontWeight: 800, color: '#64748B', letterSpacing: '0.24em', textTransform: 'uppercase', marginTop: '4px' }}>
-                                Making Life Simple
-                            </div>
                         </div>
                     </div>
                 </div>
