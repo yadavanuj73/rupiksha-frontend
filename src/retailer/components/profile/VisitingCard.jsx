@@ -60,7 +60,7 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
     useEffect(() => {
         let isMounted = true;
         QRCode.toDataURL(qrCardData, {
-            width: 560,
+            width: 640,
             margin: 1,
             color: {
                 dark: '#0B1833',
@@ -273,46 +273,47 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
 
                                 {/* ── Card Foreground Content ── */}
                                 <div className="p-4 sm:p-5 h-full flex flex-col justify-between relative z-10">
-                                    {/* Top Section: Avatar, Name, Business, Role Badge & +30% Enlarged QR Code */}
-                                    <div className="flex justify-between items-start">
-                                        <div className="flex items-center gap-2.5 sm:gap-3.5">
-                                            {/* Circular Profile Photo with Blue Ring */}
-                                            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full p-0.5 bg-white border-[2.5px] border-[#1457E6] shadow-[0_2px_8px_rgba(20,87,230,0.18)] flex items-center justify-center shrink-0 overflow-hidden">
+                                    {/* Top Section: Avatar (+60%), 3-Line Info (Name, Shop, Role) & QR Code (+20%) */}
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex items-center gap-3 sm:gap-4">
+                                            {/* Circular Profile Photo Enlarged by 60% with Blue Ring */}
+                                            <div className="w-[74px] h-[74px] sm:w-[86px] sm:h-[86px] rounded-full p-0.5 bg-white border-[3px] border-[#1457E6] shadow-[0_3px_12px_rgba(20,87,230,0.22)] flex items-center justify-center shrink-0 overflow-hidden">
                                                 {safePhotoUrl ? (
                                                     <img src={safePhotoUrl} alt={partnerName} className="w-full h-full object-cover rounded-full" />
                                                 ) : (
-                                                    <div className="w-full h-full bg-[#EEF6FF] rounded-full flex items-center justify-center text-[#1457E6] font-bold text-lg">
-                                                        <User size={22} className="text-[#1457E6]" />
+                                                    <div className="w-full h-full bg-[#EEF6FF] rounded-full flex items-center justify-center text-[#1457E6] font-bold text-2xl">
+                                                        <User size={36} className="text-[#1457E6]" />
                                                     </div>
                                                 )}
                                             </div>
 
-                                            {/* Name & Business Info */}
-                                            <div className="flex flex-col">
-                                                <h3 className="text-[14.5px] sm:text-[17px] font-[900] text-[#0B1833] uppercase tracking-tight leading-snug">
+                                            {/* 3-Line Stack: 1. Name -> 2. Shop Name -> 3. Role */}
+                                            <div className="flex flex-col items-start justify-center gap-0.5">
+                                                {/* Line 1: Name */}
+                                                <h3 className="text-[15px] sm:text-[18px] font-[900] text-[#0B1833] uppercase tracking-tight leading-tight">
                                                     {partnerName}
                                                 </h3>
-                                                <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 flex-wrap">
-                                                    <span className="text-[11.5px] sm:text-[13px] font-[800] text-[#1457E6] uppercase tracking-tight">
-                                                        {partnerShop}
-                                                    </span>
-                                                    <span className="text-[9px] sm:text-[10px] font-[800] text-[#1457E6] bg-[#E0EDFF] border border-[#BFD7FF] px-2 py-0.5 rounded-[6px] uppercase tracking-wide">
-                                                        {partnerRole}
-                                                    </span>
-                                                </div>
+                                                {/* Line 2: Shop Name */}
+                                                <span className="text-[12px] sm:text-[14px] font-[800] text-[#1457E6] uppercase tracking-tight leading-tight">
+                                                    {partnerShop}
+                                                </span>
+                                                {/* Line 3: Role Badge */}
+                                                <span className="text-[9.5px] sm:text-[10.5px] font-[800] text-[#1457E6] bg-[#E0EDFF] border border-[#BFD7FF] px-2.5 py-0.5 rounded-[6px] uppercase tracking-wide mt-0.5">
+                                                    {partnerRole}
+                                                </span>
                                             </div>
                                         </div>
 
-                                        {/* Top-Right 30% Enlarged QR Code Container */}
-                                        <div className="bg-white p-1.5 rounded-xl shadow-[0_2px_12px_rgba(11,24,51,0.09)] border border-[#BFD7FF] shrink-0">
+                                        {/* Top-Right QR Code (+20% Enlarged) */}
+                                        <div className="bg-white p-1.5 rounded-xl shadow-[0_2px_14px_rgba(11,24,51,0.09)] border border-[#BFD7FF] shrink-0">
                                             {qrCodeDataUrl ? (
                                                 <img 
                                                     src={qrCodeDataUrl} 
                                                     alt="QR" 
-                                                    className="w-[76px] h-[76px] sm:w-[88px] sm:h-[88px] object-contain"
+                                                    className="w-[90px] h-[90px] sm:w-[104px] sm:h-[104px] object-contain"
                                                 />
                                             ) : (
-                                                <div className="w-[76px] h-[76px] sm:w-[88px] sm:h-[88px] bg-slate-100 animate-pulse rounded-lg" />
+                                                <div className="w-[90px] h-[90px] sm:w-[104px] sm:h-[104px] bg-slate-100 animate-pulse rounded-lg" />
                                             )}
                                         </div>
                                     </div>
