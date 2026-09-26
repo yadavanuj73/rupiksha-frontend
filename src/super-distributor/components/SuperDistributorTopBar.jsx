@@ -185,7 +185,7 @@ const SuperDistributorTopBar = ({ onMenuClick }) => {
                                 </div>
                                 <div className="min-w-0 flex-1">
                                     <p className="text-[11px] font-black text-slate-700 uppercase tracking-tight truncate">{distName}</p>
-                                    <p className="text-[9px] font-bold text-slate-400 mt-0.5 truncate">{dist?.id || 'Super Distributor'}</p>
+                                    <p className="text-[9px] font-bold text-slate-400 mt-0.5 truncate">{dist?.partyCode ? `ID: ${dist.partyCode}` : (dist?.mobile ? `+91 ${dist.mobile}` : 'Super Distributor')}</p>
                                     <p className="text-[10px] font-black text-amber-600 mt-0.5">Wallet: ₹ {walletBal}</p>
                                 </div>
                             </div>

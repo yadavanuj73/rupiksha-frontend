@@ -108,7 +108,7 @@ const SuperDistributorDashboard = () => {
     const activeUsers = retailers.filter(r => r.status === 'Approved');
     const walletBal = dist?.wallet?.balance || '0.00';
     const distName = dist?.name || 'SUPER_DISTRIBUTOR MASTER';
-    const distId = dist?.id || 'SA-2024-0001';
+    const distId = dist?.partyCode || (dist?.mobile ? `+91 ${dist.mobile}` : 'SUPER DISTRIBUTOR');
 
     const netWallet = retailers.reduce((acc, curr) => acc + (parseFloat(curr.balance) || 0), 0);
 
