@@ -266,9 +266,6 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
                                         alt="Rupiksha Logo" 
                                         className="w-[44%] max-w-[210px] object-contain opacity-[0.09] filter select-none"
                                     />
-                                    <span className="text-[9.5px] sm:text-[10.5px] font-[900] text-[#1457E6] opacity-[0.16] tracking-[0.25em] uppercase mt-1 select-none">
-                                        Making Life Digital
-                                    </span>
                                 </div>
 
                                 {/* ── Card Foreground Content ── */}
@@ -320,21 +317,11 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
                                         </div>
                                     </div>
 
-                                    {/* Bottom Section: Left (Full Address, Phone, Email) & Right (Company Name in Dark Black) */}
+                                    {/* Bottom Section: Left (1. Mobile, 2. Email, 3. Address) & Right (Company Name in Dark Black) */}
                                     <div className="flex items-end justify-between gap-2.5 pt-1">
-                                        {/* Left Stack: Address -> Mobile -> Email */}
+                                        {/* Left Stack: 1. Mobile -> 2. Email -> 3. Address */}
                                         <div className="flex flex-col gap-1 sm:gap-1.5 flex-1 max-w-[62%] sm:max-w-[64%]">
-                                            {/* Address (Wraps cleanly without clipping) */}
-                                            <div className="flex items-start gap-1.5 sm:gap-2">
-                                                <div className="w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-full bg-[#1457E6] flex items-center justify-center shrink-0 shadow-xs mt-0.5">
-                                                    <Building2 size={10.5} className="text-white" />
-                                                </div>
-                                                <p className="text-[9px] sm:text-[10.5px] font-[800] text-[#0B1833] uppercase leading-tight line-clamp-2">
-                                                    {partnerAddress}
-                                                </p>
-                                            </div>
-
-                                            {/* Mobile Number */}
+                                            {/* 1. Mobile Number */}
                                             <div className="flex items-center gap-1.5 sm:gap-2">
                                                 <div className="w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-full bg-[#1457E6] flex items-center justify-center shrink-0 shadow-xs">
                                                     <Phone size={10.5} className="text-white" />
@@ -344,7 +331,7 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
                                                 </span>
                                             </div>
 
-                                            {/* Email */}
+                                            {/* 2. Email */}
                                             <div className="flex items-center gap-1.5 sm:gap-2">
                                                 <div className="w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-full bg-[#1457E6] flex items-center justify-center shrink-0 shadow-xs">
                                                     <Mail size={10.5} className="text-white" />
@@ -352,6 +339,16 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
                                                 <span className="text-[9px] sm:text-[10.5px] font-[800] text-[#0B1833] truncate leading-none">
                                                     {partnerEmail}
                                                 </span>
+                                            </div>
+
+                                            {/* 3. Address (Wraps cleanly without clipping) */}
+                                            <div className="flex items-start gap-1.5 sm:gap-2">
+                                                <div className="w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-full bg-[#1457E6] flex items-center justify-center shrink-0 shadow-xs mt-0.5">
+                                                    <Building2 size={10.5} className="text-white" />
+                                                </div>
+                                                <p className="text-[9px] sm:text-[10.5px] font-[800] text-[#0B1833] uppercase leading-tight line-clamp-2">
+                                                    {partnerAddress}
+                                                </p>
                                             </div>
                                         </div>
 
