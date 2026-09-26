@@ -2,16 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Award, Download, Printer, Copy, Check, RefreshCw } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
-import QRCode from 'qrcode';
 import rupikshaLogo from '../../../assets/logo rupiksha.png';
 import { certificateService } from '../../../services/apiService';
 
 const Certificate = ({ formData = {}, currentUser = {} }) => {
-    const certificateRef = useRef(null);
+    const certificateSvgRef = useRef(null);
+    const containerRef = useRef(null);
     const [certData, setCertData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isDownloading, setIsDownloading] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [safeLogoUrl, setSafeLogoUrl] = useState(rupikshaLogo);
 
     // Determine role dynamically
     const rawRole = (
@@ -56,6 +57,26 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
     const fallbackName = (formData?.name || currentUser?.name || currentUser?.fullName || 'MANISH KUMAR').toUpperCase();
     const fallbackLocation = (formData?.area || formData?.city || currentUser?.shopCity || currentUser?.city || currentUser?.stateName || (isSuperDistributor ? 'NALANDA' : 'PATNA')).toUpperCase();
     const fallbackCertNumber = `${isSuperDistributor ? 'RUP-SD-' : 'RUP-D-'}${fallbackPartyCode}`;
+
+    // Convert logo to data URL for clean Canvas/PDF rendering
+    useEffect(() => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = rupikshaLogo;
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth || 600;
+                canvas.height = img.naturalHeight || 600;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                setSafeLogoUrl(canvas.toDataURL('image/png'));
+            } catch {
+                setSafeLogoUrl(rupikshaLogo);
+            }
+        };
+        img.onerror = () => setSafeLogoUrl(rupikshaLogo);
+    }, []);
 
     useEffect(() => {
         let isMounted = true;
@@ -119,22 +140,22 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
 
     // Download High-Res A4 Landscape PDF (297mm x 210mm)
     const handleDownloadPDF = async () => {
-        const element = certificateRef.current ? (certificateRef.current.querySelector('.rupiksha-certificate-target') || certificateRef.current) : null;
+        const element = containerRef.current;
         if (!element || isDownloading) return;
         setIsDownloading(true);
 
         try {
             const canvas = await html2canvas(element, {
-                scale: 3.5, // 300+ DPI razor sharp output
+                scale: 3.5, // 300+ DPI Equivalent
                 useCORS: true,
                 allowTaint: true,
-                backgroundColor: '#ffffff',
+                backgroundColor: '#FAF8F2',
                 logging: false,
             });
 
             const imgData = canvas.toDataURL('image/png', 1.0);
 
-            // Exact standard A4 landscape dimensions
+            // A4 Landscape: 297mm x 210mm
             const pdf = new jsPDF({
                 orientation: 'landscape',
                 unit: 'mm',
@@ -147,7 +168,7 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
             pdf.save(`Rupiksha_Certificate_${certCode}_${safeName}.pdf`);
         } catch (err) {
             console.error('[Certificate] PDF Export Error:', err);
-            alert('Could not generate PDF. Please try again.');
+            alert('Could not export PDF. Please try again.');
         } finally {
             setIsDownloading(false);
         }
@@ -169,40 +190,42 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
         return (
             <div className="w-full bg-white rounded-[22px] p-12 border border-[#DCE6F2] shadow-sm flex flex-col items-center justify-center space-y-4 min-h-[400px]">
                 <RefreshCw className="w-8 h-8 text-[#2563EB] animate-spin" />
-                <p className="text-slate-600 font-semibold text-sm">Loading authorized certificate...</p>
+                <p className="text-slate-600 font-semibold text-sm">Generating master certificate...</p>
             </div>
         );
     }
 
     const d = certData || {};
-    const recipientName = d.recipientName || fallbackName;
+    const recipientName = (d.recipientName || fallbackName).toUpperCase();
     const titleText = d.certificateTitle || (isSuperDistributor ? 'AUTHORISED SUPER DISTRIBUTOR' : 'AUTHORISED DISTRIBUTOR');
     const idLabelText = d.idLabel || (isSuperDistributor ? 'SUPER DISTRIBUTOR ID' : 'DISTRIBUTOR ID');
     const partyCodeText = d.partyCode || fallbackPartyCode;
     const issuedOnText = d.issuedOn || formatDate(createdD);
     const validTillText = d.validTill || formatValidTill(createdD);
-    const locationText = d.location || fallbackLocation;
+    const locationText = (d.location || fallbackLocation).toUpperCase();
     const certStatement = d.certificationStatement || `is an Authorised ${isSuperDistributor ? 'Super Distributor' : 'Distributor'} for delivering Rupiksha Services Pvt. Ltd. digital financial services.`;
-    const authClause = d.authorizationClause || `This ${isSuperDistributor ? 'Super Distributor' : 'Distributor'} is hereby authorised for providing the services offered by Rupiksha Services Pvt. Ltd. and shall not act as our representative in any capacity for any other purpose whatsoever.`;
     const bottomRoleText = d.bottomRole || (isSuperDistributor ? 'SUPER DISTRIBUTOR' : 'DISTRIBUTOR');
     const disclaimerText = d.disclaimerNote || `NOTE: If you will not perform up to the mark, then your ${isSuperDistributor ? 'Super Distributor' : 'Distributor'} location will be allocated to some other person.`;
+
+    // Dynamic recipient name font scaling
+    const nameFontSize = recipientName.length > 28 ? 72 : (recipientName.length > 20 ? 84 : 96);
 
     return (
         <div className="w-full flex flex-col items-center space-y-6 font-['Inter',sans-serif]">
             {/* Control Toolbar */}
-            <div className="w-full max-w-[1000px] flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="w-full max-w-[1050px] flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
                 <div className="flex items-center space-x-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-md shadow-amber-500/20 text-white">
                         <Award size={22} />
                     </div>
                     <div>
-                        <h2 className="text-base font-bold text-[#08142c] flex items-center gap-2">
+                        <h2 className="text-base font-bold text-[#071A3A] flex items-center gap-2">
                             {titleText}
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-300">
                                 {d.status || 'VALID'}
                             </span>
                         </h2>
-                        <p className="text-xs text-slate-500 font-medium">Official Digital Certificate &bull; Party Code: <strong className="text-slate-700 font-mono">{partyCodeText}</strong></p>
+                        <p className="text-xs text-slate-500 font-medium">Master Digital Certificate &bull; Party Code: <strong className="text-slate-700 font-mono">{partyCodeText}</strong></p>
                     </div>
                 </div>
 
@@ -225,7 +248,7 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
                     <button
                         onClick={handleDownloadPDF}
                         disabled={isDownloading}
-                        className="px-5 py-2 rounded-xl text-xs font-bold bg-[#08142c] hover:bg-[#10244c] text-white flex items-center space-x-2 shadow-lg shadow-slate-900/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                        className="px-5 py-2 rounded-xl text-xs font-bold bg-[#071A3A] hover:bg-[#0D2A55] text-white flex items-center space-x-2 shadow-lg shadow-slate-900/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
                     >
                         {isDownloading ? (
                             <>
@@ -242,294 +265,395 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
                 </div>
             </div>
 
-            {/* Certificate Preview Frame (A4 Landscape: 1000px x 707px) */}
-            <div className="w-full flex justify-center overflow-x-auto pb-6" ref={certificateRef}>
-                <div
-                    className="rupiksha-certificate-target relative w-[1000px] h-[707px] shrink-0 bg-[#ffffff] text-[#08142c] select-none shadow-2xl overflow-hidden"
-                    style={{
-                        boxSizing: 'border-box',
-                    }}
+            {/* Master Scalable Certificate Frame (viewBox 0 0 2970 2100: Exact A4 Landscape Proportion) */}
+            <div className="w-full flex justify-center overflow-x-auto pb-6">
+                <div 
+                    ref={containerRef}
+                    className="w-full max-w-[1050px] aspect-[297/210] shadow-2xl rounded-none overflow-hidden bg-[#FAF8F2]"
                 >
-                    {/* ══════════════════════════════════════════════════════════════
-                        1. OUTER NAVY FRAME + INNER METALLIC GOLD BORDER + CORNERS
-                       ══════════════════════════════════════════════════════════════ */}
-                    {/* Navy Outer Border (10px) */}
-                    <div className="absolute inset-0 border-[10px] border-[#08142c] pointer-events-none z-10" />
-
-                    {/* Fine Gold Inset Border (1.5px) */}
-                    <div className="absolute inset-[16px] border-[1.5px] border-[#c69a3d] pointer-events-none z-10" />
-
-                    {/* Gold Corner Triangle Accents */}
-                    <div className="absolute top-[16px] left-[16px] w-0 h-0 border-t-[14px] border-t-[#c69a3d] border-r-[14px] border-r-transparent pointer-events-none z-10" />
-                    <div className="absolute top-[16px] right-[16px] w-0 h-0 border-t-[14px] border-t-[#c69a3d] border-l-[14px] border-l-transparent pointer-events-none z-10" />
-                    <div className="absolute bottom-[16px] left-[16px] w-0 h-0 border-b-[14px] border-b-[#c69a3d] border-r-[14px] border-r-transparent pointer-events-none z-10" />
-                    <div className="absolute bottom-[16px] right-[16px] w-0 h-0 border-b-[14px] border-b-[#c69a3d] border-l-[14px] border-l-transparent pointer-events-none z-10" />
-
-                    {/* ══════════════════════════════════════════════════════════════
-                        2. LUXURY CORNER RIBBONS & WAVES (SVG VECTORS)
-                       ══════════════════════════════════════════════════════════════ */}
-                    {/* Top Right Corner Gold & Navy Geometric Bands */}
-                    <svg className="absolute top-0 right-0 w-[300px] h-[260px] pointer-events-none z-10" viewBox="0 0 300 260" fill="none">
-                        {/* Gold outer diagonal strip */}
-                        <polygon points="120,0 150,0 300,150 300,120" fill="url(#goldGrad1)" />
-                        {/* Navy diagonal strip */}
-                        <polygon points="150,0 220,0 300,80 300,150" fill="url(#navyGrad1)" />
-                        {/* Top gold triangle accent */}
-                        <polygon points="220,0 300,0 300,80" fill="url(#goldGrad1)" />
+                    <svg
+                        ref={certificateSvgRef}
+                        viewBox="0 0 2970 2100"
+                        width="100%"
+                        height="100%"
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-full h-full block select-none"
+                    >
                         <defs>
-                            <linearGradient id="goldGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stopColor="#f7e199" />
-                                <stop offset="40%" stopColor="#c69a3d" />
-                                <stop offset="70%" stopColor="#e8c973" />
-                                <stop offset="100%" stopColor="#966d18" />
+                            {/* Rich Metallic Champagne Gold Gradient */}
+                            <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#F5DB8B" />
+                                <stop offset="25%" stopColor="#C89A3D" />
+                                <stop offset="50%" stopColor="#E2C16B" />
+                                <stop offset="75%" stopColor="#966D18" />
+                                <stop offset="100%" stopColor="#F5DB8B" />
                             </linearGradient>
-                            <linearGradient id="navyGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stopColor="#08142c" />
+
+                            {/* Deep Midnight Navy Gradient */}
+                            <linearGradient id="navyMainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#0B2145" />
+                                <stop offset="40%" stopColor="#071A3A" />
+                                <stop offset="100%" stopColor="#030A17" />
+                            </linearGradient>
+
+                            {/* Top Right Header Banner Navy Gradient */}
+                            <linearGradient id="bannerNavyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#0D2A55" />
+                                <stop offset="30%" stopColor="#071A3A" />
                                 <stop offset="100%" stopColor="#030814" />
                             </linearGradient>
-                        </defs>
-                    </svg>
 
-                    {/* Bottom Left Corner Luxury Navy-Gold Flowing Waves */}
-                    <svg className="absolute bottom-0 left-0 w-[360px] h-[220px] pointer-events-none z-10" viewBox="0 0 360 220" fill="none">
-                        {/* Dark Navy Wave 1 */}
-                        <path d="M0,70 C100,60 180,130 360,220 L0,220 Z" fill="url(#navyGradBottom1)" />
-                        {/* Gold Edge Wave */}
-                        <path d="M0,62 C100,52 180,122 360,212 L360,220 C180,130 100,60 0,70 Z" fill="url(#goldGrad1)" />
-                        {/* Secondary Navy Wave */}
-                        <path d="M0,110 C90,105 160,165 310,220 L0,220 Z" fill="url(#navyGradBottom2)" />
-                        {/* Thin Gold accent line */}
-                        <path d="M0,105 C90,100 160,160 310,215 L310,220 C160,165 90,105 0,110 Z" fill="url(#goldGrad1)" />
-                        <defs>
-                            <linearGradient id="navyGradBottom1" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stopColor="#08142c" />
-                                <stop offset="50%" stopColor="#0d2046" />
-                                <stop offset="100%" stopColor="#050d1d" />
+                            {/* Subtle Wave Gradient */}
+                            <linearGradient id="waveGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#C89A3D" stopOpacity="0.12" />
+                                <stop offset="50%" stopColor="#E2C16B" stopOpacity="0.08" />
+                                <stop offset="100%" stopColor="#966D18" stopOpacity="0.04" />
                             </linearGradient>
-                            <linearGradient id="navyGradBottom2" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stopColor="#040a17" />
-                                <stop offset="100%" stopColor="#091835" />
-                            </linearGradient>
+
+                            {/* Drop Shadow for Title & Banner */}
+                            <filter id="bannerShadow" x="-5%" y="-5%" width="110%" height="120%">
+                                <feDropShadow dx="0" dy="12" stdDeviation="16" floodColor="#000000" floodOpacity="0.25" />
+                            </filter>
                         </defs>
-                    </svg>
 
-                    {/* ══════════════════════════════════════════════════════════════
-                        3. TOP-RIGHT ANGLED BANNER (THE EXACT SHAPE FROM IMAGE 1)
-                       ══════════════════════════════════════════════════════════════ */}
-                    <div 
-                        className="absolute top-0 right-[40px] w-[630px] h-[160px] pointer-events-none z-10"
-                        style={{
-                            clipPath: 'polygon(14% 0%, 100% 0%, 100% 100%, 0% 100%)',
-                            background: 'linear-gradient(135deg, #091a38 0%, #08142c 50%, #040a17 100%)',
-                            boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-                        }}
-                    >
-                        {/* Gold Top Border */}
-                        <div className="absolute top-0 left-0 right-0 h-[4px] bg-gradient-to-r from-[#c69a3d] via-[#f5db8b] to-[#c69a3d]" />
-                        
-                        {/* Gold Slanted Left Border Accent */}
-                        <div 
-                            className="absolute top-0 left-0 w-[4px] h-full"
-                            style={{
-                                background: 'linear-gradient(to bottom, #f5db8b, #c69a3d, #966d18)',
-                                transform: 'skewX(-26deg)',
-                                transformOrigin: 'top left',
-                            }}
-                        />
+                        {/* 1. SOLID IVORY BACKGROUND */}
+                        <rect x="0" y="0" width="2970" height="2100" fill="#FAF8F2" />
 
-                        {/* Gold Bottom Border */}
-                        <div className="absolute bottom-0 left-0 right-0 h-[4px] bg-gradient-to-r from-[#c69a3d] via-[#f5db8b] to-[#c69a3d]" />
+                        {/* 2. SUBTLE LUXURY BACKGROUND WAVES */}
+                        <g opacity="0.8">
+                            <path d="M-50,600 C400,500 800,750 1400,600 C2000,450 2400,700 3050,550" fill="none" stroke="#D9C8A3" strokeWidth="2.5" opacity="0.12" />
+                            <path d="M-50,640 C400,540 800,790 1400,640 C2000,490 2400,740 3050,590" fill="none" stroke="#D9C8A3" strokeWidth="2.5" opacity="0.10" />
+                            <path d="M-50,680 C400,580 800,830 1400,680 C2000,530 2400,780 3050,630" fill="none" stroke="#D9C8A3" strokeWidth="2" opacity="0.08" />
+                            <path d="M-50,1500 C500,1400 1000,1650 1600,1500 C2200,1350 2600,1600 3050,1450" fill="none" stroke="#D9C8A3" strokeWidth="2.5" opacity="0.12" />
+                            <path d="M-50,1540 C500,1440 1000,1690 1600,1540 C2200,1390 2600,1640 3050,1490" fill="none" stroke="#D9C8A3" strokeWidth="2" opacity="0.09" />
+                        </g>
 
-                        {/* Banner Typography */}
-                        <div className="w-full h-full flex flex-col items-center justify-center pl-[60px] pr-[30px] pt-1">
-                            {/* Title: AUTHORISED SUPER DISTRIBUTOR / AUTHORISED DISTRIBUTOR */}
-                            <span 
-                                className="font-serif font-[800] uppercase text-[#e9c565] tracking-[0.14em] drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] text-center"
-                                style={{
-                                    fontSize: titleText.length > 25 ? '18px' : '20px',
-                                    fontFamily: 'Cinzel, Georgia, "Times New Roman", serif',
-                                }}
+                        {/* 3. MULTI-LAYER OUTER FRAME & BORDERS */}
+                        {/* Outer Deep Navy Frame (36px) */}
+                        <rect x="18" y="18" width="2934" height="2064" fill="none" stroke="#071A3A" strokeWidth="36" />
+
+                        {/* Fine Gold Inset Line (6px) */}
+                        <rect x="54" y="54" width="2862" height="1992" fill="none" stroke="url(#goldGrad)" strokeWidth="6" />
+
+                        {/* Fine Inner Navy Line (2.5px) */}
+                        <rect x="68" y="68" width="2834" height="1964" fill="none" stroke="#071A3A" strokeWidth="2.5" />
+
+                        {/* Four Corner Gold Diagonal Accents */}
+                        <polygon points="54,54 110,54 54,110" fill="url(#goldGrad)" />
+                        <polygon points="2916,54 2860,54 2916,110" fill="url(#goldGrad)" />
+                        <polygon points="54,2046 110,2046 54,1990" fill="url(#goldGrad)" />
+                        <polygon points="2916,2046 2860,2046 2916,1990" fill="url(#goldGrad)" />
+
+                        {/* 4. TOP-RIGHT CORNER LUXURY GEOMETRIC RIBBONS */}
+                        <g>
+                            <polygon points="2300,54 2420,54 2916,550 2916,430" fill="url(#goldGrad)" opacity="0.9" />
+                            <polygon points="2420,54 2650,54 2916,320 2916,550" fill="url(#navyMainGrad)" />
+                            <polygon points="2650,54 2916,54 2916,320" fill="url(#goldGrad)" />
+                        </g>
+
+                        {/* 5. TOP-RIGHT ANGLED NAVY/GOLD BANNER (EXACT MASTER PROPORTION) */}
+                        <g filter="url(#bannerShadow)">
+                            {/* Main Navy Polygon Banner */}
+                            <polygon 
+                                points="1020,54 2916,54 2916,510 880,510" 
+                                fill="url(#bannerNavyGrad)" 
+                            />
+
+                            {/* Top Gold Border */}
+                            <line x1="1020" y1="56" x2="2916" y2="56" stroke="url(#goldGrad)" strokeWidth="8" />
+
+                            {/* Slanted Left Gold Edge */}
+                            <line x1="1020" y1="54" x2="880" y2="510" stroke="url(#goldGrad)" strokeWidth="12" />
+
+                            {/* Bottom Gold Border */}
+                            <line x1="880" y1="506" x2="2916" y2="506" stroke="url(#goldGrad)" strokeWidth="8" />
+
+                            {/* Inner Gold Pinstripe Accents */}
+                            <line x1="1040" y1="72" x2="2900" y2="72" stroke="url(#goldGrad)" strokeWidth="2" opacity="0.6" />
+                            <line x1="900" y1="490" x2="2900" y2="490" stroke="url(#goldGrad)" strokeWidth="2" opacity="0.6" />
+
+                            {/* Header Text 1: AUTHORISED SUPER DISTRIBUTOR / AUTHORISED DISTRIBUTOR */}
+                            <text
+                                x="1950"
+                                y="195"
+                                textAnchor="middle"
+                                fill="#E2C16B"
+                                fontSize="58"
+                                fontWeight="800"
+                                letterSpacing="6"
+                                style={{ fontFamily: 'Cinzel, Playfair Display, "Times New Roman", serif', textTransform: 'uppercase' }}
                             >
                                 {titleText}
-                            </span>
+                            </text>
 
-                            {/* 3 Gold Stars */}
-                            <div className="flex items-center space-x-2 my-1 text-[#f5db8b] drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
-                                <span className="text-[12px]">★</span>
-                                <span className="text-[16px]">★</span>
-                                <span className="text-[12px]">★</span>
-                            </div>
+                            {/* 3 Gold Stars with Horizontal Accent Lines */}
+                            <g>
+                                <line x1="1650" y1="260" x2="1830" y2="260" stroke="url(#goldGrad)" strokeWidth="3" />
+                                <text x="1890" y="272" fill="#E2C16B" fontSize="34" textAnchor="middle">★</text>
+                                <text x="1950" y="275" fill="#F5DB8B" fontSize="48" textAnchor="middle">★</text>
+                                <text x="2010" y="272" fill="#E2C16B" fontSize="34" textAnchor="middle">★</text>
+                                <line x1="2070" y1="260" x2="2250" y2="260" stroke="url(#goldGrad)" strokeWidth="3" />
+                            </g>
 
-                            {/* CERTIFICATE */}
-                            <span 
-                                className="font-serif font-[900] text-white tracking-[0.26em] uppercase drop-shadow-[0_3px_8px_rgba(0,0,0,0.7)] text-[32px] leading-none"
-                                style={{
-                                    fontFamily: 'Cinzel, Georgia, "Times New Roman", serif',
-                                }}
+                            {/* Header Text 2: C E R T I F I C A T E */}
+                            <text
+                                x="1950"
+                                y="425"
+                                textAnchor="middle"
+                                fill="#FFFFFF"
+                                fontSize="118"
+                                fontWeight="900"
+                                letterSpacing="26"
+                                style={{ fontFamily: 'Cinzel, Playfair Display, "Times New Roman", serif' }}
                             >
                                 C E R T I F I C A T E
-                            </span>
-                        </div>
-                    </div>
+                            </text>
+                        </g>
 
-                    {/* ══════════════════════════════════════════════════════════════
-                        4. STRUCTURED CONTENT CONTAINER (FLEX COLUMN)
-                       ══════════════════════════════════════════════════════════════ */}
-                    <div className="relative z-20 w-full h-full flex flex-col justify-between px-[50px] py-[32px] box-border">
-                        
-                        {/* 4.1 TOP ROW: LOGO (STRICTLY CONTAINED, NO OVERFLOW) */}
-                        <div className="flex items-start justify-between w-full h-[140px]">
-                            {/* Left: Strictly Sized Logo */}
-                            <div className="flex flex-col items-start pt-2 pl-4">
-                                <img
-                                    src={rupikshaLogo}
-                                    alt="Rupiksha"
-                                    className="w-[155px] h-[115px] object-contain block drop-shadow-sm"
-                                    style={{
-                                        maxWidth: '155px',
-                                        maxHeight: '115px',
-                                    }}
-                                />
-                            </div>
-                            {/* Right empty space reserved for the top-right banner */}
-                            <div className="w-[500px] h-[140px]" />
-                        </div>
+                        {/* 6. TOP-LEFT LOGO & TAGLINE */}
+                        <g>
+                            <image
+                                href={safeLogoUrl || rupikshaLogo}
+                                x="160"
+                                y="110"
+                                width="490"
+                                height="370"
+                                preserveAspectRatio="xMidYMid meet"
+                            />
+                        </g>
 
-                        {/* 4.2 MAIN RECIPIENT & CERTIFICATION STATEMENT */}
-                        <div className="flex flex-col items-center text-center -mt-2">
-                            {/* Gold Filigree Ornament */}
-                            <div className="flex items-center space-x-3 text-[#c69a3d] mb-1">
-                                <span className="w-16 h-[1px] bg-gradient-to-r from-transparent to-[#c69a3d]" />
-                                <span className="text-[13px]">❖</span>
-                                <span className="w-16 h-[1px] bg-gradient-to-l from-transparent to-[#c69a3d]" />
-                            </div>
+                        {/* 7. MAIN BODY: "This is to certify that" */}
+                        <g>
+                            {/* Top Gold Filigree Ornament */}
+                            <line x1="1240" y1="630" x2="1420" y2="630" stroke="url(#goldGrad)" strokeWidth="3" />
+                            <polygon points="1485,618 1497,630 1485,642 1473,630" fill="url(#goldGrad)" />
+                            <line x1="1550" y1="630" x2="1730" y2="630" stroke="url(#goldGrad)" strokeWidth="3" />
 
-                            {/* Italic Certification Intro */}
-                            <p 
-                                className="italic font-serif text-[#2b3952] text-[16px] tracking-wide mb-1"
-                                style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+                            {/* Italic Intro */}
+                            <text
+                                x="1485"
+                                y="715"
+                                textAnchor="middle"
+                                fill="#0B2145"
+                                fontSize="52"
+                                fontStyle="italic"
+                                fontWeight="500"
+                                style={{ fontFamily: 'Playfair Display, "Times New Roman", Georgia, serif' }}
                             >
                                 This is to certify that
-                            </p>
+                            </text>
 
-                            {/* Large Recipient Name */}
-                            <h1 
-                                className="font-serif font-[900] text-[#08142c] uppercase tracking-[0.06em] leading-tight my-1 drop-shadow-sm"
-                                style={{
-                                    fontFamily: 'Cinzel, Georgia, "Times New Roman", serif',
-                                    fontSize: recipientName.length > 24 ? '28px' : '36px',
-                                }}
+                            {/* RECIPIENT NAME (THE MAIN CONTENT FOCAL POINT) */}
+                            <text
+                                x="1485"
+                                y="845"
+                                textAnchor="middle"
+                                fill="#071A3A"
+                                fontSize={nameFontSize}
+                                fontWeight="900"
+                                letterSpacing="3"
+                                style={{ fontFamily: 'Cinzel, Playfair Display, "Times New Roman", serif', textTransform: 'uppercase' }}
                             >
                                 {recipientName}
-                            </h1>
+                            </text>
 
-                            {/* Gold Filigree Ornament */}
-                            <div className="flex items-center space-x-3 text-[#c69a3d] my-1">
-                                <span className="w-20 h-[1.5px] bg-gradient-to-r from-transparent to-[#c69a3d]" />
-                                <span className="text-[11px]">✦</span>
-                                <span className="w-20 h-[1.5px] bg-gradient-to-l from-transparent to-[#c69a3d]" />
-                            </div>
+                            {/* Bottom Gold Filigree Ornament */}
+                            <line x1="1180" y1="920" x2="1420" y2="920" stroke="url(#goldGrad)" strokeWidth="3" />
+                            <polygon points="1485,908 1497,920 1485,932 1473,920" fill="url(#goldGrad)" />
+                            <line x1="1550" y1="920" x2="1790" y2="920" stroke="url(#goldGrad)" strokeWidth="3" />
 
-                            {/* Certification Description */}
-                            <p className="text-[13.5px] font-[500] text-[#1e293b] max-w-[780px] leading-relaxed mt-0.5">
+                            {/* Description Statement */}
+                            <text
+                                x="1485"
+                                y="1005"
+                                textAnchor="middle"
+                                fill="#0B2145"
+                                fontSize="38"
+                                fontWeight="500"
+                                style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}
+                            >
                                 {certStatement}
-                            </p>
-                        </div>
+                            </text>
+                        </g>
 
-                        {/* 4.3 FOUR INFORMATION BADGES (EXACT 1:1 TO IMAGE 1) */}
-                        <div className="flex items-center justify-center space-x-6 px-4 my-1">
-                            {/* 1. ID */}
-                            <div className="flex items-center space-x-2.5">
-                                <div className="w-9 h-9 rounded-full bg-[#fbf5e6] border border-[#c69a3d]/50 flex items-center justify-center shrink-0">
-                                    <svg className="w-4 h-4 text-[#c69a3d]" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                                    </svg>
-                                </div>
-                                <div className="text-left">
-                                    <p className="text-[8.5px] font-[800] tracking-wider text-slate-500 uppercase">{idLabelText}</p>
-                                    <p className="text-[14px] font-[900] text-[#08142c] font-mono tracking-tight">{partyCodeText}</p>
-                                </div>
-                            </div>
+                        {/* 8. FOUR INFORMATION BADGES (COLUMNS) */}
+                        <g>
+                            {/* Column 1: ID */}
+                            <g transform="translate(480, 1170)">
+                                <circle cx="0" cy="0" r="54" fill="#FAF3E0" stroke="url(#goldGrad)" strokeWidth="4" />
+                                <path d="M-18,18 C-18,2 -6,-8 0,-8 C6,-8 18,2 18,18 Z M0,-14 C-10,-14 -10,-28 0,-28 C10,-28 10,-14 0,-14 Z" fill="#C89A3D" />
+                                <text x="75" y="-12" fill="#596273" fontSize="28" fontWeight="800" letterSpacing="1" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                    {idLabelText}
+                                </text>
+                                <text x="75" y="32" fill="#071A3A" fontSize="48" fontWeight="900" style={{ fontFamily: 'Montserrat, monospace, sans-serif' }}>
+                                    {partyCodeText}
+                                </text>
+                            </g>
 
-                            <span className="h-7 w-[1px] bg-slate-300" />
+                            {/* Divider 1 */}
+                            <line x1="880" y1="1120" x2="880" y2="1220" stroke="#C89A3D" strokeWidth="2.5" opacity="0.6" />
 
-                            {/* 2. ISSUED ON */}
-                            <div className="flex items-center space-x-2.5">
-                                <div className="w-9 h-9 rounded-full bg-[#fbf5e6] border border-[#c69a3d]/50 flex items-center justify-center shrink-0">
-                                    <svg className="w-4 h-4 text-[#c69a3d]" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-                                    </svg>
-                                </div>
-                                <div className="text-left">
-                                    <p className="text-[8.5px] font-[800] tracking-wider text-slate-500 uppercase">ISSUED ON</p>
-                                    <p className="text-[14px] font-[900] text-[#08142c] font-mono tracking-tight">{issuedOnText}</p>
-                                </div>
-                            </div>
+                            {/* Column 2: ISSUED ON */}
+                            <g transform="translate(1160, 1170)">
+                                <circle cx="0" cy="0" r="54" fill="#FAF3E0" stroke="url(#goldGrad)" strokeWidth="4" />
+                                <path d="M-16,-20 L-16,20 L16,20 L16,-20 Z M-10,-24 L-10,-18 M10,-24 L10,-18 M-16,-8 L16,-8" fill="none" stroke="#C89A3D" strokeWidth="4" strokeLinecap="round" />
+                                <text x="75" y="-12" fill="#596273" fontSize="28" fontWeight="800" letterSpacing="1" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                    ISSUED ON
+                                </text>
+                                <text x="75" y="32" fill="#071A3A" fontSize="48" fontWeight="900" style={{ fontFamily: 'Montserrat, monospace, sans-serif' }}>
+                                    {issuedOnText}
+                                </text>
+                            </g>
 
-                            <span className="h-7 w-[1px] bg-slate-300" />
+                            {/* Divider 2 */}
+                            <line x1="1540" y1="1120" x2="1540" y2="1220" stroke="#C89A3D" strokeWidth="2.5" opacity="0.6" />
 
-                            {/* 3. VALID TILL */}
-                            <div className="flex items-center space-x-2.5">
-                                <div className="w-9 h-9 rounded-full bg-[#fbf5e6] border border-[#c69a3d]/50 flex items-center justify-center shrink-0">
-                                    <svg className="w-4 h-4 text-[#c69a3d]" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-                                    </svg>
-                                </div>
-                                <div className="text-left">
-                                    <p className="text-[8.5px] font-[800] tracking-wider text-slate-500 uppercase">VALID TILL</p>
-                                    <p className="text-[14px] font-[900] text-[#08142c] font-mono tracking-tight">{validTillText}</p>
-                                </div>
-                            </div>
+                            {/* Column 3: VALID TILL */}
+                            <g transform="translate(1820, 1170)">
+                                <circle cx="0" cy="0" r="54" fill="#FAF3E0" stroke="url(#goldGrad)" strokeWidth="4" />
+                                <path d="M-16,-20 L-16,20 L16,20 L16,-20 Z M-10,-24 L-10,-18 M10,-24 L10,-18 M-16,-8 L16,-8" fill="none" stroke="#C89A3D" strokeWidth="4" strokeLinecap="round" />
+                                <text x="75" y="-12" fill="#596273" fontSize="28" fontWeight="800" letterSpacing="1" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                    VALID TILL
+                                </text>
+                                <text x="75" y="32" fill="#071A3A" fontSize="48" fontWeight="900" style={{ fontFamily: 'Montserrat, monospace, sans-serif' }}>
+                                    {validTillText}
+                                </text>
+                            </g>
 
-                            <span className="h-7 w-[1px] bg-slate-300" />
+                            {/* Divider 3 */}
+                            <line x1="2200" y1="1120" x2="2200" y2="1220" stroke="#C89A3D" strokeWidth="2.5" opacity="0.6" />
 
-                            {/* 4. LOCATION */}
-                            <div className="flex items-center space-x-2.5">
-                                <div className="w-9 h-9 rounded-full bg-[#fbf5e6] border border-[#c69a3d]/50 flex items-center justify-center shrink-0">
-                                    <svg className="w-4 h-4 text-[#c69a3d]" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                                    </svg>
-                                </div>
-                                <div className="text-left">
-                                    <p className="text-[8.5px] font-[800] tracking-wider text-slate-500 uppercase">LOCATION</p>
-                                    <p className="text-[14px] font-[900] text-[#08142c] uppercase tracking-tight">{locationText}</p>
-                                </div>
-                            </div>
-                        </div>
+                            {/* Column 4: LOCATION */}
+                            <g transform="translate(2480, 1170)">
+                                <circle cx="0" cy="0" r="54" fill="#FAF3E0" stroke="url(#goldGrad)" strokeWidth="4" />
+                                <path d="M0,22 C0,22 -18,2 -18,-10 C-18,-20 -10,-28 0,-28 C10,-28 18,-20 18,-10 C18,2 0,22 0,22 Z M0,-4 C-3.5,-4 -6.5,-7 -6.5,-10.5 C-6.5,-14 -3.5,-17 0,-17 C3.5,-17 6.5,-14 6.5,-10.5 C6.5,-7 3.5,-4 0,-4 Z" fill="#C89A3D" />
+                                <text x="75" y="-12" fill="#596273" fontSize="28" fontWeight="800" letterSpacing="1" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                    LOCATION
+                                </text>
+                                <text x="75" y="32" fill="#071A3A" fontSize="48" fontWeight="900" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                    {locationText}
+                                </text>
+                            </g>
+                        </g>
 
-                        {/* 4.4 CENTER PARTY CODE OVAL BADGE */}
-                        <div className="flex items-center justify-center my-0.5">
-                            <div className="flex items-center space-x-2">
-                                <span className="w-20 h-[1.5px] bg-[#c69a3d]" />
-                                <span className="text-[#c69a3d] text-xs">✦</span>
-                                <div className="px-7 py-1 rounded-full bg-[#08142c] border-[1.5px] border-[#c69a3d] text-[#f5db8b] font-mono font-[900] text-[15px] tracking-widest shadow-md flex items-center space-x-2.5">
-                                    <span className="text-[11px] text-[#c69a3d]">✦</span>
-                                    <span>{partyCodeText}</span>
-                                    <span className="text-[11px] text-[#c69a3d]">✦</span>
-                                </div>
-                                <span className="text-[#c69a3d] text-xs">✦</span>
-                                <span className="w-20 h-[1.5px] bg-[#c69a3d]" />
-                            </div>
-                        </div>
+                        {/* 9. CENTER PARTY CODE OVAL BADGE (✦ RD0002 ✦) */}
+                        <g>
+                            {/* Left Gold Extension Line */}
+                            <line x1="680" y1="1350" x2="1240" y2="1350" stroke="url(#goldGrad)" strokeWidth="3.5" />
+                            <polygon points="680,1350 690,1342 700,1350 690,1358" fill="url(#goldGrad)" />
+                            <polygon points="1230,1350 1240,1342 1250,1350 1240,1358" fill="url(#goldGrad)" />
 
-                        {/* 4.5 AUTHORIZATION CLAUSE */}
-                        <div className="text-center px-10 -mt-1">
-                            <p className="text-[11px] text-[#334155] leading-relaxed max-w-[800px] mx-auto font-medium">
-                                {authClause}
-                            </p>
-                        </div>
+                            {/* Center Dark Navy Pill Badge */}
+                            <rect
+                                x="1275"
+                                y="1308"
+                                width="420"
+                                height="84"
+                                rx="42"
+                                fill="#071A3A"
+                                stroke="url(#goldGrad)"
+                                strokeWidth="4"
+                            />
 
-                        {/* 4.6 BOTTOM FOOTER SECTION (ROLE + PERFORMANCE DISCLAIMER NOTE) */}
-                        <div className="flex flex-col items-start pl-8 pr-4 pb-1">
-                            <div className="text-[12px] font-[900] uppercase tracking-wider text-[#08142c]">
+                            {/* Badge Text: ✦ RD0002 ✦ */}
+                            <text
+                                x="1485"
+                                y="1364"
+                                textAnchor="middle"
+                                fill="#E2C16B"
+                                fontSize="44"
+                                fontWeight="900"
+                                letterSpacing="4"
+                                style={{ fontFamily: 'Montserrat, monospace, sans-serif' }}
+                            >
+                                ✦  {partyCodeText}  ✦
+                            </text>
+
+                            {/* Right Gold Extension Line */}
+                            <line x1="1730" y1="1350" x2="2290" y2="1350" stroke="url(#goldGrad)" strokeWidth="3.5" />
+                            <polygon points="1720,1350 1730,1342 1740,1350 1730,1358" fill="url(#goldGrad)" />
+                            <polygon points="2280,1350 2290,1342 2300,1350 2290,1358" fill="url(#goldGrad)" />
+                        </g>
+
+                        {/* 10. LEGAL AUTHORIZATION CLAUSE */}
+                        <g>
+                            <text
+                                x="1485"
+                                y="1480"
+                                textAnchor="middle"
+                                fill="#0B2145"
+                                fontSize="33"
+                                fontWeight="500"
+                                style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}
+                            >
+                                This {isSuperDistributor ? 'Super Distributor' : 'Distributor'} is hereby authorised for providing the services offered by Rupiksha Services Pvt. Ltd.
+                            </text>
+                            <text
+                                x="1485"
+                                y="1530"
+                                textAnchor="middle"
+                                fill="#0B2145"
+                                fontSize="33"
+                                fontWeight="500"
+                                style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}
+                            >
+                                and shall not act as our representative in any capacity for any other purpose whatsoever.
+                            </text>
+                        </g>
+
+                        {/* 11. BOTTOM-LEFT LUXURY FLOWING NAVY/GOLD WAVES (BEHIND TEXT) */}
+                        <g>
+                            {/* Deep Navy Curved Wave */}
+                            <path
+                                d="M54,1650 C220,1650 380,1850 780,2046 L54,2046 Z"
+                                fill="url(#navyMainGrad)"
+                            />
+                            {/* Gold Edge Line */}
+                            <path
+                                d="M54,1644 C220,1644 380,1844 780,2040 L780,2046 C380,1850 220,1650 54,1650 Z"
+                                fill="url(#goldGrad)"
+                            />
+                            {/* Inner Accent Wave */}
+                            <path
+                                d="M54,1780 C180,1780 320,1920 620,2046 L54,2046 Z"
+                                fill="#040A17"
+                            />
+                            <path
+                                d="M54,1776 C180,1776 320,1916 620,2042 L620,2046 C320,1920 180,1780 54,1780 Z"
+                                fill="url(#goldGrad)"
+                            />
+                        </g>
+
+                        {/* 12. BOTTOM SECTION: ROLE & DISCLAIMER NOTE (ON CLEAN IVORY) */}
+                        <g transform="translate(680, 1690)">
+                            {/* Role Label */}
+                            <text
+                                x="0"
+                                y="0"
+                                fill="#071A3A"
+                                fontSize="38"
+                                fontWeight="900"
+                                letterSpacing="2"
+                                style={{ fontFamily: 'Montserrat, sans-serif', textTransform: 'uppercase' }}
+                            >
                                 {bottomRoleText}
-                            </div>
-                            <p className="text-[9.5px] text-[#334155] font-medium leading-normal mt-0.5">
-                                {disclaimerText}
-                            </p>
-                        </div>
+                            </text>
+                            <line x1="0" y1="12" x2="360" y2="12" stroke="url(#goldGrad)" strokeWidth="3" />
 
-                    </div>
+                            {/* Disclaimer Note */}
+                            <text
+                                x="0"
+                                y="60"
+                                fill="#0B2145"
+                                fontSize="27"
+                                fontWeight="600"
+                                style={{ fontFamily: 'Montserrat, sans-serif' }}
+                            >
+                                {disclaimerText}
+                            </text>
+                        </g>
+
+                    </svg>
                 </div>
             </div>
         </div>
