@@ -23,8 +23,8 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
         ''
     ).toString().toUpperCase();
 
-    const isSuperDistributor = rawRole.includes('SUPER') || rawRole === 'SUPER_DISTRIBUTOR';
-    const isDistributor = !isSuperDistributor && (rawRole.includes('DISTRIBUTOR') || rawRole === 'DISTRIBUTOR');
+    const isSuperDistributor = rawRole.includes('SUPER') || rawRole === 'SUPER_DISTRIBUTOR' || (typeof window !== 'undefined' && window.location.pathname.startsWith('/super-distributor'));
+    const isDistributor = !isSuperDistributor && (rawRole.includes('DISTRIBUTOR') || rawRole === 'DISTRIBUTOR' || (typeof window !== 'undefined' && window.location.pathname.startsWith('/distributor')));
 
     // Parse creation date
     const resolveCreatedDate = () => {

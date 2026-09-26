@@ -644,12 +644,26 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
         }
     };
 
+    // Determine if current panel/user is Distributor or Super Distributor
+    const rawRole = (
+        currentUser?.role ||
+        currentUser?.userType ||
+        (Array.isArray(currentUser?.roles) ? currentUser.roles[0] : '') ||
+        formData?.role ||
+        (typeof window !== 'undefined' && window.location.pathname.includes('/distributor') ? 'DISTRIBUTOR' : '') ||
+        (typeof window !== 'undefined' && window.location.pathname.includes('/super-distributor') ? 'SUPER_DISTRIBUTOR' : '') ||
+        ''
+    ).toString().toUpperCase();
+
+    const isDistributorOrSuper = rawRole.includes('DISTRIBUTOR') || rawRole.includes('SUPER') ||
+        (typeof window !== 'undefined' && (window.location.pathname.startsWith('/distributor') || window.location.pathname.startsWith('/super-distributor')));
+
     const menuItems = [
         { id: 'business', label: 'Business Information', icon: Building2, status: getSectionStatus('business') },
         { id: 'personal', label: 'Personal Information', icon: UserRound, status: getSectionStatus('personal') },
         { id: 'banking', label: 'Banking Details', icon: Landmark, status: getSectionStatus('banking') },
         { id: 'visiting_card', label: 'Visiting Card', icon: CreditCard, status: 'none' },
-        { id: 'certificate', label: 'Certificate', icon: Award, status: 'none' },
+        ...(isDistributorOrSuper ? [{ id: 'certificate', label: 'Certificate', icon: Award, status: 'none' }] : []),
         { id: 'settings', label: 'Settings', icon: SettingsIcon, status: 'none' },
     ];
 
@@ -791,7 +805,7 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
                                 profilePhoto={profilePhoto} 
                             />
                         )}
-                        {activeSubTab === 'certificate' && (
+                        {activeSubTab === 'certificate' && isDistributorOrSuper && (
                             <Certificate 
                                 formData={formData} 
                                 currentUser={currentUser} 
