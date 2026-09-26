@@ -409,7 +409,7 @@ export const dataService = {
                 return { success: false, message: 'Invalid credentials or unauthorized portal access.' };
             }
 
-            const isAdminLogin = expectedPortalRole && ['admin', 'super_distributor', 'employee', 'national_header', 'state_header', 'regional_header'].includes(String(expectedPortalRole).toLowerCase());
+            const isAdminLogin = expectedPortalRole && ['admin', 'employee', 'national_header', 'state_header', 'regional_header'].includes(String(expectedPortalRole).toLowerCase());
 
             if (isAdminLogin) {
                 localStorage.setItem('rupiksha_admin_user', JSON.stringify(normalizedUser));

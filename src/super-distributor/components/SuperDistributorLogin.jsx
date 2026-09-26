@@ -107,18 +107,11 @@ const SuperDistributorLogin = ({ onFormModeChange }) => {
                 }
             } else {
                 // Password Login via AuthContext
-                // Triggers the safety PIN flow for SuperDistributors
-                const result = await login(loginForm.username, loginForm.password, 'SUPER_DISTRIBUTOR', pin.trim());
-                if (result.success) {
-                    const userStr = localStorage.getItem('rupiksha_user');
-                    if (userStr) {
-                        const user = JSON.parse(userStr);
-                        const role = normalizeRole(user.role);
-                        if (role === 'SUPER_DISTRIBUTOR') navigate('/super-distributor');
-                        else setLoginError('Invalid credentials.');
-                    }
+                const result = await login(loginForm.username.trim(), loginForm.password, 'SUPER_DISTRIBUTOR', pin.trim());
+                if (result && result.success) {
+                    navigate('/super-distributor');
                 } else {
-                    setLoginError(result.message || 'Invalid credentials.');
+                    setLoginError(result?.message || 'Invalid credentials or Login PIN.');
                 }
             }
         } catch (err) {

@@ -301,7 +301,7 @@ export function AuthProvider({ children }) {
           return { success: false, message: "Session normalization failed." };
         }
         
-        const isAdminRole = expectedPortalRole && ['admin', 'super_distributor', 'employee', 'national_header', 'state_header', 'regional_header'].includes(String(expectedPortalRole).toLowerCase());
+        const isAdminRole = expectedPortalRole && ['admin', 'employee', 'national_header', 'state_header', 'regional_header'].includes(String(expectedPortalRole).toLowerCase());
         if (isAdminRole) {
           localStorage.setItem("rupiksha_admin_user", JSON.stringify(normalized));
           if (res.token) {
