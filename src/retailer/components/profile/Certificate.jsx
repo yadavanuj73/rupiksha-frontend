@@ -146,7 +146,7 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
 
         try {
             const canvas = await html2canvas(element, {
-                scale: 3.5, // 300+ DPI Equivalent
+                scale: 3.5, // 300+ DPI razor sharp output
                 useCORS: true,
                 allowTaint: true,
                 backgroundColor: '#FAF8F2',
@@ -207,8 +207,8 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
     const bottomRoleText = d.bottomRole || (isSuperDistributor ? 'SUPER DISTRIBUTOR' : 'DISTRIBUTOR');
     const disclaimerText = d.disclaimerNote || `NOTE: If you will not perform up to the mark, then your ${isSuperDistributor ? 'Super Distributor' : 'Distributor'} location will be allocated to some other person.`;
 
-    // Dynamic recipient name font scaling
-    const nameFontSize = recipientName.length > 28 ? 72 : (recipientName.length > 20 ? 84 : 96);
+    // Dynamic recipient name font scaling for large master canvas
+    const nameFontSize = recipientName.length > 26 ? 88 : (recipientName.length > 18 ? 104 : 118);
 
     return (
         <div className="w-full flex flex-col items-center space-y-6 font-['Inter',sans-serif]">
@@ -303,16 +303,9 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
                                 <stop offset="100%" stopColor="#030814" />
                             </linearGradient>
 
-                            {/* Subtle Wave Gradient */}
-                            <linearGradient id="waveGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stopColor="#C89A3D" stopOpacity="0.12" />
-                                <stop offset="50%" stopColor="#E2C16B" stopOpacity="0.08" />
-                                <stop offset="100%" stopColor="#966D18" stopOpacity="0.04" />
-                            </linearGradient>
-
-                            {/* Drop Shadow for Title & Banner */}
+                            {/* Drop Shadow for Banner */}
                             <filter id="bannerShadow" x="-5%" y="-5%" width="110%" height="120%">
-                                <feDropShadow dx="0" dy="12" stdDeviation="16" floodColor="#000000" floodOpacity="0.25" />
+                                <feDropShadow dx="0" dy="16" stdDeviation="20" floodColor="#000000" floodOpacity="0.3" />
                             </filter>
                         </defs>
 
@@ -321,66 +314,66 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
 
                         {/* 2. SUBTLE LUXURY BACKGROUND WAVES */}
                         <g opacity="0.8">
-                            <path d="M-50,600 C400,500 800,750 1400,600 C2000,450 2400,700 3050,550" fill="none" stroke="#D9C8A3" strokeWidth="2.5" opacity="0.12" />
-                            <path d="M-50,640 C400,540 800,790 1400,640 C2000,490 2400,740 3050,590" fill="none" stroke="#D9C8A3" strokeWidth="2.5" opacity="0.10" />
-                            <path d="M-50,680 C400,580 800,830 1400,680 C2000,530 2400,780 3050,630" fill="none" stroke="#D9C8A3" strokeWidth="2" opacity="0.08" />
-                            <path d="M-50,1500 C500,1400 1000,1650 1600,1500 C2200,1350 2600,1600 3050,1450" fill="none" stroke="#D9C8A3" strokeWidth="2.5" opacity="0.12" />
-                            <path d="M-50,1540 C500,1440 1000,1690 1600,1540 C2200,1390 2600,1640 3050,1490" fill="none" stroke="#D9C8A3" strokeWidth="2" opacity="0.09" />
+                            <path d="M-50,600 C400,500 800,750 1400,600 C2000,450 2400,700 3050,550" fill="none" stroke="#D9C8A3" strokeWidth="2.5" opacity="0.14" />
+                            <path d="M-50,640 C400,540 800,790 1400,640 C2000,490 2400,740 3050,590" fill="none" stroke="#D9C8A3" strokeWidth="2.5" opacity="0.11" />
+                            <path d="M-50,680 C400,580 800,830 1400,680 C2000,530 2400,780 3050,630" fill="none" stroke="#D9C8A3" strokeWidth="2" opacity="0.09" />
+                            <path d="M-50,1500 C500,1400 1000,1650 1600,1500 C2200,1350 2600,1600 3050,1450" fill="none" stroke="#D9C8A3" strokeWidth="2.5" opacity="0.14" />
+                            <path d="M-50,1540 C500,1440 1000,1690 1600,1540 C2200,1390 2600,1640 3050,1490" fill="none" stroke="#D9C8A3" strokeWidth="2" opacity="0.10" />
                         </g>
 
                         {/* 3. MULTI-LAYER OUTER FRAME & BORDERS */}
                         {/* Outer Deep Navy Frame (36px) */}
                         <rect x="18" y="18" width="2934" height="2064" fill="none" stroke="#071A3A" strokeWidth="36" />
 
-                        {/* Fine Gold Inset Line (6px) */}
-                        <rect x="54" y="54" width="2862" height="1992" fill="none" stroke="url(#goldGrad)" strokeWidth="6" />
+                        {/* Fine Gold Inset Line (8px) */}
+                        <rect x="54" y="54" width="2862" height="1992" fill="none" stroke="url(#goldGrad)" strokeWidth="8" />
 
-                        {/* Fine Inner Navy Line (2.5px) */}
-                        <rect x="68" y="68" width="2834" height="1964" fill="none" stroke="#071A3A" strokeWidth="2.5" />
+                        {/* Fine Inner Navy Line (3px) */}
+                        <rect x="70" y="70" width="2830" height="1960" fill="none" stroke="#071A3A" strokeWidth="3" />
 
                         {/* Four Corner Gold Diagonal Accents */}
-                        <polygon points="54,54 110,54 54,110" fill="url(#goldGrad)" />
-                        <polygon points="2916,54 2860,54 2916,110" fill="url(#goldGrad)" />
-                        <polygon points="54,2046 110,2046 54,1990" fill="url(#goldGrad)" />
-                        <polygon points="2916,2046 2860,2046 2916,1990" fill="url(#goldGrad)" />
+                        <polygon points="54,54 120,54 54,120" fill="url(#goldGrad)" />
+                        <polygon points="2916,54 2850,54 2916,120" fill="url(#goldGrad)" />
+                        <polygon points="54,2046 120,2046 54,1980" fill="url(#goldGrad)" />
+                        <polygon points="2916,2046 2850,2046 2916,1980" fill="url(#goldGrad)" />
 
                         {/* 4. TOP-RIGHT CORNER LUXURY GEOMETRIC RIBBONS */}
                         <g>
-                            <polygon points="2300,54 2420,54 2916,550 2916,430" fill="url(#goldGrad)" opacity="0.9" />
-                            <polygon points="2420,54 2650,54 2916,320 2916,550" fill="url(#navyMainGrad)" />
-                            <polygon points="2650,54 2916,54 2916,320" fill="url(#goldGrad)" />
+                            <polygon points="2250,54 2400,54 2916,570 2916,420" fill="url(#goldGrad)" opacity="0.95" />
+                            <polygon points="2400,54 2680,54 2916,290 2916,570" fill="url(#navyMainGrad)" />
+                            <polygon points="2680,54 2916,54 2916,290" fill="url(#goldGrad)" />
                         </g>
 
-                        {/* 5. TOP-RIGHT ANGLED NAVY/GOLD BANNER (EXACT MASTER PROPORTION) */}
+                        {/* 5. TOP-RIGHT ANGLED NAVY/GOLD BANNER (EXACT MASTER PROPORTION - 30% HEIGHT) */}
                         <g filter="url(#bannerShadow)">
                             {/* Main Navy Polygon Banner */}
                             <polygon 
-                                points="1020,54 2916,54 2916,510 880,510" 
+                                points="940,54 2916,54 2916,630 760,630" 
                                 fill="url(#bannerNavyGrad)" 
                             />
 
                             {/* Top Gold Border */}
-                            <line x1="1020" y1="56" x2="2916" y2="56" stroke="url(#goldGrad)" strokeWidth="8" />
+                            <line x1="940" y1="56" x2="2916" y2="56" stroke="url(#goldGrad)" strokeWidth="10" />
 
                             {/* Slanted Left Gold Edge */}
-                            <line x1="1020" y1="54" x2="880" y2="510" stroke="url(#goldGrad)" strokeWidth="12" />
+                            <line x1="940" y1="54" x2="760" y2="630" stroke="url(#goldGrad)" strokeWidth="14" />
 
                             {/* Bottom Gold Border */}
-                            <line x1="880" y1="506" x2="2916" y2="506" stroke="url(#goldGrad)" strokeWidth="8" />
+                            <line x1="760" y1="625" x2="2916" y2="625" stroke="url(#goldGrad)" strokeWidth="10" />
 
                             {/* Inner Gold Pinstripe Accents */}
-                            <line x1="1040" y1="72" x2="2900" y2="72" stroke="url(#goldGrad)" strokeWidth="2" opacity="0.6" />
-                            <line x1="900" y1="490" x2="2900" y2="490" stroke="url(#goldGrad)" strokeWidth="2" opacity="0.6" />
+                            <line x1="965" y1="76" x2="2900" y2="76" stroke="url(#goldGrad)" strokeWidth="2.5" opacity="0.7" />
+                            <line x1="785" y1="605" x2="2900" y2="605" stroke="url(#goldGrad)" strokeWidth="2.5" opacity="0.7" />
 
                             {/* Header Text 1: AUTHORISED SUPER DISTRIBUTOR / AUTHORISED DISTRIBUTOR */}
                             <text
-                                x="1950"
-                                y="195"
+                                x="1900"
+                                y="235"
                                 textAnchor="middle"
                                 fill="#E2C16B"
-                                fontSize="58"
+                                fontSize="72"
                                 fontWeight="800"
-                                letterSpacing="6"
+                                letterSpacing="7"
                                 style={{ fontFamily: 'Cinzel, Playfair Display, "Times New Roman", serif', textTransform: 'uppercase' }}
                             >
                                 {titleText}
@@ -388,36 +381,36 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
 
                             {/* 3 Gold Stars with Horizontal Accent Lines */}
                             <g>
-                                <line x1="1650" y1="260" x2="1830" y2="260" stroke="url(#goldGrad)" strokeWidth="3" />
-                                <text x="1890" y="272" fill="#E2C16B" fontSize="34" textAnchor="middle">★</text>
-                                <text x="1950" y="275" fill="#F5DB8B" fontSize="48" textAnchor="middle">★</text>
-                                <text x="2010" y="272" fill="#E2C16B" fontSize="34" textAnchor="middle">★</text>
-                                <line x1="2070" y1="260" x2="2250" y2="260" stroke="url(#goldGrad)" strokeWidth="3" />
+                                <line x1="1550" y1="315" x2="1760" y2="315" stroke="url(#goldGrad)" strokeWidth="3.5" />
+                                <text x="1830" y="328" fill="#E2C16B" fontSize="42" textAnchor="middle">★</text>
+                                <text x="1900" y="332" fill="#F5DB8B" fontSize="60" textAnchor="middle">★</text>
+                                <text x="1970" y="328" fill="#E2C16B" fontSize="42" textAnchor="middle">★</text>
+                                <line x1="2040" y1="315" x2="2250" y2="315" stroke="url(#goldGrad)" strokeWidth="3.5" />
                             </g>
 
                             {/* Header Text 2: C E R T I F I C A T E */}
                             <text
-                                x="1950"
-                                y="425"
+                                x="1900"
+                                y="505"
                                 textAnchor="middle"
                                 fill="#FFFFFF"
-                                fontSize="118"
+                                fontSize="145"
                                 fontWeight="900"
-                                letterSpacing="26"
+                                letterSpacing="32"
                                 style={{ fontFamily: 'Cinzel, Playfair Display, "Times New Roman", serif' }}
                             >
                                 C E R T I F I C A T E
                             </text>
                         </g>
 
-                        {/* 6. TOP-LEFT LOGO & TAGLINE */}
+                        {/* 6. TOP-LEFT LOGO & TAGLINE (LARGE & PROPORTIONAL) */}
                         <g>
                             <image
                                 href={safeLogoUrl || rupikshaLogo}
-                                x="160"
-                                y="110"
-                                width="490"
-                                height="370"
+                                x="150"
+                                y="90"
+                                width="560"
+                                height="490"
                                 preserveAspectRatio="xMidYMid meet"
                             />
                         </g>
@@ -425,17 +418,17 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
                         {/* 7. MAIN BODY: "This is to certify that" */}
                         <g>
                             {/* Top Gold Filigree Ornament */}
-                            <line x1="1240" y1="630" x2="1420" y2="630" stroke="url(#goldGrad)" strokeWidth="3" />
-                            <polygon points="1485,618 1497,630 1485,642 1473,630" fill="url(#goldGrad)" />
-                            <line x1="1550" y1="630" x2="1730" y2="630" stroke="url(#goldGrad)" strokeWidth="3" />
+                            <line x1="1200" y1="700" x2="1420" y2="700" stroke="url(#goldGrad)" strokeWidth="3.5" />
+                            <polygon points="1485,686 1500,700 1485,714 1470,700" fill="url(#goldGrad)" />
+                            <line x1="1550" y1="700" x2="1770" y2="700" stroke="url(#goldGrad)" strokeWidth="3.5" />
 
                             {/* Italic Intro */}
                             <text
                                 x="1485"
-                                y="715"
+                                y="785"
                                 textAnchor="middle"
                                 fill="#0B2145"
-                                fontSize="52"
+                                fontSize="64"
                                 fontStyle="italic"
                                 fontWeight="500"
                                 style={{ fontFamily: 'Playfair Display, "Times New Roman", Georgia, serif' }}
@@ -443,10 +436,10 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
                                 This is to certify that
                             </text>
 
-                            {/* RECIPIENT NAME (THE MAIN CONTENT FOCAL POINT) */}
+                            {/* RECIPIENT NAME (VERY LARGE & FOCAL POINT) */}
                             <text
                                 x="1485"
-                                y="845"
+                                y="930"
                                 textAnchor="middle"
                                 fill="#071A3A"
                                 fontSize={nameFontSize}
@@ -458,17 +451,17 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
                             </text>
 
                             {/* Bottom Gold Filigree Ornament */}
-                            <line x1="1180" y1="920" x2="1420" y2="920" stroke="url(#goldGrad)" strokeWidth="3" />
-                            <polygon points="1485,908 1497,920 1485,932 1473,920" fill="url(#goldGrad)" />
-                            <line x1="1550" y1="920" x2="1790" y2="920" stroke="url(#goldGrad)" strokeWidth="3" />
+                            <line x1="1140" y1="1005" x2="1420" y2="1005" stroke="url(#goldGrad)" strokeWidth="3.5" />
+                            <polygon points="1485,991 1500,1005 1485,1019 1470,1005" fill="url(#goldGrad)" />
+                            <line x1="1550" y1="1005" x2="1830" y2="1005" stroke="url(#goldGrad)" strokeWidth="3.5" />
 
                             {/* Description Statement */}
                             <text
                                 x="1485"
-                                y="1005"
+                                y="1080"
                                 textAnchor="middle"
                                 fill="#0B2145"
-                                fontSize="38"
+                                fontSize="46"
                                 fontWeight="500"
                                 style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}
                             >
@@ -476,61 +469,61 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
                             </text>
                         </g>
 
-                        {/* 8. FOUR INFORMATION BADGES (COLUMNS) */}
+                        {/* 8. FOUR INFORMATION BADGES (PROMINENT & FULL-WIDTH) */}
                         <g>
                             {/* Column 1: ID */}
-                            <g transform="translate(480, 1170)">
-                                <circle cx="0" cy="0" r="54" fill="#FAF3E0" stroke="url(#goldGrad)" strokeWidth="4" />
-                                <path d="M-18,18 C-18,2 -6,-8 0,-8 C6,-8 18,2 18,18 Z M0,-14 C-10,-14 -10,-28 0,-28 C10,-28 10,-14 0,-14 Z" fill="#C89A3D" />
-                                <text x="75" y="-12" fill="#596273" fontSize="28" fontWeight="800" letterSpacing="1" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                            <g transform="translate(450, 1260)">
+                                <circle cx="0" cy="0" r="64" fill="#FAF3E0" stroke="url(#goldGrad)" strokeWidth="5" />
+                                <path d="M-22,22 C-22,3 -8,-9 0,-9 C8,-9 22,3 22,22 Z M0,-16 C-12,-16 -12,-32 0,-32 C12,-32 12,-16 0,-16 Z" fill="#C89A3D" />
+                                <text x="90" y="-14" fill="#596273" fontSize="34" fontWeight="800" letterSpacing="1" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                                     {idLabelText}
                                 </text>
-                                <text x="75" y="32" fill="#071A3A" fontSize="48" fontWeight="900" style={{ fontFamily: 'Montserrat, monospace, sans-serif' }}>
+                                <text x="90" y="40" fill="#071A3A" fontSize="60" fontWeight="900" style={{ fontFamily: 'Montserrat, monospace, sans-serif' }}>
                                     {partyCodeText}
                                 </text>
                             </g>
 
                             {/* Divider 1 */}
-                            <line x1="880" y1="1120" x2="880" y2="1220" stroke="#C89A3D" strokeWidth="2.5" opacity="0.6" />
+                            <line x1="930" y1="1190" x2="930" y2="1330" stroke="#C89A3D" strokeWidth="3.5" opacity="0.6" />
 
                             {/* Column 2: ISSUED ON */}
-                            <g transform="translate(1160, 1170)">
-                                <circle cx="0" cy="0" r="54" fill="#FAF3E0" stroke="url(#goldGrad)" strokeWidth="4" />
-                                <path d="M-16,-20 L-16,20 L16,20 L16,-20 Z M-10,-24 L-10,-18 M10,-24 L10,-18 M-16,-8 L16,-8" fill="none" stroke="#C89A3D" strokeWidth="4" strokeLinecap="round" />
-                                <text x="75" y="-12" fill="#596273" fontSize="28" fontWeight="800" letterSpacing="1" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                            <g transform="translate(1190, 1260)">
+                                <circle cx="0" cy="0" r="64" fill="#FAF3E0" stroke="url(#goldGrad)" strokeWidth="5" />
+                                <path d="M-19,-24 L-19,24 L19,24 L19,-24 Z M-12,-28 L-12,-20 M12,-28 L12,-20 M-19,-10 L19,-10" fill="none" stroke="#C89A3D" strokeWidth="4.5" strokeLinecap="round" />
+                                <text x="90" y="-14" fill="#596273" fontSize="34" fontWeight="800" letterSpacing="1" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                                     ISSUED ON
                                 </text>
-                                <text x="75" y="32" fill="#071A3A" fontSize="48" fontWeight="900" style={{ fontFamily: 'Montserrat, monospace, sans-serif' }}>
+                                <text x="90" y="40" fill="#071A3A" fontSize="60" fontWeight="900" style={{ fontFamily: 'Montserrat, monospace, sans-serif' }}>
                                     {issuedOnText}
                                 </text>
                             </g>
 
                             {/* Divider 2 */}
-                            <line x1="1540" y1="1120" x2="1540" y2="1220" stroke="#C89A3D" strokeWidth="2.5" opacity="0.6" />
+                            <line x1="1620" y1="1190" x2="1620" y2="1330" stroke="#C89A3D" strokeWidth="3.5" opacity="0.6" />
 
                             {/* Column 3: VALID TILL */}
-                            <g transform="translate(1820, 1170)">
-                                <circle cx="0" cy="0" r="54" fill="#FAF3E0" stroke="url(#goldGrad)" strokeWidth="4" />
-                                <path d="M-16,-20 L-16,20 L16,20 L16,-20 Z M-10,-24 L-10,-18 M10,-24 L10,-18 M-16,-8 L16,-8" fill="none" stroke="#C89A3D" strokeWidth="4" strokeLinecap="round" />
-                                <text x="75" y="-12" fill="#596273" fontSize="28" fontWeight="800" letterSpacing="1" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                            <g transform="translate(1880, 1260)">
+                                <circle cx="0" cy="0" r="64" fill="#FAF3E0" stroke="url(#goldGrad)" strokeWidth="5" />
+                                <path d="M-19,-24 L-19,24 L19,24 L19,-24 Z M-12,-28 L-12,-20 M12,-28 L12,-20 M-19,-10 L19,-10" fill="none" stroke="#C89A3D" strokeWidth="4.5" strokeLinecap="round" />
+                                <text x="90" y="-14" fill="#596273" fontSize="34" fontWeight="800" letterSpacing="1" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                                     VALID TILL
                                 </text>
-                                <text x="75" y="32" fill="#071A3A" fontSize="48" fontWeight="900" style={{ fontFamily: 'Montserrat, monospace, sans-serif' }}>
+                                <text x="90" y="40" fill="#071A3A" fontSize="60" fontWeight="900" style={{ fontFamily: 'Montserrat, monospace, sans-serif' }}>
                                     {validTillText}
                                 </text>
                             </g>
 
                             {/* Divider 3 */}
-                            <line x1="2200" y1="1120" x2="2200" y2="1220" stroke="#C89A3D" strokeWidth="2.5" opacity="0.6" />
+                            <line x1="2310" y1="1190" x2="2310" y2="1330" stroke="#C89A3D" strokeWidth="3.5" opacity="0.6" />
 
                             {/* Column 4: LOCATION */}
-                            <g transform="translate(2480, 1170)">
-                                <circle cx="0" cy="0" r="54" fill="#FAF3E0" stroke="url(#goldGrad)" strokeWidth="4" />
-                                <path d="M0,22 C0,22 -18,2 -18,-10 C-18,-20 -10,-28 0,-28 C10,-28 18,-20 18,-10 C18,2 0,22 0,22 Z M0,-4 C-3.5,-4 -6.5,-7 -6.5,-10.5 C-6.5,-14 -3.5,-17 0,-17 C3.5,-17 6.5,-14 6.5,-10.5 C6.5,-7 3.5,-4 0,-4 Z" fill="#C89A3D" />
-                                <text x="75" y="-12" fill="#596273" fontSize="28" fontWeight="800" letterSpacing="1" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                            <g transform="translate(2540, 1260)">
+                                <circle cx="0" cy="0" r="64" fill="#FAF3E0" stroke="url(#goldGrad)" strokeWidth="5" />
+                                <path d="M0,26 C0,26 -21,3 -21,-12 C-21,-24 -12,-33 0,-33 C12,-33 21,-24 21,-12 C21,3 0,26 0,26 Z M0,-5 C-4.5,-5 -8,-8.5 -8,-13 C-8,-17.5 -4.5,-21 0,-21 C4.5,-21 8,-17.5 8,-13 C8,-8.5 4.5,-5 0,-5 Z" fill="#C89A3D" />
+                                <text x="90" y="-14" fill="#596273" fontSize="34" fontWeight="800" letterSpacing="1" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                                     LOCATION
                                 </text>
-                                <text x="75" y="32" fill="#071A3A" fontSize="48" fontWeight="900" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                <text x="90" y="40" fill="#071A3A" fontSize="60" fontWeight="900" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                                     {locationText}
                                 </text>
                             </g>
@@ -539,50 +532,50 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
                         {/* 9. CENTER PARTY CODE OVAL BADGE (✦ RD0002 ✦) */}
                         <g>
                             {/* Left Gold Extension Line */}
-                            <line x1="680" y1="1350" x2="1240" y2="1350" stroke="url(#goldGrad)" strokeWidth="3.5" />
-                            <polygon points="680,1350 690,1342 700,1350 690,1358" fill="url(#goldGrad)" />
-                            <polygon points="1230,1350 1240,1342 1250,1350 1240,1358" fill="url(#goldGrad)" />
+                            <line x1="560" y1="1450" x2="1190" y2="1450" stroke="url(#goldGrad)" strokeWidth="4.5" />
+                            <polygon points="560,1450 572,1440 584,1450 572,1460" fill="url(#goldGrad)" />
+                            <polygon points="1178,1450 1190,1440 1202,1450 1190,1460" fill="url(#goldGrad)" />
 
                             {/* Center Dark Navy Pill Badge */}
                             <rect
-                                x="1275"
-                                y="1308"
-                                width="420"
-                                height="84"
-                                rx="42"
+                                x="1215"
+                                y="1395"
+                                width="540"
+                                height="110"
+                                rx="55"
                                 fill="#071A3A"
                                 stroke="url(#goldGrad)"
-                                strokeWidth="4"
+                                strokeWidth="5"
                             />
 
                             {/* Badge Text: ✦ RD0002 ✦ */}
                             <text
                                 x="1485"
-                                y="1364"
+                                y="1470"
                                 textAnchor="middle"
                                 fill="#E2C16B"
-                                fontSize="44"
+                                fontSize="58"
                                 fontWeight="900"
-                                letterSpacing="4"
+                                letterSpacing="5"
                                 style={{ fontFamily: 'Montserrat, monospace, sans-serif' }}
                             >
                                 ✦  {partyCodeText}  ✦
                             </text>
 
                             {/* Right Gold Extension Line */}
-                            <line x1="1730" y1="1350" x2="2290" y2="1350" stroke="url(#goldGrad)" strokeWidth="3.5" />
-                            <polygon points="1720,1350 1730,1342 1740,1350 1730,1358" fill="url(#goldGrad)" />
-                            <polygon points="2280,1350 2290,1342 2300,1350 2290,1358" fill="url(#goldGrad)" />
+                            <line x1="1780" y1="1450" x2="2410" y2="1450" stroke="url(#goldGrad)" strokeWidth="4.5" />
+                            <polygon points="1768,1450 1780,1440 1792,1450 1780,1460" fill="url(#goldGrad)" />
+                            <polygon points="2398,1450 2410,1440 2422,1450 2410,1460" fill="url(#goldGrad)" />
                         </g>
 
-                        {/* 10. LEGAL AUTHORIZATION CLAUSE */}
+                        {/* 10. LEGAL AUTHORIZATION CLAUSE (PROMINENT & READABLE) */}
                         <g>
                             <text
                                 x="1485"
-                                y="1480"
+                                y="1595"
                                 textAnchor="middle"
                                 fill="#0B2145"
-                                fontSize="33"
+                                fontSize="40"
                                 fontWeight="500"
                                 style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}
                             >
@@ -590,10 +583,10 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
                             </text>
                             <text
                                 x="1485"
-                                y="1530"
+                                y="1655"
                                 textAnchor="middle"
                                 fill="#0B2145"
-                                fontSize="33"
+                                fontSize="40"
                                 fontWeight="500"
                                 style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}
                             >
@@ -601,51 +594,51 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
                             </text>
                         </g>
 
-                        {/* 11. BOTTOM-LEFT LUXURY FLOWING NAVY/GOLD WAVES (BEHIND TEXT) */}
+                        {/* 11. BOTTOM-LEFT LUXURY FLOWING NAVY/GOLD WAVES (CORNER ONLY) */}
                         <g>
                             {/* Deep Navy Curved Wave */}
                             <path
-                                d="M54,1650 C220,1650 380,1850 780,2046 L54,2046 Z"
+                                d="M54,1750 C180,1750 320,1920 620,2046 L54,2046 Z"
                                 fill="url(#navyMainGrad)"
                             />
                             {/* Gold Edge Line */}
                             <path
-                                d="M54,1644 C220,1644 380,1844 780,2040 L780,2046 C380,1850 220,1650 54,1650 Z"
+                                d="M54,1744 C180,1744 320,1914 620,2040 L620,2046 C320,1920 180,1750 54,1750 Z"
                                 fill="url(#goldGrad)"
                             />
                             {/* Inner Accent Wave */}
                             <path
-                                d="M54,1780 C180,1780 320,1920 620,2046 L54,2046 Z"
+                                d="M54,1860 C150,1860 260,1960 480,2046 L54,2046 Z"
                                 fill="#040A17"
                             />
                             <path
-                                d="M54,1776 C180,1776 320,1916 620,2042 L620,2046 C320,1920 180,1780 54,1780 Z"
+                                d="M54,1856 C150,1856 260,1956 480,2042 L480,2046 C260,1960 150,1860 54,1860 Z"
                                 fill="url(#goldGrad)"
                             />
                         </g>
 
-                        {/* 12. BOTTOM SECTION: ROLE & DISCLAIMER NOTE (ON CLEAN IVORY) */}
-                        <g transform="translate(680, 1690)">
+                        {/* 12. BOTTOM SECTION: ROLE & DISCLAIMER NOTE (TIGHTLY POSITIONED ON CLEAN IVORY) */}
+                        <g transform="translate(440, 1790)">
                             {/* Role Label */}
                             <text
                                 x="0"
                                 y="0"
                                 fill="#071A3A"
-                                fontSize="38"
+                                fontSize="48"
                                 fontWeight="900"
                                 letterSpacing="2"
                                 style={{ fontFamily: 'Montserrat, sans-serif', textTransform: 'uppercase' }}
                             >
                                 {bottomRoleText}
                             </text>
-                            <line x1="0" y1="12" x2="360" y2="12" stroke="url(#goldGrad)" strokeWidth="3" />
+                            <line x1="0" y1="16" x2="420" y2="16" stroke="url(#goldGrad)" strokeWidth="4" />
 
                             {/* Disclaimer Note */}
                             <text
                                 x="0"
-                                y="60"
+                                y="75"
                                 fill="#0B2145"
-                                fontSize="27"
+                                fontSize="35"
                                 fontWeight="600"
                                 style={{ fontFamily: 'Montserrat, sans-serif' }}
                             >
