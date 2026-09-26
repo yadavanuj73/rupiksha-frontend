@@ -267,7 +267,7 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
 
             {/* Master Scalable Certificate Frame (viewBox 0 0 2970 2100: Exact A4 Landscape Proportion) */}
             <div className="w-full flex justify-center overflow-x-auto pb-6">
-                <div 
+                <div
                     ref={containerRef}
                     className="w-full max-w-[1050px] aspect-[297/210] shadow-2xl rounded-none overflow-hidden bg-[#FAF8F2]"
                 >
@@ -347,9 +347,9 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
                         {/* 5. TOP-RIGHT ANGLED NAVY/GOLD BANNER (EXACT MASTER PROPORTION - 30% HEIGHT) */}
                         <g filter="url(#bannerShadow)">
                             {/* Main Navy Polygon Banner */}
-                            <polygon 
-                                points="940,54 2916,54 2916,630 760,630" 
-                                fill="url(#bannerNavyGrad)" 
+                            <polygon
+                                points="940,54 2916,54 2916,630 760,630"
+                                fill="url(#bannerNavyGrad)"
                             />
 
                             {/* Top Gold Border */}
@@ -403,14 +403,14 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
                             </text>
                         </g>
 
-                        {/* 6. TOP-LEFT LOGO & TAGLINE (LARGE TRANSPARENT & PROPORTIONAL +30%) */}
+                        {/* 6. TOP-LEFT LOGO & TAGLINE (REPOSITIONED WITH CLEAN MARGINS) */}
                         <g>
                             <image
                                 href={safeLogoUrl || rupikshaLogo}
-                                x="120"
-                                y="50"
-                                width="730"
-                                height="640"
+                                x="90"
+                                y="105"
+                                width="620"
+                                height="510"
                                 preserveAspectRatio="xMidYMid meet"
                             />
                         </g>
@@ -469,35 +469,35 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
                             </text>
                         </g>
 
-                        {/* 8. FOUR INFORMATION BADGES (PERFECTLY CENTERED & FULL-WIDTH WITH DARK BLACK HEADINGS) */}
+                        {/* 8. FOUR INFORMATION BADGES (BALANCED SPACING & AMPLE CLEARANCE) */}
                         <g>
                             {/* Column 1: ID */}
-                            <g transform="translate(480, 1260)">
-                                <circle cx="-135" cy="0" r="58" fill="#FAF3E0" stroke="url(#goldGrad)" strokeWidth="5" />
-                                <g transform="translate(-135, 0)">
+                            <g transform="translate(440, 1260)">
+                                <circle cx="-160" cy="0" r="58" fill="#FAF3E0" stroke="url(#goldGrad)" strokeWidth="5" />
+                                <g transform="translate(-160, 0)">
                                     <path d="M-22,22 C-22,3 -8,-9 0,-9 C8,-9 22,3 22,22 Z M0,-16 C-12,-16 -12,-32 0,-32 C12,-32 12,-16 0,-16 Z" fill="#C89A3D" />
                                 </g>
-                                <text x="-55" y="-14" fill="#000000" fontSize="33" fontWeight="800" letterSpacing="1" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                <text x="-80" y="-14" fill="#000000" fontSize={idLabelText.length > 15 ? "26" : "29"} fontWeight="800" letterSpacing="1" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                                     {idLabelText}
                                 </text>
-                                <text x="-55" y="40" fill="#071A3A" fontSize="58" fontWeight="900" style={{ fontFamily: 'Montserrat, monospace, sans-serif' }}>
+                                <text x="-80" y="40" fill="#071A3A" fontSize="52" fontWeight="900" style={{ fontFamily: 'Montserrat, monospace, sans-serif' }}>
                                     {partyCodeText}
                                 </text>
                             </g>
 
                             {/* Divider 1 */}
-                            <line x1="810" y1="1190" x2="810" y2="1330" stroke="#C89A3D" strokeWidth="3.5" opacity="0.6" />
+                            <line x1="870" y1="1190" x2="870" y2="1330" stroke="#C89A3D" strokeWidth="3.5" opacity="0.6" />
 
                             {/* Column 2: ISSUED ON */}
-                            <g transform="translate(1148, 1260)">
-                                <circle cx="-135" cy="0" r="58" fill="#FAF3E0" stroke="url(#goldGrad)" strokeWidth="5" />
-                                <g transform="translate(-135, 0)">
+                            <g transform="translate(1175, 1260)">
+                                <circle cx="-140" cy="0" r="58" fill="#FAF3E0" stroke="url(#goldGrad)" strokeWidth="5" />
+                                <g transform="translate(-140, 0)">
                                     <path d="M-19,-24 L-19,24 L19,24 L19,-24 Z M-12,-28 L-12,-20 M12,-28 L12,-20 M-19,-10 L19,-10" fill="none" stroke="#C89A3D" strokeWidth="4.5" strokeLinecap="round" />
                                 </g>
-                                <text x="-55" y="-14" fill="#000000" fontSize="33" fontWeight="800" letterSpacing="1" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                <text x="-65" y="-14" fill="#000000" fontSize="29" fontWeight="800" letterSpacing="1" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                                     ISSUED ON
                                 </text>
-                                <text x="-55" y="40" fill="#071A3A" fontSize="58" fontWeight="900" style={{ fontFamily: 'Montserrat, monospace, sans-serif' }}>
+                                <text x="-65" y="40" fill="#071A3A" fontSize="52" fontWeight="900" style={{ fontFamily: 'Montserrat, monospace, sans-serif' }}>
                                     {issuedOnText}
                                 </text>
                             </g>
@@ -506,38 +506,38 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
                             <line x1="1485" y1="1190" x2="1485" y2="1330" stroke="#C89A3D" strokeWidth="3.5" opacity="0.6" />
 
                             {/* Column 3: VALID TILL */}
-                            <g transform="translate(1822, 1260)">
-                                <circle cx="-135" cy="0" r="58" fill="#FAF3E0" stroke="url(#goldGrad)" strokeWidth="5" />
-                                <g transform="translate(-135, 0)">
+                            <g transform="translate(1790, 1260)">
+                                <circle cx="-140" cy="0" r="58" fill="#FAF3E0" stroke="url(#goldGrad)" strokeWidth="5" />
+                                <g transform="translate(-140, 0)">
                                     <path d="M-19,-24 L-19,24 L19,24 L19,-24 Z M-12,-28 L-12,-20 M12,-28 L12,-20 M-19,-10 L19,-10" fill="none" stroke="#C89A3D" strokeWidth="4.5" strokeLinecap="round" />
                                 </g>
-                                <text x="-55" y="-14" fill="#000000" fontSize="33" fontWeight="800" letterSpacing="1" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                <text x="-65" y="-14" fill="#000000" fontSize="29" fontWeight="800" letterSpacing="1" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                                     VALID TILL
                                 </text>
-                                <text x="-55" y="40" fill="#071A3A" fontSize="58" fontWeight="900" style={{ fontFamily: 'Montserrat, monospace, sans-serif' }}>
+                                <text x="-65" y="40" fill="#071A3A" fontSize="52" fontWeight="900" style={{ fontFamily: 'Montserrat, monospace, sans-serif' }}>
                                     {validTillText}
                                 </text>
                             </g>
 
                             {/* Divider 3 */}
-                            <line x1="2160" y1="1190" x2="2160" y2="1330" stroke="#C89A3D" strokeWidth="3.5" opacity="0.6" />
+                            <line x1="2100" y1="1190" x2="2100" y2="1330" stroke="#C89A3D" strokeWidth="3.5" opacity="0.6" />
 
                             {/* Column 4: LOCATION */}
-                            <g transform="translate(2490, 1260)">
-                                <circle cx="-135" cy="0" r="58" fill="#FAF3E0" stroke="url(#goldGrad)" strokeWidth="5" />
-                                <g transform="translate(-135, 0)">
+                            <g transform="translate(2510, 1260)">
+                                <circle cx="-140" cy="0" r="58" fill="#FAF3E0" stroke="url(#goldGrad)" strokeWidth="5" />
+                                <g transform="translate(-140, 0)">
                                     <path d="M0,26 C0,26 -21,3 -21,-12 C-21,-24 -12,-33 0,-33 C12,-33 21,-24 21,-12 C21,3 0,26 0,26 Z M0,-5 C-4.5,-5 -8,-8.5 -8,-13 C-8,-17.5 -4.5,-21 0,-21 C4.5,-21 8,-17.5 8,-13 C8,-8.5 4.5,-5 0,-5 Z" fill="#C89A3D" />
                                 </g>
-                                <text x="-55" y="-14" fill="#000000" fontSize="33" fontWeight="800" letterSpacing="1" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                <text x="-65" y="-14" fill="#000000" fontSize="29" fontWeight="800" letterSpacing="1" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                                     LOCATION
                                 </text>
-                                <text x="-55" y="40" fill="#071A3A" fontSize="58" fontWeight="900" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                <text x="-65" y="40" fill="#071A3A" fontSize="52" fontWeight="900" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                                     {locationText}
                                 </text>
                             </g>
                         </g>
 
-                        {/* 9. CENTER PARTY CODE OVAL BADGE (✦ RD0002 ✦) */}
+                        {/* 9. CENTER PARTY CODE OVAL BADGE  */}
                         <g>
                             {/* Left Gold Extension Line */}
                             <line x1="560" y1="1450" x2="1190" y2="1450" stroke="url(#goldGrad)" strokeWidth="4.5" />
