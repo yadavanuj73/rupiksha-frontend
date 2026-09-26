@@ -418,24 +418,24 @@ const RetailerCertificate = ({ formData = {}, currentUser = {} }) => {
                         {/* 8. TOP INFORMATION LINE: Retailer ID & Retailer ID Creation Date */}
                         <g>
                             {/* Left: Retailer ID */}
-                            <text x="210" y="785" fill="#0B2145" fontSize="40" fontWeight="800" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
+                            <text x="210" y="775" fill="#0B2145" fontSize="38" fontWeight="800" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
                                 Retailer ID:
                             </text>
-                            <text x="470" y="785" fill="#173B7A" fontSize="48" fontWeight="800" style={{ fontFamily: 'Playfair Display, Montserrat, serif' }}>
+                            <text x="460" y="775" fill="#173B7A" fontSize="46" fontWeight="800" style={{ fontFamily: 'Playfair Display, Montserrat, serif' }}>
                                 {partyCodeText}
                             </text>
                             {/* Underline below Retailer ID */}
-                            <line x1="460" y1="805" x2="960" y2="805" stroke="#254B8C" strokeWidth="2.5" />
+                            <line x1="450" y1="795" x2="920" y2="795" stroke="#254B8C" strokeWidth="2.5" />
 
                             {/* Right: Retailer ID Creation Date */}
-                            <text x="1650" y="785" fill="#0B2145" fontSize="40" fontWeight="800" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
+                            <text x="1600" y="775" fill="#0B2145" fontSize="38" fontWeight="800" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
                                 Retailer ID Creation Date:
                             </text>
-                            <text x="2280" y="785" fill="#173B7A" fontSize="48" fontWeight="800" style={{ fontFamily: 'Playfair Display, Montserrat, serif' }}>
+                            <text x="2200" y="775" fill="#173B7A" fontSize="46" fontWeight="800" style={{ fontFamily: 'Playfair Display, Montserrat, serif' }}>
                                 {issuedOnText}
                             </text>
                             {/* Underline below Creation Date */}
-                            <line x1="2270" y1="805" x2="2760" y2="805" stroke="#254B8C" strokeWidth="2.5" />
+                            <line x1="2190" y1="795" x2="2740" y2="795" stroke="#254B8C" strokeWidth="2.5" />
                         </g>
 
                         {/* 9. MAIN CERTIFICATION STATEMENT WITH RECIPIENT NAME */}
@@ -493,18 +493,18 @@ const RetailerCertificate = ({ formData = {}, currentUser = {} }) => {
 
                         {/* 13. GOLD FILIGREE SEPARATOR 2 */}
                         <g>
-                            <line x1="1100" y1="1515" x2="1420" y2="1515" stroke="url(#goldGradRetailer)" strokeWidth="3.5" />
-                            <polygon points="1485,1501 1500,1515 1485,1529 1470,1515" fill="url(#goldGradRetailer)" />
-                            <line x1="1550" y1="1515" x2="1870" y2="1515" stroke="url(#goldGradRetailer)" strokeWidth="3.5" />
+                            <line x1="1100" y1="1505" x2="1420" y2="1505" stroke="url(#goldGradRetailer)" strokeWidth="3.5" />
+                            <polygon points="1485,1491 1500,1505 1485,1519 1470,1505" fill="url(#goldGradRetailer)" />
+                            <line x1="1550" y1="1505" x2="1870" y2="1505" stroke="url(#goldGradRetailer)" strokeWidth="3.5" />
                         </g>
 
-                        {/* 14. NOTE BOX (SOFT LIGHT BLUE PANEL WITH LARGE HIGH-VISIBILITY TYPOGRAPHY) */}
+                        {/* 14. NOTE BOX (SOFT LIGHT BLUE PANEL WITH PRECISE NON-OVERFLOWING MULTI-LINE TEXT) */}
                         <g>
                             <rect
                                 x="180"
-                                y="1555"
+                                y="1540"
                                 width="2610"
-                                height="385"
+                                height="360"
                                 rx="16"
                                 fill="#EAF3FA"
                                 stroke="rgba(200,154,61,0.5)"
@@ -512,30 +512,33 @@ const RetailerCertificate = ({ formData = {}, currentUser = {} }) => {
                             />
                             
                             {/* Note: Title */}
-                            <text x="220" y="1610" fill="#173B7A" fontSize="40" fontWeight="800" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                            <text x="220" y="1588" fill="#173B7A" fontSize="38" fontWeight="800" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                                 Note:
                             </text>
-                            <line x1="220" y1="1622" x2="340" y2="1622" stroke="url(#goldGradRetailer)" strokeWidth="3.5" />
+                            <line x1="220" y1="1598" x2="330" y2="1598" stroke="url(#goldGradRetailer)" strokeWidth="3.5" />
 
                             {/* Bullet 1 */}
-                            <text x="220" y="1670" fill="#071A3A" fontSize="33" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
+                            <text x="220" y="1645" fill="#071A3A" fontSize="30" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
                                 •  This is a system-generated certificate and does not require a physical signature.
                             </text>
 
-                            {/* Bullet 2 */}
-                            <text x="220" y="1735" fill="#071A3A" fontSize="33" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
-                                •  This certificate confirms the retailer's authorization to provide the services offered by <tspan fontWeight="800" fill="#071A3A">Rupiksha Services Private Limited</tspan> in accordance with applicable company policies and regulatory guidelines.
+                            {/* Bullet 2 (Clean 2-line wrap) */}
+                            <text x="220" y="1700" fill="#071A3A" fontSize="30" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
+                                •  This certificate confirms the retailer's authorization to provide the services offered by <tspan fontWeight="800" fill="#071A3A">Rupiksha Services Private Limited</tspan>
+                            </text>
+                            <text x="250" y="1742" fill="#071A3A" fontSize="30" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
+                                in accordance with applicable company policies and regulatory guidelines.
                             </text>
 
-                            {/* Bullet 3 */}
-                            <text x="220" y="1800" fill="#071A3A" fontSize="33" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
+                            {/* Bullet 3 (Clean 2-line wrap) */}
+                            <text x="220" y="1795" fill="#071A3A" fontSize="30" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
                                 •  This certificate has been downloaded by the above-mentioned retailer from the Company's Web Portal/Mobile Application on
-                                <tspan dx="12" fontWeight="800" fill="#173B7A">{downloadDateText}</tspan>
-                                <tspan dx="12">and shall remain valid up to</tspan>
-                                <tspan dx="12" fontWeight="800" fill="#173B7A">{validTillText}</tspan>
+                                <tspan dx="10" fontWeight="800" fill="#173B7A">{downloadDateText}</tspan>
+                                <tspan dx="10">and shall remain valid up to</tspan>
+                                <tspan dx="10" fontWeight="800" fill="#173B7A">{validTillText}</tspan>
                             </text>
 
-                            <text x="250" y="1860" fill="#071A3A" fontSize="33" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
+                            <text x="250" y="1837" fill="#071A3A" fontSize="30" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
                                 unless revoked or suspended earlier by <tspan fontWeight="800" fill="#071A3A">Rupiksha Services Private Limited</tspan>.
                             </text>
                         </g>
