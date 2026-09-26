@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CreditCard, Download, Mail, Phone, Building2, RefreshCw, User } from 'lucide-react';
+import { CreditCard, Download, Mail, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -8,6 +8,30 @@ import rupikshaNewLogo from '../../../assets/logo rupiksha.png';
 import { BACKEND_URL as IMPORTED_BACKEND_URL } from '../../../services/dataService';
 
 const BACKEND_URL = IMPORTED_BACKEND_URL || `/api`;
+
+// Canonical Card Dimensions (Standard ID-1 / 85.6mm x 54.0mm Aspect Ratio ~1.586)
+const CARD_WIDTH = 1050;
+const CARD_HEIGHT = 662;
+
+const formatAddressLines = (addr) => {
+    if (!addr) return ['ADDRESS NOT REGISTERED', ''];
+    const trimmed = addr.trim();
+    if (trimmed.length <= 38) return [trimmed, ''];
+    
+    // Split near 35-38 chars at word boundary
+    const words = trimmed.split(' ');
+    let line1 = '';
+    let line2 = '';
+    for (let i = 0; i < words.length; i++) {
+        if ((line1 + (line1 ? ' ' : '') + words[i]).length <= 40) {
+            line1 += (line1 ? ' ' : '') + words[i];
+        } else {
+            line2 = words.slice(i).join(' ');
+            break;
+        }
+    }
+    return [line1, line2];
+};
 
 const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
     const cardRef = useRef(null);
@@ -36,13 +60,15 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
     const partnerName = formData?.name || currentUser?.name || currentUser?.fullName || 'RuPiksha Partner';
     const partnerShop = formData?.businessName || currentUser?.businessName || currentUser?.shopName || 'AJ Enterprises';
     
-    const partnerAddress = formData?.address1 ? 
+    const rawAddress = formData?.address1 ? 
         `${formData.address1}${formData.address2 ? `, ${formData.address2}` : ''} ${formData.area || ''} ${formData.city || ''} ${formData.state || ''} ${formData.pincode || ''}`.replace(/\s+/g, ' ').trim() : 
         (currentUser?.address || currentUser?.address1 ? 
             `${currentUser.address || currentUser.address1} ${currentUser.pincode || ''}`.replace(/\s+/g, ' ').trim() : 
             'Shop Address Not Registered');
 
-    const partnerMobile = formData?.mobile || currentUser?.mobile ? `+91 ${formData.mobile || currentUser?.mobile}` : '';
+    const [addressLine1, addressLine2] = formatAddressLines(rawAddress);
+
+    const partnerMobile = formData?.mobile || currentUser?.mobile ? `+91 ${formData.mobile || currentUser?.mobile}` : '+91 7292987918';
     const partnerEmail = formData?.email || currentUser?.email || 'partner@rupiksha.com';
 
     // 2. Multiline QR text format
@@ -51,12 +77,12 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
         partnerName,
         partnerRole,
         partnerShop,
-        partnerAddress,
+        rawAddress,
         partnerMobile,
         partnerEmail
     ].filter(Boolean).join('\n');
 
-    // 3. Pre-generate QR code in memory (100% local Base64, 0 CORS)
+    // 3. Pre-generate QR code in memory (100% local Base64 Data URL)
     useEffect(() => {
         let isMounted = true;
         QRCode.toDataURL(qrCardData, {
@@ -80,7 +106,7 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
         };
     }, [qrCardData]);
 
-    // 4. Convert logo to safe Data URL for guaranteed canvas rendering
+    // 4. Convert logo to safe Data URL for guaranteed canvas & SVG rendering
     useEffect(() => {
         const img = new Image();
         img.crossOrigin = 'anonymous';
@@ -100,7 +126,7 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
         img.onerror = () => setSafeLogoUrl(rupikshaNewLogo || '/logo rupiksha.png');
     }, []);
 
-    // 5. Convert profile photo safely
+    // 5. Convert profile photo safely to Base64 Data URL
     useEffect(() => {
         if (!profilePhoto) {
             setSafePhotoUrl(null);
@@ -128,23 +154,57 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
         img.src = profilePhoto;
     }, [profilePhoto]);
 
-    // 6. Download exact 1:1 High-Res Visiting Card (Standard 85.6mm x 54mm)
+    // 6. Download exact 1:1 High-Res Visiting Card PDF from Master SVG
     const handleDownloadCard = async () => {
-        const cardElement = cardRef.current ? (cardRef.current.querySelector('.visiting-card-inner') || cardRef.current) : null;
-        if (!cardElement || isDownloading) return;
+        const svgElement = document.getElementById('rupiksha-visiting-card-svg');
+        if (!svgElement || isDownloading) return;
         setIsDownloading(true);
 
         try {
-            // High resolution capture (scale: 3.5 for 300+ DPI razor sharp render)
-            const canvas = await html2canvas(cardElement, {
-                scale: 3.5,
-                backgroundColor: '#ffffff',
-                useCORS: true,
-                allowTaint: true,
-                logging: false,
+            await document.fonts.ready;
+
+            const exportScale = 3; // 3150 x 1986 px (ultra high DPI vector rendering)
+            const canvas = document.createElement('canvas');
+            canvas.width = CARD_WIDTH * exportScale;
+            canvas.height = CARD_HEIGHT * exportScale;
+            const ctx = canvas.getContext('2d');
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+
+            // Serialize SVG
+            const svgXml = new XMLSerializer().serializeToString(svgElement);
+            const svgBlob = new Blob([svgXml], { type: 'image/svg+xml;charset=utf-8' });
+            const svgUrl = URL.createObjectURL(svgBlob);
+
+            const img = new Image();
+            let imgLoaded = false;
+            await new Promise((resolve) => {
+                img.onload = () => {
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    URL.revokeObjectURL(svgUrl);
+                    imgLoaded = true;
+                    resolve();
+                };
+                img.onerror = () => {
+                    URL.revokeObjectURL(svgUrl);
+                    resolve();
+                };
+                img.src = svgUrl;
             });
 
-            const imgData = canvas.toDataURL('image/png', 1.0);
+            let imgData;
+            if (imgLoaded) {
+                imgData = canvas.toDataURL('image/png', 1.0);
+            } else {
+                const h2cCanvas = await html2canvas(svgElement, {
+                    scale: 3,
+                    backgroundColor: '#ffffff',
+                    useCORS: true,
+                    allowTaint: true,
+                    logging: false,
+                });
+                imgData = h2cCanvas.toDataURL('image/png', 1.0);
+            }
 
             // Exact standard ID-1 card size: 85.6mm x 54.0mm (landscape)
             const cardWidthMM = 85.6;
@@ -168,12 +228,13 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
     };
 
     const handleShareEmail = async () => {
-        const cardElement = cardRef.current ? (cardRef.current.querySelector('.visiting-card-inner') || cardRef.current) : null;
-        if (!cardElement || isSharing) return;
+        const svgElement = document.getElementById('rupiksha-visiting-card-svg');
+        if (!svgElement || isSharing) return;
         setIsSharing(true);
         try {
-            const canvas = await html2canvas(cardElement, { scale: 3, useCORS: true, allowTaint: true });
-            const imgData = canvas.toDataURL('image/png');
+            await document.fonts.ready;
+            const h2cCanvas = await html2canvas(svgElement, { scale: 3, useCORS: true, allowTaint: true });
+            const imgData = h2cCanvas.toDataURL('image/png');
 
             const res = await fetch(`${BACKEND_URL}/user/share-visiting-card`, {
                 method: 'POST',
@@ -196,6 +257,8 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
             setIsSharing(false);
         }
     };
+
+    const badgeWidth = Math.max(105, partnerRole.length * 11 + 24);
 
     return (
         <div className="w-full">
@@ -223,143 +286,291 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
 
                 {/* 2-Part Grid: Card Preview (Left) & Actions (Right) */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-7 items-center relative z-10">
-                    {/* Part 1 (Left 7 cols): Responsive Visiting Card UI Display */}
+                    {/* Part 1 (Left 7 cols): Single Source of Truth SVG Visiting Card */}
                     <div className="lg:col-span-7 flex justify-center w-full">
                         <div ref={cardRef} className="card-container shrink-0 w-full max-w-[540px]">
                             <motion.div
                                 initial={{ scale: 0.98, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
-                                className="visiting-card-inner w-full aspect-[1.586/1] bg-gradient-to-br from-[#F8FBFF] via-[#FFFFFF] to-[#FFFFFF] rounded-2xl shadow-[0_10px_30px_rgba(11,24,51,0.1)] overflow-hidden relative border border-[#BFD7FF]"
+                                className="w-full flex justify-center"
                             >
-                                {/* ── Top-Left Layered Geometric Curves ── */}
-                                <svg 
-                                    className="absolute top-0 left-0 pointer-events-none z-0" 
-                                    style={{ width: '48%', height: '54%' }}
-                                    viewBox="0 0 240 160" 
-                                    preserveAspectRatio="none" 
+                                <svg
+                                    id="rupiksha-visiting-card-svg"
+                                    viewBox="0 0 1050 662"
+                                    className="w-full h-auto rounded-2xl shadow-[0_10px_30px_rgba(11,24,51,0.1)] border border-[#BFD7FF] bg-white select-none block"
+                                    style={{ fontFamily: 'Montserrat, Inter, system-ui, sans-serif' }}
                                 >
-                                    <path d="M0 0 L170 0 C125 45 75 100 0 145 Z" fill="#EEF6FF" />
-                                    <path d="M0 0 L125 0 C95 40 55 85 0 115 Z" fill="#DCEBFF" />
-                                    <path d="M0 0 L88 0 C62 30 35 65 0 90 Z" fill="#60A5FA" fillOpacity="0.45" />
-                                    <path d="M0 0 L55 0 C35 22 20 48 0 70 Z" fill="#1457E6" />
-                                </svg>
+                                    <defs>
+                                        {/* Card Outer Clip */}
+                                        <clipPath id="cardOuterClip">
+                                            <rect x="0" y="0" width="1050" height="662" rx="24" />
+                                        </clipPath>
+                                        {/* Avatar Clip */}
+                                        <clipPath id="visitingAvatarClip">
+                                            <circle cx="102" cy="102" r="54" />
+                                        </clipPath>
+                                        {/* Card Gradient */}
+                                        <linearGradient id="visitingBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" stopColor="#F8FBFF" />
+                                            <stop offset="50%" stopColor="#FFFFFF" />
+                                            <stop offset="100%" stopColor="#FFFFFF" />
+                                        </linearGradient>
+                                    </defs>
 
-                                {/* ── Bottom-Right Layered Wave Curves (4-layer strip) ── */}
-                                <svg 
-                                    className="absolute bottom-0 right-0 pointer-events-none z-0" 
-                                    style={{ width: '70%', height: '65%' }}
-                                    viewBox="0 0 350 180" 
-                                    preserveAspectRatio="none" 
-                                >
-                                    <path d="M0 180 C90 160 180 120 270 65 C310 40 335 20 350 0 L350 180 Z" fill="#EEF6FF" />
-                                    <path d="M50 180 C130 165 210 125 290 80 C325 60 340 35 350 15 L350 180 Z" fill="#DCEBFF" />
-                                    <path d="M120 180 C190 170 250 135 310 95 C335 75 345 55 350 35 L350 180 Z" fill="#60A5FA" fillOpacity="0.45" />
-                                    <path d="M190 180 C245 180 290 150 330 110 C345 95 348 80 350 65 L350 180 Z" fill="#1457E6" />
-                                </svg>
+                                    {/* Outer Container with Rounded Clip */}
+                                    <g clipPath="url(#cardOuterClip)">
+                                        {/* Background Fill */}
+                                        <rect x="0" y="0" width="1050" height="662" fill="url(#visitingBgGrad)" />
 
-                                {/* ── Central Subtle Logo Watermark (logo rupiksha.png) ── */}
-                                <div 
-                                    className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none z-0"
-                                >
-                                    <img 
-                                        src={safeLogoUrl || "/logo rupiksha.png"} 
-                                        alt="Rupiksha Logo" 
-                                        className="w-[44%] max-w-[210px] object-contain opacity-[0.09] filter select-none"
-                                    />
-                                </div>
+                                        {/* ── Top-Left Layered Geometric Curves ── */}
+                                        <g>
+                                            <path d="M0,0 L744,0 C547,186 328,414 0,600 Z" fill="#EEF6FF" />
+                                            <path d="M0,0 L547,0 C416,165 241,351 0,476 Z" fill="#DCEBFF" />
+                                            <path d="M0,0 L385,0 C271,124 153,269 0,372 Z" fill="#60A5FA" fillOpacity="0.45" />
+                                            <path d="M0,0 L241,0 C153,91 88,198 0,289 Z" fill="#1457E6" />
+                                        </g>
 
-                                {/* ── Card Foreground Content ── */}
-                                <div className="p-3.5 sm:p-4.5 h-full flex flex-col justify-between relative z-10 box-border">
-                                    {/* Top Section: Avatar, 3-Line Info (Name, Shop, Role) & QR Code */}
-                                    <div className="flex justify-between items-center">
-                                        <div className="flex items-center gap-2.5 sm:gap-3.5">
-                                            {/* Circular Profile Photo with Blue Ring */}
-                                            <div className="w-[64px] h-[64px] sm:w-[72px] sm:h-[72px] rounded-full p-0.5 bg-white border-[2.5px] border-[#1457E6] shadow-[0_3px_10px_rgba(20,87,230,0.2)] flex items-center justify-center shrink-0 overflow-hidden">
-                                                {safePhotoUrl ? (
-                                                    <img src={safePhotoUrl} alt={partnerName} className="w-full h-full object-cover rounded-full" />
-                                                ) : (
-                                                    <div className="w-full h-full bg-[#EEF6FF] rounded-full flex items-center justify-center text-[#1457E6] font-bold text-xl">
-                                                        <User size={30} className="text-[#1457E6]" />
-                                                    </div>
-                                                )}
-                                            </div>
+                                        {/* ── Bottom-Right Layered Wave Curves ── */}
+                                        <g>
+                                            <path d="M0,662 C270,588 540,441 810,239 C930,147 1005,73 1050,0 L1050,662 Z" fill="#EEF6FF" />
+                                            <path d="M150,662 C390,607 630,460 870,294 C975,221 1020,129 1050,55 L1050,662 Z" fill="#DCEBFF" />
+                                            <path d="M360,662 C570,625 750,496 930,350 C1005,276 1035,202 1050,129 L1050,662 Z" fill="#60A5FA" fillOpacity="0.45" />
+                                            <path d="M570,662 C735,662 870,552 990,405 C1035,350 1044,294 1050,239 L1050,662 Z" fill="#1457E6" />
+                                        </g>
 
-                                            {/* 3-Line Stack: 1. Name -> 2. Shop Name -> 3. Role */}
-                                            <div className="flex flex-col items-start justify-center gap-0.5">
-                                                {/* Line 1: Name */}
-                                                <h3 className="text-[14.5px] sm:text-[17px] font-[900] text-[#0B1833] uppercase tracking-tight leading-tight">
-                                                    {partnerName}
-                                                </h3>
-                                                {/* Line 2: Shop Name */}
-                                                <span className="text-[11.5px] sm:text-[13px] font-[800] text-[#1457E6] uppercase tracking-tight leading-tight">
-                                                    {partnerShop}
-                                                </span>
-                                                {/* Line 3: Role Badge (Clean container with no overflow) */}
-                                                <div className="inline-flex items-center justify-center bg-[#E0EDFF] border border-[#BFD7FF] px-2.5 py-0.5 rounded-[5px] mt-0.5 self-start">
-                                                    <span className="text-[9.5px] sm:text-[10.5px] font-[800] text-[#1457E6] uppercase tracking-wide leading-none">
-                                                        {partnerRole}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
+                                        {/* ── Central Watermark Logo (Without "Making Life Digital") ── */}
+                                        {safeLogoUrl && (
+                                            <image
+                                                href={safeLogoUrl}
+                                                x="425"
+                                                y="225"
+                                                width="200"
+                                                height="200"
+                                                opacity="0.09"
+                                                preserveAspectRatio="xMidYMid meet"
+                                            />
+                                        )}
+
+                                        {/* ── TOP SECTION: AVATAR, NAME, SHOP, ROLE & QR CODE ── */}
+                                        
+                                        {/* Avatar Ring & Photo */}
+                                        <circle cx="102" cy="102" r="58" fill="#FFFFFF" stroke="#1457E6" strokeWidth="4" />
+                                        {safePhotoUrl ? (
+                                            <image
+                                                href={safePhotoUrl}
+                                                x="48"
+                                                y="48"
+                                                width="108"
+                                                height="108"
+                                                preserveAspectRatio="xMidYMid slice"
+                                                clipPath="url(#visitingAvatarClip)"
+                                            />
+                                        ) : (
+                                            <g clipPath="url(#visitingAvatarClip)">
+                                                <circle cx="102" cy="102" r="54" fill="#EEF6FF" />
+                                                <text x="102" y="112" textAnchor="middle" fill="#1457E6" fontSize="36" fontWeight="bold">
+                                                    {partnerName?.charAt(0) || 'R'}
+                                                </text>
+                                            </g>
+                                        )}
+
+                                        {/* Name (Line 1) */}
+                                        <text
+                                            x="180"
+                                            y="80"
+                                            fill="#0B1833"
+                                            fontSize="28"
+                                            fontWeight="900"
+                                            letterSpacing="0.5px"
+                                            style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}
+                                        >
+                                            {partnerName.toUpperCase()}
+                                        </text>
+
+                                        {/* Shop Name (Line 2) */}
+                                        <text
+                                            x="180"
+                                            y="114"
+                                            fill="#1457E6"
+                                            fontSize="21"
+                                            fontWeight="800"
+                                            letterSpacing="0.5px"
+                                            style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}
+                                        >
+                                            {partnerShop.toUpperCase()}
+                                        </text>
+
+                                        {/* Role Badge (Line 3) */}
+                                        <rect
+                                            x="180"
+                                            y="126"
+                                            width={badgeWidth}
+                                            height="28"
+                                            rx="6"
+                                            fill="#E0EDFF"
+                                            stroke="#BFD7FF"
+                                            strokeWidth="1.5"
+                                        />
+                                        <text
+                                            x={180 + badgeWidth / 2}
+                                            y="144"
+                                            textAnchor="middle"
+                                            dominantBaseline="middle"
+                                            fill="#1457E6"
+                                            fontSize="13"
+                                            fontWeight="800"
+                                            letterSpacing="0.8px"
+                                            style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}
+                                        >
+                                            {partnerRole.toUpperCase()}
+                                        </text>
 
                                         {/* Top-Right QR Code */}
-                                        <div className="bg-white p-1 sm:p-1.5 rounded-xl shadow-[0_2px_12px_rgba(11,24,51,0.08)] border border-[#BFD7FF] shrink-0">
-                                            {qrCodeDataUrl ? (
-                                                <img 
-                                                    src={qrCodeDataUrl} 
-                                                    alt="QR" 
-                                                    className="w-[78px] h-[78px] sm:w-[88px] sm:h-[88px] object-contain"
-                                                />
-                                            ) : (
-                                                <div className="w-[78px] h-[78px] sm:w-[88px] sm:h-[88px] bg-slate-100 animate-pulse rounded-lg" />
+                                        <rect
+                                            x="866"
+                                            y="36"
+                                            width="148"
+                                            height="148"
+                                            rx="16"
+                                            fill="#FFFFFF"
+                                            stroke="#BFD7FF"
+                                            strokeWidth="2"
+                                        />
+                                        {qrCodeDataUrl && (
+                                            <image
+                                                href={qrCodeDataUrl}
+                                                x="878"
+                                                y="48"
+                                                width="124"
+                                                height="124"
+                                                preserveAspectRatio="xMidYMid meet"
+                                            />
+                                        )}
+
+                                        {/* ── BOTTOM SECTION: CONTACT INFO (MOBILE, EMAIL, ADDRESS) & COMPANY NAME ── */}
+
+                                        {/* 1. Mobile Number */}
+                                        <g>
+                                            <circle cx="58" cy="486" r="18" fill="#1457E6" />
+                                            <path
+                                                d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"
+                                                fill="none"
+                                                stroke="#FFFFFF"
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                transform="translate(47, 475) scale(0.9)"
+                                            />
+                                            <text
+                                                x="90"
+                                                y="493"
+                                                fill="#0B1833"
+                                                fontSize="20"
+                                                fontWeight="800"
+                                                letterSpacing="0.2px"
+                                                style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}
+                                            >
+                                                {partnerMobile}
+                                            </text>
+                                        </g>
+
+                                        {/* 2. Email */}
+                                        <g>
+                                            <circle cx="58" cy="540" r="18" fill="#1457E6" />
+                                            <g transform="translate(47, 529) scale(0.9)">
+                                                <rect width="20" height="16" x="2" y="4" rx="2" fill="none" stroke="#FFFFFF" strokeWidth="2" />
+                                                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" fill="none" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                            </g>
+                                            <text
+                                                x="90"
+                                                y="547"
+                                                fill="#0B1833"
+                                                fontSize="18.5"
+                                                fontWeight="800"
+                                                letterSpacing="0.2px"
+                                                style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}
+                                            >
+                                                {partnerEmail}
+                                            </text>
+                                        </g>
+
+                                        {/* 3. Address (Clean 2-line rendering) */}
+                                        <g>
+                                            <circle cx="58" cy="600" r="18" fill="#1457E6" />
+                                            <g transform="translate(47, 589) scale(0.9)">
+                                                <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" fill="none" stroke="#FFFFFF" strokeWidth="2" />
+                                                <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" fill="none" stroke="#FFFFFF" strokeWidth="2" />
+                                                <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2" fill="none" stroke="#FFFFFF" strokeWidth="2" />
+                                                <path d="M10 6h4" fill="none" stroke="#FFFFFF" strokeWidth="2" />
+                                                <path d="M10 10h4" fill="none" stroke="#FFFFFF" strokeWidth="2" />
+                                                <path d="M10 14h4" fill="none" stroke="#FFFFFF" strokeWidth="2" />
+                                                <path d="M10 18h4" fill="none" stroke="#FFFFFF" strokeWidth="2" />
+                                            </g>
+                                            <text
+                                                x="90"
+                                                y={addressLine2 ? "592" : "607"}
+                                                fill="#0B1833"
+                                                fontSize="17"
+                                                fontWeight="800"
+                                                letterSpacing="0.2px"
+                                                style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}
+                                            >
+                                                {addressLine1.toUpperCase()}
+                                            </text>
+                                            {addressLine2 && (
+                                                <text
+                                                    x="90"
+                                                    y="616"
+                                                    fill="#0B1833"
+                                                    fontSize="17"
+                                                    fontWeight="800"
+                                                    letterSpacing="0.2px"
+                                                    style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}
+                                                >
+                                                    {addressLine2.toUpperCase()}
+                                                </text>
                                             )}
-                                        </div>
-                                    </div>
+                                        </g>
 
-                                    {/* Bottom Section: Left (1. Mobile, 2. Email, 3. Address) & Right (Company Name in Dark Black) */}
-                                    <div className="flex items-end justify-between gap-2.5 pt-1">
-                                        {/* Left Stack: 1. Mobile -> 2. Email -> 3. Address */}
-                                        <div className="flex flex-col gap-1 sm:gap-1.5 flex-1 max-w-[62%] sm:max-w-[64%]">
-                                            {/* 1. Mobile Number */}
-                                            <div className="flex items-center gap-1.5 sm:gap-2">
-                                                <div className="w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-full bg-[#1457E6] flex items-center justify-center shrink-0 shadow-xs">
-                                                    <Phone size={10.5} className="text-white" />
-                                                </div>
-                                                <span className="text-[9.5px] sm:text-[11px] font-[800] text-[#0B1833] tracking-tight leading-none">
-                                                    {partnerMobile || '+91 7292987918'}
-                                                </span>
-                                            </div>
+                                        {/* Bottom-Right Company Name (2-lines, dark black, right-aligned) */}
+                                        <text
+                                            x="1005"
+                                            y="592"
+                                            textAnchor="end"
+                                            fill="#0B1833"
+                                            fontSize="22"
+                                            fontWeight="900"
+                                            letterSpacing="0.2px"
+                                            style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}
+                                        >
+                                            Rupiksha Services Private
+                                        </text>
+                                        <text
+                                            x="1005"
+                                            y="618"
+                                            textAnchor="end"
+                                            fill="#0B1833"
+                                            fontSize="22"
+                                            fontWeight="900"
+                                            letterSpacing="0.2px"
+                                            style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}
+                                        >
+                                            Limited
+                                        </text>
 
-                                            {/* 2. Email */}
-                                            <div className="flex items-center gap-1.5 sm:gap-2">
-                                                <div className="w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-full bg-[#1457E6] flex items-center justify-center shrink-0 shadow-xs">
-                                                    <Mail size={10.5} className="text-white" />
-                                                </div>
-                                                <span className="text-[9px] sm:text-[10.5px] font-[800] text-[#0B1833] truncate leading-none">
-                                                    {partnerEmail}
-                                                </span>
-                                            </div>
-
-                                            {/* 3. Address (Wraps cleanly without clipping) */}
-                                            <div className="flex items-start gap-1.5 sm:gap-2">
-                                                <div className="w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-full bg-[#1457E6] flex items-center justify-center shrink-0 shadow-xs mt-0.5">
-                                                    <Building2 size={10.5} className="text-white" />
-                                                </div>
-                                                <p className="text-[9px] sm:text-[10.5px] font-[800] text-[#0B1833] uppercase leading-tight line-clamp-2">
-                                                    {partnerAddress}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        {/* Company Name Right (Dark Black Text, fully fitted without cutting off) */}
-                                        <div className="text-right shrink-0 max-w-[36%] pb-0.5">
-                                            <h4 className="text-[11px] sm:text-[13px] font-[900] text-[#0B1833] tracking-tight leading-snug">
-                                                Rupiksha Services Private Limited
-                                            </h4>
-                                        </div>
-                                    </div>
-                                </div>
+                                        {/* Outer Card Stroke */}
+                                        <rect
+                                            x="1"
+                                            y="1"
+                                            width="1048"
+                                            height="660"
+                                            rx="24"
+                                            fill="none"
+                                            stroke="#BFD7FF"
+                                            strokeWidth="2.5"
+                                        />
+                                    </g>
+                                </svg>
                             </motion.div>
                         </div>
                     </div>
