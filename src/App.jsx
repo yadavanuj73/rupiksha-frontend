@@ -28,6 +28,7 @@ const Contact = lazy(() => import('./landing/Contact'));
 const ServiceDetail = lazy(() => import('./landing/ServiceDetail'));
 const Leadership = lazy(() => import('./landing/Leadership'));
 const CompleteKyc = lazy(() => import('./pages/CompleteKyc'));
+const VerifyCertificate = lazy(() => import('./pages/VerifyCertificate'));
 
 // Retailer
 const RetailerLayout = lazy(() => import('./retailer/components/RetailerLayout'));
@@ -209,6 +210,9 @@ function App() {
               <Route path="/admin-login" element={<AdminLogin />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/adin" element={<Navigate to="/admin" replace />} />
+              <Route path="/certificate/verify/:certificateNumber" element={<VerifyCertificate />} />
+              <Route path="/certificate/verify" element={<VerifyCertificate />} />
+              <Route path="/verify/certificate/:certificateNumber" element={<VerifyCertificate />} />
               <Route path="/kyc-verification" element={<ProtectedRoute><KYCVerification /></ProtectedRoute>} />
               <Route path="/aeps-kyc" element={<ProtectedRoute><AepsOnboarding /></ProtectedRoute>} />
               <Route path="/aeps-onboarding" element={<ProtectedRoute><AepsOnboarding /></ProtectedRoute>} />
@@ -310,6 +314,7 @@ function App() {
               <Route path="/super-distributor-plans" element={<ProtectedRoute role="SUPER_DISTRIBUTOR"><SuperDistributorPlans /></ProtectedRoute>} />
               <Route path="/super-distributor" element={<ProtectedRoute role="SUPER_DISTRIBUTOR"><SuperDistributorLayout /></ProtectedRoute>}>
                 <Route index element={<SuperDistributorDashboard />} />
+                <Route path="profile" element={<Profile />} />
                 <Route path="all-services" element={<AllServices readOnly />} />
                 <Route path="members" element={<SuperDistributorMembers />} />
                 <Route path="distributors" element={<SuperDistributorDistributors />} />

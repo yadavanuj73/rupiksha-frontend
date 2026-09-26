@@ -610,4 +610,12 @@ export const aepsService = {
     }),
 };
 
+// ─── CERTIFICATES ────────────────────────────────────────────────────────────
+export const certificateService = {
+  getMyCertificate: () => apiFetch("/certificates/me"),
+  verifyCertificate: (certNum) => apiFetch(`/certificates/verify/${encodeURIComponent(certNum)}`),
+  getByPartyCode: (partyCode) => apiFetch(`/certificates/${encodeURIComponent(partyCode)}`),
+};
+
+
 

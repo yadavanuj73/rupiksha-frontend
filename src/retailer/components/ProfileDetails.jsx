@@ -4,7 +4,7 @@ import {
     Building2, MapPin, Phone, Mail, Lock,
     Save, Download, Printer, Camera, Pencil,
     ChevronDown, ArrowRight, RefreshCw, X, Calendar, ShieldCheck, Edit3, Plus, FileText,
-    Landmark, CreditCard, Settings as SettingsIcon
+    Landmark, CreditCard, Settings as SettingsIcon, Award
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { jsPDF } from 'jspdf';
@@ -24,6 +24,7 @@ import PersonalInfo from './profile/PersonalInfo';
 import BankingInfo from './profile/BankingInfo';
 import Settings from './profile/Settings';
 import VisitingCard from './profile/VisitingCard';
+import Certificate from './profile/Certificate';
 
 const getCurrentUserData = () => {
     try {
@@ -99,7 +100,7 @@ const getCurrentUserData = () => {
     return dataService.getData().currentUser || {};
 };
 
-const VALID_PROFILE_TABS = ['business', 'personal', 'banking', 'visiting_card', 'settings'];
+const VALID_PROFILE_TABS = ['business', 'personal', 'banking', 'visiting_card', 'certificate', 'settings'];
 
 const normalizeDate = (val) => {
     if (!val) return '';
@@ -648,6 +649,7 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
         { id: 'personal', label: 'Personal Information', icon: UserRound, status: getSectionStatus('personal') },
         { id: 'banking', label: 'Banking Details', icon: Landmark, status: getSectionStatus('banking') },
         { id: 'visiting_card', label: 'Visiting Card', icon: CreditCard, status: 'none' },
+        { id: 'certificate', label: 'Certificate', icon: Award, status: 'none' },
         { id: 'settings', label: 'Settings', icon: SettingsIcon, status: 'none' },
     ];
 
@@ -787,6 +789,12 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
                                 formData={formData} 
                                 currentUser={currentUser} 
                                 profilePhoto={profilePhoto} 
+                            />
+                        )}
+                        {activeSubTab === 'certificate' && (
+                            <Certificate 
+                                formData={formData} 
+                                currentUser={currentUser} 
                             />
                         )}
                     </motion.div>

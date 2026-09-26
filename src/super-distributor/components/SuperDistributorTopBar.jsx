@@ -189,7 +189,7 @@ const SuperDistributorTopBar = ({ onMenuClick }) => {
                                     <p className="text-[10px] font-black text-amber-600 mt-0.5">Wallet: ₹ {walletBal}</p>
                                 </div>
                             </div>
-                            <button onClick={() => { setShowProfile(false); navigate('/super-distributor'); }}
+                            <button onClick={() => { setShowProfile(false); navigate('/super-distributor/profile'); }}
                                 className="w-full flex items-center gap-3 px-4 py-3 text-[10px] font-black text-slate-600 hover:bg-slate-50 hover:text-amber-600 transition-colors uppercase tracking-wider">
                                 <User size={14} /> My Profile
                             </button>
