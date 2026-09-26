@@ -322,31 +322,31 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
                                         {/* Background Fill */}
                                         <rect x="0" y="0" width="1050" height="662" fill="url(#visitingBgGrad)" />
 
-                                        {/* ── Top-Left Layered Geometric Curves ── */}
+                                        {/* ── Top-Left Layered Geometric Curves (Reduced by 60%) ── */}
                                         <g>
-                                            <path d="M0,0 L744,0 C547,186 328,414 0,600 Z" fill="#EEF6FF" />
-                                            <path d="M0,0 L547,0 C416,165 241,351 0,476 Z" fill="#DCEBFF" />
-                                            <path d="M0,0 L385,0 C271,124 153,269 0,372 Z" fill="#60A5FA" fillOpacity="0.45" />
-                                            <path d="M0,0 L241,0 C153,91 88,198 0,289 Z" fill="#1457E6" />
+                                            <path d="M0,0 L300,0 C220,75 130,165 0,240 Z" fill="#EEF6FF" />
+                                            <path d="M0,0 L220,0 C165,65 95,140 0,190 Z" fill="#DCEBFF" />
+                                            <path d="M0,0 L155,0 C110,50 60,110 0,150 Z" fill="#60A5FA" fillOpacity="0.45" />
+                                            <path d="M0,0 L96,0 C60,35 35,80 0,116 Z" fill="#1457E6" />
                                         </g>
 
-                                        {/* ── Bottom-Right Layered Wave Curves ── */}
+                                        {/* ── Bottom-Right Layered Wave Curves (Reduced by 60%) ── */}
                                         <g>
-                                            <path d="M0,662 C270,588 540,441 810,239 C930,147 1005,73 1050,0 L1050,662 Z" fill="#EEF6FF" />
-                                            <path d="M150,662 C390,607 630,460 870,294 C975,221 1020,129 1050,55 L1050,662 Z" fill="#DCEBFF" />
-                                            <path d="M360,662 C570,625 750,496 930,350 C1005,276 1035,202 1050,129 L1050,662 Z" fill="#60A5FA" fillOpacity="0.45" />
-                                            <path d="M570,662 C735,662 870,552 990,405 C1035,350 1044,294 1050,239 L1050,662 Z" fill="#1457E6" />
+                                            <path d="M630,662 C740,632 850,572 960,490 C1010,450 1040,420 1050,395 L1050,662 Z" fill="#EEF6FF" />
+                                            <path d="M690,662 C790,640 885,580 980,515 C1020,480 1040,450 1050,420 L1050,662 Z" fill="#DCEBFF" />
+                                            <path d="M775,662 C860,647 930,595 1005,535 C1035,505 1045,475 1050,450 L1050,662 Z" fill="#60A5FA" fillOpacity="0.45" />
+                                            <path d="M860,662 C925,662 980,618 1025,560 C1043,538 1048,515 1050,490 L1050,662 Z" fill="#1457E6" />
                                         </g>
 
-                                        {/* ── Central Watermark Logo (Without "Making Life Digital") ── */}
+                                        {/* ── Central Watermark Logo (+80% Enlarge, 360x360 centered) ── */}
                                         {safeLogoUrl && (
                                             <image
                                                 href={safeLogoUrl}
-                                                x="425"
-                                                y="225"
-                                                width="200"
-                                                height="200"
-                                                opacity="0.09"
+                                                x="345"
+                                                y="151"
+                                                width="360"
+                                                height="360"
+                                                opacity="0.10"
                                                 preserveAspectRatio="xMidYMid meet"
                                             />
                                         )}
@@ -425,13 +425,13 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
                                             {partnerRole.toUpperCase()}
                                         </text>
 
-                                        {/* Top-Right QR Code */}
+                                        {/* Top-Right QR Code (+30% Enlarge: 192x192 box, 162x162 QR) */}
                                         <rect
-                                            x="866"
-                                            y="36"
-                                            width="148"
-                                            height="148"
-                                            rx="16"
+                                            x="830"
+                                            y="28"
+                                            width="192"
+                                            height="192"
+                                            rx="18"
                                             fill="#FFFFFF"
                                             stroke="#BFD7FF"
                                             strokeWidth="2"
@@ -439,15 +439,15 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
                                         {qrCodeDataUrl && (
                                             <image
                                                 href={qrCodeDataUrl}
-                                                x="878"
-                                                y="48"
-                                                width="124"
-                                                height="124"
+                                                x="845"
+                                                y="43"
+                                                width="162"
+                                                height="162"
                                                 preserveAspectRatio="xMidYMid meet"
                                             />
                                         )}
 
-                                        {/* ── BOTTOM SECTION: CONTACT INFO (MOBILE, EMAIL, ADDRESS) & COMPANY NAME ── */}
+                                        {/* ── BOTTOM SECTION: CONTACT INFO (MOBILE, EMAIL, ADDRESS) ── */}
 
                                         {/* 1. Mobile Number */}
                                         <g>
@@ -531,32 +531,6 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
                                                 </text>
                                             )}
                                         </g>
-
-                                        {/* Bottom-Right Company Name (2-lines, dark black, right-aligned) */}
-                                        <text
-                                            x="1005"
-                                            y="592"
-                                            textAnchor="end"
-                                            fill="#0B1833"
-                                            fontSize="22"
-                                            fontWeight="900"
-                                            letterSpacing="0.2px"
-                                            style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}
-                                        >
-                                            Rupiksha Services Private
-                                        </text>
-                                        <text
-                                            x="1005"
-                                            y="618"
-                                            textAnchor="end"
-                                            fill="#0B1833"
-                                            fontSize="22"
-                                            fontWeight="900"
-                                            letterSpacing="0.2px"
-                                            style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}
-                                        >
-                                            Limited
-                                        </text>
 
                                         {/* Outer Card Stroke */}
                                         <rect
