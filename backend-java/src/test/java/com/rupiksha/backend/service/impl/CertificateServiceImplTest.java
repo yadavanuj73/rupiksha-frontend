@@ -183,12 +183,60 @@ class CertificateServiceImplTest {
     }
 
     @Test
-    @DisplayName("5. Ineligible roles (e.g. Retailer only) are rejected with clear exception")
-    void testIneligibleRetailerRole() {
+    @DisplayName("5. Retailer certificate generates correct titles, labels, full address, Party Code and 1-year validity in dd-MMM-yyyy format")
+    void testRetailerCertificate() {
         User user = new User();
         user.setId(UUID.randomUUID());
-        user.setFullName("RETAILER ONLY");
+        user.setFullName("RAKESH KUMAR");
+        user.setUsername("rakesh_ret");
+        user.setPartyCode("RT000123");
+        user.setAddressLine1("Ward No. 12, Main Road");
+        user.setCity("Nalanda");
+        user.setStateName("Bihar");
+        user.setPincode("803101");
+        user.setStatus(UserStatus.ACTIVE);
         user.setRoles(Set.of(retailerRole));
+
+        // Account created on 15-05-2026
+        LocalDate createdLocalDate = LocalDate.of(2026, 5, 15);
+        Instant createdAt = createdLocalDate.atStartOfDay(IST).toInstant();
+        user.setCreatedAt(createdAt);
+
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+
+        CertificateDto dto = certificateService.getCertificateForUser(user.getId());
+
+        assertNotNull(dto);
+        assertEquals("RAKESH KUMAR", dto.getRecipientName());
+        assertEquals("RT000123", dto.getPartyCode());
+        assertEquals("RETAILER", dto.getCertificateRole());
+        assertEquals("RETAILER CERTIFICATE", dto.getCertificateTitle());
+        assertEquals("RETAILER CERTIFICATE", dto.getCertificateType());
+        assertEquals("RETAILER ID", dto.getIdLabel());
+        assertEquals("Retailer", dto.getRoleDisplayName());
+        assertEquals("RETAILER", dto.getBottomRole());
+        assertEquals("RUP-R-RT000123", dto.getCertificateNumber());
+        assertEquals("15-May-2026", dto.getIssuedOn());
+        assertEquals("15-May-2027", dto.getValidTill()); // Exactly 1 year
+        assertTrue(dto.getFullAddress().contains("Ward No. 12, Main Road"));
+        assertTrue(dto.getFullAddress().contains("Nalanda"));
+        assertTrue(dto.getFullAddress().contains("Bihar"));
+        assertTrue(dto.getFullAddress().contains("803101"));
+        assertEquals("VALID", dto.getStatus());
+        assertTrue(dto.getCertificationStatement().contains("has been onboarded as a Retailer of Rupiksha Services Private Limited"));
+        assertTrue(dto.getAuthorizationClause().contains("w.e.f. the Retailer ID creation date"));
+        assertTrue(dto.getAuthorizationClause().contains("Rupiksha Services Private Limited"));
+        assertFalse(dto.getAuthorizationClause().contains("BANKIT"));
+        assertEquals("https://rupiksha.in/certificate/verify/RUP-R-RT000123", dto.getVerificationUrl());
+    }
+
+    @Test
+    @DisplayName("6. Ineligible roles without partner role are rejected with clear exception")
+    void testIneligibleAdminRole() {
+        User user = new User();
+        user.setId(UUID.randomUUID());
+        user.setFullName("ADMIN ONLY");
+        user.setRoles(Set.of());
 
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
 
@@ -199,7 +247,7 @@ class CertificateServiceImplTest {
     }
 
     @Test
-    @DisplayName("6. Inactive or Rejected users have REVOKED status on certificate")
+    @DisplayName("7. Inactive or Rejected users have REVOKED status on certificate")
     void testRevokedStatusForInactiveUser() {
         User user = new User();
         user.setId(UUID.randomUUID());

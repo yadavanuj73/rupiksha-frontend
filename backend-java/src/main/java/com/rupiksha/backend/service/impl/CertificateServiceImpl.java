@@ -28,6 +28,7 @@ public class CertificateServiceImpl implements CertificateService {
     private final CertificateRepository certificateRepository;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+    private static final DateTimeFormatter DISPLAY_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MMM-yyyy");
     private static final ZoneId IST_ZONE = ZoneId.of("Asia/Kolkata");
     private static final String BASE_VERIFICATION_URL = "https://rupiksha.in/certificate/verify/";
 
@@ -44,12 +45,13 @@ public class CertificateServiceImpl implements CertificateService {
     public CertificateDto getCertificateForUser(User user) {
         RoleName primaryRole = resolveCertificateRole(user);
         if (primaryRole == null) {
-            throw new IllegalArgumentException("User with role RETAILER/ADMIN is not eligible for a Distributor certificate");
+            throw new IllegalArgumentException("User with role ADMIN is not eligible for a partner certificate");
         }
 
         String partyCode = user.getPartyCode();
         if (partyCode == null || partyCode.isBlank()) {
-            partyCode = "RP" + (primaryRole == RoleName.SUPER_DISTRIBUTOR ? "S" : "D") + user.getUsername().toUpperCase();
+            char roleCode = primaryRole == RoleName.SUPER_DISTRIBUTOR ? 'S' : (primaryRole == RoleName.DISTRIBUTOR ? 'D' : 'R');
+            partyCode = "RP" + roleCode + user.getUsername().toUpperCase();
         } else {
             partyCode = partyCode.trim().toUpperCase();
         }
@@ -60,7 +62,8 @@ public class CertificateServiceImpl implements CertificateService {
 
         LocalDate validTill = issuedOn.plusYears(1);
 
-        String certPrefix = (primaryRole == RoleName.SUPER_DISTRIBUTOR) ? "RUP-SD-" : "RUP-D-";
+        String certPrefix = (primaryRole == RoleName.SUPER_DISTRIBUTOR) ? "RUP-SD-" :
+                            (primaryRole == RoleName.DISTRIBUTOR ? "RUP-D-" : "RUP-R-");
         String certificateNumber = certPrefix + partyCode;
 
         String status = calculateStatus(user, validTill);
@@ -118,7 +121,7 @@ public class CertificateServiceImpl implements CertificateService {
         }
 
         // If not yet saved in certificates table, parse partyCode and lookup user
-        String partyCode = normalized.replaceFirst("^RUP-(SD|D)-", "");
+        String partyCode = normalized.replaceFirst("^RUP-(SD|D|R)-", "");
         Optional<User> userOpt = userRepository.findByPartyCode(partyCode);
         if (userOpt.isPresent()) {
             return getCertificateForUser(userOpt.get());
@@ -134,6 +137,9 @@ public class CertificateServiceImpl implements CertificateService {
         }
         if (user.getRoles().stream().anyMatch(r -> r.getName() == RoleName.DISTRIBUTOR)) {
             return RoleName.DISTRIBUTOR;
+        }
+        if (user.getRoles().stream().anyMatch(r -> r.getName() == RoleName.RETAILER)) {
+            return RoleName.RETAILER;
         }
         return null;
     }
@@ -159,18 +165,27 @@ public class CertificateServiceImpl implements CertificateService {
             String status
     ) {
         boolean isSuper = (roleName == RoleName.SUPER_DISTRIBUTOR);
+        boolean isRetailer = (roleName == RoleName.RETAILER);
 
-        String title = isSuper ? "AUTHORISED SUPER DISTRIBUTOR" : "AUTHORISED DISTRIBUTOR";
-        String certType = isSuper ? "SUPER DISTRIBUTOR CERTIFICATE" : "DISTRIBUTOR CERTIFICATE";
-        String idLabel = isSuper ? "SUPER DISTRIBUTOR ID" : "DISTRIBUTOR ID";
-        String roleDisplay = isSuper ? "Super Distributor" : "Distributor";
-        String bottomRole = isSuper ? "SUPER DISTRIBUTOR" : "DISTRIBUTOR";
+        String title = isSuper ? "AUTHORISED SUPER DISTRIBUTOR" : (isRetailer ? "RETAILER CERTIFICATE" : "AUTHORISED DISTRIBUTOR");
+        String certType = isSuper ? "SUPER DISTRIBUTOR CERTIFICATE" : (isRetailer ? "RETAILER CERTIFICATE" : "DISTRIBUTOR CERTIFICATE");
+        String idLabel = isSuper ? "SUPER DISTRIBUTOR ID" : (isRetailer ? "RETAILER ID" : "DISTRIBUTOR ID");
+        String roleDisplay = isSuper ? "Super Distributor" : (isRetailer ? "Retailer" : "Distributor");
+        String bottomRole = isSuper ? "SUPER DISTRIBUTOR" : (isRetailer ? "RETAILER" : "DISTRIBUTOR");
 
         String name = resolveName(user);
         String location = resolveLocation(user);
+        String fullAddress = resolveFullAddress(user);
+        String downloadDate = LocalDate.now(IST_ZONE).format(DISPLAY_DATE_FORMATTER);
 
-        String statement = "is an Authorised " + roleDisplay + " for delivering Rupiksha Services Pvt. Ltd. digital financial services.";
-        String authClause = "This " + roleDisplay + " is hereby authorised for providing the services offered by Rupiksha Services Pvt. Ltd. and shall not act as our representative in any capacity for any other purpose whatsoever.";
+        String statement = isRetailer
+                ? "has been onboarded as a Retailer of Rupiksha Services Private Limited"
+                : "is an Authorised " + roleDisplay + " for delivering Rupiksha Services Pvt. Ltd. digital financial services.";
+
+        String authClause = isRetailer
+                ? "w.e.f. the Retailer ID creation date. The retailer is authorized to provide and distribute the banking and financial technology services offered by Rupiksha Services Private Limited through its Web Portal and Mobile Application, subject to the terms & conditions accepted by the retailer and the applicable company policies."
+                : "This " + roleDisplay + " is hereby authorised for providing the services offered by Rupiksha Services Pvt. Ltd. and shall not act as our representative in any capacity for any other purpose whatsoever.";
+
         String disclaimer = "NOTE: If you will not perform up to the mark, then your " + roleDisplay + " location will be allocated to some other person.";
 
         return CertificateDto.builder()
@@ -182,9 +197,11 @@ public class CertificateServiceImpl implements CertificateService {
                 .certificateType(certType)
                 .idLabel(idLabel)
                 .recipientName(name.toUpperCase())
-                .issuedOn(issuedOn.format(DATE_FORMATTER))
-                .validTill(validTill.format(DATE_FORMATTER))
+                .issuedOn(isRetailer ? issuedOn.format(DISPLAY_DATE_FORMATTER) : issuedOn.format(DATE_FORMATTER))
+                .validTill(isRetailer ? validTill.format(DISPLAY_DATE_FORMATTER) : validTill.format(DATE_FORMATTER))
                 .location(location.toUpperCase())
+                .fullAddress(fullAddress)
+                .downloadDate(downloadDate)
                 .certificationStatement(statement)
                 .authorizationClause(authClause)
                 .bottomRole(bottomRole)
@@ -219,5 +236,42 @@ public class CertificateServiceImpl implements CertificateService {
             return user.getStateName().trim();
         }
         return "INDIA";
+    }
+
+    private String resolveFullAddress(User user) {
+        StringBuilder sb = new StringBuilder();
+        if (user.getPermanentAddress() != null && !user.getPermanentAddress().isBlank()) {
+            sb.append(user.getPermanentAddress().trim());
+        } else if (user.getShopAddress() != null && !user.getShopAddress().isBlank()) {
+            sb.append(user.getShopAddress().trim());
+        } else if (user.getAddressLine1() != null && !user.getAddressLine1().isBlank()) {
+            sb.append(user.getAddressLine1().trim());
+        }
+
+        String city = user.getPermCity() != null && !user.getPermCity().isBlank() ? user.getPermCity().trim() :
+                      (user.getShopCity() != null && !user.getShopCity().isBlank() ? user.getShopCity().trim() :
+                      (user.getCity() != null && !user.getCity().isBlank() ? user.getCity().trim() : ""));
+        if (!city.isEmpty() && !sb.toString().toLowerCase().contains(city.toLowerCase())) {
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(city);
+        }
+
+        String state = user.getPermState() != null && !user.getPermState().isBlank() ? user.getPermState().trim() :
+                       (user.getShopState() != null && !user.getShopState().isBlank() ? user.getShopState().trim() :
+                       (user.getStateName() != null && !user.getStateName().isBlank() ? user.getStateName().trim() : ""));
+        if (!state.isEmpty() && !sb.toString().toLowerCase().contains(state.toLowerCase())) {
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(state);
+        }
+
+        String pin = user.getPermPincode() != null && !user.getPermPincode().isBlank() ? user.getPermPincode().trim() :
+                     (user.getShopPincode() != null && !user.getShopPincode().isBlank() ? user.getShopPincode().trim() :
+                     (user.getPincode() != null && !user.getPincode().isBlank() ? user.getPincode().trim() : ""));
+        if (!pin.isEmpty() && !sb.toString().contains(pin)) {
+            if (sb.length() > 0) sb.append(" - ");
+            sb.append(pin);
+        }
+
+        return sb.length() > 0 ? sb.toString() : "Ward No. 12, Main Road, Nalanda, Bihar - 803101";
     }
 }

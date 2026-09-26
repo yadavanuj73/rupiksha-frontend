@@ -19,6 +19,8 @@ public class CertificateDto {
     private String issuedOn;
     private String validTill;
     private String location;
+    private String fullAddress;
+    private String downloadDate;
     private String certificationStatement;
     private String authorizationClause;
     private String bottomRole;

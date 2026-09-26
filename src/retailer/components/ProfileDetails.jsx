@@ -25,6 +25,7 @@ import BankingInfo from './profile/BankingInfo';
 import Settings from './profile/Settings';
 import VisitingCard from './profile/VisitingCard';
 import Certificate from './profile/Certificate';
+import RetailerCertificate from './profile/RetailerCertificate';
 
 const getCurrentUserData = () => {
     try {
@@ -663,7 +664,7 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
         { id: 'personal', label: 'Personal Information', icon: UserRound, status: getSectionStatus('personal') },
         { id: 'banking', label: 'Banking Details', icon: Landmark, status: getSectionStatus('banking') },
         { id: 'visiting_card', label: 'Visiting Card', icon: CreditCard, status: 'none' },
-        ...(isDistributorOrSuper ? [{ id: 'certificate', label: 'Certificate', icon: Award, status: 'none' }] : []),
+        { id: 'certificate', label: 'Certificate', icon: Award, status: 'none' },
         { id: 'settings', label: 'Settings', icon: SettingsIcon, status: 'none' },
     ];
 
@@ -805,11 +806,18 @@ const ProfileDetails = ({ activeTab = 'business' }) => {
                                 profilePhoto={profilePhoto} 
                             />
                         )}
-                        {activeSubTab === 'certificate' && isDistributorOrSuper && (
-                            <Certificate 
-                                formData={formData} 
-                                currentUser={currentUser} 
-                            />
+                        {activeSubTab === 'certificate' && (
+                            isDistributorOrSuper ? (
+                                <Certificate 
+                                    formData={formData} 
+                                    currentUser={currentUser} 
+                                />
+                            ) : (
+                                <RetailerCertificate 
+                                    formData={formData} 
+                                    currentUser={currentUser} 
+                                />
+                            )
                         )}
                     </motion.div>
                 </AnimatePresence>
