@@ -512,34 +512,33 @@ const RetailerCertificate = ({ formData = {}, currentUser = {} }) => {
                             />
                             
                             {/* Note: Title */}
-                            <text x="220" y="1588" fill="#173B7A" fontSize="38" fontWeight="800" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                            <text x="220" y="1582" fill="#173B7A" fontSize="36" fontWeight="800" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                                 Note:
                             </text>
-                            <line x1="220" y1="1598" x2="330" y2="1598" stroke="url(#goldGradRetailer)" strokeWidth="3.5" />
+                            <line x1="220" y1="1592" x2="320" y2="1592" stroke="url(#goldGradRetailer)" strokeWidth="3" />
 
                             {/* Bullet 1 */}
-                            <text x="220" y="1645" fill="#071A3A" fontSize="30" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
+                            <text x="220" y="1638" fill="#071A3A" fontSize="27" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
                                 •  This is a system-generated certificate and does not require a physical signature.
                             </text>
 
                             {/* Bullet 2 (Clean 2-line wrap) */}
-                            <text x="220" y="1700" fill="#071A3A" fontSize="30" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
+                            <text x="220" y="1684" fill="#071A3A" fontSize="27" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
                                 •  This certificate confirms the retailer's authorization to provide the services offered by <tspan fontWeight="800" fill="#071A3A">Rupiksha Services Private Limited</tspan>
                             </text>
-                            <text x="250" y="1742" fill="#071A3A" fontSize="30" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
+                            <text x="250" y="1724" fill="#071A3A" fontSize="27" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
                                 in accordance with applicable company policies and regulatory guidelines.
                             </text>
 
-                            {/* Bullet 3 (Clean 2-line wrap) */}
-                            <text x="220" y="1795" fill="#071A3A" fontSize="30" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
-                                •  This certificate has been downloaded by the above-mentioned retailer from the Company's Web Portal/Mobile Application on
-                                <tspan dx="10" fontWeight="800" fill="#173B7A">{downloadDateText}</tspan>
-                                <tspan dx="10">and shall remain valid up to</tspan>
-                                <tspan dx="10" fontWeight="800" fill="#173B7A">{validTillText}</tspan>
+                            {/* Bullet 3 (Clean 3-line wrap - dates comfortably centered and never overflowing) */}
+                            <text x="220" y="1770" fill="#071A3A" fontSize="27" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
+                                •  This certificate has been downloaded by the above-mentioned retailer from the Company's Web Portal / Mobile Application
                             </text>
-
-                            <text x="250" y="1837" fill="#071A3A" fontSize="30" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
-                                unless revoked or suspended earlier by <tspan fontWeight="800" fill="#071A3A">Rupiksha Services Private Limited</tspan>.
+                            <text x="250" y="1810" fill="#071A3A" fontSize="27" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
+                                on <tspan fontWeight="800" fill="#173B7A">{downloadDateText}</tspan> and shall remain valid up to <tspan fontWeight="800" fill="#173B7A">{validTillText}</tspan> unless revoked or suspended earlier by
+                            </text>
+                            <text x="250" y="1850" fill="#071A3A" fontSize="27" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
+                                <tspan fontWeight="800" fill="#071A3A">Rupiksha Services Private Limited</tspan>.
                             </text>
                         </g>
 
