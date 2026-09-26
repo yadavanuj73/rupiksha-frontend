@@ -508,12 +508,12 @@ const SuperDistributorLogin = ({ onFormModeChange }) => {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                    <button type="button" onClick={() => setMode('register')}
-                        className="border-2 border-indigo-100 hover:bg-indigo-50 text-indigo-600 font-black py-3 rounded-xl text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2">
+                    <button type="button" onClick={() => navigate('/register?role=super_distributor')}
+                        className="border-2 border-indigo-100 hover:bg-indigo-50 text-indigo-600 font-black py-3 rounded-2xl text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2">
                         <Users size={14} /> Register
                     </button>
                     <button type="button" onClick={() => setMode('forgot')}
-                        className="bg-slate-50 text-slate-500 font-black py-3 rounded-xl text-[10px] uppercase tracking-widest transition-all hover:bg-slate-100">
+                        className="bg-slate-50 text-slate-500 font-black py-3 rounded-2xl text-[10px] uppercase tracking-widest transition-all hover:bg-slate-100">
                         Forgot?
                     </button>
                 </div>

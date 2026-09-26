@@ -111,7 +111,10 @@ export default function RegisterWizard() {
   };
 
   // Form State
-  const initialRole = (searchParams.get('role') || 'RETAILER').toUpperCase();
+  const rawRoleParam = (searchParams.get('role') || 'RETAILER').toUpperCase().replace(/[-\s]/g, '_');
+  const initialRole = ['RETAILER', 'DISTRIBUTOR', 'SUPER_DISTRIBUTOR'].includes(rawRoleParam)
+    ? rawRoleParam
+    : (rawRoleParam === 'SUPERDISTRIBUTOR' ? 'SUPER_DISTRIBUTOR' : 'RETAILER');
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -122,7 +125,7 @@ export default function RegisterWizard() {
     otp: '',
     pin: '',
     confirmPin: '',
-    role: ['RETAILER', 'DISTRIBUTOR', 'SUPER_DISTRIBUTOR'].includes(initialRole) ? initialRole : 'RETAILER',
+    role: initialRole,
     state: 'BIHAR',
     city: '',
     pincode: '',
@@ -470,11 +473,15 @@ export default function RegisterWizard() {
           <motion.button
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            onClick={() => navigate(formData.role === 'DISTRIBUTOR' ? '/portal/distributor' : '/portal/retailer')}
+            onClick={() => {
+              if (formData.role === 'SUPER_DISTRIBUTOR') navigate('/portal/super-distributor');
+              else if (formData.role === 'DISTRIBUTOR') navigate('/portal/distributor');
+              else navigate('/portal/retailer');
+            }}
             className="bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-blue-100 flex items-center gap-1 hover:bg-blue-100/70 transition-all shadow-sm"
           >
             <ChevronLeft size={12} />
-            {formData.role === 'DISTRIBUTOR' ? 'Distributor Login' : 'Retailer Login'}
+            {formData.role === 'SUPER_DISTRIBUTOR' ? 'Super Distributor Login' : formData.role === 'DISTRIBUTOR' ? 'Distributor Login' : 'Retailer Login'}
           </motion.button>
 
           {/* Contacts */}
@@ -697,7 +704,7 @@ export default function RegisterWizard() {
                         </label>
                         <div className="w-full bg-blue-50/80 border border-blue-200 rounded-xl px-3.5 py-2 sm:py-2.5 flex items-center justify-between shadow-sm">
                           <span className="text-xs sm:text-sm font-black text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
-                            <ShieldCheck className="w-4 h-4 text-blue-600" /> {formData.role}
+                            <ShieldCheck className="w-4 h-4 text-blue-600" /> {formData.role.replace(/_/g, ' ')}
                           </span>
                           <span className="text-[10px] font-bold text-blue-600 bg-blue-100/80 px-2 py-0.5 rounded-full uppercase tracking-widest">Default</span>
                         </div>
@@ -714,11 +721,17 @@ export default function RegisterWizard() {
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 sm:py-2.5 text-xs sm:text-sm text-slate-800 focus:outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm"
                         >
                           <option value="">-- Direct Parent --</option>
-                          {parents.map(p => (
-                            <option key={p.id} value={p.id}>
-                              {p.fullName} ({p.partyCode || p.username}) - {p.role}
-                            </option>
-                          ))}
+                          {parents
+                            .filter(p => {
+                              if (formData.role === 'SUPER_DISTRIBUTOR') return p.role === 'ADMIN' || p.role === 'NATIONAL_HEADER';
+                              if (formData.role === 'DISTRIBUTOR') return p.role === 'SUPER_DISTRIBUTOR' || p.role === 'ADMIN';
+                              return p.role !== 'RETAILER';
+                            })
+                            .map(p => (
+                              <option key={p.id} value={p.id}>
+                                {p.fullName} ({p.partyCode || p.username}) - {p.role?.replace(/_/g, ' ')}
+                              </option>
+                            ))}
                         </select>
                       </div>
                     </div>
@@ -732,7 +745,10 @@ export default function RegisterWizard() {
                     </button>
 
                     <div className="pt-1.5 flex items-center justify-center gap-4 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-t border-slate-100 mt-2">
-                      <Link to={formData.role === 'DISTRIBUTOR' ? '/portal/distributor' : '/portal/retailer'} className="text-blue-600 hover:underline flex items-center gap-1">
+                      <Link 
+                        to={formData.role === 'SUPER_DISTRIBUTOR' ? '/portal/super-distributor' : formData.role === 'DISTRIBUTOR' ? '/portal/distributor' : '/portal/retailer'} 
+                        className="text-blue-600 hover:underline flex items-center gap-1"
+                      >
                         <User size={13} /> Already Registered? Login
                       </Link>
                     </div>
@@ -1123,7 +1139,7 @@ export default function RegisterWizard() {
                       </div>
                       <div className="flex justify-between border-b border-slate-200 pb-1">
                         <span className="text-slate-400">Partner Role:</span>
-                        <span className="font-bold text-blue-600">{formData.role}</span>
+                        <span className="font-bold text-blue-600">{formData.role.replace(/_/g, ' ')}</span>
                       </div>
                       <div className="flex justify-between border-b border-slate-200 pb-1">
                         <span className="text-slate-400">State:</span>
