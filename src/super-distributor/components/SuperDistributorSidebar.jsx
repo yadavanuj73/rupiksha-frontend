@@ -1,20 +1,58 @@
-import React, { useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { menuItems } from '../data/menuItems';
-import { ChevronDown, ChevronRight, LayoutDashboard } from 'lucide-react';
+import {
+    ChevronDown, Lock, Unlock, LayoutGrid
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { sharedDataService } from '../../services/sharedDataService';
-import rupikshaNewLogo from '../../assets/logo rupiksha.png';
+import { dataService } from '../../services/dataService';
+import logo from '../../assets/logo rupiksha.png';
 
-const SuperDistributorSidebar = ({ showMobile, onClose }) => {
+const SuperDistributorSidebar = ({
+    showMobile,
+    onClose,
+    isSidebarLocked,
+    toggleSidebarLock,
+    isSidebarHovered,
+    setIsSidebarHovered,
+    isExpanded
+}) => {
     const [openMenus, setOpenMenus] = useState({});
+    const [dist, setDist] = useState(null);
     const location = useLocation();
-    const navigate = useNavigate();
+
+    useEffect(() => {
+        const loadUser = () => {
+            const currentDist = sharedDataService.getCurrentSuperDistributor() || dataService.getCurrentUser();
+            setDist(currentDist);
+        };
+        loadUser();
+        window.addEventListener('SuperDistributorDataUpdated', loadUser);
+        window.addEventListener('dataUpdated', loadUser);
+        window.addEventListener('profileUpdated', loadUser);
+        return () => {
+            window.removeEventListener('SuperDistributorDataUpdated', loadUser);
+            window.removeEventListener('dataUpdated', loadUser);
+            window.removeEventListener('profileUpdated', loadUser);
+        };
+    }, []);
 
     const toggleMenu = (title) => setOpenMenus((prev) => ({ ...prev, [title]: !prev[title] }));
 
-    const isPathActive = (path) =>
-        location.pathname === path || location.pathname.startsWith(path + '/');
+    const isPathActive = (path, item) => {
+        if (location.pathname === path) return true;
+        if (path !== '/super-distributor' && location.pathname.startsWith(path)) return true;
+        if (item?.submenu && item.submenu.some(sub => location.pathname === sub.path || location.pathname.startsWith(sub.path))) return true;
+        return false;
+    };
+
+    const getInitials = () => {
+        if (dist?.name) {
+            return dist.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+        }
+        return dist?.mobile?.slice(-2) || 'SD';
+    };
 
     return (
         <>
@@ -31,122 +69,232 @@ const SuperDistributorSidebar = ({ showMobile, onClose }) => {
                 )}
             </AnimatePresence>
 
-            {/* Locked Premium Sidebar */}
+            {/* Collapsible & Lockable Sidebar — Exact Distributor Panel Styling */}
             <motion.aside
+                onMouseEnter={() => setIsSidebarHovered && setIsSidebarHovered(true)}
+                onMouseLeave={() => setIsSidebarHovered && setIsSidebarHovered(false)}
                 initial={false}
                 animate={{
+                    width: typeof window !== 'undefined' && window.innerWidth >= 1024
+                        ? (isExpanded ? 220 : 58)
+                        : 220,
                     x: typeof window !== 'undefined' && window.innerWidth < 1024
-                        ? (showMobile ? 0 : -240)
+                        ? (showMobile ? 0 : -230)
                         : 0
                 }}
-                transition={{ type: 'spring', stiffness: 280, damping: 28 }}
-                className={`
-                    fixed top-0 left-0 h-screen z-50 w-64 flex flex-col
-                    bg-slate-50 text-slate-700 border-r border-slate-200 shadow-[8px_0_28px_rgba(15,23,42,0.06)]
-                    ${showMobile ? 'translate-x-0' : '-translate-x-full'}
-                    lg:top-[76px] lg:h-[calc(100vh-76px)] lg:translate-x-0
-                `}
+                transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+                className={`fixed top-0 left-0 flex-shrink-0 border-r border-slate-300 flex flex-col h-screen font-['Inter',sans-serif] z-50 transition-colors duration-300 lg:top-16 lg:h-[calc(100vh-64px)] bg-slate-50 shadow-md ${
+                    !isSidebarLocked && isSidebarHovered ? 'shadow-2xl ring-1 ring-black/5 z-50' : ''
+                }`}
             >
-                <div className="px-4 py-3 border-b border-slate-200 flex flex-col items-center justify-center gap-1.5">
-                    <img
-                        src={rupikshaNewLogo}
-                        alt="Rupiksha"
-                        className="h-16 w-auto object-contain max-w-[150px]"
-                    />
-                    <span className="inline-flex items-center rounded-full bg-blue-50 border border-blue-100 text-blue-700 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest">
-                        Super Distributor Panel
-                    </span>
+                {/* Header / Lock Area */}
+                <div className={`shrink-0 border-b border-slate-200 transition-all duration-300 ${
+                    isExpanded ? 'px-3 py-3' : 'px-2 py-2.5'
+                }`}>
+                    {isExpanded ? (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="flex items-start justify-between w-full gap-2"
+                        >
+                            <div className="flex-1 flex justify-center items-center py-1">
+                                <img
+                                    src={logo}
+                                    alt="Rupiksha"
+                                    className="h-16 w-auto object-contain max-w-[135px]"
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                onClick={toggleSidebarLock}
+                                className={`p-1.5 rounded-lg transition cursor-pointer flex items-center gap-1 shrink-0 ${
+                                    isSidebarLocked
+                                        ? 'bg-slate-900 text-white hover:bg-slate-800'
+                                        : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                                }`}
+                                title={isSidebarLocked ? "Sidebar locked open. Click to enable auto-slide." : "Sidebar slideable. Click to lock open."}
+                            >
+                                {isSidebarLocked ? <Lock size={13} /> : <Unlock size={13} />}
+                            </button>
+                        </motion.div>
+                    ) : (
+                        <div className="w-full flex flex-col items-center gap-2">
+                            <img
+                                src={logo}
+                                alt="R"
+                                className="w-7 h-7 object-contain rounded"
+                            />
+                            <button
+                                type="button"
+                                onClick={toggleSidebarLock}
+                                className="p-1.5 rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-300 transition cursor-pointer"
+                                title="Click to lock sidebar open"
+                            >
+                                <Unlock size={13} />
+                            </button>
+                        </div>
+                    )}
                 </div>
 
-                {/* Nav */}
-                <nav className="flex-1 overflow-y-auto py-3 scrollbar-none space-y-0.5 px-2">
-                    {/* Dashboard NavLink */}
+                {/* Navigation Links List */}
+                <div className="flex-1 overflow-y-auto py-1.5 scrollbar-none px-1.5 space-y-0.5">
+                    {/* Dashboard Item */}
                     <NavLink
                         to="/super-distributor"
                         end
                         onClick={onClose}
+                        title={!isExpanded ? "Dashboard" : undefined}
                         className={({ isActive }) =>
-                            `flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200
-                            ${isActive
-                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25'
-                                : 'text-slate-700 hover:bg-slate-100'
-                            } justify-start`
+                            `flex items-center ${isExpanded ? 'justify-between px-2.5' : 'justify-center px-0'} py-2 my-1 cursor-pointer group transition-all duration-200 rounded-xl relative border ${
+                                isActive
+                                    ? 'bg-slate-950 text-white border-slate-900 shadow-sm'
+                                    : 'border-transparent text-slate-950 hover:bg-gradient-to-r hover:from-blue-50/90 hover:via-indigo-50/80 hover:to-purple-50/80 hover:text-indigo-950 hover:border-indigo-100/80 hover:shadow-xs'
+                            }`
                         }
                     >
-                        <LayoutDashboard size={16} className="shrink-0" />
-                        <span className="truncate">Dashboard</span>
+                        {({ isActive }) => (
+                            <div className={`flex items-center ${isExpanded ? 'space-x-2.5' : 'justify-center'} relative z-10 w-full min-w-0`}>
+                                <div className={`shrink-0 transition-all duration-200 ${isActive ? 'text-white' : 'text-slate-950 group-hover:text-blue-600'} group-hover:scale-105`}>
+                                    <LayoutGrid size={18} strokeWidth={isActive ? 2.5 : 2.2} />
+                                </div>
+                                {isExpanded && (
+                                    <span className={`font-black text-[13px] tracking-tight truncate flex-1 ${isActive ? 'text-white' : 'text-slate-950 group-hover:text-indigo-950'}`}>
+                                        Dashboard
+                                    </span>
+                                )}
+                            </div>
+                        )}
                     </NavLink>
 
-                    {/* Dynamic menu items */}
+                    {/* Dynamic Super Distributor menu items */}
                     {menuItems.map((item) => {
-                        const isActive = isPathActive(item.path);
+                        const isActive = isPathActive(item.path, item);
                         const isOpen = openMenus[item.title];
 
                         return (
                             <div key={item.title}>
                                 {item.submenu ? (
-                                    <button
-                                        onClick={() => toggleMenu(item.title)}
-                                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200
-                                            ${isActive ? 'text-white bg-blue-600' : 'text-slate-700 hover:bg-slate-100'}
-                                            justify-start`}
-                                    >
-                                        <item.icon size={16} className="shrink-0" />
-                                        <span className="flex-1 text-left truncate">{item.title}</span>
-                                        {isOpen
-                                            ? <ChevronDown size={11} className="shrink-0 text-blue-600" />
-                                            : <ChevronRight size={11} className="shrink-0" />}
-                                    </button>
+                                    <div>
+                                        <div
+                                            onClick={() => {
+                                                if (!isExpanded && setIsSidebarHovered) setIsSidebarHovered(true);
+                                                toggleMenu(item.title);
+                                            }}
+                                            title={!isExpanded ? item.title : undefined}
+                                            className={`flex items-center ${isExpanded ? 'justify-between px-2.5' : 'justify-center px-0'} py-2 my-1 cursor-pointer group transition-all duration-200 rounded-xl relative border ${
+                                                isActive
+                                                    ? 'bg-slate-950 text-white border-slate-900 shadow-sm'
+                                                    : 'border-transparent text-slate-950 hover:bg-gradient-to-r hover:from-blue-50/90 hover:via-indigo-50/80 hover:to-purple-50/80 hover:text-indigo-950 hover:border-indigo-100/80 hover:shadow-xs'
+                                            }`}
+                                        >
+                                            <div className={`flex items-center ${isExpanded ? 'space-x-2.5' : 'justify-center'} relative z-10 w-full min-w-0`}>
+                                                <div className={`shrink-0 transition-all duration-200 ${isActive ? 'text-white' : 'text-slate-950 group-hover:text-blue-600'} group-hover:scale-105`}>
+                                                    <item.icon size={18} strokeWidth={isActive ? 2.5 : 2.2} />
+                                                </div>
+                                                {isExpanded && (
+                                                    <span className={`font-black text-[13px] tracking-tight truncate flex-1 ${isActive ? 'text-white' : 'text-slate-950 group-hover:text-indigo-950'}`}>
+                                                        {item.title}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {isExpanded && (
+                                                <div className="relative z-10 shrink-0 ml-1">
+                                                    <div className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : 'rotate-0'}`}>
+                                                        <ChevronDown size={14} className={isActive ? 'text-white' : 'text-slate-700 group-hover:text-indigo-600'} />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Submenu */}
+                                        <AnimatePresence>
+                                            {isOpen && isExpanded && (
+                                                <motion.div
+                                                    initial={{ height: 0, opacity: 0 }}
+                                                    animate={{ height: 'auto', opacity: 1 }}
+                                                    exit={{ height: 0, opacity: 0 }}
+                                                    transition={{ duration: 0.2, ease: 'easeInOut' }}
+                                                    className="ml-5 pl-2.5 border-l-2 border-indigo-100/90 overflow-hidden space-y-1 my-1"
+                                                >
+                                                    {item.submenu.map((sub) => {
+                                                        const isSubActive = location.pathname === sub.path;
+                                                        return (
+                                                            <NavLink
+                                                                key={sub.path}
+                                                                to={sub.path}
+                                                                onClick={onClose}
+                                                                className={`block w-full text-left px-2.5 py-1.5 text-[12px] font-bold transition-all duration-200 rounded-lg cursor-pointer truncate ${
+                                                                    isSubActive
+                                                                        ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-black shadow-xs'
+                                                                        : 'text-slate-900 hover:bg-gradient-to-r hover:from-blue-50 hover:via-indigo-50/90 hover:to-purple-50 hover:text-blue-700 hover:font-black hover:translate-x-1 hover:shadow-2xs'
+                                                                }`}
+                                                            >
+                                                                {sub.title}
+                                                            </NavLink>
+                                                        );
+                                                    })}
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
                                 ) : (
                                     <NavLink
                                         to={item.path}
                                         end
                                         onClick={onClose}
+                                        title={!isExpanded ? item.title : undefined}
                                         className={({ isActive }) =>
-                                            `flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200
-                                            ${isActive
-                                                ? 'bg-gradient-to-r from-blue-600 to-indigo-500 text-white shadow-lg shadow-blue-600/25'
-                                                : 'text-slate-700 hover:bg-slate-100'
-                                            } justify-start`
+                                            `flex items-center ${isExpanded ? 'justify-between px-2.5' : 'justify-center px-0'} py-2 my-1 cursor-pointer group transition-all duration-200 rounded-xl relative border ${
+                                                isActive
+                                                    ? 'bg-slate-950 text-white border-slate-900 shadow-sm'
+                                                    : 'border-transparent text-slate-950 hover:bg-gradient-to-r hover:from-blue-50/90 hover:via-indigo-50/80 hover:to-purple-50/80 hover:text-indigo-950 hover:border-indigo-100/80 hover:shadow-xs'
+                                            }`
                                         }
                                     >
-                                        <item.icon size={16} className="shrink-0" />
-                                        <span className="truncate">{item.title}</span>
+                                        {({ isActive }) => (
+                                            <div className={`flex items-center ${isExpanded ? 'space-x-2.5' : 'justify-center'} relative z-10 w-full min-w-0`}>
+                                                <div className={`shrink-0 transition-all duration-200 ${isActive ? 'text-white' : 'text-slate-950 group-hover:text-blue-600'} group-hover:scale-105`}>
+                                                    <item.icon size={18} strokeWidth={isActive ? 2.5 : 2.2} />
+                                                </div>
+                                                {isExpanded && (
+                                                    <span className={`font-black text-[13px] tracking-tight truncate flex-1 ${isActive ? 'text-white' : 'text-slate-950 group-hover:text-indigo-950'}`}>
+                                                        {item.title}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
                                     </NavLink>
                                 )}
-
-                                {/* Submenu */}
-                                <AnimatePresence>
-                                    {item.submenu && isOpen && (
-                                        <motion.div
-                                            initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: 'auto', opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                            transition={{ duration: 0.25, ease: 'easeInOut' }}
-                                            className="overflow-hidden ml-5 mt-0.5 border-l border-slate-200 pl-3 space-y-0.5"
-                                        >
-                                            {item.submenu.map((sub) => (
-                                                <NavLink
-                                                    key={sub.path}
-                                                    to={sub.path}
-                                                    onClick={onClose}
-                                                    className={({ isActive }) =>
-                                                        `flex items-center gap-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all
-                                                        ${isActive ? 'text-blue-700 bg-blue-50 border border-blue-100' : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'}`
-                                                    }
-                                                >
-                                                    <sub.icon size={11} className="shrink-0" />
-                                                    <span className="truncate">{sub.title}</span>
-                                                </NavLink>
-                                            ))}
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
                             </div>
                         );
                     })}
-                </nav>
+                </div>
 
+                {/* Footer Profile */}
+                <div className="p-2 border-t border-slate-200">
+                    <div className={`flex items-center ${isExpanded ? 'justify-between' : 'justify-center'} px-1 py-1`}>
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center border border-slate-300 overflow-hidden shrink-0 shadow-xs">
+                                {(() => {
+                                    const sdSideUid = dist?.id || dist?.userId || dist?.username;
+                                    const sdSidePhoto = dist?.profilePhoto || dist?.photoUrl || (sdSideUid ? localStorage.getItem(`rupiksha_photo_${sdSideUid}`) : null);
+                                    return sdSidePhoto ? (
+                                        <img src={sdSidePhoto} alt="U" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <span className="text-[10px] font-black text-black">{getInitials()}</span>
+                                    );
+                                })()}
+                            </div>
+                            {isExpanded && (
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-xs font-black text-black truncate">{dist?.name || 'Super Distributor'}</span>
+                                    <span className="text-[9.5px] text-slate-500 font-bold">Super Distributor Node</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
             </motion.aside>
         </>
     );

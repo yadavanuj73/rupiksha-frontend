@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Bell, Menu, LogOut, ChevronDown, Wallet, User, BadgeCheck, Clock3, OctagonAlert } from 'lucide-react';
+import { Plus, Bell, Menu, LogOut, ChevronDown, Wallet, User, BadgeCheck, Clock3, OctagonAlert, Shield, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { sharedDataService } from '../../services/sharedDataService';
 import { dataService } from '../../services/dataService';
-// Using logo from public folder
-const logo = '/logo rupiksha.png';
+import { useAuth } from '../../context/AuthContext';
 
 const SuperDistributorTopBar = ({ onMenuClick }) => {
     const navigate = useNavigate();
+    const { lockTimeLeft, logoutTimeLeft } = useAuth();
     const [dist, setDist] = useState(null);
     const [imgError, setImgError] = useState(false);
     const [showProfile, setShowProfile] = useState(false);
@@ -15,7 +15,14 @@ const SuperDistributorTopBar = ({ onMenuClick }) => {
     const profileRef = useRef(null);
     const notifRef = useRef(null);
 
-    const loadDist = () => {
+    const formatTime = (ms) => {
+        const totalSecs = Math.floor(ms / 1000);
+        const mins = Math.floor(totalSecs / 60);
+        const secs = totalSecs % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const loadDist = async () => {
         const session = sharedDataService.getCurrentSuperDistributor() || dataService.getCurrentUser();
         if (!session) return;
         const fresh = (session.id && sharedDataService.getSuperDistributorById(session.id)) || session;
@@ -32,6 +39,17 @@ const SuperDistributorTopBar = ({ onMenuClick }) => {
         if (!photo && sdUid) {
             dataService.fetchUserProfile().catch(() => {});
         }
+
+        // Fetch live wallet balance from server
+        try {
+            const liveBal = await dataService.getWalletBalance(fresh.id || fresh.userId);
+            if (liveBal !== undefined && liveBal !== null) {
+                setDist(prev => ({
+                    ...(prev || fresh),
+                    wallet: { ...(prev?.wallet || {}), balance: liveBal }
+                }));
+            }
+        } catch (_) {}
     };
 
     useEffect(() => {
@@ -62,10 +80,10 @@ const SuperDistributorTopBar = ({ onMenuClick }) => {
     };
 
     const sdCurrentUid = dist?.id || dist?.userId || dist?.username;
-    const initials = (dist?.name || 'D').charAt(0).toUpperCase();
     const userPhoto = dist?.profilePhoto || dist?.photoUrl || (sdCurrentUid ? localStorage.getItem(`rupiksha_photo_${sdCurrentUid}`) : null);
+    const initials = (dist?.name || 'SD').charAt(0).toUpperCase();
     const walletBal = dist?.wallet?.balance || '0.00';
-    const distName = dist?.name || 'SUPER_DISTRIBUTOR';
+    const distName = dist?.name || 'Super Distributor';
     const rawKyc = String(dist?.kycStatus || dist?.profile_kyc_status || '').toUpperCase();
     const kycChip = rawKyc === 'APPROVED' || rawKyc === 'DONE'
         ? { label: 'Approved', className: 'bg-emerald-50 border-emerald-200 text-emerald-700', icon: BadgeCheck }
@@ -75,40 +93,51 @@ const SuperDistributorTopBar = ({ onMenuClick }) => {
     const KycIcon = kycChip.icon;
 
     const notifications = [
-        { msg: 'New retailer registration pending approval', time: '2 min ago', dot: 'bg-amber-400' },
-        { msg: 'Wallet credited ₹10,000 by admin', time: '1 hr ago', dot: 'bg-emerald-400' },
-        { msg: 'Commission report for Jan is ready', time: '3 hr ago', dot: 'bg-blue-400' },
+        { msg: 'New distributor registration pending approval', time: '2 min ago', dot: 'bg-amber-400' },
+        { msg: 'Wallet credited ₹50,000 by admin', time: '1 hr ago', dot: 'bg-emerald-400' },
+        { msg: 'Commission report for current month is ready', time: '3 hr ago', dot: 'bg-blue-400' },
     ];
 
     return (
-        <header className="fixed top-0 left-0 right-0 h-[76px] bg-white border-b border-slate-200 shadow-sm flex items-center justify-between px-3 md:px-5 shrink-0 z-[60]">
+        <header className="h-16 bg-white border-b border-slate-200 shadow-sm flex items-center justify-between px-3 md:px-6 shrink-0 z-40 fixed top-0 left-0 right-0">
 
-            {/* Left */}
+            {/* Left: Mobile Menu Toggle & Portal Title */}
             <div className="flex items-center gap-3">
                 <button onClick={onMenuClick}
-                    className="lg:hidden p-2 rounded-xl hover:bg-slate-100 text-slate-700 transition-colors">
-                    <Menu size={20} />
+                    className="lg:hidden p-2 rounded-xl hover:bg-slate-100 text-slate-700 transition-colors border border-slate-200"
+                    title="Toggle menu">
+                    <Menu size={18} />
                 </button>
-                <button onClick={() => navigate('/super-distributor')} className="flex items-center gap-2.5">
-                    <div className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center shadow-sm">
-                        <img src={logo} alt="Rupiksha logo" className="h-8 w-8 object-contain" />
-                    </div>
-                    <div className="hidden sm:block">
-                        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-600">Rupiksha Services Private Limited</p>
-                        <p className="text-slate-800 text-[13px] font-black tracking-wide">Super Distributor</p>
-                    </div>
-                </button>
-
+                <div className="flex items-center gap-2">
+                    <span className="text-slate-800 text-[14px] font-black tracking-wide">Super Distributor Portal</span>
+                </div>
             </div>
 
-            {/* Right */}
-            <div className="flex items-center gap-2">
+            {/* Right: Security Countdown, KYC, Wallet, Notifications & Profile */}
+            <div className="flex items-center gap-2 sm:gap-3">
+                {/* Clean Session & Security Monitor Pill */}
+                <div className="hidden lg:flex items-center gap-2.5 bg-slate-50 border border-slate-200/90 rounded-xl px-3 py-1.5 text-[10px] font-bold text-slate-500 shadow-xs">
+                    <div className="flex items-center gap-1.5" title="Master Auth Lock Countdown">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                        <span className="text-[9px] font-black text-amber-600 uppercase tracking-tight">PIN Lock</span>
+                        <span className="font-mono text-slate-700 font-bold bg-white px-1.5 py-0.5 rounded border border-slate-200/60">{formatTime(lockTimeLeft)}</span>
+                    </div>
+                    <span className="text-slate-200">|</span>
+                    <div className="flex items-center gap-1.5" title="Auto Logout Countdown">
+                        <Lock size={11} className="text-slate-400" />
+                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-tight">Auto Logout</span>
+                        <span className="font-mono text-slate-600 italic">{formatTime(logoutTimeLeft)}</span>
+                    </div>
+                    <span className="text-slate-200">|</span>
+                    <div className="flex items-center gap-1 text-emerald-600 font-black text-[9px] uppercase tracking-wider">
+                        <Shield size={11} /> Active
+                    </div>
+                </div>
+
                 <div className={`hidden sm:flex items-center gap-1.5 border rounded-full px-2.5 py-1 ${kycChip.className}`}>
                     <KycIcon size={12} />
                     <span className="text-[9px] font-black uppercase tracking-[0.15em]">KYC {kycChip.label}</span>
                 </div>
-
-
 
                 {/* Wallet Chip */}
                 <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
@@ -150,7 +179,9 @@ const SuperDistributorTopBar = ({ onMenuClick }) => {
                             </button>
                         </div>
                     )}
-                </div>                {/* Profile Dropdown */}
+                </div>
+
+                {/* Profile Dropdown */}
                 <div className="relative" ref={profileRef}>
                     <button onClick={() => setShowProfile(v => !v)}
                         className="flex items-center gap-2 p-1.5 pr-2.5 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all">
@@ -184,7 +215,7 @@ const SuperDistributorTopBar = ({ onMenuClick }) => {
                                     )}
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <p className="text-[11px] font-black text-slate-700 uppercase tracking-tight truncate">{distName}</p>
+                                    <p className="text-[11px] font-black text-slate-800 uppercase tracking-tight truncate">{distName}</p>
                                     <p className="text-[9px] font-bold text-slate-400 mt-0.5 truncate">{dist?.partyCode ? `ID: ${dist.partyCode}` : (dist?.mobile ? `+91 ${dist.mobile}` : 'Super Distributor')}</p>
                                     <p className="text-[10px] font-black text-amber-600 mt-0.5">Wallet: ₹ {walletBal}</p>
                                 </div>
