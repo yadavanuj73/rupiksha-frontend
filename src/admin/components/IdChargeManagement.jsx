@@ -25,10 +25,7 @@ import {
   Calendar,
   SlidersHorizontal,
   Save,
-  Layers,
-  Zap,
-  Info,
-  RotateCcw
+  Layers
 } from 'lucide-react';
 import { adminIdPaymentService } from '../../services/apiService';
 
@@ -239,53 +236,13 @@ export default function IdChargeManagement() {
 
   return (
     <div className="space-y-6">
-      {/* ── Top Header Banner ── */}
-      <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-black text-blue-600 uppercase tracking-wider mb-1">
-            <CreditCard size={15} /> Partner Management Operations
-          </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-            ID Charge & Coupon Control
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Monitor partner registration payments, set custom ID charges per role, and generate user-specific discount coupons.
-          </p>
-        </div>
-
-        {/* Quick Stats Summary */}
-        <div className="flex items-center gap-3">
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-2.5 text-center">
-            <span className="text-[10px] font-bold text-amber-600 uppercase block tracking-wider">
-              Pending Activation
-            </span>
-            <span className="text-lg font-black text-amber-900">{pendingUsers.length}</span>
-          </div>
-
-          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-2.5 text-center">
-            <span className="text-[10px] font-bold text-emerald-600 uppercase block tracking-wider">
-              Paid & Active
-            </span>
-            <span className="text-lg font-black text-emerald-900">{successUsers.length}</span>
-          </div>
-
-          <button
-            onClick={activeTab === 'setCharges' ? fetchRoleChargesOnly : fetchAllData}
-            className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl transition-colors"
-            title="Refresh Data"
-          >
-            <RefreshCw size={18} className={loading || loadingCharges ? 'animate-spin' : ''} />
-          </button>
-        </div>
-      </div>
-
-      {/* ── Tabs & Filter Controls ── */}
+      {/* ── Tabs, Refresh & Filter Controls ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        {/* Navigation Tabs */}
-        <div className="flex items-center p-1.5 bg-slate-200/80 rounded-2xl w-fit flex-wrap gap-1">
+        {/* Navigation Tabs + Refresh in front */}
+        <div className="flex items-center p-1.5 bg-slate-200/80 rounded-2xl w-fit flex-wrap gap-1.5">
           <button
             onClick={() => setActiveTab('pending')}
-            className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'pending'
                 ? 'bg-white text-slate-900 shadow-sm'
                 : 'text-slate-600 hover:text-slate-900'
@@ -306,7 +263,7 @@ export default function IdChargeManagement() {
 
           <button
             onClick={() => setActiveTab('success')}
-            className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'success'
                 ? 'bg-white text-slate-900 shadow-sm'
                 : 'text-slate-600 hover:text-slate-900'
@@ -330,7 +287,7 @@ export default function IdChargeManagement() {
               setActiveTab('setCharges');
               fetchRoleChargesOnly();
             }}
-            className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'setCharges'
                 ? 'bg-white text-blue-700 shadow-sm'
                 : 'text-slate-600 hover:text-slate-900'
@@ -338,6 +295,18 @@ export default function IdChargeManagement() {
           >
             <SlidersHorizontal size={14} className="text-blue-600" />
             Set ID Charges
+          </button>
+
+          {/* Refresh Button in front of Set ID Charges */}
+          <button
+            onClick={activeTab === 'setCharges' ? fetchRoleChargesOnly : fetchAllData}
+            className="p-2.5 bg-white/80 hover:bg-white text-slate-700 rounded-xl transition-all shadow-xs hover:shadow-sm"
+            title="Refresh Data"
+          >
+            <RefreshCw
+              size={15}
+              className={loading || loadingCharges ? 'animate-spin text-blue-600' : 'text-slate-600'}
+            />
           </button>
         </div>
 
@@ -570,43 +539,6 @@ export default function IdChargeManagement() {
       {/* ── TAB 3: Set ID Charges Configuration ── */}
       {activeTab === 'setCharges' && (
         <div className="space-y-6">
-          {/* Information & Alert Banner */}
-          <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden">
-            <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/20 border border-blue-400/30 rounded-xl text-blue-300 text-[11px] font-bold uppercase tracking-wider">
-                  <SlidersHorizontal size={13} /> Real-time Charge Management
-                </div>
-                <h2 className="text-xl font-black tracking-tight">
-                  Configure Partner ID Activation Charges
-                </h2>
-                <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
-                  Set authoritative ID activation charges for all three partner tiers.
-                  Changes reflect <strong>immediately</strong> in real-time — when any partner
-                  attempts to log in or register, they will be prompted to pay exactly these amounts
-                  on the Razorpay checkout screen.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    setChargeInputs({
-                      RETAILER: '2999',
-                      DISTRIBUTOR: '5999',
-                      SUPER_DISTRIBUTOR: '9999',
-                    });
-                  }}
-                  type="button"
-                  className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
-                >
-                  <RotateCcw size={14} /> Reset Defaults
-                </button>
-              </div>
-            </div>
-          </div>
-
           {/* Status Message */}
           <AnimatePresence>
             {chargeStatusMessage && (
@@ -683,8 +615,7 @@ export default function IdChargeManagement() {
                       className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-base font-black text-slate-900 focus:outline-none focus:border-blue-500 shadow-inner"
                     />
                   </div>
-                  <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1">
-                    <span>Default: ₹2,999.00</span>
+                  <div className="flex items-center justify-end text-[10px] text-slate-400 pt-1">
                     <span className="font-bold text-slate-600">
                       Paise: {(parseFloat(chargeInputs.RETAILER || 0) * 100).toLocaleString('en-IN')}
                     </span>
@@ -734,8 +665,7 @@ export default function IdChargeManagement() {
                       className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-base font-black text-slate-900 focus:outline-none focus:border-blue-500 shadow-inner"
                     />
                   </div>
-                  <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1">
-                    <span>Default: ₹5,999.00</span>
+                  <div className="flex items-center justify-end text-[10px] text-slate-400 pt-1">
                     <span className="font-bold text-slate-600">
                       Paise: {(parseFloat(chargeInputs.DISTRIBUTOR || 0) * 100).toLocaleString('en-IN')}
                     </span>
@@ -788,8 +718,7 @@ export default function IdChargeManagement() {
                       className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-base font-black text-slate-900 focus:outline-none focus:border-purple-500 shadow-inner"
                     />
                   </div>
-                  <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1">
-                    <span>Default: ₹9,999.00</span>
+                  <div className="flex items-center justify-end text-[10px] text-slate-400 pt-1">
                     <span className="font-bold text-slate-600">
                       Paise: {(parseFloat(chargeInputs.SUPER_DISTRIBUTOR || 0) * 100).toLocaleString('en-IN')}
                     </span>
@@ -798,20 +727,8 @@ export default function IdChargeManagement() {
               </div>
             </div>
 
-            {/* Bottom Actions Card */}
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                  <ShieldCheck size={20} />
-                </div>
-                <div>
-                  <h4 className="text-xs font-black text-slate-900">Server-Authoritative Enforcement</h4>
-                  <p className="text-[11px] text-slate-400">
-                    Amounts are enforced server-side before Razorpay order creation to prevent browser tampering.
-                  </p>
-                </div>
-              </div>
-
+            {/* Bottom Save Action Button */}
+            <div className="flex justify-end pt-2">
               <button
                 type="submit"
                 disabled={savingCharges}
