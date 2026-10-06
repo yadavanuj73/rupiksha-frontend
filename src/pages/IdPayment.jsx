@@ -15,7 +15,12 @@ import {
   User as UserIcon,
   HelpCircle,
   Copy,
-  Check
+  Check,
+  CheckCircle,
+  Zap,
+  Layers,
+  ChevronRight,
+  ArrowLeft
 } from 'lucide-react';
 import { idPaymentService } from '../services/apiService';
 
@@ -23,7 +28,11 @@ export default function IdPayment() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const identifierParam = searchParams.get('identifier') || searchParams.get('mobile') || searchParams.get('userId') || '';
+  const identifierParam =
+    searchParams.get('identifier') ||
+    searchParams.get('mobile') ||
+    searchParams.get('userId') ||
+    '';
   const roleParam = searchParams.get('role') || '';
 
   const [loading, setLoading] = useState(true);
@@ -35,9 +44,8 @@ export default function IdPayment() {
   const [paymentStatus, setPaymentStatus] = useState('PENDING'); // PENDING, SUCCESS, FAILED, CANCELLED
   const [errorMessage, setErrorMessage] = useState('');
   const [successData, setSuccessData] = useState(null);
-  const [copied, setCopied] = useState(false);
 
-  // Load Razorpay Script dynamically
+  // Dynamic Razorpay Script Loader
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
       if (window.Razorpay) {
@@ -75,7 +83,7 @@ export default function IdPayment() {
             amount: res.finalAmount,
             userId: res.userId,
             fullName: res.fullName,
-            role: res.role
+            role: res.role,
           });
         }
       } else {
@@ -97,7 +105,11 @@ export default function IdPayment() {
     if (e) e.preventDefault();
     if (!couponCode.trim()) return;
 
-    const id = paymentDetails?.userId || paymentDetails?.mobile || paymentDetails?.username || identifierParam;
+    const id =
+      paymentDetails?.userId ||
+      paymentDetails?.mobile ||
+      paymentDetails?.username ||
+      identifierParam;
     if (!id) return;
 
     try {
@@ -106,14 +118,13 @@ export default function IdPayment() {
       const res = await idPaymentService.applyCoupon(id, couponCode.trim());
       if (res && res.valid) {
         setCouponMessage({ type: 'success', text: res.message });
-        // Update local price breakdown from backend authoritative response
         setPaymentDetails((prev) => ({
           ...prev,
           originalAmount: res.originalAmount,
           discountAmount: res.discountAmount,
           finalAmount: res.finalAmount,
           appliedCouponCode: res.couponCode,
-          appliedCouponDiscountPercent: res.discountPercent
+          appliedCouponDiscountPercent: res.discountPercent,
         }));
       } else {
         setCouponMessage({ type: 'error', text: res?.message || 'Invalid coupon code.' });
@@ -125,9 +136,13 @@ export default function IdPayment() {
     }
   };
 
-  // Handle Pay Now
+  // Handle Pay Now / Razorpay Standard Checkout
   const handlePayNow = async () => {
-    const id = paymentDetails?.userId || paymentDetails?.mobile || paymentDetails?.username || identifierParam;
+    const id =
+      paymentDetails?.userId ||
+      paymentDetails?.mobile ||
+      paymentDetails?.username ||
+      identifierParam;
     if (!id) {
       alert('Missing user account information.');
       return;
@@ -138,19 +153,26 @@ export default function IdPayment() {
       setErrorMessage('');
 
       // 1. Create order on backend
-      const orderRes = await idPaymentService.createOrder(id, paymentDetails?.appliedCouponCode || couponCode.trim() || null);
+      const orderRes = await idPaymentService.createOrder(
+        id,
+        paymentDetails?.appliedCouponCode || couponCode.trim() || null
+      );
       if (!orderRes || !orderRes.orderId) {
         throw new Error(orderRes?.message || 'Failed to generate payment order.');
       }
 
       // Check if order was already activated (e.g. 100% discount coupon)
-      if (orderRes.status === 'SUCCESS' || Number(orderRes.finalAmount) === 0 || orderRes.orderId?.startsWith('FREE_ACTIVATION_')) {
+      if (
+        orderRes.status === 'SUCCESS' ||
+        Number(orderRes.finalAmount) === 0 ||
+        orderRes.orderId?.startsWith('FREE_ACTIVATION_')
+      ) {
         setPaymentStatus('SUCCESS');
         setSuccessData({
           orderId: orderRes.orderId,
           amount: 0,
           fullName: paymentDetails?.fullName,
-          role: paymentDetails?.role
+          role: paymentDetails?.role,
         });
         setPaying(false);
         return;
@@ -159,13 +181,11 @@ export default function IdPayment() {
       // Check if backend returned mock or real Razorpay
       const isMockOrder = orderRes.orderId.startsWith('order_mock_');
 
-
       if (isMockOrder) {
-        // Auto-verify mock order in test/dev environment
         const verifyRes = await idPaymentService.verifyPayment({
           razorpayOrderId: orderRes.orderId,
           razorpayPaymentId: 'pay_mock_' + Math.random().toString(36).substring(2, 10),
-          razorpaySignature: 'sig_mock_verified'
+          razorpaySignature: 'sig_mock_verified',
         });
 
         if (verifyRes && verifyRes.success) {
@@ -174,7 +194,7 @@ export default function IdPayment() {
             orderId: orderRes.orderId,
             amount: orderRes.finalAmount,
             fullName: paymentDetails?.fullName,
-            role: paymentDetails?.role
+            role: paymentDetails?.role,
           });
         } else {
           setPaymentStatus('FAILED');
@@ -192,29 +212,41 @@ export default function IdPayment() {
 
       const options = {
         key: orderRes.razorpayKeyId,
-        amount: Math.round(Number(orderRes.finalAmount) * 100),
+        amount: orderRes.finalAmount * 100, // smallest currency subunit (paise)
         currency: orderRes.currency || 'INR',
-        name: 'RuPiKsha Digital Services',
-        description: `ID Charge Payment for ${paymentDetails?.role || 'Partner'}`,
-        image: '/logo rupiksha.png',
+        name: 'Rupiksha Fintech',
+        description: `${paymentDetails?.role || roleParam || 'Partner'} ID Activation Fee`,
         order_id: orderRes.orderId,
+        image: '/logo rupiksha.png',
         prefill: {
           name: orderRes.customerName || paymentDetails?.fullName || '',
-          contact: orderRes.customerMobile || paymentDetails?.mobile || '',
-          email: orderRes.customerEmail || paymentDetails?.email || ''
+          email: orderRes.customerEmail || paymentDetails?.email || '',
+          contact: orderRes.customerMobile || paymentDetails?.mobile || identifierParam || '',
+        },
+        notes: {
+          userId: paymentDetails?.userId || id,
+          role: paymentDetails?.role || roleParam || 'RETAILER',
+          coupon: paymentDetails?.appliedCouponCode || couponCode.trim() || '',
         },
         theme: {
-          color: '#2563eb'
+          color: '#2563EB',
         },
-        handler: async (response) => {
+        modal: {
+          ondismiss: function () {
+            setPaying(false);
+            setPaymentStatus('CANCELLED');
+          },
+        },
+        handler: async function (response) {
           try {
             setPaying(true);
-            const verifyRes = await idPaymentService.verifyPayment({
+            const verifyPayload = {
               razorpayOrderId: response.razorpay_order_id,
               razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature
-            });
+              razorpaySignature: response.razorpay_signature,
+            };
 
+            const verifyRes = await idPaymentService.verifyPayment(verifyPayload);
             if (verifyRes && verifyRes.success) {
               setPaymentStatus('SUCCESS');
               setSuccessData({
@@ -222,25 +254,19 @@ export default function IdPayment() {
                 paymentId: response.razorpay_payment_id,
                 amount: orderRes.finalAmount,
                 fullName: paymentDetails?.fullName,
-                role: paymentDetails?.role
+                role: paymentDetails?.role,
               });
             } else {
               setPaymentStatus('FAILED');
-              setErrorMessage('Payment verification was rejected by server. Please contact support.');
+              setErrorMessage(verifyRes?.message || 'Payment signature verification failed.');
             }
           } catch (vErr) {
             setPaymentStatus('FAILED');
-            setErrorMessage(vErr.message || 'Error verifying payment with server.');
+            setErrorMessage(vErr.message || 'Verification failed. Please contact support.');
           } finally {
             setPaying(false);
           }
         },
-        modal: {
-          ondismiss: () => {
-            setPaying(false);
-            setPaymentStatus('CANCELLED');
-          }
-        }
       };
 
       const rzp = new window.Razorpay(options);
@@ -264,286 +290,376 @@ export default function IdPayment() {
     return '/portal/retailer';
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-slate-100 flex flex-col font-sans">
-      
-      {/* ── Top Header ── */}
-      <header className="w-full bg-slate-900/80 backdrop-blur-md border-b border-slate-700/60 px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-30 shadow-md">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
-          <img src="/logo rupiksha.png" alt="Rupiksha" className="h-9 w-auto object-contain bg-white/10 p-1 rounded-lg" />
-          <span className="text-xs sm:text-sm font-bold tracking-wide text-white flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> ID ACTIVATION GATEWAY
-          </span>
-        </div>
+  const formatCurrency = (amt) => {
+    return `₹${Number(amt || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+  };
 
-        <div className="flex items-center gap-3 text-xs">
-          <div className="hidden sm:flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-3 py-1 rounded-full font-semibold">
-            <ShieldCheck size={14} /> 256-Bit SSL Secured
-          </div>
-          <button
-            onClick={() => navigate(getPortalLoginPath(paymentDetails?.role || roleParam))}
-            className="text-slate-300 hover:text-white px-3 py-1 rounded-lg border border-slate-700 hover:border-slate-500 transition-colors"
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-blue-500 selection:text-white">
+      {/* ── Top Navigation Bar ── */}
+      <header className="w-full bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+          <div
+            className="flex items-center gap-3 cursor-pointer"
+            onClick={() => navigate('/')}
           >
-            Back to Login
-          </button>
+            <img
+              src="/logo rupiksha.png"
+              alt="Rupiksha Logo"
+              style={{ height: '42px', width: 'auto', maxHeight: '42px', objectFit: 'contain' }}
+            />
+            <div className="hidden sm:block border-l border-slate-200 pl-3">
+              <span className="text-xs font-black text-slate-900 uppercase tracking-wider block">
+                Partner Activation
+              </span>
+              <span className="text-[10px] text-slate-500 font-semibold block">
+                Secure Payment Gateway
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-bold shadow-xs">
+              <ShieldCheck size={15} className="text-emerald-600" />
+              <span className="hidden xs:inline">256-Bit SSL</span> Secured
+            </div>
+            <button
+              onClick={() => navigate(getPortalLoginPath(paymentDetails?.role || roleParam))}
+              className="text-xs font-bold text-slate-700 hover:text-blue-600 px-3 py-1.5 rounded-xl border border-slate-200 hover:border-blue-400 bg-white transition-all shadow-xs"
+            >
+              Back to Login
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* ── Main Content Container ── */}
-      <main className="flex-1 flex items-center justify-center p-3 sm:p-6 md:p-8">
-        <div className="w-full max-w-2xl">
-          
+      {/* ── Main Container ── */}
+      <main className="flex-1 flex items-center justify-center py-8 px-4 sm:px-6">
+        <div className="w-full max-w-4xl">
           {loading ? (
-            <div className="bg-slate-800/90 border border-slate-700 rounded-3xl p-10 flex flex-col items-center justify-center space-y-4 shadow-2xl backdrop-blur-xl">
-              <RefreshCw className="w-10 h-10 text-blue-500 animate-spin" />
-              <p className="text-sm font-medium text-slate-300">Loading ID Charge details...</p>
+            <div className="bg-white border border-slate-200 rounded-3xl p-12 flex flex-col items-center justify-center space-y-4 shadow-sm text-center">
+              <RefreshCw className="w-10 h-10 text-blue-600 animate-spin" />
+              <p className="text-sm font-bold text-slate-800">
+                Loading Partner ID Charge Details...
+              </p>
+              <p className="text-xs text-slate-400">Please wait a moment</p>
             </div>
           ) : paymentStatus === 'SUCCESS' ? (
-            
             /* ── SUCCESS STATE SCREEN ── */
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-slate-800/95 border border-emerald-500/40 rounded-3xl p-6 sm:p-10 shadow-2xl shadow-emerald-500/10 backdrop-blur-xl text-center space-y-6"
+              className="bg-white border border-emerald-200 rounded-3xl p-6 sm:p-10 shadow-xl shadow-emerald-500/5 text-center space-y-6 max-w-lg mx-auto"
             >
-              <div className="w-20 h-20 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center mx-auto text-emerald-400 shadow-lg shadow-emerald-500/30">
-                <CheckCircle2 className="w-12 h-12" />
+              <div className="w-20 h-20 rounded-full bg-emerald-50 border-4 border-emerald-100 flex items-center justify-center mx-auto text-emerald-600 shadow-inner">
+                <CheckCircle2 className="w-10 h-10" />
               </div>
 
               <div>
-                <span className="px-3.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-black uppercase tracking-wider">
-                  PAYMENT VERIFIED & ACTIVATED
+                <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-black uppercase tracking-wider">
+                  Payment Verified & Activated
                 </span>
-                <h2 className="text-2xl sm:text-3xl font-black text-white mt-3">ID Activation Completed!</h2>
-                <p className="text-sm text-slate-300 mt-1 max-w-md mx-auto">
-                  Congratulations! Your ID Charge payment has been verified. Your Rupiksha Partner portal access is now fully active.
+                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mt-3 tracking-tight">
+                  ID Activation Complete!
+                </h1>
+                <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-sm mx-auto">
+                  Your ID activation charge is received. Your Rupiksha Partner portal access is now fully active.
                 </p>
               </div>
 
-              <div className="bg-slate-900/80 border border-slate-700/80 rounded-2xl p-4 sm:p-5 text-left text-xs sm:text-sm space-y-2.5 max-w-md mx-auto">
-                <div className="flex justify-between border-b border-slate-700/60 pb-2">
-                  <span className="text-slate-400">Partner Name:</span>
-                  <span className="font-bold text-white">{successData?.fullName || paymentDetails?.fullName || 'Partner'}</span>
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 text-left text-xs space-y-2.5 text-slate-800">
+                <div className="flex justify-between border-b border-slate-200 pb-2">
+                  <span className="text-slate-500">Partner Name:</span>
+                  <span className="font-bold text-slate-900">
+                    {successData?.fullName || paymentDetails?.fullName || 'Partner'}
+                  </span>
                 </div>
-                <div className="flex justify-between border-b border-slate-700/60 pb-2">
-                  <span className="text-slate-400">Account Role:</span>
-                  <span className="font-bold text-blue-400">{successData?.role || paymentDetails?.role}</span>
+                <div className="flex justify-between border-b border-slate-200 pb-2">
+                  <span className="text-slate-500">Role:</span>
+                  <span className="font-bold text-blue-600 uppercase">
+                    {successData?.role || paymentDetails?.role}
+                  </span>
                 </div>
-                <div className="flex justify-between border-b border-slate-700/60 pb-2">
-                  <span className="text-slate-400">Amount Paid:</span>
-                  <span className="font-black text-emerald-400 text-base">₹{Number(successData?.amount || paymentDetails?.finalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                <div className="flex justify-between border-b border-slate-200 pb-2">
+                  <span className="text-slate-500">Amount Paid:</span>
+                  <span className="font-black text-emerald-700 text-sm">
+                    {formatCurrency(successData?.amount || paymentDetails?.finalAmount)}
+                  </span>
                 </div>
                 {successData?.paymentId && (
-                  <div className="flex justify-between border-b border-slate-700/60 pb-2 font-mono">
-                    <span className="text-slate-400">Payment ID:</span>
-                    <span className="text-slate-300 truncate max-w-[180px]">{successData.paymentId}</span>
+                  <div className="flex justify-between border-b border-slate-200 pb-2 font-mono">
+                    <span className="text-slate-500">Payment ID:</span>
+                    <span className="font-bold text-slate-900 truncate max-w-[160px]">
+                      {successData.paymentId}
+                    </span>
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Portal Access:</span>
-                  <span className="font-bold text-emerald-400 flex items-center gap-1">
-                    <CheckCircle2 size={13} /> UNLOCKED
+                  <span className="text-slate-500">Portal Status:</span>
+                  <span className="font-black text-emerald-600 flex items-center gap-1">
+                    <CheckCircle size={14} /> ACTIVE & UNLOCKED
                   </span>
                 </div>
               </div>
 
               <button
-                onClick={() => navigate(getPortalLoginPath(paymentDetails?.role || successData?.role))}
-                className="w-full max-w-md mx-auto bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 text-sm transition-all transform active:scale-98"
+                onClick={() =>
+                  navigate(getPortalLoginPath(paymentDetails?.role || successData?.role))
+                }
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 text-xs uppercase tracking-wider transition-all hover:scale-[1.02]"
               >
                 Proceed to Login & Open Dashboard <ArrowRight size={16} />
               </button>
             </motion.div>
           ) : (
-            
-            /* ── PAYMENT CHECKOUT FORM CARD ── */
+            /* ── MAIN 2-COLUMN CHECKOUT CARD ── */
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-slate-800/90 border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden backdrop-blur-xl"
+              className="bg-white border border-slate-200 rounded-3xl shadow-xl shadow-slate-200/50 overflow-hidden"
             >
-              {/* Card Banner Header */}
-              <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-5 sm:p-6 text-white relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-                <div className="relative z-10">
-                  <div className="flex items-center gap-2 text-blue-200 text-xs font-black uppercase tracking-wider mb-1">
-                    <Sparkles size={14} /> Mandatory Partner ID Activation
+              {/* Top Banner */}
+              <div className="bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 p-6 sm:p-8 text-white relative">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-xl text-[11px] font-black uppercase tracking-wider text-blue-100 mb-2">
+                      <Sparkles size={13} /> Official Onboarding Payment
+                    </span>
+                    <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                      Partner ID Activation Fee
+                    </h1>
+                    <p className="text-xs sm:text-sm text-blue-100 mt-1 max-w-xl">
+                      Complete your one-time ID charge to unlock AEPS, Micro-ATM, DMT, Bill Payments, and merchant operations.
+                    </p>
                   </div>
-                  <h1 className="text-xl sm:text-2xl font-black text-white">
-                    ID Charge Payment
-                  </h1>
-                  <p className="text-xs text-blue-100 mt-1 max-w-lg">
-                    Complete your one-time ID charge to unlock full platform features, AEPS, Recharge, BBPS, and commission wallet services.
-                  </p>
+                  <div className="bg-white/10 border border-white/20 backdrop-blur-sm rounded-2xl px-4 py-3 text-center sm:text-right shrink-0">
+                    <span className="text-[10px] text-blue-200 font-bold uppercase block tracking-wider">
+                      Partner Role
+                    </span>
+                    <span className="text-base font-black text-white uppercase">
+                      {paymentDetails?.role || roleParam || 'RETAILER'}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="p-5 sm:p-7 space-y-6">
-                
-                {/* Error Banner if any */}
-                {errorMessage && (
-                  <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-4 flex items-start gap-3 text-rose-300 text-xs">
-                    <AlertCircle className="w-5 h-5 shrink-0 text-rose-400 mt-0.5" />
-                    <div className="space-y-1">
-                      <p className="font-bold">Notice</p>
-                      <p>{errorMessage}</p>
+              <div className="p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* ── LEFT COLUMN: Account Details & Included Features (7 cols) ── */}
+                <div className="lg:col-span-7 space-y-6">
+                  {/* Account Info Box */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                      <div className="flex items-center gap-2 text-xs font-black text-slate-900 uppercase tracking-wider">
+                        <UserIcon size={16} className="text-blue-600" /> Account Information
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-200">
+                        Activation Pending
+                      </span>
                     </div>
-                  </div>
-                )}
 
-                {/* Cancelled Alert Banner */}
-                {paymentStatus === 'CANCELLED' && (
-                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3.5 flex items-center justify-between text-amber-300 text-xs">
-                    <span>Payment was cancelled. You can retry anytime.</span>
-                    <button onClick={handlePayNow} className="font-bold text-amber-400 underline">Retry</button>
-                  </div>
-                )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-500 uppercase block tracking-wider">
+                          Full Name
+                        </span>
+                        <span className="font-black text-slate-900 text-sm block mt-0.5">
+                          {paymentDetails?.fullName || 'N/A'}
+                        </span>
+                      </div>
 
-                {/* User Info Grid */}
-                <div className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-4 space-y-3">
-                  <div className="text-[11px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-700/60 pb-1.5 flex items-center gap-1.5">
-                    <UserIcon size={13} className="text-blue-400" /> Account Details
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-500 uppercase block tracking-wider">
+                          Mobile Number
+                        </span>
+                        <span className="font-bold text-slate-900 font-mono text-sm block mt-0.5">
+                          {paymentDetails?.mobile || identifierParam || 'N/A'}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-500 uppercase block tracking-wider">
+                          Partner Code
+                        </span>
+                        <span className="font-bold text-slate-700 font-mono block mt-0.5">
+                          {paymentDetails?.partyCode || paymentDetails?.username || 'N/A'}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-500 uppercase block tracking-wider">
+                          Account Tier
+                        </span>
+                        <span className="font-black text-blue-600 uppercase block mt-0.5">
+                          {paymentDetails?.role || roleParam || 'RETAILER'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-                    <div>
-                      <span className="text-slate-400 block text-[10px]">Full Name</span>
-                      <span className="font-bold text-white truncate block">{paymentDetails?.fullName || 'N/A'}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block text-[10px]">Mobile Number</span>
-                      <span className="font-bold text-white font-mono">{paymentDetails?.mobile || 'N/A'}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block text-[10px]">Assigned Role</span>
-                      <span className="font-bold text-blue-400 uppercase">{paymentDetails?.role || roleParam || 'Retailer'}</span>
+
+                  {/* Included Services Badge List */}
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                      <Zap size={14} className="text-amber-500" /> What's Included With Your ID
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-slate-700">
+                      <div className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                        <CheckCircle size={15} className="text-emerald-500 shrink-0" />
+                        <span className="font-bold">AEPS & Aadhaar Withdrawals</span>
+                      </div>
+                      <div className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                        <CheckCircle size={15} className="text-emerald-500 shrink-0" />
+                        <span className="font-bold">DMT & Instant Money Transfer</span>
+                      </div>
+                      <div className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                        <CheckCircle size={15} className="text-emerald-500 shrink-0" />
+                        <span className="font-bold">BBPS & Utility Bill Payments</span>
+                      </div>
+                      <div className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                        <CheckCircle size={15} className="text-emerald-500 shrink-0" />
+                        <span className="font-bold">Real-time Commission Wallet</span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Pricing Summary Card */}
-                <div className="bg-slate-900/90 border border-blue-500/30 rounded-2xl p-4 sm:p-5 space-y-3 shadow-inner">
-                  <div className="text-[11px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-700/60 pb-1.5 flex items-center justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <CreditCard size={13} className="text-blue-400" /> Payment Summary
-                    </span>
-                    <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                      ID Payment Status: {paymentDetails?.paymentStatus || 'PENDING'}
-                    </span>
-                  </div>
-
-                  <div className="space-y-2 text-xs sm:text-sm">
-                    <div className="flex justify-between text-slate-300">
-                      <span>Original ID Charge:</span>
-                      <span className="font-semibold text-slate-200">
-                        ₹{Number(paymentDetails?.originalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                      </span>
-                    </div>
-
-                    {Number(paymentDetails?.discountAmount || 0) > 0 && (
-                      <div className="flex justify-between text-emerald-400 font-semibold">
-                        <span className="flex items-center gap-1">
-                          <Tag size={12} /> Coupon Discount ({paymentDetails?.appliedCouponDiscountPercent}% OFF):
-                        </span>
-                        <span>
-                          -₹{Number(paymentDetails?.discountAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                        </span>
+                {/* ── RIGHT COLUMN: Payment Summary & Actions (5 cols) ── */}
+                <div className="lg:col-span-5 space-y-6 flex flex-col justify-between">
+                  <div className="space-y-5">
+                    {/* Error Notice */}
+                    {errorMessage && (
+                      <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-start gap-3 text-rose-800 text-xs font-bold">
+                        <AlertCircle size={16} className="text-rose-600 shrink-0 mt-0.5" />
+                        <span>{errorMessage}</span>
                       </div>
                     )}
 
-                    <div className="border-t border-slate-700/80 pt-2.5 flex justify-between items-baseline">
-                      <span className="text-sm font-bold text-white">Final Payable Amount:</span>
-                      <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300 font-mono">
-                        ₹{Number(paymentDetails?.finalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                      </span>
+                    {/* Price Breakdown Card */}
+                    <div className="bg-blue-50/70 border-2 border-blue-200 rounded-3xl p-5 sm:p-6 space-y-4">
+                      <div className="flex items-center justify-between border-b border-blue-200/80 pb-3">
+                        <span className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                          <CreditCard size={15} className="text-blue-600" /> Payment Summary
+                        </span>
+                        <span className="text-[11px] font-bold text-blue-700 bg-white px-2.5 py-0.5 rounded-full border border-blue-200 shadow-xs">
+                          Authoritative
+                        </span>
+                      </div>
+
+                      <div className="space-y-2.5 text-xs text-slate-700">
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-600">ID Activation Charge:</span>
+                          <span className="font-black text-slate-900 text-sm">
+                            {formatCurrency(paymentDetails?.originalAmount)}
+                          </span>
+                        </div>
+
+                        {Number(paymentDetails?.discountAmount || 0) > 0 && (
+                          <div className="flex justify-between items-center text-emerald-700 font-bold bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-200">
+                            <span className="flex items-center gap-1">
+                              <Tag size={13} /> Coupon Discount (
+                              {paymentDetails?.appliedCouponDiscountPercent}% OFF):
+                            </span>
+                            <span>-{formatCurrency(paymentDetails?.discountAmount)}</span>
+                          </div>
+                        )}
+
+                        <div className="pt-3 border-t border-blue-200/80 flex justify-between items-baseline">
+                          <div>
+                            <span className="text-xs font-bold text-slate-500 block uppercase">
+                              Total Payable
+                            </span>
+                            <span className="text-[10px] text-slate-400">Inclusive of all taxes</span>
+                          </div>
+                          <span className="text-2xl font-black text-blue-700 tracking-tight">
+                            {formatCurrency(paymentDetails?.finalAmount)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Coupon Code Input */}
+                    <form onSubmit={handleApplyCoupon} className="space-y-2">
+                      <label className="text-[11px] font-black text-slate-800 uppercase tracking-wider block">
+                        Have a Discount Coupon?
+                      </label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Tag className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="text"
+                            placeholder="ENTER COUPON CODE"
+                            value={couponCode}
+                            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                            className="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-3 py-2.5 text-xs font-mono font-bold text-slate-900 placeholder-slate-400 uppercase tracking-wider focus:outline-none focus:border-blue-500 shadow-xs"
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          disabled={couponApplying || !couponCode.trim()}
+                          className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-xs"
+                        >
+                          {couponApplying ? (
+                            <RefreshCw size={13} className="animate-spin" />
+                          ) : (
+                            'Apply'
+                          )}
+                        </button>
+                      </div>
+
+                      {couponMessage && (
+                        <p
+                          className={`text-xs font-bold flex items-center gap-1.5 pt-1 ${
+                            couponMessage.type === 'success'
+                              ? 'text-emerald-700'
+                              : 'text-rose-700'
+                          }`}
+                        >
+                          {couponMessage.type === 'success' ? (
+                            <CheckCircle2 size={13} />
+                          ) : (
+                            <AlertCircle size={13} />
+                          )}
+                          {couponMessage.text}
+                        </p>
+                      )}
+                    </form>
+                  </div>
+
+                  {/* Pay Now Button */}
+                  <div className="space-y-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={handlePayNow}
+                      disabled={paying}
+                      className="w-full py-4 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-blue-400 disabled:to-indigo-400 text-white rounded-2xl text-sm font-black uppercase tracking-wider shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                      {paying ? (
+                        <>
+                          <RefreshCw size={16} className="animate-spin" /> Launching Razorpay...
+                        </>
+                      ) : (
+                        <>
+                          <Lock size={16} /> Proceed to Pay {formatCurrency(paymentDetails?.finalAmount)}
+                        </>
+                      )}
+                    </button>
+
+                    <div className="flex items-center justify-center gap-4 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                      <span>UPI / Cards / NetBanking</span>
+                      <span>•</span>
+                      <span>Instant Activation</span>
                     </div>
                   </div>
                 </div>
-
-                {/* Coupon Code Section */}
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                    <Tag size={13} className="text-blue-400" /> Apply Discount Coupon (Optional)
-                  </label>
-
-                  {/* Admin Coupon Suggestion Banner if available */}
-                  {paymentDetails?.appliedCouponCode && Number(paymentDetails?.discountAmount || 0) === 0 && (
-                    <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-2.5 flex items-center justify-between text-xs text-blue-300">
-                      <span>Admin assigned coupon <strong>{paymentDetails.appliedCouponCode}</strong> ({paymentDetails.appliedCouponDiscountPercent}% OFF) for you!</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCouponCode(paymentDetails.appliedCouponCode);
-                          handleApplyCoupon();
-                        }}
-                        className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-2.5 py-1 rounded-lg text-[10px]"
-                      >
-                        Apply Now
-                      </button>
-                    </div>
-                  )}
-
-                  <form onSubmit={handleApplyCoupon} className="flex gap-2">
-                    <div className="relative flex-1">
-                      <input
-                        type="text"
-                        value={couponCode}
-                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                        placeholder="e.g. RUP20"
-                        className="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white uppercase font-mono tracking-wider focus:outline-none focus:border-blue-500 transition-colors shadow-inner"
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={couponApplying || !couponCode.trim()}
-                      className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 transition-colors shrink-0 shadow-md"
-                    >
-                      {couponApplying ? <RefreshCw size={13} className="animate-spin" /> : 'Apply Coupon'}
-                    </button>
-                  </form>
-
-                  {couponMessage && (
-                    <p className={`text-[11px] font-medium ${couponMessage.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {couponMessage.text}
-                    </p>
-                  )}
-                </div>
-
-                {/* Pay Now Button */}
-                <button
-                  type="button"
-                  onClick={handlePayNow}
-                  disabled={paying || !paymentDetails}
-                  className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-600 disabled:opacity-60 text-white font-black py-4 px-6 rounded-2xl shadow-xl shadow-blue-600/30 flex items-center justify-center gap-2.5 text-sm sm:text-base transition-all transform active:scale-99"
-                >
-                  {paying ? (
-                    <>
-                      <RefreshCw className="w-5 h-5 animate-spin" /> Processing Razorpay Payment...
-                    </>
-                  ) : (
-                    <>
-                      <Lock size={16} /> Pay ₹{Number(paymentDetails?.finalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} Now
-                    </>
-                  )}
-                </button>
-
-                {/* Footer Notes */}
-                <div className="text-center text-[10px] text-slate-400 space-y-1 pt-1">
-                  <p>Razorpay standard 100% secure payment gateway with Instant Verification.</p>
-                  <p>Need assistance? Contact Rupiksha Support: <strong>+91 7004128310</strong></p>
-                </div>
-
               </div>
             </motion.div>
           )}
-
         </div>
       </main>
 
       {/* ── Footer ── */}
-      <footer className="w-full bg-slate-900/90 border-t border-slate-800 py-3 text-center text-xs text-slate-500">
-        © {new Date().getFullYear()} RuPiKsha Digital Services Private Limited • All Rights Reserved.
+      <footer className="w-full py-4 text-center text-xs text-slate-400 border-t border-slate-200 bg-white">
+        © {new Date().getFullYear()} RuPiKsha Digital Services Private Limited | All rights reserved.
       </footer>
-
     </div>
   );
 }
