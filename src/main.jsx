@@ -33,16 +33,71 @@ if (typeof window !== 'undefined' && window.localStorage) {
   const originalSetItem = localStorage.setItem;
   const originalRemoveItem = localStorage.removeItem;
 
+  const purgeBloatedStorage = () => {
+    try {
+      const keysToPurge = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (
+          k &&
+          (k.startsWith('rupiksha_photo_') ||
+            k.startsWith('rupiksha_local_') ||
+            k.startsWith('rupiksha_data') ||
+            k.includes('mock') ||
+            k.includes('debug') ||
+            k.startsWith('cached_') ||
+            k.includes('temp') ||
+            k.includes('profile_photo'))
+        ) {
+          keysToPurge.push(k);
+        }
+      }
+      keysToPurge.forEach((k) => {
+        try {
+          originalRemoveItem.call(localStorage, k);
+        } catch (_) {}
+      });
+    } catch (_) {}
+  };
+
   localStorage.getItem = function (key) {
-    return originalGetItem.call(localStorage, getPortalStorageKey(key));
+    try {
+      return originalGetItem.call(localStorage, getPortalStorageKey(key));
+    } catch (_) {
+      return null;
+    }
   };
+
   localStorage.setItem = function (key, value) {
-    originalSetItem.call(localStorage, getPortalStorageKey(key), value);
+    const targetKey = getPortalStorageKey(key);
+    try {
+      originalSetItem.call(localStorage, targetKey, value);
+    } catch (err) {
+      console.warn('[Storage] Quota exceeded writing key:', targetKey, 'Auto-cleaning storage...');
+      purgeBloatedStorage();
+      try {
+        originalSetItem.call(localStorage, targetKey, value);
+      } catch (retryErr) {
+        // If still failing and it's a JSON user object containing large data URIs, strip large strings
+        if (typeof value === 'string' && value.length > 50000) {
+          try {
+            const stripped = value.replace(/data:image\/[^;]+;base64,[^"]+/g, '');
+            originalSetItem.call(localStorage, targetKey, stripped);
+            return;
+          } catch (_) {}
+        }
+        console.warn('[Storage] Gracefully skipped saving non-critical key:', targetKey);
+      }
+    }
   };
+
   localStorage.removeItem = function (key) {
-    originalRemoveItem.call(localStorage, getPortalStorageKey(key));
+    try {
+      originalRemoveItem.call(localStorage, getPortalStorageKey(key));
+    } catch (_) {}
   };
 }
+
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
