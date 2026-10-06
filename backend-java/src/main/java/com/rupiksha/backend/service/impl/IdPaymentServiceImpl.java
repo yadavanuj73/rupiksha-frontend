@@ -157,6 +157,48 @@ public class IdPaymentServiceImpl implements IdPaymentService {
 
         BigDecimal finalAmount = calculateFinalAmount(originalAmount, discountAmount);
 
+        // If finalAmount is 0 (e.g. 100% discount coupon), activate account immediately without gateway charge
+        if (finalAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            String freeOrderId = "FREE_ACTIVATION_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+            IdPaymentTransaction txn = new IdPaymentTransaction();
+            txn.setUser(user);
+            txn.setRazorpayOrderId(freeOrderId);
+            txn.setAmount(originalAmount);
+            txn.setDiscountAmount(discountAmount);
+            txn.setFinalAmount(BigDecimal.ZERO);
+            txn.setCurrency("INR");
+            txn.setStatus(IdPaymentStatus.SUCCESS);
+            txn.setCoupon(appliedCoupon);
+            txn.setPaidAt(Instant.now());
+            txn.setRazorpayPaymentId("PAY_100PCT_COUPON");
+            idPaymentTransactionRepository.save(txn);
+
+            if (appliedCoupon != null) {
+                appliedCoupon.setIsUsed(true);
+                appliedCoupon.setUsedAt(Instant.now());
+                idCouponRepository.save(appliedCoupon);
+            }
+
+            user.setIdPaymentStatus(IdPaymentStatus.SUCCESS);
+            user.setIdPaymentPaidAt(Instant.now());
+            userRepository.save(user);
+
+            log.info("100% Coupon {} applied for user {}. Account activated for free!", appliedCoupon != null ? appliedCoupon.getCode() : "N/A", user.getUsername());
+
+            return new IdPaymentDtos.CreateIdOrderResponse(
+                    freeOrderId,
+                    getEffectiveRazorpayKeyId(),
+                    originalAmount,
+                    discountAmount,
+                    BigDecimal.ZERO,
+                    "INR",
+                    user.getFullName(),
+                    user.getMobile(),
+                    user.getEmail(),
+                    IdPaymentStatus.SUCCESS.name()
+            );
+        }
+
         // Check for recent pending order (within 15 minutes) with identical final amount to prevent duplicate orders
         Instant fifteenMinutesAgo = Instant.now().minus(15, ChronoUnit.MINUTES);
         Optional<IdPaymentTransaction> existingPendingOpt = idPaymentTransactionRepository
@@ -187,6 +229,7 @@ public class IdPaymentServiceImpl implements IdPaymentService {
 
         String internalRef = "IDPAY_" + user.getId().toString().substring(0, 8) + "_" + System.currentTimeMillis();
         String orderId;
+
 
         String keyId = appProperties.providers() != null && appProperties.providers().payment() != null
                 ? appProperties.providers().payment().keyId() : null;

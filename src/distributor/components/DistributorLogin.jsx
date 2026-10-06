@@ -452,7 +452,28 @@ const DistributorLogin = ({ onFormModeChange }) => {
                 </button>
             </div>
 
-            {loginError && <div className="bg-red-50 border border-red-200 text-red-700 text-[11px] font-bold px-4 py-3 rounded-2xl text-center">{loginError}</div>}
+            {loginError && (
+                <div className={`p-4 rounded-2xl text-xs font-bold ${
+                    loginError.toLowerCase().includes('id charge payment')
+                        ? 'bg-amber-50 border-2 border-amber-300 text-amber-900 space-y-2.5 shadow-sm'
+                        : 'bg-red-50 border border-red-200 text-red-700 text-center'
+                }`}>
+                    <div className="flex items-center justify-center gap-2">
+                        <AlertCircle className={`w-4 h-4 shrink-0 ${loginError.toLowerCase().includes('id charge payment') ? 'text-amber-600' : 'text-red-600'}`} />
+                        <span>{loginError}</span>
+                    </div>
+                    {loginError.toLowerCase().includes('id charge payment') && (
+                        <button
+                            type="button"
+                            onClick={() => navigate(`/id-payment?identifier=${encodeURIComponent(loginForm.username.trim())}&role=DISTRIBUTOR`)}
+                            className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                        >
+                            <CreditCard size={15} /> Pay ID Activation Fee Now →
+                        </button>
+                    )}
+                </div>
+            )}
+
 
             <form onSubmit={handleLogin} className="space-y-4">
                 <div className="relative group">

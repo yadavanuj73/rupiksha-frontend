@@ -143,8 +143,22 @@ export default function IdPayment() {
         throw new Error(orderRes?.message || 'Failed to generate payment order.');
       }
 
+      // Check if order was already activated (e.g. 100% discount coupon)
+      if (orderRes.status === 'SUCCESS' || Number(orderRes.finalAmount) === 0 || orderRes.orderId?.startsWith('FREE_ACTIVATION_')) {
+        setPaymentStatus('SUCCESS');
+        setSuccessData({
+          orderId: orderRes.orderId,
+          amount: 0,
+          fullName: paymentDetails?.fullName,
+          role: paymentDetails?.role
+        });
+        setPaying(false);
+        return;
+      }
+
       // Check if backend returned mock or real Razorpay
       const isMockOrder = orderRes.orderId.startsWith('order_mock_');
+
 
       if (isMockOrder) {
         // Auto-verify mock order in test/dev environment

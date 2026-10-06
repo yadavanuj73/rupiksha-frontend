@@ -56,14 +56,22 @@ const RetailerLogin = ({ onFormModeChange }) => {
             const res = await login(username.trim(), password, 'RETAILER', pin.trim());
             if (res && res.success) {
                 navigate('/dashboard');
+            } else if (res?.code === 'ID_PAYMENT_REQUIRED' || res?.paymentRequired || res?.message?.toLowerCase().includes('id charge payment')) {
+                const target = res.userId || res.username || username.trim();
+                navigate(`/id-payment?identifier=${encodeURIComponent(target)}&mobile=${encodeURIComponent(res.mobile || username.trim())}&role=RETAILER`);
             } else {
                 setLoginError(res?.message || 'Invalid credentials or PIN');
             }
         } catch (err) {
-            setLoginError(err.message || 'Invalid credentials or Login PIN');
+            if (err.message && err.message.toLowerCase().includes('id charge payment')) {
+                navigate(`/id-payment?identifier=${encodeURIComponent(username.trim())}&role=RETAILER`);
+            } else {
+                setLoginError(err.message || 'Invalid credentials or Login PIN');
+            }
         } finally {
             setIsLoading(false);
         }
+
     };
 
     // ── Forgot Password Handlers ──
@@ -333,11 +341,27 @@ const RetailerLogin = ({ onFormModeChange }) => {
     return (
         <div className="space-y-5">
             {loginError && (
-                <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold p-3 rounded-2xl text-center flex items-center justify-center gap-2">
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    <span>{loginError}</span>
+                <div className={`p-4 rounded-2xl text-xs font-bold ${
+                    loginError.toLowerCase().includes('id charge payment')
+                        ? 'bg-amber-50 border-2 border-amber-300 text-amber-900 space-y-2.5 shadow-sm'
+                        : 'bg-rose-50 border border-rose-200 text-rose-700 text-center flex items-center justify-center gap-2'
+                }`}>
+                    <div className="flex items-center justify-center gap-2">
+                        <AlertCircle className={`w-4 h-4 shrink-0 ${loginError.toLowerCase().includes('id charge payment') ? 'text-amber-600' : 'text-rose-600'}`} />
+                        <span>{loginError}</span>
+                    </div>
+                    {loginError.toLowerCase().includes('id charge payment') && (
+                        <button
+                            type="button"
+                            onClick={() => navigate(`/id-payment?identifier=${encodeURIComponent(username.trim())}&role=RETAILER`)}
+                            className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                        >
+                            <CreditCard size={15} /> Pay ID Activation Fee Now →
+                        </button>
+                    )}
                 </div>
             )}
+
 
             <form onSubmit={handleLogin} className="space-y-4">
                 {/* Mobile / Username */}

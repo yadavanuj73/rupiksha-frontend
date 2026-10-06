@@ -807,26 +807,49 @@ export default function IdChargeManagement() {
 
                 {!generatedCoupon ? (
                   <>
-                    {/* Discount Tier Selector */}
-                    <div>
-                      <label className="text-xs font-black text-slate-800 uppercase tracking-wider block mb-2">
+                    {/* Discount Tier Selector & Custom Input */}
+                    <div className="space-y-3">
+                      <label className="text-xs font-black text-slate-800 uppercase tracking-wider block">
                         Select Discount Percentage
                       </label>
-                      <div className="grid grid-cols-4 gap-2">
-                        {[10, 20, 30, 50].map((pct) => (
+                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                        {[5, 10, 20, 30, 50, 100].map((pct) => (
                           <button
                             key={pct}
                             type="button"
                             onClick={() => setSelectedDiscount(pct)}
-                            className={`py-3 rounded-2xl text-xs font-black transition-all border ${
-                              selectedDiscount === pct
+                            className={`py-2.5 rounded-2xl text-xs font-black transition-all border ${
+                              Number(selectedDiscount) === pct
                                 ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20 scale-[1.02]'
                                 : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
                             }`}
                           >
-                            {pct}% OFF
+                            {pct === 100 ? '100%' : `${pct}%`}
                           </button>
                         ))}
+                      </div>
+
+                      {/* Custom Percentage Input */}
+                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 flex items-center justify-between gap-3">
+                        <span className="text-xs font-bold text-slate-600">Custom Discount %:</span>
+                        <div className="relative w-28">
+                          <input
+                            type="number"
+                            min="1"
+                            max="100"
+                            step="1"
+                            value={selectedDiscount}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value);
+                              setSelectedDiscount(isNaN(val) ? '' : Math.min(100, Math.max(1, val)));
+                            }}
+                            placeholder="e.g. 5"
+                            className="w-full bg-white border border-slate-300 rounded-xl pl-3 pr-7 py-1.5 text-sm font-black text-slate-900 focus:outline-none focus:border-blue-500 text-right"
+                          />
+                          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-xs">
+                            %
+                          </span>
+                        </div>
                       </div>
                     </div>
 
@@ -839,25 +862,28 @@ export default function IdChargeManagement() {
                         </span>
                       </div>
                       <div className="flex justify-between text-emerald-700 font-bold">
-                        <span>Discount ({selectedDiscount}%):</span>
+                        <span>Discount ({selectedDiscount || 0}%):</span>
                         <span>
                           -
                           {formatCurrency(
-                            (couponModalUser.originalAmount * selectedDiscount) / 100
+                            (couponModalUser.originalAmount * (parseFloat(selectedDiscount) || 0)) / 100
                           )}
                         </span>
                       </div>
                       <div className="flex justify-between text-slate-900 font-black pt-2 border-t border-blue-200 text-sm">
                         <span>New Payable Amount:</span>
-                        <span className="text-blue-700">
-                          {formatCurrency(
-                            couponModalUser.originalAmount * (1 - selectedDiscount / 100)
-                          )}
+                        <span className={Number(selectedDiscount) === 100 ? 'text-emerald-600 font-black' : 'text-blue-700'}>
+                          {Number(selectedDiscount) === 100
+                            ? '₹0.00 (FREE ACTIVATION)'
+                            : formatCurrency(
+                                couponModalUser.originalAmount * (1 - (parseFloat(selectedDiscount) || 0) / 100)
+                              )}
                         </span>
                       </div>
                     </div>
 
                     {couponError && (
+
                       <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-center gap-2 font-bold">
                         <AlertCircle size={15} /> {couponError}
                       </div>
