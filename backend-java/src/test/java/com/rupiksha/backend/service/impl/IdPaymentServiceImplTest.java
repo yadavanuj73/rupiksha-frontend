@@ -37,6 +37,9 @@ class IdPaymentServiceImplTest {
     private IdPaymentTransactionRepository idPaymentTransactionRepository;
 
     @Mock
+    private com.rupiksha.backend.repository.IdChargeSettingRepository idChargeSettingRepository;
+
+    @Mock
     private RazorpayPaymentGatewayProvider razorpayPaymentGatewayProvider;
 
     @Mock
@@ -290,4 +293,45 @@ class IdPaymentServiceImplTest {
                 idPaymentService.generateCoupon(userId, new BigDecimal("150.00"), "admin")
         );
     }
+
+    @Test
+    @DisplayName("Admin getRoleCharges: Returns configured or default charges for all 3 roles")
+    void testGetRoleCharges_ReturnsAllRoles() {
+        when(idChargeSettingRepository.findById(RoleName.RETAILER)).thenReturn(Optional.of(
+                IdChargeSetting.builder().roleName(RoleName.RETAILER).amount(new BigDecimal("1999.00")).build()
+        ));
+        when(idChargeSettingRepository.findById(RoleName.DISTRIBUTOR)).thenReturn(Optional.empty());
+        when(idChargeSettingRepository.findById(RoleName.SUPER_DISTRIBUTOR)).thenReturn(Optional.empty());
+
+        IdPaymentDtos.RoleChargesResponse res = idPaymentService.getRoleCharges();
+
+        assertNotNull(res);
+        assertTrue(res.success());
+        assertEquals(3, res.charges().size());
+
+        IdPaymentDtos.RoleChargeItem retailer = res.charges().stream().filter(c -> c.role().equals("RETAILER")).findFirst().orElseThrow();
+        assertEquals(new BigDecimal("1999.00"), retailer.amount());
+
+        IdPaymentDtos.RoleChargeItem distributor = res.charges().stream().filter(c -> c.role().equals("DISTRIBUTOR")).findFirst().orElseThrow();
+        assertEquals(new BigDecimal("5999.00"), distributor.amount()); // default fallback
+    }
+
+    @Test
+    @DisplayName("Admin updateRoleCharges: Successfully updates charges for all roles")
+    void testUpdateRoleCharges_Success() {
+        when(idChargeSettingRepository.findById(any())).thenReturn(Optional.empty());
+
+        IdPaymentDtos.UpdateRoleChargesRequest req = new IdPaymentDtos.UpdateRoleChargesRequest(
+                new BigDecimal("1499.00"),
+                new BigDecimal("3499.00"),
+                new BigDecimal("7499.00")
+        );
+
+        IdPaymentDtos.RoleChargesResponse res = idPaymentService.updateRoleCharges(req, "admin_user");
+
+        assertNotNull(res);
+        assertTrue(res.success());
+        verify(idChargeSettingRepository, times(3)).save(any(IdChargeSetting.class));
+    }
 }
+

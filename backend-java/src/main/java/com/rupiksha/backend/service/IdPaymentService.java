@@ -19,4 +19,7 @@ public interface IdPaymentService {
     List<IdPaymentDtos.PendingPaymentUserView> getPendingUsers();
     List<IdPaymentDtos.SuccessPaymentUserView> getSuccessUsers();
     IdPaymentDtos.CouponResponse generateCoupon(UUID userId, BigDecimal discountPercent, String adminUsername);
+    IdPaymentDtos.RoleChargesResponse getRoleCharges();
+    IdPaymentDtos.RoleChargesResponse updateRoleCharges(IdPaymentDtos.UpdateRoleChargesRequest request, String adminUsername);
 }
+

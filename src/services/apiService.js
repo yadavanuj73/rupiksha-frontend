@@ -654,7 +654,14 @@ export const adminIdPaymentService = {
     }),
   getUserDetails: (identifier) =>
     apiFetch(`/admin/id-payment/user/${encodeURIComponent(identifier)}`),
+  getRoleCharges: () => apiFetch("/admin/id-payment/charges"),
+  updateRoleCharges: (charges) =>
+    apiFetch("/admin/id-payment/charges", {
+      method: "PUT",
+      body: JSON.stringify(charges),
+    }),
 };
+
 
 
 

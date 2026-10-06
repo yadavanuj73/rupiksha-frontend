@@ -1,0 +1,13 @@
+CREATE TABLE IF NOT EXISTS id_charge_settings (
+    role_name VARCHAR(50) PRIMARY KEY,
+    amount NUMERIC(12, 2) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(100)
+);
+
+INSERT INTO id_charge_settings (role_name, amount, updated_at, updated_by)
+VALUES
+    ('RETAILER', 2999.00, CURRENT_TIMESTAMP, 'SYSTEM'),
+    ('DISTRIBUTOR', 5999.00, CURRENT_TIMESTAMP, 'SYSTEM'),
+    ('SUPER_DISTRIBUTOR', 9999.00, CURRENT_TIMESTAMP, 'SYSTEM')
+ON CONFLICT (role_name) DO NOTHING;

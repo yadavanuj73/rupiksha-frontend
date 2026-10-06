@@ -30,6 +30,7 @@ public class IdPaymentServiceImpl implements IdPaymentService {
     private final UserRepository userRepository;
     private final IdCouponRepository idCouponRepository;
     private final IdPaymentTransactionRepository idPaymentTransactionRepository;
+    private final com.rupiksha.backend.repository.IdChargeSettingRepository idChargeSettingRepository;
     private final RazorpayPaymentGatewayProvider razorpayPaymentGatewayProvider;
     private final AppProperties appProperties;
     private final SecureRandom secureRandom = new SecureRandom();
@@ -510,13 +511,73 @@ public class IdPaymentServiceImpl implements IdPaymentService {
         return RoleName.RETAILER;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public IdPaymentDtos.RoleChargesResponse getRoleCharges() {
+        List<IdPaymentDtos.RoleChargeItem> list = new ArrayList<>();
+        for (RoleName role : List.of(RoleName.RETAILER, RoleName.DISTRIBUTOR, RoleName.SUPER_DISTRIBUTOR)) {
+            Optional<IdChargeSetting> settingOpt = idChargeSettingRepository.findById(role);
+            BigDecimal amount = settingOpt.map(IdChargeSetting::getAmount).orElseGet(() -> getDefaultStaticCharge(role));
+            Instant updatedAt = settingOpt.map(IdChargeSetting::getUpdatedAt).orElse(null);
+            String updatedBy = settingOpt.map(IdChargeSetting::getUpdatedBy).orElse("SYSTEM");
+
+            String displayName = switch (role) {
+                case SUPER_DISTRIBUTOR -> "Super Distributor";
+                case DISTRIBUTOR -> "Distributor";
+                default -> "Retailer";
+            };
+
+            list.add(new IdPaymentDtos.RoleChargeItem(role.name(), displayName, amount, updatedAt, updatedBy));
+        }
+        return new IdPaymentDtos.RoleChargesResponse(true, list);
+    }
+
+    @Override
+    @Transactional
+    public IdPaymentDtos.RoleChargesResponse updateRoleCharges(IdPaymentDtos.UpdateRoleChargesRequest request, String adminUsername) {
+        if (request == null || request.retailerCharge() == null || request.retailerCharge().compareTo(BigDecimal.ONE) < 0 ||
+                request.distributorCharge() == null || request.distributorCharge().compareTo(BigDecimal.ONE) < 0 ||
+                request.superDistributorCharge() == null || request.superDistributorCharge().compareTo(BigDecimal.ONE) < 0) {
+            throw new IllegalArgumentException("Charges must be at least ₹1.00 for all roles");
+        }
+
+        Instant now = Instant.now();
+        String by = adminUsername != null && !adminUsername.isBlank() ? adminUsername : "admin";
+
+        saveOrUpdateCharge(RoleName.RETAILER, request.retailerCharge(), now, by);
+        saveOrUpdateCharge(RoleName.DISTRIBUTOR, request.distributorCharge(), now, by);
+        saveOrUpdateCharge(RoleName.SUPER_DISTRIBUTOR, request.superDistributorCharge(), now, by);
+
+        log.info("Admin {} updated ID Charges: RETAILER={}, DISTRIBUTOR={}, SUPER_DISTRIBUTOR={}",
+                by, request.retailerCharge(), request.distributorCharge(), request.superDistributorCharge());
+
+        return getRoleCharges();
+    }
+
+    private void saveOrUpdateCharge(RoleName role, BigDecimal amount, Instant now, String by) {
+        IdChargeSetting setting = idChargeSettingRepository.findById(role)
+                .orElseGet(() -> IdChargeSetting.builder().roleName(role).build());
+        setting.setAmount(amount.setScale(2, RoundingMode.HALF_UP));
+        setting.setUpdatedAt(now);
+        setting.setUpdatedBy(by);
+        idChargeSettingRepository.save(setting);
+    }
+
     private BigDecimal getChargeForRole(RoleName role) {
+        return idChargeSettingRepository.findById(role)
+                .map(IdChargeSetting::getAmount)
+                .filter(a -> a.compareTo(BigDecimal.ZERO) > 0)
+                .orElseGet(() -> getDefaultStaticCharge(role));
+    }
+
+    private BigDecimal getDefaultStaticCharge(RoleName role) {
         return switch (role) {
             case SUPER_DISTRIBUTOR -> SUPER_DISTRIBUTOR_CHARGE;
             case DISTRIBUTOR -> DISTRIBUTOR_CHARGE;
             default -> RETAILER_CHARGE;
         };
     }
+
 
     private BigDecimal calculateDiscount(BigDecimal originalAmount, BigDecimal discountPercent) {
         if (discountPercent == null || discountPercent.compareTo(BigDecimal.ZERO) <= 0) {

@@ -138,4 +138,24 @@ public class IdPaymentDtos {
             Instant paymentDate,
             String paymentStatus
     ) {}
+
+    public record RoleChargeItem(
+            String role,
+            String displayName,
+            BigDecimal amount,
+            Instant updatedAt,
+            String updatedBy
+    ) {}
+
+    public record RoleChargesResponse(
+            boolean success,
+            List<RoleChargeItem> charges
+    ) {}
+
+    public record UpdateRoleChargesRequest(
+            @NotNull @DecimalMin("1.0") BigDecimal retailerCharge,
+            @NotNull @DecimalMin("1.0") BigDecimal distributorCharge,
+            @NotNull @DecimalMin("1.0") BigDecimal superDistributorCharge
+    ) {}
 }
+

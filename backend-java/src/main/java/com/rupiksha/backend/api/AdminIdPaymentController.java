@@ -59,8 +59,24 @@ public class AdminIdPaymentController {
         return ResponseEntity.ok(res);
     }
 
+    @GetMapping("/charges")
+    public ResponseEntity<IdPaymentDtos.RoleChargesResponse> getRoleCharges() {
+        return ResponseEntity.ok(idPaymentService.getRoleCharges());
+    }
+
+    @PutMapping("/charges")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<IdPaymentDtos.RoleChargesResponse> updateRoleCharges(
+            @Valid @RequestBody IdPaymentDtos.UpdateRoleChargesRequest request,
+            @AuthenticationPrincipal JwtPrincipal principal
+    ) {
+        String adminUsername = principal != null ? principal.username() : "admin";
+        return ResponseEntity.ok(idPaymentService.updateRoleCharges(request, adminUsername));
+    }
+
     @GetMapping("/user/{identifier}")
     public ResponseEntity<IdPaymentDtos.PaymentDetailsResponse> getUserPaymentDetails(@PathVariable String identifier) {
         return ResponseEntity.ok(idPaymentService.getPaymentDetails(identifier));
     }
 }
+
