@@ -121,6 +121,9 @@ const DistributorLogin = ({ onFormModeChange }) => {
                         if (role === 'DISTRIBUTOR') navigate('/distributor');
                         else setLoginError('Invalid credentials.');
                     }
+                } else if (result?.code === 'ID_PAYMENT_REQUIRED' || result?.paymentRequired) {
+                    const target = result.userId || result.username || loginForm.username;
+                    navigate(`/id-payment?identifier=${encodeURIComponent(target)}&mobile=${encodeURIComponent(result.mobile || loginForm.username)}&role=DISTRIBUTOR`);
                 } else {
                     setLoginError(result.message || 'Invalid username or password.');
                 }

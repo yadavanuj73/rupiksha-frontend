@@ -250,6 +250,13 @@ public class User {
     @Column(name = "registration_status", length = 40)
     private RegistrationStatus registrationStatus = RegistrationStatus.APPROVED;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "id_payment_status", length = 30)
+    private IdPaymentStatus idPaymentStatus = IdPaymentStatus.SUCCESS;
+
+    @Column(name = "id_payment_paid_at")
+    private Instant idPaymentPaidAt;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_user_id")
     private User parentUser;

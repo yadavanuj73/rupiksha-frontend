@@ -370,6 +370,19 @@ export const dataService = {
             const data = await safeJson(res, null);
 
             if (!res.ok || !data) {
+                if (data?.code === 'ID_PAYMENT_REQUIRED' || data?.paymentStatus === 'PENDING') {
+                    return {
+                        success: false,
+                        code: 'ID_PAYMENT_REQUIRED',
+                        paymentRequired: true,
+                        userId: data.userId,
+                        username: data.username || username,
+                        mobile: data.mobile,
+                        fullName: data.fullName,
+                        role: data.role || expectedPortalRole,
+                        message: data.message || 'ID charge payment is required before portal access.'
+                    };
+                }
                 const serverMessage = data?.message || data?.error;
                 if (res.status === 401 || res.status === 400) {
                     return { success: false, message: serverMessage || 'Invalid credentials or PIN.' };

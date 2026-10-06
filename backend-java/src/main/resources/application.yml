@@ -89,9 +89,9 @@ app:
     payment:
       name: ${PAYMENT_PROVIDER:mock}
       base-url: ${PAYMENT_BASE_URL:}
-      key-id: ${PAYMENT_KEY_ID:}
-      key-secret: ${PAYMENT_KEY_SECRET:}
-      webhook-secret: ${PAYMENT_WEBHOOK_SECRET:}
+      key-id: ${RAZORPAY_KEY_ID:${PAYMENT_KEY_ID:}}
+      key-secret: ${RAZORPAY_KEY_SECRET:${PAYMENT_KEY_SECRET:}}
+      webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:${PAYMENT_WEBHOOK_SECRET:}}
   recharge:
     provider: ${RECHARGE_PROVIDER:venus}
     base-url: ${RECHARGE_BASE_URL:}

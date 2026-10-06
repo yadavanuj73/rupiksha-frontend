@@ -71,6 +71,27 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalArgumentException("Account is not active or approved");
         }
 
+        // ID Payment Gate Check for Retailers, Distributors, Super Distributors
+        boolean isPartnerRole = user.getRoles().stream()
+                .anyMatch(r -> r.getName() == RoleName.RETAILER || r.getName() == RoleName.DISTRIBUTOR || r.getName() == RoleName.SUPER_DISTRIBUTOR);
+
+        if (isPartnerRole && user.getIdPaymentStatus() != IdPaymentStatus.SUCCESS) {
+            String roleStr = user.getRoles().stream()
+                    .map(r -> r.getName().name())
+                    .findFirst()
+                    .orElse("RETAILER");
+            log.warn("Login blocked for user {} ({}): ID Charge payment is {}", user.getUsername(), user.getMobile(), user.getIdPaymentStatus());
+            throw new com.rupiksha.backend.service.IdPaymentRequiredException(
+                    "ID charge payment is required before portal access.",
+                    user.getId().toString(),
+                    user.getUsername(),
+                    user.getMobile(),
+                    user.getFullName(),
+                    roleStr,
+                    user.getIdPaymentStatus() != null ? user.getIdPaymentStatus().name() : "PENDING"
+            );
+        }
+
         return issueTokens(user);
     }
 
@@ -130,6 +151,13 @@ public class AuthServiceImpl implements AuthService {
         user.setKycSubmittedAt(Instant.now());
         user.setKycApprovedAt(Instant.now());
         user.getRoles().add(role);
+
+        // ID Charge Payment Requirement for partner self-registrations
+        if (roleName == RoleName.RETAILER || roleName == RoleName.DISTRIBUTOR || roleName == RoleName.SUPER_DISTRIBUTOR) {
+            user.setIdPaymentStatus(IdPaymentStatus.PENDING);
+        } else {
+            user.setIdPaymentStatus(IdPaymentStatus.SUCCESS);
+        }
 
         // Auto-generate Party Code
         String partyCode = generatePartyCode(request.state(), roleName);
@@ -463,6 +491,7 @@ public class AuthServiceImpl implements AuthService {
                 user.getStatus() == null ? null : user.getStatus().name(),
                 user.getRegistrationStatus() == null ? RegistrationStatus.APPROVED.name() : user.getRegistrationStatus().name(),
                 user.getKycStatus() == null ? KycStatus.NOT_SUBMITTED.name() : user.getKycStatus().name(),
+                user.getIdPaymentStatus() == null ? IdPaymentStatus.SUCCESS.name() : user.getIdPaymentStatus().name(),
                 user.getPinHash() != null && !user.getPinHash().isBlank(),
                 user.getRoles().stream().map(r -> r.getName().name()).toList(),
                 pName,

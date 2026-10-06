@@ -50,7 +50,8 @@ public class SecurityConfig {
                 "/api/v1/aeps/status",
                 "/api/v1/recharge/callback",
                 "/api/v1/recharge/my-ip",
-                "/api/v1/certificates/verify/**"
+                "/api/v1/certificates/verify/**",
+                "/api/v1/id-payment/**"
         ));
 
         // Swagger and API docs are only public outside production.

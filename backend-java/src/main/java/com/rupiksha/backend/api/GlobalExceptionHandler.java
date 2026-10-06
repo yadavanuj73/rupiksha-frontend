@@ -36,6 +36,22 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(base(HttpStatus.FORBIDDEN, "Access denied"));
     }
 
+    @ExceptionHandler(com.rupiksha.backend.service.IdPaymentRequiredException.class)
+    public ResponseEntity<?> handleIdPaymentRequired(com.rupiksha.backend.service.IdPaymentRequiredException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("success", false);
+        body.put("code", "ID_PAYMENT_REQUIRED");
+        body.put("message", ex.getMessage());
+        body.put("paymentStatus", ex.getPaymentStatus());
+        body.put("userId", ex.getUserId());
+        body.put("username", ex.getUsername());
+        body.put("mobile", ex.getMobile());
+        body.put("fullName", ex.getFullName());
+        body.put("role", ex.getRole());
+        body.put("timestamp", Instant.now().toString());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<?> handleIllegalArgument(IllegalArgumentException ex) {
         return ResponseEntity.badRequest().body(base(HttpStatus.BAD_REQUEST, ex.getMessage()));

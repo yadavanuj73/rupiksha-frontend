@@ -110,6 +110,9 @@ const SuperDistributorLogin = ({ onFormModeChange }) => {
                 const result = await login(loginForm.username.trim(), loginForm.password, 'SUPER_DISTRIBUTOR', pin.trim());
                 if (result && result.success) {
                     navigate('/super-distributor');
+                } else if (result?.code === 'ID_PAYMENT_REQUIRED' || result?.paymentRequired) {
+                    const target = result.userId || result.username || loginForm.username.trim();
+                    navigate(`/id-payment?identifier=${encodeURIComponent(target)}&mobile=${encodeURIComponent(result.mobile || loginForm.username.trim())}&role=SUPER_DISTRIBUTOR`);
                 } else {
                     setLoginError(result?.message || 'Invalid credentials or Login PIN.');
                 }

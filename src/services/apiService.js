@@ -617,5 +617,44 @@ export const certificateService = {
   getByPartyCode: (partyCode) => apiFetch(`/certificates/${encodeURIComponent(partyCode)}`),
 };
 
+// ─── ID CHARGES & COUPONS ──────────────────────────────────────────────────
+export const idPaymentService = {
+  getDetails: (identifier) =>
+    apiFetch(`/id-payment/details?identifier=${encodeURIComponent(identifier)}`),
+
+  applyCoupon: (identifier, couponCode) =>
+    apiFetch("/id-payment/apply-coupon", {
+      method: "POST",
+      body: JSON.stringify({ identifier, couponCode }),
+    }),
+
+  createOrder: (identifier, couponCode = null) =>
+    apiFetch("/id-payment/create-order", {
+      method: "POST",
+      body: JSON.stringify({ identifier, couponCode }),
+    }),
+
+  verifyPayment: (payload) =>
+    apiFetch("/id-payment/verify", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  getStatus: (identifier) =>
+    apiFetch(`/id-payment/status?identifier=${encodeURIComponent(identifier)}`),
+};
+
+export const adminIdPaymentService = {
+  getPendingUsers: () => apiFetch("/admin/id-payment/pending"),
+  getSuccessUsers: () => apiFetch("/admin/id-payment/success"),
+  generateCoupon: (userId, discountPercent) =>
+    apiFetch("/admin/id-payment/coupon", {
+      method: "POST",
+      body: JSON.stringify({ userId, discountPercent }),
+    }),
+  getUserDetails: (identifier) =>
+    apiFetch(`/admin/id-payment/user/${encodeURIComponent(identifier)}`),
+};
+
 
 

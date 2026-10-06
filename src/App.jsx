@@ -28,6 +28,7 @@ const Contact = lazy(() => import('./landing/Contact'));
 const ServiceDetail = lazy(() => import('./landing/ServiceDetail'));
 const Leadership = lazy(() => import('./landing/Leadership'));
 const CompleteKyc = lazy(() => import('./pages/CompleteKyc'));
+const IdPayment = lazy(() => import('./pages/IdPayment'));
 const VerifyCertificate = lazy(() => import('./pages/VerifyCertificate'));
 
 // Retailer
@@ -206,6 +207,8 @@ function App() {
               <Route path="/portal/super-distributor" element={<Login />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<RegisterWizard />} />
+              <Route path="/id-payment" element={<IdPayment />} />
+              <Route path="/id-charge-payment" element={<Navigate to="/id-payment" replace />} />
               <Route path="/admin" element={<AdminLogin />} />
               <Route path="/admin-login" element={<AdminLogin />} />
               <Route path="/admin/login" element={<AdminLogin />} />

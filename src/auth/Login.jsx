@@ -268,6 +268,9 @@ const Login = () => {
                         else if (role === 'SUPER_DISTRIBUTOR') navigate('/super-distributor');
                         else if (['ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(role)) navigate('/admin');
                         else navigate('/dashboard');
+                    } else if (logRes?.code === 'ID_PAYMENT_REQUIRED' || logRes?.paymentRequired) {
+                        const target = logRes.userId || logRes.username || loginForm.username;
+                        navigate(`/id-payment?identifier=${encodeURIComponent(target)}&mobile=${encodeURIComponent(logRes.mobile || loginForm.username)}&role=${encodeURIComponent(logRes.role || '')}`);
                     } else {
                         alert(logRes.message || t('cred_error'));
                     }

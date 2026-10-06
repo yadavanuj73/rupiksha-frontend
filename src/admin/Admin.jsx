@@ -26,6 +26,7 @@ import rupikshaNewLogo from '../assets/logo rupiksha transprent.png';
 import EnhancedMembersTable from './components/EnhancedMembersTable';
 import CommissionManagement from './components/CommissionManagement';
 import PayoutChargeManagement from './components/PayoutChargeManagement';
+import IdChargeManagement from './components/IdChargeManagement';
 import { useAuth } from '../context/AuthContext';
 import { generateUniquePartyCode, stateCodeMap } from '../database/partyCode';
 
@@ -3027,6 +3028,7 @@ const Admin = () => {
             { id: 'Wallet-Overview', icon: Wallet, label: 'Wallet Manager' },
             { id: 'Commission', icon: IndianRupee, label: 'Commission Plan' },
             { id: 'PayoutCharges', icon: SendHorizontal, label: 'Payout Charges' },
+            { id: 'IdCharges', icon: CreditCard, label: 'Id Charges' },
         ] : []),
     ];
 
@@ -3395,6 +3397,15 @@ const Admin = () => {
                                 {activeSection === 'PayoutCharges' && (
                                     (currentUser?.role === 'ADMIN' || isAdminUser) ? (
                                         <PayoutChargeManagement />
+                                    ) : (
+                                        <UnauthorizedAccess sectionName={activeLabel} />
+                                    )
+                                )}
+
+                                {/* Operations: ID Charges & Coupons */}
+                                {activeSection === 'IdCharges' && (
+                                    (currentUser?.role === 'ADMIN' || isAdminUser) ? (
+                                        <IdChargeManagement />
                                     ) : (
                                         <UnauthorizedAccess sectionName={activeLabel} />
                                     )

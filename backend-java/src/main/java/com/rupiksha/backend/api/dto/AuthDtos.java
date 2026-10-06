@@ -93,6 +93,7 @@ public class AuthDtos {
             String status,
             String registrationStatus,
             String kycStatus,
+            String idPaymentStatus,
             boolean pinConfigured,
             List<String> roles,
             String parentName,
