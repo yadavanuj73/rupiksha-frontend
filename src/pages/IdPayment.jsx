@@ -472,73 +472,69 @@ export default function IdPayment() {
               className="w-full h-full bg-white border border-slate-200 rounded-3xl shadow-xl shadow-slate-200/50 overflow-hidden grid grid-cols-1 lg:grid-cols-12"
             >
               {/* ── LEFT COLUMN (7 cols): Onboarding Info & Services ── */}
-              <div className="lg:col-span-7 bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-white p-5 sm:p-7 flex flex-col justify-between overflow-hidden relative">
-                {/* Ambient Blurs */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-                <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-
+              <div className="lg:col-span-7 bg-slate-50/80 border-b lg:border-b-0 lg:border-r border-slate-200 text-slate-900 p-5 sm:p-7 flex flex-col justify-between overflow-hidden relative">
                 {/* Left Top: Header & Role */}
                 <div className="relative z-10 space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-blue-500/20 border border-blue-400/30 rounded-full text-[10px] font-black uppercase tracking-widest text-blue-300">
-                      <Sparkles size={11} /> Official Onboarding
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 border border-blue-200 rounded-full text-[10px] font-black uppercase tracking-widest text-blue-700 shadow-xs">
+                      <Sparkles size={11} className="text-blue-600" /> Official Onboarding
                     </span>
-                    <span className="px-3 py-0.5 rounded-full bg-blue-600/40 border border-blue-400/30 text-white font-black text-[11px] uppercase tracking-wider">
+                    <span className="px-3 py-1 rounded-full bg-blue-600 border border-blue-700 text-white font-black text-[11px] uppercase tracking-wider shadow-xs">
                       {currentRole.replace(/_/g, ' ')}
                     </span>
                   </div>
-                  <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight mt-1">
+                  <h1 className="text-xl sm:text-2xl font-black text-slate-950 tracking-tight mt-2">
                     Partner ID Activation Fee
                   </h1>
-                  <p className="text-xs text-blue-200/80 line-clamp-1">
+                  <p className="text-xs text-slate-600 font-medium line-clamp-1">
                     Complete your one-time ID charge to unlock all merchant banking services.
                   </p>
                 </div>
 
                 {/* Left Middle: Account Information Box */}
-                <div className="relative z-10 bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-3.5 sm:p-4 my-2.5 space-y-2.5">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                    <div className="flex items-center gap-1.5 text-[11px] font-black text-white uppercase tracking-wider">
-                      <UserIcon size={14} className="text-blue-400" /> Account Information
+                <div className="relative z-10 bg-white border border-slate-200/90 rounded-2xl p-3.5 sm:p-4 my-2.5 space-y-2.5 shadow-sm">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <div className="flex items-center gap-1.5 text-[11px] font-black text-slate-900 uppercase tracking-wider">
+                      <UserIcon size={14} className="text-blue-600" /> Account Information
                     </div>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                    <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                       Activation Pending
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase block tracking-wider">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase block tracking-wider">
                         Full Name
                       </span>
-                      <span className="font-bold text-white text-xs sm:text-sm block mt-0.5 truncate">
+                      <span className="font-bold text-black text-xs sm:text-sm block mt-0.5 truncate">
                         {paymentDetails?.fullName || 'N/A'}
                       </span>
                     </div>
 
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase block tracking-wider">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase block tracking-wider">
                         Mobile Number
                       </span>
-                      <span className="font-bold text-white font-mono text-xs sm:text-sm block mt-0.5">
+                      <span className="font-bold text-black font-mono text-xs sm:text-sm block mt-0.5">
                         {paymentDetails?.mobile || identifierParam || 'N/A'}
                       </span>
                     </div>
 
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase block tracking-wider">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase block tracking-wider">
                         Partner Code
                       </span>
-                      <span className="font-bold text-blue-200 font-mono text-xs block mt-0.5 truncate">
+                      <span className="font-bold text-blue-700 font-mono text-xs sm:text-sm block mt-0.5 truncate">
                         {paymentDetails?.partyCode || paymentDetails?.username || 'N/A'}
                       </span>
                     </div>
 
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase block tracking-wider">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase block tracking-wider">
                         Account Tier
                       </span>
-                      <span className="font-black text-amber-300 uppercase text-xs block mt-0.5">
+                      <span className="font-black text-slate-900 uppercase text-xs sm:text-sm block mt-0.5">
                         {currentRole.replace(/_/g, ' ')}
                       </span>
                     </div>
@@ -547,25 +543,25 @@ export default function IdPayment() {
 
                 {/* Left Bottom: What's Included */}
                 <div className="relative z-10 space-y-1.5">
-                  <h3 className="text-[10px] font-black text-blue-300 uppercase tracking-wider flex items-center gap-1">
-                    <Zap size={12} className="text-amber-400" /> What's Included With Your ID
+                  <h3 className="text-[10px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                    <Zap size={12} className="text-amber-500" /> What's Included With Your ID
                   </h3>
-                  <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-200">
-                    <div className="flex items-center gap-1.5 p-2 bg-white/5 border border-white/10 rounded-xl">
-                      <CheckCircle size={13} className="text-emerald-400 shrink-0" />
-                      <span className="font-semibold truncate">AEPS & Aadhaar ATM</span>
+                  <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-900">
+                    <div className="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-xl shadow-2xs">
+                      <CheckCircle size={13} className="text-emerald-600 shrink-0" />
+                      <span className="font-bold text-slate-900 truncate">AEPS & Aadhaar ATM</span>
                     </div>
-                    <div className="flex items-center gap-1.5 p-2 bg-white/5 border border-white/10 rounded-xl">
-                      <CheckCircle size={13} className="text-emerald-400 shrink-0" />
-                      <span className="font-semibold truncate">DMT & Instant Transfer</span>
+                    <div className="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-xl shadow-2xs">
+                      <CheckCircle size={13} className="text-emerald-600 shrink-0" />
+                      <span className="font-bold text-slate-900 truncate">DMT & Instant Transfer</span>
                     </div>
-                    <div className="flex items-center gap-1.5 p-2 bg-white/5 border border-white/10 rounded-xl">
-                      <CheckCircle size={13} className="text-emerald-400 shrink-0" />
-                      <span className="font-semibold truncate">BBPS & Utility Bills</span>
+                    <div className="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-xl shadow-2xs">
+                      <CheckCircle size={13} className="text-emerald-600 shrink-0" />
+                      <span className="font-bold text-slate-900 truncate">BBPS & Utility Bills</span>
                     </div>
-                    <div className="flex items-center gap-1.5 p-2 bg-white/5 border border-white/10 rounded-xl">
-                      <CheckCircle size={13} className="text-emerald-400 shrink-0" />
-                      <span className="font-semibold truncate">Commission Wallet</span>
+                    <div className="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-xl shadow-2xs">
+                      <CheckCircle size={13} className="text-emerald-600 shrink-0" />
+                      <span className="font-bold text-slate-900 truncate">Commission Wallet</span>
                     </div>
                   </div>
                 </div>
