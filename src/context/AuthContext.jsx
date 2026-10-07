@@ -325,7 +325,7 @@ export function AuthProvider({ children }) {
         localStorage.setItem("last_activity", Date.now().toString());
         return { success: true, user: normalized };
       } else {
-        return { success: false, message: res.message };
+        return { success: false, ...res, message: res.message };
       }
     } catch (err) {
       return { success: false, message: err.message || "Login failed" };

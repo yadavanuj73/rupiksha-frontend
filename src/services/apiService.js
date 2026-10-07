@@ -36,7 +36,8 @@ export const apiFetch = async (endpoint, options = {}) => {
       ...options.headers,
     },
   });
-  if (res.status === 401 || (isAdminTab && res.status === 403)) {
+  const isAuthOrPaymentEndpoint = endpoint.startsWith('/auth/') || endpoint.startsWith('/id-payment/');
+  if (!isAuthOrPaymentEndpoint && (res.status === 401 || (isAdminTab && res.status === 403))) {
     const isImp = !!localStorage.getItem("rupiksha_imp_token");
     if (!isAdminTab) {
       // Member tab: clear only relevant session keys and redirect

@@ -114,10 +114,10 @@ export default function NetworkRegistrationForm({
 
     const roleText = String(uplineRole || '').toUpperCase();
     const currentUpline = roleText === 'DISTRIBUTOR'
-        ? (sharedDataService.getCurrentDistributor() || (uplineId ? sharedDataService.getDistributorById(uplineId) : null))
+        ? (sharedDataService.getCurrentDistributor() || (uplineId ? sharedDataService.getDistributorById(uplineId) : null) || dataService.getCurrentUser())
         : (roleText === 'SUPER_DISTRIBUTOR'
-            ? (sharedDataService.getCurrentSuperDistributor() || (uplineId ? sharedDataService.getSuperDistributorById(uplineId) : null))
-            : (sharedDataService.getCurrentDistributor() || sharedDataService.getCurrentSuperDistributor() || (uplineId ? sharedDataService.getDistributorById(uplineId) : null)));
+            ? (sharedDataService.getCurrentSuperDistributor() || (uplineId ? sharedDataService.getSuperDistributorById(uplineId) : null) || dataService.getCurrentUser())
+            : (sharedDataService.getCurrentDistributor() || sharedDataService.getCurrentSuperDistributor() || (uplineId ? sharedDataService.getDistributorById(uplineId) : null) || dataService.getCurrentUser()));
 
     const [showPass, setShowPass] = useState(false);
     const [showConfirmPass, setShowConfirmPass] = useState(false);
@@ -297,8 +297,12 @@ export default function NetworkRegistrationForm({
 
             const roleText = String(uplineRole || '').toUpperCase();
             const currentUpline = roleText === 'DISTRIBUTOR'
-                ? (sharedDataService.getCurrentDistributor() || (uplineId ? sharedDataService.getDistributorById(uplineId) : null))
-                : (roleText === 'SUPER_DISTRIBUTOR' ? (sharedDataService.getCurrentSuperDistributor() || (uplineId ? sharedDataService.getSuperDistributorById(uplineId) : null)) : null);
+                ? (sharedDataService.getCurrentDistributor() || (uplineId ? sharedDataService.getDistributorById(uplineId) : null) || dataService.getCurrentUser())
+                : (roleText === 'SUPER_DISTRIBUTOR' 
+                    ? (sharedDataService.getCurrentSuperDistributor() || (uplineId ? sharedDataService.getSuperDistributorById(uplineId) : null) || dataService.getCurrentUser()) 
+                    : (sharedDataService.getCurrentDistributor() || sharedDataService.getCurrentSuperDistributor() || dataService.getCurrentUser()));
+
+            const resolvedUplineId = String(uplineId || form.parentUserId || currentUpline?.id || '').trim();
 
             const payload = {
                 username: username,
@@ -318,13 +322,13 @@ export default function NetworkRegistrationForm({
                 permanentAddress: form.permanentAddress.trim(),
                 businessName: form.businessName.trim(),
                 businessType: form.businessType?.trim() || 'Retail Store',
-                parentUserId: String(uplineId || form.parentUserId || currentUpline?.id || '').trim() || null,
-                addedByUserRef: String(uplineId || form.parentUserId || currentUpline?.id || '').trim() || null,
+                parentUserId: resolvedUplineId || null,
+                addedByUserRef: resolvedUplineId || null,
                 addedByName: String(currentUpline?.fullName || currentUpline?.name || '').trim() || null,
-                addedByRole: roleText || null,
+                addedByRole: roleText || String(currentUpline?.role || '').trim() || null,
                 addedByPartyCode: String(currentUpline?.partyCode || '').trim() || null,
                 addedByMobile: String(currentUpline?.mobile || '').trim() || null,
-                ownerId: String(uplineId || form.parentUserId || currentUpline?.id || '').trim() || null,
+                ownerId: resolvedUplineId || null,
                 ownerName: String(currentUpline?.fullName || currentUpline?.name || '').trim() || null,
                 ownerPartyCode: String(currentUpline?.partyCode || '').trim() || null,
                 ownerMobile: String(currentUpline?.mobile || '').trim() || null,
@@ -376,6 +380,10 @@ export default function NetworkRegistrationForm({
                     } catch {}
                 }
             } catch {}
+
+            window.dispatchEvent(new Event('distributorDataUpdated'));
+            window.dispatchEvent(new Event('SuperDistributorDataUpdated'));
+            window.dispatchEvent(new Event('dataUpdated'));
 
             if (onSuccess) onSuccess({ ...form, fullName }, result);
         } catch (err) {

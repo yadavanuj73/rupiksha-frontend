@@ -390,11 +390,14 @@ export const sharedDataService = {
 
     // --- SESSION HELPERS ---
     getCurrentDistributor: () => {
-        const saved = localStorage.getItem('rupiksha_user');
-        if (!saved) return null;
-        const user = JSON.parse(saved);
-        const allowed = ['DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'ADMIN', 'SUPER_DISTRIBUTOR', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'];
-        return allowed.includes(user.role) ? user : null;
+        try {
+            const saved = localStorage.getItem('rupiksha_imp_user') || localStorage.getItem('rupiksha_user');
+            if (!saved) return null;
+            const user = JSON.parse(saved);
+            const role = String(user.role || (Array.isArray(user.roles) ? user.roles[0] : '')).toUpperCase().replace(/^ROLE_/i, '');
+            const allowed = ['DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'SUPERDISTRIBUTOR', 'ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'];
+            return allowed.includes(role) ? user : null;
+        } catch { return null; }
     },
 
     setCurrentDistributor: (dist) => {
@@ -434,11 +437,12 @@ export const sharedDataService = {
 
     getCurrentSuperDistributor: () => {
         try {
-            const saved = localStorage.getItem('rupiksha_user');
+            const saved = localStorage.getItem('rupiksha_imp_user') || localStorage.getItem('rupiksha_user');
             if (!saved) return null;
             const user = JSON.parse(saved);
-            const allowed = ['SUPER_DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'];
-            return allowed.includes(user.role) ? user : null;
+            const role = String(user.role || (Array.isArray(user.roles) ? user.roles[0] : '')).toUpperCase().replace(/^ROLE_/i, '');
+            const allowed = ['SUPER_DISTRIBUTOR', 'SUPERDISTRIBUTOR', 'ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'];
+            return allowed.includes(role) ? user : null;
         } catch { return null; }
     },
 

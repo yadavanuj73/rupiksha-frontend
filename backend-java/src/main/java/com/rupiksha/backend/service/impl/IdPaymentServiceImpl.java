@@ -33,6 +33,7 @@ public class IdPaymentServiceImpl implements IdPaymentService {
     private final com.rupiksha.backend.repository.IdChargeSettingRepository idChargeSettingRepository;
     private final RazorpayPaymentGatewayProvider razorpayPaymentGatewayProvider;
     private final AppProperties appProperties;
+    private final com.rupiksha.backend.service.AuthService authService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     // Standard authoritative ID charge amounts
@@ -290,7 +291,15 @@ public class IdPaymentServiceImpl implements IdPaymentService {
                 .orElseThrow(() -> new IllegalArgumentException("Transaction not found for order ID: " + orderId));
 
         if (txn.getStatus() == IdPaymentStatus.SUCCESS) {
-            return new IdPaymentDtos.VerifyPaymentResponse(true, "Payment already verified", IdPaymentStatus.SUCCESS.name());
+            com.rupiksha.backend.api.dto.AuthDtos.AuthResponse auth = authService.issueTokensForUser(txn.getUser());
+            return new IdPaymentDtos.VerifyPaymentResponse(
+                    true,
+                    "Payment already verified",
+                    IdPaymentStatus.SUCCESS.name(),
+                    auth.accessToken(),
+                    auth.refreshToken(),
+                    auth.user()
+            );
         }
 
         String keySecret = appProperties.providers() != null && appProperties.providers().payment() != null
@@ -316,8 +325,16 @@ public class IdPaymentServiceImpl implements IdPaymentService {
         }
 
         markTransactionSuccess(txn, paymentId, signature);
+        com.rupiksha.backend.api.dto.AuthDtos.AuthResponse auth = authService.issueTokensForUser(txn.getUser());
 
-        return new IdPaymentDtos.VerifyPaymentResponse(true, "Payment verified successfully", IdPaymentStatus.SUCCESS.name());
+        return new IdPaymentDtos.VerifyPaymentResponse(
+                true,
+                "Payment verified successfully",
+                IdPaymentStatus.SUCCESS.name(),
+                auth.accessToken(),
+                auth.refreshToken(),
+                auth.user()
+        );
     }
 
     @Override

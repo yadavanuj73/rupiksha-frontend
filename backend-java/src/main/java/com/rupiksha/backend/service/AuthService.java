@@ -14,4 +14,6 @@ public interface AuthService {
 
     OtpDtos.OtpResponse forgotPinSendOtp(AuthDtos.ForgotPinRequest request);
     OtpDtos.OtpResponse resetPin(AuthDtos.ResetPinRequest request);
+
+    AuthDtos.AuthResponse issueTokensForUser(com.rupiksha.backend.domain.User user);
 }

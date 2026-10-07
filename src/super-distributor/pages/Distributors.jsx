@@ -29,15 +29,30 @@ const Distributors = () => {
     };
 
     const loadData = async () => {
-        const sa = sharedDataService.getCurrentSuperDistributor();
+        const sa = sharedDataService.getCurrentSuperDistributor() || dataService.getCurrentUser();
         if (!sa) return;
         const all = await dataService.getAllUsers();
+        const saId = String(sa.id || sa._id || sa.userId || '').trim().toLowerCase();
+        const saPartyCode = String(sa.partyCode || '').trim().toUpperCase();
+        const saMobile = String(sa.mobile || '').trim();
+        const saUsername = String(sa.username || '').trim().toLowerCase();
+
         const myDists = (Array.isArray(all) ? all : [])
-            .filter((u) => String(u?.role || '').toUpperCase() === 'DISTRIBUTOR')
-            .filter((d) =>
-                String(d?.addedByUserRef || '') === String(sa.id || '') ||
-                String(d?.ownerId || '') === String(sa.id || '')
-            )
+            .filter((u) => {
+                const role = String(u?.role || (u?.roles && u.roles[0]) || '').replace(/^ROLE_/i, '').toUpperCase();
+                return role === 'DISTRIBUTOR';
+            })
+            .filter((d) => {
+                const dParentId = String(d?.parentUserId || d?.addedByUserRef || d?.ownerId || '').trim().toLowerCase();
+                const dParentPartyCode = String(d?.parentPartyCode || d?.addedByPartyCode || d?.ownerPartyCode || '').trim().toUpperCase();
+                const dParentMobile = String(d?.addedByMobile || d?.ownerMobile || '').trim();
+                return (
+                    (saId && dParentId === saId) ||
+                    (saPartyCode && dParentPartyCode === saPartyCode) ||
+                    (saMobile && dParentMobile === saMobile) ||
+                    (saUsername && dParentId === saUsername)
+                );
+            })
             .map((d) => ({
                 ...d,
                 status: normalizeStatus(d.status),
@@ -437,7 +452,7 @@ const Distributors = () => {
                             <div className="p-4 sm:p-6 overflow-y-auto">
                                 <NetworkRegistrationForm
                                     roleLock="DISTRIBUTOR"
-                                    uplineId={(sharedDataService.getCurrentSuperDistributor() || {}).id}
+                                    uplineId={(sharedDataService.getCurrentSuperDistributor() || dataService.getCurrentUser() || {}).id}
                                     uplineRole="SUPER_DISTRIBUTOR"
                                     onCancel={() => setIsAddModalOpen(false)}
                                     onSuccess={handleRegistrationSuccess}
@@ -475,10 +490,10 @@ const Distributors = () => {
                                 </div>
                             </div>
 
-                            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] mb-2">REQUEST SUBMITTED</p>
-                            <h2 className="text-3xl font-black text-slate-800 italic mb-2 tracking-tight">Awaiting Admin Approval</h2>
+                            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] mb-2">PARTNER ONBOARDED</p>
+                            <h2 className="text-3xl font-black text-slate-800 italic mb-2 tracking-tight">Registration Approved</h2>
                             <p className="text-xs font-bold text-slate-500 mb-4 tracking-wide leading-relaxed px-4">
-                                The distributor registration has been sent to the admin. They will be notified once approved and can then log in & complete KYC.
+                                Partner Distributor has been successfully onboarded and mapped under your network. Share the credentials below for instant login.
                             </p>
 
                             <div className="bg-slate-50 border-2 border-slate-100 rounded-3xl p-6 mb-8 text-left space-y-3">

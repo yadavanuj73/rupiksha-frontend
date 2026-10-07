@@ -512,6 +512,12 @@ public class AuthServiceImpl implements AuthService {
         };
     }
 
+    @Override
+    @Transactional
+    public AuthDtos.AuthResponse issueTokensForUser(User user) {
+        return issueTokens(user);
+    }
+
     private String sha256(String input) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");

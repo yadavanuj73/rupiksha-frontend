@@ -45,19 +45,66 @@ const Retailers = () => {
         setLoading(true);
         try {
             const allUsers = await dataService.getAllUsers();
-            const sa = sharedDataService.getCurrentSuperDistributor();
+            const sa = sharedDataService.getCurrentSuperDistributor() || dataService.getCurrentUser();
+            if (!sa) {
+                setRetailers([]);
+                return;
+            }
             const users = Array.isArray(allUsers) ? allUsers : [];
-            const myDistributorIds = new Set(
-                users
-                    .filter((u) => String(u?.role || '').toUpperCase() === 'DISTRIBUTOR')
-                    .filter((u) => String(u?.addedByUserRef || '') === String(sa?.id || ''))
-                    .map((u) => String(u?.id || ''))
-            );
-            const scopedRetailers = users
-                .filter((u) => String(u?.role || '').toUpperCase() === 'RETAILER')
+
+            const saId = String(sa?.id || sa?._id || sa?.userId || '').trim().toLowerCase();
+            const saPartyCode = String(sa?.partyCode || '').trim().toUpperCase();
+            const saMobile = String(sa?.mobile || '').trim();
+            const saUsername = String(sa?.username || '').trim().toLowerCase();
+
+            // Find all child distributors under this Super Distributor
+            const myDistributors = users
                 .filter((u) => {
-                    const addedBy = String(u?.addedByUserRef || '');
-                    return addedBy === String(sa?.id || '') || myDistributorIds.has(addedBy);
+                    const r = String(u?.role || (u?.roles && u.roles[0]) || '').replace(/^ROLE_/i, '').toUpperCase();
+                    return r === 'DISTRIBUTOR';
+                })
+                .filter((d) => {
+                    const dParentId = String(d?.parentUserId || d?.addedByUserRef || d?.ownerId || '').trim().toLowerCase();
+                    const dParentPartyCode = String(d?.parentPartyCode || d?.addedByPartyCode || d?.ownerPartyCode || '').trim().toUpperCase();
+                    const dParentMobile = String(d?.addedByMobile || d?.ownerMobile || '').trim();
+                    return (
+                        (saId && dParentId === saId) ||
+                        (saPartyCode && dParentPartyCode === saPartyCode) ||
+                        (saMobile && dParentMobile === saMobile) ||
+                        (saUsername && dParentId === saUsername)
+                    );
+                });
+
+            const myDistributorIds = new Set(myDistributors.map(d => String(d.id || d._id || d.userId || d.username || '').toLowerCase()).filter(Boolean));
+            const myDistributorPartyCodes = new Set(myDistributors.map(d => String(d.partyCode || '').toUpperCase()).filter(Boolean));
+            const myDistributorMobiles = new Set(myDistributors.map(d => String(d.mobile || '')).filter(Boolean));
+
+            const scopedRetailers = users
+                .filter((u) => {
+                    const r = String(u?.role || (u?.roles && u.roles[0]) || '').replace(/^ROLE_/i, '').toUpperCase();
+                    return r === 'RETAILER' || r === 'RETAILERS';
+                })
+                .filter((r) => {
+                    const rParentId = String(r?.parentUserId || r?.addedByUserRef || r?.ownerId || '').trim().toLowerCase();
+                    const rParentPartyCode = String(r?.parentPartyCode || r?.addedByPartyCode || r?.ownerPartyCode || '').trim().toUpperCase();
+                    const rParentMobile = String(r?.addedByMobile || r?.ownerMobile || '').trim();
+
+                    // Case A: Directly onboarded under this Super Distributor
+                    const isDirect = (
+                        (saId && rParentId === saId) ||
+                        (saPartyCode && rParentPartyCode === saPartyCode) ||
+                        (saMobile && rParentMobile === saMobile) ||
+                        (saUsername && rParentId === saUsername)
+                    );
+
+                    // Case B: Onboarded under one of this Super Distributor's distributors
+                    const isUnderChildDistributor = (
+                        (rParentId && myDistributorIds.has(rParentId)) ||
+                        (rParentPartyCode && myDistributorPartyCodes.has(rParentPartyCode)) ||
+                        (rParentMobile && myDistributorMobiles.has(rParentMobile))
+                    );
+
+                    return isDirect || isUnderChildDistributor;
                 })
                 .map((u) => ({
                     ...u,
@@ -69,6 +116,7 @@ const Retailers = () => {
                 }));
             setRetailers(scopedRetailers);
         } catch (err) {
+            console.error('[SuperDistributor Retailers] loadData error:', err);
         } finally {
             setLoading(false);
         }
@@ -584,7 +632,7 @@ const Retailers = () => {
                             <div className="p-4 sm:p-6 overflow-y-auto">
                                 <NetworkRegistrationForm
                                     roleLock="RETAILER"
-                                    uplineId={(sharedDataService.getCurrentSuperDistributor() || {}).id}
+                                    uplineId={(sharedDataService.getCurrentSuperDistributor() || dataService.getCurrentUser() || {}).id}
                                     uplineRole="SUPER_DISTRIBUTOR"
                                     onCancel={() => setShowAddModal(false)}
                                     onSuccess={handleRegistrationSuccess}
@@ -617,9 +665,9 @@ const Retailers = () => {
                                     </svg>
                                 </div>
                             </div>
-                            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] mb-2">Request Sent!</p>
-                            <h2 className="text-2xl font-black text-slate-800 italic mb-2">Awaiting Admin Approval</h2>
-                            <p className="text-[11px] font-bold text-slate-500 px-4 mb-4">The retailer will be notified once the admin approves their registration. They can then log in and complete KYC.</p>
+                            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] mb-2">PARTNER ONBOARDED</p>
+                            <h2 className="text-2xl font-black text-slate-800 italic mb-2">Registration Approved</h2>
+                            <p className="text-[11px] font-bold text-slate-500 px-4 mb-4">Partner Retailer has been successfully onboarded and mapped under your network. Share the credentials below for instant login.</p>
                             <div className="bg-slate-50 border-2 border-slate-100 rounded-3xl p-5 mb-6 text-left space-y-3 mt-2">
                                 <div className="flex justify-between text-xs font-black uppercase tracking-wider">
                                     <span className="text-slate-400">Login ID:</span>
@@ -629,7 +677,10 @@ const Retailers = () => {
                                     <span className="text-slate-400">Password:</span>
                                     <span className="text-amber-600 font-mono">{createdCredentials?.password}</span>
                                 </div>
-                                <p className="text-[9px] font-bold text-slate-400 pt-2 border-t border-slate-200">Credentials will be emailed to the retailer once the admin approves the request.</p>
+                                <div className="flex justify-between text-xs font-black uppercase tracking-wider pt-2 border-t border-slate-200">
+                                    <span className="text-slate-400">Portal:</span>
+                                    <span className="text-blue-600">Retailer</span>
+                                </div>
                             </div>
                             <button onClick={() => setShowSuccessView(false)} className="w-full bg-[#0d1b2e] text-white font-black py-4 rounded-2xl text-[11px] uppercase tracking-[0.25em] shadow-xl active:scale-95 transition-all">
                                 Dashboard Par Jaao

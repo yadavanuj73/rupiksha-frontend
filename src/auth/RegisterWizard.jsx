@@ -81,12 +81,13 @@ const PROMO_SLIDES = [
 export default function RegisterWizard() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { login: contextLogin } = useAuth();
+  const { login } = useAuth();
   const { language: lang, setLanguage: setLang } = useLanguage();
 
   const [step, setStep] = useState(1); // 1: Mobile & Auth Info, 2: OTP Verification, 3: PIN, Business, KYC & Documents, 4: Auto Approval Success
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [registeredInfo, setRegisteredInfo] = useState(null);
   const [otpSent, setOtpSent] = useState(false);
   const [otpTimer, setOtpTimer] = useState(60);
 
@@ -405,7 +406,10 @@ export default function RegisterWizard() {
         voterIdUrl: formData.electricityBillUrl || formData.voterIdUrl
       };
 
-      await authService.register(payload);
+      const res = await authService.register(payload);
+      if (res) {
+        setRegisteredInfo(res);
+      }
       setStep(4);
     } catch (err) {
       setError(err.message || 'Registration failed. Please verify details.');
@@ -417,20 +421,50 @@ export default function RegisterWizard() {
   // Immediate Login Action
   const handleImmediateLogin = async () => {
     setLoading(true);
+    setError('');
     try {
-      const res = await authService.login(formData.mobile.trim(), formData.password, formData.pin.trim());
-      contextLogin(res.user, res.accessToken);
-      if (res.user?.roles?.includes('ADMIN')) {
-        navigate('/admin');
-      } else if (res.user?.roles?.includes('SUPER_DISTRIBUTOR')) {
-        navigate('/super-distributor');
-      } else if (res.user?.roles?.includes('DISTRIBUTOR')) {
-        navigate('/distributor');
+      // Clear any stale impersonation keys
+      localStorage.removeItem('rupiksha_imp_token');
+      localStorage.removeItem('rupiksha_imp_user');
+
+      const mobile = formData.mobile.trim();
+      const password = formData.password;
+      const pin = formData.pin.trim();
+      const role = formData.role || 'RETAILER';
+
+      const res = await login(mobile, password, role, pin);
+
+      if (res && res.success) {
+        const userRoles = Array.isArray(res.user?.roles) ? res.user.roles : [res.user?.role];
+        const normalizedRoles = userRoles.map(r => String(r || '').replace(/^ROLE_/i, '').toUpperCase());
+
+        if (normalizedRoles.some(r => ['ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(r))) {
+          navigate('/admin');
+        } else if (normalizedRoles.includes('SUPER_DISTRIBUTOR')) {
+          navigate('/super-distributor');
+        } else if (normalizedRoles.includes('DISTRIBUTOR')) {
+          navigate('/distributor');
+        } else {
+          navigate('/dashboard');
+        }
+      } else if (res?.code === 'ID_PAYMENT_REQUIRED' || res?.paymentRequired || res?.message?.toLowerCase().includes('id charge payment') || res?.message?.toLowerCase().includes('payment')) {
+        const target = res.userId || res.username || registeredInfo?.id || registeredInfo?.username || mobile;
+        const targetMobile = res.mobile || registeredInfo?.mobile || mobile;
+        const targetRole = res.role || registeredInfo?.role || role;
+        navigate(`/id-payment?identifier=${encodeURIComponent(target)}&mobile=${encodeURIComponent(targetMobile)}&role=${encodeURIComponent(targetRole)}`);
       } else {
-        navigate('/dashboard');
+        if (res?.message && res.message.toLowerCase().includes('payment')) {
+          navigate(`/id-payment?identifier=${encodeURIComponent(mobile)}&mobile=${encodeURIComponent(mobile)}&role=${encodeURIComponent(role)}`);
+        } else {
+          setError(res?.message || 'Login failed. Please verify your credentials or PIN.');
+        }
       }
     } catch (err) {
-      navigate('/login');
+      if (err?.message && err.message.toLowerCase().includes('payment')) {
+        navigate(`/id-payment?identifier=${encodeURIComponent(formData.mobile.trim())}&mobile=${encodeURIComponent(formData.mobile.trim())}&role=${encodeURIComponent(formData.role || 'RETAILER')}`);
+      } else {
+        setError(err.message || 'Login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -1128,6 +1162,13 @@ export default function RegisterWizard() {
                       </p>
                     </div>
 
+                    {error && (
+                      <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600 max-w-md mx-auto flex items-center gap-2 text-left">
+                        <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+                        <span>{error}</span>
+                      </div>
+                    )}
+
                     <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-left text-xs space-y-1.5 text-slate-700 max-w-md mx-auto">
                       <div className="flex justify-between border-b border-slate-200 pb-1">
                         <span className="text-slate-400">Full Name:</span>
@@ -1145,10 +1186,16 @@ export default function RegisterWizard() {
                         <span className="text-slate-400">State:</span>
                         <span className="font-bold text-slate-900">{formData.state}</span>
                       </div>
-                      <div className="flex justify-between">
+                      <div className="flex justify-between border-b border-slate-200 pb-1">
                         <span className="text-slate-400">Onboarding Status:</span>
                         <span className="text-emerald-600 font-bold">APPROVED & ACTIVE</span>
                       </div>
+                      {registeredInfo?.idPaymentStatus === 'PENDING' && (
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">ID Activation:</span>
+                          <span className="text-amber-600 font-bold">PENDING PAYMENT</span>
+                        </div>
+                      )}
                     </div>
 
                     <button

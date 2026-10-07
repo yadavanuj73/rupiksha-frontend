@@ -69,8 +69,15 @@ public class IdPaymentDtos {
     public record VerifyPaymentResponse(
             boolean success,
             String message,
-            String paymentStatus
-    ) {}
+            String paymentStatus,
+            String accessToken,
+            String refreshToken,
+            AuthDtos.UserView user
+    ) {
+        public VerifyPaymentResponse(boolean success, String message, String paymentStatus) {
+            this(success, message, paymentStatus, null, null, null);
+        }
+    }
 
     public record PaymentStatusResponse(
             String userId,
