@@ -33,24 +33,42 @@ const Distributors = () => {
         if (!sa) return;
         const all = await dataService.getAllUsers();
         const saId = String(sa.id || sa._id || sa.userId || '').trim().toLowerCase();
-        const saPartyCode = String(sa.partyCode || '').trim().toUpperCase();
-        const saMobile = String(sa.mobile || '').trim();
+        const saPartyCode = String(sa.partyCode || sa.userCode || '').trim().toUpperCase();
+        const saMobile = String(sa.mobile || sa.phone || '').trim();
         const saUsername = String(sa.username || '').trim().toLowerCase();
+        const saName = String(sa.name || sa.fullName || '').trim().toLowerCase();
 
         const myDists = (Array.isArray(all) ? all : [])
             .filter((u) => {
-                const role = String(u?.role || (u?.roles && u.roles[0]) || '').replace(/^ROLE_/i, '').toUpperCase();
+                let role = 'DISTRIBUTOR';
+                if (typeof u?.role === 'string' && u.role.trim()) {
+                    role = u.role.trim().replace(/^ROLE_/i, '').toUpperCase();
+                } else if (Array.isArray(u?.roles) && u.roles.length > 0) {
+                    for (const r of u.roles) {
+                        if (typeof r === 'string' && r.trim()) {
+                            role = r.trim().replace(/^ROLE_/i, '').toUpperCase();
+                            break;
+                        }
+                        if (r && typeof r === 'object' && r.name) {
+                            role = String(r.name).trim().replace(/^ROLE_/i, '').toUpperCase();
+                            break;
+                        }
+                    }
+                }
                 return role === 'DISTRIBUTOR';
             })
             .filter((d) => {
-                const dParentId = String(d?.parentUserId || d?.addedByUserRef || d?.ownerId || '').trim().toLowerCase();
-                const dParentPartyCode = String(d?.parentPartyCode || d?.addedByPartyCode || d?.ownerPartyCode || '').trim().toUpperCase();
-                const dParentMobile = String(d?.addedByMobile || d?.ownerMobile || '').trim();
+                const dParentId = String(d?.parentUserId || d?.addedByUserRef || d?.ownerId || d?.parentId || d?.parent_id || (d?.parentUser && (d.parentUser.id || d.parentUser.userId)) || '').trim().toLowerCase();
+                const dParentPartyCode = String(d?.parentPartyCode || d?.addedByPartyCode || d?.ownerPartyCode || (d?.parentUser && d.parentUser.partyCode) || '').trim().toUpperCase();
+                const dParentMobile = String(d?.addedByMobile || d?.ownerMobile || d?.parentMobile || (d?.parentUser && (d.parentUser.mobile || d.parentUser.phone)) || '').trim();
+                const dParentName = String(d?.addedByName || d?.ownerName || d?.parentName || (d?.parentUser && (d.parentUser.fullName || d.parentUser.name)) || '').trim().toLowerCase();
+
                 return (
-                    (saId && dParentId === saId) ||
-                    (saPartyCode && dParentPartyCode === saPartyCode) ||
-                    (saMobile && dParentMobile === saMobile) ||
-                    (saUsername && dParentId === saUsername)
+                    (saId && (dParentId === saId || dParentId.includes(saId))) ||
+                    (saPartyCode && dParentPartyCode && (dParentPartyCode === saPartyCode || dParentPartyCode.includes(saPartyCode))) ||
+                    (saMobile && (dParentMobile === saMobile || dParentId === saMobile.toLowerCase())) ||
+                    (saUsername && (dParentId === saUsername || dParentName === saUsername)) ||
+                    (saName && dParentName && (dParentName.includes(saName) || saName.includes(dParentName)))
                 );
             })
             .map((d) => ({

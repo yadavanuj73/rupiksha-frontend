@@ -114,12 +114,39 @@ const ROLE_PRIORITY = [
     'RETAILER'
 ];
 
+export const extractUserRole = (u) => {
+    if (!u) return 'RETAILER';
+    if (typeof u.role === 'string' && u.role.trim()) {
+        return u.role.trim().replace(/^ROLE_/i, '').toUpperCase();
+    }
+    if (Array.isArray(u.roles) && u.roles.length > 0) {
+        for (const r of u.roles) {
+            if (typeof r === 'string' && r.trim()) {
+                return r.trim().replace(/^ROLE_/i, '').toUpperCase();
+            }
+            if (r && typeof r === 'object' && r.name) {
+                return String(r.name).trim().replace(/^ROLE_/i, '').toUpperCase();
+            }
+        }
+    }
+    return 'RETAILER';
+};
+
 const pickDeterministicRole = (roles = [], preferred = null) => {
     const unique = Array.from(new Set((roles || []).map((r) => normalizeRoleForClient(r)).filter(Boolean)));
     const preferredNorm = normalizeRoleForClient(preferred);
     if (preferredNorm && unique.includes(preferredNorm)) return preferredNorm;
     return ROLE_PRIORITY.find((r) => unique.includes(r)) || unique[0] || 'RETAILER';
 };
+
+// Global deduplication & throttle state to prevent API loops
+let fetchUserProfilePromise = null;
+let lastFetchUserProfileTime = 0;
+let getBalancePromises = new Map();
+let lastBalanceCache = new Map();
+let getAllUsersPromise = null;
+let lastGetAllUsersTime = 0;
+let cachedAllUsers = null;
 
 
 export const dataService = {
@@ -504,132 +531,143 @@ export const dataService = {
 
 
 
-    fetchUserProfile: async function () {
-        let currentUser = this.getCurrentUser() || {};
-        try {
-            const token = getEffectiveToken();
-            let userId = currentUser?.id || currentUser?.userId;
-            let username = currentUser?.username;
-            let mobile = currentUser?.mobile || currentUser?.phone;
+    fetchUserProfile: async function (force = false) {
+        const now = Date.now();
+        if (!force && lastFetchUserProfileTime && (now - lastFetchUserProfileTime < 15000)) {
+            return this.getCurrentUser();
+        }
+        if (fetchUserProfilePromise) {
+            return fetchUserProfilePromise;
+        }
 
-            if (!username && !mobile && !userId) {
-                const searchKeys = [
-                    'rupiksha_distributor_user',
-                    'rupiksha_user',
-                    'rupiksha_user_distributor',
-                    'rupiksha_user_retailer',
-                    'rupiksha_user_super_distributor',
-                    'rupiksha_super_distributor_user',
-                    'rupiksha_admin_user',
-                    'rupiksha_imp_user'
-                ];
-                for (const k of searchKeys) {
-                    try {
-                        const raw = localStorage.getItem(k);
-                        if (raw) {
-                            const parsed = JSON.parse(raw);
-                            if (parsed && (parsed.id || parsed.userId || parsed.username || parsed.mobile)) {
-                                userId = userId || parsed.id || parsed.userId;
-                                username = username || parsed.username;
-                                mobile = mobile || parsed.mobile || parsed.phone;
-                                currentUser = { ...parsed, ...currentUser };
-                                break;
+        fetchUserProfilePromise = (async () => {
+            let currentUser = this.getCurrentUser() || {};
+            try {
+                const token = getEffectiveToken();
+                let userId = currentUser?.id || currentUser?.userId;
+                let username = currentUser?.username;
+                let mobile = currentUser?.mobile || currentUser?.phone;
+
+                if (!username && !mobile && !userId) {
+                    const searchKeys = [
+                        'rupiksha_distributor_user',
+                        'rupiksha_user',
+                        'rupiksha_user_distributor',
+                        'rupiksha_user_retailer',
+                        'rupiksha_user_super_distributor',
+                        'rupiksha_super_distributor_user',
+                        'rupiksha_admin_user',
+                        'rupiksha_imp_user'
+                    ];
+                    for (const k of searchKeys) {
+                        try {
+                            const raw = localStorage.getItem(k);
+                            if (raw) {
+                                const parsed = JSON.parse(raw);
+                                if (parsed && (parsed.id || parsed.userId || parsed.username || parsed.mobile)) {
+                                    userId = userId || parsed.id || parsed.userId;
+                                    username = username || parsed.username;
+                                    mobile = mobile || parsed.mobile || parsed.phone;
+                                    currentUser = { ...parsed, ...currentUser };
+                                    break;
+                                }
                             }
-                        }
-                    } catch (e) {}
+                        } catch (e) {}
+                    }
                 }
-            }
 
-            if (!mobile && typeof username === 'string' && username.match(/^\d{10}/)) {
-                mobile = username.match(/^\d{10}/)[0];
-            }
-            if (!mobile && typeof username === 'string' && username.includes('_')) {
-                mobile = username.split('_')[0];
-            }
+                if (!mobile && typeof username === 'string' && username.match(/^\d{10}/)) {
+                    mobile = username.match(/^\d{10}/)[0];
+                }
+                if (!mobile && typeof username === 'string' && username.includes('_')) {
+                    mobile = username.split('_')[0];
+                }
 
-            let url = `${BACKEND_URL}/user/profile`;
-            const params = new URLSearchParams();
-            if (userId) params.append('userId', userId);
-            if (username) params.append('username', username);
-            if (mobile) params.append('mobile', mobile);
-            if (params.toString()) url += `?${params.toString()}`;
+                let url = `${BACKEND_URL}/user/profile`;
+                const params = new URLSearchParams();
+                if (userId) params.append('userId', userId);
+                if (username) params.append('username', username);
+                if (mobile) params.append('mobile', mobile);
+                if (params.toString()) url += `?${params.toString()}`;
 
-            const headers = {
-                'Accept': 'application/json',
-                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-            };
-
-            const res = await fetch(url, { headers });
-            if (res.ok) {
-                const data = await res.json();
-                const rawPayload = (data && typeof data === 'object') ? data : {};
-                const nestedData = (rawPayload.data && typeof rawPayload.data === 'object' && !Array.isArray(rawPayload.data)) ? rawPayload.data : {};
-                const nestedUser = (rawPayload.user && typeof rawPayload.user === 'object' && !Array.isArray(rawPayload.user)) ? rawPayload.user : ((nestedData.user && typeof nestedData.user === 'object' && !Array.isArray(nestedData.user)) ? nestedData.user : {});
-                const nestedKyc = (rawPayload.kyc && typeof rawPayload.kyc === 'object' && !Array.isArray(rawPayload.kyc)) ? rawPayload.kyc : ((nestedData.kyc && typeof nestedData.kyc === 'object' && !Array.isArray(nestedData.kyc)) ? nestedData.kyc : {});
-                const nestedKycData = (rawPayload.kycData && typeof rawPayload.kycData === 'object' && !Array.isArray(rawPayload.kycData)) ? rawPayload.kycData : ((nestedData.kycData && typeof nestedData.kycData === 'object' && !Array.isArray(nestedData.kycData)) ? nestedData.kycData : {});
-                const nestedBank = (rawPayload.bankDetails && typeof rawPayload.bankDetails === 'object' && !Array.isArray(rawPayload.bankDetails)) ? rawPayload.bankDetails : ((nestedData.bankDetails && typeof nestedData.bankDetails === 'object' && !Array.isArray(nestedData.bankDetails)) ? nestedData.bankDetails : {});
-                const nestedProfile = (rawPayload.profile && typeof rawPayload.profile === 'object' && !Array.isArray(rawPayload.profile)) ? rawPayload.profile : ((nestedData.profile && typeof nestedData.profile === 'object' && !Array.isArray(nestedData.profile)) ? nestedData.profile : {});
-                const nestedMerchant = (rawPayload.merchant && typeof rawPayload.merchant === 'object' && !Array.isArray(rawPayload.merchant)) ? rawPayload.merchant : ((nestedData.merchant && typeof nestedData.merchant === 'object' && !Array.isArray(nestedData.merchant)) ? nestedData.merchant : {});
-
-                const serverUser = {
-                    ...nestedKyc,
-                    ...nestedKycData,
-                    ...nestedBank,
-                    ...nestedMerchant,
-                    ...nestedProfile,
-                    ...nestedData,
-                    ...nestedUser,
-                    ...(typeof rawPayload.data === 'object' && !Array.isArray(rawPayload.data) ? rawPayload.data : {}),
-                    ...(typeof rawPayload.user === 'object' && !Array.isArray(rawPayload.user) ? rawPayload.user : {}),
-                    ...rawPayload
+                const headers = {
+                    'Accept': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                 };
 
-                if (serverUser && typeof serverUser === 'object' && Object.keys(serverUser).length > 0 && !serverUser.error) {
-                    const serverUid = serverUser.id || serverUser.userId || serverUser.username || currentUser?.id || currentUser?.username;
-                    const savedPhoto = serverUid ? localStorage.getItem(`rupiksha_photo_${serverUid}`) : null;
-                    let docPhoto = null;
-                    const allDocs = Array.isArray(serverUser.documents) ? serverUser.documents : (Array.isArray(nestedData.documents) ? nestedData.documents : (Array.isArray(nestedUser.documents) ? nestedUser.documents : []));
-                    if (allDocs.length > 0) {
-                        const selfieDoc = allDocs.find(d => 
-                            (d.type && ['SELFIE', 'PHOTO', 'LIVE_SELFIE', 'PROFILE_PHOTO'].includes(String(d.type).toUpperCase())) ||
-                            (d.name && String(d.name).toLowerCase().includes('selfie')) ||
-                            (d.name && String(d.name).toLowerCase().includes('photo'))
-                        );
-                        if (selfieDoc) docPhoto = selfieDoc.file || selfieDoc.url || selfieDoc.image;
-                    }
-                    const resolvedPhoto = serverUser.profilePhoto || serverUser.photoUrl || serverUser.liveSelfieUrl || docPhoto || (currentUser?.id === serverUser.id ? (currentUser?.profilePhoto || currentUser?.photoUrl) : null) || savedPhoto || null;
-                    const merged = {
-                        ...currentUser,
-                        ...serverUser,
-                        ...(docPhoto ? { photoUrl: docPhoto, profilePhoto: docPhoto } : {}),
-                        ...(resolvedPhoto ? { photoUrl: resolvedPhoto, profilePhoto: resolvedPhoto } : {})
+                const res = await fetch(url, { headers });
+                if (res.ok) {
+                    const data = await res.json();
+                    const rawPayload = (data && typeof data === 'object') ? data : {};
+                    const nestedData = (rawPayload.data && typeof rawPayload.data === 'object' && !Array.isArray(rawPayload.data)) ? rawPayload.data : {};
+                    const nestedUser = (rawPayload.user && typeof rawPayload.user === 'object' && !Array.isArray(rawPayload.user)) ? rawPayload.user : ((nestedData.user && typeof nestedData.user === 'object' && !Array.isArray(nestedData.user)) ? nestedData.user : {});
+                    const nestedKyc = (rawPayload.kyc && typeof rawPayload.kyc === 'object' && !Array.isArray(rawPayload.kyc)) ? rawPayload.kyc : ((nestedData.kyc && typeof nestedData.kyc === 'object' && !Array.isArray(nestedData.kyc)) ? nestedData.kyc : {});
+                    const nestedKycData = (rawPayload.kycData && typeof rawPayload.kycData === 'object' && !Array.isArray(rawPayload.kycData)) ? rawPayload.kycData : ((nestedData.kycData && typeof nestedData.kycData === 'object' && !Array.isArray(nestedData.kycData)) ? nestedData.kycData : {});
+                    const nestedBank = (rawPayload.bankDetails && typeof rawPayload.bankDetails === 'object' && !Array.isArray(rawPayload.bankDetails)) ? rawPayload.bankDetails : ((nestedData.bankDetails && typeof nestedData.bankDetails === 'object' && !Array.isArray(nestedData.bankDetails)) ? nestedData.bankDetails : {});
+                    const nestedProfile = (rawPayload.profile && typeof rawPayload.profile === 'object' && !Array.isArray(rawPayload.profile)) ? rawPayload.profile : ((nestedData.profile && typeof nestedData.profile === 'object' && !Array.isArray(nestedData.profile)) ? nestedData.profile : {});
+                    const nestedMerchant = (rawPayload.merchant && typeof rawPayload.merchant === 'object' && !Array.isArray(rawPayload.merchant)) ? rawPayload.merchant : ((nestedData.merchant && typeof nestedData.merchant === 'object' && !Array.isArray(nestedData.merchant)) ? nestedData.merchant : {});
+
+                    const serverUser = {
+                        ...nestedKyc,
+                        ...nestedKycData,
+                        ...nestedBank,
+                        ...nestedMerchant,
+                        ...nestedProfile,
+                        ...nestedData,
+                        ...nestedUser,
+                        ...(typeof rawPayload.data === 'object' && !Array.isArray(rawPayload.data) ? rawPayload.data : {}),
+                        ...(typeof rawPayload.user === 'object' && !Array.isArray(rawPayload.user) ? rawPayload.user : {}),
+                        ...rawPayload
                     };
-                    localStorage.setItem('rupiksha_user', JSON.stringify(merged));
-                    if (localStorage.getItem('rupiksha_distributor_user') || merged.role === 'DISTRIBUTOR') {
-                        localStorage.setItem('rupiksha_distributor_user', JSON.stringify(merged));
+
+                    if (serverUser && typeof serverUser === 'object' && Object.keys(serverUser).length > 0 && !serverUser.error) {
+                        const serverUid = serverUser.id || serverUser.userId || serverUser.username || currentUser?.id || currentUser?.username;
+                        const savedPhoto = serverUid ? localStorage.getItem(`rupiksha_photo_${serverUid}`) : null;
+                        let docPhoto = null;
+                        const allDocs = Array.isArray(serverUser.documents) ? serverUser.documents : (Array.isArray(nestedData.documents) ? nestedData.documents : (Array.isArray(nestedUser.documents) ? nestedUser.documents : []));
+                        if (allDocs.length > 0) {
+                            const selfieDoc = allDocs.find(d => 
+                                (d.type && ['SELFIE', 'PHOTO', 'LIVE_SELFIE', 'PROFILE_PHOTO'].includes(String(d.type).toUpperCase())) ||
+                                (d.name && String(d.name).toLowerCase().includes('selfie')) ||
+                                (d.name && String(d.name).toLowerCase().includes('photo'))
+                            );
+                            if (selfieDoc) docPhoto = selfieDoc.file || selfieDoc.url || selfieDoc.image;
+                        }
+                        const resolvedPhoto = serverUser.profilePhoto || serverUser.photoUrl || serverUser.liveSelfieUrl || docPhoto || (currentUser?.id === serverUser.id ? (currentUser?.profilePhoto || currentUser?.photoUrl) : null) || savedPhoto || null;
+                        const merged = {
+                            ...currentUser,
+                            ...serverUser,
+                            ...(docPhoto ? { photoUrl: docPhoto, profilePhoto: docPhoto } : {}),
+                            ...(resolvedPhoto ? { photoUrl: resolvedPhoto, profilePhoto: resolvedPhoto } : {})
+                        };
+                        localStorage.setItem('rupiksha_user', JSON.stringify(merged));
+                        if (localStorage.getItem('rupiksha_distributor_user') || merged.role === 'DISTRIBUTOR') {
+                            localStorage.setItem('rupiksha_distributor_user', JSON.stringify(merged));
+                        }
+                        if (localStorage.getItem('rupiksha_super_distributor_user') || merged.role === 'SUPER_DISTRIBUTOR') {
+                            localStorage.setItem('rupiksha_super_distributor_user', JSON.stringify(merged));
+                        }
+                        if (localStorage.getItem('rupiksha_admin_user') && window.location.pathname.startsWith('/admin')) {
+                            localStorage.setItem('rupiksha_admin_user', JSON.stringify(merged));
+                        }
+                        if (resolvedPhoto && serverUid) {
+                            try { localStorage.setItem(`rupiksha_photo_${serverUid}`, resolvedPhoto); } catch (_) {}
+                        }
+                        try { localStorage.removeItem('rupiksha_profile_photo'); } catch (_) {}
+                        lastFetchUserProfileTime = Date.now();
+                        window.dispatchEvent(new Event('profileUpdated'));
+                        return merged;
                     }
-                    if (localStorage.getItem('rupiksha_super_distributor_user') || merged.role === 'SUPER_DISTRIBUTOR') {
-                        localStorage.setItem('rupiksha_super_distributor_user', JSON.stringify(merged));
-                    }
-                    if (localStorage.getItem('rupiksha_admin_user') && window.location.pathname.startsWith('/admin')) {
-                        localStorage.setItem('rupiksha_admin_user', JSON.stringify(merged));
-                    }
-                    if (resolvedPhoto && serverUid) {
-                        try { localStorage.setItem(`rupiksha_photo_${serverUid}`, resolvedPhoto); } catch (_) {}
-                    }
-                    try { localStorage.removeItem('rupiksha_profile_photo'); } catch (_) {}
-                    const localData = this.getData();
-                    localData.currentUser = merged;
-                    this.saveData(localData);
-                    window.dispatchEvent(new Event('dataUpdated'));
-                    window.dispatchEvent(new Event('distributorDataUpdated'));
-                    return merged;
                 }
+            } catch (e) {
+                console.warn("fetchUserProfile error:", e);
+            } finally {
+                fetchUserProfilePromise = null;
             }
-        } catch (e) {
-            console.warn("fetchUserProfile error:", e);
-        }
-        return null;
+            return null;
+        })();
+
+        return fetchUserProfilePromise;
     },
 
     updateUserProfile: async function (profileData) {
@@ -793,24 +831,45 @@ export const dataService = {
     },
 
     // --- WALLET & TRANSACTIONS ---
-    getWalletBalance: async function (userId) {
+    getWalletBalance: async function (userId, force = false) {
         if (useLocalOnly) {
            const user = this.getCurrentUser();
            return user ? (user.balance || "0.00") : "0.00";
         }
-        try {
-            const data = await walletService.getBalance(userId);
-            const nextBal = String(data?.balance ?? "0.00");
-            const current = this.getCurrentUser();
-            if (current) {
-                localStorage.setItem('rupiksha_user', JSON.stringify({ ...current, balance: nextBal }));
+        const cacheKey = String(userId || 'current');
+        const now = Date.now();
+        if (!force && lastBalanceCache.has(cacheKey)) {
+            const cached = lastBalanceCache.get(cacheKey);
+            if (now - cached.time < 5000) {
+                return cached.balance;
             }
-            return nextBal;
-        } catch (e) {
-            // Fallback: return cached user balance on any error
-            const user = this.getCurrentUser();
-            return user ? (user.balance || "0.00") : "0.00";
         }
+        if (getBalancePromises.has(cacheKey)) {
+            return getBalancePromises.get(cacheKey);
+        }
+
+        const balPromise = (async () => {
+            try {
+                const data = await walletService.getBalance(userId);
+                const nextBal = String(data?.balance ?? "0.00");
+                const current = this.getCurrentUser();
+                if (current) {
+                    localStorage.setItem('rupiksha_user', JSON.stringify({ ...current, balance: nextBal }));
+                }
+                lastBalanceCache.set(cacheKey, { balance: nextBal, time: Date.now() });
+                return nextBal;
+            } catch (e) {
+                const user = this.getCurrentUser();
+                const fallbackBal = user ? (user.balance || "0.00") : "0.00";
+                lastBalanceCache.set(cacheKey, { balance: fallbackBal, time: Date.now() });
+                return fallbackBal;
+            } finally {
+                getBalancePromises.delete(cacheKey);
+            }
+        })();
+
+        getBalancePromises.set(cacheKey, balPromise);
+        return balPromise;
     },
 
     logTransaction: async function (userId, service, amount, operator, number, status) {
@@ -1508,42 +1567,103 @@ export const dataService = {
     },
 
     // --- ADMIN OVERSIGHT ---
-    getAllUsers: async function () {
-        try {
-            const res = await authFetch(`${BACKEND_URL}/admin/users`);
-            const data = await safeJson(res, null);
-            if (res.ok && data?.success && Array.isArray(data.users)) return data.users;
-            console.warn('[getAllUsers] /admin/users failed:', res.status, data);
-        } catch (e) { console.error('[getAllUsers] fetch error:', e); }
+    getAllUsers: async function (force = false) {
+        const now = Date.now();
+        if (!force && cachedAllUsers && (now - lastGetAllUsersTime < 8000)) {
+            return cachedAllUsers;
+        }
+        if (getAllUsersPromise) {
+            return getAllUsersPromise;
+        }
 
-        // Backend may not implement /admin/users in lightweight setups.
-        // Fallback to role-wise pending approvals from live APIs so Admin approvals still work.
-        try {
-            const [retailRes, distRes, superDistRes] = await Promise.all([
-                this.getPendingApprovalsByRole('retailer'),
-                this.getPendingApprovalsByRole('distributor'),
-                this.getPendingApprovalsByRole('super_distributor')
-            ]);
-
-            const pendingOnly = [
-                ...(retailRes?.users || []),
-                ...(distRes?.users || []),
-                ...(superDistRes?.users || [])
-            ];
-
-            const uniqueByKey = new Map();
-            // Backend pending rows always win — never let stale local data hide real pending users.
-            for (const user of pendingOnly) {
-                const key = user?._id || user?.id || user?.username || user?.mobile;
-                if (!key) continue;
-                uniqueByKey.set(String(key), user);
+        getAllUsersPromise = (async () => {
+            let rawList = [];
+            try {
+                const res = await authFetch(`${BACKEND_URL}/admin/users`);
+                const data = await safeJson(res, null);
+                if (res.ok && data?.success && Array.isArray(data.users)) {
+                    rawList = data.users;
+                } else {
+                    console.warn('[getAllUsers] /admin/users failed:', res.status, data);
+                }
+            } catch (e) {
+                console.error('[getAllUsers] fetch error:', e);
             }
-            if (uniqueByKey.size > 0) return Array.from(uniqueByKey.values());
-        } catch (e) { }
 
-        return this.getData().users || [];
+            if (!rawList || rawList.length === 0) {
+                try {
+                    const [retailRes, distRes, superDistRes] = await Promise.all([
+                        this.getPendingApprovalsByRole('retailer'),
+                        this.getPendingApprovalsByRole('distributor'),
+                        this.getPendingApprovalsByRole('super_distributor')
+                    ]);
+
+                    const pendingOnly = [
+                        ...(retailRes?.users || []),
+                        ...(distRes?.users || []),
+                        ...(superDistRes?.users || [])
+                    ];
+
+                    const uniqueByKey = new Map();
+                    for (const user of pendingOnly) {
+                        const key = user?._id || user?.id || user?.username || user?.mobile;
+                        if (!key) continue;
+                        uniqueByKey.set(String(key), user);
+                    }
+                    if (uniqueByKey.size > 0) rawList = Array.from(uniqueByKey.values());
+                } catch (e) {}
+            }
+
+            if (!rawList || rawList.length === 0) {
+                rawList = this.getData().users || [];
+            }
+
+            // Standardize and normalize every user record
+            const normalized = rawList.map((u, idx) => {
+                const role = extractUserRole(u);
+                const parentUserId = u.parentUserId || u.addedByUserRef || u.ownerId || u.parentId || u.parent_id || (u.parentUser && (u.parentUser.id || u.parentUser.userId)) || null;
+                const parentPartyCode = u.parentPartyCode || u.addedByPartyCode || u.ownerPartyCode || (u.parentUser && u.parentUser.partyCode) || null;
+                const parentMobile = u.parentMobile || u.addedByMobile || u.ownerMobile || (u.parentUser && (u.parentUser.mobile || u.parentUser.phone)) || null;
+                const parentName = u.parentName || u.addedByName || u.ownerName || (u.parentUser && (u.parentUser.fullName || u.parentUser.name)) || null;
+                const rawBal = u.walletBalance ?? u.balance ?? u.wallet?.balance ?? 0;
+                const cleanBal = typeof rawBal === 'number' ? rawBal : (parseFloat(String(rawBal || 0).replace(/,/g, '')) || 0);
+
+                return {
+                    ...u,
+                    id: u.id || u._id || u.userId || `user_${idx}`,
+                    userId: u.userId || u.id || u._id,
+                    role,
+                    roles: [role],
+                    partyCode: u.partyCode || u.userCode || '',
+                    parentUserId: parentUserId ? String(parentUserId) : null,
+                    addedByUserRef: parentUserId ? String(parentUserId) : null,
+                    ownerId: parentUserId ? String(parentUserId) : null,
+                    parentId: parentUserId ? String(parentUserId) : null,
+                    parentPartyCode: parentPartyCode ? String(parentPartyCode).toUpperCase() : null,
+                    addedByPartyCode: parentPartyCode ? String(parentPartyCode).toUpperCase() : null,
+                    ownerPartyCode: parentPartyCode ? String(parentPartyCode).toUpperCase() : null,
+                    parentMobile: parentMobile ? String(parentMobile) : null,
+                    addedByMobile: parentMobile ? String(parentMobile) : null,
+                    ownerMobile: parentMobile ? String(parentMobile) : null,
+                    parentName: parentName ? String(parentName) : null,
+                    addedByName: parentName ? String(parentName) : null,
+                    ownerName: parentName ? String(parentName) : null,
+                    walletBalance: cleanBal,
+                    balance: String(cleanBal),
+                    status: u.status || 'Approved',
+                    kycStatus: String(u.kycStatus || 'APPROVED').toUpperCase()
+                };
+            });
+
+            cachedAllUsers = normalized;
+            lastGetAllUsersTime = Date.now();
+            return normalized;
+        })().finally(() => {
+            getAllUsersPromise = null;
+        });
+
+        return getAllUsersPromise;
     },
-
 
     getAllTransactions: async function () {
         if (useLocalOnly) return this.getData().transactions || [];

@@ -22,7 +22,7 @@ const SuperDistributorTopBar = ({ onMenuClick }) => {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const loadDist = async () => {
+    const loadDist = async (syncWallet = true) => {
         const session = sharedDataService.getCurrentSuperDistributor() || dataService.getCurrentUser();
         if (!session) return;
         const fresh = (session.id && sharedDataService.getSuperDistributorById(session.id)) || session;
@@ -36,31 +36,38 @@ const SuperDistributorTopBar = ({ onMenuClick }) => {
         });
         setImgError(false);
 
-        if (!photo && sdUid) {
-            dataService.fetchUserProfile().catch(() => {});
+        if (syncWallet && sdUid) {
+            try {
+                const liveBal = await dataService.getWalletBalance(fresh.id || fresh.userId);
+                if (liveBal !== undefined && liveBal !== null) {
+                    setDist(prev => ({
+                        ...(prev || fresh),
+                        wallet: { ...(prev?.wallet || {}), balance: liveBal },
+                        balance: liveBal
+                    }));
+                }
+            } catch (_) {}
         }
-
-        // Fetch live wallet balance from server
-        try {
-            const liveBal = await dataService.getWalletBalance(fresh.id || fresh.userId);
-            if (liveBal !== undefined && liveBal !== null) {
-                setDist(prev => ({
-                    ...(prev || fresh),
-                    wallet: { ...(prev?.wallet || {}), balance: liveBal }
-                }));
-            }
-        } catch (_) {}
     };
 
     useEffect(() => {
-        loadDist();
-        window.addEventListener('SuperDistributorDataUpdated', loadDist);
-        window.addEventListener('dataUpdated', loadDist);
-        window.addEventListener('profileUpdated', loadDist);
+        loadDist(true);
+        // Hydrate profile once on initial mount if photo missing
+        const session = sharedDataService.getCurrentSuperDistributor() || dataService.getCurrentUser();
+        if (session && !session.profilePhoto && !session.photoUrl) {
+            dataService.fetchUserProfile().catch(() => {});
+        }
+
+        const handleUpdate = () => loadDist(false);
+        const handleProfile = () => loadDist(true);
+
+        window.addEventListener('SuperDistributorDataUpdated', handleUpdate);
+        window.addEventListener('dataUpdated', handleUpdate);
+        window.addEventListener('profileUpdated', handleProfile);
         return () => {
-            window.removeEventListener('SuperDistributorDataUpdated', loadDist);
-            window.removeEventListener('dataUpdated', loadDist);
-            window.removeEventListener('profileUpdated', loadDist);
+            window.removeEventListener('SuperDistributorDataUpdated', handleUpdate);
+            window.removeEventListener('dataUpdated', handleUpdate);
+            window.removeEventListener('profileUpdated', handleProfile);
         };
     }, []);
 

@@ -391,12 +391,19 @@ export const sharedDataService = {
     // --- SESSION HELPERS ---
     getCurrentDistributor: () => {
         try {
-            const saved = localStorage.getItem('rupiksha_imp_user') || localStorage.getItem('rupiksha_user');
+            const saved = localStorage.getItem('rupiksha_imp_user') || localStorage.getItem('rupiksha_distributor_user') || localStorage.getItem('rupiksha_user');
             if (!saved) return null;
             const user = JSON.parse(saved);
-            const role = String(user.role || (Array.isArray(user.roles) ? user.roles[0] : '')).toUpperCase().replace(/^ROLE_/i, '');
+            let role = 'RETAILER';
+            if (typeof user.role === 'string' && user.role.trim()) {
+                role = user.role.trim().replace(/^ROLE_/i, '').toUpperCase();
+            } else if (Array.isArray(user.roles) && user.roles.length > 0) {
+                const first = user.roles[0];
+                role = (typeof first === 'object' ? first?.name : first) || 'RETAILER';
+                role = String(role).replace(/^ROLE_/i, '').toUpperCase();
+            }
             const allowed = ['DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'SUPERDISTRIBUTOR', 'ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'];
-            return allowed.includes(role) ? user : null;
+            return allowed.includes(role) ? { ...user, role } : null;
         } catch { return null; }
     },
 
@@ -437,12 +444,19 @@ export const sharedDataService = {
 
     getCurrentSuperDistributor: () => {
         try {
-            const saved = localStorage.getItem('rupiksha_imp_user') || localStorage.getItem('rupiksha_user');
+            const saved = localStorage.getItem('rupiksha_imp_user') || localStorage.getItem('rupiksha_super_distributor_user') || localStorage.getItem('rupiksha_user');
             if (!saved) return null;
             const user = JSON.parse(saved);
-            const role = String(user.role || (Array.isArray(user.roles) ? user.roles[0] : '')).toUpperCase().replace(/^ROLE_/i, '');
+            let role = 'RETAILER';
+            if (typeof user.role === 'string' && user.role.trim()) {
+                role = user.role.trim().replace(/^ROLE_/i, '').toUpperCase();
+            } else if (Array.isArray(user.roles) && user.roles.length > 0) {
+                const first = user.roles[0];
+                role = (typeof first === 'object' ? first?.name : first) || 'RETAILER';
+                role = String(role).replace(/^ROLE_/i, '').toUpperCase();
+            }
             const allowed = ['SUPER_DISTRIBUTOR', 'SUPERDISTRIBUTOR', 'ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'];
-            return allowed.includes(role) ? user : null;
+            return allowed.includes(role) ? { ...user, role } : null;
         } catch { return null; }
     },
 

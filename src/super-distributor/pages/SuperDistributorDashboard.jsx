@@ -276,24 +276,88 @@ const SuperDistributorDashboard = () => {
             const combinedList = Array.from(userMap.values());
 
             // 1. Mapped Distributors under this Super Distributor
+            const sdMobile = String(freshDist.mobile || freshDist.phone || '').trim();
+            const sdUsername = String(freshDist.username || '').trim().toLowerCase();
+            const sdName = String(freshDist.name || freshDist.fullName || '').trim().toLowerCase();
+
             const myDists = combinedList.filter((u) => {
-                const rRole = String(u?.role || (u?.roles && u.roles[0]) || '').replace(/^ROLE_/i, '').toUpperCase();
+                let rRole = 'DISTRIBUTOR';
+                if (typeof u?.role === 'string' && u.role.trim()) {
+                    rRole = u.role.trim().replace(/^ROLE_/i, '').toUpperCase();
+                } else if (Array.isArray(u?.roles) && u.roles.length > 0) {
+                    for (const item of u.roles) {
+                        if (typeof item === 'string' && item.trim()) {
+                            rRole = item.trim().replace(/^ROLE_/i, '').toUpperCase();
+                            break;
+                        }
+                        if (item && typeof item === 'object' && item.name) {
+                            rRole = String(item.name).trim().replace(/^ROLE_/i, '').toUpperCase();
+                            break;
+                        }
+                    }
+                }
                 if (rRole !== 'DISTRIBUTOR') return false;
-                const parentRef = String(u?.addedByUserRef || u?.ownerId || u?.parentId || u?.parent_id || '').toLowerCase();
-                const parentCode = String(u?.parentPartyCode || u?.addedByPartyCode || '').toUpperCase();
-                return parentRef === sdId || (sdPartyCode && parentCode === sdPartyCode);
+
+                const parentRef = String(u?.parentUserId || u?.addedByUserRef || u?.ownerId || u?.parentId || u?.parent_id || (u?.parentUser && (u.parentUser.id || u.parentUser.userId)) || '').trim().toLowerCase();
+                const parentCode = String(u?.parentPartyCode || u?.addedByPartyCode || u?.ownerPartyCode || (u?.parentUser && u.parentUser.partyCode) || '').trim().toUpperCase();
+                const parentMobile = String(u?.addedByMobile || u?.ownerMobile || u?.parentMobile || (u?.parentUser && (u.parentUser.mobile || u.parentUser.phone)) || '').trim();
+                const parentName = String(u?.addedByName || u?.ownerName || u?.parentName || (u?.parentUser && (u.parentUser.fullName || u.parentUser.name)) || '').trim().toLowerCase();
+
+                return (
+                    (sdId && (parentRef === sdId || parentRef.includes(sdId))) ||
+                    (sdPartyCode && parentCode && (parentCode === sdPartyCode || parentCode.includes(sdPartyCode))) ||
+                    (sdMobile && (parentMobile === sdMobile || parentRef === sdMobile.toLowerCase())) ||
+                    (sdUsername && (parentRef === sdUsername || parentName === sdUsername)) ||
+                    (sdName && parentName && (parentName.includes(sdName) || sdName.includes(parentName)))
+                );
             });
             setDistributors(myDists);
 
-            const myDistIds = new Set(myDists.map(d => String(d.id || d._id || d.userId || '').toLowerCase()));
+            const myDistIds = new Set(myDists.map(d => String(d.id || d._id || d.userId || d.username || '').toLowerCase()).filter(Boolean));
+            const myDistPartyCodes = new Set(myDists.map(d => String(d.partyCode || d.userCode || '').toUpperCase()).filter(Boolean));
+            const myDistMobiles = new Set(myDistributors.map(d => String(d.mobile || d.phone || '')).filter(Boolean));
+            const myDistNames = new Set(myDistributors.map(d => String(d.fullName || d.name || '').toLowerCase()).filter(Boolean));
 
             // 2. Mapped Retailers under this Super Distributor or under its Distributors
             const myRtls = combinedList.filter((u) => {
-                const rRole = String(u?.role || (u?.roles && u.roles[0]) || '').replace(/^ROLE_/i, '').toUpperCase();
+                let rRole = 'RETAILER';
+                if (typeof u?.role === 'string' && u.role.trim()) {
+                    rRole = u.role.trim().replace(/^ROLE_/i, '').toUpperCase();
+                } else if (Array.isArray(u?.roles) && u.roles.length > 0) {
+                    for (const item of u.roles) {
+                        if (typeof item === 'string' && item.trim()) {
+                            rRole = item.trim().replace(/^ROLE_/i, '').toUpperCase();
+                            break;
+                        }
+                        if (item && typeof item === 'object' && item.name) {
+                            rRole = String(item.name).trim().replace(/^ROLE_/i, '').toUpperCase();
+                            break;
+                        }
+                    }
+                }
                 if (rRole !== 'RETAILER' && rRole !== 'RETAILERS') return false;
-                const parentRef = String(u?.addedByUserRef || u?.ownerId || u?.parentId || u?.parent_id || '').toLowerCase();
-                const parentCode = String(u?.parentPartyCode || u?.addedByPartyCode || '').toUpperCase();
-                return parentRef === sdId || (sdPartyCode && parentCode === sdPartyCode) || myDistIds.has(parentRef);
+
+                const parentRef = String(u?.parentUserId || u?.addedByUserRef || u?.ownerId || u?.parentId || u?.parent_id || (u?.parentUser && (u.parentUser.id || u.parentUser.userId)) || '').trim().toLowerCase();
+                const parentCode = String(u?.parentPartyCode || u?.addedByPartyCode || u?.ownerPartyCode || (u?.parentUser && u.parentUser.partyCode) || '').trim().toUpperCase();
+                const parentMobile = String(u?.addedByMobile || u?.ownerMobile || u?.parentMobile || (u?.parentUser && (u.parentUser.mobile || u.parentUser.phone)) || '').trim();
+                const parentName = String(u?.addedByName || u?.ownerName || u?.parentName || (u?.parentUser && (u.parentUser.fullName || u.parentUser.name)) || '').trim().toLowerCase();
+
+                const isDirect = (
+                    (sdId && (parentRef === sdId || parentRef.includes(sdId))) ||
+                    (sdPartyCode && parentCode && (parentCode === sdPartyCode || parentCode.includes(sdPartyCode))) ||
+                    (sdMobile && (parentMobile === sdMobile || parentRef === sdMobile.toLowerCase())) ||
+                    (sdUsername && (parentRef === sdUsername || parentName === sdUsername)) ||
+                    (sdName && parentName && (parentName.includes(sdName) || sdName.includes(parentName)))
+                );
+
+                const isChildDist = (
+                    (parentRef && myDistIds.has(parentRef)) ||
+                    (parentCode && myDistPartyCodes.has(parentCode)) ||
+                    (parentMobile && myDistMobiles.has(parentMobile)) ||
+                    (parentName && myDistNames.has(parentName))
+                );
+
+                return isDirect || isChildDist;
             });
             setRetailers(myRtls);
 

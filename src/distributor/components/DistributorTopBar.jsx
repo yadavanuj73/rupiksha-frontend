@@ -22,7 +22,7 @@ const DistributorTopBar = ({ onMenuClick }) => {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const loadDist = async () => {
+    const loadDist = async (syncWallet = true) => {
         const session = sharedDataService.getCurrentDistributor() || dataService.getCurrentUser();
         if (!session) return;
         const fresh = (session.id && sharedDataService.getDistributorById(session.id)) || session;
@@ -36,31 +36,38 @@ const DistributorTopBar = ({ onMenuClick }) => {
         });
         setImgError(false);
 
-        if (!photo && uid) {
-            dataService.fetchUserProfile().catch(() => {});
+        if (syncWallet && uid) {
+            try {
+                const liveBal = await dataService.getWalletBalance(fresh.id || fresh.userId);
+                if (liveBal !== undefined && liveBal !== null) {
+                    setDist(prev => ({
+                        ...(prev || fresh),
+                        wallet: { ...(prev?.wallet || {}), balance: liveBal },
+                        balance: liveBal
+                    }));
+                }
+            } catch (_) {}
         }
-
-        // Fetch live wallet balance from server
-        try {
-            const liveBal = await dataService.getWalletBalance(fresh.id || fresh.userId);
-            if (liveBal !== undefined && liveBal !== null) {
-                setDist(prev => ({
-                    ...(prev || fresh),
-                    wallet: { ...(prev?.wallet || {}), balance: liveBal }
-                }));
-            }
-        } catch (_) {}
     };
 
     useEffect(() => {
-        loadDist();
-        window.addEventListener('distributorDataUpdated', loadDist);
-        window.addEventListener('dataUpdated', loadDist);
-        window.addEventListener('profileUpdated', loadDist);
+        loadDist(true);
+        // Hydrate profile once on initial mount if photo missing
+        const session = sharedDataService.getCurrentDistributor() || dataService.getCurrentUser();
+        if (session && !session.profilePhoto && !session.photoUrl) {
+            dataService.fetchUserProfile().catch(() => {});
+        }
+
+        const handleUpdate = () => loadDist(false);
+        const handleProfile = () => loadDist(true);
+
+        window.addEventListener('distributorDataUpdated', handleUpdate);
+        window.addEventListener('dataUpdated', handleUpdate);
+        window.addEventListener('profileUpdated', handleProfile);
         return () => {
-            window.removeEventListener('distributorDataUpdated', loadDist);
-            window.removeEventListener('dataUpdated', loadDist);
-            window.removeEventListener('profileUpdated', loadDist);
+            window.removeEventListener('distributorDataUpdated', handleUpdate);
+            window.removeEventListener('dataUpdated', handleUpdate);
+            window.removeEventListener('profileUpdated', handleProfile);
         };
     }, []);
 

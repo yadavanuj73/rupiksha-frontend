@@ -53,55 +53,91 @@ const Retailers = () => {
             const users = Array.isArray(allUsers) ? allUsers : [];
 
             const saId = String(sa?.id || sa?._id || sa?.userId || '').trim().toLowerCase();
-            const saPartyCode = String(sa?.partyCode || '').trim().toUpperCase();
-            const saMobile = String(sa?.mobile || '').trim();
+            const saPartyCode = String(sa?.partyCode || sa?.userCode || '').trim().toUpperCase();
+            const saMobile = String(sa?.mobile || sa?.phone || '').trim();
             const saUsername = String(sa?.username || '').trim().toLowerCase();
+            const saName = String(sa?.name || sa?.fullName || '').trim().toLowerCase();
 
             // Find all child distributors under this Super Distributor
             const myDistributors = users
                 .filter((u) => {
-                    const r = String(u?.role || (u?.roles && u.roles[0]) || '').replace(/^ROLE_/i, '').toUpperCase();
+                    let r = 'DISTRIBUTOR';
+                    if (typeof u?.role === 'string' && u.role.trim()) {
+                        r = u.role.trim().replace(/^ROLE_/i, '').toUpperCase();
+                    } else if (Array.isArray(u?.roles) && u.roles.length > 0) {
+                        for (const item of u.roles) {
+                            if (typeof item === 'string' && item.trim()) {
+                                r = item.trim().replace(/^ROLE_/i, '').toUpperCase();
+                                break;
+                            }
+                            if (item && typeof item === 'object' && item.name) {
+                                r = String(item.name).trim().replace(/^ROLE_/i, '').toUpperCase();
+                                break;
+                            }
+                        }
+                    }
                     return r === 'DISTRIBUTOR';
                 })
                 .filter((d) => {
-                    const dParentId = String(d?.parentUserId || d?.addedByUserRef || d?.ownerId || '').trim().toLowerCase();
-                    const dParentPartyCode = String(d?.parentPartyCode || d?.addedByPartyCode || d?.ownerPartyCode || '').trim().toUpperCase();
-                    const dParentMobile = String(d?.addedByMobile || d?.ownerMobile || '').trim();
+                    const dParentId = String(d?.parentUserId || d?.addedByUserRef || d?.ownerId || d?.parentId || d?.parent_id || (d?.parentUser && (d.parentUser.id || d.parentUser.userId)) || '').trim().toLowerCase();
+                    const dParentPartyCode = String(d?.parentPartyCode || d?.addedByPartyCode || d?.ownerPartyCode || (d?.parentUser && d.parentUser.partyCode) || '').trim().toUpperCase();
+                    const dParentMobile = String(d?.addedByMobile || d?.ownerMobile || d?.parentMobile || (d?.parentUser && (d.parentUser.mobile || d.parentUser.phone)) || '').trim();
+                    const dParentName = String(d?.addedByName || d?.ownerName || d?.parentName || (d?.parentUser && (d.parentUser.fullName || d.parentUser.name)) || '').trim().toLowerCase();
+
                     return (
-                        (saId && dParentId === saId) ||
-                        (saPartyCode && dParentPartyCode === saPartyCode) ||
-                        (saMobile && dParentMobile === saMobile) ||
-                        (saUsername && dParentId === saUsername)
+                        (saId && (dParentId === saId || dParentId.includes(saId))) ||
+                        (saPartyCode && dParentPartyCode && (dParentPartyCode === saPartyCode || dParentPartyCode.includes(saPartyCode))) ||
+                        (saMobile && (dParentMobile === saMobile || dParentId === saMobile.toLowerCase())) ||
+                        (saUsername && (dParentId === saUsername || dParentName === saUsername)) ||
+                        (saName && dParentName && (dParentName.includes(saName) || saName.includes(dParentName)))
                     );
                 });
 
             const myDistributorIds = new Set(myDistributors.map(d => String(d.id || d._id || d.userId || d.username || '').toLowerCase()).filter(Boolean));
-            const myDistributorPartyCodes = new Set(myDistributors.map(d => String(d.partyCode || '').toUpperCase()).filter(Boolean));
-            const myDistributorMobiles = new Set(myDistributors.map(d => String(d.mobile || '')).filter(Boolean));
+            const myDistributorPartyCodes = new Set(myDistributors.map(d => String(d.partyCode || d.userCode || '').toUpperCase()).filter(Boolean));
+            const myDistributorMobiles = new Set(myDistributors.map(d => String(d.mobile || d.phone || '')).filter(Boolean));
+            const myDistributorNames = new Set(myDistributors.map(d => String(d.fullName || d.name || '').toLowerCase()).filter(Boolean));
 
             const scopedRetailers = users
                 .filter((u) => {
-                    const r = String(u?.role || (u?.roles && u.roles[0]) || '').replace(/^ROLE_/i, '').toUpperCase();
+                    let r = 'RETAILER';
+                    if (typeof u?.role === 'string' && u.role.trim()) {
+                        r = u.role.trim().replace(/^ROLE_/i, '').toUpperCase();
+                    } else if (Array.isArray(u?.roles) && u.roles.length > 0) {
+                        for (const item of u.roles) {
+                            if (typeof item === 'string' && item.trim()) {
+                                r = item.trim().replace(/^ROLE_/i, '').toUpperCase();
+                                break;
+                            }
+                            if (item && typeof item === 'object' && item.name) {
+                                r = String(item.name).trim().replace(/^ROLE_/i, '').toUpperCase();
+                                break;
+                            }
+                        }
+                    }
                     return r === 'RETAILER' || r === 'RETAILERS';
                 })
                 .filter((r) => {
-                    const rParentId = String(r?.parentUserId || r?.addedByUserRef || r?.ownerId || '').trim().toLowerCase();
-                    const rParentPartyCode = String(r?.parentPartyCode || r?.addedByPartyCode || r?.ownerPartyCode || '').trim().toUpperCase();
-                    const rParentMobile = String(r?.addedByMobile || r?.ownerMobile || '').trim();
+                    const rParentId = String(r?.parentUserId || r?.addedByUserRef || r?.ownerId || r?.parentId || r?.parent_id || (r?.parentUser && (r.parentUser.id || r.parentUser.userId)) || '').trim().toLowerCase();
+                    const rParentPartyCode = String(r?.parentPartyCode || r?.addedByPartyCode || r?.ownerPartyCode || (r?.parentUser && r.parentUser.partyCode) || '').trim().toUpperCase();
+                    const rParentMobile = String(r?.addedByMobile || r?.ownerMobile || r?.parentMobile || (r?.parentUser && (r.parentUser.mobile || r.parentUser.phone)) || '').trim();
+                    const rParentName = String(r?.addedByName || r?.ownerName || r?.parentName || (r?.parentUser && (r.parentUser.fullName || r.parentUser.name)) || '').trim().toLowerCase();
 
                     // Case A: Directly onboarded under this Super Distributor
                     const isDirect = (
-                        (saId && rParentId === saId) ||
-                        (saPartyCode && rParentPartyCode === saPartyCode) ||
-                        (saMobile && rParentMobile === saMobile) ||
-                        (saUsername && rParentId === saUsername)
+                        (saId && (rParentId === saId || rParentId.includes(saId))) ||
+                        (saPartyCode && rParentPartyCode && (rParentPartyCode === saPartyCode || rParentPartyCode.includes(saPartyCode))) ||
+                        (saMobile && (rParentMobile === saMobile || rParentId === saMobile.toLowerCase())) ||
+                        (saUsername && (rParentId === saUsername || rParentName === saUsername)) ||
+                        (saName && rParentName && (rParentName.includes(saName) || saName.includes(rParentName)))
                     );
 
                     // Case B: Onboarded under one of this Super Distributor's distributors
                     const isUnderChildDistributor = (
                         (rParentId && myDistributorIds.has(rParentId)) ||
                         (rParentPartyCode && myDistributorPartyCodes.has(rParentPartyCode)) ||
-                        (rParentMobile && myDistributorMobiles.has(rParentMobile))
+                        (rParentMobile && myDistributorMobiles.has(rParentMobile)) ||
+                        (rParentName && myDistributorNames.has(rParentName))
                     );
 
                     return isDirect || isUnderChildDistributor;
@@ -114,9 +150,10 @@ const Retailers = () => {
                         ? 'Pending KYC'
                         : normalizeStatus(u.status)
                 }));
+
             setRetailers(scopedRetailers);
         } catch (err) {
-            console.error('[SuperDistributor Retailers] loadData error:', err);
+            console.error(err);
         } finally {
             setLoading(false);
         }

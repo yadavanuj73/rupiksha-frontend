@@ -283,7 +283,21 @@ const DistributorDashboard = () => {
             // Multi-factor mapping filter (exact match with Retailers.jsx)
             const mapped = combinedList
                 .filter((u) => {
-                    const rRole = String(u?.role || (u?.roles && u.roles[0]) || '').replace(/^ROLE_/i, '').toUpperCase();
+                    let rRole = 'RETAILER';
+                    if (typeof u?.role === 'string' && u.role.trim()) {
+                        rRole = u.role.trim().replace(/^ROLE_/i, '').toUpperCase();
+                    } else if (Array.isArray(u?.roles) && u.roles.length > 0) {
+                        for (const r of u.roles) {
+                            if (typeof r === 'string' && r.trim()) {
+                                rRole = r.trim().replace(/^ROLE_/i, '').toUpperCase();
+                                break;
+                            }
+                            if (r && typeof r === 'object' && r.name) {
+                                rRole = String(r.name).trim().replace(/^ROLE_/i, '').toUpperCase();
+                                break;
+                            }
+                        }
+                    }
                     return rRole === 'RETAILER' || rRole === 'RETAILERS';
                 })
                 .filter((r) => {
@@ -292,10 +306,10 @@ const DistributorDashboard = () => {
                     const rMobile = String(r.mobile || r.phone || '').trim();
                     const rPartyCode = String(r.partyCode || r.userCode || '').trim().toUpperCase();
 
-                    const rParentId = String(r.parentUserId || r.ownerId || r.addedByUserRef || r.parent_id || r.parentId || '').trim().toLowerCase();
-                    const rParentPartyCode = String(r.parentPartyCode || r.addedByPartyCode || r.ownerPartyCode || '').trim().toUpperCase();
-                    const rParentName = String(r.parentName || r.addedByName || r.ownerName || '').trim().toLowerCase();
-                    const rParentMobile = String(r.parentMobile || r.ownerMobile || r.addedByMobile || '').trim();
+                    const rParentId = String(r.parentUserId || r.ownerId || r.addedByUserRef || r.parent_id || r.parentId || (r.parentUser && (r.parentUser.id || r.parentUser.userId)) || '').trim().toLowerCase();
+                    const rParentPartyCode = String(r.parentPartyCode || r.addedByPartyCode || r.ownerPartyCode || (r.parentUser && r.parentUser.partyCode) || '').trim().toUpperCase();
+                    const rParentName = String(r.parentName || r.addedByName || r.ownerName || (r.parentUser && (r.parentUser.fullName || r.parentUser.name)) || '').trim().toLowerCase();
+                    const rParentMobile = String(r.parentMobile || r.ownerMobile || r.addedByMobile || (r.parentUser && (r.parentUser.mobile || r.parentUser.phone)) || '').trim();
 
                     // Direct assignment list check
                     if (assignedSet.has(rUsername) || (rMobile && assignedSet.has(rMobile)) || (rPartyCode && assignedSet.has(rPartyCode.toLowerCase())) || (rId && assignedSet.has(rId))) {
@@ -308,7 +322,7 @@ const DistributorDashboard = () => {
                     }
 
                     // Party Code link check (e.g. RPDMH78914)
-                    if (distPartyCode && rParentPartyCode && rParentPartyCode === distPartyCode) {
+                    if (distPartyCode && rParentPartyCode && (rParentPartyCode === distPartyCode || rParentPartyCode.includes(distPartyCode))) {
                         return true;
                     }
 

@@ -35,22 +35,117 @@ const AllMembers = () => {
         setLoading(true);
         try {
             const allUsers = await dataService.getAllUsers();
-            const sa = sharedDataService.getCurrentSuperDistributor();
+            const sa = sharedDataService.getCurrentSuperDistributor() || dataService.getCurrentUser();
+            if (!sa) {
+                setMembers([]);
+                return;
+            }
             const users = Array.isArray(allUsers) ? allUsers : [];
-            const myDistributorIds = new Set(
-                users
-                    .filter((u) => String(u?.role || '').toUpperCase() === 'DISTRIBUTOR')
-                    .filter((u) => String(u?.addedByUserRef || '') === String(sa?.id || ''))
-                    .map((u) => String(u?.id || ''))
-            );
-            const scoped = users
-                .filter((u) => String(u?.role || '').toUpperCase() !== 'ADMIN')
+            const saId = String(sa?.id || sa?._id || sa?.userId || '').trim().toLowerCase();
+            const saPartyCode = String(sa?.partyCode || sa?.userCode || '').trim().toUpperCase();
+            const saMobile = String(sa?.mobile || sa?.phone || '').trim();
+            const saUsername = String(sa?.username || '').trim().toLowerCase();
+            const saName = String(sa?.name || sa?.fullName || '').trim().toLowerCase();
+
+            const myDistributors = users
                 .filter((u) => {
-                    const role = String(u?.role || '').toUpperCase();
-                    const addedBy = String(u?.addedByUserRef || '');
-                    if (role === 'DISTRIBUTOR') return addedBy === String(sa?.id || '');
-                    if (role === 'RETAILER') return addedBy === String(sa?.id || '') || myDistributorIds.has(addedBy);
-                    return String(u?.id || '') === String(sa?.id || '');
+                    let r = 'DISTRIBUTOR';
+                    if (typeof u?.role === 'string' && u.role.trim()) {
+                        r = u.role.trim().replace(/^ROLE_/i, '').toUpperCase();
+                    } else if (Array.isArray(u?.roles) && u.roles.length > 0) {
+                        for (const item of u.roles) {
+                            if (typeof item === 'string' && item.trim()) {
+                                r = item.trim().replace(/^ROLE_/i, '').toUpperCase();
+                                break;
+                            }
+                            if (item && typeof item === 'object' && item.name) {
+                                r = String(item.name).trim().replace(/^ROLE_/i, '').toUpperCase();
+                                break;
+                            }
+                        }
+                    }
+                    return r === 'DISTRIBUTOR';
+                })
+                .filter((d) => {
+                    const dParentId = String(d?.parentUserId || d?.addedByUserRef || d?.ownerId || d?.parentId || d?.parent_id || (d?.parentUser && (d.parentUser.id || d.parentUser.userId)) || '').trim().toLowerCase();
+                    const dParentPartyCode = String(d?.parentPartyCode || d?.addedByPartyCode || d?.ownerPartyCode || (d?.parentUser && d.parentUser.partyCode) || '').trim().toUpperCase();
+                    const dParentMobile = String(d?.addedByMobile || d?.ownerMobile || d?.parentMobile || (d?.parentUser && (d.parentUser.mobile || d.parentUser.phone)) || '').trim();
+                    const dParentName = String(d?.addedByName || d?.ownerName || d?.parentName || (d?.parentUser && (d.parentUser.fullName || d.parentUser.name)) || '').trim().toLowerCase();
+
+                    return (
+                        (saId && (dParentId === saId || dParentId.includes(saId))) ||
+                        (saPartyCode && dParentPartyCode && (dParentPartyCode === saPartyCode || dParentPartyCode.includes(saPartyCode))) ||
+                        (saMobile && (dParentMobile === saMobile || dParentId === saMobile.toLowerCase())) ||
+                        (saUsername && (dParentId === saUsername || dParentName === saUsername)) ||
+                        (saName && dParentName && (dParentName.includes(saName) || saName.includes(dParentName)))
+                    );
+                });
+
+            const myDistributorIds = new Set(myDistributors.map(d => String(d.id || d._id || d.userId || d.username || '').toLowerCase()).filter(Boolean));
+            const myDistributorPartyCodes = new Set(myDistributors.map(d => String(d.partyCode || d.userCode || '').toUpperCase()).filter(Boolean));
+            const myDistributorMobiles = new Set(myDistributors.map(d => String(d.mobile || d.phone || '')).filter(Boolean));
+            const myDistributorNames = new Set(myDistributors.map(d => String(d.fullName || d.name || '').toLowerCase()).filter(Boolean));
+
+            const scoped = users
+                .filter((u) => {
+                    let r = 'RETAILER';
+                    if (typeof u?.role === 'string' && u.role.trim()) {
+                        r = u.role.trim().replace(/^ROLE_/i, '').toUpperCase();
+                    } else if (Array.isArray(u?.roles) && u.roles.length > 0) {
+                        for (const item of u.roles) {
+                            if (typeof item === 'string' && item.trim()) {
+                                r = item.trim().replace(/^ROLE_/i, '').toUpperCase();
+                                break;
+                            }
+                            if (item && typeof item === 'object' && item.name) {
+                                r = String(item.name).trim().replace(/^ROLE_/i, '').toUpperCase();
+                                break;
+                            }
+                        }
+                    }
+                    return r !== 'ADMIN';
+                })
+                .filter((u) => {
+                    let r = 'RETAILER';
+                    if (typeof u?.role === 'string' && u.role.trim()) {
+                        r = u.role.trim().replace(/^ROLE_/i, '').toUpperCase();
+                    } else if (Array.isArray(u?.roles) && u.roles.length > 0) {
+                        for (const item of u.roles) {
+                            if (typeof item === 'string' && item.trim()) {
+                                r = item.trim().replace(/^ROLE_/i, '').toUpperCase();
+                                break;
+                            }
+                            if (item && typeof item === 'object' && item.name) {
+                                r = String(item.name).trim().replace(/^ROLE_/i, '').toUpperCase();
+                                break;
+                            }
+                        }
+                    }
+
+                    const parentRef = String(u?.parentUserId || u?.addedByUserRef || u?.ownerId || u?.parentId || u?.parent_id || (u?.parentUser && (u.parentUser.id || u.parentUser.userId)) || '').trim().toLowerCase();
+                    const parentCode = String(u?.parentPartyCode || u?.addedByPartyCode || u?.ownerPartyCode || (u?.parentUser && u.parentUser.partyCode) || '').trim().toUpperCase();
+                    const parentMobile = String(u?.addedByMobile || u?.ownerMobile || u?.parentMobile || (u?.parentUser && (u.parentUser.mobile || u.parentUser.phone)) || '').trim();
+                    const parentName = String(u?.addedByName || u?.ownerName || u?.parentName || (u?.parentUser && (u.parentUser.fullName || u.parentUser.name)) || '').trim().toLowerCase();
+
+                    const isDirect = (
+                        (saId && (parentRef === saId || parentRef.includes(saId))) ||
+                        (saPartyCode && parentCode && (parentCode === saPartyCode || parentCode.includes(saPartyCode))) ||
+                        (saMobile && (parentMobile === saMobile || parentRef === saMobile.toLowerCase())) ||
+                        (saUsername && (parentRef === saUsername || parentName === saUsername)) ||
+                        (saName && parentName && (parentName.includes(saName) || saName.includes(parentName)))
+                    );
+
+                    if (r === 'DISTRIBUTOR') return isDirect;
+                    if (r === 'RETAILER' || r === 'RETAILERS') {
+                        const isUnderChild = (
+                            (parentRef && myDistributorIds.has(parentRef)) ||
+                            (parentCode && myDistributorPartyCodes.has(parentCode)) ||
+                            (parentMobile && myDistributorMobiles.has(parentMobile)) ||
+                            (parentName && myDistributorNames.has(parentName))
+                        );
+                        return isDirect || isUnderChild;
+                    }
+                    return String(u?.id || '').toLowerCase() === saId;
                 });
             setMembers(scoped);
         } catch (err) {

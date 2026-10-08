@@ -181,135 +181,154 @@ const Retailers = () => {
 
     const loadData = async () => {
         setLoading(true);
-        const session = sharedDataService.getCurrentDistributor();
-        if (!session) {
-            setLoading(false);
-            return;
-        }
-        const freshDist = sharedDataService.getDistributorById(session.id) || session;
-        setDist(freshDist);
-
-        const distId = String(freshDist.id || freshDist._id || freshDist.userId || '').trim().toLowerCase();
-        const distPartyCode = String(freshDist.partyCode || freshDist.userCode || '').trim().toUpperCase();
-        const distMobile = String(freshDist.mobile || freshDist.phone || '').trim();
-        const distUsername = String(freshDist.username || '').trim().toLowerCase();
-        const distName = String(freshDist.name || freshDist.fullName || '').trim().toLowerCase();
-        const assignedList = (freshDist.assignedRetailers || []).map(x => String(x || '').trim());
-        const assignedSet = new Set(assignedList.map(x => x.toLowerCase()));
-
-        let allUsers = [];
         try {
-            allUsers = await dataService.getAllUsers();
-            if (!Array.isArray(allUsers)) allUsers = [];
-        } catch {
-            const fallback = dataService.getData().users || [];
-            allUsers = fallback;
-        }
-
-        // Also incorporate local data and user cache
-        const localUsers = dataService.getData().users || [];
-        const cachedUsersRaw = typeof localStorage !== 'undefined' ? localStorage.getItem('rupiksha_users_cache') : null;
-        let cachedUsers = [];
-        try {
-            if (cachedUsersRaw) cachedUsers = JSON.parse(cachedUsersRaw);
-        } catch { }
-
-        const userMap = new Map();
-        [...allUsers, ...localUsers, ...cachedUsers].forEach((u) => {
-            if (!u) return;
-            const key = String(u.id || u._id || u.username || u.mobile || u.partyCode || '');
-            if (key && !userMap.has(key)) {
-                userMap.set(key, u);
+            const session = sharedDataService.getCurrentDistributor() || dataService.getCurrentUser();
+            if (!session) {
+                setRetailers([]);
+                return;
             }
-        });
+            const freshDist = (session.id && sharedDataService.getDistributorById(session.id)) || session;
+            setDist(freshDist);
 
-        const combinedList = Array.from(userMap.values());
+            const distId = String(freshDist.id || freshDist._id || freshDist.userId || '').trim().toLowerCase();
+            const distPartyCode = String(freshDist.partyCode || freshDist.userCode || '').trim().toUpperCase();
+            const distMobile = String(freshDist.mobile || freshDist.phone || '').trim();
+            const distUsername = String(freshDist.username || '').trim().toLowerCase();
+            const distName = String(freshDist.name || freshDist.fullName || '').trim().toLowerCase();
+            const assignedList = (freshDist.assignedRetailers || []).map(x => String(x || '').trim());
+            const assignedSet = new Set(assignedList.map(x => x.toLowerCase()));
 
-        const assigned = combinedList
-            .filter((u) => {
-                const rRole = String(u?.role || (u?.roles && u.roles[0]) || '').replace(/^ROLE_/i, '').toUpperCase();
-                return rRole === 'RETAILER' || rRole === 'RETAILERS';
-            })
-            .filter((r) => {
-                const rId = String(r.id || r._id || r.userId || '').trim().toLowerCase();
-                const rUsername = String(r.username || '').trim().toLowerCase();
-                const rMobile = String(r.mobile || r.phone || '').trim();
-                const rPartyCode = String(r.partyCode || r.userCode || '').trim().toUpperCase();
+            let allUsers = [];
+            try {
+                allUsers = await dataService.getAllUsers();
+                if (!Array.isArray(allUsers)) allUsers = [];
+            } catch {
+                const fallback = dataService.getData().users || [];
+                allUsers = fallback;
+            }
 
-                const rParentId = String(r.parentUserId || r.ownerId || r.addedByUserRef || r.parent_id || r.parentId || '').trim().toLowerCase();
-                const rParentPartyCode = String(r.parentPartyCode || r.addedByPartyCode || r.ownerPartyCode || '').trim().toUpperCase();
-                const rParentName = String(r.parentName || r.addedByName || r.ownerName || '').trim().toLowerCase();
-                const rParentMobile = String(r.parentMobile || r.ownerMobile || r.addedByMobile || '').trim();
+            // Also incorporate local data and user cache
+            const localUsers = dataService.getData().users || [];
+            const cachedUsersRaw = typeof localStorage !== 'undefined' ? localStorage.getItem('rupiksha_users_cache') : null;
+            let cachedUsers = [];
+            try {
+                if (cachedUsersRaw) cachedUsers = JSON.parse(cachedUsersRaw);
+            } catch { }
 
-                // Direct assignment list check
-                if (assignedSet.has(rUsername) || (rMobile && assignedSet.has(rMobile)) || (rPartyCode && assignedSet.has(rPartyCode.toLowerCase())) || (rId && assignedSet.has(rId))) {
-                    return true;
+            const userMap = new Map();
+            [...allUsers, ...localUsers, ...cachedUsers].forEach((u) => {
+                if (!u) return;
+                const key = String(u.id || u._id || u.userId || u.username || u.mobile || u.partyCode || '');
+                if (key && !userMap.has(key)) {
+                    userMap.set(key, u);
                 }
-
-                // ID link check
-                if (distId && (rParentId === distId || rParentId.includes(distId))) {
-                    return true;
-                }
-
-                // Party Code link check (e.g. RPDMH78914)
-                if (distPartyCode && rParentPartyCode && rParentPartyCode === distPartyCode) {
-                    return true;
-                }
-
-                // Mobile link check
-                if (distMobile && (rParentMobile === distMobile || rParentId === distMobile.toLowerCase())) {
-                    return true;
-                }
-
-                // Username link check
-                if (distUsername && (rParentId === distUsername || rParentName === distUsername)) {
-                    return true;
-                }
-
-                // Owner Name link check
-                if (distName && rParentName && (rParentName.includes(distName) || distName.includes(rParentName))) {
-                    return true;
-                }
-
-                return false;
-            })
-            .map((u, idx) => {
-                let localAepsMap = {};
-                try { localAepsMap = JSON.parse(localStorage.getItem('rupiksha_last_aeps_map') || '{}'); } catch {}
-                const directAepsDate = u.lastAepsTxnDate || u.lastAepsDate || u.last_aeps_date || u.lastAeps || u.last_aeps || u.lastAepsTime || u.last_aeps_time || u.lastAepsTransaction || u.last_aeps_transaction || u.lastAepsAt || u.last_aeps_at || u.lastAeps1Date || u.lastAeps2Date || u.lastAeps1 || u.lastAeps2 || null;
-                const uKeys = [u.id, u._id, u.userId, u.username, u.mobile, u.phone, u.partyCode, u.userCode].filter(Boolean).map(k => String(k).trim().toLowerCase());
-                let resolvedAepsDate = directAepsDate;
-                uKeys.forEach(k => {
-                    if (localAepsMap[k]) {
-                        if (!resolvedAepsDate || new Date(localAepsMap[k]) > new Date(resolvedAepsDate)) {
-                            resolvedAepsDate = localAepsMap[k];
-                        }
-                    }
-                });
-
-                return {
-                    ...u,
-                    id: u.id || u._id || u.userId || u.username || u.mobile || `ret-${idx}`,
-                    fullName: u.fullName || u.name || (u.firstName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : (u.username || 'Retailer')),
-                    username: u.username || u.mobile || `user_${idx}`,
-                    mobile: u.mobile || u.phone || '—',
-                    email: u.email || '—',
-                    partyCode: u.partyCode || u.userCode || `RPRBR${70000 + idx}`,
-                    role: 'RETAILER',
-                    roles: ['RETAILER'],
-                    status: normalizeStatus(u.status),
-                    kycStatus: String(u.kycStatus || 'APPROVED').toUpperCase(),
-                    walletBalance: parseFloat(String(u.walletBalance ?? u.balance ?? u.wallet?.balance ?? 0).replace(/,/g, '')) || 0,
-                    addressLine1: u.shopAddress || u.address || u.permanentAddress || '—',
-                    city: u.city || u.shopCity || '—',
-                    stateName: u.state || u.shopState || 'BIHAR',
-                    lastAepsTxnDate: resolvedAepsDate,
-                    createdAt: u.createdAt || u.created_at || new Date().toISOString()
-                };
             });
 
-        setRetailers(assigned);
-        setLoading(false);
+            const combinedList = Array.from(userMap.values());
+
+            const assigned = combinedList
+                .filter((u) => {
+                    let rRole = 'RETAILER';
+                    if (typeof u?.role === 'string' && u.role.trim()) {
+                        rRole = u.role.trim().replace(/^ROLE_/i, '').toUpperCase();
+                    } else if (Array.isArray(u?.roles) && u.roles.length > 0) {
+                        for (const r of u.roles) {
+                            if (typeof r === 'string' && r.trim()) {
+                                rRole = r.trim().replace(/^ROLE_/i, '').toUpperCase();
+                                break;
+                            }
+                            if (r && typeof r === 'object' && r.name) {
+                                rRole = String(r.name).trim().replace(/^ROLE_/i, '').toUpperCase();
+                                break;
+                            }
+                        }
+                    }
+                    return rRole === 'RETAILER' || rRole === 'RETAILERS';
+                })
+                .filter((r) => {
+                    const rId = String(r.id || r._id || r.userId || '').trim().toLowerCase();
+                    const rUsername = String(r.username || '').trim().toLowerCase();
+                    const rMobile = String(r.mobile || r.phone || '').trim();
+                    const rPartyCode = String(r.partyCode || r.userCode || '').trim().toUpperCase();
+
+                    const rParentId = String(r.parentUserId || r.ownerId || r.addedByUserRef || r.parent_id || r.parentId || (r.parentUser && (r.parentUser.id || r.parentUser.userId)) || '').trim().toLowerCase();
+                    const rParentPartyCode = String(r.parentPartyCode || r.addedByPartyCode || r.ownerPartyCode || (r.parentUser && r.parentUser.partyCode) || '').trim().toUpperCase();
+                    const rParentName = String(r.parentName || r.addedByName || r.ownerName || (r.parentUser && (r.parentUser.fullName || r.parentUser.name)) || '').trim().toLowerCase();
+                    const rParentMobile = String(r.parentMobile || r.ownerMobile || r.addedByMobile || (r.parentUser && (r.parentUser.mobile || r.parentUser.phone)) || '').trim();
+
+                    // Direct assignment list check
+                    if (assignedSet.has(rUsername) || (rMobile && assignedSet.has(rMobile)) || (rPartyCode && assignedSet.has(rPartyCode.toLowerCase())) || (rId && assignedSet.has(rId))) {
+                        return true;
+                    }
+
+                    // ID link check
+                    if (distId && (rParentId === distId || rParentId.includes(distId))) {
+                        return true;
+                    }
+
+                    // Party Code link check (e.g. RPDMH78914)
+                    if (distPartyCode && rParentPartyCode && (rParentPartyCode === distPartyCode || rParentPartyCode.includes(distPartyCode))) {
+                        return true;
+                    }
+
+                    // Mobile link check
+                    if (distMobile && (rParentMobile === distMobile || rParentId === distMobile.toLowerCase())) {
+                        return true;
+                    }
+
+                    // Username link check
+                    if (distUsername && (rParentId === distUsername || rParentName === distUsername)) {
+                        return true;
+                    }
+
+                    // Owner Name link check
+                    if (distName && rParentName && (rParentName.includes(distName) || distName.includes(rParentName))) {
+                        return true;
+                    }
+
+                    return false;
+                })
+                .map((u, idx) => {
+                    let localAepsMap = {};
+                    try { localAepsMap = JSON.parse(localStorage.getItem('rupiksha_last_aeps_map') || '{}'); } catch {}
+                    const directAepsDate = u.lastAepsTxnDate || u.lastAepsDate || u.last_aeps_date || u.lastAeps || u.last_aeps || u.lastAepsTime || u.last_aeps_time || u.lastAepsTransaction || u.last_aeps_transaction || u.lastAepsAt || u.last_aeps_at || u.lastAeps1Date || u.lastAeps2Date || u.lastAeps1 || u.lastAeps2 || null;
+                    const uKeys = [u.id, u._id, u.userId, u.username, u.mobile, u.phone, u.partyCode, u.userCode].filter(Boolean).map(k => String(k).trim().toLowerCase());
+                    let resolvedAepsDate = directAepsDate;
+                    uKeys.forEach(k => {
+                        if (localAepsMap[k]) {
+                            if (!resolvedAepsDate || new Date(localAepsMap[k]) > new Date(resolvedAepsDate)) {
+                                resolvedAepsDate = localAepsMap[k];
+                            }
+                        }
+                    });
+
+                    return {
+                        ...u,
+                        id: u.id || u._id || u.userId || u.username || u.mobile || `ret-${idx}`,
+                        fullName: u.fullName || u.name || (u.firstName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : (u.username || 'Retailer')),
+                        username: u.username || u.mobile || `user_${idx}`,
+                        mobile: u.mobile || u.phone || '—',
+                        email: u.email || '—',
+                        partyCode: u.partyCode || u.userCode || `RPRBR${70000 + idx}`,
+                        role: 'RETAILER',
+                        roles: ['RETAILER'],
+                        status: normalizeStatus(u.status),
+                        kycStatus: String(u.kycStatus || 'APPROVED').toUpperCase(),
+                        walletBalance: parseFloat(String(u.walletBalance ?? u.balance ?? u.wallet?.balance ?? 0).replace(/,/g, '')) || 0,
+                        addressLine1: u.shopAddress || u.address || u.permanentAddress || '—',
+                        city: u.city || u.shopCity || '—',
+                        stateName: u.state || u.shopState || 'BIHAR',
+                        lastAepsTxnDate: resolvedAepsDate,
+                        createdAt: u.createdAt || u.created_at || new Date().toISOString()
+                    };
+                });
+
+            setRetailers(assigned);
+        } catch (err) {
+            console.error('Retailers loadData error:', err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
