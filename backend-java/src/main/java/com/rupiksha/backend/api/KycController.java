@@ -27,6 +27,10 @@ public class KycController {
     private final com.rupiksha.backend.repository.WalletEntryRepository walletEntryRepository;
 
     private Map<String, Object> toProfileMap(User user) {
+        return toProfileMap(user, false);
+    }
+
+    private Map<String, Object> toProfileMap(User user, boolean includeDocs) {
         String primaryRole = user.getRoles().stream()
                 .map(r -> r.getName().name())
                 .findFirst()
@@ -72,17 +76,34 @@ public class KycController {
         profile.put("panName", user.getFullName());
         profile.put("isPanVerified", user.getPanNumber() != null && !user.getPanNumber().isBlank());
         profile.put("aadhaarNumber", user.getAadhaarNumber());
-        profile.put("photoUrl", user.getPhotoUrl());
-        profile.put("profilePhoto", user.getPhotoUrl());
-        profile.put("aadhaarPhotoUrl", user.getAadhaarPhotoUrl());
-        profile.put("aadhaarBackPhotoUrl", user.getAadhaarBackPhotoUrl());
-        profile.put("panPhotoUrl", user.getPanPhotoUrl());
-        profile.put("shopPhotoUrl", user.getShopPhotoUrl());
-        profile.put("bankPassbookUrl", user.getBankPassbookUrl());
-        profile.put("liveSelfieUrl", user.getLiveSelfieUrl());
-        profile.put("voterIdUrl", user.getVoterIdUrl());
-        profile.put("drivingLicenceUrl", user.getDrivingLicenceUrl());
-        profile.put("passportUrl", user.getPassportUrl());
+
+        // Profile Photo / Avatar (keep if small or URL)
+        String photo = user.getPhotoUrl();
+        if (!includeDocs && photo != null && photo.length() > 50000) {
+            photo = null;
+        }
+        profile.put("photoUrl", photo);
+        profile.put("profilePhoto", photo);
+
+        if (includeDocs) {
+            profile.put("aadhaarPhotoUrl", user.getAadhaarPhotoUrl());
+            profile.put("aadhaarBackPhotoUrl", user.getAadhaarBackPhotoUrl());
+            profile.put("panPhotoUrl", user.getPanPhotoUrl());
+            profile.put("shopPhotoUrl", user.getShopPhotoUrl());
+            profile.put("bankPassbookUrl", user.getBankPassbookUrl());
+            profile.put("liveSelfieUrl", user.getLiveSelfieUrl());
+            profile.put("voterIdUrl", user.getVoterIdUrl());
+            profile.put("drivingLicenceUrl", user.getDrivingLicenceUrl());
+            profile.put("passportUrl", user.getPassportUrl());
+        } else {
+            profile.put("hasAadhaar", user.getAadhaarPhotoUrl() != null && !user.getAadhaarPhotoUrl().isBlank());
+            profile.put("hasAadhaarBack", user.getAadhaarBackPhotoUrl() != null && !user.getAadhaarBackPhotoUrl().isBlank());
+            profile.put("hasPan", (user.getPanNumber() != null && !user.getPanNumber().isBlank()) || (user.getPanPhotoUrl() != null && !user.getPanPhotoUrl().isBlank()));
+            profile.put("hasShopPhoto", user.getShopPhotoUrl() != null && !user.getShopPhotoUrl().isBlank());
+            profile.put("hasBankPassbook", user.getBankPassbookUrl() != null && !user.getBankPassbookUrl().isBlank());
+            profile.put("hasLiveSelfie", user.getLiveSelfieUrl() != null && !user.getLiveSelfieUrl().isBlank());
+        }
+
         profile.put("bankAccountHolder", user.getBankAccountHolder() != null ? user.getBankAccountHolder() : user.getFullName());
         profile.put("accHolderName", user.getBankAccountHolder() != null ? user.getBankAccountHolder() : user.getFullName());
         profile.put("bankName", user.getBankName());
@@ -95,22 +116,22 @@ public class KycController {
         profile.put("branchName", user.getBankBranch());
         profile.put("createdAt", user.getCreatedAt());
 
-        // Construct standard documents list so UI tabs render uploaded documents seamlessly
+        // Construct lightweight standard documents list without duplicating multi-megabyte base64 strings
         java.util.List<Map<String, String>> docs = new java.util.ArrayList<>();
         if (user.getAadhaarPhotoUrl() != null && !user.getAadhaarPhotoUrl().isBlank()) {
-            docs.add(Map.of("name", "Aadhaar Card (Front)", "status", "Verified", "date", "Registered", "file", user.getAadhaarPhotoUrl()));
+            docs.add(Map.of("name", "Aadhaar Card (Front)", "status", "Verified", "date", "Registered", "type", "aadhaar_front"));
         }
         if (user.getAadhaarBackPhotoUrl() != null && !user.getAadhaarBackPhotoUrl().isBlank()) {
-            docs.add(Map.of("name", "Aadhaar Card (Back)", "status", "Verified", "date", "Registered", "file", user.getAadhaarBackPhotoUrl()));
+            docs.add(Map.of("name", "Aadhaar Card (Back)", "status", "Verified", "date", "Registered", "type", "aadhaar_back"));
         }
         if (user.getPanPhotoUrl() != null && !user.getPanPhotoUrl().isBlank()) {
-            docs.add(Map.of("name", "PAN Card", "status", "Verified", "date", "Registered", "file", user.getPanPhotoUrl()));
+            docs.add(Map.of("name", "PAN Card", "status", "Verified", "date", "Registered", "type", "pan"));
         }
         if (user.getShopPhotoUrl() != null && !user.getShopPhotoUrl().isBlank()) {
-            docs.add(Map.of("name", "Shop Photo", "status", "Verified", "date", "Registered", "file", user.getShopPhotoUrl()));
+            docs.add(Map.of("name", "Shop Photo", "status", "Verified", "date", "Registered", "type", "shop"));
         }
         if (user.getBankPassbookUrl() != null && !user.getBankPassbookUrl().isBlank()) {
-            docs.add(Map.of("name", "Bank Passbook / Cheque", "status", "Verified", "date", "Registered", "file", user.getBankPassbookUrl()));
+            docs.add(Map.of("name", "Bank Passbook / Cheque", "status", "Verified", "date", "Registered", "type", "bank_passbook"));
         }
         profile.put("documents", docs);
 
@@ -122,7 +143,8 @@ public class KycController {
             @AuthenticationPrincipal JwtPrincipal principal,
             @RequestParam(required = false) String userId,
             @RequestParam(required = false) String username,
-            @RequestParam(required = false) String mobile
+            @RequestParam(required = false) String mobile,
+            @RequestParam(required = false, defaultValue = "false") boolean includeDocs
     ) {
         User user = null;
         if (principal != null && principal.userId() != null) {
@@ -157,7 +179,37 @@ public class KycController {
         if (user == null) {
             throw new IllegalArgumentException("User not found or unauthorized");
         }
-        return Map.of("success", true, "user", toProfileMap(user));
+        return Map.of("success", true, "user", toProfileMap(user, includeDocs));
+    }
+
+    @GetMapping({"/documents", "/profile/documents"})
+    public Map<String, Object> getUserDocuments(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @RequestParam(required = false) String userId
+    ) {
+        User user = null;
+        if (principal != null && principal.userId() != null) {
+            try { user = userRepository.findById(UUID.fromString(principal.userId())).orElse(null); } catch (Exception ignored) {}
+        }
+        if (user == null && userId != null && !userId.isBlank()) {
+            try { user = userRepository.findById(UUID.fromString(userId.trim())).orElse(null); } catch (Exception ignored) {}
+        }
+        if (user == null) {
+            throw new IllegalArgumentException("User not found or unauthorized");
+        }
+        Map<String, Object> docs = new HashMap<>();
+        docs.put("userId", user.getId().toString());
+        docs.put("photoUrl", user.getPhotoUrl());
+        docs.put("aadhaarPhotoUrl", user.getAadhaarPhotoUrl());
+        docs.put("aadhaarBackPhotoUrl", user.getAadhaarBackPhotoUrl());
+        docs.put("panPhotoUrl", user.getPanPhotoUrl());
+        docs.put("shopPhotoUrl", user.getShopPhotoUrl());
+        docs.put("bankPassbookUrl", user.getBankPassbookUrl());
+        docs.put("drivingLicenceUrl", user.getDrivingLicenceUrl());
+        docs.put("voterIdUrl", user.getVoterIdUrl());
+        docs.put("passportUrl", user.getPassportUrl());
+        docs.put("liveSelfieUrl", user.getLiveSelfieUrl());
+        return Map.of("success", true, "documents", docs);
     }
 
     @PostMapping({"/update-profile", "/profile/update", "/profile"})

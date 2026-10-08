@@ -93,12 +93,44 @@ public class AdminController {
                 ));
 
         List<Map<String, Object>> dtos = users.stream()
-                .map(u -> toAdminDto(u, walletMap))
+                .map(u -> toAdminDto(u, walletMap, false))
                 .toList();
         return Map.of(
                 "success", true,
                 "users", dtos
         );
+    }
+
+    /**
+     * Single user detail endpoint with full KYC documents loaded on-demand.
+     */
+    @GetMapping({"/users/{identifier}", "/members/{identifier}"})
+    public Map<String, Object> getUserDetails(@PathVariable String identifier) {
+        User u = resolveUser(identifier);
+        if (u == null) return Map.of("success", false, "error", "User not found");
+        return Map.of("success", true, "user", toAdminDto(u, Collections.emptyMap(), true));
+    }
+
+    /**
+     * User document images for lightbox / inspector modals.
+     */
+    @GetMapping({"/users/{identifier}/documents", "/members/{identifier}/documents"})
+    public Map<String, Object> getUserDocuments(@PathVariable String identifier) {
+        User u = resolveUser(identifier);
+        if (u == null) return Map.of("success", false, "error", "User not found");
+        Map<String, Object> docs = new HashMap<>();
+        docs.put("userId", u.getId().toString());
+        docs.put("photoUrl", u.getPhotoUrl());
+        docs.put("aadhaarPhotoUrl", u.getAadhaarPhotoUrl());
+        docs.put("aadhaarBackPhotoUrl", u.getAadhaarBackPhotoUrl());
+        docs.put("panPhotoUrl", u.getPanPhotoUrl());
+        docs.put("shopPhotoUrl", u.getShopPhotoUrl());
+        docs.put("bankPassbookUrl", u.getBankPassbookUrl());
+        docs.put("drivingLicenceUrl", u.getDrivingLicenceUrl());
+        docs.put("voterIdUrl", u.getVoterIdUrl());
+        docs.put("passportUrl", u.getPassportUrl());
+        docs.put("liveSelfieUrl", u.getLiveSelfieUrl());
+        return Map.of("success", true, "documents", docs);
     }
 
     /**
@@ -756,10 +788,10 @@ public class AdminController {
                 .orElse(null);
     }
 
-    /** Light DTO for the admin members list. Excludes password hash and base64 KYC blobs.
+    /** Light DTO for the admin members list. Excludes password hash and base64 KYC blobs by default.
      *  Accepts a pre-built wallet balance map for batch-load callers; falls back to
      *  a direct single-user lookup when the map is empty (detail / approval views). */
-    private Map<String, Object> toAdminDto(User u, Map<UUID, BigDecimal> walletMap) {
+    private Map<String, Object> toAdminDto(User u, Map<UUID, BigDecimal> walletMap, boolean includeDocuments) {
         String primaryRole = u.getRoles().stream()
                 .map(r -> r.getName().name())
                 .findFirst()
@@ -787,11 +819,37 @@ public class AdminController {
         dto.put("dob", u.getDob());
         dto.put("shopAddress", u.getShopAddress());
         dto.put("permanentAddress", u.getPermanentAddress());
-        dto.put("photoUrl", u.getPhotoUrl());
-        dto.put("aadhaarPhotoUrl", u.getAadhaarPhotoUrl());
-        dto.put("panPhotoUrl", u.getPanPhotoUrl());
-        dto.put("shopPhotoUrl", u.getShopPhotoUrl());
-        dto.put("bankPassbookUrl", u.getBankPassbookUrl());
+
+        // Avatar / Photo: keep if short URL or small; omit if massive base64 in list view
+        String photo = u.getPhotoUrl();
+        if (!includeDocuments && photo != null && photo.length() > 50000) {
+            photo = null;
+        }
+        dto.put("photoUrl", photo);
+
+        if (includeDocuments) {
+            dto.put("aadhaarPhotoUrl", u.getAadhaarPhotoUrl());
+            dto.put("panPhotoUrl", u.getPanPhotoUrl());
+            dto.put("shopPhotoUrl", u.getShopPhotoUrl());
+            dto.put("bankPassbookUrl", u.getBankPassbookUrl());
+            dto.put("aadhaarBackPhotoUrl", u.getAadhaarBackPhotoUrl());
+            dto.put("drivingLicenceUrl", u.getDrivingLicenceUrl());
+            dto.put("voterIdUrl", u.getVoterIdUrl());
+            dto.put("passportUrl", u.getPassportUrl());
+            dto.put("liveSelfieUrl", u.getLiveSelfieUrl());
+        } else {
+            // Lightweight flags so UI knows document availability without 40MB download
+            dto.put("hasAadhaar", u.getAadhaarPhotoUrl() != null && !u.getAadhaarPhotoUrl().isBlank());
+            dto.put("hasPan", (u.getPanNumber() != null && !u.getPanNumber().isBlank()) || (u.getPanPhotoUrl() != null && !u.getPanPhotoUrl().isBlank()));
+            dto.put("hasShopPhoto", u.getShopPhotoUrl() != null && !u.getShopPhotoUrl().isBlank());
+            dto.put("hasBankPassbook", u.getBankPassbookUrl() != null && !u.getBankPassbookUrl().isBlank());
+            dto.put("hasAadhaarBack", u.getAadhaarBackPhotoUrl() != null && !u.getAadhaarBackPhotoUrl().isBlank());
+            dto.put("hasDrivingLicence", u.getDrivingLicenceUrl() != null && !u.getDrivingLicenceUrl().isBlank());
+            dto.put("hasVoterId", u.getVoterIdUrl() != null && !u.getVoterIdUrl().isBlank());
+            dto.put("hasPassport", u.getPassportUrl() != null && !u.getPassportUrl().isBlank());
+            dto.put("hasLiveSelfie", u.getLiveSelfieUrl() != null && !u.getLiveSelfieUrl().isBlank());
+        }
+
         dto.put("kycSubmittedAt", u.getKycSubmittedAt());
         dto.put("kycApprovedAt", u.getKycApprovedAt());
         dto.put("kycRejectionReason", u.getKycRejectionReason());
@@ -828,12 +886,7 @@ public class AdminController {
         dto.put("bankIfsc", u.getBankIfsc());
         dto.put("bankBranch", u.getBankBranch());
 
-        // Documents & Live Verification
-        dto.put("aadhaarBackPhotoUrl", u.getAadhaarBackPhotoUrl());
-        dto.put("drivingLicenceUrl", u.getDrivingLicenceUrl());
-        dto.put("voterIdUrl", u.getVoterIdUrl());
-        dto.put("passportUrl", u.getPassportUrl());
-        dto.put("liveSelfieUrl", u.getLiveSelfieUrl());
+        // Live Verification / Location
         dto.put("gpsLat", u.getGpsLat());
         dto.put("gpsLong", u.getGpsLong());
         dto.put("gpsTimestamp", u.getGpsTimestamp());
@@ -870,9 +923,14 @@ public class AdminController {
         return dto;
     }
 
+    /** Overload for batch / map calls */
+    private Map<String, Object> toAdminDto(User u, Map<UUID, BigDecimal> walletMap) {
+        return toAdminDto(u, walletMap, false);
+    }
+
     /** Convenience overload for single-user endpoints (approvals, kyc detail, etc.) */
     private Map<String, Object> toAdminDto(User u) {
-        return toAdminDto(u, Collections.emptyMap());
+        return toAdminDto(u, Collections.emptyMap(), true);
     }
 
     private RoleName mapRole(String raw) {

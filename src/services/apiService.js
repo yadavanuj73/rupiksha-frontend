@@ -273,7 +273,8 @@ export const transactionService = {
 
 // ─── USER PROFILE ─────────────────────────────────────────────────────────────
 export const userService = {
-  getProfile: () => apiFetch("/user/profile"),
+  getProfile: (includeDocs = false) => apiFetch(`/user/profile${includeDocs ? '?includeDocs=true' : ''}`),
+  getDocuments: (userId) => apiFetch(`/user/documents${userId ? `?userId=${encodeURIComponent(userId)}` : ''}`),
   getUserServices: async () => {
     try {
       const res = await apiFetch("/user/services");
@@ -345,6 +346,8 @@ export const kycService = {
 // ─── ADMIN MANAGEMENT SERVICE ─────────────────────────────────────────────────
 export const adminService = {
   getUsers: () => apiFetch("/admin/users"),
+  getUserDetails: (id) => apiFetch(`/admin/users/${encodeURIComponent(id)}`),
+  getUserDocuments: (id) => apiFetch(`/admin/users/${encodeURIComponent(id)}/documents`),
   getApprovals: () => apiFetch("/admin/approvals"),
   getPendingKyc: () => apiFetch("/admin/kyc/pending"),
   getAllKyc: () => apiFetch("/admin/kyc/all"),

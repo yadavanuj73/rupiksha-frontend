@@ -1665,6 +1665,34 @@ export const dataService = {
         return getAllUsersPromise;
     },
 
+    getUserDetails: async function (identifier) {
+        if (!identifier) return null;
+        try {
+            const res = await authFetch(`${BACKEND_URL}/admin/users/${encodeURIComponent(identifier)}`);
+            const data = await safeJson(res, null);
+            if (res.ok && data?.success && data.user) {
+                return data.user;
+            }
+        } catch (e) {
+            console.warn('[getUserDetails] error:', e);
+        }
+        return null;
+    },
+
+    getUserDocuments: async function (identifier) {
+        if (!identifier) return null;
+        try {
+            const res = await authFetch(`${BACKEND_URL}/admin/users/${encodeURIComponent(identifier)}/documents`);
+            const data = await safeJson(res, null);
+            if (res.ok && data?.success && data.documents) {
+                return data.documents;
+            }
+        } catch (e) {
+            console.warn('[getUserDocuments] error:', e);
+        }
+        return null;
+    },
+
     getAllTransactions: async function () {
         if (useLocalOnly) return this.getData().transactions || [];
         try {

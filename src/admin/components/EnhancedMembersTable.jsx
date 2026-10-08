@@ -413,8 +413,21 @@ const EnhancedMembersTable = () => {
     };
 
     const handleViewDetail = async (member) => {
-        const found = members.find(m => m.id === member.id || m._id === member.id);
-        if (found) { setSelectedMember(found); setShowDetailModal(true); setShowPassword(false); }
+        const found = members.find(m => m.id === member.id || m._id === member.id) || member;
+        if (found) {
+            setSelectedMember(found);
+            setShowDetailModal(true);
+            setShowPassword(false);
+            const targetId = found.id || found._id;
+            if (targetId && !found.aadhaarPhotoUrl && !found.panPhotoUrl) {
+                try {
+                    const docs = await dataService.getUserDocuments(targetId);
+                    if (docs) {
+                        setSelectedMember(prev => (prev && (prev.id === targetId || prev._id === targetId)) ? { ...prev, ...docs } : prev);
+                    }
+                } catch (_) {}
+            }
+        }
     };
 
     const handleViewServices = async (member) => {
