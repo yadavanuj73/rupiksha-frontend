@@ -366,7 +366,12 @@ export default function NetworkRegistrationForm({
                 if (uplineId && uplineRole === 'DISTRIBUTOR' && form.role === 'RETAILER') {
                     sharedDataService.assignRetailerToDistributor(uplineId, form.mobile);
                 }
-                if (uplineId && uplineRole === 'SUPER_DISTRIBUTOR' && form.role === 'DISTRIBUTOR') {
+                if (uplineId && uplineRole === 'SUPER_DISTRIBUTOR') {
+                    if (form.role === 'DISTRIBUTOR') {
+                        sharedDataService.assignDistributorToSuperDistributor(uplineId, form.mobile);
+                    } else if (form.role === 'RETAILER') {
+                        sharedDataService.assignRetailerToSuperDistributor(uplineId, form.mobile);
+                    }
                     try {
                         const pending = JSON.parse(localStorage.getItem('sa_pending_network') || '[]');
                         pending.push({

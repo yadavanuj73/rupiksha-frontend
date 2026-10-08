@@ -356,7 +356,7 @@ export const sharedDataService = {
 
     assignRetailerToDistributor: function (distId, retailerUsername) {
         const dists = this.getAllDistributors();
-        const idx = dists.findIndex(d => d.id === distId);
+        const idx = dists.findIndex(d => d.id === distId || d.partyCode === distId || d.username === distId || d.mobile === distId);
         if (idx !== -1) {
             if (!dists[idx].assignedRetailers) dists[idx].assignedRetailers = [];
             if (!dists[idx].assignedRetailers.includes(retailerUsername)) {
@@ -368,10 +368,34 @@ export const sharedDataService = {
 
     unassignRetailerFromDistributor: function (distId, retailerUsername) {
         const dists = this.getAllDistributors();
-        const idx = dists.findIndex(d => d.id === distId);
+        const idx = dists.findIndex(d => d.id === distId || d.partyCode === distId || d.username === distId || d.mobile === distId);
         if (idx !== -1 && dists[idx].assignedRetailers) {
             dists[idx].assignedRetailers = dists[idx].assignedRetailers.filter(u => u !== retailerUsername);
             this.saveDistributors(dists);
+        }
+    },
+
+    assignDistributorToSuperDistributor: function (saId, distUsername) {
+        const sas = this.getAllSuperDistributors();
+        const idx = sas.findIndex(s => s.id === saId || s.partyCode === saId || s.username === saId || s.mobile === saId);
+        if (idx !== -1) {
+            if (!sas[idx].assignedDistributors) sas[idx].assignedDistributors = [];
+            if (!sas[idx].assignedDistributors.includes(distUsername)) {
+                sas[idx].assignedDistributors.push(distUsername);
+                this.saveSuperDistributors(sas);
+            }
+        }
+    },
+
+    assignRetailerToSuperDistributor: function (saId, retailerUsername) {
+        const sas = this.getAllSuperDistributors();
+        const idx = sas.findIndex(s => s.id === saId || s.partyCode === saId || s.username === saId || s.mobile === saId);
+        if (idx !== -1) {
+            if (!sas[idx].assignedRetailers) sas[idx].assignedRetailers = [];
+            if (!sas[idx].assignedRetailers.includes(retailerUsername)) {
+                sas[idx].assignedRetailers.push(retailerUsername);
+                this.saveSuperDistributors(sas);
+            }
         }
     },
 

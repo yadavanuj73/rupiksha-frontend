@@ -251,6 +251,25 @@ const SuperDistributorDashboard = () => {
 
             const sdId = String(freshDist.id || freshDist._id || freshDist.userId || '').trim().toLowerCase();
             const sdPartyCode = String(freshDist.partyCode || freshDist.userCode || '').trim().toUpperCase();
+            const sdMobile = String(freshDist.mobile || freshDist.phone || '').trim();
+            const sdUsername = String(freshDist.username || '').trim().toLowerCase();
+
+            const assignedDistsList = (freshDist.assignedDistributors || []).map(x => String(x || '').trim());
+            const assignedDistsSet = new Set(assignedDistsList.map(x => x.toLowerCase()));
+
+            const assignedRtlsList = (freshDist.assignedRetailers || []).map(x => String(x || '').trim());
+            const assignedRtlsSet = new Set(assignedRtlsList.map(x => x.toLowerCase()));
+
+            // Also check pending network cache
+            try {
+                const pending = JSON.parse(localStorage.getItem('sa_pending_network') || '[]');
+                pending.forEach(p => {
+                    if (p.saId === sdId || p.saId === sdPartyCode || p.saId === sdMobile) {
+                        if (p.role === 'DISTRIBUTOR' && p.mobile) assignedDistsSet.add(String(p.mobile).toLowerCase());
+                        if (p.role === 'RETAILER' && p.mobile) assignedRtlsSet.add(String(p.mobile).toLowerCase());
+                    }
+                });
+            } catch {}
 
             // Fetch all users
             let allUsers = [];
@@ -276,10 +295,6 @@ const SuperDistributorDashboard = () => {
             const combinedList = Array.from(userMap.values());
 
             // 1. Mapped Distributors under this Super Distributor
-            const sdMobile = String(freshDist.mobile || freshDist.phone || '').trim();
-            const sdUsername = String(freshDist.username || '').trim().toLowerCase();
-            const sdName = String(freshDist.name || freshDist.fullName || '').trim().toLowerCase();
-
             const myDists = combinedList.filter((u) => {
                 let rRole = 'DISTRIBUTOR';
                 if (typeof u?.role === 'string' && u.role.trim()) {
@@ -300,25 +315,24 @@ const SuperDistributorDashboard = () => {
 
                 const parentRef = String(u?.parentUserId || u?.addedByUserRef || u?.ownerId || u?.parentId || u?.parent_id || (u?.parentUser && (u.parentUser.id || u.parentUser.userId)) || '').trim().toLowerCase();
                 const parentCode = String(u?.parentPartyCode || u?.addedByPartyCode || u?.ownerPartyCode || (u?.parentUser && u.parentUser.partyCode) || '').trim().toUpperCase();
-                const parentMobile = String(u?.addedByMobile || u?.ownerMobile || u?.parentMobile || (u?.parentUser && (u.parentUser.mobile || u.parentUser.phone)) || '').trim();
-                const parentName = String(u?.addedByName || u?.ownerName || u?.parentName || (u?.parentUser && (u.parentUser.fullName || u.parentUser.name)) || '').trim().toLowerCase();
+                const uUsername = String(u.username || '').toLowerCase();
+                const uMobile = String(u.mobile || u.phone || '').toLowerCase();
+                const uPartyCode = String(u.partyCode || u.userCode || '').toLowerCase();
+                const uId = String(u.id || u._id || u.userId || '').toLowerCase();
+
+                if (assignedDistsSet.has(uUsername) || assignedDistsSet.has(uMobile) || assignedDistsSet.has(uPartyCode) || assignedDistsSet.has(uId)) {
+                    return true;
+                }
 
                 return (
                     (sdId && (parentRef === sdId || parentRef.includes(sdId))) ||
                     (sdPartyCode && parentCode && (parentCode === sdPartyCode || parentCode.includes(sdPartyCode))) ||
-                    (sdMobile && (parentMobile === sdMobile || parentRef === sdMobile.toLowerCase())) ||
-                    (sdUsername && (parentRef === sdUsername || parentName === sdUsername)) ||
-                    (sdName && parentName && (parentName.includes(sdName) || sdName.includes(parentName)))
+                    (sdUsername && parentRef === sdUsername)
                 );
             });
             setDistributors(myDists);
 
-            const myDistIds = new Set(myDists.map(d => String(d.id || d._id || d.userId || d.username || '').toLowerCase()).filter(Boolean));
-            const myDistPartyCodes = new Set(myDists.map(d => String(d.partyCode || d.userCode || '').toUpperCase()).filter(Boolean));
-            const myDistMobiles = new Set(myDistributors.map(d => String(d.mobile || d.phone || '')).filter(Boolean));
-            const myDistNames = new Set(myDistributors.map(d => String(d.fullName || d.name || '').toLowerCase()).filter(Boolean));
-
-            // 2. Mapped Retailers under this Super Distributor or under its Distributors
+            // 2. Mapped Retailers under this Super Distributor
             const myRtls = combinedList.filter((u) => {
                 let rRole = 'RETAILER';
                 if (typeof u?.role === 'string' && u.role.trim()) {
@@ -339,25 +353,20 @@ const SuperDistributorDashboard = () => {
 
                 const parentRef = String(u?.parentUserId || u?.addedByUserRef || u?.ownerId || u?.parentId || u?.parent_id || (u?.parentUser && (u.parentUser.id || u.parentUser.userId)) || '').trim().toLowerCase();
                 const parentCode = String(u?.parentPartyCode || u?.addedByPartyCode || u?.ownerPartyCode || (u?.parentUser && u.parentUser.partyCode) || '').trim().toUpperCase();
-                const parentMobile = String(u?.addedByMobile || u?.ownerMobile || u?.parentMobile || (u?.parentUser && (u.parentUser.mobile || u.parentUser.phone)) || '').trim();
-                const parentName = String(u?.addedByName || u?.ownerName || u?.parentName || (u?.parentUser && (u.parentUser.fullName || u.parentUser.name)) || '').trim().toLowerCase();
+                const uUsername = String(u.username || '').toLowerCase();
+                const uMobile = String(u.mobile || u.phone || '').toLowerCase();
+                const uPartyCode = String(u.partyCode || u.userCode || '').toLowerCase();
+                const uId = String(u.id || u._id || u.userId || '').toLowerCase();
 
-                const isDirect = (
+                if (assignedRtlsSet.has(uUsername) || assignedRtlsSet.has(uMobile) || assignedRtlsSet.has(uPartyCode) || assignedRtlsSet.has(uId)) {
+                    return true;
+                }
+
+                return (
                     (sdId && (parentRef === sdId || parentRef.includes(sdId))) ||
                     (sdPartyCode && parentCode && (parentCode === sdPartyCode || parentCode.includes(sdPartyCode))) ||
-                    (sdMobile && (parentMobile === sdMobile || parentRef === sdMobile.toLowerCase())) ||
-                    (sdUsername && (parentRef === sdUsername || parentName === sdUsername)) ||
-                    (sdName && parentName && (parentName.includes(sdName) || sdName.includes(parentName)))
+                    (sdUsername && parentRef === sdUsername)
                 );
-
-                const isChildDist = (
-                    (parentRef && myDistIds.has(parentRef)) ||
-                    (parentCode && myDistPartyCodes.has(parentCode)) ||
-                    (parentMobile && myDistMobiles.has(parentMobile)) ||
-                    (parentName && myDistNames.has(parentName))
-                );
-
-                return isDirect || isChildDist;
             });
             setRetailers(myRtls);
 
@@ -515,7 +524,7 @@ const SuperDistributorDashboard = () => {
     });
 
     // Total Float across network
-    const totalMappedFloat = networkUsers.reduce((sum, r) => sum + (parseFloat(r.balance || r?.wallet?.balance || 0) || 0), 0);
+    const totalMappedFloat = networkUsers.reduce((sum, r) => sum + (parseFloat(r.walletBalance || r.balance || r?.wallet?.balance || 0) || 0), 0);
 
     // Compute Service-by-Service Stats dynamically from Mapped Transactions
     const now = new Date();
