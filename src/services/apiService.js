@@ -216,6 +216,33 @@ export const walletService = {
     }),
 };
 
+// ─── WALLET TRANSFER ──────────────────────────────────────────────────────────
+export const walletTransferService = {
+  searchRecipient: (mobile) =>
+    apiFetch(`/wallet-transfer/recipients?mobile=${encodeURIComponent(mobile)}`),
+  transfer: (data) => {
+    const idempotencyKey = data.idempotencyKey || makeIdempotencyKey();
+    return apiFetch("/wallet-transfer", {
+      method: "POST",
+      headers: {
+        "X-Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify({ ...data, idempotencyKey }),
+    });
+  },
+  getTransferDetails: (ref) =>
+    apiFetch(`/wallet-transfer/${encodeURIComponent(ref)}`),
+  getHistory: (filters = {}) => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') {
+        params.append(k, v);
+      }
+    });
+    return apiFetch(`/wallet-transfer/history?${params.toString()}`);
+  },
+};
+
 // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
 export const transactionService = {
   getAll: (filters = {}) => {

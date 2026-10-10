@@ -281,6 +281,17 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
                         />
                     ))}
 
+                    <MenuItem
+                        item={{ id: 'wallet_to_wallet', label: 'Wallet to Wallet', icon: Coins }}
+                        isActive={activeTab === 'wallet_to_wallet'}
+                        onClick={() => setActiveTab('wallet_to_wallet')}
+                        isExpanded={false}
+                        toggleExpand={toggleExpand}
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                        isSidebarOpen={isExpanded}
+                    />
+
                     {businessItems.map((item) => (
                         <MenuItem
                             key={item.id}

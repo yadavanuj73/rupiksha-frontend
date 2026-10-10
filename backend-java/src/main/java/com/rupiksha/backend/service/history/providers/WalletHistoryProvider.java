@@ -134,7 +134,7 @@ public class WalletHistoryProvider extends BaseHistoryProvider {
 
     private WalletTransactionContext getWalletContext(TransactionReportType reportType) {
         if (reportType == TransactionReportType.WALLET_TRANSFER) {
-            return WalletTransactionContext.MANUAL_ADJUSTMENT;
+            return WalletTransactionContext.WALLET_TRANSFER;
         }
         return null;
     }

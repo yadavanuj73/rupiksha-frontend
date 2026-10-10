@@ -50,6 +50,7 @@ const RetailerLayout = () => {
         if (path === '/reports/audit-report') return 'all';
         if (path === '/gst-invoice-report') return ['gst_einvoice', 'gst_einvoice_report'].includes(reportType) ? reportType : 'gst_einvoice_report';
 
+        if (path === '/wallet-to-wallet') return 'wallet_to_wallet';
         if (path.startsWith('/reports')) {
             return reportType || 'reports';
         }
@@ -160,6 +161,7 @@ const RetailerLayout = () => {
             'travelhub': '/travel',
             'bharat_connect': '/bharat-connect',
             'payout': '/payout-hub',
+            'wallet_to_wallet': '/wallet-to-wallet',
             'all_services': '/dashboard',
             'reports': '/reports',
             'commission': '/commission',

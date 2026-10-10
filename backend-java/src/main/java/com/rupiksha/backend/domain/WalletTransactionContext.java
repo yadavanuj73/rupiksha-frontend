@@ -25,5 +25,6 @@ public enum WalletTransactionContext {
     SYSTEM_ADJUSTMENT,
     STATUS_CHANGE,
     REVERSAL,
-    PLAN_UPGRADE
+    PLAN_UPGRADE,
+    WALLET_TRANSFER
 }

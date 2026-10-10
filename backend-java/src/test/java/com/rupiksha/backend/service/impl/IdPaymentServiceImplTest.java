@@ -45,6 +45,9 @@ class IdPaymentServiceImplTest {
     @Mock
     private AppProperties appProperties;
 
+    @Mock
+    private com.rupiksha.backend.service.AuthService authService;
+
     @InjectMocks
     private IdPaymentServiceImpl idPaymentService;
 
@@ -244,6 +247,7 @@ class IdPaymentServiceImplTest {
         txn.setCoupon(validCoupon);
 
         when(idPaymentTransactionRepository.findByRazorpayOrderId("order_test_123")).thenReturn(Optional.of(txn));
+        when(authService.issueTokensForUser(any())).thenReturn(new com.rupiksha.backend.api.dto.AuthDtos.AuthResponse("mock_token", "mock_refresh", "Bearer", 3600L, null));
 
         IdPaymentDtos.VerifyPaymentRequest req = new IdPaymentDtos.VerifyPaymentRequest(
                 "order_test_123", "pay_test_999", "sig_test_abc"

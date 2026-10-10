@@ -30,6 +30,7 @@ const Leadership = lazy(() => import('./landing/Leadership'));
 const CompleteKyc = lazy(() => import('./pages/CompleteKyc'));
 const IdPayment = lazy(() => import('./pages/IdPayment'));
 const VerifyCertificate = lazy(() => import('./pages/VerifyCertificate'));
+const WalletTransfer = lazy(() => import('./pages/WalletTransfer'));
 
 // Retailer
 const RetailerLayout = lazy(() => import('./retailer/components/RetailerLayout'));
@@ -233,6 +234,7 @@ function App() {
                 <Route path="/bharat-connect" element={<BharatConnect />} />
                 <Route path="/payout-hub" element={<PayoutHub />} />
                 <Route path="/payout" element={<Payout />} />
+                <Route path="/wallet-to-wallet" element={<WalletTransfer />} />
                 <Route path="/aeps" element={<Navigate to="/aeps-2" replace />} />
                 <Route path="/aeps-1" element={<AEPS />} />
                 <Route path="/aeps-2" element={<AEPS />} />
@@ -274,6 +276,7 @@ function App() {
                 <Route index element={<DistributorDashboard />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="all-services" element={<AllServices readOnly />} />
+                <Route path="wallet-to-wallet" element={<WalletTransfer />} />
                 <Route path="distributors" element={<SuperDistributorDistributors />} />
                 <Route path="retailers" element={<Retailers />} />
                 <Route path="retailers/details" element={<Retailers />} />
@@ -319,6 +322,7 @@ function App() {
                 <Route index element={<SuperDistributorDashboard />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="all-services" element={<AllServices readOnly />} />
+                <Route path="wallet-to-wallet" element={<WalletTransfer />} />
                 <Route path="members" element={<SuperDistributorMembers />} />
                 <Route path="distributors" element={<SuperDistributorDistributors />} />
                 <Route path="super-distributors" element={<SuperDistributorsPage />} />
