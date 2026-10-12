@@ -15,14 +15,22 @@ import { printWalletTransferReceipt } from '../utils/walletTransferReceiptPrint'
 
 export default function WalletTransfer() {
     const { user: currentUser } = useAuth();
-    const { refreshWallet } = useWallet();
+    const { 
+        availableBalance: walletAvailable, 
+        balance: walletBalance, 
+        refreshWallet 
+    } = useWallet();
     const navigate = useNavigate();
 
-    // Wallet State
-    const [balance, setBalance] = useState(0);
-    const [lockedBalance, setLockedBalance] = useState(0);
-    const [availableBalance, setAvailableBalance] = useState(0);
-    const [balanceLoading, setBalanceLoading] = useState(false);
+    // Use live balance from the wallet context / navbar (no duplicate API call!)
+    const activeUser = currentUser || dataService.getCurrentUser?.() || {};
+    const availableBalance = parseFloat(
+        walletAvailable ?? 
+        walletBalance ?? 
+        activeUser.availableBalance ?? 
+        activeUser.balance ?? 
+        0
+    ) || 0;
 
     // Recipient Search State
     const [searchMobile, setSearchMobile] = useState('');
@@ -44,39 +52,6 @@ export default function WalletTransfer() {
     const [transferSuccessData, setTransferSuccessData] = useState(null);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [copiedRef, setCopiedRef] = useState(false);
-
-    // Load Balance
-    const fetchBalance = useCallback(async () => {
-        if (!currentUser?.id) return;
-        setBalanceLoading(true);
-        try {
-            const data = await walletService.getBalance(currentUser.id);
-            if (data) {
-                const bal = Number(data.balance || 0);
-                const locked = Number(data.lockedAmount || data.lockedBalance || 0);
-                const avail = Number(data.availableBalance ?? (bal - locked));
-                setBalance(bal);
-                setLockedBalance(locked);
-                setAvailableBalance(avail);
-            }
-        } catch (err) {
-            console.error('Failed to load wallet balance:', err);
-        } finally {
-            setBalanceLoading(false);
-        }
-    }, [currentUser?.id]);
-
-    useEffect(() => {
-        fetchBalance();
-
-        const handleUpdate = () => fetchBalance();
-        window.addEventListener('walletUpdated', handleUpdate);
-        window.addEventListener('dataUpdated', handleUpdate);
-        return () => {
-            window.removeEventListener('walletUpdated', handleUpdate);
-            window.removeEventListener('dataUpdated', handleUpdate);
-        };
-    }, [fetchBalance]);
 
     // Role Details & Badge Styling
     const getRoleDetails = useCallback((role) => {
@@ -260,9 +235,6 @@ export default function WalletTransfer() {
                     dataService.clearWalletBalanceCache();
                 }
 
-                // Immediately re-fetch fresh balance from the backend database
-                await fetchBalance();
-
                 // Refresh global wallet context & dispatch event for header / all components
                 if (refreshWallet) {
                     try {
@@ -335,30 +307,11 @@ export default function WalletTransfer() {
                 <div className="flex items-center gap-2.5">
                     <button
                         onClick={() => navigate(getHistoryPageRoute())}
-                        className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-black rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                        className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-black rounded-xl transition flex items-center gap-2 cursor-pointer shadow-xs"
                     >
-                        <History size={14} />
+                        <History size={15} />
                         <span>View History</span>
                     </button>
-
-                    <div className="flex items-center gap-2.5 bg-white p-1.5 px-3 rounded-xl border border-slate-200/80 shadow-xs">
-                        <div className="flex flex-col">
-                            <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider">Available Balance</span>
-                            <div className="flex items-baseline gap-1">
-                                <span className="text-base sm:text-lg font-black text-slate-900">
-                                    ₹{balanceLoading ? '...' : availableBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </span>
-                            </div>
-                        </div>
-                        <button
-                            onClick={fetchBalance}
-                            disabled={balanceLoading}
-                            className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition cursor-pointer"
-                            title="Refresh Balance"
-                        >
-                            <RefreshCw size={14} className={balanceLoading ? 'animate-spin text-blue-600' : ''} />
-                        </button>
-                    </div>
                 </div>
             </div>
 
