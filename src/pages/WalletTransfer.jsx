@@ -31,6 +31,43 @@ export default function WalletTransfer() {
     const [suggestionsLoading, setSuggestionsLoading] = useState(false);
     const [selectedRecipient, setSelectedRecipient] = useState(null);
 
+    // Transfer Form State
+    const [amount, setAmount] = useState('');
+    const [remarks, setRemarks] = useState('');
+    const [formError, setFormError] = useState('');
+
+    // Confirmation & Transfer Execution State
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [transferring, setTransferring] = useState(false);
+    const [transferSuccessData, setTransferSuccessData] = useState(null);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [copiedRef, setCopiedRef] = useState(false);
+
+    // Load Balance
+    const fetchBalance = useCallback(async () => {
+        if (!currentUser?.id) return;
+        setBalanceLoading(true);
+        try {
+            const data = await walletService.getBalance(currentUser.id);
+            if (data) {
+                const bal = Number(data.balance || 0);
+                const locked = Number(data.lockedAmount || data.lockedBalance || 0);
+                const avail = Number(data.availableBalance ?? (bal - locked));
+                setBalance(bal);
+                setLockedBalance(locked);
+                setAvailableBalance(avail);
+            }
+        } catch (err) {
+            console.error('Failed to load wallet balance:', err);
+        } finally {
+            setBalanceLoading(false);
+        }
+    }, [currentUser?.id]);
+
+    useEffect(() => {
+        fetchBalance();
+    }, [fetchBalance]);
+
     // Role Details & Badge Styling
     const getRoleDetails = useCallback((role) => {
         const r = (role || '').toUpperCase();
