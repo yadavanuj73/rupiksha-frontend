@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { walletService, walletTransferService, transactionService } from '../services/apiService';
 import { useAuth } from '../context/AuthContext';
+import { printWalletTransferReceipt } from '../utils/walletTransferReceiptPrint';
 
 export default function WalletTransferHistory() {
     const { user: currentUser } = useAuth();
@@ -93,12 +94,12 @@ export default function WalletTransferHistory() {
                     if (narration.toLowerCase().includes('to ')) {
                         const afterTo = narration.split(/to\s+/i)[1] || '';
                         parsedOtherName = afterTo.split('(')[0].trim() || 'Recipient';
-                        const codeMatch = afterTo.match(/\(([^)]+)\)/);
+                        const codeMatch = afterTo.match(/\((RP[A-Za-z0-9_-]+)\)/i);
                         if (codeMatch) parsedOtherPartyCode = codeMatch[1];
                     } else if (narration.toLowerCase().includes('from ')) {
                         const afterFrom = narration.split(/from\s+/i)[1] || '';
                         parsedOtherName = afterFrom.split('(')[0].trim() || 'Sender';
-                        const codeMatch = afterFrom.match(/\(([^)]+)\)/);
+                        const codeMatch = afterFrom.match(/\((RP[A-Za-z0-9_-]+)\)/i);
                         if (codeMatch) parsedOtherPartyCode = codeMatch[1];
                     }
 
@@ -213,7 +214,11 @@ export default function WalletTransferHistory() {
     };
 
     const handlePrintReceipt = () => {
-        window.print();
+        if (selectedHistoryItem) {
+            printWalletTransferReceipt(selectedHistoryItem);
+        } else {
+            window.print();
+        }
     };
 
     // Determine Transfer Page Route based on role
@@ -720,109 +725,128 @@ export default function WalletTransferHistory() {
             {/* Receipt Modal */}
             <AnimatePresence>
                 {selectedHistoryItem && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+                    <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs">
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
+                            initial={{ opacity: 0, scale: 0.96 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-4"
+                            exit={{ opacity: 0, scale: 0.96 }}
+                            className="relative bg-white rounded-2xl border-2 border-slate-300 shadow-2xl max-w-lg w-full p-4 sm:p-5 my-auto max-h-[94vh] overflow-y-auto font-['Inter',sans-serif] space-y-3 text-black"
                         >
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                                <div>
-                                    <h3 className="text-base font-black text-slate-900">Transfer Receipt</h3>
-                                    <p className="text-[11px] text-slate-500 font-medium">Inter-wallet fund transfer confirmation</p>
+                            <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shrink-0">
+                                        <Coins size={18} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-sm sm:text-base font-black text-black leading-tight">Transfer Receipt</h3>
+                                        <p className="text-[10.5px] text-slate-700 font-bold">Inter-wallet fund transfer confirmation</p>
+                                    </div>
                                 </div>
                                 <button
                                     onClick={() => setSelectedHistoryItem(null)}
-                                    className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                                    className="p-1.5 rounded-lg text-slate-500 hover:text-black hover:bg-slate-100 transition cursor-pointer"
+                                    title="Close"
                                 >
                                     <X size={18} />
                                 </button>
                             </div>
 
                             {/* Amount & Status banner */}
-                            <div className="bg-gradient-to-br from-slate-50 to-slate-100/80 p-4 rounded-xl border border-slate-200 text-center space-y-1">
-                                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-center space-y-1">
+                                <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-700">
                                     {selectedHistoryItem.direction === 'SENT' ? 'Transferred Amount' : 'Received Amount'}
                                 </span>
-                                <div className="text-2xl font-black font-mono text-slate-900">
+                                <div className="text-2xl sm:text-3xl font-black font-mono text-black">
                                     ₹{Number(selectedHistoryItem.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </div>
                                 <div>
-                                    <span className="inline-block px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black rounded-full uppercase">
-                                        {selectedHistoryItem.status || 'SUCCESS'}
+                                    <span className="inline-block px-2.5 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black rounded-full uppercase">
+                                        ✓ {selectedHistoryItem.status || 'SUCCESS'}
                                     </span>
                                 </div>
                             </div>
 
                             {/* Sender and Receiver Comparison Grid */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                                 {/* Sender Block */}
-                                <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100 space-y-1.5">
+                                <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-200 space-y-1">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-[10px] font-black text-blue-700 uppercase tracking-wider">Sender (Debited)</span>
-                                        <span className="text-[10px] font-bold text-slate-400">FROM</span>
+                                        <span className="text-[10px] font-black text-blue-800 uppercase tracking-wider">Sender (Debited)</span>
+                                        <span className="text-[9px] font-black text-blue-600 bg-blue-100 px-1.5 py-0.2 rounded">FROM</span>
                                     </div>
-                                    <div className="font-black text-slate-900 text-xs">
+                                    <div className="font-black text-black text-sm truncate">
                                         {selectedHistoryItem.senderName || 'Sender'}
                                     </div>
-                                    <div className="text-[10.5px] text-slate-600 font-mono space-y-0.5">
-                                        <div>Code: <span className="font-bold">{selectedHistoryItem.senderPartyCode || 'N/A'}</span></div>
+                                    <div className="text-[11px] text-black font-mono space-y-0.5">
+                                        {selectedHistoryItem.senderPartyCode && selectedHistoryItem.senderPartyCode !== 'N/A' && !selectedHistoryItem.senderPartyCode.toLowerCase().includes('wallet transfer') && (
+                                            <div>Code: <span className="font-bold text-black">{selectedHistoryItem.senderPartyCode}</span></div>
+                                        )}
                                         {selectedHistoryItem.senderMobile && (
-                                            <div>Mobile: <span className="font-bold">{selectedHistoryItem.senderMobile}</span></div>
+                                            <div>Mob: <span className="font-bold text-black">{selectedHistoryItem.senderMobile}</span></div>
                                         )}
                                     </div>
                                 </div>
 
                                 {/* Receiver Block */}
-                                <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100 space-y-1.5">
+                                <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-200 space-y-1">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-[10px] font-black text-emerald-700 uppercase tracking-wider">Receiver (Credited)</span>
-                                        <span className="text-[10px] font-bold text-slate-400">TO</span>
+                                        <span className="text-[10px] font-black text-emerald-800 uppercase tracking-wider">Receiver (Credited)</span>
+                                        <span className="text-[9px] font-black text-emerald-600 bg-emerald-100 px-1.5 py-0.2 rounded">TO</span>
                                     </div>
-                                    <div className="font-black text-slate-900 text-xs">
+                                    <div className="font-black text-black text-sm truncate">
                                         {selectedHistoryItem.recipientName || 'Recipient'}
                                     </div>
-                                    <div className="text-[10.5px] text-slate-600 font-mono space-y-0.5">
-                                        <div>Code: <span className="font-bold">{selectedHistoryItem.recipientPartyCode || 'N/A'}</span></div>
+                                    <div className="text-[11px] text-black font-mono space-y-0.5">
+                                        {selectedHistoryItem.recipientPartyCode && selectedHistoryItem.recipientPartyCode !== 'N/A' && !selectedHistoryItem.recipientPartyCode.toLowerCase().includes('wallet transfer') && (
+                                            <div>Code: <span className="font-bold text-black">{selectedHistoryItem.recipientPartyCode}</span></div>
+                                        )}
                                         {selectedHistoryItem.recipientMobile && (
-                                            <div>Mobile: <span className="font-bold">{selectedHistoryItem.recipientMobile}</span></div>
+                                            <div>Mob: <span className="font-bold text-black">{selectedHistoryItem.recipientMobile}</span></div>
                                         )}
                                     </div>
                                 </div>
                             </div>
 
                             {/* Metadata */}
-                            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2 text-xs">
+                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5 text-xs text-black">
                                 <div className="flex justify-between items-center">
-                                    <span className="text-slate-500 font-bold">Reference ID:</span>
-                                    <span className="font-mono font-black text-slate-900">{selectedHistoryItem.transferReference}</span>
+                                    <span className="text-slate-700 font-bold text-[11px]">Reference ID:</span>
+                                    <div className="flex items-center gap-1 font-mono font-black text-black">
+                                        <span>{selectedHistoryItem.transferReference}</span>
+                                        <button
+                                            onClick={() => copyToClipboard(selectedHistoryItem.transferReference)}
+                                            className="text-slate-500 hover:text-black cursor-pointer p-0.5"
+                                            title="Copy Reference"
+                                        >
+                                            {copiedRef ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                    <span className="text-slate-500 font-bold">Transfer Type:</span>
-                                    <span className="font-black text-slate-900">
+                                    <span className="text-slate-700 font-bold text-[11px]">Transfer Type:</span>
+                                    <span className="font-black text-black">
                                         {selectedHistoryItem.direction === 'SENT' ? 'Outgoing Fund Transfer' : 'Incoming Fund Transfer'}
                                     </span>
                                 </div>
                                 {selectedHistoryItem.remarks && (
                                     <div className="flex justify-between items-center">
-                                        <span className="text-slate-500 font-bold">Remarks:</span>
-                                        <span className="font-medium text-slate-700">{selectedHistoryItem.remarks}</span>
+                                        <span className="text-slate-700 font-bold text-[11px]">Remarks:</span>
+                                        <span className="font-bold text-black text-right max-w-[240px] truncate">{selectedHistoryItem.remarks}</span>
                                     </div>
                                 )}
                                 <div className="flex justify-between items-center">
-                                    <span className="text-slate-500 font-bold">Date & Time:</span>
-                                    <span className="font-bold text-slate-700">
+                                    <span className="text-slate-700 font-bold text-[11px]">Date & Time:</span>
+                                    <span className="font-bold text-black">
                                         {selectedHistoryItem.createdAt ? new Date(selectedHistoryItem.createdAt).toLocaleString('en-IN') : 'N/A'}
                                     </span>
                                 </div>
                             </div>
 
-                            <div className="flex gap-3 pt-1">
+                            <div className="flex gap-2.5 pt-1">
                                 <button
                                     type="button"
                                     onClick={handlePrintReceipt}
-                                    className="flex-1 py-2.5 border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-black rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                                    className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-98"
                                 >
                                     <Printer size={14} />
                                     <span>Print Receipt</span>
@@ -830,7 +854,7 @@ export default function WalletTransferHistory() {
                                 <button
                                     type="button"
                                     onClick={() => setSelectedHistoryItem(null)}
-                                    className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black rounded-xl transition cursor-pointer"
+                                    className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black rounded-xl transition cursor-pointer active:scale-98"
                                 >
                                     Close
                                 </button>

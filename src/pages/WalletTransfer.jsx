@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { walletService, walletTransferService } from '../services/apiService';
 import { useAuth } from '../context/AuthContext';
 import { useWallet } from '../context/WalletContext';
+import { printWalletTransferReceipt } from '../utils/walletTransferReceiptPrint';
 
 export default function WalletTransfer() {
     const { user: currentUser } = useAuth();
@@ -208,7 +209,18 @@ export default function WalletTransfer() {
     };
 
     const handlePrintReceipt = () => {
-        window.print();
+        if (transferSuccessData) {
+            const item = {
+                ...transferSuccessData,
+                direction: 'SENT',
+                senderName: currentUser?.fullName || currentUser?.name || currentUser?.username || 'You',
+                senderPartyCode: currentUser?.partyCode || currentUser?.userId || '',
+                senderMobile: currentUser?.mobile || ''
+            };
+            printWalletTransferReceipt(item);
+        } else {
+            window.print();
+        }
     };
 
     // Determine Transfer History Route based on role
@@ -664,63 +676,63 @@ export default function WalletTransfer() {
             {/* 4. Success Receipt Modal */}
             <AnimatePresence>
                 {showSuccessModal && transferSuccessData && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+                    <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs">
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
+                            initial={{ opacity: 0, scale: 0.96 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-5 sm:p-6 space-y-4 text-center max-h-[92vh] overflow-y-auto"
+                            exit={{ opacity: 0, scale: 0.96 }}
+                            className="relative bg-white rounded-2xl border-2 border-slate-300 shadow-2xl max-w-md w-full p-4 sm:p-5 my-auto max-h-[94vh] overflow-y-auto text-center font-['Inter',sans-serif] space-y-3.5 text-black"
                         >
-                            <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-sm">
-                                <CheckCircle2 size={32} className="stroke-[2.5]" />
+                            <div className="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                                <CheckCircle2 size={28} className="stroke-[2.5]" />
                             </div>
 
                             <div>
-                                <h3 className="text-xl font-black text-slate-900">Transfer Successful!</h3>
-                                <p className="text-xs text-slate-500 font-bold mt-1">Funds have been credited instantly.</p>
+                                <h3 className="text-lg sm:text-xl font-black text-black">Transfer Successful!</h3>
+                                <p className="text-xs text-slate-700 font-bold mt-0.5">Funds have been credited instantly.</p>
                             </div>
 
-                            <div className="text-2xl font-black text-slate-900 font-mono">
-                                ₹{Number(transferSuccessData.amount || 0).toFixed(2)}
+                            <div className="text-2xl sm:text-3xl font-black text-black font-mono">
+                                ₹{Number(transferSuccessData.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </div>
 
-                            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2.5 text-left">
+                            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2 text-left text-black">
                                 <div className="flex justify-between items-center">
-                                    <span className="text-slate-500 font-bold">Transaction Ref:</span>
-                                    <div className="flex items-center gap-1">
-                                        <span className="font-mono font-black text-slate-900">{transferSuccessData.transferReference}</span>
+                                    <span className="text-slate-700 font-bold text-[11px]">Transaction Ref:</span>
+                                    <div className="flex items-center gap-1 font-mono font-black text-black">
+                                        <span>{transferSuccessData.transferReference}</span>
                                         <button
                                             onClick={() => copyToClipboard(transferSuccessData.transferReference)}
-                                            className="p-1 hover:bg-slate-200 rounded text-slate-500 cursor-pointer"
+                                            className="p-0.5 hover:bg-slate-200 rounded text-slate-500 cursor-pointer"
                                             title="Copy Reference"
                                         >
-                                            {copiedRef ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                                            {copiedRef ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
                                         </button>
                                     </div>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500 font-bold">Recipient:</span>
-                                    <span className="font-black text-slate-900">{transferSuccessData.recipientName} ({transferSuccessData.recipientPartyCode})</span>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-slate-700 font-bold text-[11px]">Recipient:</span>
+                                    <span className="font-black text-black">{transferSuccessData.recipientName} ({transferSuccessData.recipientPartyCode})</span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500 font-bold">Recipient Mobile:</span>
-                                    <span className="font-mono font-bold text-slate-800">{transferSuccessData.recipientMobile}</span>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-slate-700 font-bold text-[11px]">Recipient Mobile:</span>
+                                    <span className="font-mono font-bold text-black">{transferSuccessData.recipientMobile}</span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500 font-bold">Updated Balance:</span>
-                                    <span className="font-black text-emerald-600 font-mono">₹{Number(transferSuccessData.senderBalance || 0).toFixed(2)}</span>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-slate-700 font-bold text-[11px]">Updated Balance:</span>
+                                    <span className="font-black text-emerald-700 font-mono">₹{Number(transferSuccessData.senderBalance || 0).toFixed(2)}</span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500 font-bold">Date & Time:</span>
-                                    <span className="font-bold text-slate-700">{new Date(transferSuccessData.createdAt).toLocaleString()}</span>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-slate-700 font-bold text-[11px]">Date & Time:</span>
+                                    <span className="font-bold text-black">{new Date(transferSuccessData.createdAt).toLocaleString('en-IN')}</span>
                                 </div>
                             </div>
 
-                            <div className="flex gap-3">
+                            <div className="flex gap-2.5 pt-1">
                                 <button
                                     type="button"
                                     onClick={handlePrintReceipt}
-                                    className="flex-1 py-2.5 border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-black rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                                    className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-98"
                                 >
                                     <Printer size={14} />
                                     <span>Print Receipt</span>
@@ -728,7 +740,7 @@ export default function WalletTransfer() {
                                 <button
                                     type="button"
                                     onClick={() => setShowSuccessModal(false)}
-                                    className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black rounded-xl transition cursor-pointer"
+                                    className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black rounded-xl transition cursor-pointer active:scale-98"
                                 >
                                     Done
                                 </button>
