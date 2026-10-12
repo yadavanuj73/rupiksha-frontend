@@ -237,7 +237,7 @@ export function AuthProvider({ children }) {
 
   // Keep-alive ping: hits backend every 5 minutes only when active
   useEffect(() => {
-    const PING_URL = 'https://rupiksha-backend-java-53431955516.asia-south1.run.app/actuator/health';
+    const PING_URL = 'https://rupiksha-backend-java-932708563219.asia-south1.run.app/actuator/health';
     const ping = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       fetch(PING_URL, { method: 'GET', mode: 'no-cors' }).catch(() => {});

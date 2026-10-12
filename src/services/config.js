@@ -1,4 +1,4 @@
-const GCP_BACKEND = 'https://rupiksha-backend-java-53431955516.asia-south1.run.app/api/v1';
+const GCP_BACKEND = 'https://rupiksha-backend-java-932708563219.asia-south1.run.app/api/v1';
 
 // Guard against relative URLs being baked into the build (e.g., VITE_BACKEND_URL=/api/v1)
 // which would cause API calls to hit the wrong host in production.

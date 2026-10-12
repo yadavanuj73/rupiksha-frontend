@@ -2,8 +2,8 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "env": {
-    "VITE_BACKEND_URL": "https://rupiksha-backend-java-53431955516.asia-south1.run.app/api/v1",
-    "VITE_API_URL": "https://rupiksha-backend-java-53431955516.asia-south1.run.app/api/v1"
+    "VITE_BACKEND_URL": "https://rupiksha-backend-java-932708563219.asia-south1.run.app/api/v1",
+    "VITE_API_URL": "https://rupiksha-backend-java-932708563219.asia-south1.run.app/api/v1"
   },
   "headers": [
     {
@@ -19,7 +19,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://rupiksha-backend-java-53431955516.asia-south1.run.app/api/$1"
+      "destination": "https://rupiksha-backend-java-932708563219.asia-south1.run.app/api/$1"
     },
     {
       "source": "/(.*)",
