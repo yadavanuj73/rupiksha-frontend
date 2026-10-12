@@ -7,44 +7,14 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { walletService, walletTransferService } from '../services/apiService';
-import { dataService } from '../services/dataService';
-import { sharedDataService } from '../services/sharedDataService';
 import { useAuth } from '../context/AuthContext';
 import { useWallet } from '../context/WalletContext';
 import { printWalletTransferReceipt } from '../utils/walletTransferReceiptPrint';
 
 export default function WalletTransfer() {
     const { user: currentUser } = useAuth();
-    const { 
-        balance: walletCtxBal, 
-        availableBalance: walletCtxAvail, 
-        lockedBalance: walletCtxLocked, 
-        refreshWallet 
-    } = useWallet();
+    const { refreshWallet } = useWallet();
     const navigate = useNavigate();
-
-    // Resolves current active user session across Retailer, Distributor, and Super Distributor panels
-    const getResolvedUser = useCallback(() => {
-        const sdUser = sharedDataService.getCurrentSuperDistributor?.();
-        const distUser = sharedDataService.getCurrentDistributor?.();
-        const rawUser = dataService.getCurrentUser?.();
-        let sessionUser = null;
-        try {
-            sessionUser = JSON.parse(
-                localStorage.getItem('rupiksha_super_distributor_user') || 
-                localStorage.getItem('rupiksha_distributor_user') || 
-                localStorage.getItem('rupiksha_user') || 
-                localStorage.getItem('rupiksha_imp_user') || 
-                'null'
-            );
-        } catch (_) {}
-
-        const primary = sdUser || distUser || currentUser || sessionUser || rawUser || {};
-        const fresh = (primary.id && sharedDataService.getSuperDistributorById?.(primary.id)) || 
-                      (primary.id && sharedDataService.getDistributorById?.(primary.id)) || 
-                      primary;
-        return fresh;
-    }, [currentUser]);
 
     // Wallet State
     const [balance, setBalance] = useState(0);
@@ -75,126 +45,28 @@ export default function WalletTransfer() {
 
     // Load Balance
     const fetchBalance = useCallback(async () => {
-        const u = getResolvedUser();
-        const uid = u.id || u.userId || u._id || currentUser?.id || currentUser?.userId || currentUser?.username;
-
-        // 1. Immediate sync from best available local source (session, cache, or wallet context)
-        const candidates = [
-            u.wallet?.balance,
-            u.balance,
-            u.walletBalance,
-            uid ? localStorage.getItem(`rupiksha_wallet_${uid}`) : null,
-            (() => {
-                try {
-                    const saved = JSON.parse(
-                        localStorage.getItem('rupiksha_super_distributor_user') || 
-                        localStorage.getItem('rupiksha_distributor_user') || 
-                        localStorage.getItem('rupiksha_user') || 
-                        '{}'
-                    );
-                    return saved.balance ?? saved.wallet?.balance ?? saved.walletBalance;
-                } catch { return null; }
-            })(),
-            walletCtxAvail,
-            walletCtxBal
-        ];
-
-        let foundLocal = false;
-        for (const candidate of candidates) {
-            if (candidate !== null && candidate !== undefined && candidate !== '') {
-                const parsed = Number(candidate);
-                if (!isNaN(parsed) && parsed > 0) {
-                    setBalance(parsed);
-                    setAvailableBalance(parsed);
-                    foundLocal = true;
-                    break;
-                }
-            }
-        }
-
-        if (!uid && !currentUser?.id) return;
-
-        setBalanceLoading(!foundLocal);
+        if (!currentUser?.id) return;
+        setBalanceLoading(true);
         try {
-            let loadedBal = null;
-            let loadedLocked = 0;
-            let loadedAvail = null;
-
-            // 2. Query dataService.getWalletBalance (same method SuperDistributorTopBar uses!)
-            const targetId = uid || currentUser?.id;
-            if (dataService?.getWalletBalance && targetId) {
-                try {
-                    const dBal = await dataService.getWalletBalance(targetId, true);
-                    if (dBal !== undefined && dBal !== null) {
-                        const parsed = Number(dBal);
-                        if (!isNaN(parsed)) {
-                            loadedBal = parsed;
-                            loadedAvail = parsed;
-                        }
-                    }
-                } catch (_) {}
-            }
-
-            // 3. Query walletService.getBalance for detailed breakdown
-            if (walletService?.getBalance && targetId) {
-                try {
-                    const data = await walletService.getBalance(targetId);
-                    if (data && (data.balance !== undefined || data.availableBalance !== undefined)) {
-                        const bal = Number(data.balance || 0);
-                        const locked = Number(data.lockedAmount || data.lockedBalance || 0);
-                        const avail = Number(data.availableBalance ?? (bal - locked));
-                        loadedBal = bal;
-                        loadedLocked = locked;
-                        loadedAvail = avail;
-                    }
-                } catch (_) {}
-            }
-
-            if (loadedBal !== null) {
-                setBalance(loadedBal);
-                setLockedBalance(loadedLocked);
-                setAvailableBalance(loadedAvail !== null ? loadedAvail : Math.max(0, loadedBal - loadedLocked));
+            const data = await walletService.getBalance(currentUser.id);
+            if (data) {
+                const bal = Number(data.balance || 0);
+                const locked = Number(data.lockedAmount || data.lockedBalance || 0);
+                const avail = Number(data.availableBalance ?? (bal - locked));
+                setBalance(bal);
+                setLockedBalance(locked);
+                setAvailableBalance(avail);
             }
         } catch (err) {
             console.error('Failed to load wallet balance:', err);
         } finally {
             setBalanceLoading(false);
         }
-    }, [currentUser, getResolvedUser, walletCtxAvail, walletCtxBal]);
+    }, [currentUser?.id]);
 
-    // Initial mount and event listeners for real-time sync across panels
     useEffect(() => {
         fetchBalance();
-
-        const handleUpdate = () => fetchBalance();
-        window.addEventListener('walletUpdated', handleUpdate);
-        window.addEventListener('dataUpdated', handleUpdate);
-        window.addEventListener('SuperDistributorDataUpdated', handleUpdate);
-        window.addEventListener('profileUpdated', handleUpdate);
-        window.addEventListener('storage', handleUpdate);
-
-        return () => {
-            window.removeEventListener('walletUpdated', handleUpdate);
-            window.removeEventListener('dataUpdated', handleUpdate);
-            window.removeEventListener('SuperDistributorDataUpdated', handleUpdate);
-            window.removeEventListener('profileUpdated', handleUpdate);
-            window.removeEventListener('storage', handleUpdate);
-        };
     }, [fetchBalance]);
-
-    // Sync from WalletContext whenever it updates
-    useEffect(() => {
-        if (walletCtxAvail !== undefined && walletCtxAvail !== null) {
-            const avail = Number(walletCtxAvail);
-            const bal = Number(walletCtxBal || walletCtxAvail);
-            const locked = Number(walletCtxLocked || 0);
-            if (!isNaN(avail) && avail > 0) {
-                setAvailableBalance(avail);
-                setBalance(bal);
-                setLockedBalance(locked);
-            }
-        }
-    }, [walletCtxAvail, walletCtxBal, walletCtxLocked]);
 
     // Role Details & Badge Styling
     const getRoleDetails = useCallback((role) => {
@@ -379,30 +251,24 @@ export default function WalletTransfer() {
                     setBalance(newBal);
                     setAvailableBalance(Math.max(0, newBal - lockedBalance));
 
-                    // Update localStorage caches for header and navbar across all panels
+                    // Update localStorage caches for header and navbar
                     try {
-                        const resUser = getResolvedUser();
-                        const allIds = [
-                            currentUser?.id, currentUser?.username, currentUser?.mobile,
-                            resUser?.id, resUser?.userId, resUser?.username, resUser?.mobile
-                        ].filter(Boolean);
-
-                        allIds.forEach(id => {
-                            localStorage.setItem(`rupiksha_wallet_${id}`, newBal.toFixed(2));
-                        });
-
-                        ['rupiksha_user', 'rupiksha_super_distributor_user', 'rupiksha_distributor_user', 'rupiksha_imp_user'].forEach(key => {
-                            const raw = localStorage.getItem(key);
-                            if (raw) {
-                                try {
-                                    const parsed = JSON.parse(raw);
-                                    parsed.balance = newBal.toFixed(2);
-                                    parsed.walletBalance = newBal.toFixed(2);
-                                    if (parsed.wallet) parsed.wallet.balance = newBal.toFixed(2);
-                                    localStorage.setItem(key, JSON.stringify(parsed));
-                                } catch (_) {}
-                            }
-                        });
+                        if (currentUser?.id) {
+                            localStorage.setItem(`rupiksha_wallet_${currentUser.id}`, newBal.toFixed(2));
+                        }
+                        if (currentUser?.username) {
+                            localStorage.setItem(`rupiksha_wallet_${currentUser.username}`, newBal.toFixed(2));
+                        }
+                        if (currentUser?.mobile) {
+                            localStorage.setItem(`rupiksha_wallet_${currentUser.mobile}`, newBal.toFixed(2));
+                        }
+                        const sessionRaw = localStorage.getItem('rupiksha_user');
+                        if (sessionRaw) {
+                            const sessionUser = JSON.parse(sessionRaw);
+                            sessionUser.balance = newBal.toFixed(2);
+                            sessionUser.walletBalance = newBal.toFixed(2);
+                            localStorage.setItem('rupiksha_user', JSON.stringify(sessionUser));
+                        }
                     } catch (_) {}
                 }
 
@@ -414,8 +280,6 @@ export default function WalletTransfer() {
                 }
                 window.dispatchEvent(new CustomEvent('walletUpdated'));
                 window.dispatchEvent(new Event('walletUpdated'));
-                window.dispatchEvent(new Event('SuperDistributorDataUpdated'));
-                window.dispatchEvent(new Event('dataUpdated'));
                 window.dispatchEvent(new Event('storage'));
                 fetchBalance();
             } else {
@@ -438,13 +302,12 @@ export default function WalletTransfer() {
 
     const handlePrintReceipt = () => {
         if (transferSuccessData) {
-            const activeUser = getResolvedUser();
             const item = {
                 ...transferSuccessData,
                 direction: 'SENT',
-                senderName: activeUser?.fullName || activeUser?.name || currentUser?.fullName || currentUser?.name || currentUser?.username || 'You',
-                senderPartyCode: activeUser?.partyCode || activeUser?.userId || currentUser?.partyCode || currentUser?.userId || '',
-                senderMobile: activeUser?.mobile || currentUser?.mobile || ''
+                senderName: currentUser?.fullName || currentUser?.name || currentUser?.username || 'You',
+                senderPartyCode: currentUser?.partyCode || currentUser?.userId || '',
+                senderMobile: currentUser?.mobile || ''
             };
             printWalletTransferReceipt(item);
         } else {
@@ -452,16 +315,11 @@ export default function WalletTransfer() {
         }
     };
 
-    // Determine Transfer History Route based on role and panel
+    // Determine Transfer History Route based on role
     const getHistoryPageRoute = () => {
-        const pathname = window.location.pathname || '';
-        if (pathname.includes('/super-distributor')) return '/super-distributor/transactions/wallet-to-wallet';
-        if (pathname.includes('/distributor')) return '/distributor/transactions/wallet-to-wallet';
-
-        const u = getResolvedUser();
-        const roles = (Array.isArray(u?.roles) && u.roles.length ? u.roles : [u?.role, currentUser?.role])
+        const roles = (Array.isArray(currentUser?.roles) && currentUser.roles.length ? currentUser.roles : [currentUser?.role])
             .map(r => String(typeof r === 'string' ? r : r?.name || '').trim().toUpperCase());
-        if (roles.includes('SUPER_DISTRIBUTOR') || roles.includes('SUPERDISTRIBUTOR')) return '/super-distributor/transactions/wallet-to-wallet';
+        if (roles.includes('SUPER_DISTRIBUTOR')) return '/super-distributor/transactions/wallet-to-wallet';
         if (roles.includes('DISTRIBUTOR')) return '/distributor/transactions/wallet-to-wallet';
         return '/transactions/wallet-to-wallet';
     };
