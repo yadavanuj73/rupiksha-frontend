@@ -68,6 +68,14 @@ export default function WalletTransfer() {
 
     useEffect(() => {
         fetchBalance();
+
+        const handleUpdate = () => fetchBalance();
+        window.addEventListener('walletUpdated', handleUpdate);
+        window.addEventListener('dataUpdated', handleUpdate);
+        return () => {
+            window.removeEventListener('walletUpdated', handleUpdate);
+            window.removeEventListener('dataUpdated', handleUpdate);
+        };
     }, [fetchBalance]);
 
     // Role Details & Badge Styling
@@ -247,47 +255,13 @@ export default function WalletTransfer() {
                 setSearchResults([]);
                 setSearchMobile('');
 
-                // Immediately update local page balance if senderBalance is returned
-                if (res.data?.senderBalance !== undefined && res.data?.senderBalance !== null) {
-                    const newBal = Number(res.data.senderBalance);
-                    const newBalStr = newBal.toFixed(2);
-                    setBalance(newBal);
-                    setAvailableBalance(Math.max(0, newBal - lockedBalance));
-
-                    // Clear dataService balance cache so fresh API calls get the latest value immediately
-                    if (dataService?.clearWalletBalanceCache) {
-                        dataService.clearWalletBalanceCache();
-                    }
-
-                    // Update localStorage caches for header and navbar across all panels
-                    try {
-                        const allIds = [
-                            currentUser?.id, currentUser?.username, currentUser?.mobile
-                        ].filter(Boolean);
-
-                        allIds.forEach(id => {
-                            localStorage.setItem(`rupiksha_wallet_${id}`, newBalStr);
-                        });
-
-                        ['rupiksha_user', 'rupiksha_super_distributor_user', 'rupiksha_distributor_user', 'rupiksha_imp_user'].forEach(key => {
-                            const raw = localStorage.getItem(key);
-                            if (raw) {
-                                try {
-                                    const parsed = JSON.parse(raw);
-                                    parsed.balance = newBalStr;
-                                    parsed.walletBalance = newBalStr;
-                                    if (parsed.wallet) parsed.wallet.balance = newBalStr;
-                                    localStorage.setItem(key, JSON.stringify(parsed));
-                                } catch (_) {}
-                            }
-                        });
-
-                        allIds.forEach(id => {
-                            sharedDataService.updateDistributorBalance?.(id, newBalStr);
-                            sharedDataService.updateSuperDistributorBalance?.(id, newBalStr);
-                        });
-                    } catch (_) {}
+                // Clear any cached balance in memory so fresh calls query the backend database directly
+                if (dataService?.clearWalletBalanceCache) {
+                    dataService.clearWalletBalanceCache();
                 }
+
+                // Immediately re-fetch fresh balance from the backend database
+                await fetchBalance();
 
                 // Refresh global wallet context & dispatch event for header / all components
                 if (refreshWallet) {
@@ -300,8 +274,6 @@ export default function WalletTransfer() {
                 window.dispatchEvent(new Event('distributorDataUpdated'));
                 window.dispatchEvent(new Event('SuperDistributorDataUpdated'));
                 window.dispatchEvent(new Event('dataUpdated'));
-                window.dispatchEvent(new Event('storage'));
-                fetchBalance();
             } else {
                 setFormError(res?.message || 'Transfer failed. Please try again.');
                 setShowConfirmModal(false);

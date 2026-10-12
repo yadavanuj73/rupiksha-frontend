@@ -30,23 +30,16 @@ const SuperDistributorTopBar = ({ onMenuClick }) => {
         const savedPhoto = sdUid ? localStorage.getItem(`rupiksha_photo_${sdUid}`) : null;
         const photo = fresh.profilePhoto || fresh.photoUrl || savedPhoto || null;
 
-        // Immediate fast sync from local storage cache (0ms latency)
-        const cachedWallet = sdUid ? localStorage.getItem(`rupiksha_wallet_${sdUid}`) : null;
-        const currentBal = cachedWallet !== null && cachedWallet !== undefined
-            ? cachedWallet
-            : (fresh.wallet?.balance ?? fresh.balance ?? session.balance ?? '0.00');
-
-        setDist({
-            ...fresh,
+        setDist(prev => ({
+            ...(prev || fresh),
             profilePhoto: photo,
-            photoUrl: photo,
-            balance: currentBal,
-            wallet: { ...(fresh.wallet || {}), balance: currentBal }
-        });
+            photoUrl: photo
+        }));
         setImgError(false);
 
         if (syncWallet && sdUid) {
             try {
+                // Fetch live wallet balance directly from backend database API
                 const liveBal = await dataService.getWalletBalance(fresh.id || fresh.userId, forceSync);
                 if (liveBal !== undefined && liveBal !== null) {
                     setDist(prev => ({
@@ -74,13 +67,11 @@ const SuperDistributorTopBar = ({ onMenuClick }) => {
         window.addEventListener('dataUpdated', handleWallet);
         window.addEventListener('walletUpdated', handleWallet);
         window.addEventListener('profileUpdated', handleProfile);
-        window.addEventListener('storage', handleWallet);
         return () => {
             window.removeEventListener('SuperDistributorDataUpdated', handleWallet);
             window.removeEventListener('dataUpdated', handleWallet);
             window.removeEventListener('walletUpdated', handleWallet);
             window.removeEventListener('profileUpdated', handleProfile);
-            window.removeEventListener('storage', handleWallet);
         };
     }, []);
 
