@@ -11,7 +11,9 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface WalletTransferRepository extends JpaRepository<WalletTransfer, UUID> {
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+
+public interface WalletTransferRepository extends JpaRepository<WalletTransfer, UUID>, JpaSpecificationExecutor<WalletTransfer> {
     Optional<WalletTransfer> findByTransferReference(String transferReference);
 
     Optional<WalletTransfer> findByIdempotencyKey(String idempotencyKey);

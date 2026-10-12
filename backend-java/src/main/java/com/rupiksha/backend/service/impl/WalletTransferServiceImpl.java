@@ -317,9 +317,54 @@ public class WalletTransferServiceImpl implements WalletTransferService {
             }
         }
 
-        Page<WalletTransfer> pageResult = walletTransferRepository.findTransfersForUser(
-                currentUserId, dir, stat, searchPattern, start, end, pageable
-        );
+        final Instant filterStart = start;
+        final Instant filterEnd = end;
+        final String filterDir = dir;
+        final String filterStat = stat;
+        final String filterSearch = searchPattern;
+
+        org.springframework.data.jpa.domain.Specification<WalletTransfer> spec = (root, query, cb) -> {
+            java.util.List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
+
+            if (filterDir == null) {
+                predicates.add(cb.or(
+                        cb.equal(root.get("sender").get("id"), currentUserId),
+                        cb.equal(root.get("recipient").get("id"), currentUserId)
+                ));
+            } else if ("SENT".equalsIgnoreCase(filterDir)) {
+                predicates.add(cb.equal(root.get("sender").get("id"), currentUserId));
+            } else if ("RECEIVED".equalsIgnoreCase(filterDir)) {
+                predicates.add(cb.equal(root.get("recipient").get("id"), currentUserId));
+            }
+
+            if (filterStat != null) {
+                predicates.add(cb.equal(cb.upper(root.get("status")), filterStat));
+            }
+
+            if (filterStart != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), filterStart));
+            }
+            if (filterEnd != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), filterEnd));
+            }
+
+            if (filterSearch != null) {
+                predicates.add(cb.or(
+                        cb.like(cb.lower(root.get("transferReference")), filterSearch),
+                        cb.like(cb.lower(root.get("sender").get("fullName")), filterSearch),
+                        cb.like(cb.lower(root.get("recipient").get("fullName")), filterSearch),
+                        cb.like(cb.lower(root.get("sender").get("partyCode")), filterSearch),
+                        cb.like(cb.lower(root.get("recipient").get("partyCode")), filterSearch),
+                        cb.like(cb.lower(root.get("sender").get("mobile")), filterSearch),
+                        cb.like(cb.lower(root.get("recipient").get("mobile")), filterSearch),
+                        cb.like(cb.lower(cb.coalesce(root.get("remarks"), "")), filterSearch)
+                ));
+            }
+
+            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+
+        Page<WalletTransfer> pageResult = walletTransferRepository.findAll(spec, pageable);
 
         List<WalletTransferDtos.WalletTransferHistoryItemDto> items = pageResult.getContent().stream()
                 .map(wt -> {

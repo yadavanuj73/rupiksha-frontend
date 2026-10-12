@@ -12,7 +12,7 @@ import { useWallet } from '../context/WalletContext';
 
 export default function WalletTransfer() {
     const { user: currentUser } = useAuth();
-    const { refreshBalance: refreshContextBalance } = useWallet();
+    const { refreshWallet } = useWallet();
     const navigate = useNavigate();
 
     // Wallet State
@@ -153,9 +153,42 @@ export default function WalletTransfer() {
                 setSearchResult(null);
                 setSearchMobile('');
 
-                // Refresh balance
+                // Immediately update local page balance if senderBalance is returned
+                if (res.data?.senderBalance !== undefined && res.data?.senderBalance !== null) {
+                    const newBal = Number(res.data.senderBalance);
+                    setBalance(newBal);
+                    setAvailableBalance(newBal - lockedBalance);
+
+                    // Update localStorage caches for header and navbar
+                    try {
+                        if (currentUser?.id) {
+                            localStorage.setItem(`rupiksha_wallet_${currentUser.id}`, newBal.toFixed(2));
+                        }
+                        if (currentUser?.username) {
+                            localStorage.setItem(`rupiksha_wallet_${currentUser.username}`, newBal.toFixed(2));
+                        }
+                        if (currentUser?.mobile) {
+                            localStorage.setItem(`rupiksha_wallet_${currentUser.mobile}`, newBal.toFixed(2));
+                        }
+                        const sessionRaw = localStorage.getItem('rupiksha_user');
+                        if (sessionRaw) {
+                            const sessionUser = JSON.parse(sessionRaw);
+                            sessionUser.balance = newBal.toFixed(2);
+                            sessionUser.walletBalance = newBal.toFixed(2);
+                            localStorage.setItem('rupiksha_user', JSON.stringify(sessionUser));
+                        }
+                    } catch (_) {}
+                }
+
+                // Refresh global wallet context & dispatch event for header / all components
+                if (refreshWallet) {
+                    try {
+                        await refreshWallet();
+                    } catch (_) {}
+                }
+                window.dispatchEvent(new Event('walletUpdated'));
+                window.dispatchEvent(new Event('storage'));
                 fetchBalance();
-                if (refreshContextBalance) refreshContextBalance();
             } else {
                 setFormError(res?.message || 'Transfer failed. Please try again.');
                 setShowConfirmModal(false);
