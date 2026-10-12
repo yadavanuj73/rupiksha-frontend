@@ -11,6 +11,7 @@ export const menuItems = [
     {
         title: "Transactions", icon: Repeat, path: "/super-distributor/transactions",
         submenu: [
+            { title: "Wallet to Wallet", icon: Coins, path: "/super-distributor/transactions/wallet-to-wallet" },
             { title: "Super Distributor Receipt", icon: FileText, path: "/super-distributor/transactions/super-distributor-receipt" },
             { title: "Retailer Receipt", icon: FileText, path: "/super-distributor/transactions/retailer-receipt" }
         ]

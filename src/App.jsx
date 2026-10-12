@@ -31,6 +31,7 @@ const CompleteKyc = lazy(() => import('./pages/CompleteKyc'));
 const IdPayment = lazy(() => import('./pages/IdPayment'));
 const VerifyCertificate = lazy(() => import('./pages/VerifyCertificate'));
 const WalletTransfer = lazy(() => import('./pages/WalletTransfer'));
+const WalletTransferHistory = lazy(() => import('./pages/WalletTransferHistory'));
 
 // Retailer
 const RetailerLayout = lazy(() => import('./retailer/components/RetailerLayout'));
@@ -283,6 +284,7 @@ function App() {
                 <Route path="retailers/share" element={<DistributorPlaceholder title="Share" />} />
                 <Route path="retailers/workflow" element={<DistributorPlaceholder title="Workflow" />} />
                 <Route path="transactions" element={<DistributorReceipt />} />
+                <Route path="transactions/wallet-to-wallet" element={<WalletTransferHistory />} />
                 <Route path="transactions/distributor-receipt" element={<DistributorReceipt />} />
                 <Route path="transactions/retailer-receipt" element={<RetailerReceipt />} />
                 <Route path="transactions/add-money" element={<AddMoney />} />
@@ -339,6 +341,7 @@ function App() {
                 <Route path="wallet/lock" element={<SuperDistributorWalletControl initialTab="lock" />} />
                 <Route path="wallet/release" element={<SuperDistributorWalletControl initialTab="release-lock" />} />
                 <Route path="transactions" element={<SuperDistributorReceipt />} />
+                <Route path="transactions/wallet-to-wallet" element={<WalletTransferHistory />} />
                 <Route path="transactions/super-distributor-receipt" element={<SuperDistributorReceipt />} />
                 <Route path="transactions/retailer-receipt" element={<SuperDistributorRetailerReceipt />} />
                 <Route path="transactions/add-money" element={<SuperDistributorAddMoney />} />
