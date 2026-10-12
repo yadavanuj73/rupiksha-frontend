@@ -17,6 +17,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -64,10 +65,31 @@ public class WalletTransferController {
             @RequestParam String mobile,
             Authentication auth
     ) {
-        WalletTransferDtos.RecipientLookupResponse recipient = walletTransferService.searchRecipient(mobile, getPrincipalId(auth));
+        String clean = mobile != null ? mobile.replaceAll("[^0-9]", "") : "";
+        if (clean.length() == 12 && clean.startsWith("91")) {
+            clean = clean.substring(2);
+        }
+
+        List<WalletTransferDtos.RecipientLookupResponse> recipients = walletTransferService.searchRecipients(mobile, getPrincipalId(auth));
+        if (recipients == null) {
+            recipients = java.util.Collections.emptyList();
+        }
+
+        WalletTransferDtos.RecipientLookupResponse single = null;
+        if (!recipients.isEmpty()) {
+            single = recipients.get(0);
+        } else if (clean.length() == 10) {
+            single = walletTransferService.searchRecipient(mobile, getPrincipalId(auth));
+            if (single != null) {
+                recipients = List.of(single);
+            }
+        }
+
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
-        response.put("data", recipient);
+        response.put("data", single);
+        response.put("accounts", recipients);
+        response.put("totalAccounts", recipients.size());
         return ResponseEntity.ok(response);
     }
 

@@ -23,6 +23,12 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query(value = "SELECT * FROM users u WHERE u.mobile = :mobile ORDER BY u.created_at ASC LIMIT 1", nativeQuery = true)
     Optional<User> findByMobile(@Param("mobile") String mobile);
 
+    @Query(value = "SELECT * FROM users u WHERE u.mobile = :mobile OR u.mobile = CONCAT('91', :mobile) OR u.mobile = CONCAT('+91', :mobile) OR RIGHT(u.mobile, 10) = :mobile ORDER BY u.created_at ASC", nativeQuery = true)
+    List<User> findAllByMobile(@Param("mobile") String mobile);
+
+    @Query(value = "SELECT * FROM users u WHERE (u.mobile LIKE CONCAT(:prefix, '%') OR u.mobile LIKE CONCAT('91', :prefix, '%') OR u.mobile LIKE CONCAT('+91', :prefix, '%')) ORDER BY u.created_at ASC LIMIT 10", nativeQuery = true)
+    List<User> findByMobilePrefix(@Param("prefix") String prefix);
+
     Optional<User> findByPartyCode(String partyCode);
     boolean existsByPartyCode(String partyCode);
     List<User> findByKycStatus(KycStatus kycStatus);

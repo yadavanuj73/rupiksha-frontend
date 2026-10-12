@@ -110,6 +110,49 @@ public class WalletTransferServiceImplTest {
     }
 
     @Test
+    void searchRecipients_multipleAccounts_success() {
+        Role roleRetailer = new Role();
+        roleRetailer.setName(RoleName.RETAILER);
+        Role roleDistributor = new Role();
+        roleDistributor.setName(RoleName.DISTRIBUTOR);
+        Role roleSuperDistributor = new Role();
+        roleSuperDistributor.setName(RoleName.SUPER_DISTRIBUTOR);
+
+        User acc1 = new User();
+        acc1.setId(UUID.randomUUID());
+        acc1.setFullName("Anuj Retailer");
+        acc1.setMobile("7292987918");
+        acc1.setPartyCode("RX-RET");
+        acc1.setStatus(UserStatus.ACTIVE);
+        acc1.setRoles(Set.of(roleRetailer));
+
+        User acc2 = new User();
+        acc2.setId(UUID.randomUUID());
+        acc2.setFullName("Anuj Distributor");
+        acc2.setMobile("7292987918");
+        acc2.setPartyCode("RX-DIS");
+        acc2.setStatus(UserStatus.ACTIVE);
+        acc2.setRoles(Set.of(roleDistributor));
+
+        User acc3 = new User();
+        acc3.setId(UUID.randomUUID());
+        acc3.setFullName("Anuj Super Distributor");
+        acc3.setMobile("7292987918");
+        acc3.setPartyCode("RX-SDIS");
+        acc3.setStatus(UserStatus.ACTIVE);
+        acc3.setRoles(Set.of(roleSuperDistributor));
+
+        when(userRepository.findAllByMobile("7292987918")).thenReturn(List.of(acc1, acc2, acc3));
+
+        List<WalletTransferDtos.RecipientLookupResponse> results = walletTransferService.searchRecipients("7292987918", sender.getId());
+
+        assertEquals(3, results.size());
+        assertEquals("RETAILER", results.get(0).role());
+        assertEquals("DISTRIBUTOR", results.get(1).role());
+        assertEquals("SUPER_DISTRIBUTOR", results.get(2).role());
+    }
+
+    @Test
     void transferFunds_success() {
         when(userRepository.findById(sender.getId())).thenReturn(Optional.of(sender));
         when(userRepository.findByMobile("9876543211")).thenReturn(Optional.of(recipient));

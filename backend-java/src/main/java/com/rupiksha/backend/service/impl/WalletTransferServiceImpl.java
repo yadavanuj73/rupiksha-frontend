@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -52,45 +53,24 @@ public class WalletTransferServiceImpl implements WalletTransferService {
 
     private String getPrimaryRole(User user) {
         if (user.getRoles() != null && !user.getRoles().isEmpty()) {
+            for (Role role : user.getRoles()) {
+                if (role.getName() == RoleName.SUPER_DISTRIBUTOR) return "SUPER_DISTRIBUTOR";
+            }
+            for (Role role : user.getRoles()) {
+                if (role.getName() == RoleName.DISTRIBUTOR) return "DISTRIBUTOR";
+            }
+            for (Role role : user.getRoles()) {
+                if (role.getName() == RoleName.RETAILER) return "RETAILER";
+            }
+            for (Role role : user.getRoles()) {
+                if (role.getName() == RoleName.ADMIN) return "ADMIN";
+            }
             return user.getRoles().iterator().next().getName().name();
         }
         return "RETAILER";
     }
 
-    private Wallet getOrCreateWalletWithLock(UUID userId, User fallbackUser) {
-        return walletRepository.findByUserIdWithLock(userId).orElseGet(() -> {
-            Wallet newWallet = new Wallet();
-            newWallet.setUser(fallbackUser != null ? fallbackUser : userRepository.findById(userId)
-                    .orElseThrow(() -> new IllegalArgumentException("User not found for wallet creation: " + userId)));
-            newWallet.setBalance(BigDecimal.ZERO);
-            newWallet.setLockedBalance(BigDecimal.ZERO);
-            newWallet.setStatus(WalletStatus.ACTIVE);
-            return walletRepository.save(newWallet);
-        });
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public WalletTransferDtos.RecipientLookupResponse searchRecipient(String mobile, UUID currentUserId) {
-        String cleanedMobile = cleanMobile(mobile);
-        if (cleanedMobile.length() != 10) {
-            throw new IllegalArgumentException("Please enter a valid 10-digit mobile number");
-        }
-
-        User sender = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new IllegalArgumentException("Authenticated user not found"));
-
-        if (cleanedMobile.equalsIgnoreCase(cleanMobile(sender.getMobile()))) {
-            throw new IllegalArgumentException("Cannot transfer funds to your own wallet");
-        }
-
-        User recipient = userRepository.findByMobile(cleanedMobile)
-                .orElseThrow(() -> new IllegalArgumentException("No Rupiksha user found with mobile number " + cleanedMobile));
-
-        if (recipient.getId().equals(currentUserId)) {
-            throw new IllegalArgumentException("Cannot transfer funds to your own wallet");
-        }
-
+    private WalletTransferDtos.RecipientLookupResponse mapToRecipientResponse(User recipient) {
         boolean isEligible = recipient.getStatus() != UserStatus.INACTIVE && recipient.getStatus() != UserStatus.REJECTED;
         String message = isEligible ? "User verified and eligible for fund transfer" : "Recipient account is currently inactive or rejected";
 
@@ -108,6 +88,67 @@ public class WalletTransferServiceImpl implements WalletTransferService {
                 isEligible,
                 message
         );
+    }
+
+    private Wallet getOrCreateWalletWithLock(UUID userId, User fallbackUser) {
+        return walletRepository.findByUserIdWithLock(userId).orElseGet(() -> {
+            Wallet newWallet = new Wallet();
+            newWallet.setUser(fallbackUser != null ? fallbackUser : userRepository.findById(userId)
+                    .orElseThrow(() -> new IllegalArgumentException("User not found for wallet creation: " + userId)));
+            newWallet.setBalance(BigDecimal.ZERO);
+            newWallet.setLockedBalance(BigDecimal.ZERO);
+            newWallet.setStatus(WalletStatus.ACTIVE);
+            return walletRepository.save(newWallet);
+        });
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WalletTransferDtos.RecipientLookupResponse> searchRecipients(String mobile, UUID currentUserId) {
+        String cleanedMobile = cleanMobile(mobile);
+        if (cleanedMobile.length() < 3) {
+            return Collections.emptyList();
+        }
+
+        List<User> users;
+        if (cleanedMobile.length() == 10) {
+            users = userRepository.findAllByMobile(cleanedMobile);
+            if (users == null || users.isEmpty()) {
+                users = userRepository.findByMobile(cleanedMobile).map(List::of).orElse(Collections.emptyList());
+            }
+        } else {
+            users = userRepository.findByMobilePrefix(cleanedMobile);
+            if (users == null) {
+                users = Collections.emptyList();
+            }
+        }
+
+        return users.stream()
+                .filter(u -> !u.getId().equals(currentUserId))
+                .map(this::mapToRecipientResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WalletTransferDtos.RecipientLookupResponse searchRecipient(String mobile, UUID currentUserId) {
+        String cleanedMobile = cleanMobile(mobile);
+        if (cleanedMobile.length() != 10) {
+            throw new IllegalArgumentException("Please enter a valid 10-digit mobile number");
+        }
+
+        User sender = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new IllegalArgumentException("Authenticated user not found"));
+
+        List<WalletTransferDtos.RecipientLookupResponse> recipients = searchRecipients(mobile, currentUserId);
+        if (recipients.isEmpty()) {
+            if (cleanedMobile.equalsIgnoreCase(cleanMobile(sender.getMobile()))) {
+                throw new IllegalArgumentException("Cannot transfer funds to your own wallet");
+            }
+            throw new IllegalArgumentException("No Rupiksha user found with mobile number " + cleanedMobile);
+        }
+
+        return recipients.get(0);
     }
 
     @Override

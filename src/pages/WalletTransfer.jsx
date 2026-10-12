@@ -26,65 +26,113 @@ export default function WalletTransfer() {
     const [searchMobile, setSearchMobile] = useState('');
     const [searchLoading, setSearchLoading] = useState(false);
     const [searchError, setSearchError] = useState('');
-    const [searchResult, setSearchResult] = useState(null);
+    const [searchResults, setSearchResults] = useState([]);
+    const [suggestions, setSuggestions] = useState([]);
+    const [suggestionsLoading, setSuggestionsLoading] = useState(false);
     const [selectedRecipient, setSelectedRecipient] = useState(null);
 
-    // Transfer Form State
-    const [amount, setAmount] = useState('');
-    const [remarks, setRemarks] = useState('');
-    const [formError, setFormError] = useState('');
-
-    // Confirmation & Transfer Execution State
-    const [showConfirmModal, setShowConfirmModal] = useState(false);
-    const [transferring, setTransferring] = useState(false);
-    const [transferSuccessData, setTransferSuccessData] = useState(null);
-    const [showSuccessModal, setShowSuccessModal] = useState(false);
-    const [copiedRef, setCopiedRef] = useState(false);
-
-    // Load Balance
-    const fetchBalance = useCallback(async () => {
-        if (!currentUser?.id) return;
-        setBalanceLoading(true);
-        try {
-            const data = await walletService.getBalance(currentUser.id);
-            if (data) {
-                const bal = Number(data.balance || 0);
-                const locked = Number(data.lockedAmount || data.lockedBalance || 0);
-                const avail = Number(data.availableBalance ?? (bal - locked));
-                setBalance(bal);
-                setLockedBalance(locked);
-                setAvailableBalance(avail);
-            }
-        } catch (err) {
-            console.error('Failed to load wallet balance:', err);
-        } finally {
-            setBalanceLoading(false);
+    // Role Details & Badge Styling
+    const getRoleDetails = useCallback((role) => {
+        const r = (role || '').toUpperCase();
+        if (r.includes('SUPER')) {
+            return {
+                badge: 'bg-purple-100 text-purple-900 border-purple-300',
+                panelBadge: 'bg-purple-50 text-purple-800 border-purple-200',
+                cardBorder: 'border-purple-300/80 hover:border-purple-500',
+                bg: 'bg-gradient-to-br from-purple-50/90 via-indigo-50/40 to-white',
+                btnBg: 'bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-700 hover:to-indigo-800',
+                avatarBg: 'bg-purple-700',
+                roleName: 'SUPER DISTRIBUTOR',
+                panelName: 'Super Distributor Panel'
+            };
         }
-    }, [currentUser?.id]);
+        if (r.includes('DISTRIBUTOR')) {
+            return {
+                badge: 'bg-amber-100 text-amber-900 border-amber-300',
+                panelBadge: 'bg-amber-50 text-amber-800 border-amber-200',
+                cardBorder: 'border-amber-300/80 hover:border-amber-500',
+                bg: 'bg-gradient-to-br from-amber-50/90 via-orange-50/40 to-white',
+                btnBg: 'bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 hover:from-amber-700 hover:to-orange-800',
+                avatarBg: 'bg-amber-600',
+                roleName: 'DISTRIBUTOR',
+                panelName: 'Distributor Panel'
+            };
+        }
+        return {
+            badge: 'bg-blue-100 text-blue-900 border-blue-300',
+            panelBadge: 'bg-blue-50 text-blue-800 border-blue-200',
+            cardBorder: 'border-blue-300/80 hover:border-blue-500',
+            bg: 'bg-gradient-to-br from-blue-50/90 via-indigo-50/40 to-white',
+            btnBg: 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800',
+            avatarBg: 'bg-blue-600',
+            roleName: 'RETAILER',
+            panelName: 'Retailer Panel'
+        };
+    }, []);
 
+    // Live Suggestions Fetcher (3 to 9 digits)
+    const fetchSuggestions = useCallback(async (prefix) => {
+        if (!prefix || prefix.length < 3 || prefix.length >= 10) {
+            setSuggestions([]);
+            return;
+        }
+        setSuggestionsLoading(true);
+        try {
+            const res = await walletTransferService.searchRecipient(prefix);
+            const list = Array.isArray(res?.accounts) ? res.accounts : [];
+            setSuggestions(list);
+        } catch {
+            setSuggestions([]);
+        } finally {
+            setSuggestionsLoading(false);
+        }
+    }, []);
+
+    // Debounce suggestions when typing
     useEffect(() => {
-        fetchBalance();
-    }, [fetchBalance]);
+        const clean = searchMobile.replace(/\D/g, '');
+        if (clean.length >= 3 && clean.length < 10) {
+            const timer = setTimeout(() => {
+                fetchSuggestions(clean);
+            }, 250);
+            return () => clearTimeout(timer);
+        } else {
+            setSuggestions([]);
+        }
+    }, [searchMobile, fetchSuggestions]);
 
-    // Handle Recipient Search
-    const handleSearchRecipient = async (e) => {
-        if (e) e.preventDefault();
-        const cleanNumber = searchMobile.replace(/\D/g, '');
+    // Handle Recipient Search (Explicit button click or auto on 10 digits)
+    const handleSearchRecipient = async (numberOrEvent) => {
+        let cleanNumber = '';
+        if (typeof numberOrEvent === 'string') {
+            cleanNumber = numberOrEvent.replace(/\D/g, '');
+        } else if (numberOrEvent && typeof numberOrEvent.preventDefault === 'function') {
+            numberOrEvent.preventDefault();
+            cleanNumber = searchMobile.replace(/\D/g, '');
+        } else {
+            cleanNumber = searchMobile.replace(/\D/g, '');
+        }
+
         if (cleanNumber.length !== 10) {
             setSearchError('Please enter a valid 10-digit mobile number');
-            setSearchResult(null);
+            setSearchResults([]);
             return;
         }
 
         setSearchLoading(true);
         setSearchError('');
-        setSearchResult(null);
+        setSuggestions([]);
+        setSearchResults([]);
         setSelectedRecipient(null);
 
         try {
             const res = await walletTransferService.searchRecipient(cleanNumber);
-            if (res && res.success && res.data) {
-                setSearchResult(res.data);
+            const accounts = Array.isArray(res?.accounts) && res.accounts.length > 0
+                ? res.accounts
+                : (res?.data ? [res.data] : []);
+
+            if (accounts.length > 0) {
+                setSearchResults(accounts);
             } else {
                 setSearchError(res?.message || 'No Rupiksha user found with this mobile number.');
             }
@@ -93,6 +141,12 @@ export default function WalletTransfer() {
         } finally {
             setSearchLoading(false);
         }
+    };
+
+    const handleSelectSuggestion = (acc) => {
+        setSearchMobile(acc.mobile);
+        setSuggestions([]);
+        handleSearchRecipient(acc.mobile);
     };
 
     // Quick Amount Chips
@@ -293,10 +347,8 @@ export default function WalletTransfer() {
                                     <button
                                         onClick={() => {
                                             setSelectedRecipient(null);
-                                            setSearchResult(null);
-                                            setSearchMobile('');
                                         }}
-                                        className="text-xs font-bold text-blue-600 hover:text-blue-800 cursor-pointer"
+                                        className="text-xs font-black text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
                                     >
                                         Change Recipient
                                     </button>
@@ -305,12 +357,12 @@ export default function WalletTransfer() {
 
                             {!selectedRecipient ? (
                                 <div className="space-y-3">
-                                    <form onSubmit={handleSearchRecipient} className="space-y-2">
+                                    <form onSubmit={handleSearchRecipient} className="space-y-2 relative">
                                         <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
                                             Search by registered mobile number
                                         </label>
                                         <div className="relative flex items-center">
-                                            <div className="absolute left-3 flex items-center gap-1 text-slate-400 font-bold text-xs">
+                                            <div className="absolute left-3 flex items-center gap-1 text-slate-400 font-bold text-xs pointer-events-none">
                                                 <span>+91</span>
                                                 <span className="text-slate-300">|</span>
                                             </div>
@@ -323,7 +375,10 @@ export default function WalletTransfer() {
                                                     setSearchMobile(val);
                                                     setSearchError('');
                                                     if (val.length === 10) {
-                                                        setTimeout(() => handleSearchRecipient(), 100);
+                                                        setSuggestions([]);
+                                                        handleSearchRecipient(val);
+                                                    } else {
+                                                        setSearchResults([]);
                                                     }
                                                 }}
                                                 placeholder="Enter 10-digit mobile number"
@@ -344,6 +399,47 @@ export default function WalletTransfer() {
                                                 )}
                                             </button>
                                         </div>
+
+                                        {/* Live Suggestions Dropdown while typing digits (3 to 9 digits) */}
+                                        <AnimatePresence>
+                                            {suggestions.length > 0 && !selectedRecipient && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, y: -4 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, y: -4 }}
+                                                    className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg z-30 max-h-60 overflow-y-auto divide-y divide-slate-100"
+                                                >
+                                                    <div className="p-2 bg-slate-50 border-b border-slate-100 text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center justify-between">
+                                                        <span>Matching Registered Accounts ({suggestions.length})</span>
+                                                        {suggestionsLoading && <RefreshCw size={10} className="animate-spin text-blue-600" />}
+                                                    </div>
+                                                    {suggestions.map((item, idx) => {
+                                                        const rStyle = getRoleDetails(item.role);
+                                                        return (
+                                                            <button
+                                                                key={item.id || idx}
+                                                                type="button"
+                                                                onClick={() => handleSelectSuggestion(item)}
+                                                                className="w-full text-left p-2.5 hover:bg-slate-50 transition flex items-center justify-between gap-2 cursor-pointer"
+                                                            >
+                                                                <div className="min-w-0">
+                                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                                        <span className="font-black text-slate-900 text-xs truncate">{item.fullName}</span>
+                                                                        <span className={`px-1.5 py-0.5 text-[9px] font-black rounded-sm uppercase ${rStyle.badge} border`}>
+                                                                            {rStyle.roleName}
+                                                                        </span>
+                                                                    </div>
+                                                                    <p className="text-[11px] font-bold text-slate-500 font-mono mt-0.5">
+                                                                        {item.mobile} • {item.partyCode || 'N/A'} {item.businessName ? `• ${item.businessName}` : ''}
+                                                                    </p>
+                                                                </div>
+                                                                <ArrowRight size={13} className="text-slate-400 shrink-0" />
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
                                     </form>
 
                                     {searchError && (
@@ -357,59 +453,80 @@ export default function WalletTransfer() {
                                         </motion.div>
                                     )}
 
-                                    {/* Search Result Card (Before Selecting) */}
-                                    {searchResult ? (
-                                        <motion.div
-                                            initial={{ opacity: 0, scale: 0.98 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            className="border border-blue-200 bg-gradient-to-br from-blue-50/70 via-indigo-50/40 to-white rounded-xl p-3.5 space-y-3"
-                                        >
-                                            <div className="flex items-start justify-between gap-2">
-                                                <div>
-                                                    <div className="flex items-center gap-2">
-                                                        <h3 className="text-sm font-black text-slate-900">{searchResult.fullName}</h3>
-                                                        <span className="px-2 py-0.5 bg-blue-100 text-blue-800 font-extrabold text-[10px] rounded-full uppercase">
-                                                            {searchResult.role}
-                                                        </span>
+                                    {/* Search Results: Multi-account list or single account */}
+                                    {searchResults.length > 0 ? (
+                                        <div className="space-y-3">
+                                            {searchResults.length > 1 && (
+                                                <div className="p-2.5 bg-blue-50/90 border border-blue-200 rounded-xl flex items-start gap-2 text-xs text-blue-900 font-bold">
+                                                    <ShieldCheck size={16} className="text-blue-600 shrink-0 mt-0.5" />
+                                                    <div>
+                                                        <p className="font-black">Found {searchResults.length} accounts for {searchResults[0]?.mobile || searchMobile}</p>
+                                                        <p className="text-[11px] text-blue-700 font-medium">This mobile number is registered in multiple panels. Please select which account wallet you want to transfer funds to:</p>
                                                     </div>
-                                                    {searchResult.businessName && searchResult.businessName !== searchResult.fullName && (
-                                                        <p className="text-xs text-slate-600 font-bold mt-0.5">{searchResult.businessName}</p>
-                                                    )}
                                                 </div>
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black rounded-full">
-                                                    <UserCheck size={11} />
-                                                    Verified
-                                                </span>
-                                            </div>
+                                            )}
 
-                                            <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-slate-200/60">
-                                                <div>
-                                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Party Code</span>
-                                                    <p className="font-black text-slate-800">{searchResult.partyCode || 'N/A'}</p>
-                                                </div>
-                                                <div>
-                                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Registered Mobile</span>
-                                                    <p className="font-black text-slate-800">{searchResult.mobile}</p>
-                                                </div>
-                                                {(searchResult.city || searchResult.stateName) && (
-                                                    <div className="col-span-2">
-                                                        <span className="text-[10px] font-bold text-slate-400 uppercase">Location</span>
-                                                        <p className="font-bold text-slate-700 truncate">
-                                                            {[searchResult.city, searchResult.stateName].filter(Boolean).join(', ')}
-                                                        </p>
-                                                    </div>
-                                                )}
-                                            </div>
+                                            <div className="space-y-2.5">
+                                                {searchResults.map((acc, index) => {
+                                                    const rStyle = getRoleDetails(acc.role);
+                                                    return (
+                                                        <motion.div
+                                                            key={acc.id || index}
+                                                            initial={{ opacity: 0, scale: 0.98 }}
+                                                            animate={{ opacity: 1, scale: 1 }}
+                                                            transition={{ duration: 0.15, delay: index * 0.04 }}
+                                                            className={`border ${rStyle.cardBorder} ${rStyle.bg} rounded-xl p-3.5 space-y-3 shadow-xs transition-all`}
+                                                        >
+                                                            <div className="flex items-start justify-between gap-2">
+                                                                <div className="min-w-0">
+                                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                                        <h3 className="text-sm font-black text-slate-900">{acc.fullName}</h3>
+                                                                        <span className={`px-2 py-0.5 ${rStyle.badge} font-black text-[10px] rounded-full uppercase border`}>
+                                                                            {rStyle.roleName}
+                                                                        </span>
+                                                                    </div>
+                                                                    {acc.businessName && acc.businessName !== acc.fullName && (
+                                                                        <p className="text-xs text-slate-600 font-bold mt-0.5 truncate">{acc.businessName}</p>
+                                                                    )}
+                                                                </div>
+                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black rounded-full shrink-0">
+                                                                    <UserCheck size={11} />
+                                                                    Verified
+                                                                </span>
+                                                            </div>
 
-                                            <button
-                                                type="button"
-                                                onClick={() => setSelectedRecipient(searchResult)}
-                                                className="w-full py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-black rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
-                                            >
-                                                <span>Select this Recipient</span>
-                                                <ArrowRight size={13} />
-                                            </button>
-                                        </motion.div>
+                                                            <div className="grid grid-cols-2 gap-2 text-xs pt-1.5 border-t border-slate-200/60">
+                                                                <div>
+                                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Party Code</span>
+                                                                    <p className="font-black text-slate-800 font-mono">{acc.partyCode || 'N/A'}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Registered Mobile</span>
+                                                                    <p className="font-black text-slate-800 font-mono">{acc.mobile}</p>
+                                                                </div>
+                                                                {(acc.city || acc.stateName) && (
+                                                                    <div className="col-span-2">
+                                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Location</span>
+                                                                        <p className="font-bold text-slate-700 truncate">
+                                                                            {[acc.city, acc.stateName].filter(Boolean).join(', ')}
+                                                                        </p>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setSelectedRecipient(acc)}
+                                                                className={`w-full py-2.5 ${rStyle.btnBg} text-white text-xs font-black rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer`}
+                                                            >
+                                                                <span>Select this {rStyle.roleName} Recipient</span>
+                                                                <ArrowRight size={13} />
+                                                            </button>
+                                                        </motion.div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
                                     ) : (
                                         /* Subtle Guide Helper */
                                         <div className="p-3.5 bg-slate-50/80 rounded-xl border border-dashed border-slate-200 text-center space-y-1.5 py-5">
@@ -432,7 +549,7 @@ export default function WalletTransfer() {
                                 >
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2.5">
-                                            <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-black text-xs">
+                                            <div className={`w-8 h-8 rounded-full ${getRoleDetails(selectedRecipient.role).avatarBg} text-white flex items-center justify-center font-black text-xs`}>
                                                 {selectedRecipient.fullName?.slice(0, 2).toUpperCase() || 'RX'}
                                             </div>
                                             <div>
@@ -440,8 +557,8 @@ export default function WalletTransfer() {
                                                 <p className="text-[11px] font-bold text-slate-500">{selectedRecipient.businessName}</p>
                                             </div>
                                         </div>
-                                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-black text-[10px] rounded-full uppercase">
-                                            {selectedRecipient.role}
+                                        <span className={`px-2 py-0.5 ${getRoleDetails(selectedRecipient.role).badge} font-black text-[10px] rounded-full uppercase border`}>
+                                            {getRoleDetails(selectedRecipient.role).roleName}
                                         </span>
                                     </div>
 

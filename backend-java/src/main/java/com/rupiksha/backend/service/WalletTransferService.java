@@ -3,10 +3,13 @@ package com.rupiksha.backend.service;
 import com.rupiksha.backend.api.dto.WalletTransferDtos;
 import org.springframework.data.domain.Pageable;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface WalletTransferService {
     WalletTransferDtos.RecipientLookupResponse searchRecipient(String mobile, UUID currentUserId);
+
+    List<WalletTransferDtos.RecipientLookupResponse> searchRecipients(String mobile, UUID currentUserId);
 
     WalletTransferDtos.WalletTransferResponse transferFunds(
             WalletTransferDtos.WalletTransferRequest request,
