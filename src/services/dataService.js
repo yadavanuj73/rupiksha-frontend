@@ -831,6 +831,14 @@ export const dataService = {
     },
 
     // --- WALLET & TRANSACTIONS ---
+    clearWalletBalanceCache: function (userId) {
+        if (userId) {
+            lastBalanceCache.delete(String(userId));
+            lastBalanceCache.delete(String(userId || 'current'));
+        } else {
+            lastBalanceCache.clear();
+        }
+    },
     getWalletBalance: async function (userId, force = false) {
         if (useLocalOnly) {
            const user = this.getCurrentUser();

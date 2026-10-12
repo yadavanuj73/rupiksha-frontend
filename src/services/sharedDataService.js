@@ -104,6 +104,32 @@ export const sharedDataService = {
         return this.getAllSuperDistributors().find(s => s.id === id);
     },
 
+    updateDistributorBalance: function (id, newBalance) {
+        try {
+            const strBal = String(newBalance);
+            const dists = this.getAllDistributors();
+            const idx = dists.findIndex(d => String(d.id) === String(id) || String(d.userId) === String(id) || String(d.username) === String(id));
+            if (idx !== -1) {
+                dists[idx].balance = strBal;
+                dists[idx].wallet = { ...(dists[idx].wallet || {}), balance: strBal };
+                this.saveDistributors(dists, true);
+            }
+        } catch (_) {}
+    },
+
+    updateSuperDistributorBalance: function (id, newBalance) {
+        try {
+            const strBal = String(newBalance);
+            const sas = this.getAllSuperDistributors();
+            const idx = sas.findIndex(s => String(s.id) === String(id) || String(s.userId) === String(id) || String(s.username) === String(id));
+            if (idx !== -1) {
+                sas[idx].balance = strBal;
+                sas[idx].wallet = { ...(sas[idx].wallet || {}), balance: strBal };
+                this.saveSuperDistributors(sas, true);
+            }
+        } catch (_) {}
+    },
+
     registerSuperDistributor: async function (data) {
         const password = data.password || '123456';
         const username = data.mobile || data.email;

@@ -22,23 +22,32 @@ const DistributorTopBar = ({ onMenuClick }) => {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const loadDist = async (syncWallet = true) => {
+    const loadDist = async (syncWallet = true, forceSync = false) => {
         const session = sharedDataService.getCurrentDistributor() || dataService.getCurrentUser();
         if (!session) return;
         const fresh = (session.id && sharedDataService.getDistributorById(session.id)) || session;
         const uid = fresh.id || fresh.userId || fresh.username;
         const savedPhoto = uid ? localStorage.getItem(`rupiksha_photo_${uid}`) : null;
         const photo = fresh.profilePhoto || fresh.photoUrl || savedPhoto || null;
+
+        // Immediate fast sync from local storage cache (0ms latency)
+        const cachedWallet = uid ? localStorage.getItem(`rupiksha_wallet_${uid}`) : null;
+        const currentBal = cachedWallet !== null && cachedWallet !== undefined
+            ? cachedWallet
+            : (fresh.wallet?.balance ?? fresh.balance ?? session.balance ?? '0.00');
+
         setDist({
             ...fresh,
             profilePhoto: photo,
-            photoUrl: photo
+            photoUrl: photo,
+            balance: currentBal,
+            wallet: { ...(fresh.wallet || {}), balance: currentBal }
         });
         setImgError(false);
 
         if (syncWallet && uid) {
             try {
-                const liveBal = await dataService.getWalletBalance(fresh.id || fresh.userId);
+                const liveBal = await dataService.getWalletBalance(fresh.id || fresh.userId, forceSync);
                 if (liveBal !== undefined && liveBal !== null) {
                     setDist(prev => ({
                         ...(prev || fresh),
@@ -51,23 +60,27 @@ const DistributorTopBar = ({ onMenuClick }) => {
     };
 
     useEffect(() => {
-        loadDist(true);
+        loadDist(true, true);
         // Hydrate profile once on initial mount if photo missing
         const session = sharedDataService.getCurrentDistributor() || dataService.getCurrentUser();
         if (session && !session.profilePhoto && !session.photoUrl) {
             dataService.fetchUserProfile().catch(() => {});
         }
 
-        const handleUpdate = () => loadDist(false);
-        const handleProfile = () => loadDist(true);
+        const handleWallet = () => loadDist(true, true);
+        const handleProfile = () => loadDist(true, true);
 
-        window.addEventListener('distributorDataUpdated', handleUpdate);
-        window.addEventListener('dataUpdated', handleUpdate);
+        window.addEventListener('distributorDataUpdated', handleWallet);
+        window.addEventListener('dataUpdated', handleWallet);
+        window.addEventListener('walletUpdated', handleWallet);
         window.addEventListener('profileUpdated', handleProfile);
+        window.addEventListener('storage', handleWallet);
         return () => {
-            window.removeEventListener('distributorDataUpdated', handleUpdate);
-            window.removeEventListener('dataUpdated', handleUpdate);
+            window.removeEventListener('distributorDataUpdated', handleWallet);
+            window.removeEventListener('dataUpdated', handleWallet);
+            window.removeEventListener('walletUpdated', handleWallet);
             window.removeEventListener('profileUpdated', handleProfile);
+            window.removeEventListener('storage', handleWallet);
         };
     }, []);
 
@@ -89,7 +102,7 @@ const DistributorTopBar = ({ onMenuClick }) => {
     const distUid = dist?.id || dist?.userId || dist?.username;
     const userPhoto = dist?.profilePhoto || dist?.photoUrl || (distUid ? localStorage.getItem(`rupiksha_photo_${distUid}`) : null);
     const initials = (dist?.name || 'D').charAt(0).toUpperCase();
-    const walletBal = dist?.wallet?.balance || '0.00';
+    const walletBal = dist?.wallet?.balance ?? dist?.balance ?? '0.00';
     const distName = dist?.name || 'Distributor';
     const rawKyc = String(dist?.kycStatus || dist?.profile_kyc_status || '').toUpperCase();
     const kycChip = rawKyc === 'APPROVED' || rawKyc === 'DONE'

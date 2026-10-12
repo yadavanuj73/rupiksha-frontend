@@ -7,6 +7,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { walletService, walletTransferService } from '../services/apiService';
+import { dataService } from '../services/dataService';
+import { sharedDataService } from '../services/sharedDataService';
 import { useAuth } from '../context/AuthContext';
 import { useWallet } from '../context/WalletContext';
 import { printWalletTransferReceipt } from '../utils/walletTransferReceiptPrint';
@@ -248,27 +250,42 @@ export default function WalletTransfer() {
                 // Immediately update local page balance if senderBalance is returned
                 if (res.data?.senderBalance !== undefined && res.data?.senderBalance !== null) {
                     const newBal = Number(res.data.senderBalance);
+                    const newBalStr = newBal.toFixed(2);
                     setBalance(newBal);
                     setAvailableBalance(Math.max(0, newBal - lockedBalance));
 
-                    // Update localStorage caches for header and navbar
+                    // Clear dataService balance cache so fresh API calls get the latest value immediately
+                    if (dataService?.clearWalletBalanceCache) {
+                        dataService.clearWalletBalanceCache();
+                    }
+
+                    // Update localStorage caches for header and navbar across all panels
                     try {
-                        if (currentUser?.id) {
-                            localStorage.setItem(`rupiksha_wallet_${currentUser.id}`, newBal.toFixed(2));
-                        }
-                        if (currentUser?.username) {
-                            localStorage.setItem(`rupiksha_wallet_${currentUser.username}`, newBal.toFixed(2));
-                        }
-                        if (currentUser?.mobile) {
-                            localStorage.setItem(`rupiksha_wallet_${currentUser.mobile}`, newBal.toFixed(2));
-                        }
-                        const sessionRaw = localStorage.getItem('rupiksha_user');
-                        if (sessionRaw) {
-                            const sessionUser = JSON.parse(sessionRaw);
-                            sessionUser.balance = newBal.toFixed(2);
-                            sessionUser.walletBalance = newBal.toFixed(2);
-                            localStorage.setItem('rupiksha_user', JSON.stringify(sessionUser));
-                        }
+                        const allIds = [
+                            currentUser?.id, currentUser?.username, currentUser?.mobile
+                        ].filter(Boolean);
+
+                        allIds.forEach(id => {
+                            localStorage.setItem(`rupiksha_wallet_${id}`, newBalStr);
+                        });
+
+                        ['rupiksha_user', 'rupiksha_super_distributor_user', 'rupiksha_distributor_user', 'rupiksha_imp_user'].forEach(key => {
+                            const raw = localStorage.getItem(key);
+                            if (raw) {
+                                try {
+                                    const parsed = JSON.parse(raw);
+                                    parsed.balance = newBalStr;
+                                    parsed.walletBalance = newBalStr;
+                                    if (parsed.wallet) parsed.wallet.balance = newBalStr;
+                                    localStorage.setItem(key, JSON.stringify(parsed));
+                                } catch (_) {}
+                            }
+                        });
+
+                        allIds.forEach(id => {
+                            sharedDataService.updateDistributorBalance?.(id, newBalStr);
+                            sharedDataService.updateSuperDistributorBalance?.(id, newBalStr);
+                        });
                     } catch (_) {}
                 }
 
@@ -278,8 +295,11 @@ export default function WalletTransfer() {
                         await refreshWallet();
                     } catch (_) {}
                 }
-                window.dispatchEvent(new CustomEvent('walletUpdated'));
+                window.dispatchEvent(new CustomEvent('walletUpdated', { detail: { balance: res.data?.senderBalance } }));
                 window.dispatchEvent(new Event('walletUpdated'));
+                window.dispatchEvent(new Event('distributorDataUpdated'));
+                window.dispatchEvent(new Event('SuperDistributorDataUpdated'));
+                window.dispatchEvent(new Event('dataUpdated'));
                 window.dispatchEvent(new Event('storage'));
                 fetchBalance();
             } else {
