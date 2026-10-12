@@ -242,14 +242,14 @@ export default function WalletTransfer() {
                 setAmount('');
                 setRemarks('');
                 setSelectedRecipient(null);
-                setSearchResult(null);
+                setSearchResults([]);
                 setSearchMobile('');
 
                 // Immediately update local page balance if senderBalance is returned
                 if (res.data?.senderBalance !== undefined && res.data?.senderBalance !== null) {
                     const newBal = Number(res.data.senderBalance);
                     setBalance(newBal);
-                    setAvailableBalance(newBal - lockedBalance);
+                    setAvailableBalance(Math.max(0, newBal - lockedBalance));
 
                     // Update localStorage caches for header and navbar
                     try {
@@ -278,6 +278,7 @@ export default function WalletTransfer() {
                         await refreshWallet();
                     } catch (_) {}
                 }
+                window.dispatchEvent(new CustomEvent('walletUpdated'));
                 window.dispatchEvent(new Event('walletUpdated'));
                 window.dispatchEvent(new Event('storage'));
                 fetchBalance();
