@@ -49,7 +49,6 @@ public class SecurityConfig {
                 "/api/v1/payment/webhook/**",
                 "/api/v1/aeps/status",
                 "/api/v1/recharge/callback",
-                "/api/v1/recharge/my-ip",
                 "/api/v1/certificates/verify/**",
                 "/api/v1/id-payment/**"
         ));
