@@ -2,10 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
     Search, RefreshCw, ArrowUpRight, ArrowDownLeft, 
     Copy, Check, FileText, Printer, ChevronLeft, ChevronRight,
-    Coins, Calendar, Clock, X, ArrowLeft
+    Coins, Calendar, Clock, X, ArrowLeft, Download, FileSpreadsheet, RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 import { walletService, walletTransferService } from '../services/apiService';
 import { useAuth } from '../context/AuthContext';
 
@@ -28,6 +29,10 @@ export default function WalletTransferHistory() {
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
     const [totalElements, setTotalElements] = useState(0);
+
+    // Export State
+    const [exportingExcel, setExportingExcel] = useState(false);
+    const [exportingCsv, setExportingCsv] = useState(false);
 
     // Receipt Modal State
     const [selectedHistoryItem, setSelectedHistoryItem] = useState(null);
@@ -91,6 +96,15 @@ export default function WalletTransferHistory() {
         fetchHistory(0);
     }, [directionFilter, statusFilter, startDate, endDate]);
 
+    const handleResetFilters = () => {
+        setSearchTerm('');
+        setStatusFilter('ALL');
+        setDirectionFilter('ALL');
+        setStartDate('');
+        setEndDate('');
+        setPage(0);
+    };
+
     const copyToClipboard = (text) => {
         navigator.clipboard.writeText(text);
         setCopiedRef(true);
@@ -108,6 +122,157 @@ export default function WalletTransferHistory() {
         if (roles.includes('SUPER_DISTRIBUTOR')) return '/super-distributor/wallet-to-wallet';
         if (roles.includes('DISTRIBUTOR')) return '/distributor/wallet-to-wallet';
         return '/wallet-to-wallet';
+    };
+
+    // Helper to fetch complete records matching active filters for export
+    const fetchExportData = async () => {
+        try {
+            const res = await walletTransferService.getHistory({
+                direction: directionFilter !== 'ALL' ? directionFilter : undefined,
+                status: statusFilter !== 'ALL' ? statusFilter : undefined,
+                search: searchTerm.trim() || undefined,
+                startDate: startDate || undefined,
+                endDate: endDate || undefined,
+                page: 0,
+                size: 2000,
+                sortBy: 'createdAt',
+                sortDirection: 'desc'
+            });
+            if (res && res.success && Array.isArray(res.data)) {
+                return res.data;
+            }
+            return [];
+        } catch (err) {
+            console.error('Failed to fetch data for export:', err);
+            return [];
+        }
+    };
+
+    // Export to Excel
+    const handleExportExcel = async () => {
+        if (exportingExcel) return;
+        setExportingExcel(true);
+        try {
+            const items = await fetchExportData();
+            if (!items || items.length === 0) {
+                alert('No records found to export.');
+                return;
+            }
+
+            const rows = items.map(item => {
+                const isSender = item.direction === 'SENT';
+                const counterpartyName = isSender ? item.recipientName : item.senderName;
+                const counterpartyCode = isSender ? item.recipientPartyCode : item.senderPartyCode;
+                const counterpartyMobile = isSender ? item.recipientMobile : item.senderMobile;
+
+                return {
+                    "Reference ID": item.transferReference || '',
+                    "Date & Time": item.createdAt ? new Date(item.createdAt).toLocaleString('en-IN') : '',
+                    "Direction": item.direction || '',
+                    "Counterparty": counterpartyName || '',
+                    "Counterparty Code": counterpartyCode || '',
+                    "Counterparty Mobile": counterpartyMobile || '',
+                    "Amount (₹)": Number(item.amount || 0).toFixed(2),
+                    "Fee (₹)": Number(item.fee || 0).toFixed(2),
+                    "Total Debit (₹)": Number(item.totalDebit || 0).toFixed(2),
+                    "Credit (₹)": Number(item.recipientCredit || 0).toFixed(2),
+                    "Status": item.status || '',
+                    "Remarks": item.remarks || '',
+                    "Sender Name": item.senderName || '',
+                    "Sender Code": item.senderPartyCode || '',
+                    "Recipient Name": item.recipientName || '',
+                    "Recipient Code": item.recipientPartyCode || ''
+                };
+            });
+
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Wallet Transfers");
+            const dateStr = new Date().toISOString().slice(0, 10);
+            XLSX.writeFile(wb, `Rupiksha_Wallet_Transfers_${dateStr}.xlsx`);
+        } catch (err) {
+            console.error('Excel export error:', err);
+            alert('Failed to export Excel.');
+        } finally {
+            setExportingExcel(false);
+        }
+    };
+
+    // Export to CSV
+    const handleExportCsv = async () => {
+        if (exportingCsv) return;
+        setExportingCsv(true);
+        try {
+            const items = await fetchExportData();
+            if (!items || items.length === 0) {
+                alert('No records found to export.');
+                return;
+            }
+
+            const headers = [
+                "Reference ID",
+                "Date & Time",
+                "Direction",
+                "Counterparty",
+                "Counterparty Code",
+                "Counterparty Mobile",
+                "Amount (INR)",
+                "Fee (INR)",
+                "Total Debit (INR)",
+                "Credit (INR)",
+                "Status",
+                "Remarks",
+                "Sender Name",
+                "Sender Code",
+                "Recipient Name",
+                "Recipient Code"
+            ];
+
+            const csvRows = [headers.join(",")];
+            items.forEach(item => {
+                const isSender = item.direction === 'SENT';
+                const counterpartyName = isSender ? item.recipientName : item.senderName;
+                const counterpartyCode = isSender ? item.recipientPartyCode : item.senderPartyCode;
+                const counterpartyMobile = isSender ? item.recipientMobile : item.senderMobile;
+
+                const values = [
+                    `"${item.transferReference || ''}"`,
+                    `"${item.createdAt ? new Date(item.createdAt).toLocaleString('en-IN') : ''}"`,
+                    `"${item.direction || ''}"`,
+                    `"${(counterpartyName || '').replace(/"/g, '""')}"`,
+                    `"${counterpartyCode || ''}"`,
+                    `"${counterpartyMobile || ''}"`,
+                    Number(item.amount || 0).toFixed(2),
+                    Number(item.fee || 0).toFixed(2),
+                    Number(item.totalDebit || 0).toFixed(2),
+                    Number(item.recipientCredit || 0).toFixed(2),
+                    `"${item.status || ''}"`,
+                    `"${(item.remarks || '').replace(/"/g, '""')}"`,
+                    `"${(item.senderName || '').replace(/"/g, '""')}"`,
+                    `"${item.senderPartyCode || ''}"`,
+                    `"${(item.recipientName || '').replace(/"/g, '""')}"`,
+                    `"${item.recipientPartyCode || ''}"`
+                ];
+                csvRows.push(values.join(","));
+            });
+
+            const csvContent = "\uFEFF" + csvRows.join("\n");
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            const dateStr = new Date().toISOString().slice(0, 10);
+            link.setAttribute("download", `Rupiksha_Wallet_Transfers_${dateStr}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('CSV export error:', err);
+            alert('Failed to export CSV.');
+        } finally {
+            setExportingCsv(false);
+        }
     };
 
     return (
@@ -156,32 +321,64 @@ export default function WalletTransferHistory() {
 
             {/* Transfer History Table Card */}
             <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 sm:p-6 space-y-5">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 pb-4">
                     <div>
                         <h2 className="text-lg font-black text-slate-900">All Transactions</h2>
                         <p className="text-xs text-slate-500 font-medium">Complete record of sent and received transfers.</p>
                     </div>
 
-                    {/* Direction Tabs */}
-                    <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 text-xs font-black">
-                        {['ALL', 'SENT', 'RECEIVED'].map((dir) => (
-                            <button
-                                key={dir}
-                                onClick={() => setDirectionFilter(dir)}
-                                className={`px-3.5 py-1.5 rounded-lg transition cursor-pointer ${
-                                    directionFilter === dir
-                                        ? 'bg-white text-slate-900 shadow-xs'
-                                        : 'text-slate-500 hover:text-slate-900'
-                                }`}
-                            >
-                                {dir === 'ALL' ? 'All' : dir === 'SENT' ? 'Sent' : 'Received'}
-                            </button>
-                        ))}
+                    <div className="flex flex-wrap items-center gap-2.5">
+                        {/* Direction Tabs */}
+                        <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 text-xs font-black">
+                            {['ALL', 'SENT', 'RECEIVED'].map((dir) => (
+                                <button
+                                    key={dir}
+                                    onClick={() => setDirectionFilter(dir)}
+                                    className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                                        directionFilter === dir
+                                            ? 'bg-white text-slate-900 shadow-xs'
+                                            : 'text-slate-500 hover:text-slate-900'
+                                    }`}
+                                >
+                                    {dir === 'ALL' ? 'All' : dir === 'SENT' ? 'Sent' : 'Received'}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Export to Excel */}
+                        <button
+                            onClick={handleExportExcel}
+                            disabled={exportingExcel}
+                            className="px-3.5 py-2 bg-[#0d1527] hover:bg-[#1a253c] text-white text-xs font-black rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+                            title="Export to Excel"
+                        >
+                            {exportingExcel ? (
+                                <RefreshCw size={13} className="animate-spin text-emerald-400" />
+                            ) : (
+                                <Download size={13} className="text-emerald-400" />
+                            )}
+                            <span>EXCEL</span>
+                        </button>
+
+                        {/* Export to CSV */}
+                        <button
+                            onClick={handleExportCsv}
+                            disabled={exportingCsv}
+                            className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-black rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+                            title="Export to CSV"
+                        >
+                            {exportingCsv ? (
+                                <RefreshCw size={13} className="animate-spin text-blue-500" />
+                            ) : (
+                                <Download size={13} className="text-blue-500" />
+                            )}
+                            <span>CSV</span>
+                        </button>
                     </div>
                 </div>
 
                 {/* Filters Row */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                     <div className="relative">
                         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input
@@ -222,6 +419,25 @@ export default function WalletTransferHistory() {
                             onChange={(e) => setEndDate(e.target.value)}
                             className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:bg-white focus:border-blue-500"
                         />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => fetchHistory(0)}
+                            className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+                        >
+                            <Search size={13} />
+                            <span>Apply</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleResetFilters}
+                            className="px-3 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center"
+                            title="Reset Filters"
+                        >
+                            <RotateCcw size={13} />
+                        </button>
                     </div>
                 </div>
 

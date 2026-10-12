@@ -184,7 +184,7 @@ export default function WalletTransfer() {
             .map(r => String(typeof r === 'string' ? r : r?.name || '').trim().toUpperCase());
         if (roles.includes('SUPER_DISTRIBUTOR')) return '/super-distributor/transactions/wallet-to-wallet';
         if (roles.includes('DISTRIBUTOR')) return '/distributor/transactions/wallet-to-wallet';
-        return '/reports?report=wallet_to_wallet';
+        return '/transactions/wallet-to-wallet';
     };
 
     return (

@@ -236,6 +236,7 @@ function App() {
                 <Route path="/payout-hub" element={<PayoutHub />} />
                 <Route path="/payout" element={<Payout />} />
                 <Route path="/wallet-to-wallet" element={<WalletTransfer />} />
+                <Route path="/transactions/wallet-to-wallet" element={<WalletTransferHistory />} />
                 <Route path="/aeps" element={<Navigate to="/aeps-2" replace />} />
                 <Route path="/aeps-1" element={<AEPS />} />
                 <Route path="/aeps-2" element={<AEPS />} />

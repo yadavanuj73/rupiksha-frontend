@@ -51,6 +51,7 @@ const RetailerLayout = () => {
         if (path === '/gst-invoice-report') return ['gst_einvoice', 'gst_einvoice_report'].includes(reportType) ? reportType : 'gst_einvoice_report';
 
         if (path === '/wallet-to-wallet') return 'wallet_transfer';
+        if (path === '/transactions/wallet-to-wallet') return 'wallet_to_wallet';
         if (path.startsWith('/reports')) {
             return reportType || 'reports';
         }
@@ -150,6 +151,12 @@ const RetailerLayout = () => {
             return;
         }
 
+        if (tab === 'wallet_to_wallet') {
+            navigate('/transactions/wallet-to-wallet');
+            setShowMobileSidebar(false);
+            return;
+        }
+
         if (reportTabs.includes(tab)) {
             navigate(`/reports?report=${tab}`);
             setShowMobileSidebar(false);
@@ -168,6 +175,7 @@ const RetailerLayout = () => {
             'bharat_connect': '/bharat-connect',
             'payout': '/payout-hub',
             'wallet_transfer': '/wallet-to-wallet',
+            'wallet_to_wallet': '/transactions/wallet-to-wallet',
             'all_services': '/dashboard',
             'reports': '/reports',
             'commission': '/commission',

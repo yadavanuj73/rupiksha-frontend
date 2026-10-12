@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Navigate } from 'react-router-dom';
 import { 
     FileText, Search, Download, Calendar, IndianRupee, 
     ArrowRight, Filter, RefreshCw, CheckCircle, Clock, 
@@ -78,6 +78,10 @@ const Reports = () => {
     const location = useLocation();
     const queryParams = new URLSearchParams(location.search);
     const reportType = queryParams.get('report') || 'aeps_1';
+
+    if (reportType === 'wallet_to_wallet') {
+        return <Navigate to="/transactions/wallet-to-wallet" replace />;
+    }
 
     const initialSummary = {
         totalTransactions: 0,
