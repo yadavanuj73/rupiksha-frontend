@@ -228,32 +228,33 @@ const RupikshaCommissionLedgerTab = ({ users = [], onToast, onRefresh }) => {
 
     return (
         <div className="space-y-6">
-            {/* Header Banner */}
-            <div className="bg-gradient-to-br from-pink-600 via-rose-700 to-pink-900 rounded-3xl p-7 text-white shadow-xl flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center">
-                            <IndianRupee size={24} className="text-white" />
-                        </div>
-                        <h2 className="text-2xl font-black uppercase tracking-tight">Rupiksha Commission Ledger</h2>
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Gross Commission</p>
+                        <p className="text-lg font-black text-slate-900 mt-0.5">{fmtINR(totalGross)}</p>
                     </div>
-                    <p className="text-pink-100 text-xs font-semibold max-w-xl">
-                        Comprehensive ledger of all commission disbursements, network margins, TDS withholdings, and net payouts.
-                    </p>
+                    <div className="w-8 h-8 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center font-bold">
+                        ₹
+                    </div>
                 </div>
-
-                <div className="flex items-center gap-6">
-                    <div className="text-right">
-                        <p className="text-2xl font-black text-white">{fmtINR(totalGross)}</p>
-                        <p className="text-[10px] text-pink-200 uppercase tracking-widest font-bold">Gross Commission</p>
+                <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">TDS Withheld (2%)</p>
+                        <p className="text-lg font-black text-rose-600 mt-0.5">-{fmtINR(totalTds)}</p>
                     </div>
-                    <div className="text-right border-l border-white/20 pl-6">
-                        <p className="text-2xl font-black text-rose-200">-{fmtINR(totalTds)}</p>
-                        <p className="text-[10px] text-pink-200 uppercase tracking-widest font-bold">TDS Withheld (2%)</p>
+                    <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
+                        %
                     </div>
-                    <div className="text-right border-l border-white/20 pl-6">
-                        <p className="text-2xl font-black text-emerald-300">{fmtINR(totalNet)}</p>
-                        <p className="text-[10px] text-pink-200 uppercase tracking-widest font-bold">Net Paid Float</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Net Paid Float</p>
+                        <p className="text-lg font-black text-emerald-600 mt-0.5">{fmtINR(totalNet)}</p>
+                    </div>
+                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                        ✓
                     </div>
                 </div>
             </div>

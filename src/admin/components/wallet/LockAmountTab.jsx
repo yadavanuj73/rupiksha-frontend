@@ -104,26 +104,6 @@ const LockAmountTab = ({ users = [], onToast, onRefresh, onNavigate }) => {
 
     return (
         <div className="max-w-4xl mx-auto space-y-6">
-            {/* Header Banner */}
-            <div className="bg-gradient-to-br from-purple-700 via-indigo-700 to-purple-900 rounded-3xl p-7 text-white shadow-xl flex items-center justify-between">
-                <div>
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center">
-                            <Lock size={24} className="text-white" />
-                        </div>
-                        <h2 className="text-2xl font-black uppercase tracking-tight">Lock Amount</h2>
-                    </div>
-                    <p className="text-purple-100 text-xs font-semibold max-w-xl">
-                        Freeze a specific portion of a user's wallet. Locked funds cannot be spent, withdrawn, or debited until released.
-                    </p>
-                </div>
-                <div className="hidden sm:block text-right">
-                    <span className="px-3.5 py-1.5 bg-white/15 backdrop-blur-md text-purple-100 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20">
-                        Security Hold
-                    </span>
-                </div>
-            </div>
-
             {/* Form */}
             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-8">
                 <form onSubmit={handleSubmit} className="space-y-6">

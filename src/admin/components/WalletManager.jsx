@@ -154,57 +154,6 @@ const WalletManager = ({ initialTab, activeSection, onNavigate }) => {
                 {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
             </AnimatePresence>
 
-            {/* Header Banner */}
-            <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-7 text-white shadow-2xl flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0">
-                        <Wallet size={28} className="text-indigo-300" />
-                    </div>
-                    <div>
-                        <h2 className="text-2xl font-black uppercase tracking-tight">Wallet Management</h2>
-                        <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">
-                            Credit · Debit · Fund Requests · Lock · Freeze · CMS Refund · Ledgers
-                        </p>
-                    </div>
-                </div>
-                <div className="text-right">
-                    <p className="text-3xl font-black text-indigo-300">
-                        {fmtINR(totalSystemBalance)}
-                    </p>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">
-                        Total System Float
-                    </p>
-                </div>
-            </div>
-
-            {/* Sub-Option Navigation Pills (Replacing the old 9 with the 13 required sub-options) */}
-            <div className="overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
-                <div className="flex items-center gap-2 min-w-max">
-                    {WALLET_TABS.map(tab => {
-                        const isActive = activeTab === tab.id;
-                        return (
-                            <button
-                                key={tab.id}
-                                onClick={() => handleSelectTab(tab)}
-                                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-wide transition-all cursor-pointer ${
-                                    isActive
-                                        ? 'text-white shadow-lg'
-                                        : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900 hover:bg-slate-50'
-                                }`}
-                                style={
-                                    isActive
-                                        ? { background: tab.color, boxShadow: `0 4px 14px ${tab.color}44` }
-                                        : {}
-                                }
-                            >
-                                <tab.icon size={14} className={isActive ? 'text-white' : 'text-slate-400'} />
-                                <span>{tab.label}</span>
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
-
             {/* Tab Views */}
             <AnimatePresence mode="wait">
                 <motion.div

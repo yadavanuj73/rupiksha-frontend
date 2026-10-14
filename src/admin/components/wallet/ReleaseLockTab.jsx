@@ -117,32 +117,6 @@ const ReleaseLockTab = ({ users = [], onToast, onRefresh }) => {
 
     return (
         <div className="space-y-6">
-            {/* Header Banner */}
-            <div className="bg-gradient-to-br from-cyan-600 via-teal-600 to-cyan-800 rounded-3xl p-7 text-white shadow-xl flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center">
-                            <Unlock size={24} className="text-white" />
-                        </div>
-                        <h2 className="text-2xl font-black uppercase tracking-tight">Release Lock Amount</h2>
-                    </div>
-                    <p className="text-cyan-100 text-xs font-semibold max-w-xl">
-                        View all users with locked funds and unlock balances back into active available funds.
-                    </p>
-                </div>
-
-                <div className="flex items-center gap-6">
-                    <div className="text-right">
-                        <p className="text-2xl font-black text-white">{fmtINR(totalSystemLocked)}</p>
-                        <p className="text-[10px] text-cyan-200 uppercase tracking-widest font-bold">Total System Locked</p>
-                    </div>
-                    <div className="text-right border-l border-cyan-500/50 pl-6">
-                        <p className="text-2xl font-black text-cyan-200">{usersWithLocked.length}</p>
-                        <p className="text-[10px] text-cyan-200 uppercase tracking-widest font-bold">Locked Accounts</p>
-                    </div>
-                </div>
-            </div>
-
             {/* Filter Bar */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-3 flex-1">
@@ -174,6 +148,12 @@ const ReleaseLockTab = ({ users = [], onToast, onRefresh }) => {
                     >
                         <RefreshCcw size={15} />
                     </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <span className="hidden sm:inline-flex items-center px-3 py-1.5 bg-cyan-50 text-cyan-800 border border-cyan-200 rounded-xl text-xs font-bold">
+                        Total Locked: {fmtINR(totalSystemLocked)} ({usersWithLocked.length} Accounts)
+                    </span>
                 </div>
             </div>
 

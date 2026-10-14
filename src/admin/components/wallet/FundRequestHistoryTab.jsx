@@ -147,27 +147,6 @@ const FundRequestHistoryTab = ({ onToast }) => {
 
     return (
         <div className="space-y-6">
-            {/* Header Banner */}
-            <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-7 text-white shadow-xl flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center">
-                            <CheckCircle2 size={24} className="text-emerald-400" />
-                        </div>
-                        <h2 className="text-2xl font-black uppercase tracking-tight">Fund Request History</h2>
-                    </div>
-                    <p className="text-slate-400 text-xs font-semibold max-w-xl">
-                        Audit trail of all successfully processed fund requests where float funds were credited to user wallets.
-                    </p>
-                </div>
-
-                <div className="flex items-center gap-6">
-                    <div className="text-right">
-                        <p className="text-2xl font-black text-emerald-400">{fmtINR(totalApprovedVolume)}</p>
-                        <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Total Credited Float</p>
-                    </div>
-                </div>
-            </div>
 
             {/* Filter and Export Bar */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-wrap items-center justify-between gap-4">
@@ -206,6 +185,9 @@ const FundRequestHistoryTab = ({ onToast }) => {
 
                 {/* Export Buttons */}
                 <div className="flex items-center gap-2">
+                    <span className="hidden sm:inline-flex items-center px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold">
+                        Total Credited: {fmtINR(totalApprovedVolume)}
+                    </span>
                     <button
                         onClick={handleExportExcel}
                         className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"

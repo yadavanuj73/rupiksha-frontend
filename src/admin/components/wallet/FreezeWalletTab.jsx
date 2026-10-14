@@ -174,36 +174,11 @@ const FreezeWalletTab = ({ users = [], onToast, onRefresh }) => {
 
     return (
         <div className="space-y-6">
-            {/* Header Banner */}
-            <div className="bg-gradient-to-br from-blue-700 via-indigo-800 to-slate-900 rounded-3xl p-7 text-white shadow-xl flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center">
-                            <Snowflake size={24} className="text-cyan-300" />
-                        </div>
-                        <h2 className="text-2xl font-black uppercase tracking-tight">Freeze & Unfreeze Wallet</h2>
-                    </div>
-                    <p className="text-blue-100 text-xs font-semibold max-w-xl">
-                        Block high-risk, disputed, or compliance-flagged wallets, and manage all currently frozen accounts.
-                    </p>
-                </div>
-
-                <div className="flex items-center gap-6">
-                    <div className="text-right">
-                        <p className="text-2xl font-black text-cyan-300">{frozenList.length}</p>
-                        <p className="text-[10px] text-blue-200 uppercase tracking-widest font-bold">Currently Frozen</p>
-                    </div>
-                    <div className="text-right border-l border-white/20 pl-6">
-                        <p className="text-2xl font-black text-white">{fmtINR(totalFrozenBalance)}</p>
-                        <p className="text-[10px] text-blue-200 uppercase tracking-widest font-bold">Locked in Frozen</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Sub-Tabs Selector */}
-            <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl w-fit">
-                <button
-                    onClick={() => setSubTab('FREEZE')}
+            {/* Sub-Tabs Selector & Stats */}
+            <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl w-fit">
+                    <button
+                        onClick={() => setSubTab('FREEZE')}
                     className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
                         subTab === 'FREEZE'
                             ? 'bg-white text-slate-900 shadow-sm'
@@ -225,6 +200,14 @@ const FreezeWalletTab = ({ users = [], onToast, onRefresh }) => {
                     Unfreeze Wallets ({frozenList.length})
                 </button>
             </div>
+            {frozenList.length > 0 && (
+                <div className="flex items-center gap-2">
+                    <span className="hidden sm:inline-flex items-center px-3 py-1.5 bg-cyan-50 text-cyan-800 border border-cyan-200 rounded-xl text-xs font-bold">
+                        Currently Frozen: {frozenList.length} ({fmtINR(totalFrozenBalance)})
+                    </span>
+                </div>
+            )}
+        </div>
 
             {/* VIEW 1: FREEZE WALLET FORM */}
             {subTab === 'FREEZE' && (

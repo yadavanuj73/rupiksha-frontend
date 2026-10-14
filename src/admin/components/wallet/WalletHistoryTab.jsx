@@ -218,26 +218,6 @@ const WalletHistoryTab = ({ onToast }) => {
 
     return (
         <div className="space-y-6">
-            {/* Header Banner */}
-            <div className="bg-gradient-to-br from-slate-800 via-slate-900 to-indigo-950 rounded-3xl p-7 text-white shadow-xl flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center">
-                            <History size={24} className="text-slate-300" />
-                        </div>
-                        <h2 className="text-2xl font-black uppercase tracking-tight">Wallet History</h2>
-                    </div>
-                    <p className="text-slate-400 text-xs font-semibold max-w-xl">
-                        Complete chronological audit record of all user wallet debits, credits, charges, and reversals.
-                    </p>
-                </div>
-
-                <div className="text-right">
-                    <p className="text-2xl font-black text-slate-100">{totalElements}</p>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Total Operations Logged</p>
-                </div>
-            </div>
-
             {/* Filter and Export Bar */}
             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
@@ -252,6 +232,9 @@ const WalletHistoryTab = ({ onToast }) => {
                     </div>
 
                     <div className="flex items-center gap-2">
+                        <span className="hidden sm:inline-flex items-center px-3 py-1.5 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold">
+                            Total: {totalElements}
+                        </span>
                         <button
                             onClick={handleExportCsv}
                             className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"

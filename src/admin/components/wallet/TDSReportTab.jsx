@@ -165,32 +165,33 @@ const TDSReportTab = ({ onToast }) => {
 
     return (
         <div className="space-y-6">
-            {/* Header Banner */}
-            <div className="bg-gradient-to-br from-teal-700 via-emerald-800 to-slate-900 rounded-3xl p-7 text-white shadow-xl flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center">
-                            <ShieldCheck size={24} className="text-white" />
-                        </div>
-                        <h2 className="text-2xl font-black uppercase tracking-tight">TDS Report</h2>
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total TDS Deducted</p>
+                        <p className="text-lg font-black text-emerald-600 mt-0.5">{fmtINR(totalTds)}</p>
                     </div>
-                    <p className="text-teal-100 text-xs font-semibold max-w-xl">
-                        Statutory Tax Deducted at Source (Section 194H) records for quarterly 26Q filing and tax compliance.
-                    </p>
+                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                        ₹
+                    </div>
                 </div>
-
-                <div className="flex items-center gap-6">
-                    <div className="text-right">
-                        <p className="text-2xl font-black text-emerald-300">{fmtINR(totalTds)}</p>
-                        <p className="text-[10px] text-teal-200 uppercase tracking-widest font-bold">Total TDS Deducted</p>
+                <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Taxable Base</p>
+                        <p className="text-lg font-black text-slate-900 mt-0.5">{fmtINR(totalGross)}</p>
                     </div>
-                    <div className="text-right border-l border-white/20 pl-6">
-                        <p className="text-2xl font-black text-white">{fmtINR(totalGross)}</p>
-                        <p className="text-[10px] text-teal-200 uppercase tracking-widest font-bold">Taxable Base</p>
+                    <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold">
+                        Σ
                     </div>
-                    <div className="text-right border-l border-white/20 pl-6">
-                        <p className="text-2xl font-black text-teal-200">{uniquePans}</p>
-                        <p className="text-[10px] text-teal-200 uppercase tracking-widest font-bold">Deductees (PANs)</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Deductees (PANs)</p>
+                        <p className="text-lg font-black text-teal-600 mt-0.5">{uniquePans}</p>
+                    </div>
+                    <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold">
+                        #
                     </div>
                 </div>
             </div>

@@ -219,32 +219,33 @@ const RupikshaLedgerTab = ({ onToast }) => {
 
     return (
         <div className="space-y-6">
-            {/* Header Banner */}
-            <div className="bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 rounded-3xl p-7 text-white shadow-xl flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center">
-                            <BookOpen size={24} className="text-indigo-400" />
-                        </div>
-                        <h2 className="text-2xl font-black uppercase tracking-tight">Rupiksha Master Ledger</h2>
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Credits</p>
+                        <p className="text-lg font-black text-emerald-600 mt-0.5">+{fmtINR(totalCredits)}</p>
                     </div>
-                    <p className="text-indigo-200 text-xs font-semibold max-w-xl">
-                        Comprehensive audit ledger recording every credit, debit, payout, CMS settlement, and wallet movement.
-                    </p>
+                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                        ↓
+                    </div>
                 </div>
-
-                <div className="flex items-center gap-6">
-                    <div className="text-right">
-                        <p className="text-2xl font-black text-emerald-400">+{fmtINR(totalCredits)}</p>
-                        <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Total Credits</p>
+                <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Debits</p>
+                        <p className="text-lg font-black text-rose-600 mt-0.5">-{fmtINR(totalDebits)}</p>
                     </div>
-                    <div className="text-right border-l border-white/20 pl-6">
-                        <p className="text-2xl font-black text-rose-400">-{fmtINR(totalDebits)}</p>
-                        <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Total Debits</p>
+                    <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
+                        ↑
                     </div>
-                    <div className="text-right border-l border-white/20 pl-6">
-                        <p className="text-2xl font-black text-indigo-300">{fmtINR(netTurnover)}</p>
-                        <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Net Flow</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Net Flow</p>
+                        <p className="text-lg font-black text-indigo-600 mt-0.5">{fmtINR(netTurnover)}</p>
+                    </div>
+                    <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+                        ⇄
                     </div>
                 </div>
             </div>

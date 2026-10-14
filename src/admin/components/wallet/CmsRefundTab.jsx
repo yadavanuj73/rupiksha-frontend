@@ -158,26 +158,6 @@ const CmsRefundTab = ({ users = [], onToast, onRefresh }) => {
 
     return (
         <div className="max-w-4xl mx-auto space-y-6">
-            {/* Header Banner */}
-            <div className="bg-gradient-to-br from-amber-600 via-orange-600 to-amber-800 rounded-3xl p-7 text-white shadow-xl flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center">
-                            <RotateCcw size={24} className="text-white" />
-                        </div>
-                        <h2 className="text-2xl font-black uppercase tracking-tight">CMS Refund</h2>
-                    </div>
-                    <p className="text-amber-100 text-xs font-semibold max-w-xl">
-                        Process and credit CMS reversals, cash collection drops, or bill payment refunds. Reflects specifically as a CMS Refund in the user's wallet.
-                    </p>
-                </div>
-
-                <div className="text-right">
-                    <p className="text-2xl font-black text-white">{fmtINR(totalRefunded)}</p>
-                    <p className="text-[10px] text-amber-200 uppercase tracking-widest font-bold">Total CMS Refunded</p>
-                </div>
-            </div>
-
             {/* Form */}
             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-8">
                 <form onSubmit={handleSubmit} className="space-y-6">

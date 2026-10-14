@@ -211,29 +211,6 @@ const PendingFundRequestsTab = ({ users = [], onToast, onRefresh }) => {
 
     return (
         <div className="space-y-6">
-            {/* Header Banner */}
-            <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-amber-700 rounded-3xl p-7 text-white shadow-xl flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center">
-                            <Clock size={24} className="text-white" />
-                        </div>
-                        <h2 className="text-2xl font-black uppercase tracking-tight">Pending Fund Requests</h2>
-                        <span className="px-3 py-1 bg-white text-amber-700 rounded-full text-xs font-black shadow-sm">
-                            {requests.length} Pending
-                        </span>
-                    </div>
-                    <p className="text-amber-100 text-xs font-semibold max-w-xl">
-                        Review, verify bank UTRs, and approve float requests raised by Retailers, Distributors, and Super Distributors.
-                    </p>
-                </div>
-
-                <div className="text-right">
-                    <p className="text-2xl font-black text-white">{fmtINR(totalPendingAmount)}</p>
-                    <p className="text-[10px] text-amber-200 uppercase tracking-widest font-bold">Total Pending Value</p>
-                </div>
-            </div>
-
             {/* Filter and Actions Bar */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-3 flex-1">
@@ -267,6 +244,9 @@ const PendingFundRequestsTab = ({ users = [], onToast, onRefresh }) => {
                 </div>
 
                 <div className="flex items-center gap-2">
+                    <span className="hidden sm:inline-flex items-center px-3 py-1.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-xl text-xs font-bold">
+                        Pending: {requests.length} ({fmtINR(totalPendingAmount)})
+                    </span>
                     <button
                         onClick={() => setShowCreateModal(true)}
                         className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-md hover:shadow-lg transition-all flex items-center gap-1.5"

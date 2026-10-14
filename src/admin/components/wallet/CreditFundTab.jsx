@@ -85,26 +85,6 @@ const CreditFundTab = ({ users = [], onToast, onRefresh }) => {
 
     return (
         <div className="max-w-4xl mx-auto space-y-6">
-            {/* Header Banner */}
-            <div className="bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-800 rounded-3xl p-7 text-white shadow-xl flex items-center justify-between">
-                <div>
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center">
-                            <ArrowDownCircle size={24} className="text-white" />
-                        </div>
-                        <h2 className="text-2xl font-black uppercase tracking-tight">Credit Fund</h2>
-                    </div>
-                    <p className="text-emerald-100 text-xs font-semibold max-w-xl">
-                        Instantly deposit float or top-up funds into any retailer, distributor, or super distributor wallet.
-                    </p>
-                </div>
-                <div className="hidden sm:block text-right">
-                    <span className="px-3.5 py-1.5 bg-white/15 backdrop-blur-md text-emerald-100 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20">
-                        Instant Float Topup
-                    </span>
-                </div>
-            </div>
-
             {/* Main Form */}
             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-8">
                 <form onSubmit={handleSubmit} className="space-y-6">
