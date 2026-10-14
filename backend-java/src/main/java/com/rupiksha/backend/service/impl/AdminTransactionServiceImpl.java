@@ -115,6 +115,35 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
         return ldt != null ? ldt.atZone(ZoneId.systemDefault()).toInstant() : null;
     }
 
+    private static final Set<String> AEPS_VALID_SORT_FIELDS = Set.of(
+            "id", "transactionId", "referenceNumber", "provider", "serviceType",
+            "merchantId", "userId", "amount", "status", "workflowState",
+            "providerReference", "providerStatus", "providerMessage",
+            "initiatedAt", "completedAt", "lastUpdated"
+    );
+
+    private Pageable translateAepsPageable(Pageable pageable) {
+        if (pageable == null) {
+            return PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "initiatedAt"));
+        }
+        if (pageable.getSort().isSorted()) {
+            List<Sort.Order> orders = pageable.getSort().stream()
+                    .map(order -> {
+                        String prop = order.getProperty();
+                        if ("createdAt".equalsIgnoreCase(prop) || "date".equalsIgnoreCase(prop) || "initiatedAt".equalsIgnoreCase(prop)) {
+                            return new Sort.Order(order.getDirection(), "initiatedAt");
+                        }
+                        if (AEPS_VALID_SORT_FIELDS.contains(prop)) {
+                            return order;
+                        }
+                        return new Sort.Order(order.getDirection(), "initiatedAt");
+                    })
+                    .collect(Collectors.toList());
+            return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(orders));
+        }
+        return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(Sort.Direction.DESC, "initiatedAt"));
+    }
+
     @Override
     @Transactional(readOnly = true)
     public TransactionHistoryPageResponse getTransactions(
@@ -156,9 +185,10 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
             case "AEPS_FINGPAY":
             case "AEPS_LEVIN": {
                 String targetProvider = normType.equals("AEPS_LEVIN") ? "levin" : "fingpay";
+                Pageable aepsPageable = translateAepsPageable(pageable);
                 Page<AepsTransactionEngine> page = hasUserMatches ?
-                        aepsRepository.findForAdminWithUserIds(null, cleanStatus, targetProvider, startLdt, endLdt, cleanSearch, matchingUserIds, pageable) :
-                        aepsRepository.findForAdmin(null, cleanStatus, targetProvider, startLdt, endLdt, cleanSearch, pageable);
+                        aepsRepository.findForAdminWithUserIds(null, cleanStatus, targetProvider, startLdt, endLdt, cleanSearch, matchingUserIds, aepsPageable) :
+                        aepsRepository.findForAdmin(null, cleanStatus, targetProvider, startLdt, endLdt, cleanSearch, aepsPageable);
 
                 totalElements = page.getTotalElements();
                 totalPages = page.getTotalPages();

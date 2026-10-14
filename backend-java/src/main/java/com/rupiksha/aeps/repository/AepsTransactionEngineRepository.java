@@ -62,7 +62,7 @@ public interface AepsTransactionEngineRepository extends JpaRepository<AepsTrans
     @Query("SELECT t FROM AepsTransactionEngine t WHERE " +
            "(cast(:serviceType as string) IS NULL OR UPPER(t.serviceType) = UPPER(cast(:serviceType as string))) " +
            "AND (cast(:status as string) IS NULL OR UPPER(t.status) = UPPER(cast(:status as string))) " +
-           "AND (cast(:provider as string) IS NULL OR LOWER(t.provider) = LOWER(cast(:provider as string)) OR (LOWER(cast(:provider as string)) = 'fingpay' AND (t.provider IS NULL OR LOWER(t.provider) NOT LIKE '%levin%'))) " +
+           "AND (cast(:provider as string) IS NULL OR LOWER(t.provider) = LOWER(cast(:provider as string)) OR (LOWER(cast(:provider as string)) = 'levin' AND LOWER(t.provider) LIKE '%levin%') OR (LOWER(cast(:provider as string)) = 'fingpay' AND (t.provider IS NULL OR LOWER(t.provider) NOT LIKE '%levin%'))) " +
            "AND (cast(:startDate as timestamp) IS NULL OR t.initiatedAt >= :startDate) " +
            "AND (cast(:endDate as timestamp) IS NULL OR t.initiatedAt <= :endDate) " +
            "AND (cast(:search as string) IS NULL OR " +
@@ -81,7 +81,7 @@ public interface AepsTransactionEngineRepository extends JpaRepository<AepsTrans
     @Query("SELECT t FROM AepsTransactionEngine t WHERE " +
            "(cast(:serviceType as string) IS NULL OR UPPER(t.serviceType) = UPPER(cast(:serviceType as string))) " +
            "AND (cast(:status as string) IS NULL OR UPPER(t.status) = UPPER(cast(:status as string))) " +
-           "AND (cast(:provider as string) IS NULL OR LOWER(t.provider) = LOWER(cast(:provider as string)) OR (LOWER(cast(:provider as string)) = 'fingpay' AND (t.provider IS NULL OR LOWER(t.provider) NOT LIKE '%levin%'))) " +
+           "AND (cast(:provider as string) IS NULL OR LOWER(t.provider) = LOWER(cast(:provider as string)) OR (LOWER(cast(:provider as string)) = 'levin' AND LOWER(t.provider) LIKE '%levin%') OR (LOWER(cast(:provider as string)) = 'fingpay' AND (t.provider IS NULL OR LOWER(t.provider) NOT LIKE '%levin%'))) " +
            "AND (cast(:startDate as timestamp) IS NULL OR t.initiatedAt >= :startDate) " +
            "AND (cast(:endDate as timestamp) IS NULL OR t.initiatedAt <= :endDate) " +
            "AND (lower(t.transactionId) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
@@ -101,7 +101,7 @@ public interface AepsTransactionEngineRepository extends JpaRepository<AepsTrans
     @Query("SELECT t FROM AepsTransactionEngine t WHERE " +
            "(cast(:serviceType as string) IS NULL OR UPPER(t.serviceType) = UPPER(cast(:serviceType as string))) " +
            "AND (cast(:status as string) IS NULL OR UPPER(t.status) = UPPER(cast(:status as string))) " +
-           "AND (cast(:provider as string) IS NULL OR LOWER(t.provider) = LOWER(cast(:provider as string)) OR (LOWER(cast(:provider as string)) = 'fingpay' AND (t.provider IS NULL OR LOWER(t.provider) NOT LIKE '%levin%'))) " +
+           "AND (cast(:provider as string) IS NULL OR LOWER(t.provider) = LOWER(cast(:provider as string)) OR (LOWER(cast(:provider as string)) = 'levin' AND LOWER(t.provider) LIKE '%levin%') OR (LOWER(cast(:provider as string)) = 'fingpay' AND (t.provider IS NULL OR LOWER(t.provider) NOT LIKE '%levin%'))) " +
            "AND (cast(:startDate as timestamp) IS NULL OR t.initiatedAt >= :startDate) " +
            "AND (cast(:endDate as timestamp) IS NULL OR t.initiatedAt <= :endDate) " +
            "AND (cast(:search as string) IS NULL OR " +
@@ -120,7 +120,7 @@ public interface AepsTransactionEngineRepository extends JpaRepository<AepsTrans
     @Query("SELECT t FROM AepsTransactionEngine t WHERE " +
            "(cast(:serviceType as string) IS NULL OR UPPER(t.serviceType) = UPPER(cast(:serviceType as string))) " +
            "AND (cast(:status as string) IS NULL OR UPPER(t.status) = UPPER(cast(:status as string))) " +
-           "AND (cast(:provider as string) IS NULL OR LOWER(t.provider) = LOWER(cast(:provider as string)) OR (LOWER(cast(:provider as string)) = 'fingpay' AND (t.provider IS NULL OR LOWER(t.provider) NOT LIKE '%levin%'))) " +
+           "AND (cast(:provider as string) IS NULL OR LOWER(t.provider) = LOWER(cast(:provider as string)) OR (LOWER(cast(:provider as string)) = 'levin' AND LOWER(t.provider) LIKE '%levin%') OR (LOWER(cast(:provider as string)) = 'fingpay' AND (t.provider IS NULL OR LOWER(t.provider) NOT LIKE '%levin%'))) " +
            "AND (cast(:startDate as timestamp) IS NULL OR t.initiatedAt >= :startDate) " +
            "AND (cast(:endDate as timestamp) IS NULL OR t.initiatedAt <= :endDate) " +
            "AND (lower(t.transactionId) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
