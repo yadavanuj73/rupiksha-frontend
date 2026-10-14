@@ -556,32 +556,6 @@ export default function AdminTransactions({ activeSection, onNavigate }) {
                         </button>
                     </div>
                 </div>
-
-                {/* Horizontal Navigation Tabs */}
-                <div className="mt-6 pt-5 border-t border-slate-100 flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
-                    {TRANSACTION_TABS.map((tab) => {
-                        const isActive = currentTab.id === tab.id;
-                        return (
-                            <button
-                                key={tab.id}
-                                type="button"
-                                onClick={() => {
-                                    if (onNavigate) {
-                                        onNavigate(tab.id);
-                                    }
-                                }}
-                                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold tracking-tight whitespace-nowrap transition-all cursor-pointer ${
-                                    isActive
-                                        ? 'bg-slate-900 text-white shadow-md shadow-slate-900/10 scale-[1.02]'
-                                        : 'bg-slate-50 text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 border border-slate-200/60'
-                                }`}
-                            >
-                                <tab.icon size={14} className={isActive ? 'text-indigo-300' : 'text-slate-400'} />
-                                <span>{tab.label}</span>
-                            </button>
-                        );
-                    })}
-                </div>
             </div>
 
             {/* Metrics Overview Cards */}
