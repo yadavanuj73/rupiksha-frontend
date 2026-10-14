@@ -5,12 +5,12 @@ import {
     BookOpen, Search, RefreshCcw, Download, FileSpreadsheet,
     IndianRupee, Filter, Calendar, ArrowDownRight, ArrowUpRight, CheckCircle2
 } from 'lucide-react';
-import { fetchAPI, fmtINR, fmtDateTime, sanitizeCsvCell } from './walletShared';
+import { fetchAPI, fmtINR, fmtDateTime, sanitizeCsvCell, WalletTabSkeleton } from './walletShared';
 import { dataService } from '../../../services/dataService';
 
 const RupikshaLedgerTab = ({ onToast }) => {
     const [transactions, setTransactions] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     // Filters
     const [search, setSearch] = useState('');
@@ -210,12 +210,19 @@ const RupikshaLedgerTab = ({ onToast }) => {
                 y += 6;
             });
 
-            doc.save(`Rupiksha_Master_Ledger_${new Date().toISOString().slice(0, 10)}.pdf`);
-            onToast({ type: 'success', message: 'Master Ledger PDF downloaded successfully' });
         } catch (_) {
             onToast({ type: 'error', message: 'Failed to generate PDF' });
         }
     };
+
+    if (loading && transactions.length === 0) {
+        return (
+            <WalletTabSkeleton
+                title="Rupiksha Ledger"
+                subtitle="Loading system float transaction logs from server..."
+            />
+        );
+    }
 
     return (
         <div className="space-y-6">

@@ -5,11 +5,11 @@ import {
     CheckCircle2, Search, RefreshCcw, Download, FileSpreadsheet,
     FileText, IndianRupee, ExternalLink, X, Printer, Calendar
 } from 'lucide-react';
-import { fmtINR, fmtDateTime, fetchAPI, sanitizeCsvCell } from './walletShared';
+import { fmtINR, fmtDateTime, fetchAPI, sanitizeCsvCell, WalletTabSkeleton } from './walletShared';
 
 const FundRequestHistoryTab = ({ onToast }) => {
     const [requests, setRequests] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('ALL');
     const [selectedReceipt, setSelectedReceipt] = useState(null);
@@ -144,6 +144,15 @@ const FundRequestHistoryTab = ({ onToast }) => {
         if (r.includes('DIST')) return 'bg-blue-100 text-blue-700 border-blue-200';
         return 'bg-emerald-100 text-emerald-700 border-emerald-200';
     };
+
+    if (loading && requests.length === 0) {
+        return (
+            <WalletTabSkeleton
+                title="Fund Request History"
+                subtitle="Fetching approved fund requests and settlement receipts..."
+            />
+        );
+    }
 
     return (
         <div className="max-w-5xl mx-auto space-y-3">

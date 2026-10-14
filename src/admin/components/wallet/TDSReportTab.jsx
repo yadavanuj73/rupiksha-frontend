@@ -5,10 +5,11 @@ import {
     FileSpreadsheet, Download, Search, RefreshCcw, ShieldCheck,
     IndianRupee, Calendar, Copy, Check, Filter
 } from 'lucide-react';
-import { fmtINR, fmtDateTime, sanitizeCsvCell, fetchAPI } from './walletShared';
+import { fmtINR, fmtDateTime, sanitizeCsvCell, fetchAPI, WalletTabSkeleton } from './walletShared';
 
 const TDSReportTab = ({ onToast }) => {
     const [records, setRecords] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [fyFilter, setFyFilter] = useState('2025-26');
     const [quarterFilter, setQuarterFilter] = useState('ALL');
@@ -17,6 +18,7 @@ const TDSReportTab = ({ onToast }) => {
     const [taxSummary, setTaxSummary] = useState(null);
 
     useEffect(() => {
+        setLoading(true);
         fetchAPI('/admin/tax-summary')
             .then(res => {
                 if (res && res.success && res.wallet) {
@@ -50,7 +52,8 @@ const TDSReportTab = ({ onToast }) => {
                     setRecords(tdsList);
                 }
             })
-            .catch(() => {});
+            .catch(() => {})
+            .finally(() => setLoading(false));
     }, []);
 
     const handleCopyPan = (pan) => {
@@ -162,6 +165,15 @@ const TDSReportTab = ({ onToast }) => {
             onToast({ type: 'error', message: 'Failed to generate PDF' });
         }
     };
+
+    if (loading && records.length === 0) {
+        return (
+            <WalletTabSkeleton
+                title="TDS Report"
+                subtitle="Fetching TDS deductions, challan status and tax ledger..."
+            />
+        );
+    }
 
     return (
         <div className="space-y-6">

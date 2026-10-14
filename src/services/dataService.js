@@ -1033,6 +1033,24 @@ export const dataService = {
             }
 
             const targetUser = data.users[userIndex];
+            const isUserFrozen = Boolean(
+                targetUser.isFrozen || 
+                targetUser.walletStatus === 'FROZEN' || 
+                targetUser.status === 'FROZEN' ||
+                localStorage.getItem(`rupiksha_frozen_${userId}`) === 'true' ||
+                (targetUser.id && localStorage.getItem(`rupiksha_frozen_${targetUser.id}`) === 'true') ||
+                (targetUser.username && localStorage.getItem(`rupiksha_frozen_${targetUser.username}`) === 'true') ||
+                (targetUser.mobile && localStorage.getItem(`rupiksha_frozen_${targetUser.mobile}`) === 'true')
+            );
+
+            if (type === 'DEBIT' && isUserFrozen) {
+                console.warn(`[adjustUserWalletBalance] Blocked debit: User ${userId} wallet is frozen.`);
+                window.dispatchEvent(new CustomEvent('walletFrozenAlert', {
+                    detail: { userId, message: 'Your wallet is frozen. Please contact admin.' }
+                }));
+                return false;
+            }
+
             const currentBal = parseFloat(String(targetUser.balance || targetUser.walletBalance || 0).replace(/,/g, '')) || 0;
             const numAmt = parseFloat(amount) || 0;
             const newBal = (type === 'CREDIT' || type === 'RELEASE' || type === 'COMMISSION' ? currentBal + numAmt : Math.max(0, currentBal - numAmt)).toFixed(2);

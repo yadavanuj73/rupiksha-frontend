@@ -3,10 +3,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     ArrowUpCircle, AlertTriangle, Loader2, History, IndianRupee
 } from 'lucide-react';
-import { fetchAPI, uuid, UserSelector, fmtINR, fmtDateTime } from './walletShared';
+import { fetchAPI, uuid, UserSelector, fmtINR, fmtDateTime, WalletTabSkeleton } from './walletShared';
 import { dataService } from '../../../services/dataService';
 
-const DebitFundTab = ({ users = [], onToast, onRefresh }) => {
+const DebitFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
+    if (loading && users.length === 0) {
+        return (
+            <WalletTabSkeleton
+                title="Debit Fund"
+                subtitle="Fetching active user accounts and float balances from server..."
+            />
+        );
+    }
+
     const [userId, setUserId] = useState('');
     const [amount, setAmount] = useState('');
     const [category, setCategory] = useState('ADMIN_ADJUSTMENT');

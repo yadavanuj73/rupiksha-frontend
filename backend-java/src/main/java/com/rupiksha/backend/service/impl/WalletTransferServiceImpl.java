@@ -222,11 +222,11 @@ public class WalletTransferServiceImpl implements WalletTransferService {
         Wallet senderWallet = idA.equals(firstId) ? w1 : w2;
         Wallet recipientWallet = idA.equals(firstId) ? w2 : w1;
 
-        if (senderWallet.getStatus() == WalletStatus.BLOCKED) {
-            throw new IllegalStateException("Transaction blocked: Your wallet is BLOCKED");
+        if (senderWallet.getStatus() == WalletStatus.BLOCKED || senderWallet.getStatus() == WalletStatus.FROZEN) {
+            throw new IllegalStateException("Your wallet is frozen. Please contact admin.");
         }
-        if (recipientWallet.getStatus() == WalletStatus.BLOCKED) {
-            throw new IllegalStateException("Transaction blocked: Recipient wallet is BLOCKED");
+        if (recipientWallet.getStatus() == WalletStatus.BLOCKED || recipientWallet.getStatus() == WalletStatus.FROZEN) {
+            throw new IllegalStateException("Recipient wallet is frozen. Please contact admin.");
         }
 
         BigDecimal availableBalance = senderWallet.getBalance().subtract(senderWallet.getLockedBalance());

@@ -8,7 +8,7 @@ import {
     FileSpreadsheet, History, AlertTriangle
 } from 'lucide-react';
 
-import { Toast, fetchAPI, fmtINR } from './wallet/walletShared';
+import { Toast, fetchAPI, fmtINR, WalletTabSkeleton } from './wallet/walletShared';
 import WalletOverviewTab from './wallet/WalletOverviewTab';
 import CreditFundTab from './wallet/CreditFundTab';
 import DebitFundTab from './wallet/DebitFundTab';
@@ -59,8 +59,41 @@ const WalletManager = ({ initialTab, activeSection, onNavigate }) => {
     const initialResolved = mapSectionToTabId(activeSection || initialTab || 'overview');
     const [activeTab, setActiveTab] = useState(initialResolved);
 
-    const [wallets, setWallets] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [wallets, setWallets] = useState(() => {
+        try {
+            const cached = localStorage.getItem('rupiksha_users_cache');
+            if (cached) {
+                const list = JSON.parse(cached);
+                if (Array.isArray(list) && list.length > 0) return list;
+            }
+            const localUsers = dataService.getData()?.users;
+            if (Array.isArray(localUsers) && localUsers.length > 0) {
+                return localUsers.map(u => ({
+                    ...u,
+                    id: u.id || u._id || u.userId || u.username || u.mobile,
+                    userId: u.userId || u.id || u._id || u.username,
+                    username: u.username || u.mobile || u.id,
+                    name: u.name || u.fullName || u.username || 'User',
+                    fullName: u.fullName || u.name || u.username || 'User',
+                    mobile: u.mobile || u.phone || u.username || '',
+                    role: u.role || (Array.isArray(u.roles) ? u.roles[0] : 'RETAILER'),
+                    balance: parseFloat(String(u.balance ?? u.walletBalance ?? 0).replace(/,/g, '')) || 0,
+                    lockedAmount: parseFloat(String(u.lockedAmount || 0).replace(/,/g, '')) || 0,
+                    isFrozen: Boolean(
+                        u.isFrozen || 
+                        u.walletStatus === 'FROZEN' || 
+                        u.status === 'FROZEN' ||
+                        localStorage.getItem(`rupiksha_frozen_${u.id}`) === 'true' ||
+                        localStorage.getItem(`rupiksha_frozen_${u.username}`) === 'true' ||
+                        localStorage.getItem(`rupiksha_frozen_${u.mobile}`) === 'true'
+                    )
+                }));
+            }
+        } catch (_) {}
+        return [];
+    });
+    const [loading, setLoading] = useState(true);
+    const [isInitialLoadDone, setIsInitialLoadDone] = useState(false);
     const [toast, setToast] = useState(null);
 
     // Sync when activeSection or initialTab changes from outside
@@ -111,7 +144,14 @@ const WalletManager = ({ initialTab, activeSection, onNavigate }) => {
                 role: u.role || (Array.isArray(u.roles) ? u.roles[0] : 'RETAILER'),
                 balance: parseFloat(String(u.balance ?? u.walletBalance ?? u.availableBalance ?? 0).replace(/,/g, '')) || 0,
                 lockedAmount: parseFloat(String(u.lockedAmount || 0).replace(/,/g, '')) || 0,
-                isFrozen: Boolean(u.isFrozen || u.walletStatus === 'FROZEN')
+                isFrozen: Boolean(
+                    u.isFrozen || 
+                    u.walletStatus === 'FROZEN' || 
+                    u.status === 'FROZEN' ||
+                    localStorage.getItem(`rupiksha_frozen_${u.id}`) === 'true' ||
+                    localStorage.getItem(`rupiksha_frozen_${u.username}`) === 'true' ||
+                    localStorage.getItem(`rupiksha_frozen_${u.mobile}`) === 'true'
+                )
             }));
 
             setWallets(normalized);
@@ -122,6 +162,7 @@ const WalletManager = ({ initialTab, activeSection, onNavigate }) => {
             console.error('[WalletManager] loadWallets error:', e);
         } finally {
             setLoading(false);
+            setIsInitialLoadDone(true);
         }
     }, []);
 
@@ -163,90 +204,107 @@ const WalletManager = ({ initialTab, activeSection, onNavigate }) => {
                     exit={{ opacity: 0, y: -8 }}
                     transition={{ duration: 0.18 }}
                 >
-                    {activeTab === 'overview' && (
-                        <WalletOverviewTab
-                            wallets={wallets}
-                            loading={loading}
-                            onRefresh={loadWallets}
-                            onNavigate={(sec) => onNavigate && onNavigate(sec)}
+                    {!isInitialLoadDone ? (
+                        <WalletTabSkeleton
+                            title={WALLET_TABS.find(t => t.id === activeTab)?.label || 'Wallet Manager'}
+                            subtitle="Fetching real-time user accounts, balances, and escrow states from server..."
                         />
-                    )}
-                    {activeTab === 'credit' && (
-                        <CreditFundTab
-                            users={wallets}
-                            onToast={setToast}
-                            onRefresh={loadWallets}
-                        />
-                    )}
-                    {activeTab === 'debit' && (
-                        <DebitFundTab
-                            users={wallets}
-                            onToast={setToast}
-                            onRefresh={loadWallets}
-                        />
-                    )}
-                    {activeTab === 'pending-requests' && (
-                        <PendingFundRequestsTab
-                            users={wallets}
-                            onToast={setToast}
-                            onRefresh={loadWallets}
-                        />
-                    )}
-                    {activeTab === 'fund-requests' && (
-                        <FundRequestHistoryTab
-                            onToast={setToast}
-                        />
-                    )}
-                    {activeTab === 'lock' && (
-                        <LockAmountTab
-                            users={wallets}
-                            onToast={setToast}
-                            onRefresh={loadWallets}
-                            onNavigate={(sec) => onNavigate && onNavigate(sec)}
-                        />
-                    )}
-                    {activeTab === 'release' && (
-                        <ReleaseLockTab
-                            users={wallets}
-                            onToast={setToast}
-                            onRefresh={loadWallets}
-                        />
-                    )}
-                    {activeTab === 'freeze' && (
-                        <FreezeWalletTab
-                            users={wallets}
-                            onToast={setToast}
-                            onRefresh={loadWallets}
-                        />
-                    )}
-                    {activeTab === 'cms-refund' && (
-                        <CmsRefundTab
-                            users={wallets}
-                            onToast={setToast}
-                            onRefresh={loadWallets}
-                        />
-                    )}
-                    {activeTab === 'ledger' && (
-                        <RupikshaLedgerTab
-                            onToast={setToast}
-                        />
-                    )}
-                    {activeTab === 'commission-ledger' && (
-                        <RupikshaCommissionLedgerTab
-                            users={wallets}
-                            onToast={setToast}
-                            onRefresh={loadWallets}
-                        />
-                    )}
-                    {activeTab === 'tds-report' && (
-                        <TDSReportTab
-                            onToast={setToast}
-                        />
-                    )}
-                    {activeTab === 'history' && (
-                        <WalletHistoryTab
-                            onToast={setToast}
-                        />
+                    ) : (
+                        <>
+                            {activeTab === 'overview' && (
+                                <WalletOverviewTab
+                                    wallets={wallets}
+                                    loading={loading}
+                                    onRefresh={loadWallets}
+                                    onNavigate={(sec) => onNavigate && onNavigate(sec)}
+                                />
+                            )}
+                            {activeTab === 'credit' && (
+                                <CreditFundTab
+                                    users={wallets}
+                                    loading={loading}
+                                    onToast={setToast}
+                                    onRefresh={loadWallets}
+                                />
+                            )}
+                            {activeTab === 'debit' && (
+                                <DebitFundTab
+                                    users={wallets}
+                                    loading={loading}
+                                    onToast={setToast}
+                                    onRefresh={loadWallets}
+                                />
+                            )}
+                            {activeTab === 'pending-requests' && (
+                                <PendingFundRequestsTab
+                                    users={wallets}
+                                    loading={loading}
+                                    onToast={setToast}
+                                    onRefresh={loadWallets}
+                                />
+                            )}
+                            {activeTab === 'fund-requests' && (
+                                <FundRequestHistoryTab
+                                    onToast={setToast}
+                                />
+                            )}
+                            {activeTab === 'lock' && (
+                                <LockAmountTab
+                                    users={wallets}
+                                    loading={loading}
+                                    onToast={setToast}
+                                    onRefresh={loadWallets}
+                                    onNavigate={(sec) => onNavigate && onNavigate(sec)}
+                                />
+                            )}
+                            {activeTab === 'release' && (
+                                <ReleaseLockTab
+                                    users={wallets}
+                                    loading={loading}
+                                    onToast={setToast}
+                                    onRefresh={loadWallets}
+                                />
+                            )}
+                            {activeTab === 'freeze' && (
+                                <FreezeWalletTab
+                                    users={wallets}
+                                    loading={loading}
+                                    onToast={setToast}
+                                    onRefresh={loadWallets}
+                                />
+                            )}
+                            {activeTab === 'cms-refund' && (
+                                <CmsRefundTab
+                                    users={wallets}
+                                    loading={loading}
+                                    onToast={setToast}
+                                    onRefresh={loadWallets}
+                                />
+                            )}
+                            {activeTab === 'ledger' && (
+                                <RupikshaLedgerTab
+                                    onToast={setToast}
+                                />
+                            )}
+                            {activeTab === 'commission-ledger' && (
+                                <RupikshaCommissionLedgerTab
+                                    users={wallets}
+                                    loading={loading}
+                                    onToast={setToast}
+                                    onRefresh={loadWallets}
+                                />
+                            )}
+                            {activeTab === 'tds-report' && (
+                                <TDSReportTab
+                                    onToast={setToast}
+                                />
+                            )}
+                            {activeTab === 'history' && (
+                                <WalletHistoryTab
+                                    onToast={setToast}
+                                />
+                            )}
+                        </>
                     )}
                 </motion.div>
             </AnimatePresence>

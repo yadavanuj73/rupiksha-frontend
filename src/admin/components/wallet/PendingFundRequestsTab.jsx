@@ -4,12 +4,12 @@ import {
     Clock, CheckCircle2, XCircle, AlertTriangle, Search, RefreshCcw,
     IndianRupee, Copy, Check, FileText, User, ArrowDownCircle, Plus, X, Loader2
 } from 'lucide-react';
-import { fetchAPI, fireCelebration, fmtINR, fmtDateTime, UserSelector } from './walletShared';
+import { fetchAPI, fireCelebration, fmtINR, fmtDateTime, UserSelector, WalletTabSkeleton } from './walletShared';
 import { dataService } from '../../../services/dataService';
 
 const PendingFundRequestsTab = ({ users = [], onToast, onRefresh }) => {
     const [requests, setRequests] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('ALL');
     const [copiedUtr, setCopiedUtr] = useState(null);
@@ -208,6 +208,15 @@ const PendingFundRequestsTab = ({ users = [], onToast, onRefresh }) => {
         if (r.includes('DIST')) return 'bg-blue-100 text-blue-700 border-blue-200';
         return 'bg-emerald-100 text-emerald-700 border-emerald-200';
     };
+
+    if (loading && requests.length === 0) {
+        return (
+            <WalletTabSkeleton
+                title="Pending Fund Requests"
+                subtitle="Loading pending retailer float requests from database..."
+            />
+        );
+    }
 
     return (
         <div className="max-w-5xl mx-auto space-y-3">

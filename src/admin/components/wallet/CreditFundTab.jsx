@@ -4,10 +4,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     ArrowDownCircle, IndianRupee, Loader2, Sparkles, CheckCircle2, History, X
 } from 'lucide-react';
-import { fetchAPI, uuid, fireCelebration, UserSelector, fmtINR, fmtDateTime } from './walletShared';
+import { fetchAPI, uuid, fireCelebration, UserSelector, fmtINR, fmtDateTime, WalletTabSkeleton } from './walletShared';
 import { dataService } from '../../../services/dataService';
 
-const CreditFundTab = ({ users = [], onToast, onRefresh }) => {
+const CreditFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
+    if (loading && users.length === 0) {
+        return (
+            <WalletTabSkeleton
+                title="Credit Fund"
+                subtitle="Fetching active user accounts and float balances from server..."
+            />
+        );
+    }
+
     const [userId, setUserId] = useState('');
     const [amount, setAmount] = useState('');
     const [channel, setChannel] = useState('BANK_TRANSFER');

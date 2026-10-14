@@ -3,10 +3,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Unlock, Lock, Search, RefreshCcw, X, Loader2, UserCheck
 } from 'lucide-react';
-import { fetchAPI, fireCelebration, fmtINR, fmtDateTime } from './walletShared';
+import { fetchAPI, fireCelebration, fmtINR, fmtDateTime, WalletTabSkeleton } from './walletShared';
 import { dataService } from '../../../services/dataService';
 
-const ReleaseLockTab = ({ users = [], onToast, onRefresh }) => {
+const ReleaseLockTab = ({ users = [], loading = false, onToast, onRefresh }) => {
+    if (loading && users.length === 0) {
+        return (
+            <WalletTabSkeleton
+                title="Release Lock Amount"
+                subtitle="Fetching accounts with locked balances from server..."
+            />
+        );
+    }
+
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('ALL');
 

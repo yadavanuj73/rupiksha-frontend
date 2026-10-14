@@ -4,10 +4,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     RotateCcw, History, Search, FileSpreadsheet, Loader2, Sparkles
 } from 'lucide-react';
-import { UserSelector, fmtINR, fmtDateTime, fireCelebration, sanitizeCsvCell, fetchAPI } from './walletShared';
+import { UserSelector, fmtINR, fmtDateTime, fireCelebration, sanitizeCsvCell, fetchAPI, WalletTabSkeleton } from './walletShared';
 import { dataService } from '../../../services/dataService';
 
-const CmsRefundTab = ({ users = [], onToast, onRefresh }) => {
+const CmsRefundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
+    if (loading && users.length === 0) {
+        return (
+            <WalletTabSkeleton
+                title="CMS Refund"
+                subtitle="Fetching active retailer accounts and refund history..."
+            />
+        );
+    }
+
     const [viewMode, setViewMode] = useState('FORM'); // 'FORM' | 'HISTORY'
     const [userId, setUserId] = useState('');
     const [amount, setAmount] = useState('');

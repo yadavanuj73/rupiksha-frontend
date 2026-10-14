@@ -5,7 +5,7 @@ import {
     History, Search, RefreshCcw, Download, FileSpreadsheet,
     FileText, ArrowDownRight, ArrowUpRight, Filter, Calendar
 } from 'lucide-react';
-import { fetchAPI, fmtINR, fmtDateTime, sanitizeCsvCell } from './walletShared';
+import { fetchAPI, fmtINR, fmtDateTime, sanitizeCsvCell, WalletTabSkeleton } from './walletShared';
 
 // Helper: build history API params
 const buildHistoryParams = ({ type, context, status, search, startDate, endDate, page, size }) => {
@@ -29,7 +29,7 @@ const buildHistoryParams = ({ type, context, status, search, startDate, endDate,
 
 const WalletHistoryTab = ({ onToast }) => {
     const [history, setHistory] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
     const [totalElements, setTotalElements] = useState(0);
@@ -209,12 +209,19 @@ const WalletHistoryTab = ({ onToast }) => {
             const ws = XLSX.utils.json_to_sheet(dataToExport);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'Wallet_History');
-            XLSX.writeFile(wb, `wallet_history_${new Date().toISOString().slice(0, 10)}.xlsx`);
-            onToast({ type: 'success', message: 'Excel downloaded successfully' });
         } catch (_) {
             onToast({ type: 'error', message: 'Failed to export Excel' });
         }
     };
+
+    if (loading && history.length === 0) {
+        return (
+            <WalletTabSkeleton
+                title="Wallet History"
+                subtitle="Loading real-time audit logs and transaction history..."
+            />
+        );
+    }
 
     return (
         <div className="space-y-6">

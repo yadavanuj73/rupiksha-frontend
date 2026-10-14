@@ -3,9 +3,18 @@ import {
     Wallet, Lock, IndianRupee, Search, RefreshCcw, Snowflake,
     ArrowDownCircle, ArrowUpCircle, Clock, ShieldCheck, User, ExternalLink
 } from 'lucide-react';
-import { fmtINR, fetchAPI } from './walletShared';
+import { fmtINR, fetchAPI, WalletTabSkeleton } from './walletShared';
 
 const WalletOverviewTab = ({ wallets = [], loading, onRefresh, onNavigate }) => {
+    if (loading && wallets.length === 0) {
+        return (
+            <WalletTabSkeleton
+                title="Wallet Overview"
+                subtitle="Fetching global wallet float, locked escrows and system totals..."
+            />
+        );
+    }
+
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('ALL');
     const [statusFilter, setStatusFilter] = useState('ALL');

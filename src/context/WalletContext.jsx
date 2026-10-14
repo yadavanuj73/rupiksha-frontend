@@ -207,12 +207,87 @@ export function WalletProvider({ children }) {
     return () => window.removeEventListener('walletUpdated', handle);
   }, [fetchWallet]);
 
+  const isUserFrozen = (u) => {
+    if (!u) return false;
+    const ids = [u.id, u._id, u.userId, u.username, u.mobile, u.phone].filter(Boolean).map(String);
+    if (u.isFrozen || u.walletStatus === 'FROZEN' || u.status === 'FROZEN') return true;
+    for (const id of ids) {
+      if (localStorage.getItem(`rupiksha_frozen_${id}`) === 'true') return true;
+    }
+    return false;
+  };
+
+  const isFrozen = Boolean(
+    status === 'FROZEN' ||
+    wallet?.status === 'FROZEN' ||
+    isUserFrozen(userRef.current)
+  );
+
+  const [frozenModalOpen, setFrozenModalOpen] = useState(false);
+  const [frozenModalMessage, setFrozenModalMessage] = useState('Your wallet is frozen. Please contact admin.');
+
+  const triggerFrozenModal = useCallback((msg) => {
+    if (msg) setFrozenModalMessage(msg);
+    setFrozenModalOpen(true);
+  }, []);
+
+  // Listen to global walletFrozenAlert events
+  useEffect(() => {
+    const handleAlert = (e) => {
+      const msg = e?.detail?.message || 'Your wallet is frozen. Please contact admin.';
+      setFrozenModalMessage(msg);
+      setFrozenModalOpen(true);
+    };
+    window.addEventListener('walletFrozenAlert', handleAlert);
+    return () => window.removeEventListener('walletFrozenAlert', handleAlert);
+  }, []);
+
   return (
     <WalletContext.Provider value={{
       wallet, balance, lockedBalance, availableBalance,
-      status, isWalletLoading, walletError, refreshWallet
+      status, isFrozen, isWalletLoading, walletError, refreshWallet,
+      triggerFrozenModal
     }}>
       {children}
+
+      {/* Global Frozen Wallet Modal Alert */}
+      {frozenModalOpen && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl border border-rose-100 max-w-md w-full overflow-hidden text-center p-6 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 rounded-2xl bg-rose-50 border-2 border-rose-200 flex items-center justify-center mx-auto text-rose-600 shadow-inner">
+              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            
+            <div className="space-y-1">
+              <span className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider bg-rose-100 text-rose-700 border border-rose-200">
+                Security & Compliance Notice
+              </span>
+              <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight pt-2">
+                Wallet Frozen
+              </h3>
+              <p className="text-sm font-bold text-rose-600">
+                {frozenModalMessage}
+              </p>
+            </div>
+
+            <p className="text-xs text-slate-500 font-medium leading-relaxed px-2">
+              All balance transactions, float usage, and wallet-to-wallet transfers are disabled on this account while placed on hold. Please reach out to Rupiksha Support or Administrator.
+            </p>
+
+            <div className="pt-2 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setFrozenModalOpen(false)}
+                className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-slate-900/20 transition-all cursor-pointer"
+              >
+                Understood
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </WalletContext.Provider>
   );
 }

@@ -5,10 +5,19 @@ import {
     IndianRupee, Search, RefreshCcw, Download, FileSpreadsheet,
     Plus, Filter, Calendar, CheckCircle2, X
 } from 'lucide-react';
-import { UserSelector, fmtINR, fmtDateTime, sanitizeCsvCell, fetchAPI, fireCelebration } from './walletShared';
+import { UserSelector, fmtINR, fmtDateTime, sanitizeCsvCell, fetchAPI, fireCelebration, WalletTabSkeleton } from './walletShared';
 import { dataService } from '../../../services/dataService';
 
-const RupikshaCommissionLedgerTab = ({ users = [], onToast, onRefresh }) => {
+const RupikshaCommissionLedgerTab = ({ users = [], loading = false, onToast, onRefresh }) => {
+    if (loading && users.length === 0) {
+        return (
+            <WalletTabSkeleton
+                title="Rupiksha Commission Ledger"
+                subtitle="Fetching distributor commission records and tax ledger..."
+            />
+        );
+    }
+
     const [records, setRecords] = useState(() => {
         try {
             const appTx = dataService.getData()?.transactions || [];

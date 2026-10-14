@@ -18,12 +18,24 @@ export default function WalletTransfer() {
     const { 
         availableBalance: walletAvailable, 
         balance: walletBalance, 
+        isFrozen: isContextFrozen,
+        triggerFrozenModal,
         refreshWallet 
     } = useWallet();
     const navigate = useNavigate();
 
     // Use live balance from the wallet context / navbar (no duplicate API call!)
     const activeUser = currentUser || dataService.getCurrentUser?.() || {};
+    const isUserFrozen = Boolean(
+        isContextFrozen || 
+        activeUser?.isFrozen || 
+        activeUser?.walletStatus === 'FROZEN' || 
+        activeUser?.status === 'FROZEN' ||
+        (activeUser?.id && localStorage.getItem(`rupiksha_frozen_${activeUser.id}`) === 'true') ||
+        (activeUser?.username && localStorage.getItem(`rupiksha_frozen_${activeUser.username}`) === 'true') ||
+        (activeUser?.mobile && localStorage.getItem(`rupiksha_frozen_${activeUser.mobile}`) === 'true')
+    );
+
     const availableBalance = parseFloat(
         walletAvailable ?? 
         walletBalance ?? 
@@ -48,10 +60,19 @@ export default function WalletTransfer() {
 
     // Confirmation & Transfer Execution State
     const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [showFrozenModal, setShowFrozenModal] = useState(false);
     const [transferring, setTransferring] = useState(false);
     const [transferSuccessData, setTransferSuccessData] = useState(null);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [copiedRef, setCopiedRef] = useState(false);
+
+    // Alert if wallet is frozen on mount
+    useEffect(() => {
+        if (isUserFrozen) {
+            setShowFrozenModal(true);
+            if (triggerFrozenModal) triggerFrozenModal('Your wallet is frozen. Please contact admin.');
+        }
+    }, [isUserFrozen, triggerFrozenModal]);
 
     // Role Details & Badge Styling
     const getRoleDetails = useCallback((role) => {
@@ -184,6 +205,13 @@ export default function WalletTransfer() {
     // Review Transfer Action
     const handleReviewTransfer = () => {
         setFormError('');
+        if (isUserFrozen) {
+            setShowFrozenModal(true);
+            if (triggerFrozenModal) triggerFrozenModal('Your wallet is frozen. Please contact admin.');
+            setFormError('Your wallet is frozen. Please contact admin.');
+            return;
+        }
+
         const numAmount = parseFloat(amount);
 
         if (!selectedRecipient) {
@@ -207,6 +235,14 @@ export default function WalletTransfer() {
     // Execute Transfer
     const handleExecuteTransfer = async () => {
         if (transferring) return;
+        if (isUserFrozen) {
+            setShowConfirmModal(false);
+            setShowFrozenModal(true);
+            if (triggerFrozenModal) triggerFrozenModal('Your wallet is frozen. Please contact admin.');
+            setFormError('Your wallet is frozen. Please contact admin.');
+            return;
+        }
+
         setTransferring(true);
         setFormError('');
 
@@ -247,12 +283,28 @@ export default function WalletTransfer() {
                 window.dispatchEvent(new Event('SuperDistributorDataUpdated'));
                 window.dispatchEvent(new Event('dataUpdated'));
             } else {
-                setFormError(res?.message || 'Transfer failed. Please try again.');
-                setShowConfirmModal(false);
+                const errMsg = res?.message || 'Transfer failed. Please try again.';
+                if (errMsg.toLowerCase().includes('frozen') || errMsg.toLowerCase().includes('freez') || errMsg.toLowerCase().includes('blocked')) {
+                    setFormError('Your wallet is frozen. Please contact admin.');
+                    setShowConfirmModal(false);
+                    setShowFrozenModal(true);
+                    if (triggerFrozenModal) triggerFrozenModal('Your wallet is frozen. Please contact admin.');
+                } else {
+                    setFormError(errMsg);
+                    setShowConfirmModal(false);
+                }
             }
         } catch (err) {
-            setFormError(err.message || 'Failed to complete wallet transfer');
-            setShowConfirmModal(false);
+            const errStr = String(err?.message || err || '');
+            if (errStr.toLowerCase().includes('frozen') || errStr.toLowerCase().includes('freez') || errStr.toLowerCase().includes('blocked')) {
+                setFormError('Your wallet is frozen. Please contact admin.');
+                setShowConfirmModal(false);
+                setShowFrozenModal(true);
+                if (triggerFrozenModal) triggerFrozenModal('Your wallet is frozen. Please contact admin.');
+            } else {
+                setFormError(errStr || 'Failed to complete wallet transfer');
+                setShowConfirmModal(false);
+            }
         } finally {
             setTransferring(false);
         }
@@ -668,15 +720,30 @@ export default function WalletTransfer() {
                         </div>
 
                         {/* Review & Continue Button */}
-                        <div className="pt-1">
+                        <div className="pt-1 space-y-2">
+                            {isUserFrozen && (
+                                <div className="p-3 bg-rose-50 border-2 border-rose-200 rounded-xl flex items-center justify-between gap-2 text-rose-700 animate-in fade-in">
+                                    <div className="flex items-center gap-2">
+                                        <AlertCircle size={16} className="shrink-0 text-rose-600" />
+                                        <p className="text-xs font-black text-rose-600">Your wallet is frozen. Please contact admin.</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowFrozenModal(true)}
+                                        className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm shrink-0"
+                                    >
+                                        Notice
+                                    </button>
+                                </div>
+                            )}
                             <button
                                 type="button"
-                                onClick={handleReviewTransfer}
-                                disabled={!selectedRecipient || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > availableBalance}
+                                onClick={isUserFrozen ? () => setShowFrozenModal(true) : handleReviewTransfer}
+                                disabled={!selectedRecipient || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > availableBalance || isUserFrozen}
                                 className="w-full py-2.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:opacity-95 disabled:opacity-50 text-white text-xs sm:text-sm font-black rounded-xl shadow-md transition-all cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                             >
                                 <Send size={15} />
-                                <span>Review & Transfer</span>
+                                <span>{isUserFrozen ? 'Wallet Frozen — Transfer Blocked' : 'Review & Transfer'}</span>
                             </button>
                         </div>
                     </div>
@@ -843,6 +910,50 @@ export default function WalletTransfer() {
                                     className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black rounded-xl transition cursor-pointer active:scale-98"
                                 >
                                     Done
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Frozen Wallet Pop-up Modal */}
+            <AnimatePresence>
+                {showFrozenModal && (
+                    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white rounded-3xl shadow-2xl border border-rose-100 max-w-md w-full overflow-hidden text-center p-6 space-y-4"
+                        >
+                            <div className="w-16 h-16 rounded-2xl bg-rose-50 border-2 border-rose-200 flex items-center justify-center mx-auto text-rose-600 shadow-inner">
+                                <AlertCircle size={32} />
+                            </div>
+                            
+                            <div className="space-y-1">
+                                <span className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider bg-rose-100 text-rose-700 border border-rose-200">
+                                    Administrative Hold
+                                </span>
+                                <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight pt-2">
+                                    Wallet is Frozen
+                                </h3>
+                                <p className="text-sm font-black text-rose-600">
+                                    Your wallet is frozen. Please contact admin.
+                                </p>
+                            </div>
+
+                            <p className="text-xs text-slate-500 font-semibold leading-relaxed px-2">
+                                You cannot perform any wallet-to-wallet transfers or use wallet balance while your wallet is frozen. Please contact administrator to review and restore your wallet access.
+                            </p>
+
+                            <div className="pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowFrozenModal(false)}
+                                    className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-slate-900/20 transition-all cursor-pointer"
+                                >
+                                    Understood
                                 </button>
                             </div>
                         </motion.div>

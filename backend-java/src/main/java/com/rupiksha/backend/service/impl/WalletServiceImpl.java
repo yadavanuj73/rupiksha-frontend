@@ -116,7 +116,7 @@ public class WalletServiceImpl implements WalletService {
     private void validateWalletStatus(Wallet wallet, String entryType) {
         WalletStatus status = wallet.getStatus();
         if (status == WalletStatus.BLOCKED || status == WalletStatus.FROZEN) {
-            throw new IllegalStateException("Transaction blocked: Target wallet is " + status);
+            throw new IllegalStateException("Your wallet is frozen. Please contact admin.");
         }
         if (status == WalletStatus.SUSPENDED) {
             if (!"CREDIT".equalsIgnoreCase(entryType) && !"TAX".equalsIgnoreCase(entryType)) {
@@ -741,7 +741,17 @@ public class WalletServiceImpl implements WalletService {
         User admin = userRepository.findById(adminId)
                 .orElseThrow(() -> new IllegalArgumentException("Admin not found"));
 
-        User target = userRepository.findById(UUID.fromString(request.userId()))
+        UUID targetUuid;
+        try {
+            targetUuid = UUID.fromString(request.userId());
+        } catch (Exception e) {
+            targetUuid = userRepository.findByUsername(request.userId())
+                    .or(() -> userRepository.findByMobile(request.userId()))
+                    .map(User::getId)
+                    .orElseThrow(() -> new IllegalArgumentException("Target user not found: " + request.userId()));
+        }
+
+        User target = userRepository.findById(targetUuid)
                 .orElseThrow(() -> new IllegalArgumentException("Target user not found"));
 
         Wallet wallet = getOrCreateWallet(target.getId());

@@ -250,3 +250,65 @@ export const UserSelector = ({ users = [], value, onChange, placeholder, disable
         </div>
     );
 };
+
+/**
+ * WalletTabSkeleton - High-end shimmer loading skeleton with animated halo & spinner
+ */
+export const WalletTabSkeleton = ({ title = "Wallet Management", subtitle = "Fetching live balance escrow and user records..." }) => (
+    <div className="max-w-5xl mx-auto space-y-3">
+        {/* Banner Skeleton */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-white px-5 py-3 shadow-sm border border-slate-800/60">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-white/50">
+                        <Loader2 size={18} className="animate-spin text-emerald-400" />
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm font-black tracking-wide uppercase text-white">{title}</span>
+                            <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                                Synchronizing
+                            </span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 font-medium mt-0.5">{subtitle}</p>
+                    </div>
+                </div>
+                <div className="h-7 w-28 bg-white/10 rounded-xl animate-pulse hidden sm:block" />
+            </div>
+        </div>
+
+        {/* Form / Content Card Skeleton */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="h-3.5 w-44 bg-slate-100 rounded-lg animate-pulse" />
+                <div className="h-3.5 w-24 bg-slate-100 rounded-lg animate-pulse" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                    <div className="space-y-1">
+                        <div className="h-2.5 w-28 bg-slate-100 rounded animate-pulse" />
+                        <div className="h-9 bg-slate-50 border border-slate-100 rounded-xl animate-pulse" />
+                    </div>
+                    <div className="space-y-1">
+                        <div className="h-2.5 w-20 bg-slate-100 rounded animate-pulse" />
+                        <div className="h-9 bg-slate-50 border border-slate-100 rounded-xl animate-pulse" />
+                    </div>
+                </div>
+                <div className="space-y-3">
+                    <div className="space-y-1">
+                        <div className="h-2.5 w-24 bg-slate-100 rounded animate-pulse" />
+                        <div className="h-9 bg-slate-50 border border-slate-100 rounded-xl animate-pulse" />
+                    </div>
+                    <div className="pt-2">
+                        <div className="h-9 bg-slate-100 rounded-xl animate-pulse" />
+                    </div>
+                </div>
+            </div>
+            <div className="flex items-center justify-center gap-2 pt-2 text-slate-400 text-xs font-bold uppercase tracking-wider">
+                <Loader2 size={14} className="animate-spin text-emerald-600" />
+                <span>Loading live server data...</span>
+            </div>
+        </div>
+    </div>
+);

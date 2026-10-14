@@ -3,10 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Snowflake, AlertTriangle, Search, Unlock, Loader2, X, ShieldCheck
 } from 'lucide-react';
-import { UserSelector, fmtINR, fmtDateTime, fireCelebration, fetchAPI } from './walletShared';
+import { UserSelector, fmtINR, fmtDateTime, fireCelebration, fetchAPI, WalletTabSkeleton } from './walletShared';
 import { dataService } from '../../../services/dataService';
 
-const FreezeWalletTab = ({ users = [], onToast, onRefresh }) => {
+const FreezeWalletTab = ({ users = [], loading = false, onToast, onRefresh }) => {
     const [subTab, setSubTab] = useState('FREEZE'); // 'FREEZE' | 'UNFREEZE'
     const [userId, setUserId] = useState('');
     const [reason, setReason] = useState('SUSPICIOUS_ACTIVITY');
@@ -20,12 +20,30 @@ const FreezeWalletTab = ({ users = [], onToast, onRefresh }) => {
 
     const [search, setSearch] = useState('');
 
-    const frozenList = (users || []).filter(u => u.isFrozen || u.walletStatus === 'FROZEN' || u.status === 'FROZEN');
+    if (loading && users.length === 0) {
+        return (
+            <WalletTabSkeleton
+                title="Freeze Wallet"
+                subtitle="Fetching active and frozen user escrow accounts from server..."
+            />
+        );
+    }
+
+    const isUserFrozenCheck = (u) => Boolean(
+        u.isFrozen || 
+        u.walletStatus === 'FROZEN' || 
+        u.status === 'FROZEN' ||
+        localStorage.getItem(`rupiksha_frozen_${u.id}`) === 'true' ||
+        localStorage.getItem(`rupiksha_frozen_${u.username}`) === 'true' ||
+        localStorage.getItem(`rupiksha_frozen_${u.mobile}`) === 'true'
+    );
+
+    const frozenList = (users || []).filter(isUserFrozenCheck);
     const frozenIds = new Set(frozenList.map(f => String(f.id || f.userId || f.username)));
 
     // Active users eligible to be frozen
     const activeEligibleUsers = (users || []).filter(u =>
-        !frozenIds.has(String(u.id)) && !frozenIds.has(String(u.username)) && !u.isFrozen && u.walletStatus !== 'FROZEN'
+        !frozenIds.has(String(u.id)) && !frozenIds.has(String(u.username)) && !isUserFrozenCheck(u)
     );
 
     const selectedUser = users.find(u => u.username === userId || u.id == userId || u.userId == userId);
@@ -48,28 +66,56 @@ const FreezeWalletTab = ({ users = [], onToast, onRefresh }) => {
         if (!userId) return onToast({ type: 'error', message: 'Please select a user to freeze wallet' });
 
         setSubmitting(true);
-        const targetId = selectedUser ? (selectedUser.id || selectedUser.username) : userId;
+        const targetId = selectedUser ? (selectedUser.userId || selectedUser.id || selectedUser.username) : userId;
         const targetName = selectedUser?.name || selectedUser?.fullName || targetId;
         const targetBal = parseFloat(String(selectedUser?.balance ?? selectedUser?.walletBalance ?? 0).replace(/,/g, '')) || 0;
         const finalRemark = remark.trim() || `Wallet frozen: ${reason.replace(/_/g, ' ')}`;
+
+        // Set local storage freeze flags for all user identifiers
+        try {
+            if (targetId) localStorage.setItem(`rupiksha_frozen_${targetId}`, 'true');
+            if (selectedUser?.id) localStorage.setItem(`rupiksha_frozen_${selectedUser.id}`, 'true');
+            if (selectedUser?.userId) localStorage.setItem(`rupiksha_frozen_${selectedUser.userId}`, 'true');
+            if (selectedUser?.username) localStorage.setItem(`rupiksha_frozen_${selectedUser.username}`, 'true');
+            if (selectedUser?.mobile) localStorage.setItem(`rupiksha_frozen_${selectedUser.mobile}`, 'true');
+        } catch (_) {}
 
         // Update dataService
         const appData = dataService.getData();
         if (appData.users) {
             const uIdx = appData.users.findIndex(u =>
-                u.id == targetId || u._id == targetId || u.username === targetId || u.mobile === targetId
+                u.id == targetId || u._id == targetId || u.username === targetId || u.mobile === targetId || u.userId == targetId
             );
             if (uIdx !== -1) {
                 appData.users[uIdx] = {
                     ...appData.users[uIdx],
                     isFrozen: true,
                     walletStatus: 'FROZEN',
+                    status: 'FROZEN',
                     frozenReason: finalRemark,
                     frozenAt: new Date().toISOString()
                 };
                 dataService.saveData(appData);
             }
         }
+
+        // Update active session if target user is currently logged in
+        try {
+            for (const key of ['rupiksha_user', 'rupiksha_imp_user']) {
+                const raw = localStorage.getItem(key);
+                if (raw) {
+                    const u = JSON.parse(raw);
+                    if (u.id == targetId || u.username === targetId || u.mobile === targetId || u.userId == targetId) {
+                        localStorage.setItem(key, JSON.stringify({
+                            ...u,
+                            isFrozen: true,
+                            walletStatus: 'FROZEN',
+                            status: 'FROZEN'
+                        }));
+                    }
+                }
+            }
+        } catch (_) {}
 
         // Update backend database if connected
         try {
@@ -96,32 +142,63 @@ const FreezeWalletTab = ({ users = [], onToast, onRefresh }) => {
         setSubTab('UNFREEZE'); // Switch to view frozen list
         if (onRefresh) onRefresh();
         window.dispatchEvent(new CustomEvent('walletUpdated'));
+        window.dispatchEvent(new CustomEvent('walletFrozenAlert', {
+            detail: { userId: targetId, message: 'Your wallet is frozen. Please contact admin.' }
+        }));
     };
 
     // Handle Unfreeze
     const handleConfirmUnfreeze = async () => {
         if (!unfreezeModalUser) return;
         setUnfreezing(true);
-        const targetId = unfreezeModalUser.id || unfreezeModalUser.userId || unfreezeModalUser.username;
+        const targetId = unfreezeModalUser.userId || unfreezeModalUser.id || unfreezeModalUser.username;
         const targetName = unfreezeModalUser.name || targetId;
+
+        // Clear local storage freeze flags
+        try {
+            if (targetId) localStorage.removeItem(`rupiksha_frozen_${targetId}`);
+            if (unfreezeModalUser?.id) localStorage.removeItem(`rupiksha_frozen_${unfreezeModalUser.id}`);
+            if (unfreezeModalUser?.userId) localStorage.removeItem(`rupiksha_frozen_${unfreezeModalUser.userId}`);
+            if (unfreezeModalUser?.username) localStorage.removeItem(`rupiksha_frozen_${unfreezeModalUser.username}`);
+            if (unfreezeModalUser?.mobile) localStorage.removeItem(`rupiksha_frozen_${unfreezeModalUser.mobile}`);
+        } catch (_) {}
 
         // Restore active in dataService
         const appData = dataService.getData();
         if (appData.users) {
             const uIdx = appData.users.findIndex(u =>
-                u.id == targetId || u._id == targetId || u.username === targetId || u.mobile === targetId
+                u.id == targetId || u._id == targetId || u.username === targetId || u.mobile === targetId || u.userId == targetId
             );
             if (uIdx !== -1) {
                 appData.users[uIdx] = {
                     ...appData.users[uIdx],
                     isFrozen: false,
                     walletStatus: 'ACTIVE',
+                    status: 'ACTIVE',
                     unfrozenAt: new Date().toISOString(),
                     unfreezeRemark: unfreezeRemark
                 };
                 dataService.saveData(appData);
             }
         }
+
+        // Update active session if target user is currently logged in
+        try {
+            for (const key of ['rupiksha_user', 'rupiksha_imp_user']) {
+                const raw = localStorage.getItem(key);
+                if (raw) {
+                    const u = JSON.parse(raw);
+                    if (u.id == targetId || u.username === targetId || u.mobile === targetId || u.userId == targetId) {
+                        localStorage.setItem(key, JSON.stringify({
+                            ...u,
+                            isFrozen: false,
+                            walletStatus: 'ACTIVE',
+                            status: 'ACTIVE'
+                        }));
+                    }
+                }
+            }
+        } catch (_) {}
 
         // Update backend database if connected
         try {
@@ -201,7 +278,7 @@ const FreezeWalletTab = ({ users = [], onToast, onRefresh }) => {
                         }`}
                     >
                         <Unlock size={12} className={subTab === 'UNFREEZE' ? 'text-emerald-600' : 'text-slate-300'} />
-                        Frozen Wallets ({frozenList.length})
+                        Frozen Wallets ({loading && users.length === 0 ? '...' : frozenList.length})
                     </button>
                 </div>
             </div>

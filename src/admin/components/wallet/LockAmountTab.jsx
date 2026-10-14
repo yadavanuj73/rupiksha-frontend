@@ -3,10 +3,19 @@ import { motion } from 'framer-motion';
 import {
     Lock, AlertTriangle, Loader2, History, IndianRupee, Unlock, CheckCircle2
 } from 'lucide-react';
-import { fetchAPI, UserSelector, fmtINR, fmtDateTime } from './walletShared';
+import { fetchAPI, UserSelector, fmtINR, fmtDateTime, WalletTabSkeleton } from './walletShared';
 import { dataService } from '../../../services/dataService';
 
-const LockAmountTab = ({ users = [], onToast, onRefresh, onNavigate }) => {
+const LockAmountTab = ({ users = [], loading = false, onToast, onRefresh, onNavigate }) => {
+    if (loading && users.length === 0) {
+        return (
+            <WalletTabSkeleton
+                title="Lock Amount"
+                subtitle="Fetching active user accounts and float balances from server..."
+            />
+        );
+    }
+
     const [userId, setUserId] = useState('');
     const [amount, setAmount] = useState('');
     const [reason, setReason] = useState('SECURITY_HOLD');
