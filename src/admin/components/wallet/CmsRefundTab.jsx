@@ -164,24 +164,14 @@ const CmsRefundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
     };
 
     return (
-        <div className="max-w-5xl mx-auto space-y-3">
+        <div className="w-full max-w-6xl mx-auto space-y-2.5">
             {/* Page Identity Header Banner */}
-            <div className="flex items-center justify-between bg-gradient-to-r from-amber-950 via-slate-900 to-slate-900 text-white px-5 py-3 rounded-2xl shadow-sm border border-amber-900/40">
-                <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400 shadow-inner">
-                        <RotateCcw size={20} />
+            <div className="flex items-center justify-between bg-gradient-to-r from-amber-950 via-slate-900 to-slate-900 text-white px-4 py-2 sm:py-2.5 rounded-xl shadow-sm border border-amber-900/40">
+                <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400 shadow-inner">
+                        <RotateCcw size={16} />
                     </div>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <h2 className="text-sm font-black tracking-wide uppercase">CMS Refund</h2>
-                            <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-400/30">
-                                Float Reversal
-                            </span>
-                        </div>
-                        <p className="text-[10px] text-slate-300 font-medium">
-                            Credit and reverse failed cash collection drops, bill payments, and BBPS/AEPS settlements.
-                        </p>
-                    </div>
+                    <h2 className="text-xs sm:text-sm font-black tracking-wide uppercase text-white">CMS Refund</h2>
                 </div>
 
                 {/* SubTab Toggle in Header */}
@@ -189,7 +179,7 @@ const CmsRefundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
                     <button
                         type="button"
                         onClick={() => setViewMode('FORM')}
-                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
+                        className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
                             viewMode === 'FORM'
                                 ? 'bg-white text-slate-900 shadow-sm'
                                 : 'text-slate-300 hover:text-white'
@@ -201,7 +191,7 @@ const CmsRefundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
                     <button
                         type="button"
                         onClick={() => setViewMode('HISTORY')}
-                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
+                        className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
                             viewMode === 'HISTORY'
                                 ? 'bg-white text-slate-900 shadow-sm'
                                 : 'text-slate-300 hover:text-white'
@@ -221,12 +211,12 @@ const CmsRefundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
                         initial={{ opacity: 0, y: 4 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -4 }}
-                        className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5"
+                        className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3.5 sm:p-4 md:p-5"
                     >
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-3.5">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 items-start">
                                 {/* Left Column: User, Mode, Original Ref */}
-                                <div className="space-y-3">
+                                <div className="space-y-2.5 sm:space-y-3">
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
                                             <span>Select Beneficiary User *</span>
@@ -305,7 +295,7 @@ const CmsRefundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
                                 </div>
 
                                 {/* Right Column: Amount, Consumer No, Narration, Submit */}
-                                <div className="space-y-3">
+                                <div className="space-y-2.5 sm:space-y-3">
                                     {/* Refund Amount */}
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
@@ -360,7 +350,7 @@ const CmsRefundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
                                         <button
                                             type="submit"
                                             disabled={submitting}
-                                            className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 hover:from-amber-700 hover:to-orange-700 text-white font-black text-xs uppercase tracking-[0.15em] shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                                            className="w-full py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 hover:from-amber-700 hover:to-orange-700 text-white font-black text-xs uppercase tracking-[0.15em] shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
                                         >
                                             {submitting ? (
                                                 <>

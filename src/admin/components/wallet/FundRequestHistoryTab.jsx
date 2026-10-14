@@ -155,46 +155,36 @@ const FundRequestHistoryTab = ({ onToast }) => {
     }
 
     return (
-        <div className="max-w-5xl mx-auto space-y-3">
+        <div className="w-full max-w-6xl mx-auto space-y-2.5">
             {/* Page Identity Header Banner */}
-            <div className="flex items-center justify-between bg-gradient-to-r from-indigo-950 via-slate-900 to-slate-900 text-white px-5 py-3 rounded-2xl shadow-sm border border-indigo-900/40">
-                <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400 shadow-inner">
-                        <CheckCircle2 size={18} />
+            <div className="flex items-center justify-between bg-gradient-to-r from-indigo-950 via-slate-900 to-slate-900 text-white px-4 py-2 sm:py-2.5 rounded-xl shadow-sm border border-indigo-900/40">
+                <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400 shadow-inner">
+                        <CheckCircle2 size={16} />
                     </div>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <h2 className="text-sm font-black tracking-wide uppercase">Fund Request History</h2>
-                            <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
-                                Approved Audit Log
-                            </span>
-                        </div>
-                        <p className="text-[10px] text-slate-300 font-medium">
-                            Comprehensive record and audit trail of all approved wallet fund requests with payment proofs.
-                        </p>
-                    </div>
+                    <h2 className="text-xs sm:text-sm font-black tracking-wide uppercase text-white">Fund Request History</h2>
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <span className="hidden sm:inline-flex items-center px-3 py-1 bg-white/10 text-indigo-200 border border-white/10 rounded-xl text-[10px] font-bold">
+                    <span className="hidden sm:inline-flex items-center px-2.5 py-1 bg-white/10 text-indigo-200 border border-white/10 rounded-lg text-[10px] font-bold">
                         Credited: {fmtINR(totalApprovedVolume)} ({filtered.length} Entries)
                     </span>
                     <button
                         onClick={handleExportExcel}
-                        className="px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"
+                        className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-emerald-600/80 hover:bg-emerald-600 text-white rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"
                     >
                         <FileSpreadsheet size={13} /> Excel
                     </button>
                     <button
                         onClick={handleExportPdf}
-                        className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"
+                        className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"
                     >
                         <Download size={13} /> PDF
                     </button>
                     <button
                         onClick={loadApprovedRequests}
                         title="Refresh"
-                        className="p-1.5 text-indigo-300 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
+                        className="p-1.5 text-indigo-300 hover:text-white hover:bg-white/10 rounded-lg transition-all cursor-pointer"
                     >
                         <RefreshCcw size={14} className={loading ? 'animate-spin' : ''} />
                     </button>

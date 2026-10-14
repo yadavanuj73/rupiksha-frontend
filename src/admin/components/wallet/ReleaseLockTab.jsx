@@ -123,34 +123,24 @@ const ReleaseLockTab = ({ users = [], loading = false, onToast, onRefresh }) => 
     };
 
     return (
-        <div className="max-w-5xl mx-auto space-y-3">
+        <div className="w-full max-w-6xl mx-auto space-y-2.5">
             {/* Page Identity Header Banner */}
-            <div className="flex items-center justify-between bg-gradient-to-r from-teal-950 via-slate-900 to-slate-900 text-white px-5 py-3 rounded-2xl shadow-sm border border-teal-900/40">
-                <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-teal-400 shadow-inner">
-                        <Unlock size={18} />
+            <div className="flex items-center justify-between bg-gradient-to-r from-teal-950 via-slate-900 to-slate-900 text-white px-4 py-2 sm:py-2.5 rounded-xl shadow-sm border border-teal-900/40">
+                <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-teal-400 shadow-inner">
+                        <Unlock size={16} />
                     </div>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <h2 className="text-sm font-black tracking-wide uppercase">Release Lock Amount</h2>
-                            <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-teal-500/20 text-teal-300 border border-teal-400/30">
-                                Float Restoration
-                            </span>
-                        </div>
-                        <p className="text-[10px] text-slate-300 font-medium">
-                            Unlock held float back into user's available balance upon resolution of disputes or verification.
-                        </p>
-                    </div>
+                    <h2 className="text-xs sm:text-sm font-black tracking-wide uppercase text-white">Release Lock Amount</h2>
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <span className="hidden sm:inline-flex items-center px-3 py-1 bg-white/10 text-teal-200 border border-white/10 rounded-xl text-[10px] font-bold">
+                    <span className="hidden sm:inline-flex items-center px-2.5 py-1 bg-white/10 text-teal-200 border border-white/10 rounded-lg text-[10px] font-bold">
                         Locked: {fmtINR(totalSystemLocked)} ({usersWithLocked.length} Users)
                     </span>
                     <button
                         onClick={onRefresh}
                         title="Refresh"
-                        className="p-1.5 text-teal-300 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
+                        className="p-1.5 text-teal-300 hover:text-white hover:bg-white/10 rounded-lg transition-all cursor-pointer"
                     >
                         <RefreshCcw size={14} />
                     </button>

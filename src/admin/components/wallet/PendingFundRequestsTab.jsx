@@ -219,40 +219,30 @@ const PendingFundRequestsTab = ({ users = [], onToast, onRefresh }) => {
     }
 
     return (
-        <div className="max-w-5xl mx-auto space-y-3">
+        <div className="w-full max-w-6xl mx-auto space-y-2.5">
             {/* Page Identity Header Banner */}
-            <div className="flex items-center justify-between bg-gradient-to-r from-amber-950 via-slate-900 to-slate-900 text-white px-5 py-3 rounded-2xl shadow-sm border border-amber-900/40">
-                <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400 shadow-inner">
-                        <Clock size={18} />
+            <div className="flex items-center justify-between bg-gradient-to-r from-amber-950 via-slate-900 to-slate-900 text-white px-4 py-2 sm:py-2.5 rounded-xl shadow-sm border border-amber-900/40">
+                <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400 shadow-inner">
+                        <Clock size={16} />
                     </div>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <h2 className="text-sm font-black tracking-wide uppercase">Pending Fund Requests</h2>
-                            <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-400/30">
-                                Approval Queue
-                            </span>
-                        </div>
-                        <p className="text-[10px] text-slate-300 font-medium">
-                            Review and authorize manual float requests submitted with payment proof or bank UTR.
-                        </p>
-                    </div>
+                    <h2 className="text-xs sm:text-sm font-black tracking-wide uppercase text-white">Pending Fund Requests</h2>
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <span className="hidden sm:inline-flex items-center px-3 py-1 bg-white/10 text-amber-200 border border-white/10 rounded-xl text-[10px] font-bold">
+                    <span className="hidden sm:inline-flex items-center px-2.5 py-1 bg-white/10 text-amber-200 border border-white/10 rounded-lg text-[10px] font-bold">
                         Pending: {requests.length} ({fmtINR(totalPendingAmount)})
                     </span>
                     <button
                         onClick={() => setShowCreateModal(true)}
-                        className="px-3 py-1.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                        className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white rounded-lg text-xs font-black uppercase tracking-wider shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
                     >
                         <Plus size={13} /> Raise Request
                     </button>
                     <button
                         onClick={loadRequests}
                         title="Refresh"
-                        className="p-1.5 text-amber-300 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
+                        className="p-1.5 text-amber-300 hover:text-white hover:bg-white/10 rounded-lg transition-all cursor-pointer"
                     >
                         <RefreshCcw size={14} className={loading ? 'animate-spin' : ''} />
                     </button>

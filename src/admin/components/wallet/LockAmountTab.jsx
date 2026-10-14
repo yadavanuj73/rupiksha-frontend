@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     Lock, AlertTriangle, Loader2, History, IndianRupee, Unlock, CheckCircle2
 } from 'lucide-react';
@@ -114,31 +114,21 @@ const LockAmountTab = ({ users = [], loading = false, onToast, onRefresh, onNavi
     const [showHistory, setShowHistory] = useState(false);
 
     return (
-        <div className="max-w-5xl mx-auto space-y-3">
+        <div className="w-full max-w-6xl mx-auto space-y-2.5">
             {/* Page Identity Header Banner */}
-            <div className="flex items-center justify-between bg-gradient-to-r from-purple-950 via-slate-900 to-slate-900 text-white px-5 py-3 rounded-2xl shadow-sm border border-purple-900/40">
-                <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-400/30 flex items-center justify-center text-purple-400 shadow-inner">
-                        <Lock size={18} />
+            <div className="flex items-center justify-between bg-gradient-to-r from-purple-950 via-slate-900 to-slate-900 text-white px-4 py-2 sm:py-2.5 rounded-xl shadow-sm border border-purple-900/40">
+                <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-purple-500/20 border border-purple-400/30 flex items-center justify-center text-purple-400 shadow-inner">
+                        <Lock size={16} />
                     </div>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <h2 className="text-sm font-black tracking-wide uppercase">Lock Amount</h2>
-                            <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-400/30">
-                                Escrow Protection
-                            </span>
-                        </div>
-                        <p className="text-[10px] text-slate-300 font-medium">
-                            Lock specific float into escrow hold without deducting from user's gross ledger balance.
-                        </p>
-                    </div>
+                    <h2 className="text-xs sm:text-sm font-black tracking-wide uppercase text-white">Lock Amount</h2>
                 </div>
                 <div className="flex items-center gap-2">
                     {recentLocks.length > 0 && (
                         <button
                             type="button"
                             onClick={() => setShowHistory(!showHistory)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-[10px] font-bold uppercase tracking-wider border border-white/10 transition-all cursor-pointer"
+                            className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-[10px] font-bold uppercase tracking-wider border border-white/10 transition-all cursor-pointer"
                         >
                             <History size={12} />
                             <span>{showHistory ? 'View Form' : `Locked (${recentLocks.length})`}</span>
@@ -148,7 +138,7 @@ const LockAmountTab = ({ users = [], loading = false, onToast, onRefresh, onNavi
                         <button
                             type="button"
                             onClick={() => onNavigate('Wallet-Release')}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600/50 hover:bg-purple-600 text-white text-[10px] font-bold uppercase tracking-wider border border-purple-400/30 transition-all cursor-pointer"
+                            className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg bg-purple-600/50 hover:bg-purple-600 text-white text-[10px] font-bold uppercase tracking-wider border border-purple-400/30 transition-all cursor-pointer"
                         >
                             <Unlock size={12} />
                             <span>Release Locks →</span>
@@ -215,13 +205,13 @@ const LockAmountTab = ({ users = [], loading = false, onToast, onRefresh, onNavi
                         initial={{ opacity: 0, y: 4 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -4 }}
-                        className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5"
+                        className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3.5 sm:p-4 md:p-5"
                     >
-                        <form onSubmit={handleSubmit} className="space-y-4">
+                        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-3.5">
                             {/* 2-Column Responsive Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 items-start">
                                 {/* Left Column: Target User & Category */}
-                                <div className="space-y-3">
+                                <div className="space-y-2.5 sm:space-y-3">
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
                                             <span>Select User to Lock Funds *</span>
@@ -280,7 +270,7 @@ const LockAmountTab = ({ users = [], loading = false, onToast, onRefresh, onNavi
                                 </div>
 
                                 {/* Right Column: Amount & Narration */}
-                                <div className="space-y-3">
+                                <div className="space-y-2.5 sm:space-y-3">
                                     <div className="space-y-1">
                                         <div className="flex justify-between items-center">
                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
@@ -343,7 +333,7 @@ const LockAmountTab = ({ users = [], loading = false, onToast, onRefresh, onNavi
                             <button
                                 type="submit"
                                 disabled={submitting}
-                                className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 text-white font-black text-xs uppercase tracking-[0.2em] shadow-md shadow-purple-600/25 hover:shadow-purple-600/40 hover:scale-[1.005] active:scale-[0.99] transition-all disabled:opacity-60 cursor-pointer flex items-center justify-center gap-2"
+                                className="w-full py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 text-white font-black text-xs uppercase tracking-[0.2em] shadow-md shadow-purple-600/25 hover:shadow-purple-600/40 hover:scale-[1.002] active:scale-[0.99] transition-all disabled:opacity-60 cursor-pointer flex items-center justify-center gap-2"
                             >
                                 {submitting ? (
                                     <>

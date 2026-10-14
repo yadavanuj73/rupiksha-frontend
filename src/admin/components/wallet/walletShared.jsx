@@ -254,27 +254,18 @@ export const UserSelector = ({ users = [], value, onChange, placeholder, disable
 /**
  * WalletTabSkeleton - High-end shimmer loading skeleton with animated halo & spinner
  */
-export const WalletTabSkeleton = ({ title = "Wallet Management", subtitle = "Fetching live balance escrow and user records..." }) => (
-    <div className="max-w-5xl mx-auto space-y-3">
+export const WalletTabSkeleton = ({ title = "Wallet Management" }) => (
+    <div className="w-full max-w-6xl mx-auto space-y-2.5">
         {/* Banner Skeleton */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-white px-5 py-3 shadow-sm border border-slate-800/60">
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-white px-4 py-2 sm:py-2.5 shadow-sm border border-slate-800/60">
             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-white/50">
-                        <Loader2 size={18} className="animate-spin text-emerald-400" />
+                <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white/10 flex items-center justify-center text-white/50">
+                        <Loader2 size={16} className="animate-spin text-emerald-400" />
                     </div>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm font-black tracking-wide uppercase text-white">{title}</span>
-                            <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                                Synchronizing
-                            </span>
-                        </div>
-                        <p className="text-[10px] text-slate-400 font-medium mt-0.5">{subtitle}</p>
-                    </div>
+                    <span className="text-xs sm:text-sm font-black tracking-wide uppercase text-white">{title}</span>
                 </div>
-                <div className="h-7 w-28 bg-white/10 rounded-xl animate-pulse hidden sm:block" />
+                <div className="h-6 w-24 bg-white/10 rounded-lg animate-pulse hidden sm:block" />
             </div>
         </div>
 

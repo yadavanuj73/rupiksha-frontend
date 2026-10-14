@@ -234,24 +234,14 @@ const FreezeWalletTab = ({ users = [], loading = false, onToast, onRefresh }) =>
     };
 
     return (
-        <div className="max-w-5xl mx-auto space-y-3">
+        <div className="w-full max-w-6xl mx-auto space-y-2.5">
             {/* Page Identity Header Banner */}
-            <div className="flex items-center justify-between bg-gradient-to-r from-sky-950 via-slate-900 to-slate-900 text-white px-5 py-3 rounded-2xl shadow-sm border border-sky-900/40">
-                <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-sky-500/20 border border-sky-400/30 flex items-center justify-center text-sky-400 shadow-inner">
-                        <Snowflake size={20} />
+            <div className="flex items-center justify-between bg-gradient-to-r from-sky-950 via-slate-900 to-slate-900 text-white px-4 py-2 sm:py-2.5 rounded-xl shadow-sm border border-sky-900/40">
+                <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-sky-500/20 border border-sky-400/30 flex items-center justify-center text-sky-400 shadow-inner">
+                        <Snowflake size={16} />
                     </div>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <h2 className="text-sm font-black tracking-wide uppercase">Freeze Wallet</h2>
-                            <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-sky-500/20 text-sky-300 border border-sky-400/30">
-                                Compliance & Security
-                            </span>
-                        </div>
-                        <p className="text-[10px] text-slate-300 font-medium">
-                            Block withdrawals and outgoing transactions for security review or restore frozen accounts.
-                        </p>
-                    </div>
+                    <h2 className="text-xs sm:text-sm font-black tracking-wide uppercase text-white">Freeze Wallet</h2>
                 </div>
 
                 {/* SubTab Toggle in Header */}
@@ -259,7 +249,7 @@ const FreezeWalletTab = ({ users = [], loading = false, onToast, onRefresh }) =>
                     <button
                         type="button"
                         onClick={() => setSubTab('FREEZE')}
-                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
+                        className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
                             subTab === 'FREEZE'
                                 ? 'bg-white text-slate-900 shadow-sm'
                                 : 'text-slate-300 hover:text-white'
@@ -271,7 +261,7 @@ const FreezeWalletTab = ({ users = [], loading = false, onToast, onRefresh }) =>
                     <button
                         type="button"
                         onClick={() => setSubTab('UNFREEZE')}
-                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
+                        className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
                             subTab === 'UNFREEZE'
                                 ? 'bg-white text-slate-900 shadow-sm'
                                 : 'text-slate-300 hover:text-white'
@@ -291,12 +281,12 @@ const FreezeWalletTab = ({ users = [], loading = false, onToast, onRefresh }) =>
                         initial={{ opacity: 0, y: 4 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -4 }}
-                        className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5"
+                        className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3.5 sm:p-4 md:p-5"
                     >
-                        <form onSubmit={handleFreezeSubmit} className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                        <form onSubmit={handleFreezeSubmit} className="space-y-3 sm:space-y-3.5">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 items-start">
                                 {/* Left Column */}
-                                <div className="space-y-3">
+                                <div className="space-y-2.5 sm:space-y-3">
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
                                             <span>Select Active User to Freeze *</span>
@@ -363,7 +353,7 @@ const FreezeWalletTab = ({ users = [], loading = false, onToast, onRefresh }) =>
                                 </div>
 
                                 {/* Right Column */}
-                                <div className="space-y-3">
+                                <div className="space-y-2.5 sm:space-y-3">
                                     {/* Warning Box */}
                                     <div className="p-3 bg-amber-50/80 border border-amber-200/90 rounded-xl flex items-start gap-2.5">
                                         <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
@@ -395,7 +385,7 @@ const FreezeWalletTab = ({ users = [], loading = false, onToast, onRefresh }) =>
                                         <button
                                             type="submit"
                                             disabled={submitting}
-                                            className="w-full py-3 rounded-xl bg-gradient-to-r from-sky-700 to-blue-800 hover:from-sky-800 hover:to-blue-900 text-white font-black text-xs uppercase tracking-[0.15em] shadow-md shadow-sky-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                                            className="w-full py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-sky-700 to-blue-800 hover:from-sky-800 hover:to-blue-900 text-white font-black text-xs uppercase tracking-[0.15em] shadow-md shadow-sky-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
                                         >
                                             {submitting ? (
                                                 <>
