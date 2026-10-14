@@ -37,16 +37,12 @@ const Admin = () => {
     const { user: currentUser, loading, setUser, setIsLocked, logout } = useAuth();
     const [showAdminMenu, setShowAdminMenu] = useState(false);
 
-    const isLocalDev = window.location.hostname === 'localhost' || 
-                       window.location.hostname === '127.0.0.1' ||
-                       import.meta.env.MODE === 'development';
-
     const userRoles = (Array.isArray(currentUser?.roles) && currentUser.roles.length ? currentUser.roles : [currentUser?.role])
         .map((r) => String(typeof r === 'string' ? r : r?.name || ''))
         .map((r) => r.trim().replace(/^ROLE_/i, '').replace(/[\s-]+/g, '_').toUpperCase())
         .filter(Boolean);
 
-    const isDiagnosticAllowed = userRoles.some(r => ['SUPER_ADMIN', 'SYSTEM_ADMIN', 'DEVELOPER'].includes(r)) || isLocalDev;
+    const isDiagnosticAllowed = userRoles.some(r => ['SUPER_ADMIN', 'SYSTEM_ADMIN', 'DEVELOPER'].includes(r));
 
     // ── Auth guard: redirect to AdminLogin if not authenticated ──
     // Note: Uses the roles from AuthContext as the source of truth so the page

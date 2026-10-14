@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-    RotateCcw, IndianRupee, CheckCircle2, History, Search,
-    Download, FileSpreadsheet, Loader2, Sparkles, Receipt
+    RotateCcw, History, Search, FileSpreadsheet, Loader2, Sparkles
 } from 'lucide-react';
 import { UserSelector, fmtINR, fmtDateTime, fireCelebration, sanitizeCsvCell, fetchAPI } from './walletShared';
 import { dataService } from '../../../services/dataService';
 
 const CmsRefundTab = ({ users = [], onToast, onRefresh }) => {
+    const [viewMode, setViewMode] = useState('FORM'); // 'FORM' | 'HISTORY'
     const [userId, setUserId] = useState('');
     const [amount, setAmount] = useState('');
     const [category, setCategory] = useState('CMS_CASH_COLLECTION');
@@ -129,8 +129,6 @@ const CmsRefundTab = ({ users = [], onToast, onRefresh }) => {
             String(r.mobile || '').includes(q);
     });
 
-    const totalRefunded = refunds.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-
     const handleExportExcel = () => {
         try {
             const dataToExport = filteredRefunds.map(r => ({
@@ -157,224 +155,300 @@ const CmsRefundTab = ({ users = [], onToast, onRefresh }) => {
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6">
-            {/* Form */}
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-8">
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* User Selection */}
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                            Select Beneficiary User *
-                        </label>
-                        <UserSelector
-                            users={users}
-                            value={userId}
-                            onChange={setUserId}
-                            placeholder="Choose retailer, distributor or user..."
-                            disabled={submitting}
-                        />
+        <div className="max-w-5xl mx-auto space-y-3">
+            {/* Page Identity Header Banner */}
+            <div className="flex items-center justify-between bg-gradient-to-r from-amber-950 via-slate-900 to-slate-900 text-white px-5 py-3 rounded-2xl shadow-sm border border-amber-900/40">
+                <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400 shadow-inner">
+                        <RotateCcw size={20} />
                     </div>
-
-                    {selectedUser && (
-                        <motion.div
-                            initial={{ opacity: 0, y: -8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="p-4 bg-amber-50/70 border border-amber-200 rounded-2xl flex items-center justify-between"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-amber-600 text-white flex items-center justify-center font-black text-sm">
-                                    {(selectedUser.name || 'U').charAt(0).toUpperCase()}
-                                </div>
-                                <div>
-                                    <p className="text-sm font-black text-slate-800">{selectedUser.name}</p>
-                                    <p className="text-xs text-slate-500">
-                                        {selectedUser.mobile || selectedUser.username} · Role: <span className="font-bold text-amber-700">{selectedUser.role}</span>
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-xs text-slate-500 font-bold uppercase">Current Balance</p>
-                                <p className="text-base font-black text-slate-900">
-                                    {fmtINR(selectedUser.balance || selectedUser.walletBalance || 0)}
-                                </p>
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {/* Amount & Category */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                Refund Amount (₹) *
-                            </label>
-                            <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black">₹</span>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    step="0.01"
-                                    value={amount}
-                                    onChange={e => setAmount(e.target.value)}
-                                    placeholder="0.00"
-                                    disabled={submitting}
-                                    className="w-full pl-8 pr-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-2xl text-base font-black text-slate-800 outline-none focus:border-amber-500"
-                                />
-                            </div>
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-sm font-black tracking-wide uppercase">CMS Refund</h2>
+                            <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-400/30">
+                                Float Reversal
+                            </span>
                         </div>
-
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                CMS Category *
-                            </label>
-                            <select
-                                value={category}
-                                onChange={e => setCategory(e.target.value)}
-                                className="w-full px-4 py-3.5 bg-slate-50 border-2 border-slate-200 rounded-2xl text-xs font-bold text-slate-700 outline-none focus:border-amber-500"
-                            >
-                                <option value="CMS_CASH_COLLECTION">CMS Cash Collection Drop Reversal</option>
-                                <option value="CMS_BILL_PAYMENT">CMS Utility / Bill Payment Refund</option>
-                                <option value="CMS_AGENT_FLOAT">CMS Agent Float Settlement Adjustment</option>
-                                <option value="CMS_PAYOUT_FAILED">CMS Failed Payout Reversal</option>
-                                <option value="AEPS_CHARGEBACK_REFUND">AePS / DMT Chargeback Settlement Refund</option>
-                            </select>
-                        </div>
+                        <p className="text-[10px] text-slate-300 font-medium">
+                            Credit and reverse failed cash collection drops, bill payments, and BBPS/AEPS settlements.
+                        </p>
                     </div>
+                </div>
 
-                    {/* Original CMS Ref & Consumer Identifier */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                Original CMS / Transaction Ref ID *
-                            </label>
-                            <input
-                                type="text"
-                                value={originalRef}
-                                onChange={e => setOriginalRef(e.target.value)}
-                                placeholder="e.g. CMS-9842104 or BBPS-391028"
-                                className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-2xl text-xs font-bold text-slate-700 outline-none focus:border-amber-500 font-mono"
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                Consumer / CA Number (Optional)
-                            </label>
-                            <input
-                                type="text"
-                                value={consumerNo}
-                                onChange={e => setConsumerNo(e.target.value)}
-                                placeholder="e.g. Consumer No or Mobile"
-                                className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-2xl text-xs font-bold text-slate-700 outline-none focus:border-amber-500"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Detailed Narration */}
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                            Refund Reason & Note
-                        </label>
-                        <input
-                            type="text"
-                            value={remark}
-                            onChange={e => setRemark(e.target.value)}
-                            placeholder="e.g. Transaction timed out at bank end, verified with operator log"
-                            disabled={submitting}
-                            className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-2xl text-xs font-semibold text-slate-700 outline-none focus:border-amber-500"
-                        />
-                    </div>
-
-                    {/* Submit Button */}
+                {/* SubTab Toggle in Header */}
+                <div className="flex items-center gap-1.5 bg-white/10 p-1 rounded-xl border border-white/10">
                     <button
-                        type="submit"
-                        disabled={submitting}
-                        className="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 hover:from-amber-700 hover:to-orange-700 text-white font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-amber-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                        type="button"
+                        onClick={() => setViewMode('FORM')}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
+                            viewMode === 'FORM'
+                                ? 'bg-white text-slate-900 shadow-sm'
+                                : 'text-slate-300 hover:text-white'
+                        }`}
                     >
-                        {submitting ? (
-                            <>
-                                <Loader2 size={16} className="animate-spin" />
-                                <span>PROCESSING CMS REFUND...</span>
-                            </>
-                        ) : (
-                            <>
-                                <RotateCcw size={16} />
-                                <span>PROCESS & CREDIT CMS REFUND</span>
-                            </>
-                        )}
+                        <RotateCcw size={12} className={viewMode === 'FORM' ? 'text-amber-600' : 'text-slate-300'} />
+                        Refund Form
                     </button>
-                </form>
+                    <button
+                        type="button"
+                        onClick={() => setViewMode('HISTORY')}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
+                            viewMode === 'HISTORY'
+                                ? 'bg-white text-slate-900 shadow-sm'
+                                : 'text-slate-300 hover:text-white'
+                        }`}
+                    >
+                        <History size={12} className={viewMode === 'HISTORY' ? 'text-amber-600' : 'text-slate-300'} />
+                        Refund Log ({refunds.length})
+                    </button>
+                </div>
             </div>
 
-            {/* Past CMS Refunds Table */}
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 overflow-hidden space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
-                    <div className="flex items-center gap-2">
-                        <History size={16} className="text-slate-400" />
-                        <h4 className="font-black text-xs text-slate-800 uppercase tracking-wider">CMS Refund Audit Log</h4>
-                    </div>
+            {/* Main Content Area */}
+            <AnimatePresence mode="wait">
+                {viewMode === 'FORM' ? (
+                    <motion.div
+                        key="form"
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5"
+                    >
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                                {/* Left Column: User, Mode, Original Ref */}
+                                <div className="space-y-3">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
+                                            <span>Select Beneficiary User *</span>
+                                            {selectedUser && (
+                                                <span className="text-amber-600 font-bold">
+                                                    Bal: {fmtINR(selectedUser.balance || selectedUser.walletBalance || 0)}
+                                                </span>
+                                            )}
+                                        </label>
+                                        <UserSelector
+                                            users={users}
+                                            value={userId}
+                                            onChange={setUserId}
+                                            placeholder="Choose retailer, distributor or user..."
+                                            disabled={submitting}
+                                        />
+                                    </div>
 
-                    <div className="flex items-center gap-3">
-                        <div className="relative">
-                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <input
-                                value={search}
-                                onChange={e => setSearch(e.target.value)}
-                                className="pl-9 pr-4 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-amber-400 w-48 font-medium"
-                                placeholder="Search ref or user..."
-                            />
+                                    {selectedUser && (
+                                        <motion.div
+                                            initial={{ opacity: 0, scale: 0.98 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            className="px-3 py-2 bg-amber-50/80 border border-amber-200/90 rounded-xl flex items-center justify-between gap-2"
+                                        >
+                                            <div className="flex items-center gap-2.5 truncate">
+                                                <div className="w-8 h-8 rounded-lg bg-amber-600 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-sm">
+                                                    {(selectedUser.name || 'U').charAt(0).toUpperCase()}
+                                                </div>
+                                                <div className="truncate">
+                                                    <p className="text-xs font-black text-slate-900 truncate">{selectedUser.name}</p>
+                                                    <p className="text-[10px] text-slate-500 font-medium">
+                                                        {selectedUser.mobile || selectedUser.username} · Role: <span className="font-bold text-amber-700">{selectedUser.role}</span>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right shrink-0">
+                                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Current Balance</p>
+                                                <p className="text-xs font-black text-slate-900">
+                                                    {fmtINR(selectedUser.balance || selectedUser.walletBalance || 0)}
+                                                </p>
+                                            </div>
+                                        </motion.div>
+                                    )}
+
+                                    {/* CMS Category */}
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                            CMS Category *
+                                        </label>
+                                        <select
+                                            value={category}
+                                            onChange={e => setCategory(e.target.value)}
+                                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:border-amber-500 focus:bg-white transition-colors"
+                                        >
+                                            <option value="CMS_CASH_COLLECTION">CMS Cash Collection Drop Reversal</option>
+                                            <option value="CMS_BILL_PAYMENT">CMS Utility / Bill Payment Refund</option>
+                                            <option value="CMS_AGENT_FLOAT">CMS Agent Float Settlement Adjustment</option>
+                                            <option value="CMS_PAYOUT_FAILED">CMS Failed Payout Reversal</option>
+                                            <option value="AEPS_CHARGEBACK_REFUND">AePS / DMT Chargeback Settlement Refund</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Original CMS Ref */}
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                            Original CMS / Transaction Ref ID *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={originalRef}
+                                            onChange={e => setOriginalRef(e.target.value)}
+                                            placeholder="e.g. CMS-9842104 or BBPS-391028"
+                                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:border-amber-500 focus:bg-white font-mono transition-colors"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Right Column: Amount, Consumer No, Narration, Submit */}
+                                <div className="space-y-3">
+                                    {/* Refund Amount */}
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                            Refund Amount (₹) *
+                                        </label>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                step="0.01"
+                                                value={amount}
+                                                onChange={e => setAmount(e.target.value)}
+                                                placeholder="0.00"
+                                                disabled={submitting}
+                                                className="w-full pl-7 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black text-slate-800 outline-none focus:border-amber-500 focus:bg-white transition-colors"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Consumer / CA Identifier */}
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                            Consumer / CA Number (Optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={consumerNo}
+                                            onChange={e => setConsumerNo(e.target.value)}
+                                            placeholder="e.g. Consumer No or Mobile"
+                                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:border-amber-500 focus:bg-white transition-colors"
+                                        />
+                                    </div>
+
+                                    {/* Detailed Narration */}
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                            Refund Reason & Note
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={remark}
+                                            onChange={e => setRemark(e.target.value)}
+                                            placeholder="e.g. Transaction timed out at bank end, verified with operator log"
+                                            disabled={submitting}
+                                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:border-amber-500 focus:bg-white transition-colors"
+                                        />
+                                    </div>
+
+                                    {/* Submit Button */}
+                                    <div className="pt-1">
+                                        <button
+                                            type="submit"
+                                            disabled={submitting}
+                                            className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 hover:from-amber-700 hover:to-orange-700 text-white font-black text-xs uppercase tracking-[0.15em] shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                                        >
+                                            {submitting ? (
+                                                <>
+                                                    <Loader2 size={14} className="animate-spin" />
+                                                    <span>PROCESSING CMS REFUND...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <RotateCcw size={14} />
+                                                    <span>PROCESS & CREDIT CMS REFUND</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </motion.div>
+                ) : (
+                    /* Past CMS Refunds Table */
+                    <motion.div
+                        key="history"
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 overflow-hidden space-y-3"
+                    >
+                        <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-slate-100">
+                            <div>
+                                <h4 className="font-black text-xs text-slate-800 uppercase tracking-wider">CMS Refund Audit Log</h4>
+                                <p className="text-[10px] text-slate-400">Total {filteredRefunds.length} refund records</p>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <div className="relative">
+                                    <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input
+                                        value={search}
+                                        onChange={e => setSearch(e.target.value)}
+                                        className="pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-amber-400 w-44 font-medium"
+                                        placeholder="Search ref or user..."
+                                    />
+                                </div>
+                                <button
+                                    onClick={handleExportExcel}
+                                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"
+                                >
+                                    <FileSpreadsheet size={13} /> Export Excel
+                                </button>
+                            </div>
                         </div>
-                        <button
-                            onClick={handleExportExcel}
-                            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5"
-                        >
-                            <FileSpreadsheet size={13} /> Export Excel
-                        </button>
-                    </div>
-                </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                        <thead>
-                            <tr className="text-left text-slate-400 border-b border-slate-100 font-black text-[9px] uppercase tracking-wider">
-                                <th className="pb-3">Refund ID</th>
-                                <th className="pb-3">Beneficiary</th>
-                                <th className="pb-3">Category</th>
-                                <th className="pb-3">Amount Credited</th>
-                                <th className="pb-3">Original CMS Ref</th>
-                                <th className="pb-3">Date & Time</th>
-                                <th className="pb-3">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {filteredRefunds.map(rec => (
-                                <tr key={rec.id} className="py-2.5 hover:bg-slate-50/70">
-                                    <td className="py-3 font-mono font-bold text-slate-500">{rec.id}</td>
-                                    <td className="py-3 font-bold text-slate-800">
-                                        <p>{rec.name}</p>
-                                        <span className="text-[10px] text-slate-400 font-normal">{rec.mobile || rec.username}</span>
-                                    </td>
-                                    <td className="py-3 text-slate-600 font-semibold">{rec.category}</td>
-                                    <td className="py-3 font-black text-emerald-600">+{fmtINR(rec.amount)}</td>
-                                    <td className="py-3 font-mono font-bold text-amber-700">{rec.originalRef}</td>
-                                    <td className="py-3 text-slate-400">{fmtDateTime(rec.refundedAt)}</td>
-                                    <td className="py-3">
-                                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[9px] font-black uppercase">
-                                            {rec.status || 'REFUNDED'}
-                                        </span>
-                                    </td>
-                                </tr>
-                            ))}
-                            {filteredRefunds.length === 0 && (
-                                <tr>
-                                    <td colSpan={7} className="py-8 text-center text-slate-400 font-semibold">
-                                        No CMS refunds found matching your search
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                        <div className="overflow-x-auto max-h-[360px] overflow-y-auto">
+                            <table className="w-full text-xs">
+                                <thead>
+                                    <tr className="text-left text-slate-400 border-b border-slate-100 font-black text-[9px] uppercase tracking-wider">
+                                        <th className="pb-2">Refund ID</th>
+                                        <th className="pb-2">Beneficiary</th>
+                                        <th className="pb-2">Category</th>
+                                        <th className="pb-2">Amount Credited</th>
+                                        <th className="pb-2">Original CMS Ref</th>
+                                        <th className="pb-2">Date & Time</th>
+                                        <th className="pb-2">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {filteredRefunds.map(rec => (
+                                        <tr key={rec.id} className="hover:bg-slate-50/70 transition-colors">
+                                            <td className="py-2.5 font-mono font-bold text-slate-500">{rec.id}</td>
+                                            <td className="py-2.5 font-bold text-slate-800">
+                                                <p>{rec.name}</p>
+                                                <span className="text-[10px] text-slate-400 font-normal">{rec.mobile || rec.username}</span>
+                                            </td>
+                                            <td className="py-2.5 text-slate-600 font-semibold">{rec.category}</td>
+                                            <td className="py-2.5 font-black text-emerald-600">+{fmtINR(rec.amount)}</td>
+                                            <td className="py-2.5 font-mono font-bold text-amber-700">{rec.originalRef}</td>
+                                            <td className="py-2.5 text-slate-400">{fmtDateTime(rec.refundedAt)}</td>
+                                            <td className="py-2.5">
+                                                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[9px] font-black uppercase">
+                                                    {rec.status || 'REFUNDED'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {filteredRefunds.length === 0 && (
+                                        <tr>
+                                            <td colSpan={7} className="py-10 text-center text-slate-400 font-semibold">
+                                                No CMS refunds found matching your search
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

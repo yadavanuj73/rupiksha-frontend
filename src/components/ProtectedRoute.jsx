@@ -86,11 +86,7 @@ const ProtectedRoute = ({ children, role, allowKycPending = false }) => {
 
         if (role === 'DIAGNOSTIC_ALLOWED') {
             const hasAccess = userRoles.some(r => ['SUPER_ADMIN', 'SYSTEM_ADMIN', 'DEVELOPER'].includes(r));
-            const isLocalDev = window.location.hostname === 'localhost' || 
-                               window.location.hostname === '127.0.0.1' ||
-                               import.meta.env.MODE === 'development';
-            
-            if (hasAccess || isLocalDev) {
+            if (hasAccess) {
                 return children;
             }
             return <AccessDeniedView />;

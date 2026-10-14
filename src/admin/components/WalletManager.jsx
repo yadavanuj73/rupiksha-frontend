@@ -149,7 +149,7 @@ const WalletManager = ({ initialTab, activeSection, onNavigate }) => {
     const totalSystemBalance = wallets.reduce((s, w) => s + (w.balance || 0), 0);
 
     return (
-        <div className="wallet-manager-page space-y-6 animate-in fade-in slide-in-from-bottom-4">
+        <div className="wallet-manager-page space-y-3 animate-in fade-in slide-in-from-bottom-2">
             <AnimatePresence>
                 {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
             </AnimatePresence>

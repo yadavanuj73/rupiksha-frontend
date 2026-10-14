@@ -146,18 +146,62 @@ const FundRequestHistoryTab = ({ onToast }) => {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="max-w-5xl mx-auto space-y-3">
+            {/* Page Identity Header Banner */}
+            <div className="flex items-center justify-between bg-gradient-to-r from-indigo-950 via-slate-900 to-slate-900 text-white px-5 py-3 rounded-2xl shadow-sm border border-indigo-900/40">
+                <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400 shadow-inner">
+                        <CheckCircle2 size={18} />
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-sm font-black tracking-wide uppercase">Fund Request History</h2>
+                            <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
+                                Approved Audit Log
+                            </span>
+                        </div>
+                        <p className="text-[10px] text-slate-300 font-medium">
+                            Comprehensive record and audit trail of all approved wallet fund requests with payment proofs.
+                        </p>
+                    </div>
+                </div>
 
-            {/* Filter and Export Bar */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex flex-wrap items-center gap-3 flex-1">
+                <div className="flex items-center gap-2">
+                    <span className="hidden sm:inline-flex items-center px-3 py-1 bg-white/10 text-indigo-200 border border-white/10 rounded-xl text-[10px] font-bold">
+                        Credited: {fmtINR(totalApprovedVolume)} ({filtered.length} Entries)
+                    </span>
+                    <button
+                        onClick={handleExportExcel}
+                        className="px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                        <FileSpreadsheet size={13} /> Excel
+                    </button>
+                    <button
+                        onClick={handleExportPdf}
+                        className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                        <Download size={13} /> PDF
+                    </button>
+                    <button
+                        onClick={loadApprovedRequests}
+                        title="Refresh"
+                        className="p-1.5 text-indigo-300 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
+                    >
+                        <RefreshCcw size={14} className={loading ? 'animate-spin' : ''} />
+                    </button>
+                </div>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2.5 flex-1">
                     {/* Search */}
-                    <div className="relative min-w-[240px] flex-1 max-w-md">
-                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <div className="relative min-w-[200px] flex-1 max-w-md">
+                        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-400 font-medium"
+                            className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-400 font-medium"
                             placeholder="Search by user, mobile, or UTR..."
                         />
                     </div>
@@ -166,46 +210,23 @@ const FundRequestHistoryTab = ({ onToast }) => {
                     <select
                         value={roleFilter}
                         onChange={e => setRoleFilter(e.target.value)}
-                        className="px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 outline-none focus:border-indigo-400"
+                        className="px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 outline-none focus:border-indigo-400"
                     >
                         <option value="ALL">All Roles</option>
                         <option value="RETAILER">Retailers</option>
                         <option value="DISTRIBUTOR">Distributors</option>
                         <option value="SUPER_DISTRIBUTOR">Super Distributors</option>
                     </select>
-
-                    <button
-                        onClick={loadApprovedRequests}
-                        title="Refresh"
-                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
-                    >
-                        <RefreshCcw size={15} className={loading ? 'animate-spin' : ''} />
-                    </button>
                 </div>
 
-                {/* Export Buttons */}
-                <div className="flex items-center gap-2">
-                    <span className="hidden sm:inline-flex items-center px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold">
-                        Total Credited: {fmtINR(totalApprovedVolume)}
-                    </span>
-                    <button
-                        onClick={handleExportExcel}
-                        className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"
-                    >
-                        <FileSpreadsheet size={14} /> Export Excel
-                    </button>
-                    <button
-                        onClick={handleExportPdf}
-                        className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"
-                    >
-                        <Download size={14} /> Export PDF
-                    </button>
-                </div>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                    Showing {filtered.length} entries
+                </p>
             </div>
 
             {/* Table */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto max-h-[360px] overflow-y-auto">
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="bg-slate-50 border-b border-slate-100 text-left">
