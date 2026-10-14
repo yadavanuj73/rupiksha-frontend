@@ -24,13 +24,13 @@ public interface RechargeRepository extends JpaRepository<Recharge, UUID> {
            "AND (cast(:startDate as timestamp) IS NULL OR r.createdAt >= :startDate) " +
            "AND (cast(:endDate as timestamp) IS NULL OR r.createdAt <= :endDate) " +
            "AND (cast(:search as string) IS NULL OR " +
-           "lower(r.merchantRefNo) LIKE lower(concat('%', cast(:search as string), '%')) OR " +
-           "lower(r.mobileNo) LIKE lower(concat('%', cast(:search as string)), '%') OR " +
-           "lower(coalesce(r.operatorTxnId, '')) LIKE lower(concat('%', cast(:search as string)), '%') OR " +
-           "lower(r.user.mobile) LIKE lower(concat('%', cast(:search as string)), '%') OR " +
-           "lower(coalesce(r.user.partyCode, '')) LIKE lower(concat('%', cast(:search as string)), '%') OR " +
-           "lower(r.user.username) LIKE lower(concat('%', cast(:search as string)), '%') OR " +
-           "lower(r.user.fullName) LIKE lower(concat('%', cast(:search as string)), '%'))")
+           "lower(r.merchantRefNo) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(r.mobileNo) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "(r.operatorTxnId IS NOT NULL AND lower(r.operatorTxnId) LIKE concat('%', lower(cast(:search as string)), '%')) OR " +
+           "lower(r.user.mobile) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "(r.user.partyCode IS NOT NULL AND lower(r.user.partyCode) LIKE concat('%', lower(cast(:search as string)), '%')) OR " +
+           "lower(r.user.username) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(r.user.fullName) LIKE concat('%', lower(cast(:search as string)), '%'))")
     Page<Recharge> findForAdmin(
             @Param("userId") UUID userId,
             @Param("status") TransactionStatus status,
@@ -44,13 +44,13 @@ public interface RechargeRepository extends JpaRepository<Recharge, UUID> {
            "AND (cast(:startDate as timestamp) IS NULL OR r.createdAt >= :startDate) " +
            "AND (cast(:endDate as timestamp) IS NULL OR r.createdAt <= :endDate) " +
            "AND (cast(:search as string) IS NULL OR " +
-           "lower(r.merchantRefNo) LIKE lower(concat('%', cast(:search as string)), '%') OR " +
-           "lower(r.mobileNo) LIKE lower(concat('%', cast(:search as string)), '%') OR " +
-           "lower(coalesce(r.operatorTxnId, '')) LIKE lower(concat('%', cast(:search as string)), '%') OR " +
-           "lower(r.user.mobile) LIKE lower(concat('%', cast(:search as string)), '%') OR " +
-           "lower(coalesce(r.user.partyCode, '')) LIKE lower(concat('%', cast(:search as string)), '%') OR " +
-           "lower(r.user.username) LIKE lower(concat('%', cast(:search as string)), '%') OR " +
-           "lower(r.user.fullName) LIKE lower(concat('%', cast(:search as string)), '%'))")
+           "lower(r.merchantRefNo) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(r.mobileNo) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "(r.operatorTxnId IS NOT NULL AND lower(r.operatorTxnId) LIKE concat('%', lower(cast(:search as string)), '%')) OR " +
+           "lower(r.user.mobile) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "(r.user.partyCode IS NOT NULL AND lower(r.user.partyCode) LIKE concat('%', lower(cast(:search as string)), '%')) OR " +
+           "lower(r.user.username) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(r.user.fullName) LIKE concat('%', lower(cast(:search as string)), '%'))")
     List<Recharge> findAllForAdmin(
             @Param("userId") UUID userId,
             @Param("status") TransactionStatus status,

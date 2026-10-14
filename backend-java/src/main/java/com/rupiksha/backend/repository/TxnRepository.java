@@ -26,8 +26,8 @@ public interface TxnRepository extends JpaRepository<Txn, UUID> {
            "AND (cast(:status as string) IS NULL OR t.status = :status) " +
            "AND (cast(:startDate as timestamp) IS NULL OR t.createdAt >= :startDate) " +
            "AND (cast(:endDate as timestamp) IS NULL OR t.createdAt <= :endDate) " +
-           "AND (cast(:provider as string) IS NULL OR lower(t.providerRef) = lower(cast(:provider as string)) OR lower(t.serviceType) LIKE lower(concat('%', cast(:provider as string), '%')) OR (cast(:provider as string) = 'Airtel' AND lower(t.providerRef) LIKE '%airtel%') OR (cast(:provider as string) = 'Fingpay' AND lower(t.providerRef) LIKE '%fingpay%')) " +
-           "AND (cast(:search as string) IS NULL OR lower(t.providerRef) LIKE lower(concat('%', cast(:search as string), '%')) OR lower(t.idempotencyKey) LIKE lower(concat('%', cast(:search as string), '%')))")
+           "AND (cast(:provider as string) IS NULL OR lower(t.providerRef) = lower(cast(:provider as string)) OR lower(t.serviceType) LIKE concat('%', lower(cast(:provider as string)), '%') OR (cast(:provider as string) = 'Airtel' AND lower(t.providerRef) LIKE '%airtel%') OR (cast(:provider as string) = 'Fingpay' AND lower(t.providerRef) LIKE '%fingpay%')) " +
+           "AND (cast(:search as string) IS NULL OR lower(t.providerRef) LIKE concat('%', lower(cast(:search as string)), '%') OR lower(t.idempotencyKey) LIKE concat('%', lower(cast(:search as string)), '%'))")
     Page<Txn> findWithFilters(
             @org.springframework.data.repository.query.Param("userId") UUID userId,
             @org.springframework.data.repository.query.Param("serviceType") String serviceType,
@@ -44,8 +44,8 @@ public interface TxnRepository extends JpaRepository<Txn, UUID> {
            "AND (cast(:status as string) IS NULL OR t.status = :status) " +
            "AND (cast(:startDate as timestamp) IS NULL OR t.createdAt >= :startDate) " +
            "AND (cast(:endDate as timestamp) IS NULL OR t.createdAt <= :endDate) " +
-           "AND (cast(:provider as string) IS NULL OR lower(t.providerRef) = lower(cast(:provider as string)) OR lower(t.serviceType) LIKE lower(concat('%', cast(:provider as string), '%')) OR (cast(:provider as string) = 'Airtel' AND lower(t.providerRef) LIKE '%airtel%') OR (cast(:provider as string) = 'Fingpay' AND lower(t.providerRef) LIKE '%fingpay%')) " +
-           "AND (cast(:search as string) IS NULL OR lower(t.providerRef) LIKE lower(concat('%', cast(:search as string), '%')) OR lower(t.idempotencyKey) LIKE lower(concat('%', cast(:search as string), '%')))")
+           "AND (cast(:provider as string) IS NULL OR lower(t.providerRef) = lower(cast(:provider as string)) OR lower(t.serviceType) LIKE concat('%', lower(cast(:provider as string)), '%') OR (cast(:provider as string) = 'Airtel' AND lower(t.providerRef) LIKE '%airtel%') OR (cast(:provider as string) = 'Fingpay' AND lower(t.providerRef) LIKE '%fingpay%')) " +
+           "AND (cast(:search as string) IS NULL OR lower(t.providerRef) LIKE concat('%', lower(cast(:search as string)), '%') OR lower(t.idempotencyKey) LIKE concat('%', lower(cast(:search as string)), '%'))")
     List<Txn> findAllWithFilters(
             @org.springframework.data.repository.query.Param("userId") UUID userId,
             @org.springframework.data.repository.query.Param("serviceType") String serviceType,
@@ -62,8 +62,8 @@ public interface TxnRepository extends JpaRepository<Txn, UUID> {
            "AND (cast(:status as string) IS NULL OR t.status = :status) " +
            "AND (cast(:startDate as timestamp) IS NULL OR t.createdAt >= :startDate) " +
            "AND (cast(:endDate as timestamp) IS NULL OR t.createdAt <= :endDate) " +
-           "AND (cast(:provider as string) IS NULL OR lower(t.providerRef) = lower(cast(:provider as string)) OR lower(t.serviceType) LIKE lower(concat('%', cast(:provider as string), '%')) OR (cast(:provider as string) = 'Airtel' AND lower(t.providerRef) LIKE '%airtel%') OR (cast(:provider as string) = 'Fingpay' AND lower(t.providerRef) LIKE '%fingpay%')) " +
-           "AND (cast(:search as string) IS NULL OR lower(t.providerRef) LIKE lower(concat('%', cast(:search as string), '%')) OR lower(t.idempotencyKey) LIKE lower(concat('%', cast(:search as string), '%')) OR lower(t.user.mobile) LIKE lower(concat('%', cast(:search as string), '%')) OR lower(COALESCE(t.user.partyCode, '')) LIKE lower(concat('%', cast(:search as string), '%')) OR lower(t.user.username) LIKE lower(concat('%', cast(:search as string), '%')) OR lower(t.user.fullName) LIKE lower(concat('%', cast(:search as string), '%')))")
+           "AND (cast(:provider as string) IS NULL OR lower(t.providerRef) = lower(cast(:provider as string)) OR lower(t.serviceType) LIKE concat('%', lower(cast(:provider as string)), '%') OR (cast(:provider as string) = 'Airtel' AND lower(t.providerRef) LIKE '%airtel%') OR (cast(:provider as string) = 'Fingpay' AND lower(t.providerRef) LIKE '%fingpay%')) " +
+           "AND (cast(:search as string) IS NULL OR lower(t.providerRef) LIKE concat('%', lower(cast(:search as string)), '%') OR lower(t.idempotencyKey) LIKE concat('%', lower(cast(:search as string)), '%') OR lower(t.user.mobile) LIKE concat('%', lower(cast(:search as string)), '%') OR (t.user.partyCode IS NOT NULL AND lower(t.user.partyCode) LIKE concat('%', lower(cast(:search as string)), '%')) OR lower(t.user.username) LIKE concat('%', lower(cast(:search as string)), '%') OR lower(t.user.fullName) LIKE concat('%', lower(cast(:search as string)), '%'))")
     Page<Txn> findForAdmin(
             @org.springframework.data.repository.query.Param("userId") UUID userId,
             @org.springframework.data.repository.query.Param("serviceType") String serviceType,
@@ -80,8 +80,8 @@ public interface TxnRepository extends JpaRepository<Txn, UUID> {
            "AND (cast(:status as string) IS NULL OR t.status = :status) " +
            "AND (cast(:startDate as timestamp) IS NULL OR t.createdAt >= :startDate) " +
            "AND (cast(:endDate as timestamp) IS NULL OR t.createdAt <= :endDate) " +
-           "AND (cast(:provider as string) IS NULL OR lower(t.providerRef) = lower(cast(:provider as string)) OR lower(t.serviceType) LIKE lower(concat('%', cast(:provider as string), '%')) OR (cast(:provider as string) = 'Airtel' AND lower(t.providerRef) LIKE '%airtel%') OR (cast(:provider as string) = 'Fingpay' AND lower(t.providerRef) LIKE '%fingpay%')) " +
-           "AND (cast(:search as string) IS NULL OR lower(t.providerRef) LIKE lower(concat('%', cast(:search as string), '%')) OR lower(t.idempotencyKey) LIKE lower(concat('%', cast(:search as string), '%')) OR lower(t.user.mobile) LIKE lower(concat('%', cast(:search as string), '%')) OR lower(COALESCE(t.user.partyCode, '')) LIKE lower(concat('%', cast(:search as string), '%')) OR lower(t.user.username) LIKE lower(concat('%', cast(:search as string), '%')) OR lower(t.user.fullName) LIKE lower(concat('%', cast(:search as string), '%')))")
+           "AND (cast(:provider as string) IS NULL OR lower(t.providerRef) = lower(cast(:provider as string)) OR lower(t.serviceType) LIKE concat('%', lower(cast(:provider as string)), '%') OR (cast(:provider as string) = 'Airtel' AND lower(t.providerRef) LIKE '%airtel%') OR (cast(:provider as string) = 'Fingpay' AND lower(t.providerRef) LIKE '%fingpay%')) " +
+           "AND (cast(:search as string) IS NULL OR lower(t.providerRef) LIKE concat('%', lower(cast(:search as string)), '%') OR lower(t.idempotencyKey) LIKE concat('%', lower(cast(:search as string)), '%') OR lower(t.user.mobile) LIKE concat('%', lower(cast(:search as string)), '%') OR (t.user.partyCode IS NOT NULL AND lower(t.user.partyCode) LIKE concat('%', lower(cast(:search as string)), '%')) OR lower(t.user.username) LIKE concat('%', lower(cast(:search as string)), '%') OR lower(t.user.fullName) LIKE concat('%', lower(cast(:search as string)), '%'))")
     List<Txn> findAllForAdmin(
             @org.springframework.data.repository.query.Param("userId") UUID userId,
             @org.springframework.data.repository.query.Param("serviceType") String serviceType,

@@ -43,17 +43,17 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByUsernameAndRole(@Param("username") String username, @Param("role") RoleName role);
     
     @Query("SELECT u FROM User u WHERE " +
-           "LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "LOWER(u.mobile) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%'))")
+           "LOWER(u.username) LIKE CONCAT('%', LOWER(:search), '%') OR " +
+           "LOWER(u.fullName) LIKE CONCAT('%', LOWER(:search), '%') OR " +
+           "LOWER(u.mobile) LIKE CONCAT('%', LOWER(:search), '%') OR " +
+           "LOWER(u.email) LIKE CONCAT('%', LOWER(:search), '%')")
     Page<User> findBySearch(@Param("search") String search, Pageable pageable);
 
     @Query("SELECT u.id FROM User u WHERE " +
-           "LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "LOWER(u.mobile) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "LOWER(COALESCE(u.partyCode, '')) LIKE LOWER(CONCAT('%', :search, '%'))")
+           "LOWER(u.username) LIKE CONCAT('%', LOWER(:search), '%') OR " +
+           "LOWER(u.fullName) LIKE CONCAT('%', LOWER(:search), '%') OR " +
+           "LOWER(u.mobile) LIKE CONCAT('%', LOWER(:search), '%') OR " +
+           "(u.partyCode IS NOT NULL AND LOWER(u.partyCode) LIKE CONCAT('%', LOWER(:search), '%'))")
     List<UUID> findUserIdsBySearchTerm(@Param("search") String search);
 }
 

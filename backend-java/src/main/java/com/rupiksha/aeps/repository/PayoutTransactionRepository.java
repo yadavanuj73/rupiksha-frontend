@@ -74,8 +74,8 @@ public interface PayoutTransactionRepository extends JpaRepository<PayoutTransac
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate);
 
-    @Query("SELECT t FROM PayoutTransaction t WHERE (:userId IS NULL OR t.userId = :userId) " +
-           "AND (cast(:status as string) IS NULL OR t.status = :status) " +
+    @Query("SELECT t FROM PayoutTransaction t WHERE " +
+           "(cast(:status as string) IS NULL OR t.status = :status) " +
            "AND (cast(:startDate as timestamp) IS NULL OR t.createdAt >= :startDate) " +
            "AND (cast(:endDate as timestamp) IS NULL OR t.createdAt <= :endDate) " +
            "AND (cast(:search as string) IS NULL OR " +
@@ -83,20 +83,34 @@ public interface PayoutTransactionRepository extends JpaRepository<PayoutTransac
            "lower(t.utr) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
            "lower(t.beneficiaryName) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
            "lower(t.accountNumber) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
-           "lower(t.mobileNumber) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
-           "(:hasUserMatches = true AND t.userId IN (:matchingUserIds)))")
+           "lower(t.mobileNumber) LIKE concat('%', lower(cast(:search as string)), '%'))")
     Page<PayoutTransaction> findForAdmin(
-            @Param("userId") String userId,
             @Param("status") String status,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate,
             @Param("search") String search,
-            @Param("hasUserMatches") boolean hasUserMatches,
+            Pageable pageable);
+
+    @Query("SELECT t FROM PayoutTransaction t WHERE " +
+           "(cast(:status as string) IS NULL OR t.status = :status) " +
+           "AND (cast(:startDate as timestamp) IS NULL OR t.createdAt >= :startDate) " +
+           "AND (cast(:endDate as timestamp) IS NULL OR t.createdAt <= :endDate) " +
+           "AND (lower(t.orderId) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.utr) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.beneficiaryName) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.accountNumber) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.mobileNumber) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "t.userId IN :matchingUserIds)")
+    Page<PayoutTransaction> findForAdminWithUserIds(
+            @Param("status") String status,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("search") String search,
             @Param("matchingUserIds") List<String> matchingUserIds,
             Pageable pageable);
 
-    @Query("SELECT t FROM PayoutTransaction t WHERE (:userId IS NULL OR t.userId = :userId) " +
-           "AND (cast(:status as string) IS NULL OR t.status = :status) " +
+    @Query("SELECT t FROM PayoutTransaction t WHERE " +
+           "(cast(:status as string) IS NULL OR t.status = :status) " +
            "AND (cast(:startDate as timestamp) IS NULL OR t.createdAt >= :startDate) " +
            "AND (cast(:endDate as timestamp) IS NULL OR t.createdAt <= :endDate) " +
            "AND (cast(:search as string) IS NULL OR " +
@@ -104,15 +118,29 @@ public interface PayoutTransactionRepository extends JpaRepository<PayoutTransac
            "lower(t.utr) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
            "lower(t.beneficiaryName) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
            "lower(t.accountNumber) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
-           "lower(t.mobileNumber) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
-           "(:hasUserMatches = true AND t.userId IN (:matchingUserIds)))")
+           "lower(t.mobileNumber) LIKE concat('%', lower(cast(:search as string)), '%'))")
     List<PayoutTransaction> findAllForAdmin(
-            @Param("userId") String userId,
             @Param("status") String status,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate,
             @Param("search") String search,
-            @Param("hasUserMatches") boolean hasUserMatches,
+            Sort sort);
+
+    @Query("SELECT t FROM PayoutTransaction t WHERE " +
+           "(cast(:status as string) IS NULL OR t.status = :status) " +
+           "AND (cast(:startDate as timestamp) IS NULL OR t.createdAt >= :startDate) " +
+           "AND (cast(:endDate as timestamp) IS NULL OR t.createdAt <= :endDate) " +
+           "AND (lower(t.orderId) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.utr) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.beneficiaryName) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.accountNumber) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.mobileNumber) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "t.userId IN :matchingUserIds)")
+    List<PayoutTransaction> findAllForAdminWithUserIds(
+            @Param("status") String status,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("search") String search,
             @Param("matchingUserIds") List<String> matchingUserIds,
             Sort sort);
 }

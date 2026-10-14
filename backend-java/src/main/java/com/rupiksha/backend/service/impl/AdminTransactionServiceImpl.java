@@ -156,8 +156,9 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
             case "AEPS_FINGPAY":
             case "AEPS_LEVIN": {
                 String targetProvider = normType.equals("AEPS_LEVIN") ? "levin" : "fingpay";
-                Page<AepsTransactionEngine> page = aepsRepository.findForAdmin(
-                        null, null, cleanStatus, targetProvider, startLdt, endLdt, cleanSearch, hasUserMatches, matchingUserIds, pageable);
+                Page<AepsTransactionEngine> page = hasUserMatches ?
+                        aepsRepository.findForAdminWithUserIds(null, cleanStatus, targetProvider, startLdt, endLdt, cleanSearch, matchingUserIds, pageable) :
+                        aepsRepository.findForAdmin(null, cleanStatus, targetProvider, startLdt, endLdt, cleanSearch, pageable);
 
                 totalElements = page.getTotalElements();
                 totalPages = page.getTotalPages();
@@ -294,8 +295,9 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
 
             case "MOVE_TO_BANK": {
                 List<String> userIdsStr = matchingUserIds.stream().map(UUID::toString).toList();
-                Page<PayoutTransaction> page = payoutRepository.findForAdmin(
-                        null, cleanStatus, startLdt, endLdt, cleanSearch, !userIdsStr.isEmpty(), userIdsStr, pageable);
+                Page<PayoutTransaction> page = !userIdsStr.isEmpty() ?
+                        payoutRepository.findForAdminWithUserIds(cleanStatus, startLdt, endLdt, cleanSearch, userIdsStr, pageable) :
+                        payoutRepository.findForAdmin(cleanStatus, startLdt, endLdt, cleanSearch, pageable);
 
                 totalElements = page.getTotalElements();
                 totalPages = page.getTotalPages();
