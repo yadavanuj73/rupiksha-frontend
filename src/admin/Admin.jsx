@@ -6,7 +6,8 @@ import {
     ArrowLeft, CheckCircle2, AlertTriangle, Plus, Trash2, Edit3, FileText,
     BarChart3, Megaphone, Zap, Upload, X, ImageIcon, Play,
     Camera, Eye, IndianRupee, ChevronRight, Wallet, TrendingUp, History, ArrowRight,
-    Building2, UserPlus, UserMinus, ShieldCheck, Link2, Crown, ChevronDown, Mail, MapPin, Search, Smartphone, Clock, LayoutGrid, User, Activity, Lock, Unlock, LogOut, Terminal, SendHorizontal
+    Building2, UserPlus, UserMinus, ShieldCheck, Link2, Crown, ChevronDown, Mail, MapPin, Search, Smartphone, Clock, LayoutGrid, User, Activity, Lock, Unlock, LogOut, Terminal, SendHorizontal,
+    ArrowDownCircle, ArrowUpCircle, Snowflake, RotateCcw, BookOpen, FileSpreadsheet
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { dataService, BACKEND_URL } from '../services/dataService';
@@ -85,6 +86,12 @@ const Admin = () => {
         sessionStorage.setItem('admin_active_section', section);
         setActiveSection(section);
     };
+    const [walletDropdownOpen, setWalletDropdownOpen] = useState(() => initialSection.startsWith('Wallet-'));
+    useEffect(() => {
+        if (activeSection.startsWith('Wallet-')) {
+            setWalletDropdownOpen(true);
+        }
+    }, [activeSection]);
     const [expandedSA, setExpandedSA] = useState(null); // ID of expanded SUPER_DISTRIBUTOR row
     const [expandedNav, setExpandedNav] = useState(null); // which nav group is expanded
     const [status, setStatus] = useState(null);
@@ -3025,12 +3032,38 @@ const Admin = () => {
 
     const OPERATIONS_NAV = [
         ...((currentUser?.role === 'ADMIN' || isAdminUser) ? [
-            { id: 'Wallet-Overview', icon: Wallet, label: 'Wallet Manager' },
+            { id: 'Wallet-Manager', icon: Wallet, label: 'Wallet Manager', isDropdown: true },
             { id: 'Commission', icon: IndianRupee, label: 'Commission Plan' },
             { id: 'PayoutCharges', icon: SendHorizontal, label: 'Payout Charges' },
             { id: 'IdCharges', icon: CreditCard, label: 'Id Charges' },
         ] : []),
     ];
+
+    const WALLET_SUB_ITEMS = [
+        { id: 'Wallet-Overview', label: 'Wallet Overview', icon: Wallet },
+        { id: 'Wallet-Credit', label: 'Credit Fund', icon: ArrowDownCircle },
+        { id: 'Wallet-Debit', label: 'Debit Fund', icon: ArrowUpCircle },
+        { id: 'Wallet-Pending-Requests', label: 'Pending Fund Requests', icon: Clock },
+        { id: 'Wallet-Fund-Requests', label: 'Fund Request', icon: CheckCircle2 },
+        { id: 'Wallet-Lock', label: 'Lock Amount', icon: Lock },
+        { id: 'Wallet-Release', label: 'Release Lock Amount', icon: Unlock },
+        { id: 'Wallet-Freeze', label: 'Freeze Wallet', icon: Snowflake },
+        { id: 'Wallet-Cms-Refund', label: 'Cms Refund', icon: RotateCcw },
+        { id: 'Wallet-Ledger', label: 'Rupiksha Ledger', icon: BookOpen },
+        { id: 'Wallet-Commission-Ledger', label: 'Rupiksha Commission Ledger', icon: IndianRupee },
+        { id: 'Wallet-TDS-Report', label: 'TDS REport', icon: FileSpreadsheet },
+        { id: 'Wallet-History', label: 'Wallet History', icon: History },
+    ];
+
+    const pendingFundRequestsCount = (() => {
+        try {
+            const raw = localStorage.getItem('rupiksha_fund_requests');
+            const list = raw ? JSON.parse(raw) : [];
+            return list.filter(r => (r.status || 'PENDING').toUpperCase() === 'PENDING').length;
+        } catch (_) {
+            return 0;
+        }
+    })();
 
     const MANAGEMENT_NAV = [
         { id: 'AllMembers', icon: Users, label: 'Members' },
@@ -3063,9 +3096,16 @@ const Admin = () => {
                 { id: 'Wallet-Overview', label: 'Overview' },
                 { id: 'Wallet-Credit', label: 'Credit Fund' },
                 { id: 'Wallet-Debit', label: 'Debit Fund' },
-                { id: 'Wallet-Requests', label: 'Fund Requests' },
+                { id: 'Wallet-Pending-Requests', label: 'Pending Fund Requests' },
+                { id: 'Wallet-Fund-Requests', label: 'Fund Request' },
                 { id: 'Wallet-Lock', label: 'Lock Amount' },
                 { id: 'Wallet-Release', label: 'Release Lock' },
+                { id: 'Wallet-Freeze', label: 'Freeze Wallet' },
+                { id: 'Wallet-Cms-Refund', label: 'Cms Refund' },
+                { id: 'Wallet-Ledger', label: 'Rupiksha Ledger' },
+                { id: 'Wallet-Commission-Ledger', label: 'Rupiksha Commission Ledger' },
+                { id: 'Wallet-TDS-Report', label: 'TDS REport' },
+                { id: 'Wallet-History', label: 'Wallet History' },
             ]
         },
         {
@@ -3088,7 +3128,8 @@ const Admin = () => {
             ]
         },
     ];
-    const activeLabel = ANALYTICS_NAV.find(n => n.id === activeSection)?.label
+    const activeLabel = WALLET_SUB_ITEMS.find(w => w.id === activeSection)?.label
+        || ANALYTICS_NAV.find(n => n.id === activeSection)?.label
         || OPERATIONS_NAV.find(n => n.id === activeSection)?.label
         || MANAGEMENT_NAV.find(n => n.id === activeSection)?.label
         || SYSTEM_NAV.find(n => n.id === activeSection)?.label
@@ -3130,10 +3171,10 @@ const Admin = () => {
                 } shrink-0`}
                 style={{
                     width: isMobile
-                        ? '210px'
+                        ? '240px'
                         : (isTablet
-                            ? (sidebarExpanded ? '210px' : '72px')
-                            : (isExpanded ? '210px' : '72px')
+                            ? (sidebarExpanded ? '240px' : '72px')
+                            : (isExpanded ? '240px' : '72px')
                           )
                 }}
             >
@@ -3190,6 +3231,105 @@ const Admin = () => {
                                         <p className="text-[10px] font-black text-[#94a3b8] uppercase tracking-[0.2em] mb-4 ml-3 transition-all duration-300">Operations</p>
                                     )}
                                     {OPERATIONS_NAV.map(item => {
+                                        if (item.isDropdown && item.id === 'Wallet-Manager') {
+                                            const isWalletActive = activeSection.startsWith('Wallet-');
+                                            return (
+                                                <div key={item.id} className="space-y-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (!isExpanded) {
+                                                                setSidebarExpanded(true);
+                                                                setWalletDropdownOpen(true);
+                                                            } else {
+                                                                setWalletDropdownOpen(prev => !prev);
+                                                                if (!isWalletActive) {
+                                                                    setActiveSectionPersisted('Wallet-Overview');
+                                                                }
+                                                            }
+                                                        }}
+                                                        className={`w-full flex items-center rounded-2xl transition-all duration-200 cursor-pointer ${
+                                                            isExpanded ? 'justify-between px-3 py-2.5' : 'justify-center p-2.5'
+                                                        } ${
+                                                            isWalletActive
+                                                                ? 'bg-[#fcfcf7] border shadow-sm border-[#f1f5f9]'
+                                                                : 'hover:bg-slate-50'
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-center gap-4">
+                                                            <item.icon size={18} className={isWalletActive ? 'text-[#18181b]' : 'text-[#94a3b8]'} />
+                                                            {isExpanded && (
+                                                                <span className={`text-[14px] font-bold ${isWalletActive ? 'text-[#18181b]' : 'text-[#64748b]'}`}>
+                                                                    {item.label}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        {isExpanded && (
+                                                            <div className="flex items-center gap-1.5">
+                                                                {pendingFundRequestsCount > 0 && (
+                                                                    <span className="bg-amber-500 text-white px-1.5 py-0.5 rounded-full text-[9px] font-black animate-pulse">
+                                                                        {pendingFundRequestsCount}
+                                                                    </span>
+                                                                )}
+                                                                <ChevronDown
+                                                                    size={14}
+                                                                    className={`text-slate-400 transition-transform duration-200 ${
+                                                                        walletDropdownOpen ? 'rotate-180' : ''
+                                                                    }`}
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </button>
+
+                                                    {/* Submenu Dropdown containing all 13 required sub-options */}
+                                                    <AnimatePresence>
+                                                        {isExpanded && walletDropdownOpen && (
+                                                            <motion.div
+                                                                initial={{ opacity: 0, height: 0 }}
+                                                                animate={{ opacity: 1, height: 'auto' }}
+                                                                exit={{ opacity: 0, height: 0 }}
+                                                                transition={{ duration: 0.2 }}
+                                                                className="overflow-hidden pl-2 pr-1 py-1 space-y-0.5 border-l-2 border-slate-200/70 ml-4.5 my-1"
+                                                            >
+                                                                {WALLET_SUB_ITEMS.map(sub => {
+                                                                    const isSubActive = activeSection === sub.id;
+                                                                    return (
+                                                                        <button
+                                                                            key={sub.id}
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                setActiveSectionPersisted(sub.id);
+                                                                                setShowMobileSidebar(false);
+                                                                                setSidebarExpanded(false);
+                                                                            }}
+                                                                            className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left transition-all cursor-pointer ${
+                                                                                isSubActive
+                                                                                    ? 'bg-[#fcfcf7] border shadow-sm border-[#e2e8f0] text-[#18181b] font-black'
+                                                                                    : 'text-[#64748b] hover:text-[#18181b] hover:bg-slate-50 font-bold'
+                                                                            }`}
+                                                                        >
+                                                                            <div className="flex items-center gap-2.5 truncate">
+                                                                                <sub.icon
+                                                                                    size={13}
+                                                                                    className={isSubActive ? 'text-indigo-600 shrink-0' : 'text-slate-400 shrink-0'}
+                                                                                />
+                                                                                <span className="text-[11.5px] truncate">{sub.label}</span>
+                                                                            </div>
+                                                                            {sub.id === 'Wallet-Pending-Requests' && pendingFundRequestsCount > 0 && (
+                                                                                <span className="bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full shrink-0">
+                                                                                    {pendingFundRequestsCount}
+                                                                                </span>
+                                                                            )}
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
+                                                </div>
+                                            );
+                                        }
+
                                         const isActive = activeSection === item.id;
                                         return (
                                             <button key={item.id}
@@ -3292,6 +3432,18 @@ const Admin = () => {
                             <div className="flex items-center gap-2">
                                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest hidden sm:block">Admin</span>
                                 <ChevronRight size={11} className="text-slate-300 hidden sm:block" />
+                                {activeSection.startsWith('Wallet-') && (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => setActiveSectionPersisted('Wallet-Overview')}
+                                            className="text-[9px] font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest hidden sm:block transition-colors cursor-pointer"
+                                        >
+                                            Wallet Manager
+                                        </button>
+                                        <ChevronRight size={11} className="text-slate-300 hidden sm:block" />
+                                    </>
+                                )}
                                 <span className="text-[11px] font-black text-slate-800 uppercase tracking-wider">{activeLabel}</span>
                             </div>
                         </div>
@@ -3368,17 +3520,13 @@ const Admin = () => {
                                 {activeSection === 'Plans-distributor' && <AdminPlanManager defaultType="distributor" restrictType={true} />}
                                 {activeSection === 'Plans-superdistributor' && <AdminPlanManager defaultType="superdistributor" restrictType={true} />}
 
-                                {/* Wallet Management */}
+                                {/* Wallet Management (All 13 Sub-Options) */}
                                 {activeSection.startsWith('Wallet-') && (
                                     (currentUser?.role === 'ADMIN' || isAdminUser) ? (
-                                        <>
-                                            {activeSection === 'Wallet-Overview' && <WalletManager initialTab="overview" />}
-                                            {activeSection === 'Wallet-Credit' && <WalletManager initialTab="credit" />}
-                                            {activeSection === 'Wallet-Debit' && <WalletManager initialTab="debit" />}
-                                            {activeSection === 'Wallet-Requests' && <WalletManager initialTab="requests" />}
-                                            {activeSection === 'Wallet-Lock' && <WalletManager initialTab="lock" />}
-                                            {activeSection === 'Wallet-Release' && <WalletManager initialTab="release" />}
-                                        </>
+                                        <WalletManager
+                                            activeSection={activeSection}
+                                            onNavigate={setActiveSectionPersisted}
+                                        />
                                     ) : (
                                         <UnauthorizedAccess sectionName={activeLabel} />
                                     )

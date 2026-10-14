@@ -172,6 +172,24 @@ public class WalletController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/wallet/cms-refund")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> cmsRefund(
+            @Valid @RequestBody WalletDtos.WalletEntryRequest request,
+            Authentication auth,
+            HttpServletRequest servletRequest) {
+        String ip = getClientIp(servletRequest);
+        String idempotency = getIdempotencyKey(servletRequest);
+
+        WalletDtos.WalletBalanceResponse res = walletService.cmsRefund(request, getPrincipalId(auth), ip, idempotency);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "CMS Refund processed and credited successfully");
+        response.put("balance", res.balance());
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/wallet/status")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> status(
@@ -231,7 +249,7 @@ public class WalletController {
         String ip = getClientIp(servletRequest);
 
         WalletDtos.FundRequestResponse res = walletService.approveFundRequest(
-                UUID.fromString(request.requestId()), getPrincipalId(auth), ip);
+                UUID.fromString(request.requestId()), request.remark(), getPrincipalId(auth), ip);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
@@ -249,7 +267,7 @@ public class WalletController {
         String ip = getClientIp(servletRequest);
 
         WalletDtos.FundRequestResponse res = walletService.rejectFundRequest(
-                UUID.fromString(request.requestId()), getPrincipalId(auth), ip);
+                UUID.fromString(request.requestId()), request.remark(), getPrincipalId(auth), ip);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);

@@ -28,6 +28,7 @@ public interface WalletService {
     WalletDtos.WalletBalanceResponse lock(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey);
     WalletDtos.WalletBalanceResponse release(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey);
     WalletDtos.WalletBalanceResponse giveCommission(WalletDtos.CommissionRequest request, UUID operatorId, String ipAddress, String idempotencyKey);
+    WalletDtos.WalletBalanceResponse cmsRefund(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey);
     WalletDtos.WalletBalanceResponse updateWalletStatus(WalletDtos.WalletStatusUpdateRequest request, UUID adminId, String ipAddress);
 
     // Dynamic tax aggregate summary
@@ -37,7 +38,9 @@ public interface WalletService {
     WalletDtos.FundRequestResponse createFundRequest(WalletDtos.FundRequestCreateRequest request, UUID currentUserId);
     List<WalletDtos.FundRequestResponse> getFundRequests(UUID currentUserId);
     WalletDtos.FundRequestResponse approveFundRequest(UUID requestId, UUID adminId, String ipAddress);
+    WalletDtos.FundRequestResponse approveFundRequest(UUID requestId, String remark, UUID adminId, String ipAddress);
     WalletDtos.FundRequestResponse rejectFundRequest(UUID requestId, UUID adminId, String ipAddress);
+    WalletDtos.FundRequestResponse rejectFundRequest(UUID requestId, String remark, UUID adminId, String ipAddress);
 
     // History and reporting
     Page<WalletDtos.WalletHistoryEntryResponse> getLedgerHistory(

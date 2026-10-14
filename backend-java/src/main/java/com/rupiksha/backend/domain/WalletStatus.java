@@ -4,5 +4,7 @@ public enum WalletStatus {
     ACTIVE,
     LOCKED,
     SUSPENDED,
-    BLOCKED
+    BLOCKED,
+    FROZEN
 }
+

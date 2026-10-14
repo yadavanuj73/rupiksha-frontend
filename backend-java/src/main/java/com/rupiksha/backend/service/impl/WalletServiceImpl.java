@@ -115,8 +115,8 @@ public class WalletServiceImpl implements WalletService {
     // Gate validations for wallet status
     private void validateWalletStatus(Wallet wallet, String entryType) {
         WalletStatus status = wallet.getStatus();
-        if (status == WalletStatus.BLOCKED) {
-            throw new IllegalStateException("Transaction blocked: Target wallet is BLOCKED");
+        if (status == WalletStatus.BLOCKED || status == WalletStatus.FROZEN) {
+            throw new IllegalStateException("Transaction blocked: Target wallet is " + status);
         }
         if (status == WalletStatus.SUSPENDED) {
             if (!"CREDIT".equalsIgnoreCase(entryType) && !"TAX".equalsIgnoreCase(entryType)) {
@@ -660,6 +660,81 @@ public class WalletServiceImpl implements WalletService {
 
     @Override
     @Transactional
+    public WalletDtos.WalletBalanceResponse cmsRefund(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey) {
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new IllegalArgumentException("Idempotency key is required");
+        }
+
+        Optional<WalletEntry> existing = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
+        if (existing.isPresent()) {
+            return mapBalanceResponse(existing.get().getWallet());
+        }
+
+        enforceAdmin(operatorId);
+
+        User operator = userRepository.findById(operatorId)
+                .orElseThrow(() -> new IllegalArgumentException("Operator not found"));
+        User target = userRepository.findById(UUID.fromString(request.userId()))
+                .orElseThrow(() -> new IllegalArgumentException("Target user not found"));
+
+        Wallet tgtWallet = getOrCreateWalletWithLock(target.getId());
+        validateWalletStatus(tgtWallet, "CREDIT");
+
+        BigDecimal amount = request.amount();
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Amount must be positive");
+        }
+
+        BigDecimal oldTgtBal = tgtWallet.getBalance();
+        BigDecimal newTgtBal = oldTgtBal.add(amount);
+        tgtWallet.setBalance(newTgtBal);
+        walletRepository.save(tgtWallet);
+
+        String refNum = generateReferenceNumber();
+
+        WalletEntry tgtEntry = new WalletEntry();
+        tgtEntry.setWallet(tgtWallet);
+        tgtEntry.setAmount(amount);
+        tgtEntry.setEntryType("CREDIT");
+        tgtEntry.setReferenceId(refNum);
+        tgtEntry.setNarration("CMS Refund by " + operator.getUsername() + ": " + request.getNarrationOrRemark());
+        tgtEntry.setOpeningBalance(oldTgtBal);
+        tgtEntry.setClosingBalance(newTgtBal);
+        tgtEntry.setOperator(operator);
+        tgtEntry.setIpAddress(ipAddress);
+        tgtEntry.setIdempotencyKey(idempotencyKey);
+        tgtEntry.setTransactionContext(WalletTransactionContext.CMS_REFUND);
+        tgtEntry.setStatus(WalletTransactionStatus.SUCCESS);
+
+        try {
+            walletEntryRepository.saveAndFlush(tgtEntry);
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            Optional<WalletEntry> dup = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
+            if (dup.isPresent()) {
+                return mapBalanceResponse(dup.get().getWallet());
+            }
+            throw ex;
+        }
+
+        AuditLog auditTgt = AuditLog.builder()
+                .operator(operator)
+                .targetUser(target)
+                .oldBalance(oldTgtBal)
+                .newBalance(newTgtBal)
+                .amount(amount)
+                .walletType("MAIN")
+                .ledgerType("CMS_REFUND")
+                .referenceNumber(refNum)
+                .ipAddress(ipAddress)
+                .remark("CMS Refund processed for user " + target.getUsername() + " by " + operator.getUsername())
+                .build();
+        auditLogRepository.save(auditTgt);
+
+        return mapBalanceResponse(tgtWallet);
+    }
+
+    @Override
+    @Transactional
     public WalletDtos.WalletBalanceResponse updateWalletStatus(WalletDtos.WalletStatusUpdateRequest request, UUID adminId, String ipAddress) {
         enforceAdmin(adminId);
 
@@ -672,7 +747,19 @@ public class WalletServiceImpl implements WalletService {
         Wallet wallet = getOrCreateWallet(target.getId());
 
         WalletStatus oldStatus = wallet.getStatus();
-        WalletStatus newStatus = WalletStatus.valueOf(request.status().toUpperCase());
+        WalletStatus newStatus;
+        String rawStatus = request.status() != null ? request.status().trim().toUpperCase() : "ACTIVE";
+        if ("FREEZE".equals(rawStatus) || "FROZEN".equals(rawStatus)) {
+            newStatus = WalletStatus.FROZEN;
+        } else if ("UNFREEZE".equals(rawStatus)) {
+            newStatus = WalletStatus.ACTIVE;
+        } else {
+            try {
+                newStatus = WalletStatus.valueOf(rawStatus);
+            } catch (IllegalArgumentException e) {
+                newStatus = WalletStatus.ACTIVE;
+            }
+        }
 
         // Update with JPA version tracking
         wallet.setStatus(newStatus);
@@ -854,7 +941,7 @@ public class WalletServiceImpl implements WalletService {
 
     @Override
     @Transactional
-    public WalletDtos.FundRequestResponse approveFundRequest(UUID requestId, UUID adminId, String ipAddress) {
+    public WalletDtos.FundRequestResponse approveFundRequest(UUID requestId, String remark, UUID adminId, String ipAddress) {
         enforceAdmin(adminId);
 
         FundRequest fr = fundRequestRepository.findByIdForUpdate(requestId)
@@ -884,7 +971,7 @@ public class WalletServiceImpl implements WalletService {
         fr.setStatus("APPROVED");
         fr.setApprovedBy(admin);
         fr.setApprovedAt(Instant.now());
-        fr.setAdminRemark("Approved by " + admin.getUsername() + " - Ref: " + refNum);
+        fr.setAdminRemark(remark != null && !remark.isBlank() ? remark : ("Approved by " + admin.getUsername() + " - Ref: " + refNum));
         fundRequestRepository.save(fr);
 
         WalletEntry tgtEntry = new WalletEntry();
@@ -934,7 +1021,13 @@ public class WalletServiceImpl implements WalletService {
 
     @Override
     @Transactional
-    public WalletDtos.FundRequestResponse rejectFundRequest(UUID requestId, UUID adminId, String ipAddress) {
+    public WalletDtos.FundRequestResponse approveFundRequest(UUID requestId, UUID adminId, String ipAddress) {
+        return approveFundRequest(requestId, null, adminId, ipAddress);
+    }
+
+    @Override
+    @Transactional
+    public WalletDtos.FundRequestResponse rejectFundRequest(UUID requestId, String remark, UUID adminId, String ipAddress) {
         enforceAdmin(adminId);
 
         FundRequest fr = fundRequestRepository.findByIdForUpdate(requestId)
@@ -950,7 +1043,7 @@ public class WalletServiceImpl implements WalletService {
         fr.setStatus("REJECTED");
         fr.setApprovedBy(admin);
         fr.setApprovedAt(Instant.now());
-        fr.setAdminRemark("Rejected by " + admin.getUsername());
+        fr.setAdminRemark(remark != null && !remark.isBlank() ? remark : ("Rejected by " + admin.getUsername()));
         fundRequestRepository.save(fr);
 
         String refNum = generateReferenceNumber();
@@ -961,7 +1054,7 @@ public class WalletServiceImpl implements WalletService {
         entry.setAmount(fr.getAmount());
         entry.setEntryType("FUND_REQUEST");
         entry.setReferenceId(refNum);
-        entry.setNarration("Fund request rejected, UTR: " + fr.getUtrNumber());
+        entry.setNarration("Fund request rejected, UTR: " + fr.getUtrNumber() + (remark != null && !remark.isBlank() ? (" - Reason: " + remark) : ""));
         entry.setOpeningBalance(w.getBalance());
         entry.setClosingBalance(w.getBalance());
         entry.setOperator(admin);
@@ -985,6 +1078,12 @@ public class WalletServiceImpl implements WalletService {
                 fr.getApprovedAt(),
                 fr.getCreatedAt()
         );
+    }
+
+    @Override
+    @Transactional
+    public WalletDtos.FundRequestResponse rejectFundRequest(UUID requestId, UUID adminId, String ipAddress) {
+        return rejectFundRequest(requestId, null, adminId, ipAddress);
     }
 
 
