@@ -48,5 +48,12 @@ public interface UserRepository extends JpaRepository<User, UUID> {
            "LOWER(u.mobile) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%'))")
     Page<User> findBySearch(@Param("search") String search, Pageable pageable);
+
+    @Query("SELECT u.id FROM User u WHERE " +
+           "LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(u.mobile) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(COALESCE(u.partyCode, '')) LIKE LOWER(CONCAT('%', :search, '%'))")
+    List<UUID> findUserIdsBySearchTerm(@Param("search") String search);
 }
 

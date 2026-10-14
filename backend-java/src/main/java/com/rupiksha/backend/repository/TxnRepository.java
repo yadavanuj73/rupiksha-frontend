@@ -56,6 +56,42 @@ public interface TxnRepository extends JpaRepository<Txn, UUID> {
             @org.springframework.data.repository.query.Param("endDate") Instant endDate,
             @org.springframework.data.repository.query.Param("search") String search,
             Sort sort);
+
+    @Query("SELECT t FROM Txn t WHERE (:userId IS NULL OR t.user.id = :userId) " +
+           "AND (cast(:serviceType as string) IS NULL OR t.serviceType = cast(:serviceType as string) OR (:isBbps = true AND t.serviceType LIKE 'BBPS_%')) " +
+           "AND (cast(:status as string) IS NULL OR t.status = :status) " +
+           "AND (cast(:startDate as timestamp) IS NULL OR t.createdAt >= :startDate) " +
+           "AND (cast(:endDate as timestamp) IS NULL OR t.createdAt <= :endDate) " +
+           "AND (cast(:provider as string) IS NULL OR lower(t.providerRef) = lower(cast(:provider as string)) OR lower(t.serviceType) LIKE lower(concat('%', cast(:provider as string), '%')) OR (cast(:provider as string) = 'Airtel' AND lower(t.providerRef) LIKE '%airtel%') OR (cast(:provider as string) = 'Fingpay' AND lower(t.providerRef) LIKE '%fingpay%')) " +
+           "AND (cast(:search as string) IS NULL OR lower(t.providerRef) LIKE lower(concat('%', cast(:search as string), '%')) OR lower(t.idempotencyKey) LIKE lower(concat('%', cast(:search as string), '%')) OR lower(t.user.mobile) LIKE lower(concat('%', cast(:search as string), '%')) OR lower(COALESCE(t.user.partyCode, '')) LIKE lower(concat('%', cast(:search as string), '%')) OR lower(t.user.username) LIKE lower(concat('%', cast(:search as string), '%')) OR lower(t.user.fullName) LIKE lower(concat('%', cast(:search as string), '%')))")
+    Page<Txn> findForAdmin(
+            @org.springframework.data.repository.query.Param("userId") UUID userId,
+            @org.springframework.data.repository.query.Param("serviceType") String serviceType,
+            @org.springframework.data.repository.query.Param("isBbps") Boolean isBbps,
+            @org.springframework.data.repository.query.Param("status") TransactionStatus status,
+            @org.springframework.data.repository.query.Param("provider") String provider,
+            @org.springframework.data.repository.query.Param("startDate") Instant startDate,
+            @org.springframework.data.repository.query.Param("endDate") Instant endDate,
+            @org.springframework.data.repository.query.Param("search") String search,
+            Pageable pageable);
+
+    @Query("SELECT t FROM Txn t WHERE (:userId IS NULL OR t.user.id = :userId) " +
+           "AND (cast(:serviceType as string) IS NULL OR t.serviceType = cast(:serviceType as string) OR (:isBbps = true AND t.serviceType LIKE 'BBPS_%')) " +
+           "AND (cast(:status as string) IS NULL OR t.status = :status) " +
+           "AND (cast(:startDate as timestamp) IS NULL OR t.createdAt >= :startDate) " +
+           "AND (cast(:endDate as timestamp) IS NULL OR t.createdAt <= :endDate) " +
+           "AND (cast(:provider as string) IS NULL OR lower(t.providerRef) = lower(cast(:provider as string)) OR lower(t.serviceType) LIKE lower(concat('%', cast(:provider as string), '%')) OR (cast(:provider as string) = 'Airtel' AND lower(t.providerRef) LIKE '%airtel%') OR (cast(:provider as string) = 'Fingpay' AND lower(t.providerRef) LIKE '%fingpay%')) " +
+           "AND (cast(:search as string) IS NULL OR lower(t.providerRef) LIKE lower(concat('%', cast(:search as string), '%')) OR lower(t.idempotencyKey) LIKE lower(concat('%', cast(:search as string), '%')) OR lower(t.user.mobile) LIKE lower(concat('%', cast(:search as string), '%')) OR lower(COALESCE(t.user.partyCode, '')) LIKE lower(concat('%', cast(:search as string), '%')) OR lower(t.user.username) LIKE lower(concat('%', cast(:search as string), '%')) OR lower(t.user.fullName) LIKE lower(concat('%', cast(:search as string), '%')))")
+    List<Txn> findAllForAdmin(
+            @org.springframework.data.repository.query.Param("userId") UUID userId,
+            @org.springframework.data.repository.query.Param("serviceType") String serviceType,
+            @org.springframework.data.repository.query.Param("isBbps") Boolean isBbps,
+            @org.springframework.data.repository.query.Param("status") TransactionStatus status,
+            @org.springframework.data.repository.query.Param("provider") String provider,
+            @org.springframework.data.repository.query.Param("startDate") Instant startDate,
+            @org.springframework.data.repository.query.Param("endDate") Instant endDate,
+            @org.springframework.data.repository.query.Param("search") String search,
+            Sort sort);
 }
 
 

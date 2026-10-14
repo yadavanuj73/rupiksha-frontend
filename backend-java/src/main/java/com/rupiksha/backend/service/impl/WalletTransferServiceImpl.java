@@ -367,15 +367,17 @@ public class WalletTransferServiceImpl implements WalletTransferService {
         org.springframework.data.jpa.domain.Specification<WalletTransfer> spec = (root, query, cb) -> {
             java.util.List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
 
-            if (filterDir == null) {
-                predicates.add(cb.or(
-                        cb.equal(root.get("sender").get("id"), currentUserId),
-                        cb.equal(root.get("recipient").get("id"), currentUserId)
-                ));
-            } else if ("SENT".equalsIgnoreCase(filterDir)) {
-                predicates.add(cb.equal(root.get("sender").get("id"), currentUserId));
-            } else if ("RECEIVED".equalsIgnoreCase(filterDir)) {
-                predicates.add(cb.equal(root.get("recipient").get("id"), currentUserId));
+            if (currentUserId != null) {
+                if (filterDir == null) {
+                    predicates.add(cb.or(
+                            cb.equal(root.get("sender").get("id"), currentUserId),
+                            cb.equal(root.get("recipient").get("id"), currentUserId)
+                    ));
+                } else if ("SENT".equalsIgnoreCase(filterDir)) {
+                    predicates.add(cb.equal(root.get("sender").get("id"), currentUserId));
+                } else if ("RECEIVED".equalsIgnoreCase(filterDir)) {
+                    predicates.add(cb.equal(root.get("recipient").get("id"), currentUserId));
+                }
             }
 
             if (filterStat != null) {
@@ -409,8 +411,8 @@ public class WalletTransferServiceImpl implements WalletTransferService {
 
         List<WalletTransferDtos.WalletTransferHistoryItemDto> items = pageResult.getContent().stream()
                 .map(wt -> {
-                    boolean isSender = wt.getSender().getId().equals(currentUserId);
-                    String transferDirection = isSender ? "SENT" : "RECEIVED";
+                    boolean isSender = currentUserId != null && wt.getSender().getId().equals(currentUserId);
+                    String transferDirection = currentUserId == null ? "TRANSFER" : (isSender ? "SENT" : "RECEIVED");
                     return new WalletTransferDtos.WalletTransferHistoryItemDto(
                             wt.getId().toString(),
                             wt.getTransferReference(),

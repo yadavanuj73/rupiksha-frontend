@@ -58,6 +58,52 @@ public interface AepsTransactionEngineRepository extends JpaRepository<AepsTrans
             @Param("endDate") LocalDateTime endDate,
             @Param("search") String search,
             Sort sort);
+
+    @Query("SELECT t FROM AepsTransactionEngine t WHERE (:userId IS NULL OR t.userId = :userId) " +
+           "AND (cast(:serviceType as string) IS NULL OR UPPER(t.serviceType) = UPPER(cast(:serviceType as string))) " +
+           "AND (cast(:status as string) IS NULL OR UPPER(t.status) = UPPER(cast(:status as string))) " +
+           "AND (cast(:provider as string) IS NULL OR LOWER(t.provider) = LOWER(cast(:provider as string)) OR (LOWER(cast(:provider as string)) = 'fingpay' AND (t.provider IS NULL OR LOWER(t.provider) NOT LIKE '%levin%'))) " +
+           "AND (cast(:startDate as timestamp) IS NULL OR t.initiatedAt >= :startDate) " +
+           "AND (cast(:endDate as timestamp) IS NULL OR t.initiatedAt <= :endDate) " +
+           "AND (cast(:search as string) IS NULL OR " +
+           "lower(t.transactionId) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.referenceNumber) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.providerReference) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "(:hasUserMatches = true AND t.userId IN (:matchingUserIds)))")
+    Page<AepsTransactionEngine> findForAdmin(
+            @Param("userId") UUID userId,
+            @Param("serviceType") String serviceType,
+            @Param("status") String status,
+            @Param("provider") String provider,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("search") String search,
+            @Param("hasUserMatches") boolean hasUserMatches,
+            @Param("matchingUserIds") List<UUID> matchingUserIds,
+            Pageable pageable);
+
+    @Query("SELECT t FROM AepsTransactionEngine t WHERE (:userId IS NULL OR t.userId = :userId) " +
+           "AND (cast(:serviceType as string) IS NULL OR UPPER(t.serviceType) = UPPER(cast(:serviceType as string))) " +
+           "AND (cast(:status as string) IS NULL OR UPPER(t.status) = UPPER(cast(:status as string))) " +
+           "AND (cast(:provider as string) IS NULL OR LOWER(t.provider) = LOWER(cast(:provider as string)) OR (LOWER(cast(:provider as string)) = 'fingpay' AND (t.provider IS NULL OR LOWER(t.provider) NOT LIKE '%levin%'))) " +
+           "AND (cast(:startDate as timestamp) IS NULL OR t.initiatedAt >= :startDate) " +
+           "AND (cast(:endDate as timestamp) IS NULL OR t.initiatedAt <= :endDate) " +
+           "AND (cast(:search as string) IS NULL OR " +
+           "lower(t.transactionId) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.referenceNumber) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "lower(t.providerReference) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "(:hasUserMatches = true AND t.userId IN (:matchingUserIds)))")
+    List<AepsTransactionEngine> findAllForAdmin(
+            @Param("userId") UUID userId,
+            @Param("serviceType") String serviceType,
+            @Param("status") String status,
+            @Param("provider") String provider,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("search") String search,
+            @Param("hasUserMatches") boolean hasUserMatches,
+            @Param("matchingUserIds") List<UUID> matchingUserIds,
+            Sort sort);
 }
 
 

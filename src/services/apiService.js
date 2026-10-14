@@ -694,6 +694,41 @@ export const adminIdPaymentService = {
     }),
 };
 
+// ─── ADMIN TRANSACTIONS ──────────────────────────────────────────────────
+export const adminTransactionService = {
+  getHistory: (filters = {}) => {
+    const cleanFilters = {
+      reportType: filters.reportType || 'AEPS_FINGPAY',
+      page: filters.page ?? 0,
+      size: filters.size ?? 10,
+      ...filters
+    };
+    const params = new URLSearchParams();
+    Object.entries(cleanFilters).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') {
+        params.append(k, v);
+      }
+    });
+    return apiFetch(`/admin/transactions/history?${params.toString()}`).catch(() => ({ success: false, data: [] }));
+  },
+  getHistoryDetail: (reportType, txnId) =>
+    apiFetch(`/admin/transactions/history/${encodeURIComponent(txnId)}?reportType=${encodeURIComponent(reportType)}`).catch(() => null),
+  getHistoryExport: (filters = {}) => {
+    const cleanFilters = {
+      reportType: filters.reportType || 'AEPS_FINGPAY',
+      ...filters
+    };
+    const params = new URLSearchParams();
+    Object.entries(cleanFilters).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') {
+        params.append(k, v);
+      }
+    });
+    return apiFetch(`/admin/transactions/history/export?${params.toString()}`).catch(() => []);
+  },
+};
+
+
 
 
 

@@ -28,4 +28,10 @@ public class TransactionHistoryResponseDto {
     private String remarks;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    // Additional user identification fields for Admin visibility
+    private String userName;
+    private String userMobile;
+    private String partyCode;
+    private String userRole;
 }
