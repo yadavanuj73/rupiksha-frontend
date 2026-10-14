@@ -129,6 +129,21 @@ export function AuthProvider({ children }) {
     // If this tab is an Admin path, prefer the isolated Admin session
     const isAdminPath = window.location.pathname.startsWith('/admin');
     if (isAdminPath) {
+      const isOtpVerified = sessionStorage.getItem('admin_otp_verified') === 'true';
+      if (!isOtpVerified) {
+        // Tab closed or fresh tab without OTP verification: clear any stale admin session so admin must login with OTP
+        localStorage.removeItem("rupiksha_admin_token");
+        localStorage.removeItem("rupiksha_admin_user");
+        localStorage.removeItem("rupiksha_admin_refresh_token");
+        sessionStorage.removeItem("admin_auth");
+        sessionStorage.removeItem("admin_otp_verified");
+        sessionStorage.removeItem("pending_admin_user");
+        sessionStorage.removeItem("pending_admin_token");
+        sessionStorage.removeItem("pending_admin_refresh_token");
+        setUser(null);
+        setLoading(false);
+        return;
+      }
       const adminToken = localStorage.getItem("rupiksha_admin_token");
       const adminUser = localStorage.getItem("rupiksha_admin_user");
       if (adminToken && adminUser) {
@@ -211,6 +226,9 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const handleUserDataUpdate = () => {
       const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+      if (isAdminPath && sessionStorage.getItem('admin_otp_verified') !== 'true') {
+        return;
+      }
       const impUser = localStorage.getItem("rupiksha_imp_user");
       const adminUser = localStorage.getItem("rupiksha_admin_user");
       const savedUser = localStorage.getItem("rupiksha_user");
@@ -344,13 +362,19 @@ export function AuthProvider({ children }) {
   const logout = () => {
     const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
     const isImpSession = !!localStorage.getItem("rupiksha_imp_token");
+    const isAdminRole = user?.role === 'ADMIN' || (Array.isArray(user?.roles) && user.roles.includes('ADMIN'));
     
-    if (isAdminPath) {
+    if (isAdminPath || isAdminRole) {
       localStorage.removeItem("rupiksha_admin_token");
       localStorage.removeItem("rupiksha_admin_user");
       localStorage.removeItem("rupiksha_admin_refresh_token");
       sessionStorage.removeItem("admin_auth");
-    } else if (isImpSession) {
+      sessionStorage.removeItem("admin_otp_verified");
+      sessionStorage.removeItem("pending_admin_user");
+      sessionStorage.removeItem("pending_admin_token");
+      sessionStorage.removeItem("pending_admin_refresh_token");
+    }
+    if (isImpSession) {
       // In an impersonation tab — only clear imp keys, not real token
       localStorage.removeItem("rupiksha_imp_token");
       localStorage.removeItem("rupiksha_imp_user");
@@ -378,7 +402,10 @@ export function AuthProvider({ children }) {
   // Admin tab should use rupiksha_admin_token (isolated from member tab).
   const getToken = () => {
     const isAdminTab = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
-    if (isAdminTab) return localStorage.getItem("rupiksha_admin_token") || localStorage.getItem("rupiksha_token");
+    if (isAdminTab) {
+      if (sessionStorage.getItem('admin_otp_verified') !== 'true') return null;
+      return localStorage.getItem("rupiksha_admin_token") || localStorage.getItem("rupiksha_token");
+    }
     return localStorage.getItem("rupiksha_imp_token") || localStorage.getItem("rupiksha_token");
   };
 

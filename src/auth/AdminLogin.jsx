@@ -20,11 +20,13 @@ const AdminLogin = () => {
     const timerRef = useRef(null);
 
     // If the admin (or any staff role) is already authenticated, skip the login
-    // screen entirely on refresh — otherwise pressing F5 after OTP verify briefly
-    // rehydrates AuthContext and flashes this splash screen before landing back
-    // on /admin, which is what made the page look like it "redirected" away.
+    // screen entirely on refresh — but ONLY if they have completed OTP verification
+    // in this browser session (sessionStorage).
     useEffect(() => {
         if (authLoading || !currentUser) return;
+        const isOtpVerified = sessionStorage.getItem('admin_otp_verified') === 'true';
+        if (!isOtpVerified) return;
+
         const roles = (Array.isArray(currentUser.roles) && currentUser.roles.length
             ? currentUser.roles
             : [currentUser.role]
@@ -39,6 +41,12 @@ const AdminLogin = () => {
             navigate('/admin/dashboard', { replace: true });
         }
     }, [currentUser, authLoading, navigate]);
+
+    useEffect(() => {
+        if (sessionStorage.getItem('admin_otp_verified') !== 'true') {
+            sessionStorage.removeItem('admin_auth');
+        }
+    }, []);
 
     const [brandColor, setBrandColor] = useState(localStorage.getItem('rupiksha_brand_color') || '#064e3b');
     const [step, setStep] = useState('credentials');
@@ -108,7 +116,8 @@ const AdminLogin = () => {
 
         setLoadingLogin(true);
         try {
-            const res = await dataService.loginUser(username, password, null, 'admin');
+            // Call loginUser with persist = false: do not persist to localStorage or trigger profile updates yet
+            const res = await dataService.loginUser(username, password, null, 'admin', null, false);
             if (!res.success) {
                 setError(res.message || 'Invalid credentials.');
                 setCaptchaInput('');
@@ -121,23 +130,26 @@ const AdminLogin = () => {
                 ['ADMIN', 'SUPER_DISTRIBUTOR', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(r)
             );
             if (!isAdmin) {
-                localStorage.removeItem('rupiksha_admin_user');
-                localStorage.removeItem('rupiksha_admin_token');
+                sessionStorage.removeItem('pending_admin_user');
+                sessionStorage.removeItem('pending_admin_token');
+                sessionStorage.removeItem('pending_admin_refresh_token');
                 setError('These credentials are not authorized for the admin portal.');
                 setCaptchaInput('');
                 genCaptcha();
                 return;
             }
 
-            localStorage.setItem('rupiksha_admin_user', JSON.stringify(res.user));
-            if (res.token) {
-                localStorage.setItem('rupiksha_admin_token', res.token);
+            // Save pending login info to sessionStorage until OTP is completed
+            sessionStorage.setItem('pending_admin_user', JSON.stringify(res.user));
+            sessionStorage.setItem('pending_admin_token', res.token);
+            if (res.refreshToken) {
+                sessionStorage.setItem('pending_admin_refresh_token', res.refreshToken);
             }
 
             setStep('otp');
             setOtpValues(Array(OTP_LENGTH).fill(''));
             setTimer(OTP_EXPIRY);
-            setInfo('Credentials verified. Enter any 6-digit code to continue (dev 2FA).');
+            setInfo('Credentials verified. Enter the 6-digit OTP code to continue.');
             setTimeout(() => otpRefs.current[0]?.focus(), 120);
         } catch (err) {
             setError(err?.message || 'Unable to reach server. Please check your connection and try again.');
@@ -177,20 +189,42 @@ const AdminLogin = () => {
 
         setLoadingOtp(true);
         try {
-            // JWT already stored by the credential step via dataService.loginUser.
-            // Admin OTP is a dev-only 2FA gate; any 6-digit code proceeds.
-            const savedUser = localStorage.getItem('rupiksha_admin_user') || localStorage.getItem('rupiksha_user');
-            const token = localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token');
+            const savedUser = sessionStorage.getItem('pending_admin_user') || localStorage.getItem('rupiksha_admin_user');
+            const token = sessionStorage.getItem('pending_admin_token') || localStorage.getItem('rupiksha_admin_token');
+            const refreshToken = sessionStorage.getItem('pending_admin_refresh_token') || localStorage.getItem('rupiksha_admin_refresh_token');
+
             if (!savedUser || !token) {
                 setError('Session expired. Please sign in again.');
                 setStep('credentials');
                 return;
             }
             const adminUser = JSON.parse(savedUser);
+
+            // Successfully verified OTP: mark session as authenticated
+            sessionStorage.setItem('admin_otp_verified', 'true');
             sessionStorage.setItem('admin_auth', 'true');
+
+            // Persist active tokens for this session
+            localStorage.setItem('rupiksha_admin_user', JSON.stringify(adminUser));
+            localStorage.setItem('rupiksha_admin_token', token);
+            if (refreshToken) {
+                localStorage.setItem('rupiksha_admin_refresh_token', refreshToken);
+            }
+
+            // Cleanup pending credentials
+            sessionStorage.removeItem('pending_admin_user');
+            sessionStorage.removeItem('pending_admin_token');
+            sessionStorage.removeItem('pending_admin_refresh_token');
+
             setUser(adminUser);
             setIsLocked(false);
-            navigate('/admin/dashboard');
+
+            // Fetch profile in background now that authenticated
+            setTimeout(() => {
+                try { dataService.fetchUserProfile().catch(() => {}); } catch (_) {}
+            }, 50);
+
+            navigate('/admin/dashboard', { replace: true });
         } catch (err) {
             setError(err?.message || 'Could not complete login.');
         } finally {
@@ -199,6 +233,9 @@ const AdminLogin = () => {
     };
 
     const restartLogin = () => {
+        sessionStorage.removeItem('pending_admin_user');
+        sessionStorage.removeItem('pending_admin_token');
+        sessionStorage.removeItem('pending_admin_refresh_token');
         setStep('credentials');
         setOtpValues(Array(OTP_LENGTH).fill(''));
         setTimer(0);

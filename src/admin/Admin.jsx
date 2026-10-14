@@ -61,9 +61,14 @@ const Admin = () => {
         const hasAdminRole = roles.some((r) =>
             ['ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(r)
         );
+        const isOtpVerified = sessionStorage.getItem('admin_otp_verified') === 'true';
 
-        if (!currentUser || !hasAdminRole) {
+        if (!currentUser || !hasAdminRole || !isOtpVerified) {
             sessionStorage.removeItem('admin_auth');
+            sessionStorage.removeItem('admin_otp_verified');
+            sessionStorage.removeItem('pending_admin_user');
+            sessionStorage.removeItem('pending_admin_token');
+            sessionStorage.removeItem('pending_admin_refresh_token');
             navigate('/admin-login', { replace: true });
             return;
         }
@@ -3470,6 +3475,11 @@ const Admin = () => {
                                             <button
                                                 onClick={() => {
                                                     setShowAdminMenu(false);
+                                                    sessionStorage.removeItem('admin_auth');
+                                                    sessionStorage.removeItem('admin_otp_verified');
+                                                    sessionStorage.removeItem('pending_admin_user');
+                                                    sessionStorage.removeItem('pending_admin_token');
+                                                    sessionStorage.removeItem('pending_admin_refresh_token');
                                                     logout();
                                                     navigate('/admin-login');
                                                 }}

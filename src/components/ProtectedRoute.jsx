@@ -67,7 +67,7 @@ const ProtectedRoute = ({ children, role, allowKycPending = false }) => {
     if (!user) {
         // Redirect to appropriate login based on required role
         const adminRoles = ['ADMIN', 'ADMIN_OR_EMPLOYEE'];
-        const targetLogin = adminRoles.includes(role) ? '/admin' : '/login';
+        const targetLogin = adminRoles.includes(role) || location.pathname.startsWith('/admin') ? '/admin-login' : '/login';
         return <Navigate to={targetLogin} state={{ from: location }} replace />;
     }
 
@@ -98,6 +98,10 @@ const ProtectedRoute = ({ children, role, allowKycPending = false }) => {
 
         // Handle pseudoroles
         if (role === 'ADMIN_OR_EMPLOYEE') {
+            const isOtpVerified = sessionStorage.getItem('admin_otp_verified') === 'true';
+            if (!isOtpVerified) {
+                return <Navigate to="/admin-login" state={{ from: location }} replace />;
+            }
             if (isEmployee || userRoles.includes('ADMIN')) return children;
         }
         

@@ -55,6 +55,7 @@ export const apiFetch = async (endpoint, options = {}) => {
     localStorage.removeItem("rupiksha_admin_token");
     localStorage.removeItem("rupiksha_admin_user");
     sessionStorage.removeItem("admin_auth");
+    sessionStorage.removeItem("admin_otp_verified");
     window.location.href = "/admin-login";
     return;
   }

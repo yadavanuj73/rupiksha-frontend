@@ -64,6 +64,7 @@ async function authFetch(url, options = {}) {
             localStorage.removeItem('rupiksha_admin_token');
             localStorage.removeItem('rupiksha_admin_user');
             sessionStorage.removeItem('admin_auth');
+            sessionStorage.removeItem('admin_otp_verified');
             window.location.href = '/admin-login';
         }
     }
@@ -362,7 +363,7 @@ export const dataService = {
         }
     },
 
-    loginUser: async function (username, password, location = null, expectedPortalRole = null, pin = null) {
+    loginUser: async function (username, password, location = null, expectedPortalRole = null, pin = null, persist = true) {
         const expected = normalizeRoleForClient(expectedPortalRole);
         const isRoleAllowedForPortal = (role) => {
             if (!expectedPortalRole) return true;
@@ -451,24 +452,26 @@ export const dataService = {
 
             const isAdminLogin = expectedPortalRole && ['admin', 'employee', 'national_header', 'state_header', 'regional_header'].includes(String(expectedPortalRole).toLowerCase());
 
-            if (isAdminLogin) {
-                localStorage.setItem('rupiksha_admin_user', JSON.stringify(normalizedUser));
-                localStorage.setItem('rupiksha_admin_token', data.accessToken);
-                if (data.refreshToken) localStorage.setItem('rupiksha_admin_refresh_token', data.refreshToken);
-            } else {
-                localStorage.removeItem('rupiksha_imp_token');
-                localStorage.removeItem('rupiksha_imp_user');
-                localStorage.setItem('rupiksha_user', JSON.stringify(normalizedUser));
-                localStorage.setItem('rupiksha_token', data.accessToken);
-                if (data.refreshToken) localStorage.setItem('rupiksha_refresh_token', data.refreshToken);
+            if (persist) {
+                if (isAdminLogin) {
+                    localStorage.setItem('rupiksha_admin_user', JSON.stringify(normalizedUser));
+                    localStorage.setItem('rupiksha_admin_token', data.accessToken);
+                    if (data.refreshToken) localStorage.setItem('rupiksha_admin_refresh_token', data.refreshToken);
+                } else {
+                    localStorage.removeItem('rupiksha_imp_token');
+                    localStorage.removeItem('rupiksha_imp_user');
+                    localStorage.setItem('rupiksha_user', JSON.stringify(normalizedUser));
+                    localStorage.setItem('rupiksha_token', data.accessToken);
+                    if (data.refreshToken) localStorage.setItem('rupiksha_refresh_token', data.refreshToken);
+                }
+
+                // Immediately hydrate full profile and photo from DB in background
+                setTimeout(() => {
+                    try { this.fetchUserProfile().catch(() => {}); } catch (_) {}
+                }, 50);
             }
 
-            // Immediately hydrate full profile and photo from DB in background
-            setTimeout(() => {
-                try { this.fetchUserProfile().catch(() => {}); } catch (_) {}
-            }, 50);
-
-            return { success: true, user: normalizedUser, token: data.accessToken };
+            return { success: true, user: normalizedUser, token: data.accessToken, refreshToken: data.refreshToken };
         } catch (e) {
             return { success: false, message: "Server connection failed: " + (e?.message || 'network error') };
         }
@@ -477,6 +480,9 @@ export const dataService = {
     getCurrentUser: function () {
         const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
         if (isAdminPath) {
+            if (sessionStorage.getItem('admin_otp_verified') !== 'true') {
+                return null;
+            }
             const adminUser = localStorage.getItem('rupiksha_admin_user');
             if (adminUser) {
                 try { return JSON.parse(adminUser); } catch (e) {}
