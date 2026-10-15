@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { FOOTER_SERVICES, preloadServiceImages } from '../data/servicePages';
 
 const SOCIAL_LINKS = [
@@ -8,7 +8,7 @@ const SOCIAL_LINKS = [
         label: 'Facebook',
         color: '#1877f2',
         icon: (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
                 <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
             </svg>
         ),
@@ -18,7 +18,7 @@ const SOCIAL_LINKS = [
         label: 'Instagram',
         color: '#e1306c',
         icon: (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
                 <circle cx="12" cy="12" r="4"/>
                 <circle cx="17.5" cy="6.5" r="1" fill="white" stroke="none"/>
@@ -30,7 +30,7 @@ const SOCIAL_LINKS = [
         label: 'YouTube',
         color: '#ff0000',
         icon: (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
                 <path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/>
                 <polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="#ff0000"/>
             </svg>
@@ -41,7 +41,7 @@ const SOCIAL_LINKS = [
         label: 'LinkedIn',
         color: '#0a66c2',
         icon: (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
                 <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
                 <rect x="2" y="9" width="4" height="12"/>
                 <circle cx="4" cy="4" r="2"/>
@@ -53,7 +53,7 @@ const SOCIAL_LINKS = [
         label: 'Play Store',
         color: '#01875f',
         icon: (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
                 <path d="M3 20.5v-17c0-.83 1-.83 1.5-.5l14 8.5-14 8.5c-.5.33-1.5.33-1.5-.5z"/>
             </svg>
         ),
@@ -72,20 +72,20 @@ export default function Footer() {
     };
 
     return (
-        <footer style={{ background: '#0a1120', color: '#94a3b8' }} id="contact" className="w-full border-t border-slate-800/80">
-            {/* Main Footer Container with Even Spacing Across Full Width */}
-            <div className="max-w-[1440px] w-full mx-auto px-4 sm:px-6 md:px-8 lg:px-12 pt-10 pb-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10 lg:gap-8 xl:gap-12 items-start w-full">
+        <footer style={{ background: '#0a1120', color: '#94a3b8' }} id="contact" className="w-full border-t border-slate-800">
+            {/* Main Footer Container with Spacious Height & Even 4-Column Spread */}
+            <div className="max-w-[1440px] w-full mx-auto px-6 sm:px-8 lg:px-12 pt-16 sm:pt-20 lg:pt-24 pb-12 sm:pb-14">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 md:gap-12 lg:gap-10 xl:gap-16 items-start w-full">
                     
-                    {/* Column 1: Brand & Bio */}
+                    {/* Column 1: Brand & Description */}
                     <div className="flex flex-col items-start w-full">
-                        <h3 className="text-2xl font-black text-white tracking-tight mb-3 font-serif">
+                        <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-4 font-serif">
                             Rupiksha
                         </h3>
-                        <p className="text-xs sm:text-sm leading-relaxed text-slate-400 mb-4 text-justify max-w-sm">
+                        <p className="text-sm leading-relaxed text-slate-400 mb-6 text-justify">
                             Transforming digital payments across India with innovative financial solutions for businesses and individuals.
                         </p>
-                        <div className="flex items-center gap-2.5 flex-wrap">
+                        <div className="flex items-center gap-3 flex-wrap">
                             {SOCIAL_LINKS.map((s, i) => (
                                 <a 
                                     key={i} 
@@ -93,7 +93,7 @@ export default function Footer() {
                                     target="_blank" 
                                     rel="noopener noreferrer" 
                                     aria-label={s.label}
-                                    className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 hover:opacity-95 shadow-sm"
+                                    className="w-9 h-9 rounded-full flex items-center justify-center transition-transform duration-200 hover:scale-110 shadow-md shrink-0"
                                     style={{ background: s.color }}
                                 >
                                     {s.icon}
@@ -104,10 +104,10 @@ export default function Footer() {
 
                     {/* Column 2: Quick Links */}
                     <div className="flex flex-col items-start w-full">
-                        <h5 className="text-xs font-black tracking-widest uppercase text-white mb-3">
+                        <h5 className="text-xs font-black tracking-widest uppercase text-white mb-4">
                             Quick Links
                         </h5>
-                        <nav className="flex flex-col gap-2 w-full text-xs sm:text-sm">
+                        <nav className="flex flex-col gap-2.5 w-full text-sm">
                             <button onClick={scrollToTop} className="text-left text-slate-400 hover:text-white transition-colors py-0.5">
                                 Home
                             </button>
@@ -131,10 +131,10 @@ export default function Footer() {
 
                     {/* Column 3: Our Services */}
                     <div className="flex flex-col items-start w-full">
-                        <h5 className="text-xs font-black tracking-widest uppercase text-white mb-3">
+                        <h5 className="text-xs font-black tracking-widest uppercase text-white mb-4">
                             Our Services
                         </h5>
-                        <nav className="flex flex-col gap-2 w-full text-xs sm:text-sm">
+                        <nav className="flex flex-col gap-2.5 w-full text-sm">
                             {FOOTER_SERVICES.map((s) => (
                                 <button
                                     key={s.slug}
@@ -151,30 +151,30 @@ export default function Footer() {
 
                     {/* Column 4: Contact Us */}
                     <div className="flex flex-col items-start w-full">
-                        <h5 className="text-xs font-black tracking-widest uppercase text-white mb-3">
+                        <h5 className="text-xs font-black tracking-widest uppercase text-white mb-4">
                             Contact Us
                         </h5>
-                        <div className="flex flex-col gap-3 text-xs sm:text-sm text-slate-400 w-full">
-                            <div className="flex items-start gap-2.5">
-                                <span className="text-sm shrink-0 mt-0.5">📍</span>
-                                <p className="leading-snug text-slate-400 m-0">
+                        <div className="flex flex-col gap-4 text-sm text-slate-400 w-full">
+                            <div className="flex items-start gap-3">
+                                <span className="text-base shrink-0 mt-0.5">📍</span>
+                                <p className="leading-relaxed text-slate-400 m-0">
                                     Rupiksha Service Pvt Ltd, Muzaffarpur, Bihar, 842001
                                 </p>
                             </div>
-                            <div className="flex items-center gap-2.5">
-                                <span className="text-sm shrink-0">📞</span>
+                            <div className="flex items-center gap-3">
+                                <span className="text-base shrink-0">📞</span>
                                 <a 
                                     href="tel:+917004128310" 
-                                    className="text-slate-400 hover:text-white transition-colors"
+                                    className="text-slate-400 hover:text-white transition-colors font-medium"
                                 >
                                     +91 7004128310
                                 </a>
                             </div>
-                            <div className="flex items-center gap-2.5">
-                                <span className="text-sm shrink-0">✉️</span>
+                            <div className="flex items-center gap-3">
+                                <span className="text-base shrink-0">✉️</span>
                                 <a 
                                     href="mailto:support@rupiksha.com" 
-                                    className="text-slate-400 hover:text-white transition-colors"
+                                    className="text-slate-400 hover:text-white transition-colors font-medium"
                                 >
                                     support@rupiksha.com
                                 </a>
@@ -184,13 +184,13 @@ export default function Footer() {
 
                 </div>
 
-                {/* Bottom Bar — Compact & Fully Working Policy Links */}
-                <div className="mt-8 pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+                {/* Bottom Bar — Well Proportioned & Elegant */}
+                <div className="mt-16 pt-8 border-t border-slate-800/90 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
                     <span className="text-slate-400">
                         © 2026 Rupiksha. All rights reserved.
                     </span>
 
-                    <div className="flex items-center gap-4 sm:gap-6 flex-wrap justify-center font-medium">
+                    <div className="flex items-center gap-5 sm:gap-7 flex-wrap justify-center font-medium">
                         <button
                             onClick={() => { navigate('/terms-and-conditions'); scrollToTop(); }}
                             className="text-slate-400 hover:text-white transition-colors hover:underline underline-offset-4"
