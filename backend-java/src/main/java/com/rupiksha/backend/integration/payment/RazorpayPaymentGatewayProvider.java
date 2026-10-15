@@ -3,21 +3,24 @@ package com.rupiksha.backend.integration.payment;
 import com.rupiksha.backend.config.AppProperties;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.razorpay.Order;
+import com.razorpay.RazorpayClient;
+import com.razorpay.RazorpayException;
+import com.razorpay.Utils;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.web.client.RestTemplateBuilder;
-import org.springframework.http.*;
+import lombok.extern.slf4j.Slf4j;
+import org.json.JSONObject;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class RazorpayPaymentGatewayProvider implements PaymentGatewayProvider {
     private final AppProperties appProperties;
-    private final RestTemplateBuilder restTemplateBuilder;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -25,6 +28,10 @@ public class RazorpayPaymentGatewayProvider implements PaymentGatewayProvider {
         return "razorpay";
     }
 
+    /**
+     * Creates a Razorpay order using the official SDK.
+     * Reference: https://razorpay.com/docs/payments/server-integration/java/integration-steps
+     */
     @Override
     public ProviderOrderResponse createOrder(String internalRef, BigDecimal amount, String purpose) {
         String keyId = appProperties.providers().payment().keyId();
@@ -32,43 +39,92 @@ public class RazorpayPaymentGatewayProvider implements PaymentGatewayProvider {
         if (keyId == null || keyId.isBlank() || keySecret == null || keySecret.isBlank()) {
             throw new IllegalArgumentException("Razorpay keys not configured");
         }
-        RestTemplate rt = restTemplateBuilder.build();
-        String url = "https://api.razorpay.com/v1/orders";
 
-        Map<String, Object> req = new HashMap<>();
-        req.put("amount", amount.multiply(BigDecimal.valueOf(100)).longValue());
-        req.put("currency", "INR");
-        req.put("receipt", internalRef);
-        req.put("notes", Map.of("purpose", purpose));
+        try {
+            RazorpayClient razorpayClient = new RazorpayClient(keyId, keySecret);
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBasicAuth(keyId, keySecret);
-        ResponseEntity<Map> res = rt.exchange(url, HttpMethod.POST, new HttpEntity<>(req, headers), Map.class);
+            JSONObject orderRequest = new JSONObject();
+            // Amount must be in smallest currency subunit (paise for INR)
+            orderRequest.put("amount", amount.multiply(BigDecimal.valueOf(100)).longValue());
+            orderRequest.put("currency", "INR");
+            orderRequest.put("receipt", internalRef);
 
-        Map body = res.getBody();
-        String orderId = String.valueOf(body.get("id"));
-        return new ProviderOrderResponse(orderId, providerName(), "created", body);
+            JSONObject notes = new JSONObject();
+            notes.put("purpose", purpose);
+            notes.put("platform", "rupiksha");
+            orderRequest.put("notes", notes);
+
+            Order order = razorpayClient.orders.create(orderRequest);
+            String orderId = order.get("id");
+
+            log.info("Razorpay order created via official SDK: {} for amount {} paise", orderId, amount.multiply(BigDecimal.valueOf(100)).longValue());
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("id", orderId);
+            payload.put("entity", order.get("entity"));
+            payload.put("amount", order.get("amount"));
+            payload.put("currency", order.get("currency"));
+            payload.put("receipt", order.get("receipt"));
+            payload.put("status", order.get("status"));
+
+            return new ProviderOrderResponse(orderId, providerName(), "created", payload);
+        } catch (RazorpayException e) {
+            log.error("Razorpay SDK order creation failed: {}", e.getMessage(), e);
+            throw new IllegalStateException("Razorpay order creation failed: " + e.getMessage(), e);
+        }
     }
 
+    /**
+     * Verifies Razorpay webhook signature using HMAC-SHA256.
+     */
     @Override
     public boolean verifyWebhook(String rawPayload, Map<String, String> headers) {
         String secret = appProperties.providers().payment().webhookSecret();
-        String provided = headers.getOrDefault("x-razorpay-signature", "");
-        if (secret == null || secret.isBlank() || provided.isBlank()) return false;
-        String computed = PaymentSignatureUtils.hmacSha256Hex(rawPayload, secret);
-        return computed.equalsIgnoreCase(provided);
+        if (secret == null || secret.isBlank()) return false;
+
+        String provided = "";
+        for (Map.Entry<String, String> entry : headers.entrySet()) {
+            if ("x-razorpay-signature".equalsIgnoreCase(entry.getKey())) {
+                provided = entry.getValue();
+                break;
+            }
+        }
+        if (provided.isBlank()) return false;
+
+        try {
+            return Utils.verifyWebhookSignature(rawPayload, provided, secret);
+        } catch (RazorpayException e) {
+            log.warn("Razorpay webhook signature verification failed: {}", e.getMessage());
+            return false;
+        }
     }
 
+    /**
+     * Verifies payment signature using the official Razorpay SDK utility.
+     * generated_signature = hmac_sha256(order_id + "|" + razorpay_payment_id, secret)
+     */
     @Override
     public boolean verifyPaymentSignature(Map<String, Object> payload) {
         String secret = appProperties.providers().payment().keySecret();
         String orderId = String.valueOf(payload.getOrDefault("razorpay_order_id", ""));
         String paymentId = String.valueOf(payload.getOrDefault("razorpay_payment_id", ""));
         String signature = String.valueOf(payload.getOrDefault("razorpay_signature", ""));
-        if (secret == null || secret.isBlank() || orderId.isBlank() || paymentId.isBlank() || signature.isBlank()) return false;
-        String computed = PaymentSignatureUtils.hmacSha256Hex(orderId + "|" + paymentId, secret);
-        return computed.equalsIgnoreCase(signature);
+
+        if (secret == null || secret.isBlank() || orderId.isBlank()
+                || paymentId.isBlank() || signature.isBlank()) return false;
+
+        try {
+            JSONObject options = new JSONObject();
+            options.put("razorpay_order_id", orderId);
+            options.put("razorpay_payment_id", paymentId);
+            options.put("razorpay_signature", signature);
+
+            // Official SDK verification — uses HMAC-SHA256 internally
+            return Utils.verifyPaymentSignature(options, secret);
+        } catch (RazorpayException e) {
+            log.warn("Razorpay payment signature verification failed: {}", e.getMessage());
+            return false;
+        }
     }
 
     @Override
@@ -105,4 +161,3 @@ public class RazorpayPaymentGatewayProvider implements PaymentGatewayProvider {
         }
     }
 }
-

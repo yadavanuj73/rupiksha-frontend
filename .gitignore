@@ -47,3 +47,6 @@ levinaeps.txt
 netlify.toml
 *.docx
 *.csv
+
+# Razorpay Java SDK reference — local only, never push
+razorpay-java-1.4.10/

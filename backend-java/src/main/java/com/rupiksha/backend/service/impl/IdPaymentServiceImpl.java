@@ -364,13 +364,8 @@ public class IdPaymentServiceImpl implements IdPaymentService {
         boolean isMock = webhookSecret == null || webhookSecret.isBlank() || "mock".equalsIgnoreCase(webhookSecret);
 
         if (!isMock) {
-            String signature = headers.getOrDefault("x-razorpay-signature", headers.getOrDefault("X-Razorpay-Signature", ""));
-            if (signature.isBlank()) {
-                throw new IllegalArgumentException("Missing webhook signature");
-            }
-            String computed = PaymentSignatureUtils.hmacSha256Hex(rawPayload, webhookSecret);
-            if (!computed.equalsIgnoreCase(signature)) {
-                log.warn("Razorpay webhook signature mismatch! Computed: {}, Provided: {}", computed, signature);
+            if (!razorpayPaymentGatewayProvider.verifyWebhook(rawPayload, headers)) {
+                log.warn("Razorpay webhook signature verification failed!");
                 throw new IllegalArgumentException("Invalid Razorpay webhook signature");
             }
         }
