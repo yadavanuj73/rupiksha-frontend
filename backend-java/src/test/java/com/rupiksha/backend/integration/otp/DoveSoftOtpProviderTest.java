@@ -40,8 +40,17 @@ class DoveSoftOtpProviderTest {
         provider = new DoveSoftOtpProvider(appProperties, restTemplateBuilder);
         ReflectionTestUtils.setField(provider, "envApiKey", "test-dovesoft-api-key");
         ReflectionTestUtils.setField(provider, "envBaseUrl", "https://api.dovesoft.io");
+        ReflectionTestUtils.setField(provider, "envEntityId", "12325654434");
         ReflectionTestUtils.setField(provider, "envTimeToAlive", 200);
         ReflectionTestUtils.setField(provider, "envMessage", "");
+    }
+
+    @Test
+    void sendOtp_MissingEntityId_ThrowsException() {
+        ReflectionTestUtils.setField(provider, "envEntityId", "");
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> provider.sendOtp("9876543210"));
+        assertTrue(ex.getMessage().contains("DLT Entity ID"));
     }
 
     @Test

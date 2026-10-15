@@ -34,6 +34,15 @@ public class DoveSoftOtpProvider implements OtpProvider {
     @Value("${dovesoft.base-url:${DOVESOFT_BASE_URL:${OTP_BASE_URL:https://api.dovesoft.io}}}")
     private String envBaseUrl;
 
+    @Value("${dovesoft.entity-id:${DOVESOFT_ENTITY_ID:${OTP_ENTITY_ID:${TWOFACTOR_PEID:${OTP_PEID:}}}}}")
+    private String envEntityId;
+
+    @Value("${dovesoft.temp-id:${DOVESOFT_TEMP_ID:${OTP_TEMP_ID:${TWOFACTOR_CTID:${OTP_CTID:}}}}}")
+    private String envTempId;
+
+    @Value("${dovesoft.sender-id:${DOVESOFT_SENDER_ID:${OTP_SENDER_ID:${TWOFACTOR_SENDER_ID:RPRNL}}}}")
+    private String envSenderId;
+
     @Value("${dovesoft.timetoalive:${DOVESOFT_TTL:${OTP_TTL_SECONDS:200}}}")
     private int envTimeToAlive;
 
@@ -78,6 +87,33 @@ public class DoveSoftOtpProvider implements OtpProvider {
         return url;
     }
 
+    public String getEntityId() {
+        if (envEntityId != null && !envEntityId.isBlank()) {
+            return envEntityId.trim();
+        }
+        return "";
+    }
+
+    public String getTempId() {
+        if (envTempId != null && !envTempId.isBlank()) {
+            return envTempId.trim();
+        }
+        return "";
+    }
+
+    public String getSenderId() {
+        if (envSenderId != null && !envSenderId.isBlank()) {
+            return envSenderId.trim();
+        }
+        if (appProperties != null && appProperties.providers() != null && appProperties.providers().otp() != null) {
+            String senderId = appProperties.providers().otp().senderId();
+            if (senderId != null && !senderId.isBlank()) {
+                return senderId.trim();
+            }
+        }
+        return "";
+    }
+
     public String resolveMessageTemplate() {
         String template = (envMessage != null && !envMessage.isBlank())
                 ? envMessage.trim()
@@ -114,8 +150,8 @@ public class DoveSoftOtpProvider implements OtpProvider {
             return "Empty response from DoveSoft";
         }
 
-        // Check common message/reason fields returned by SMS/OTP APIs
-        for (String field : List.of("msg", "reason", "message", "error", "description", "desc", "details", "Details", "data")) {
+        // Check response, msg, reason, message, etc.
+        for (String field : List.of("response", "msg", "reason", "message", "error", "description", "desc", "details", "Details", "data", "res")) {
             Object val = body.get(field);
             if (val != null && !String.valueOf(val).isBlank() && !"null".equalsIgnoreCase(String.valueOf(val))) {
                 return String.valueOf(val).trim();
@@ -148,17 +184,40 @@ public class DoveSoftOtpProvider implements OtpProvider {
             throw new IllegalArgumentException("Invalid mobile number. Exactly 10 digits required.");
         }
 
+        String entityId = getEntityId();
+        if (entityId.isBlank()) {
+            log.error("DoveSoft DLT Entity ID (PEID) is missing.");
+            throw new IllegalArgumentException("DoveSoft requires a valid numeric DLT Entity ID. Please configure DOVESOFT_ENTITY_ID in environment variables.");
+        }
+
         int ttl = envTimeToAlive > 0 ? envTimeToAlive : 200;
         String messageTemplate = resolveMessageTemplate();
 
         String baseUrl = getBaseUrl();
         // Standard percent-encoding (replace '+' with '%20' so spaces are never misinterpreted)
         String encodedMessage = URLEncoder.encode(messageTemplate, StandardCharsets.UTF_8).replace("+", "%20");
-        String url = String.format("%s/rest/generateOtp?mobileno=%s&timetoalive=%d&message=%s",
-                baseUrl, cleanMobile, ttl, encodedMessage);
 
-        log.info("Sending OTP via DoveSoft for mobile {} (endpoint: {}/rest/generateOtp, ttl: {}s, template: [{}])",
-                cleanMobile, baseUrl, ttl, messageTemplate);
+        StringBuilder urlBuilder = new StringBuilder(baseUrl)
+                .append("/rest/generateOtp")
+                .append("?mobileno=").append(cleanMobile)
+                .append("&timetoalive=").append(ttl)
+                .append("&message=").append(encodedMessage)
+                .append("&entityid=").append(URLEncoder.encode(entityId, StandardCharsets.UTF_8));
+
+        String tempId = getTempId();
+        if (!tempId.isBlank()) {
+            urlBuilder.append("&tempid=").append(URLEncoder.encode(tempId, StandardCharsets.UTF_8));
+        }
+
+        String senderId = getSenderId();
+        if (!senderId.isBlank()) {
+            urlBuilder.append("&senderid=").append(URLEncoder.encode(senderId, StandardCharsets.UTF_8));
+        }
+
+        String url = urlBuilder.toString();
+
+        log.info("Sending OTP via DoveSoft for mobile {} (endpoint: {}/rest/generateOtp, entityid: {}, tempid: {}, senderid: {})",
+                cleanMobile, baseUrl, entityId, tempId, senderId);
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("key", apiKey);
