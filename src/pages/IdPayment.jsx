@@ -277,7 +277,7 @@ export default function IdPayment() {
 
       const options = {
         key: orderRes.razorpayKeyId,
-        amount: orderRes.finalAmount * 100, // smallest currency subunit (paise)
+        amount: Math.round(Number(orderRes.finalAmount) * 100), // smallest currency subunit (paise)
         currency: orderRes.currency || 'INR',
         name: 'Rupiksha Fintech',
         description: `${paymentDetails?.role || roleParam || 'Partner'} ID Activation Fee`,
