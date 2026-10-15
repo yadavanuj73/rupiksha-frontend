@@ -44,7 +44,7 @@ public class IdPaymentController {
         return ResponseEntity.ok(idPaymentService.getPaymentStatus(identifier));
     }
 
-    @PostMapping({"/webhook", "/webhook/razorpay"})
+    @PostMapping("/webhook")
     @ResponseStatus(HttpStatus.OK)
     public Map<String, Object> handleWebhook(
             @RequestBody String rawPayload,
