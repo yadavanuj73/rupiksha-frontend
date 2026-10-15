@@ -32,6 +32,9 @@ const IdPayment = lazy(() => import('./pages/IdPayment'));
 const VerifyCertificate = lazy(() => import('./pages/VerifyCertificate'));
 const WalletTransfer = lazy(() => import('./pages/WalletTransfer'));
 const WalletTransferHistory = lazy(() => import('./pages/WalletTransferHistory'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const TermsAndConditions = lazy(() => import('./pages/TermsAndConditions'));
+const RefundPolicy = lazy(() => import('./pages/RefundPolicy'));
 
 // Retailer
 const RetailerLayout = lazy(() => import('./retailer/components/RetailerLayout'));
@@ -203,6 +206,13 @@ function App() {
               <Route path="/leadership" element={<Leadership />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/services/:slug" element={<ServiceDetail />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+              <Route path="/terms" element={<TermsAndConditions />} />
+              <Route path="/terms-of-service" element={<TermsAndConditions />} />
+              <Route path="/refund-policy" element={<RefundPolicy />} />
+              <Route path="/refund" element={<RefundPolicy />} />
               <Route path="/portal" element={<Login />} />
               <Route path="/portal/retailer" element={<Login />} />
               <Route path="/portal/distributor" element={<Login />} />
