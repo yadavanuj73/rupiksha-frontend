@@ -279,7 +279,7 @@ export default function IdPayment() {
         key: orderRes.razorpayKeyId,
         amount: Math.round(Number(orderRes.finalAmount) * 100), // smallest currency subunit (paise)
         currency: orderRes.currency || 'INR',
-        name: 'Rupiksha Fintech',
+        name: 'Rupiksha Services Private Limited',
         description: `${paymentDetails?.role || roleParam || 'Partner'} ID Activation Fee`,
         order_id: orderRes.orderId,
         image: '/logo rupiksha.png',
