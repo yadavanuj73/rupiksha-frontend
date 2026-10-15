@@ -37,17 +37,17 @@ public class DoveSoftOtpProvider implements OtpProvider {
     @Value("${dovesoft.entity-id:${DOVESOFT_ENTITY_ID:${OTP_ENTITY_ID:${TWOFACTOR_PEID:${OTP_PEID:}}}}}")
     private String envEntityId;
 
-    @Value("${dovesoft.temp-id:${DOVESOFT_TEMP_ID:${OTP_TEMP_ID:${TWOFACTOR_CTID:${OTP_CTID:}}}}}")
+    @Value("${dovesoft.temp-id:${DOVESOFT_TEMP_ID:${OTP_TEMP_ID:${TWOFACTOR_CTID:${OTP_CTID:1707176432251139080}}}}}")
     private String envTempId;
 
-    @Value("${dovesoft.sender-id:${DOVESOFT_SENDER_ID:${OTP_SENDER_ID:${TWOFACTOR_SENDER_ID:RPRNL}}}}")
+    @Value("${dovesoft.sender-id:${DOVESOFT_SENDER_ID:${OTP_SENDER_ID:${TWOFACTOR_SENDER_ID:RUPIKS}}}}")
     private String envSenderId;
 
     @Value("${dovesoft.timetoalive:${DOVESOFT_TTL:${OTP_TTL_SECONDS:200}}}")
     private int envTimeToAlive;
 
     public static final String DEFAULT_MESSAGE_TEMPLATE =
-            "Dear User Your One Tine Password is {otp}\n\nThanks You.\nRupiksha Services Private Limeted";
+            "Dear Partner, Your OTP is {otp}.\nDo not share with anyone.\nvisit us at www.rupiksha.com\n<RUPIKSHA>";
 
     @Value("${dovesoft.message:${DOVESOFT_OTP_MESSAGE:${OTP_MESSAGE:}}}")
     private String envMessage;
@@ -124,9 +124,14 @@ public class DoveSoftOtpProvider implements OtpProvider {
             template = template.replace("\\r\\n", "\n").replace("\\n", "\n").replace("\\r", "\n");
         }
 
-        // If placeholder {otp} or {#var#} was omitted in the configured string, insert {otp} safely
-        if (!template.contains("{otp}") && !template.contains("{#var#}") && !template.contains("{#Var#}")) {
-            if (template.toLowerCase().contains("password is")) {
+        // Convert DLT placeholder {#var#} to DoveSoft generateOtp placeholder {otp}
+        template = template.replace("{#var#}", "{otp}").replace("{#Var#}", "{otp}");
+
+        // If placeholder {otp} was omitted in the configured string, insert {otp} safely
+        if (!template.contains("{otp}")) {
+            if (template.toLowerCase().contains("otp is")) {
+                template = template.replaceFirst("(?i)otp\\s+is\\s*", "OTP is {otp} ");
+            } else if (template.toLowerCase().contains("password is")) {
                 template = template.replaceFirst("(?i)password\\s+is\\s*", "Password is {otp} ");
             } else if (template.toLowerCase().contains("is")) {
                 template = template.replaceFirst("(?i)is\\s*", "is {otp} ");
