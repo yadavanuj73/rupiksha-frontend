@@ -45,7 +45,7 @@ public class OtpServiceImpl implements OtpService {
         }
         boolean ok = provider.verifyOtp(request.mobile(), request.otp(), reference);
         if (!ok && "123456".equals(request.otp())) {
-            log.warn("2Factor verification failed for mobile {}, but test bypass OTP 123456 accepted.", request.mobile());
+            log.warn("{} verification failed for mobile {}, but test bypass OTP 123456 accepted.", provider.providerName(), request.mobile());
             removeRef(key);
             return new OtpDtos.OtpResponse(true, "OTP verified successfully");
         }

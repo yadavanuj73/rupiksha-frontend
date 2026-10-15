@@ -13,7 +13,7 @@ public class OtpProviderRouter {
 
     public OtpProviderRouter(List<OtpProvider> providers, AppProperties appProperties, Environment environment) {
         String configured = appProperties.providers().otp().name() == null
-                ? "mock"
+                ? "dovesoft"
                 : appProperties.providers().otp().name().trim().toLowerCase();
         boolean productionProfile = List.of(environment.getActiveProfiles()).contains("prod");
         if (productionProfile && "mock".equals(configured)
@@ -22,12 +22,25 @@ public class OtpProviderRouter {
                     "Mock OTP provider is blocked in production profile. Set OTP_PROVIDER to a real provider.");
         }
         this.selected = providers.stream()
-                .filter(p -> p.providerName().equalsIgnoreCase(configured))
+                .filter(p -> matchesProvider(p.providerName(), configured))
                 .findFirst()
                 .orElseGet(() -> providers.stream()
                         .filter(p -> p.providerName().equalsIgnoreCase("mock"))
                         .findFirst()
                         .orElseThrow());
+    }
+
+    private static boolean matchesProvider(String providerName, String configured) {
+        if (providerName.equalsIgnoreCase(configured)) {
+            return true;
+        }
+        if ("dovesoft".equalsIgnoreCase(providerName)) {
+            return "dove".equalsIgnoreCase(configured) || "dovesoft-otp".equalsIgnoreCase(configured);
+        }
+        if ("2factor".equalsIgnoreCase(providerName)) {
+            return "2fa".equalsIgnoreCase(configured) || "twofactor".equalsIgnoreCase(configured);
+        }
+        return false;
     }
 
     public OtpProvider current() {

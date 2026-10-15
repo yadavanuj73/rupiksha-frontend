@@ -82,9 +82,9 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,https://rupiksha.in,https://www.rupiksha.in}
   providers:
     otp:
-      name: ${OTP_PROVIDER:mock}
-      base-url: ${OTP_BASE_URL:}
-      api-key: ${TWOFACTOR_API_KEY:${OTP_API_KEY:2f056347-ce8a-11f0-a6b2-0200cd936042}}
+      name: ${OTP_PROVIDER:dovesoft}
+      base-url: ${DOVESOFT_BASE_URL:${OTP_BASE_URL:https://api.dovesoft.io}}
+      api-key: ${DOVESOFT_API_KEY:${OTP_API_KEY:}}
       sender-id: ${OTP_SENDER_ID:}
     payment:
       name: ${PAYMENT_PROVIDER:mock}
@@ -141,6 +141,12 @@ app:
     tickets-enabled: ${SERVICE_TICKETS_ENABLED:true}
     recharge-enabled: ${SERVICE_RECHARGE_ENABLED:true}
     payout-enabled: ${SERVICE_PAYOUT_ENABLED:true}
+
+dovesoft:
+  base-url: ${DOVESOFT_BASE_URL:https://api.dovesoft.io}
+  api-key: ${DOVESOFT_API_KEY:${OTP_API_KEY:}}
+  timetoalive: ${DOVESOFT_TTL:${OTP_TTL_SECONDS:200}}
+  message: ${DOVESOFT_OTP_MESSAGE:Dear User Your One Tine Password is {otp}\n\nThanks You.\nRupiksha Services Private Limeted}
 
 twofactor:
   api-key: ${TWOFACTOR_API_KEY:${OTP_API_KEY:2f056347-ce8a-11f0-a6b2-0200cd936042}}
