@@ -182,4 +182,23 @@ class DoveSoftOtpProviderTest {
         assertFalse(provider.verifyOtp("9876543210", "", "success"));
         assertFalse(provider.verifyOtp("9876543210", null, "success"));
     }
+
+    @Test
+    void extractErrorMessage_ShouldExtractMsgField() {
+        Map<String, Object> body = Map.of("statusCode", 500, "msg", "Template not matched with DLT");
+        assertEquals("Template not matched with DLT", provider.extractErrorMessage(body));
+    }
+
+    @Test
+    void extractErrorMessage_ShouldExtractDescriptiveResultField() {
+        Map<String, Object> body = Map.of("result", "Invalid DLT Template ID");
+        assertEquals("Invalid DLT Template ID", provider.extractErrorMessage(body));
+    }
+
+    @Test
+    void extractErrorMessage_ShouldFallbackToFullBody_WhenGenericFail() {
+        Map<String, Object> body = Map.of("result", "fail", "otpId", "-1");
+        String error = provider.extractErrorMessage(body);
+        assertTrue(error.contains("result=fail") || error.contains("otpId=-1"));
+    }
 }

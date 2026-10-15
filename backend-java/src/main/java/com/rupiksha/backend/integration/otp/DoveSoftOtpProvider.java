@@ -1,5 +1,6 @@
 package com.rupiksha.backend.integration.otp;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rupiksha.backend.config.AppProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,10 +12,12 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -23,6 +26,7 @@ import java.util.Map;
 public class DoveSoftOtpProvider implements OtpProvider {
     private final AppProperties appProperties;
     private final RestTemplateBuilder restTemplateBuilder;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Value("${dovesoft.api-key:${DOVESOFT_API_KEY:${OTP_API_KEY:}}}")
     private String envApiKey;
@@ -78,6 +82,12 @@ public class DoveSoftOtpProvider implements OtpProvider {
         String template = (envMessage != null && !envMessage.isBlank())
                 ? envMessage.trim()
                 : DEFAULT_MESSAGE_TEMPLATE;
+
+        // Convert literal \r\n and \n sequences (often passed via env variables / text boxes) to actual line breaks
+        if (template.contains("\\n") || template.contains("\\r")) {
+            template = template.replace("\\r\\n", "\n").replace("\\n", "\n").replace("\\r", "\n");
+        }
+
         // If placeholder {otp} or {#var#} was omitted in the configured string, insert {otp} safely
         if (!template.contains("{otp}") && !template.contains("{#var#}") && !template.contains("{#Var#}")) {
             if (template.toLowerCase().contains("password is")) {
@@ -99,6 +109,31 @@ public class DoveSoftOtpProvider implements OtpProvider {
         return cleaned;
     }
 
+    public String extractErrorMessage(Map<?, ?> body) {
+        if (body == null || body.isEmpty()) {
+            return "Empty response from DoveSoft";
+        }
+
+        // Check common message/reason fields returned by SMS/OTP APIs
+        for (String field : List.of("msg", "reason", "message", "error", "description", "desc", "details", "Details", "data")) {
+            Object val = body.get(field);
+            if (val != null && !String.valueOf(val).isBlank() && !"null".equalsIgnoreCase(String.valueOf(val))) {
+                return String.valueOf(val).trim();
+            }
+        }
+
+        // If result field contains a descriptive failure reason instead of generic "fail"
+        Object result = body.get("result");
+        if (result != null) {
+            String resStr = String.valueOf(result).trim();
+            if (!resStr.isBlank() && !"fail".equalsIgnoreCase(resStr) && !"false".equalsIgnoreCase(resStr)) {
+                return resStr;
+            }
+        }
+
+        return body.toString();
+    }
+
     @Override
     public String sendOtp(String mobile) {
         String apiKey = getApiKey();
@@ -117,12 +152,13 @@ public class DoveSoftOtpProvider implements OtpProvider {
         String messageTemplate = resolveMessageTemplate();
 
         String baseUrl = getBaseUrl();
-        String encodedMessage = URLEncoder.encode(messageTemplate, StandardCharsets.UTF_8);
+        // Standard percent-encoding (replace '+' with '%20' so spaces are never misinterpreted)
+        String encodedMessage = URLEncoder.encode(messageTemplate, StandardCharsets.UTF_8).replace("+", "%20");
         String url = String.format("%s/rest/generateOtp?mobileno=%s&timetoalive=%d&message=%s",
                 baseUrl, cleanMobile, ttl, encodedMessage);
 
-        log.info("Sending OTP via DoveSoft for mobile {} (endpoint: {}/rest/generateOtp, ttl: {}s)",
-                cleanMobile, baseUrl, ttl);
+        log.info("Sending OTP via DoveSoft for mobile {} (endpoint: {}/rest/generateOtp, ttl: {}s, template: [{}])",
+                cleanMobile, baseUrl, ttl, messageTemplate);
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("key", apiKey);
@@ -144,9 +180,8 @@ public class DoveSoftOtpProvider implements OtpProvider {
             boolean isSuccess = "success".equalsIgnoreCase(result) || "success".equalsIgnoreCase(status);
 
             if (!isSuccess) {
-                String reason = body.get("reason") != null ? String.valueOf(body.get("reason"))
-                        : (body.get("message") != null ? String.valueOf(body.get("message")) : "Unknown error");
-                log.error("DoveSoft OTP generate failed for mobile {}: {}", cleanMobile, reason);
+                String reason = extractErrorMessage(body);
+                log.error("DoveSoft OTP generate failed for mobile {}: reason={}, fullBody={}", cleanMobile, reason, body);
                 throw new IllegalArgumentException("DoveSoft OTP send failed: " + reason);
             }
 
@@ -158,6 +193,16 @@ public class DoveSoftOtpProvider implements OtpProvider {
 
             log.info("DoveSoft OTP session created successfully for mobile {}, session ref: {}", cleanMobile, ref);
             return ref;
+        } catch (HttpStatusCodeException e) {
+            String responseBody = e.getResponseBodyAsString();
+            log.error("DoveSoft HTTP error for mobile {}: status={}, body={}", cleanMobile, e.getStatusCode(), responseBody);
+            String errDetail = responseBody;
+            try {
+                Map<?, ?> errMap = objectMapper.readValue(responseBody, Map.class);
+                errDetail = extractErrorMessage(errMap);
+            } catch (Exception ignored) {
+            }
+            throw new IllegalArgumentException("DoveSoft OTP send failed: " + errDetail);
         } catch (IllegalArgumentException e) {
             throw e;
         } catch (Exception e) {

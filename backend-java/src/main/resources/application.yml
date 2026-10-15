@@ -146,7 +146,7 @@ dovesoft:
   base-url: ${DOVESOFT_BASE_URL:https://api.dovesoft.io}
   api-key: ${DOVESOFT_API_KEY:${OTP_API_KEY:}}
   timetoalive: ${DOVESOFT_TTL:${OTP_TTL_SECONDS:200}}
-  message: ${DOVESOFT_OTP_MESSAGE:Dear User Your One Tine Password is {otp}\n\nThanks You.\nRupiksha Services Private Limeted}
+  message: ${DOVESOFT_OTP_MESSAGE:}
 
 twofactor:
   api-key: ${TWOFACTOR_API_KEY:${OTP_API_KEY:2f056347-ce8a-11f0-a6b2-0200cd936042}}
