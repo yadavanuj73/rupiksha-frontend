@@ -73,19 +73,19 @@ export default function Footer() {
 
     return (
         <footer style={{ background: '#0a1120', color: '#94a3b8' }} id="contact" className="w-full border-t border-slate-800">
-            {/* Main Footer Container — Reduced Height by 45% */}
-            <div className="max-w-[1440px] w-full mx-auto px-6 sm:px-8 lg:px-12 pt-8 sm:pt-10 pb-5 sm:pb-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-7 md:gap-8 lg:gap-8 xl:gap-10 items-start w-full">
+            {/* Main Footer Container — Balanced Enterprise Height */}
+            <div className="max-w-[1440px] w-full mx-auto px-6 sm:px-8 lg:px-12 pt-12 sm:pt-14 lg:pt-16 pb-8 sm:pb-9">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10 lg:gap-8 xl:gap-12 items-start w-full">
                     
                     {/* Column 1: Brand & Description */}
                     <div className="flex flex-col items-start w-full">
-                        <h3 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight mb-2 font-serif">
+                        <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-3 font-serif">
                             Rupiksha
                         </h3>
-                        <p className="text-xs sm:text-sm leading-relaxed text-slate-400 mb-3.5 text-justify">
+                        <p className="text-xs sm:text-sm leading-relaxed text-slate-400 mb-5 text-justify">
                             Transforming digital payments across India with innovative financial solutions for businesses and individuals.
                         </p>
-                        <div className="flex items-center gap-2.5 flex-wrap">
+                        <div className="flex items-center gap-3 flex-wrap">
                             {SOCIAL_LINKS.map((s, i) => (
                                 <a 
                                     key={i} 
@@ -93,7 +93,7 @@ export default function Footer() {
                                     target="_blank" 
                                     rel="noopener noreferrer" 
                                     aria-label={s.label}
-                                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-transform duration-200 hover:scale-110 shadow-md shrink-0"
+                                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-transform duration-200 hover:scale-110 shadow-md shrink-0"
                                     style={{ background: s.color }}
                                 >
                                     {s.icon}
@@ -104,10 +104,10 @@ export default function Footer() {
 
                     {/* Column 2: Quick Links */}
                     <div className="flex flex-col items-start w-full">
-                        <h5 className="text-[11px] sm:text-xs font-black tracking-widest uppercase text-white mb-2.5">
+                        <h5 className="text-xs font-black tracking-widest uppercase text-white mb-3">
                             Quick Links
                         </h5>
-                        <nav className="flex flex-col gap-1.5 w-full text-xs sm:text-sm">
+                        <nav className="flex flex-col gap-2 w-full text-xs sm:text-sm">
                             <button onClick={scrollToTop} className="text-left text-slate-400 hover:text-white transition-colors py-0.5">
                                 Home
                             </button>
@@ -131,10 +131,10 @@ export default function Footer() {
 
                     {/* Column 3: Our Services */}
                     <div className="flex flex-col items-start w-full">
-                        <h5 className="text-[11px] sm:text-xs font-black tracking-widest uppercase text-white mb-2.5">
+                        <h5 className="text-xs font-black tracking-widest uppercase text-white mb-3">
                             Our Services
                         </h5>
-                        <nav className="flex flex-col gap-1.5 w-full text-xs sm:text-sm">
+                        <nav className="flex flex-col gap-2 w-full text-xs sm:text-sm">
                             {FOOTER_SERVICES.map((s) => (
                                 <button
                                     key={s.slug}
@@ -151,13 +151,13 @@ export default function Footer() {
 
                     {/* Column 4: Contact Us */}
                     <div className="flex flex-col items-start w-full">
-                        <h5 className="text-[11px] sm:text-xs font-black tracking-widest uppercase text-white mb-2.5">
+                        <h5 className="text-xs font-black tracking-widest uppercase text-white mb-3">
                             Contact Us
                         </h5>
-                        <div className="flex flex-col gap-2.5 text-xs sm:text-sm text-slate-400 w-full">
+                        <div className="flex flex-col gap-3 text-xs sm:text-sm text-slate-400 w-full">
                             <div className="flex items-start gap-2.5">
                                 <span className="text-sm shrink-0 mt-0.5">📍</span>
-                                <p className="leading-snug text-slate-400 m-0">
+                                <p className="leading-relaxed text-slate-400 m-0">
                                     Rupiksha Service Pvt Ltd, Muzaffarpur, Bihar, 842001
                                 </p>
                             </div>
@@ -184,13 +184,13 @@ export default function Footer() {
 
                 </div>
 
-                {/* Bottom Bar — Compact & Sleek */}
-                <div className="mt-7 sm:mt-8 pt-4 border-t border-slate-800/90 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-                    <span className="text-slate-400 text-[11px] sm:text-xs">
+                {/* Bottom Bar — Well-proportioned & Elegant */}
+                <div className="mt-10 sm:mt-12 pt-5 sm:pt-6 border-t border-slate-800/90 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+                    <span className="text-slate-400 text-xs">
                         © 2026 Rupiksha. All rights reserved.
                     </span>
 
-                    <div className="flex items-center gap-4 sm:gap-6 flex-wrap justify-center font-medium text-[11px] sm:text-xs">
+                    <div className="flex items-center gap-4 sm:gap-6 flex-wrap justify-center font-medium text-xs">
                         <button
                             onClick={() => { navigate('/terms-and-conditions'); scrollToTop(); }}
                             className="text-slate-400 hover:text-white transition-colors hover:underline underline-offset-4"
