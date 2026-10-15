@@ -73,16 +73,16 @@ export default function Footer() {
 
     return (
         <footer style={{ background: '#0a1120', color: '#94a3b8' }} id="contact" className="w-full border-t border-slate-800">
-            {/* Main Footer Container — Balanced Enterprise Height */}
-            <div className="max-w-[1440px] w-full mx-auto px-6 sm:px-8 lg:px-12 pt-12 sm:pt-14 lg:pt-16 pb-8 sm:pb-9">
+            {/* Main Footer Container — Height Increased by 50% */}
+            <div className="max-w-[1440px] w-full mx-auto px-6 sm:px-8 lg:px-12 pt-18 sm:pt-20 lg:pt-24 pb-12 sm:pb-14">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10 lg:gap-8 xl:gap-12 items-start w-full">
                     
                     {/* Column 1: Brand & Description */}
                     <div className="flex flex-col items-start w-full">
-                        <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-3 font-serif">
+                        <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-3.5 font-serif">
                             Rupiksha
                         </h3>
-                        <p className="text-xs sm:text-sm leading-relaxed text-slate-400 mb-5 text-justify">
+                        <p className="text-xs sm:text-sm leading-relaxed text-slate-400 mb-6 text-justify">
                             Transforming digital payments across India with innovative financial solutions for businesses and individuals.
                         </p>
                         <div className="flex items-center gap-3 flex-wrap">
@@ -104,10 +104,10 @@ export default function Footer() {
 
                     {/* Column 2: Quick Links */}
                     <div className="flex flex-col items-start w-full">
-                        <h5 className="text-xs font-black tracking-widest uppercase text-white mb-3">
+                        <h5 className="text-xs font-black tracking-widest uppercase text-white mb-4">
                             Quick Links
                         </h5>
-                        <nav className="flex flex-col gap-2 w-full text-xs sm:text-sm">
+                        <nav className="flex flex-col gap-3 w-full text-xs sm:text-sm">
                             <button onClick={scrollToTop} className="text-left text-slate-400 hover:text-white transition-colors py-0.5">
                                 Home
                             </button>
@@ -131,10 +131,10 @@ export default function Footer() {
 
                     {/* Column 3: Our Services */}
                     <div className="flex flex-col items-start w-full">
-                        <h5 className="text-xs font-black tracking-widest uppercase text-white mb-3">
+                        <h5 className="text-xs font-black tracking-widest uppercase text-white mb-4">
                             Our Services
                         </h5>
-                        <nav className="flex flex-col gap-2 w-full text-xs sm:text-sm">
+                        <nav className="flex flex-col gap-3 w-full text-xs sm:text-sm">
                             {FOOTER_SERVICES.map((s) => (
                                 <button
                                     key={s.slug}
@@ -151,10 +151,10 @@ export default function Footer() {
 
                     {/* Column 4: Contact Us */}
                     <div className="flex flex-col items-start w-full">
-                        <h5 className="text-xs font-black tracking-widest uppercase text-white mb-3">
+                        <h5 className="text-xs font-black tracking-widest uppercase text-white mb-4">
                             Contact Us
                         </h5>
-                        <div className="flex flex-col gap-3 text-xs sm:text-sm text-slate-400 w-full">
+                        <div className="flex flex-col gap-4 text-xs sm:text-sm text-slate-400 w-full">
                             <div className="flex items-start gap-2.5">
                                 <span className="text-sm shrink-0 mt-0.5">📍</span>
                                 <p className="leading-relaxed text-slate-400 m-0">
@@ -185,7 +185,7 @@ export default function Footer() {
                 </div>
 
                 {/* Bottom Bar — Well-proportioned & Elegant */}
-                <div className="mt-10 sm:mt-12 pt-5 sm:pt-6 border-t border-slate-800/90 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+                <div className="mt-16 sm:mt-18 pt-7 sm:pt-8 border-t border-slate-800/90 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
                     <span className="text-slate-400 text-xs">
                         © 2026 Rupiksha. All rights reserved.
                     </span>
