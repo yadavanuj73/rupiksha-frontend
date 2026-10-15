@@ -47,6 +47,8 @@ public class SecurityConfig {
                 "/api/v1/user/update-profile",
                 "/api/v1/user/profile/**",
                 "/api/v1/payment/webhook/**",
+                "/api/v1/webhook/**",
+                "/webhook/**",
                 "/api/v1/aeps/status",
                 "/api/v1/recharge/callback",
                 "/api/v1/certificates/verify/**",
