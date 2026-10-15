@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ShieldCheck,
   CreditCard,
   Tag,
   CheckCircle2,
@@ -380,10 +379,6 @@ export default function IdPayment() {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold shadow-xs">
-            <ShieldCheck size={14} className="text-emerald-600" />
-            <span className="hidden sm:inline text-[11px]">256-Bit SSL</span> Secured
-          </div>
           <button
             onClick={() => navigate(getPortalLoginPath(currentRole))}
             className="text-xs font-bold text-slate-700 hover:text-blue-600 px-3 py-1.5 rounded-xl border border-slate-200 hover:border-blue-400 bg-white transition-all shadow-xs"
