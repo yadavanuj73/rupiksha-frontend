@@ -243,6 +243,7 @@ function App() {
                 <Route path="/retailer/travel" element={<Navigate to="/travel" replace />} />
                 <Route path="/utility" element={<Utility />} />
                 <Route path="/bharat-connect" element={<BharatConnect />} />
+                <Route path="/bharat-connect/:categoryId" element={<BharatConnect />} />
                 <Route path="/payout-hub" element={<PayoutHub />} />
                 <Route path="/payout" element={<Payout />} />
                 <Route path="/wallet-to-wallet" element={<WalletTransfer />} />

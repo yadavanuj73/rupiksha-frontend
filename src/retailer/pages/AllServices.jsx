@@ -7,6 +7,7 @@ import {
     Smartphone, Tv, Wallet, Wifi, Zap, Send
 } from 'lucide-react';
 import irctcLogo from '../../assets/service-logos/irctc.svg';
+import { BBPS_CATEGORIES } from '../data/bbpsCategories';
 
 const routeMap = {
     aeps_services_1: '/aeps-1',
@@ -17,6 +18,7 @@ const routeMap = {
     matm_cash: '/matm',
     payout_hub: '/payout-hub',
     dmt: '/dashboard',
+    bharat_connect: '/bharat-connect',
 };
 
 const dedupeServices = (services) => {
@@ -58,23 +60,25 @@ const SERVICE_SECTIONS = [
         key: 'bbps',
         title: 'Bharat Connect (BBPS)',
         color: 'from-violet-500 to-fuchsia-500',
-        services: dedupeServices([
-            { id: 'utility', title: 'Bill Pay', icon: FileText },
-            { id: 'utility', title: 'Loan Payments', icon: Landmark },
-            { id: 'utility', title: 'Electricity Bill', icon: Zap },
-            { id: 'utility', title: 'Gas Bill', icon: Fuel },
-            { id: 'utility', title: 'Water Bill', icon: Droplets },
-            { id: 'utility', title: 'FASTag Payments', icon: Car },
-            { id: 'utility', title: 'DTH', icon: Tv },
-            { id: 'utility', title: 'Broadband', icon: Wifi },
-            { id: 'utility', title: 'Landline Postpaid', icon: PhoneIcon },
-            { id: 'utility', title: 'Mobile Postpaid', icon: Smartphone },
-            { id: 'utility', title: 'Insurance Premium', icon: ShieldCheck },
-            { id: 'utility', title: 'Credit Card Bill', icon: CreditCard },
-            { id: 'utility', title: 'Municipal Taxes', icon: Building2 },
-            { id: 'utility', title: 'Hospital Bill', icon: HeartPulse },
-            { id: 'utility', title: 'Education Bill', icon: FileText },
-        ]),
+        services: [
+            {
+                id: 'bharat_connect',
+                title: 'Bharat Connect Hub',
+                icon: ShieldCheck,
+                gradient: 'from-blue-600 to-indigo-700',
+                isBbpsHub: true,
+                description: 'All-in-one Bharat Bill Payment System registry and payment portal',
+            },
+            ...BBPS_CATEGORIES.map((cat) => ({
+                id: 'bbps_' + cat.id,
+                title: cat.name,
+                icon: cat.icon,
+                gradient: cat.gradient,
+                categoryId: cat.id,
+                isBbps: true,
+                description: cat.description,
+            })),
+        ],
     },
     {
         key: 'utility',
@@ -96,14 +100,6 @@ const SERVICE_SECTIONS = [
     },
 ];
 
-function PhoneIcon(props) {
-    return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.2 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.8.62 2.66a2 2 0 0 1-.45 2.11L8 9.77a16 16 0 0 0 6.23 6.23l1.28-1.28a2 2 0 0 1 2.11-.45c.86.29 1.76.5 2.66.62A2 2 0 0 1 22 16.92z" />
-        </svg>
-    );
-}
-
 const serviceColorMap = {
     'AEPS 1': 'from-blue-600 to-indigo-700',
     'AEPS 2': 'from-sky-500 to-blue-700',
@@ -115,21 +111,7 @@ const serviceColorMap = {
     'Hotel Booking': 'from-emerald-500 to-teal-700',
     'Bus Ticketing': 'from-cyan-500 to-blue-600',
     'Air Ticketing': 'from-indigo-500 to-purple-600',
-    'Bill Pay': 'from-blue-500 to-indigo-600',
-    'Loan Payments': 'from-emerald-600 to-teal-700',
-    'Electricity Bill': 'from-amber-400 to-amber-600',
-    'Gas Bill': 'from-orange-500 to-red-600',
-    'Water Bill': 'from-cyan-400 to-blue-600',
-    'FASTag Payments': 'from-purple-500 to-indigo-600',
-    'DTH': 'from-pink-500 to-rose-600',
-    'Broadband': 'from-teal-500 to-emerald-600',
-    'Landline Postpaid': 'from-blue-600 to-slate-700',
-    'Mobile Postpaid': 'from-violet-600 to-purple-700',
-    'Insurance Premium': 'from-emerald-500 to-green-700',
-    'Credit Card Bill': 'from-amber-500 to-yellow-600',
-    'Municipal Taxes': 'from-indigo-600 to-blue-800',
-    'Hospital Bill': 'from-rose-500 to-red-600',
-    'Education Bill': 'from-blue-600 to-indigo-700',
+    'Bharat Connect Hub': 'from-blue-600 to-indigo-700',
     'Mobile Recharge': 'from-blue-500 to-indigo-600',
     'DTH Recharge': 'from-fuchsia-500 to-pink-600',
     'Collection': 'from-emerald-600 to-teal-700',
@@ -153,7 +135,7 @@ const ServiceIcon = ({ service }) => {
     }
 
     const Icon = service.icon || Wallet;
-    const gradient = serviceColorMap[service.title] || 'from-indigo-500 to-blue-600';
+    const gradient = service.gradient || serviceColorMap[service.title] || 'from-indigo-500 to-blue-600';
     const shadowColor = gradient.split(' ')[0].replace('from-', '');
     return (
         <div className={`relative z-10 h-14 w-14 rounded-2xl bg-gradient-to-br ${gradient} text-white shadow-lg shadow-${shadowColor}/25 flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
@@ -163,21 +145,20 @@ const ServiceIcon = ({ service }) => {
 };
 
 const ServiceCard = ({ service, readOnly, onClick, index }) => {
-    const gradient = serviceColorMap[service.title] || 'from-indigo-500 to-blue-600';
+    const gradient = service.gradient || serviceColorMap[service.title] || 'from-indigo-500 to-blue-600';
     
     return (
         <motion.button
             type="button"
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: index * 0.02 }}
+            transition={{ duration: 0.35, delay: Math.min(index * 0.02, 0.35) }}
             whileHover={{ y: -6, scale: 1.02 }}
             whileTap={!readOnly ? { scale: 0.96 } : { scale: 0.99 }}
             onClick={onClick}
-            className="group relative overflow-hidden text-left rounded-3xl border border-slate-200/80 p-5 bg-white/95 backdrop-blur-md shadow-[0_10px_30px_rgba(15,23,42,0.06)] hover:border-indigo-300 hover:shadow-[0_20px_40px_rgba(79,70,229,0.16)] transition-all duration-300 cursor-pointer"
+            className="group relative overflow-hidden text-left rounded-3xl border border-slate-200/80 p-5 bg-white/95 backdrop-blur-md shadow-[0_10px_30px_rgba(15,23,42,0.06)] hover:border-indigo-300 hover:shadow-[0_20px_40px_rgba(79,70,229,0.16)] transition-all duration-300 cursor-pointer flex flex-col justify-between"
         >
             {/* BUTTON BUBBLE EFFECT - Animated background circles & hover liquid fill */}
-            {/* Primary Expanding Liquid Bubble Fill on Hover */}
             <div className={`pointer-events-none absolute -bottom-12 -right-12 w-44 h-44 rounded-full bg-gradient-to-tr ${gradient} opacity-0 group-hover:opacity-15 group-hover:scale-[3.2] transition-all duration-700 ease-out blur-xl`} />
 
             {/* Floating Bubble Particles */}
@@ -200,27 +181,31 @@ const ServiceCard = ({ service, readOnly, onClick, index }) => {
             {/* Interactive Bubble Ring Glow */}
             <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-indigo-500/0 group-hover:ring-indigo-500/30 transition-all duration-500" />
 
-            <div className="relative z-10 flex items-start justify-between gap-3">
-                <ServiceIcon service={service} />
-                <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full backdrop-blur-sm shadow-sm border ${
-                    readOnly
-                        ? 'bg-blue-50 text-blue-700 border-blue-200/60'
-                        : 'bg-emerald-50/90 text-emerald-700 border-emerald-200/50'
-                }`}>
-                    {readOnly ? 'View only' : 'Active'}
-                </span>
-            </div>
+            <div>
+                <div className="relative z-10 flex items-start justify-between gap-3">
+                    <ServiceIcon service={service} />
+                    <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full backdrop-blur-sm shadow-sm border ${
+                        readOnly
+                            ? 'bg-blue-50 text-blue-700 border-blue-200/60'
+                            : (service.isBbps || service.isBbpsHub)
+                                ? 'bg-blue-50/90 text-blue-700 border-blue-200/60'
+                                : 'bg-emerald-50/90 text-emerald-700 border-emerald-200/50'
+                    }`}>
+                        {readOnly ? 'View only' : (service.isBbps || service.isBbpsHub) ? 'BBPS' : 'Active'}
+                    </span>
+                </div>
 
-            <h3 className="relative z-10 mt-4 text-[13.5px] font-extrabold text-slate-800 group-hover:text-indigo-950 transition-colors leading-snug min-h-[40px]">
-                {service.title}
-            </h3>
+                <h3 className="relative z-10 mt-4 text-[13.5px] font-extrabold text-slate-800 group-hover:text-indigo-950 transition-colors leading-snug min-h-[40px]">
+                    {service.title}
+                </h3>
+            </div>
 
             <div className={`relative z-10 mt-4 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider transition-colors ${
                 readOnly
                     ? 'text-blue-600 group-hover:text-blue-700'
                     : 'text-indigo-600 group-hover:text-indigo-700'
             }`}>
-                {readOnly ? 'View only' : 'Open service'}
+                {readOnly ? 'View only' : service.isBbps ? 'Pay bill' : 'Open service'}
                 <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1.5" />
             </div>
         </motion.button>
@@ -244,9 +229,17 @@ const AllServices = ({ readOnly = false, embedded = false }) => {
         [filteredSections]
     );
 
-    const openService = (id) => {
+    const openService = (service) => {
         if (readOnly) return;
-        const route = routeMap[id];
+        if (service.isBbpsHub) {
+            navigate('/bharat-connect');
+            return;
+        }
+        if (service.isBbps && service.categoryId) {
+            navigate(`/bharat-connect/${service.categoryId}`);
+            return;
+        }
+        const route = routeMap[service.id];
         if (route) navigate(route);
     };
 
@@ -271,7 +264,7 @@ const AllServices = ({ readOnly = false, embedded = false }) => {
                                     service={service}
                                     index={index}
                                     readOnly={readOnly}
-                                    onClick={() => openService(service.id)}
+                                    onClick={() => openService(service)}
                                 />
                             ))}
                         </div>
