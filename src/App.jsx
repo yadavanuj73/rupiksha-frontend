@@ -50,6 +50,7 @@ const AepsFingpayComingSoon = lazy(() => import('./retailer/pages/AepsFingpayCom
 const CMS = lazy(() => import('./retailer/pages/CMS'));
 const AllServices = lazy(() => import('./retailer/pages/AllServices'));
 const Reports = lazy(() => import('./retailer/pages/Reports'));
+const BbpsHistory = lazy(() => import('./retailer/pages/BbpsHistory'));
 const RetailerCommission = lazy(() => import('./retailer/pages/Commission'));
 const MATM = lazy(() => import('./retailer/pages/MATM'));
 const AddMoneyComponent = lazy(() => import('./retailer/components/banking/AddMoney'));
@@ -266,6 +267,8 @@ function App() {
                 <Route path="/loan_status" element={<Loans />} />
                 <Route path="/support" element={<RetailerSupport />} />
                 <Route path="/reports" element={<Reports />} />
+                <Route path="/bbps-history" element={<BbpsHistory />} />
+                <Route path="/reports/bbps" element={<BbpsHistory />} />
                 <Route path="/reports/sale-report" element={<SaleReport />} />
                 <Route path="/reports/consolidated-ledger" element={<ConsolidatedLedger />} />
                 <Route path="/reports/daily-ledger" element={<DailyLedger />} />

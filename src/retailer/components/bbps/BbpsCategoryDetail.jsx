@@ -6,6 +6,7 @@ import {
     Building2,
     Lock
 } from 'lucide-react';
+import MobilePrepaidFlow from './MobilePrepaidFlow';
 
 const BbpsCategoryDetail = ({ category, onBack }) => {
     const [billerSearch, setBillerSearch] = useState('');
@@ -13,6 +14,10 @@ const BbpsCategoryDetail = ({ category, onBack }) => {
     const [customerMobile, setCustomerMobile] = useState('');
 
     if (!category) return null;
+
+    if (category.id === 'mobile-prepaid') {
+        return <MobilePrepaidFlow onBack={onBack} />;
+    }
 
     const Icon = category.icon;
     const gradient = category.gradient || 'from-indigo-500 to-blue-600';

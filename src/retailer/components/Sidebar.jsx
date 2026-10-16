@@ -158,6 +158,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
             icon: History,
             hasSubmenu: true,
             subItems: [
+                { id: 'bbps', label: 'BBPS' },
                 { id: 'aeps_1', label: 'Aeps 1' },
                 { id: 'aeps_2', label: 'Aeps 2' },
                 { id: 'payout_hub', label: 'Payout Hub' },

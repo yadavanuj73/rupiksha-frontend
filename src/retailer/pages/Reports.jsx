@@ -83,6 +83,10 @@ const Reports = () => {
         return <Navigate to="/transactions/wallet-to-wallet" replace />;
     }
 
+    if (reportType === 'bbps' || reportType === 'bbps_bill_pay') {
+        return <Navigate to="/bbps-history" replace />;
+    }
+
     const initialSummary = {
         totalTransactions: 0,
         successCount: 0,

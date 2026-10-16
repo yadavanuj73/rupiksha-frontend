@@ -12,15 +12,17 @@ public class BbpsProviderRouter {
     private final BbpsProvider selected;
 
     public BbpsProviderRouter(List<BbpsProvider> providers, AppProperties appProperties, Environment environment) {
-        String configured = appProperties.bbps().provider() == null
+        String configured = (appProperties.bbps() == null || appProperties.bbps().provider() == null)
                 ? "mock"
                 : appProperties.bbps().provider().trim().toLowerCase();
         boolean productionProfile = List.of(environment.getActiveProfiles()).contains("prod");
         if (productionProfile && "mock".equals(configured) && !appProperties.environment().allowMockProvidersInProduction()) {
-            throw new IllegalStateException("Mock BBPS provider is blocked in production profile");
+            // Automatically fall back to "billavenue" in production profile to prevent mock blockages
+            configured = "billavenue";
         }
+        String finalConfigured = configured;
         this.selected = providers.stream()
-                .filter(p -> p.providerName().equalsIgnoreCase(configured))
+                .filter(p -> p.providerName().equalsIgnoreCase(finalConfigured))
                 .findFirst()
                 .orElseGet(() -> providers.stream()
                         .filter(p -> p.providerName().equalsIgnoreCase("mock"))

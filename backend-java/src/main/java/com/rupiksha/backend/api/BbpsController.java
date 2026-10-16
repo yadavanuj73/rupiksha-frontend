@@ -1,33 +1,158 @@
 package com.rupiksha.backend.api;
 
+import com.rupiksha.backend.api.dto.BbpsDtos;
 import com.rupiksha.backend.api.dto.RetailerServiceDtos;
 import com.rupiksha.backend.api.dto.WalletDtos;
 import com.rupiksha.backend.config.AppProperties;
-import com.rupiksha.backend.domain.Txn;
 import com.rupiksha.backend.domain.TransactionStatus;
+import com.rupiksha.backend.domain.Txn;
 import com.rupiksha.backend.repository.TxnRepository;
 import com.rupiksha.backend.repository.UserRepository;
 import com.rupiksha.backend.security.JwtPrincipal;
+import com.rupiksha.backend.service.BbpsService;
 import com.rupiksha.backend.service.WalletService;
 import com.rupiksha.backend.service.impl.BbpsProviderRouter;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/bbps")
 @RequiredArgsConstructor
 public class BbpsController {
+
+    private final BbpsService bbpsService;
     private final UserRepository userRepository;
     private final TxnRepository txnRepository;
     private final WalletService walletService;
     private final BbpsProviderRouter providerRouter;
     private final AppProperties appProperties;
+
+    /**
+     * Retrieves active mobile prepaid operators and telecom circles.
+     */
+    @GetMapping("/operators")
+    public List<BbpsDtos.OperatorInfo> getOperators() {
+        return bbpsService.getMobilePrepaidOperators();
+    }
+
+    /**
+     * Retrieves recharge plans for specified operator billerId and circle.
+     */
+    @GetMapping("/plans")
+    public List<BbpsDtos.PlanInfo> getPlans(
+            @RequestParam String billerId,
+            @RequestParam(required = false) String circle
+    ) {
+        return bbpsService.getRechargePlans(billerId, circle);
+    }
+
+    /**
+     * Executes server-authoritative Mobile Prepaid Recharge with wallet debit,
+     * BillAvenue integration, and idempotent failure refund.
+     */
+    @PostMapping("/recharge")
+    public ResponseEntity<BbpsDtos.RechargeResponse> recharge(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKeyHeader,
+            @Valid @RequestBody BbpsDtos.RechargeRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        if (principal == null) {
+            throw new IllegalArgumentException("Unauthorized");
+        }
+        UUID userId = UUID.fromString(principal.userId());
+
+        // Respect header idempotency key if body idempotencyKey is not provided
+        if ((request.getIdempotencyKey() == null || request.getIdempotencyKey().isBlank())
+                && idempotencyKeyHeader != null && !idempotencyKeyHeader.isBlank()) {
+            request.setIdempotencyKey(idempotencyKeyHeader.trim());
+        }
+
+        String clientIp = resolveClientIp(servletRequest);
+        BbpsDtos.RechargeResponse response = bbpsService.recharge(userId, request, clientIp);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Status of a BBPS transaction.
+     */
+    @GetMapping("/status/{txnId}")
+    public ResponseEntity<BbpsDtos.RechargeResponse> status(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @PathVariable String txnId
+    ) {
+        if (principal == null) {
+            throw new IllegalArgumentException("Unauthorized");
+        }
+        UUID userId = UUID.fromString(principal.userId());
+        BbpsDtos.RechargeResponse response = bbpsService.checkStatus(userId, txnId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Manual reconciliation of pending transaction against BillAvenue status API.
+     */
+    @PostMapping("/reconcile/{txnId}")
+    public ResponseEntity<BbpsDtos.RechargeResponse> reconcile(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @PathVariable String txnId
+    ) {
+        if (principal == null) {
+            throw new IllegalArgumentException("Unauthorized");
+        }
+        UUID userId = UUID.fromString(principal.userId());
+        BbpsDtos.RechargeResponse response = bbpsService.reconcile(userId, txnId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Dedicated BBPS Transaction History with pagination, filters, and summary metrics.
+     */
+    @GetMapping("/history")
+    public ResponseEntity<BbpsDtos.HistoryResponse> getHistory(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant endDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "15") int size
+    ) {
+        if (principal == null) {
+            throw new IllegalArgumentException("Unauthorized");
+        }
+        UUID userId = UUID.fromString(principal.userId());
+        Pageable pageable = PageRequest.of(page, Math.min(size, 100), Sort.by(Sort.Direction.DESC, "createdAt"));
+        BbpsDtos.HistoryResponse response = bbpsService.getHistory(userId, status, search, startDate, endDate, pageable);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * BillAvenue push notification/refund callback endpoint.
+     */
+    @PostMapping("/callback")
+    public ResponseEntity<Map<String, Object>> handleCallback(@RequestBody(required = false) String body) {
+        log.info("Received BillAvenue callback payload");
+        bbpsService.handlePushNotification(body);
+        return ResponseEntity.ok(Map.of("status", "SUCCESS", "message", "Callback received"));
+    }
+
+    // ── LEGACY ENDPOINTS PRESERVED ──────────────────────────────────────────
 
     @PostMapping("/fetch")
     public RetailerServiceDtos.BillFetchResponse fetch(
@@ -76,22 +201,27 @@ public class BbpsController {
         );
     }
 
-    @GetMapping("/status/{txnId}")
-    public Map<String, Object> status(@AuthenticationPrincipal JwtPrincipal principal, @PathVariable String txnId) {
-        if (principal == null) {
-            throw new IllegalArgumentException("Unauthorized");
-        }
-        Txn txn = txnRepository.findById(UUID.fromString(txnId))
-                .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
-        if (!txn.getUser().getId().toString().equalsIgnoreCase(principal.userId())) {
-            throw new IllegalArgumentException("Forbidden");
-        }
-        return Map.of("success", true, "txnId", txn.getId().toString(), "status", txn.getStatus().name());
-    }
-
     private void validateUser(JwtPrincipal principal, String userId) {
         if (principal == null || !principal.userId().toString().equals(userId)) {
             throw new IllegalArgumentException("Invalid user context");
         }
+    }
+
+    private String resolveClientIp(HttpServletRequest request) {
+        if (request == null) return "127.0.0.1";
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isBlank() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("Proxy-Client-IP");
+        }
+        if (ip == null || ip.isBlank() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("WL-Proxy-Client-IP");
+        }
+        if (ip == null || ip.isBlank() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+        if (ip != null && ip.contains(",")) {
+            ip = ip.split(",")[0].trim();
+        }
+        return ip != null && !ip.isBlank() ? ip : "127.0.0.1";
     }
 }

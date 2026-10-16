@@ -244,6 +244,48 @@ export const walletTransferService = {
   },
 };
 
+// ─── BBPS (BHARAT CONNECT) ───────────────────────────────────────────────────
+export const bbpsService = {
+  getOperators: () => apiFetch("/bbps/operators"),
+  getPlans: (billerId, circle) =>
+    apiFetch(`/bbps/plans?billerId=${encodeURIComponent(billerId)}&circle=${encodeURIComponent(circle || '')}`),
+  recharge: (data) => {
+    const idempotencyKey = data.idempotencyKey || `BBPS-${Date.now()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+    return apiFetch("/bbps/recharge", {
+      method: "POST",
+      headers: {
+        "X-Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify({ ...data, idempotencyKey }),
+    });
+  },
+  getStatus: (txnId) => apiFetch(`/bbps/status/${encodeURIComponent(txnId)}`),
+  status: (txnId) => apiFetch(`/bbps/status/${encodeURIComponent(txnId)}`),
+  reconcileStatus: (txnId) =>
+    apiFetch(`/bbps/reconcile/${encodeURIComponent(txnId)}`, {
+      method: "POST",
+    }),
+  getHistory: (params = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') {
+        query.append(k, v);
+      }
+    });
+    return apiFetch(`/bbps/history?${query.toString()}`);
+  },
+  fetchBill: (payload) =>
+    apiFetch("/bbps/fetch", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  payBill: (payload) =>
+    apiFetch("/bbps/pay", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+};
+
 // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
 export const transactionService = {
   getAll: (filters = {}) => {
@@ -525,22 +567,6 @@ export const payoutService = {
   // Health check
   health: () =>
     apiFetch("/payout/health"),
-};
-
-
-// ─── BBPS / Bharat Connect ─────────────────────────────────────────────────────
-export const bbpsService = {
-  fetchBill: (payload) =>
-    apiFetch("/bbps/fetch", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-  payBill: (payload) =>
-    apiFetch("/bbps/pay", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-  status: (txnId) => apiFetch(`/bbps/status/${encodeURIComponent(txnId)}`),
 };
 
 // ─── Tickets / Support ─────────────────────────────────────────────────────────

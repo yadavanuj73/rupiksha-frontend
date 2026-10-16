@@ -130,10 +130,20 @@ app:
         operatorCode: "VDF"
         commission: 3.80
   bbps:
-    provider: ${BBPS_PROVIDER:mock}
-    base-url: ${BBPS_BASE_URL:}
+    provider: ${BBPS_PROVIDER:billavenue}
+    base-url: ${BBPS_BASE_URL:https://stgapi.billavenue.com/billpay}
     api-key: ${BBPS_API_KEY:}
     api-secret: ${BBPS_API_SECRET:}
+
+billavenue:
+  base-url: ${BILLAVENUE_BASE_URL:https://stgapi.billavenue.com/billpay}
+  access-code: ${BILLAVENUE_ACCESS_CODE:}
+  working-key: ${BILLAVENUE_WORKING_KEY:}
+  institute-id: ${BILLAVENUE_INSTITUTE_ID:CC01}
+  agent-id: ${BILLAVENUE_AGENT_ID:CC01BP66AGTU00000001}
+  aes-iv: ${BILLAVENUE_AES_IV:}
+  timeout-seconds: ${BILLAVENUE_TIMEOUT_SECONDS:60}
+
   services:
     # Note: Legacy AEPS provider config removed. Using Levin AEPS only.
     aeps-enabled: ${SERVICE_AEPS_ENABLED:true}

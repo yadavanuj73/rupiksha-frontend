@@ -52,6 +52,7 @@ const RetailerLayout = () => {
 
         if (path === '/wallet-to-wallet') return 'wallet_transfer';
         if (path === '/transactions/wallet-to-wallet') return 'wallet_to_wallet';
+        if (path === '/bbps-history' || path === '/reports/bbps' || reportType === 'bbps') return 'bbps';
         if (path.startsWith('/reports')) {
             return reportType || 'reports';
         }
@@ -153,6 +154,12 @@ const RetailerLayout = () => {
 
         if (tab === 'wallet_to_wallet') {
             navigate('/transactions/wallet-to-wallet');
+            setShowMobileSidebar(false);
+            return;
+        }
+
+        if (tab === 'bbps' || tab === 'bbps_history') {
+            navigate('/bbps-history');
             setShowMobileSidebar(false);
             return;
         }
