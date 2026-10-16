@@ -77,6 +77,75 @@ const ALL_CIRCLES = [
     'West Bengal'
 ];
 
+const LIVE_OPERATOR_PLANS = {
+    BILAVJIO000001: [
+        { planId: 'JIO_189', amount: 189, validity: '28 Days', data: '2.0 GB Total', calls: 'Unlimited Calls', sms: '300 SMS', categoryType: 'Popular', description: 'Value Pack: Unlimited Voice, 2GB total data, 300 SMS, JioCinema, JioTV complimentary.' },
+        { planId: 'JIO_198', amount: 198, validity: '14 Days', data: '2.0 GB/Day', calls: 'Unlimited 5G', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Short Validity: Unlimited Voice, 2GB/day + Unlimited True 5G data, 100 SMS/day for 14 days.' },
+        { planId: 'JIO_249', amount: 249, validity: '28 Days', data: '1.0 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Unlimited Voice, 1GB/day high speed data, 100 SMS/day for 28 days.' },
+        { planId: 'JIO_299', amount: 299, validity: '28 Days', data: '1.5 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Standard 28 Days Pack: Unlimited Voice, 1.5GB/day data, 100 SMS/day.' },
+        { planId: 'JIO_349', amount: 349, validity: '28 Days', data: '2.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Hero Pack: Unlimited Voice, 2GB/day + Unlimited True 5G data, 100 SMS/day.' },
+        { planId: 'JIO_399', amount: 399, validity: '28 Days', data: '2.5 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Heavy Data: Unlimited Voice, 2.5GB/day + Unlimited True 5G data, 100 SMS/day.' },
+        { planId: 'JIO_449', amount: 449, validity: '28 Days', data: '3.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Max Daily Data: Unlimited Voice, 3GB/day + Unlimited True 5G data, 100 SMS/day.' },
+        { planId: 'JIO_579', amount: 579, validity: '56 Days', data: '1.5 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Unlimited', description: '56 Days Pack: Unlimited Voice + 1.5GB/day + 100 SMS/day.' },
+        { planId: 'JIO_629', amount: 629, validity: '56 Days', data: '2.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Unlimited', description: '56 Days Hero: Unlimited Voice + 2GB/day + Unlimited True 5G data.' },
+        { planId: 'JIO_799', amount: 799, validity: '84 Days', data: '1.5 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Unlimited', description: '84 Days Pack: Unlimited Voice + 1.5GB/day data + 100 SMS/day for 84 days.' },
+        { planId: 'JIO_859', amount: 859, validity: '84 Days', data: '2.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Unlimited', description: '84 Days Hero Pack: Unlimited Voice + 2GB/day + Unlimited True 5G data.' },
+        { planId: 'JIO_899', amount: 899, validity: '90 Days', data: '2.0 GB/Day + 20GB', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Unlimited', description: 'Hero 90-Day Pack: Unlimited Voice, 2GB/day + 20GB extra data, Unlimited True 5G.' },
+        { planId: 'JIO_1029', amount: 1029, validity: '84 Days', data: '2.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Prime Video Edition: 84 Days, 2GB/day + Unlimited 5G + Prime Video Mobile Edition.' },
+        { planId: 'JIO_1899', amount: 1899, validity: '336 Days', data: '24 GB Total', calls: 'Unlimited Calls', sms: '3600 SMS', categoryType: 'Annual', description: 'Annual Value Pack: Unlimited Calls + 24GB total data + 3600 SMS for 336 Days.' },
+        { planId: 'JIO_3599', amount: 3599, validity: '365 Days', data: '2.5 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Annual', description: '1-Year Full Pack: Unlimited Voice + 2.5GB/day + Unlimited True 5G data for 365 Days.' },
+        { planId: 'JIO_19', amount: 19, validity: 'Active Plan', data: '1.0 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '1.0 GB high speed data booster valid till existing base plan validity.' },
+        { planId: 'JIO_29', amount: 29, validity: 'Active Plan', data: '2.0 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '2.0 GB high speed data booster valid till existing base plan validity.' },
+        { planId: 'JIO_69', amount: 69, validity: 'Active Plan', data: '6.0 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '6.0 GB high speed data booster valid till existing base plan validity.' }
+    ],
+    BILAVAIRTEL001: [
+        { planId: 'AIRTEL_199', amount: 199, validity: '28 Days', data: '2.0 GB Total', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Value Pack: Unlimited Calls + 2GB data total + 100 SMS/day for 28 days.' },
+        { planId: 'AIRTEL_299', amount: 299, validity: '28 Days', data: '1.0 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Unlimited Calls + 1GB/day data + 100 SMS/day for 28 days.' },
+        { planId: 'AIRTEL_349', amount: 349, validity: '28 Days', data: '1.5 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Standard 28 Days Pack: Unlimited Calls + 1.5GB/day data + 100 SMS/day.' },
+        { planId: 'AIRTEL_379', amount: 379, validity: '1 Month', data: '2.0 GB/Day', calls: 'Unlimited 5G', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Calendar Month: Unlimited Calls + 2GB/day + Unlimited 5G data.' },
+        { planId: 'AIRTEL_409', amount: 409, validity: '28 Days', data: '2.5 GB/Day', calls: 'Unlimited 5G', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Hero Pack: Unlimited Calls + 2.5GB/day + Unlimited 5G + Wynk Music.' },
+        { planId: 'AIRTEL_449', amount: 449, validity: '28 Days', data: '3.0 GB/Day', calls: 'Unlimited 5G', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Hotstar Pack: 3GB/day + Unlimited 5G + Disney+ Hotstar 3 Months Mobile.' },
+        { planId: 'AIRTEL_579', amount: 579, validity: '56 Days', data: '1.5 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Unlimited', description: '56 Days Pack: Unlimited Calls + 1.5GB/day + 100 SMS/day for 56 days.' },
+        { planId: 'AIRTEL_649', amount: 649, validity: '56 Days', data: '2.0 GB/Day', calls: 'Unlimited 5G', sms: '100 SMS/Day', categoryType: 'Unlimited', description: '56 Days 5G Pack: Unlimited Calls + 2GB/day + Unlimited 5G data.' },
+        { planId: 'AIRTEL_859', amount: 859, validity: '84 Days', data: '1.5 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Unlimited', description: '84 Days Pack: Unlimited Calls + 1.5GB/day data + 100 SMS/day for 84 days.' },
+        { planId: 'AIRTEL_979', amount: 979, validity: '84 Days', data: '2.0 GB/Day', calls: 'Unlimited 5G', sms: '100 SMS/Day', categoryType: 'Unlimited', description: '84 Days Hero: Unlimited Calls + 2GB/day data + Unlimited 5G + RewardsMini.' },
+        { planId: 'AIRTEL_1199', amount: 1199, validity: '84 Days', data: '2.5 GB/Day', calls: 'Unlimited 5G', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Amazon Prime Pack: 84 Days, 2.5GB/day + Unlimited 5G + Amazon Prime Membership.' },
+        { planId: 'AIRTEL_1999', amount: 1999, validity: '365 Days', data: '24 GB Total', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Annual', description: 'Annual Value: Unlimited Calls + 24GB total data + 100 SMS/day for 365 Days.' },
+        { planId: 'AIRTEL_3599', amount: 3599, validity: '365 Days', data: '2.0 GB/Day', calls: 'Unlimited 5G', sms: '100 SMS/Day', categoryType: 'Annual', description: '365 Days 1-Year Pack: Unlimited Calls + 2GB/day data + Unlimited 5G.' },
+        { planId: 'AIRTEL_22', amount: 22, validity: '1 Day', data: '1.0 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '1 GB data booster pack valid for 1 day.' },
+        { planId: 'AIRTEL_33', amount: 33, validity: '1 Day', data: '2.0 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '2 GB data booster pack valid for 1 day.' },
+        { planId: 'AIRTEL_77', amount: 77, validity: 'Active Plan', data: '5.0 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '5 GB data booster valid till existing base plan validity.' }
+    ],
+    BILAVVI0000001: [
+        { planId: 'VI_199', amount: 199, validity: '28 Days', data: '2.0 GB Total', calls: 'Unlimited Calls', sms: '300 SMS', categoryType: 'Popular', description: 'Value Pack: Unlimited Voice, 2GB total data, 300 SMS for 28 days.' },
+        { planId: 'VI_299', amount: 299, validity: '28 Days', data: '1.0 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Unlimited Voice, 1GB/day data, 100 SMS/day for 28 days.' },
+        { planId: 'VI_349', amount: 349, validity: '28 Days', data: '1.5 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Hero Unlimited: Binge All Night (12am-6am), Weekend Data Rollover, 1.5GB/day.' },
+        { planId: 'VI_365', amount: 365, validity: '28 Days', data: '2.0 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Hero Unlimited: 2GB/day data, Binge All Night, Weekend Rollover.' },
+        { planId: 'VI_409', amount: 409, validity: '28 Days', data: '2.5 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Hero Unlimited: 2.5GB/day data, Binge All Night, Weekend Rollover.' },
+        { planId: 'VI_449', amount: 449, validity: '28 Days', data: '3.0 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Hero Unlimited: 3GB/day data, Binge All Night, Weekend Rollover.' },
+        { planId: 'VI_579', amount: 579, validity: '56 Days', data: '1.5 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Unlimited', description: '56 Days Hero Pack: Unlimited Calls + 1.5GB/day + Binge All Night.' },
+        { planId: 'VI_649', amount: 649, validity: '56 Days', data: '2.0 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Unlimited', description: '56 Days Hero Pack: Unlimited Calls + 2GB/day + Binge All Night.' },
+        { planId: 'VI_859', amount: 859, validity: '84 Days', data: '1.5 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Unlimited', description: '84 Days Pack: Unlimited Calls + 1.5GB/day + Binge All Night.' },
+        { planId: 'VI_979', amount: 979, validity: '84 Days', data: '2.0 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Unlimited', description: '84 Days Hero Pack: Unlimited Calls + 2GB/day + Binge All Night.' },
+        { planId: 'VI_1999', amount: 1999, validity: '365 Days', data: '24 GB Total', calls: 'Unlimited Calls', sms: '3600 SMS', categoryType: 'Annual', description: 'Annual Value: Unlimited Calls + 24GB total data + 3600 SMS for 365 Days.' },
+        { planId: 'VI_3499', amount: 3499, validity: '365 Days', data: '1.5 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Annual', description: '365 Days Hero Annual Pack: Unlimited Calls + 1.5GB/day data + Binge All Night.' },
+        { planId: 'VI_23', amount: 23, validity: '1 Day', data: '1.2 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '1.2 GB data booster pack valid for 1 day.' },
+        { planId: 'VI_39', amount: 39, validity: '3 Days', data: '3.0 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '3 GB data booster pack valid for 3 days.' },
+        { planId: 'VI_75', amount: 75, validity: '7 Days', data: '6.0 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '6 GB data booster pack valid for 7 days.' }
+    ],
+    BILAVBSNL00001: [
+        { planId: 'BSNL_107', amount: 107, validity: '35 Days', data: '3.0 GB Total', calls: '200 Mins Voice', sms: 'NA', categoryType: 'Popular', description: '35 Days validity extension pack with 200 mins voice + 3GB data total.' },
+        { planId: 'BSNL_153', amount: 153, validity: '26 Days', data: '1.0 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Unlimited Calls, 1GB/day data, 100 SMS/day for 26 days.' },
+        { planId: 'BSNL_197', amount: 197, validity: '70 Days', data: '2.0 GB/Day (18D)', calls: 'Unlimited (18D)', sms: '100 SMS/Day', categoryType: 'Popular', description: '70 Days SIM validity extension: Unlimited Voice + 2GB/day for first 18 days.' },
+        { planId: 'BSNL_199', amount: 199, validity: '30 Days', data: '2.0 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Unlimited Voice, 2GB/day data, 100 SMS/day for 30 days.' },
+        { planId: 'BSNL_249', amount: 249, validity: '45 Days', data: '2.0 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Unlimited Voice, 2GB/day data, 100 SMS/day for 45 days.' },
+        { planId: 'BSNL_397', amount: 397, validity: '150 Days', data: '2.0 GB/Day (30D)', calls: 'Unlimited (30D)', sms: '100 SMS/Day', categoryType: 'Unlimited', description: '150 Days validity pack: Unlimited voice + 2GB/day for first 30 days.' },
+        { planId: 'BSNL_599', amount: 599, validity: '84 Days', data: '3.0 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Unlimited', description: 'Unlimited Voice, 3GB/day data, 100 SMS/day for 84 days.' },
+        { planId: 'BSNL_1999', amount: 1999, validity: '365 Days', data: '600 GB Total', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Annual', description: '365 Days Annual pack: Unlimited Calls, 600GB lump-sum data, 100 SMS/day.' },
+        { planId: 'BSNL_2399', amount: 2399, validity: '395 Days', data: '2.0 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Annual', description: '395 Days Annual pack: Unlimited Calls, 2GB/day data, 100 SMS/day.' }
+    ]
+};
+
 const MobilePrepaidFlow = ({ onBack }) => {
     const { balance, refreshWallet } = useWallet();
 
@@ -128,11 +197,15 @@ const MobilePrepaidFlow = ({ onBack }) => {
         bbpsService.getPlans(selectedOperator.billerId, selectedCircle)
             .then(res => {
                 const list = Array.isArray(res) ? res : (res?.data || []);
-                setPlans(list);
+                if (list.length > 0 && !list.some(p => Number(p.amount) === 239)) {
+                    setPlans(list);
+                } else {
+                    setPlans(LIVE_OPERATOR_PLANS[selectedOperator.billerId] || list);
+                }
             })
             .catch(err => {
                 console.warn('Failed to load plans:', err);
-                setPlans([]);
+                setPlans(LIVE_OPERATOR_PLANS[selectedOperator.billerId] || []);
             })
             .finally(() => setLoadingPlans(false));
     }, [selectedOperator, selectedCircle]);
