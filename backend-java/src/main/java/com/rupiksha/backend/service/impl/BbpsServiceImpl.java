@@ -378,7 +378,7 @@ public class BbpsServiceImpl implements BbpsService {
                         .build())
                 .paymentMethod(BillAvenueDtos.PaymentMethod.builder()
                         .paymentMode(mode)
-                        .quickPay("N")
+                        .quickPay("Y")  // Prepaid recharge = no prior bill fetch → quickPay must be Y
                         .splitPay("N")
                         .build())
                 .paymentInfo(BillAvenueDtos.PaymentInfo.builder()
