@@ -46,17 +46,6 @@ const SERVICE_SECTIONS = [
         ]),
     },
     {
-        key: 'travel',
-        title: 'Travel Services',
-        color: 'from-emerald-500 to-cyan-500',
-        services: dedupeServices([
-            { id: 'travel', title: 'Rail E-Ticketing (IRCTC)', logo: irctcLogo },
-            { id: 'travel', title: 'Hotel Booking', icon: Hotel },
-            { id: 'travel', title: 'Bus Ticketing', icon: Bus },
-            { id: 'travel', title: 'Air Ticketing', icon: Globe },
-        ]),
-    },
-    {
         key: 'bbps',
         title: 'Bharat Connect (BBPS)',
         color: 'from-violet-500 to-fuchsia-500',
@@ -96,6 +85,17 @@ const SERVICE_SECTIONS = [
             { id: 'utility', title: 'Recharge OTT', icon: Tv },
             { id: 'utility', title: 'Digi Gold', icon: Banknote },
             { id: 'utility', title: 'ITR Filing', icon: FileText },
+        ]),
+    },
+    {
+        key: 'travel',
+        title: 'Travel Services',
+        color: 'from-emerald-500 to-cyan-500',
+        services: dedupeServices([
+            { id: 'travel', title: 'Rail E-Ticketing (IRCTC)', logo: irctcLogo },
+            { id: 'travel', title: 'Hotel Booking', icon: Hotel },
+            { id: 'travel', title: 'Bus Ticketing', icon: Bus },
+            { id: 'travel', title: 'Air Ticketing', icon: Globe },
         ]),
     },
 ];
