@@ -425,6 +425,7 @@ public class BbpsServiceImpl implements BbpsService {
                 .fetchRequestId(effectiveRequestId)
                 .billerId(resolvedBillerId)
                 .customerMobile(request.getMobileNumber().trim())
+                .customerEmail(user.getEmail() != null && !user.getEmail().isBlank() ? user.getEmail().trim() : "support@rupiksha.com")
                 .amountPaise(paise)
                 .billAmountPaise(billerRespPaise)
                 .billDate(billDate)

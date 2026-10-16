@@ -44,6 +44,7 @@ public class BillAvenueBbpsProvider implements BbpsProvider {
                 .fetchRequestId(requestId)
                 .billerId(biller)
                 .customerMobile(consumerNo)
+                .customerEmail("support@rupiksha.com")
                 .amountPaise(paise)
                 .billAmountPaise(paise)
                 .customerName("Retailer Customer")

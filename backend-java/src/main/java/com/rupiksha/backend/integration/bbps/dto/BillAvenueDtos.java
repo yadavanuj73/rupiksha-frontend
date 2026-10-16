@@ -103,6 +103,7 @@ public class BillAvenueDtos {
         private String fetchRequestId;
         private String billerId;
         private String customerMobile;
+        private String customerEmail;
         private long amountPaise;
         private long billAmountPaise;
         private String billDate;
