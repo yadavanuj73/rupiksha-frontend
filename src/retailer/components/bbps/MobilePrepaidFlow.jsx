@@ -48,7 +48,7 @@ const OPERATOR_META = {
     }
 };
 
-const PLAN_CATEGORIES = ['All', 'Popular', 'Unlimited', 'Data', 'Talktime', 'Validity', 'Annual'];
+const PLAN_CATEGORIES = ['All', 'Popular', 'True 5G', 'Data', 'Entertainment', 'JioPhone', 'Annual', 'Top-up'];
 
 const ALL_CIRCLES = [
     'All India',
@@ -79,24 +79,91 @@ const ALL_CIRCLES = [
 
 const LIVE_OPERATOR_PLANS = {
     BILAVJIO000001: [
-        { planId: 'JIO_189', amount: 189, validity: '28 Days', data: '2.0 GB Total', calls: 'Unlimited Calls', sms: '300 SMS', categoryType: 'Popular', description: 'Value Pack: Unlimited Voice, 2GB total data, 300 SMS, JioCinema, JioTV complimentary.' },
-        { planId: 'JIO_198', amount: 198, validity: '14 Days', data: '2.0 GB/Day', calls: 'Unlimited 5G', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Short Validity: Unlimited Voice, 2GB/day + Unlimited True 5G data, 100 SMS/day for 14 days.' },
-        { planId: 'JIO_249', amount: 249, validity: '28 Days', data: '1.0 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Unlimited Voice, 1GB/day high speed data, 100 SMS/day for 28 days.' },
-        { planId: 'JIO_299', amount: 299, validity: '28 Days', data: '1.5 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Standard 28 Days Pack: Unlimited Voice, 1.5GB/day data, 100 SMS/day.' },
-        { planId: 'JIO_349', amount: 349, validity: '28 Days', data: '2.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Hero Pack: Unlimited Voice, 2GB/day + Unlimited True 5G data, 100 SMS/day.' },
-        { planId: 'JIO_399', amount: 399, validity: '28 Days', data: '2.5 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Heavy Data: Unlimited Voice, 2.5GB/day + Unlimited True 5G data, 100 SMS/day.' },
-        { planId: 'JIO_449', amount: 449, validity: '28 Days', data: '3.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Max Daily Data: Unlimited Voice, 3GB/day + Unlimited True 5G data, 100 SMS/day.' },
-        { planId: 'JIO_579', amount: 579, validity: '56 Days', data: '1.5 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Unlimited', description: '56 Days Pack: Unlimited Voice + 1.5GB/day + 100 SMS/day.' },
-        { planId: 'JIO_629', amount: 629, validity: '56 Days', data: '2.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Unlimited', description: '56 Days Hero: Unlimited Voice + 2GB/day + Unlimited True 5G data.' },
-        { planId: 'JIO_799', amount: 799, validity: '84 Days', data: '1.5 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Unlimited', description: '84 Days Pack: Unlimited Voice + 1.5GB/day data + 100 SMS/day for 84 days.' },
-        { planId: 'JIO_859', amount: 859, validity: '84 Days', data: '2.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Unlimited', description: '84 Days Hero Pack: Unlimited Voice + 2GB/day + Unlimited True 5G data.' },
-        { planId: 'JIO_899', amount: 899, validity: '90 Days', data: '2.0 GB/Day + 20GB', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Unlimited', description: 'Hero 90-Day Pack: Unlimited Voice, 2GB/day + 20GB extra data, Unlimited True 5G.' },
-        { planId: 'JIO_1029', amount: 1029, validity: '84 Days', data: '2.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Prime Video Edition: 84 Days, 2GB/day + Unlimited 5G + Prime Video Mobile Edition.' },
-        { planId: 'JIO_1899', amount: 1899, validity: '336 Days', data: '24 GB Total', calls: 'Unlimited Calls', sms: '3600 SMS', categoryType: 'Annual', description: 'Annual Value Pack: Unlimited Calls + 24GB total data + 3600 SMS for 336 Days.' },
-        { planId: 'JIO_3599', amount: 3599, validity: '365 Days', data: '2.5 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Annual', description: '1-Year Full Pack: Unlimited Voice + 2.5GB/day + Unlimited True 5G data for 365 Days.' },
-        { planId: 'JIO_19', amount: 19, validity: 'Active Plan', data: '1.0 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '1.0 GB high speed data booster valid till existing base plan validity.' },
-        { planId: 'JIO_29', amount: 29, validity: 'Active Plan', data: '2.0 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '2.0 GB high speed data booster valid till existing base plan validity.' },
-        { planId: 'JIO_69', amount: 69, validity: 'Active Plan', data: '6.0 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '6.0 GB high speed data booster valid till existing base plan validity.' }
+        // True 5G Unlimited & Popular Daily Packs
+        { planId: 'JIO_189', amount: 189, validity: '28 Days', data: '2.0 GB Total', calls: 'Unlimited Calls', sms: '300 SMS', categoryType: 'Popular', description: 'Affordable Value Pack: 28 Days, 2GB Data + Unlimited Calls + 300 SMS.' },
+        { planId: 'JIO_198', amount: 198, validity: '14 Days', data: '2.0 GB/Day', calls: 'Unlimited 5G', sms: '100 SMS/Day', categoryType: 'True 5G', description: 'True 5G Unlimited Plan: 14 Days, 2GB/Day + Unlimited True 5G + Unlimited Calls.' },
+        { planId: 'JIO_239', amount: 239, validity: '22 Days', data: '1.5 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Popular', description: '1.5GB/Day Data for 22 Days Pack: Unlimited Calls + 100 SMS/Day.' },
+        { planId: 'JIO_249', amount: 249, validity: '28 Days', data: '1.0 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Popular Plan: 28 Days, 1GB/Day Data + Unlimited Calls + 100 SMS/Day.' },
+        { planId: 'JIO_299', amount: 299, validity: '28 Days', data: '1.5 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Popular', description: '1.5GB/Day Data for 28 Days Pack: Unlimited Calls + 100 SMS/Day + Jio Apps.' },
+        { planId: 'JIO_319', amount: 319, validity: 'Calendar Month', data: '1.5 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Calendar Month Pack: 1.5GB/Day Data + Unlimited Calls for full calendar month.' },
+        { planId: 'JIO_349', amount: 349, validity: '28 Days', data: '2.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'True 5G', description: 'True 5G Unlimited Plan: 28 Days, 2GB/Day + Unlimited True 5G + Unlimited Voice.' },
+        { planId: 'JIO_399', amount: 399, validity: '28 Days', data: '2.5 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'True 5G', description: 'True 5G Unlimited Plan: 28 Days, 2.5GB/Day + Unlimited True 5G + 100 SMS/Day.' },
+        { planId: 'JIO_449', amount: 449, validity: '28 Days', data: '3.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'True 5G', description: 'True 5G Unlimited Plan: 28 Days, 3GB/Day + Unlimited True 5G + Unlimited Calls.' },
+        { planId: 'JIO_450', amount: 450, validity: '36 Days', data: '2.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'True 5G', description: 'True 5G Unlimited Plan: 36 Days, 2GB/Day + Unlimited True 5G + Unlimited Voice.' },
+        { planId: 'JIO_459', amount: 459, validity: '28 Days', data: '2.0 GB/Day + 5GB', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Affordable Gaming Pack: 28 Days, 2GB/Day + 5GB Extra Data + Unlimited Voice.' },
+        { planId: 'JIO_495', amount: 495, validity: '28 Days', data: '1.5 GB/Day + 5GB', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Youth & Gaming Pack: 28 Days, 1.5GB/Day + 5GB Extra + Unlimited Calls.' },
+        { planId: 'JIO_545', amount: 545, validity: '28 Days', data: '2.0 GB/Day + 5GB', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Affordable Gaming Pack: 28 Days, 2GB/Day + 5GB Extra + True 5G.' },
+        { planId: 'JIO_579', amount: 579, validity: '56 Days', data: '1.5 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Popular', description: '1.5GB/Day Data for 56 Days Pack: Unlimited Calls + 100 SMS/Day.' },
+        { planId: 'JIO_629', amount: 629, validity: '56 Days', data: '2.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'True 5G', description: 'True 5G Unlimited Plan: 56 Days, 2GB/Day + Unlimited True 5G + Unlimited Voice.' },
+        { planId: 'JIO_666', amount: 666, validity: '70 Days', data: '1.5 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Popular', description: '1.5GB/Day Data for 70 Days Pack: Unlimited Calls + 100 SMS/Day.' },
+        { planId: 'JIO_719', amount: 719, validity: '70 Days', data: '2.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'True 5G', description: 'True 5G Unlimited Plan: 70 Days, 2GB/Day + Unlimited True 5G + Unlimited Calls.' },
+        { planId: 'JIO_749', amount: 749, validity: '72 Days', data: '2.0 GB/Day + 20GB', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'True 5G', description: 'True 5G Unlimited Plan: 72 Days, 2GB/Day + 20GB Extra + Unlimited True 5G.' },
+        { planId: 'JIO_799', amount: 799, validity: '84 Days', data: '1.5 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Affordable Value Pack: 84 Days, 1.5GB/Day Data + Unlimited Calls.' },
+        { planId: 'JIO_859', amount: 859, validity: '84 Days', data: '2.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'True 5G', description: 'True 5G Unlimited Plan: 84 Days, 2GB/Day + Unlimited True 5G + Unlimited Voice.' },
+        { planId: 'JIO_899', amount: 899, validity: '90 Days', data: '2.0 GB/Day + 20GB', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'True 5G', description: 'True 5G Unlimited Plan: 90 Days, 2GB/Day + 20GB Extra + Unlimited True 5G.' },
+        { planId: 'JIO_999', amount: 999, validity: '98 Days', data: '2.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'True 5G', description: 'True 5G Unlimited Plan: 98 Days, 2GB/Day + Unlimited True 5G + Unlimited Voice.' },
+        { planId: 'JIO_1028', amount: 1028, validity: '84 Days', data: '2.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'True 5G', description: 'True 5G Unlimited Plan: 84 Days, 2GB/Day + Unlimited True 5G + Swiggy One Lite.' },
+        { planId: 'JIO_1199', amount: 1199, validity: '84 Days', data: '3.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'True 5G', description: 'True 5G Unlimited Plan: 84 Days, 3GB/Day + Unlimited True 5G + 100 SMS/Day.' },
+        { planId: 'JIO_1899', amount: 1899, validity: '336 Days', data: '24 GB Total', calls: 'Unlimited Calls', sms: '3600 SMS', categoryType: 'Annual', description: 'Affordable Value Pack: 336 Days, 24GB Total Data + Unlimited Voice + 3600 SMS.' },
+        { planId: 'JIO_2025', amount: 2025, validity: '200 Days', data: '2.5 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'True 5G', description: 'True 5G Unlimited Plan: 200 Days, 2.5GB/Day + Unlimited True 5G + Unlimited Voice.' },
+        { planId: 'JIO_3599', amount: 3599, validity: '365 Days', data: '2.5 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Annual', description: '1-Year Full Pack: 365 Days, 2.5GB/Day + Unlimited True 5G + Unlimited Voice.' },
+        { planId: 'JIO_3999', amount: 3999, validity: '365 Days', data: '2.5 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Annual', description: 'Affordable Gaming Pack: 365 Days, 2.5GB/Day + FanCode + True 5G.' },
+
+        // Entertainment & OTT Included Plans
+        { planId: 'JIO_329', amount: 329, validity: '28 Days', data: '1.5 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Entertainment', description: 'Entertainment Plan: 28 Days, 1.5GB/Day + JioSaavn Pro Included.' },
+        { planId: 'JIO_445', amount: 445, validity: '28 Days', data: '2.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Entertainment', description: 'Entertainment Plan: 28 Days, 2GB/Day + 10 OTT Apps Included + Unlimited 5G.' },
+        { planId: 'JIO_500', amount: 500, validity: '28 Days', data: '2.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Entertainment', description: 'Mega Content Plan: 28 Days, 2GB/Day + Unlimited 5G + Entertainment Apps.' },
+        { planId: 'JIO_889', amount: 889, validity: '84 Days', data: '1.5 GB/Day', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Entertainment', description: 'Entertainment Plan: 84 Days, 1.5GB/Day + JioSaavn Pro Included.' },
+        { planId: 'JIO_949', amount: 949, validity: '84 Days', data: '2.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Entertainment', description: 'Entertainment Plan: 84 Days, 2GB/Day + JioHotstar Mobile Included + True 5G.' },
+        { planId: 'JIO_1000', amount: 1000, validity: '365 Days', data: 'NA', calls: 'NA', sms: 'NA', categoryType: 'Entertainment', description: 'Entertainment Plan: 365 Days, JioShield + Canva Pro + 5G @ ₹83/month.' },
+        { planId: 'JIO_1029', amount: 1029, validity: '84 Days', data: '2.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Entertainment', description: 'Entertainment Plan: 84 Days, 2GB/Day + Amazon Prime Mobile Included + True 5G.' },
+        { planId: 'JIO_1049', amount: 1049, validity: '84 Days', data: '2.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Entertainment', description: 'Entertainment Plan: 84 Days, 2GB/Day + SonyLIV + Zee5 Included + True 5G.' },
+        { planId: 'JIO_1299', amount: 1299, validity: '84 Days', data: '2.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Entertainment', description: 'Entertainment Plan: 84 Days, 2GB/Day + Netflix Included + True 5G.' },
+        { planId: 'JIO_1799', amount: 1799, validity: '84 Days', data: '3.0 GB/Day', calls: 'Unlimited True 5G', sms: '100 SMS/Day', categoryType: 'Entertainment', description: 'Entertainment Plan: 84 Days, 3GB/Day + Netflix Included + True 5G.' },
+
+        // Data Packs & True Unlimited 5G Upgrades
+        { planId: 'JIO_11', amount: 11, validity: '1 Hour', data: '10 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '10GB Data for 1 Hour high speed burst pack.' },
+        { planId: 'JIO_19', amount: 19, validity: '1 Day', data: '1.0 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '1GB Data for 1 Day Pack.' },
+        { planId: 'JIO_29', amount: 29, validity: '2 Days', data: '2.0 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '2GB Data for 2 Days Pack.' },
+        { planId: 'JIO_39', amount: 39, validity: '3 Days', data: '3.0 GB/Day', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '3GB/Day Data for 3 Days Pack.' },
+        { planId: 'JIO_49', amount: 49, validity: '1 Day', data: '25 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '25GB Data for 1 Day Pack.' },
+        { planId: 'JIO_51', amount: 51, validity: 'Active Plan', data: '3.0 GB', calls: 'NA', sms: 'NA', categoryType: 'True 5G', description: 'True Unlimited 5G Upgrade: 3GB Data + Unlimited 5G on base plan.' },
+        { planId: 'JIO_55', amount: 55, validity: '3 Days', data: '3.0 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '3GB Data for 3 Days Pack.' },
+        { planId: 'JIO_69', amount: 69, validity: '7 Days', data: '6.0 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '6GB Data for 7 Days Pack.' },
+        { planId: 'JIO_77', amount: 77, validity: '5 Days', data: '3.0 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '3GB Data for 5 Days Pack.' },
+        { planId: 'JIO_79', amount: 79, validity: '30 Days', data: '3.0 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '3GB Data for 30 Days Pack.' },
+        { planId: 'JIO_100', amount: 100, validity: '30 Days', data: '6.0 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '6GB Data for 30 Days Pack.' },
+        { planId: 'JIO_101', amount: 101, validity: 'Active Plan', data: '6.0 GB', calls: 'NA', sms: 'NA', categoryType: 'True 5G', description: 'True Unlimited 5G Upgrade: 6GB Data + Unlimited 5G on base plan.' },
+        { planId: 'JIO_103', amount: 103, validity: '28 Days', data: '5.0 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '5GB Data for 28 Days Pack.' },
+        { planId: 'JIO_111', amount: 111, validity: '28 Days', data: '5.0 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '5GB Data for 28 Days Pack.' },
+        { planId: 'JIO_139', amount: 139, validity: '7 Days', data: '12 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '12GB Data for 7 Days Pack.' },
+        { planId: 'JIO_149', amount: 149, validity: '30 Days', data: '10 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '10GB Data for 30 Days Pack.' },
+        { planId: 'JIO_151', amount: 151, validity: 'Active Plan', data: '9.0 GB', calls: 'NA', sms: 'NA', categoryType: 'True 5G', description: 'True Unlimited 5G Upgrade: 9GB Data + Unlimited 5G on base plan.' },
+        { planId: 'JIO_175', amount: 175, validity: '28 Days', data: '10 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '10GB Data for 28 Days Pack.' },
+        { planId: 'JIO_195', amount: 195, validity: '30 Days', data: '15 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '15GB Data for 30 Days Pack.' },
+        { planId: 'JIO_200', amount: 200, validity: '28 Days', data: '30 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '30GB Data for 28 Days Pack.' },
+        { planId: 'JIO_219', amount: 219, validity: '30 Days', data: '30 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '30GB Data for 30 Days Pack.' },
+        { planId: 'JIO_289', amount: 289, validity: '30 Days', data: '40 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '40GB Data for 30 Days Pack.' },
+        { planId: 'JIO_355', amount: 355, validity: '30 Days', data: '25 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '25GB Data for 30 Days Pack.' },
+        { planId: 'JIO_359', amount: 359, validity: '30 Days', data: '50 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '50GB Data for 30 Days Pack.' },
+        { planId: 'JIO_550', amount: 550, validity: '84 Days', data: '90 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '90GB Data for 84 Days Pack.' },
+        { planId: 'JIO_2000', amount: 2000, validity: '365 Days', data: '365 GB', calls: 'NA', sms: 'NA', categoryType: 'Data', description: '365GB Data for 365 Days Pack.' },
+
+        // Top-up Vouchers
+        { planId: 'JIO_10', amount: 10, validity: 'NA', data: 'NA', calls: '₹7.47 Talktime', sms: 'NA', categoryType: 'Top-up', description: 'Rs 10 TopUp: ₹7.47 Main Balance Talktime.' },
+        { planId: 'JIO_20', amount: 20, validity: 'NA', data: 'NA', calls: '₹14.95 Talktime', sms: 'NA', categoryType: 'Top-up', description: 'Rs 20 TopUp: ₹14.95 Main Balance Talktime.' },
+        { planId: 'JIO_50', amount: 50, validity: 'NA', data: 'NA', calls: '₹39.37 Talktime', sms: 'NA', categoryType: 'Top-up', description: 'Rs 50 TopUp: ₹39.37 Main Balance Talktime.' },
+
+        // JioPhone & JioBharat Plans
+        { planId: 'JIO_26', amount: 26, validity: '28 Days', data: '2.0 GB', calls: 'NA', sms: 'NA', categoryType: 'JioPhone', description: 'JioPhone Addon: 2GB Data for 28 Days.' },
+        { planId: 'JIO_62', amount: 62, validity: '28 Days', data: '6.0 GB', calls: 'NA', sms: 'NA', categoryType: 'JioPhone', description: 'JioPhone Addon: 6GB Data for 28 Days.' },
+        { planId: 'JIO_86', amount: 86, validity: '28 Days', data: '0.5 GB/Day', calls: 'Unlimited Calls', sms: 'NA', categoryType: 'JioPhone', description: 'JioPhone Pack: 0.5GB/Day + Unlimited Calls for 28 Days.' },
+        { planId: 'JIO_122', amount: 122, validity: '28 Days', data: '1.0 GB/Day', calls: 'Unlimited Calls', sms: 'NA', categoryType: 'JioPhone', description: 'JioPhone Pack: 1GB/Day + Unlimited Calls for 28 Days.' },
+        { planId: 'JIO_123', amount: 123, validity: '28 Days', data: '0.5 GB/Day', calls: 'Unlimited Calls', sms: '300 SMS', categoryType: 'JioPhone', description: 'JioBharat Plan: 28 Days, 0.5GB/Day + Unlimited Voice + 300 SMS.' },
+        { planId: 'JIO_182', amount: 182, validity: '28 Days', data: '2.0 GB/Day', calls: 'Unlimited Calls', sms: 'NA', categoryType: 'JioPhone', description: 'JioPhone Pack: 2GB/Day + Unlimited Calls for 28 Days.' },
+        { planId: 'JIO_234', amount: 234, validity: '56 Days', data: '0.5 GB/Day', calls: 'Unlimited Calls', sms: '300 SMS', categoryType: 'JioPhone', description: 'JioBharat Plan: 56 Days, 0.5GB/Day + Unlimited Voice + 300 SMS.' },
+        { planId: 'JIO_369', amount: 369, validity: '84 Days', data: '0.5 GB/Day', calls: 'Unlimited Calls', sms: '300 SMS', categoryType: 'JioPhone', description: 'JioBharat Plan: 84 Days, 0.5GB/Day + Unlimited Voice + 300 SMS.' },
+        { planId: 'JIO_1234', amount: 1234, validity: '336 Days', data: '0.5 GB/Day', calls: 'Unlimited Calls', sms: '300 SMS/28D', categoryType: 'JioPhone', description: 'JioBharat Plan: 336 Days, 0.5GB/Day + Unlimited Voice.' }
     ],
     BILAVAIRTEL001: [
         { planId: 'AIRTEL_199', amount: 199, validity: '28 Days', data: '2.0 GB Total', calls: 'Unlimited Calls', sms: '100 SMS/Day', categoryType: 'Popular', description: 'Value Pack: Unlimited Calls + 2GB data total + 100 SMS/day for 28 days.' },
@@ -190,22 +257,24 @@ const MobilePrepaidFlow = ({ onBack }) => {
     // Load plans whenever operator or circle changes
     useEffect(() => {
         if (!selectedOperator) return;
-        setLoadingPlans(true);
         setSelectedPlan(null);
         setCustomAmount('');
 
+        // Immediately set the exact 2026 plans so user sees them instantly
+        const liveCatalog = LIVE_OPERATOR_PLANS[selectedOperator.billerId] || [];
+        setPlans(liveCatalog);
+
+        setLoadingPlans(true);
         bbpsService.getPlans(selectedOperator.billerId, selectedCircle)
             .then(res => {
                 const list = Array.isArray(res) ? res : (res?.data || []);
-                if (list.length > 0 && !list.some(p => Number(p.amount) === 239)) {
+                // If backend is updated and returns plans matching the new 2026 catalogue, update
+                if (list.length > 0 && list.some(p => Number(p.amount) === 349) && !list.some(p => Number(p.amount) === 239 && p.validity?.includes('28'))) {
                     setPlans(list);
-                } else {
-                    setPlans(LIVE_OPERATOR_PLANS[selectedOperator.billerId] || list);
                 }
             })
             .catch(err => {
-                console.warn('Failed to load plans:', err);
-                setPlans(LIVE_OPERATOR_PLANS[selectedOperator.billerId] || []);
+                console.warn('Backend plan sync:', err);
             })
             .finally(() => setLoadingPlans(false));
     }, [selectedOperator, selectedCircle]);
