@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, Sparkles, Layers } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { BBPS_CATEGORIES, getCategoryById, searchCategories } from '../data/bbpsCategories';
 import BbpsCategoryCard from '../components/bbps/BbpsCategoryCard';
 import BbpsCategoryDetail from '../components/bbps/BbpsCategoryDetail';
@@ -63,30 +63,21 @@ const BharatConnect = () => {
                             className="space-y-6"
                         >
                             {/* Premium Top Context Banner */}
-                            <div className="relative overflow-hidden rounded-[26px] border border-[#DFE8F5] bg-white p-5 md:p-6 shadow-[0_5px_18px_rgba(32,72,140,0.055)]">
+                            <div className="relative overflow-hidden rounded-[26px] border border-[#DFE8F5] bg-white p-4 md:p-5 shadow-[0_5px_18px_rgba(32,72,140,0.055)]">
                                 <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-blue-500/5 blur-3xl" />
 
-                                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                    <div className="space-y-1">
-                                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EAF1FF] text-[#2463EB] text-[11px] font-extrabold uppercase tracking-wider">
-                                            <Sparkles className="w-3.5 h-3.5" />
-                                            <span>Bharat Connect • NPCI Certified</span>
-                                        </div>
-                                        <h1 className="text-xl md:text-2xl lg:text-[28px] font-black text-[#101828] tracking-tight">
-                                            Bharat Connect (BBPS) Services
-                                        </h1>
-                                        <p className="text-xs md:text-sm text-[#475467] font-medium">
-                                            Instant bill payment, recharges, and utility fee collections with real-time settlement
-                                        </p>
-                                    </div>
+                                <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                    <h1 className="text-xl md:text-2xl lg:text-[26px] font-black text-[#101828] tracking-tight">
+                                        Bharat Connect (BBPS) Services
+                                    </h1>
 
                                     {/* 35 Registry Pill Badge */}
-                                    <div className="shrink-0 flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-[#F5F8FD] border border-[#DFE8F5]">
-                                        <div className="w-9 h-9 rounded-xl bg-[#2463EB] text-white flex items-center justify-center font-extrabold text-sm shadow-xs">
+                                    <div className="shrink-0 self-start sm:self-auto flex items-center gap-2.5 px-3.5 py-1.5 rounded-2xl bg-[#F5F8FD] border border-[#DFE8F5]">
+                                        <div className="w-8 h-8 rounded-xl bg-[#2463EB] text-white flex items-center justify-center font-extrabold text-xs shadow-xs">
                                             35
                                         </div>
                                         <div className="text-left leading-tight">
-                                            <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#667085]">
+                                            <div className="text-[9px] font-extrabold uppercase tracking-wider text-[#667085]">
                                                 Registry
                                             </div>
                                             <div className="text-xs font-black text-[#101828]">
@@ -97,7 +88,7 @@ const BharatConnect = () => {
                                 </div>
 
                                 {/* Search Bar */}
-                                <div className="relative z-10 mt-4 pt-3 border-t border-[#DFE8F5]/60">
+                                <div className="relative z-10 mt-3.5 pt-3 border-t border-[#DFE8F5]/60">
                                     <div className="relative w-full">
                                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#667085]" />
                                         <input
