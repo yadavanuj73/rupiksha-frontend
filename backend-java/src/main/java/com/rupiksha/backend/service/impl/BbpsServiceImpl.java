@@ -36,7 +36,7 @@ public class BbpsServiceImpl implements BbpsService {
     private final UserServiceRepository userServiceRepository;
     private final WalletService walletService;
 
-    @org.springframework.beans.factory.annotation.Value("${billavenue.biller.jio:JIOPREPAID}")
+    @org.springframework.beans.factory.annotation.Value("${billavenue.biller.jio:BILAVJIO000001}")
     private String billerJio;
 
     @org.springframework.beans.factory.annotation.Value("${billavenue.biller.airtel:BILAVAIRTEL001}")
@@ -55,7 +55,7 @@ public class BbpsServiceImpl implements BbpsService {
         if (billerId == null || billerId.isBlank()) return billerAirtel != null ? billerAirtel : "BILAVAIRTEL001";
         String upper = billerId.trim().toUpperCase();
         if (upper.contains("JIO")) {
-            return billerJio != null && !billerJio.isBlank() ? billerJio.trim() : "JIOPREPAID";
+            return billerJio != null && !billerJio.isBlank() ? billerJio.trim() : "BILAVJIO000001";
         }
         if (upper.contains("AIRTEL")) {
             return billerAirtel != null && !billerAirtel.isBlank() ? billerAirtel.trim() : "BILAVAIRTEL001";
@@ -391,9 +391,10 @@ public class BbpsServiceImpl implements BbpsService {
                         .build())
                 .paymentInfo(BillAvenueDtos.PaymentInfo.builder()
                         .info(List.of(
-                                BillAvenueDtos.InfoItem.builder().infoName("Payment Account Info").infoValue(paymentAccountInfo).build(),
+                                BillAvenueDtos.InfoItem.builder().infoName("Remitter Name").infoValue(user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName() : "Rupiksha Retailer").build(),
                                 BillAvenueDtos.InfoItem.builder().infoName("PaymentRefId").infoValue(merchantRefNo).build(),
-                                BillAvenueDtos.InfoItem.builder().infoName("Remitter Name").infoValue(user.getFullName() != null ? user.getFullName() : "Rupiksha Retailer").build()
+                                BillAvenueDtos.InfoItem.builder().infoName("Payment Account Info").infoValue(paymentAccountInfo).build(),
+                                BillAvenueDtos.InfoItem.builder().infoName("Payment mode").infoValue(mode).build()
                         ))
                         .build())
                 .build();
