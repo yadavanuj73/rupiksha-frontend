@@ -129,15 +129,23 @@ public class BillAvenueDtos {
         public String getErrorMessage() {
             if (errorInfo != null && !errorInfo.isEmpty()) {
                 ErrorInfo first = errorInfo.get(0);
-                if (first.getErrorMessage() != null) {
-                    return first.getErrorMessage();
+                if (first.getErrorMessage() != null && !first.getErrorMessage().isBlank()) {
+                    return first.getErrorMessage() + (first.getErrorCode() != null ? " (" + first.getErrorCode() + ")" : "");
                 }
+            }
+            if (responseReason != null && !responseReason.isBlank() && !responseReason.equalsIgnoreCase("FAILURE")) {
+                return responseReason;
+            }
+            if ("205".equals(responseCode)) {
+                return "BillAvenue rejected request (Code 205: Duplicate transaction or unmapped request/biller ID)";
             }
             return responseReason != null ? responseReason : "Failed with code: " + responseCode;
         }
     }
 
     @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ErrorInfo {
         private String errorCode;

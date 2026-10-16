@@ -1,5 +1,6 @@
 package com.rupiksha.backend.integration.bbps;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rupiksha.backend.integration.bbps.dto.BillAvenueDtos;
 import com.rupiksha.backend.integration.bbps.util.BillAvenueCryptoUtil;
@@ -14,6 +15,7 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -39,6 +41,9 @@ public class BillAvenueClient {
     @Value("${billavenue.agent-id:CC01BP66AGTU00000001}")
     private String agentId;
 
+    @Value("${billavenue.init-channel:INT}")
+    private String initChannel;
+
     @Value("${billavenue.aes-iv:}")
     private String aesIv;
 
@@ -55,6 +60,10 @@ public class BillAvenueClient {
 
     public String getAgentId() {
         return agentId != null && !agentId.isBlank() ? agentId : "CC01BP66AGTU00000001";
+    }
+
+    public String getInitChannel() {
+        return initChannel != null && !initChannel.isBlank() ? initChannel : "INT";
     }
 
     public String getInstituteId() {
@@ -219,9 +228,45 @@ public class BillAvenueClient {
             if (!json.startsWith("{") && !json.startsWith("[")) {
                 // Encrypted response: decrypt using shared workingKey
                 json = BillAvenueCryptoUtil.decrypt(json, workingKey, aesIv);
-                log.debug("Decrypted BillAvenue response: {}", json);
             }
-            return objectMapper.readValue(json, BillAvenueDtos.BillPayResponse.class);
+            log.info("Decrypted BillAvenue BillPay response for requestId {}: {}", requestId, json);
+
+            JsonNode root = objectMapper.readTree(json);
+            BillAvenueDtos.BillPayResponse resp = new BillAvenueDtos.BillPayResponse();
+            if (root.has("responseCode")) {
+                resp.setResponseCode(root.path("responseCode").asText(null));
+            }
+            if (root.has("responseReason")) {
+                resp.setResponseReason(root.path("responseReason").asText(null));
+            }
+            if (root.has("txnRefId")) {
+                resp.setTxnRefId(root.path("txnRefId").asText(null));
+            }
+            if (root.has("approvalRefNumber")) {
+                resp.setApprovalRefNumber(root.path("approvalRefNumber").asText(null));
+            }
+            if (root.has("txnRespType")) {
+                resp.setTxnRespType(root.path("txnRespType").asText(null));
+            }
+            if (root.has("respAmount")) {
+                resp.setRespAmount(root.path("respAmount").asText(null));
+            }
+            if (root.has("respBillNumber")) {
+                resp.setRespBillNumber(root.path("respBillNumber").asText(null));
+            }
+            if (root.has("respCustomerName")) {
+                resp.setRespCustomerName(root.path("respCustomerName").asText(null));
+            }
+            if (root.has("requestId")) {
+                resp.setRequestId(root.path("requestId").asText(null));
+            }
+
+            List<BillAvenueDtos.ErrorInfo> errors = extractErrors(root);
+            if (!errors.isEmpty()) {
+                resp.setErrorInfo(errors);
+            }
+
+            return resp;
         } catch (Exception e) {
             log.error("Failed to parse BillAvenue response for requestId: {}. Raw: {}", requestId, rawBody, e);
             BillAvenueDtos.BillPayResponse err = new BillAvenueDtos.BillPayResponse();
@@ -230,5 +275,42 @@ public class BillAvenueClient {
             err.setRequestId(requestId);
             return err;
         }
+    }
+
+    private List<BillAvenueDtos.ErrorInfo> extractErrors(JsonNode root) {
+        List<BillAvenueDtos.ErrorInfo> list = new ArrayList<>();
+        JsonNode errorInfoNode = root.path("errorInfo");
+        if (errorInfoNode.isMissingNode() || errorInfoNode.isNull()) {
+            errorInfoNode = root.path("error");
+        }
+        if (errorInfoNode.isArray()) {
+            for (JsonNode item : errorInfoNode) {
+                list.add(new BillAvenueDtos.ErrorInfo(
+                        item.path("errorCode").isMissingNode() ? null : item.path("errorCode").asText(),
+                        item.path("errorMessage").isMissingNode() ? null : item.path("errorMessage").asText()
+                ));
+            }
+        } else if (errorInfoNode.isObject()) {
+            JsonNode innerError = errorInfoNode.path("error");
+            if (innerError.isArray()) {
+                for (JsonNode item : innerError) {
+                    list.add(new BillAvenueDtos.ErrorInfo(
+                            item.path("errorCode").isMissingNode() ? null : item.path("errorCode").asText(),
+                            item.path("errorMessage").isMissingNode() ? null : item.path("errorMessage").asText()
+                    ));
+                }
+            } else if (innerError.isObject()) {
+                list.add(new BillAvenueDtos.ErrorInfo(
+                        innerError.path("errorCode").isMissingNode() ? null : innerError.path("errorCode").asText(),
+                        innerError.path("errorMessage").isMissingNode() ? null : innerError.path("errorMessage").asText()
+                ));
+            } else if (errorInfoNode.has("errorCode") || errorInfoNode.has("errorMessage")) {
+                list.add(new BillAvenueDtos.ErrorInfo(
+                        errorInfoNode.path("errorCode").isMissingNode() ? null : errorInfoNode.path("errorCode").asText(),
+                        errorInfoNode.path("errorMessage").isMissingNode() ? null : errorInfoNode.path("errorMessage").asText()
+                ));
+            }
+        }
+        return list;
     }
 }

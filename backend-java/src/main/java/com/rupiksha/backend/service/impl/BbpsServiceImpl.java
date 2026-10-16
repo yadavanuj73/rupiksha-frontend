@@ -282,7 +282,7 @@ public class BbpsServiceImpl implements BbpsService {
                 .agentId(billAvenueClient.getAgentId())
                 .billerId(request.getBillerId())
                 .agentDeviceInfo(BillAvenueDtos.AgentDeviceInfo.builder()
-                        .initChannel("AGT")
+                        .initChannel(billAvenueClient.getInitChannel())
                         .ip(clientIp != null ? clientIp : "127.0.0.1")
                         .mac("01-23-45-67-89-ab")
                         .app("RupikshaPortal")
