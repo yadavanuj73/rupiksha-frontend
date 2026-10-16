@@ -16,7 +16,7 @@ const BbpsCategoryCard = ({ category, onClick, index = 0 }) => {
             whileHover={{ y: -6, scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
             onClick={() => onClick && onClick(category)}
-            className="group relative overflow-hidden text-left rounded-3xl border border-slate-200/80 p-5 bg-white/95 backdrop-blur-md shadow-[0_10px_30px_rgba(15,23,42,0.06)] hover:border-indigo-300 hover:shadow-[0_20px_40px_rgba(79,70,229,0.16)] transition-all duration-300 cursor-pointer flex flex-col justify-between w-full"
+            className="group relative overflow-hidden text-left rounded-3xl border border-slate-200 p-5 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)] hover:border-blue-400 hover:shadow-[0_20px_40px_rgba(59,130,246,0.18)] transition-all duration-300 cursor-pointer flex flex-col justify-between w-full"
             aria-label={`Open ${category.name} category`}
         >
             {/* Animated Liquid Background Bubble on Hover */}
@@ -32,7 +32,7 @@ const BbpsCategoryCard = ({ category, onClick, index = 0 }) => {
             />
 
             {/* Interactive Ring Highlight */}
-            <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-indigo-500/0 group-hover:ring-indigo-500/30 transition-all duration-500" />
+            <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-blue-500/0 group-hover:ring-blue-500/30 transition-all duration-500" />
 
             <div>
                 {/* Header: Icon + Badge */}
@@ -40,26 +40,26 @@ const BbpsCategoryCard = ({ category, onClick, index = 0 }) => {
                     <div
                         className={`relative z-10 h-14 w-14 rounded-2xl bg-gradient-to-br ${gradient} text-white shadow-lg shadow-${shadowColor}/25 flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shrink-0`}
                     >
-                        <Icon className="h-7 w-7 drop-shadow-sm" strokeWidth={2.2} />
+                        <Icon className="h-7 w-7 drop-shadow-sm" strokeWidth={2.3} />
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full backdrop-blur-sm shadow-xs border bg-blue-50/90 text-blue-700 border-blue-200/60">
+                    <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border bg-slate-100 text-black border-slate-300 shadow-2xs">
                         BBPS
                     </span>
                 </div>
 
-                {/* Category Title */}
-                <h3 className="relative z-10 mt-4 text-[14px] font-extrabold text-slate-800 group-hover:text-indigo-950 transition-colors leading-snug">
+                {/* Category Title - High Contrast Dark Black */}
+                <h3 className="relative z-10 mt-4 text-[15px] font-black text-black group-hover:text-blue-700 transition-colors leading-snug">
                     {category.name}
                 </h3>
 
-                {/* Short Category Description */}
-                <p className="relative z-10 mt-1 text-[11.5px] font-medium text-slate-500 line-clamp-2 leading-relaxed">
+                {/* Short Category Description - Dark and Clearly Readable */}
+                <p className="relative z-10 mt-1.5 text-[12px] font-bold text-slate-800 line-clamp-2 leading-relaxed">
                     {category.description}
                 </p>
             </div>
 
             {/* Footer Action */}
-            <div className="relative z-10 mt-4 pt-3 border-t border-slate-100/90 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-indigo-600 group-hover:text-indigo-700 transition-colors">
+            <div className="relative z-10 mt-4 pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-blue-700 group-hover:text-blue-800 transition-colors">
                 <span>Select biller</span>
                 <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1.5" />
             </div>
