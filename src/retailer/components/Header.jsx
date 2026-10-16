@@ -71,56 +71,60 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
     const KycIcon = kycChip.icon;
 
     return (
-        <header className="fixed top-0 left-0 right-0 h-[76px] bg-white border-b border-slate-200 shadow-sm z-[60] font-['Inter',sans-serif]">
-            <div className="h-full flex items-center justify-between px-3 md:px-5 gap-3">
-                <div className="flex items-center gap-3 min-w-[170px]">
+        <header className="fixed top-0 left-0 right-0 h-[76px] bg-white border-b border-[#E5ECF6] shadow-xs z-[60] font-['Inter',sans-serif]">
+            <div className="h-full flex items-center justify-between px-4 md:px-5 gap-3">
+                <div className="flex items-center gap-3 min-w-[160px]">
                     <button
                         onClick={onMenuClick}
-                        className="p-2 hover:bg-slate-100 rounded-xl lg:hidden text-slate-600 transition-colors border border-slate-200"
+                        className="p-2 hover:bg-slate-100 rounded-xl lg:hidden text-slate-600 transition-colors border border-[#DFE8F5]"
                     >
                         <Menu size={19} />
                     </button>
-                    <button onClick={() => navigate('/dashboard')} className="flex items-center">
-                        <p className="text-[15px] font-black text-blue-700 tracking-wider">RUPIKSHA</p>
+                    <button onClick={() => navigate('/dashboard')} className="flex items-center cursor-pointer">
+                        <p className="text-[17px] font-extrabold text-[#2463EB] tracking-wider">RUPIKSHA</p>
                     </button>
                 </div>
 
                 <div className="hidden md:flex flex-1 justify-center px-4">
-                    <div className="w-full max-w-[560px] bg-blue-50 border border-blue-100 rounded-2xl px-5 py-2.5 text-center">
-                        <p className="text-[13px] font-black text-slate-700 truncate">
-                            Welcome <span className="text-blue-700">{retailerName}</span> to Rupiksha Retailer Family
+                    <div className="w-full max-w-[560px] h-[42px] bg-[#F4F7FF] border border-[#DCE6FF] rounded-[18px] px-5 flex items-center justify-center text-center">
+                        <p className="text-[13px] font-bold text-[#101828] truncate">
+                            Welcome <span className="text-[#2463EB] font-extrabold">{retailerName}</span> to Rupiksha Retailer Family
                         </p>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <div className={`hidden sm:flex items-center gap-1.5 border rounded-full px-2.5 py-1 ${kycChip.className}`}>
-                        <KycIcon size={12} />
-                        <span className="text-[9px] font-black uppercase tracking-[0.15em]">KYC {kycChip.label}</span>
+                    <div className="hidden sm:flex items-center gap-1.5 border border-[#86EFAC] rounded-full px-3 py-1.5 bg-white shadow-2xs">
+                        <BadgeCheck size={13} className="text-[#2463EB]" />
+                        <span className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#2463EB]">KYC {kycChip.label}</span>
                     </div>
-                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
-                        <Wallet size={13} className="text-amber-500" />
-                        <div className="text-right hidden sm:block min-w-[64px]">
-                            <p className="text-[9px] font-black text-slate-500 uppercase leading-none">Main</p>
-                            {isWalletLoading ? (
-                                <div className="h-3 w-16 bg-slate-200 rounded animate-pulse mt-1" />
-                            ) : (
-                                <p className="text-[11px] font-black text-amber-600 mt-0.5">₹ {parseFloat(balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
-                            )}
+
+                    <div className="flex items-center gap-2 bg-[#F8FAFF] border border-[#DFE8F5] rounded-xl px-3 py-1.5 h-[44px] min-w-[140px] justify-between">
+                        <div className="flex items-center gap-2">
+                            <Wallet size={15} className="text-[#F59E0B]" />
+                            <div className="text-left hidden sm:block">
+                                <p className="text-[9px] font-extrabold text-[#667085] uppercase leading-none">Main</p>
+                                {isWalletLoading ? (
+                                    <div className="h-3 w-14 bg-slate-200 rounded animate-pulse mt-1" />
+                                ) : (
+                                    <p className="text-[13px] font-bold text-[#D97706] mt-0.5">₹ {parseFloat(balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                                )}
+                            </div>
                         </div>
-                        <button onClick={onAddMoney} className="bg-amber-500 hover:bg-amber-400 text-white rounded-lg p-1.5 transition-all shadow-sm shadow-amber-500/30">
+                        <button onClick={onAddMoney} className="bg-[#F59E0B] hover:bg-[#D97706] text-white rounded-lg p-1.5 transition-all shadow-xs cursor-pointer">
                             <Plus size={13} />
                         </button>
                     </div>
 
                     <div className="relative">
                         <button
-                            className="relative cursor-pointer p-2 rounded-full border border-slate-200 hover:bg-slate-100 transition-colors"
+                            className="w-[42px] h-[42px] rounded-full border border-[#DFE8F5] bg-white hover:bg-[#F5F8FD] flex items-center justify-center transition-colors relative cursor-pointer"
                             onClick={() => { setShowNotifications(!showNotifications); setShowProfileMenu(false); }}
+                            aria-label="Notifications"
                         >
-                            <Bell size={18} className="text-slate-500" />
+                            <Bell size={19} className="text-[#475467]" />
                             {unreadCount > 0 && (
-                                <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                                <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#2463EB] rounded-full flex items-center justify-center border-2 border-white shadow-xs">
                                     <span className="text-[9px] font-black text-white">{unreadCount}</span>
                                 </div>
                             )}
@@ -158,11 +162,11 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
 
                     <div className="relative">
                         <motion.button
-                            whileHover={{ scale: 1.02 }}
+                            whileHover={{ scale: 1.01 }}
                             onClick={() => setShowProfileMenu(!showProfileMenu)}
-                            className="flex items-center gap-2 cursor-pointer bg-slate-50 border border-slate-200 pl-1.5 pr-4 py-1.5 rounded-full transition-all hover:bg-slate-100 shadow-sm"
+                            className="flex items-center gap-2.5 cursor-pointer bg-white border border-[#DFE8F5] pl-1.5 pr-3 h-[54px] rounded-full transition-all hover:bg-[#F8FAFF] shadow-xs"
                         >
-                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 p-0.5 shadow-sm">
+                            <div className="w-[38px] h-[38px] rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 p-0.5 shadow-xs shrink-0">
                                 <div className="w-full h-full rounded-full bg-white overflow-hidden flex items-center justify-center">
                                     {userPhoto && !imgError ? (
                                         <img
@@ -172,15 +176,15 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
                                             onError={() => setImgError(true)}
                                         />
                                     ) : (
-                                        <span className="text-[10px] font-black text-slate-800 uppercase">{getInitials()}</span>
+                                        <span className="text-[11px] font-black text-[#101828] uppercase">{getInitials()}</span>
                                     )}
                                 </div>
                             </div>
                             <div className="hidden md:block text-left">
-                                <span className="text-sm font-black text-slate-800 tracking-tight block">{retailerName.split(' ')[0]}</span>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Retailer</span>
+                                <span className="text-[13px] font-black text-[#101828] tracking-tight block leading-tight">{retailerName.split(' ')[0]}</span>
+                                <span className="text-[10px] font-bold text-[#667085] uppercase tracking-wider">Retailer</span>
                             </div>
-                            <ChevronDown size={14} className={`text-slate-400 transition-transform duration-300 ${showProfileMenu ? 'rotate-180 text-blue-600' : ''}`} />
+                            <ChevronDown size={14} className={`text-[#667085] transition-transform duration-200 ${showProfileMenu ? 'rotate-180 text-[#2463EB]' : ''}`} />
                         </motion.button>
 
                         <AnimatePresence>

@@ -51,11 +51,20 @@ const BbpsCategoryDetail = ({ category, onBack }) => {
                 <div className={`pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-gradient-to-br ${gradient} opacity-10 blur-2xl`} />
 
                 <div className="relative z-10 flex items-center gap-3.5 md:gap-4">
-                    <div
-                        className={`h-11 w-11 md:h-13 md:w-13 rounded-xl md:rounded-2xl bg-gradient-to-br ${gradient} text-white shadow-md flex items-center justify-center shrink-0`}
-                    >
-                        <Icon className="h-6 w-6 md:h-7 md:w-7 drop-shadow-sm" strokeWidth={2.3} />
-                    </div>
+                    {category.image ? (
+                        <div
+                            className="h-12 w-12 md:h-14 md:w-14 rounded-2xl overflow-hidden shrink-0 border border-slate-200 shadow-xs"
+                            style={{ backgroundColor: category.illustrationBg || '#F4F7FD' }}
+                        >
+                            <img src={category.image} alt={category.name} className="w-full h-full object-cover" />
+                        </div>
+                    ) : (
+                        <div
+                            className={`h-11 w-11 md:h-13 md:w-13 rounded-xl md:rounded-2xl bg-gradient-to-br ${gradient} text-white shadow-md flex items-center justify-center shrink-0`}
+                        >
+                            <Icon className="h-6 w-6 md:h-7 md:w-7 drop-shadow-sm" strokeWidth={2.3} />
+                        </div>
+                    )}
 
                     <div className="min-w-0 flex-1 space-y-0.5">
                         <h2 className="text-lg md:text-xl font-black text-black tracking-tight leading-snug">
