@@ -131,11 +131,8 @@ public final class BillAvenueCryptoUtil {
         if (raw.length == 16) {
             return raw;
         }
-        if (key.trim().length() == 32 && isHex(key.trim())) {
-            return hexToBytes(key.trim());
-        }
         try {
-            // BillAvenue standard kit creates 16-byte key via MD5 digest if key is not raw 16 bytes
+            // BillAvenue standard kit creates 16-byte key via MD5 digest (PHP: pack('H*', md5($workingKey)))
             MessageDigest md = MessageDigest.getInstance("MD5");
             return md.digest(raw);
         } catch (Exception e) {

@@ -26,6 +26,98 @@ public class BillAvenueDtos {
         private AmountInfo amountInfo;
         private PaymentMethod paymentMethod;
         private PaymentInfo paymentInfo;
+        private BillerResponse billerResponse;
+        private AdditionalInfo additionalInfo;
+        private String paymentRefId;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public static class BillerResponse {
+        private String billAmount;
+        private String billDate;
+        private String billNumber;
+        private String customerName;
+        private String dueDate;
+        private String billPeriod;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public static class AdditionalInfo {
+        private List<InfoItem> info;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class BillFetchResponse {
+        private String responseCode;
+        private String responseReason;
+        private String fetchRequestId;
+        private String billerId;
+        private String customerMobile;
+        private String customerName;
+        private long billAmountPaise;
+        private String billNumber;
+        private String billDate;
+        private String dueDate;
+        private String billPeriod;
+        private List<InfoItem> additionalInfo;
+        private List<InputParam> inputParams;
+        private List<ErrorInfo> errorInfo;
+        private String rawXml;
+
+        public boolean isSuccess() {
+            return "000".equals(responseCode);
+        }
+
+        public String getErrorMessage() {
+            if (errorInfo != null && !errorInfo.isEmpty()) {
+                for (ErrorInfo err : errorInfo) {
+                    if (err != null && err.getErrorMessage() != null && !err.getErrorMessage().isBlank()) {
+                        return err.getErrorMessage() + (err.getErrorCode() != null ? " (" + err.getErrorCode() + ")" : "");
+                    }
+                }
+            }
+            if (responseReason != null && !responseReason.isBlank()) {
+                return responseReason;
+            }
+            return "Bill fetch failed";
+        }
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class BillPayXmlRequest {
+        private String fetchRequestId;
+        private String billerId;
+        private String customerMobile;
+        private long amountPaise;
+        private long billAmountPaise;
+        private String billDate;
+        private String billNumber;
+        private String customerName;
+        private List<InfoItem> additionalInfo;
+        private List<InputParam> inputParams;
+        private String clientTxnId;
+        private String paymentMode;
+        private String remitterName;
+        private String remarks;
+        private String paymentAccountInfo;
+        private String clientIp;
+        private String pan;
+        private String aadhaar;
     }
 
     @Data

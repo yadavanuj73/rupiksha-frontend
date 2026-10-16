@@ -55,19 +55,34 @@ public class BbpsServiceImpl implements BbpsService {
         if (billerId == null || billerId.isBlank()) return billerAirtel != null ? billerAirtel : "BILAVAIRTEL001";
         String upper = billerId.trim().toUpperCase();
         if (upper.contains("JIO")) {
-            return (billerJio != null && !billerJio.isBlank() && !billerJio.equalsIgnoreCase("BILAVJIO000001")) ? billerJio.trim() : "JIOPREPAID";
+            if (billerJio != null && !billerJio.isBlank() && billerJio.trim().length() == 14) {
+                return billerJio.trim();
+            }
+            return "BILAVJIO000001";
         }
         if (upper.contains("AIRTEL")) {
-            return billerAirtel != null && !billerAirtel.isBlank() ? billerAirtel.trim() : "BILAVAIRTEL001";
+            if (billerAirtel != null && !billerAirtel.isBlank() && billerAirtel.trim().length() == 14) {
+                return billerAirtel.trim();
+            }
+            return "BILAVAIRTEL001";
         }
         if (upper.contains("VI") || upper.contains("VODA")) {
-            return billerVi != null && !billerVi.isBlank() ? billerVi.trim() : "VODA00000NAT01";
+            if (billerVi != null && !billerVi.isBlank() && billerVi.trim().length() == 14) {
+                return billerVi.trim();
+            }
+            return "VODA00000NAT01";
         }
         if (upper.contains("BSNL")) {
-            return billerBsnl != null && !billerBsnl.isBlank() ? billerBsnl.trim() : "BSNL00000NATHL";
+            if (billerBsnl != null && !billerBsnl.isBlank() && billerBsnl.trim().length() == 14) {
+                return billerBsnl.trim();
+            }
+            return "BSNL00000NATHL";
         }
         if (upper.contains("MTNL")) {
-            return billerMtnl != null && !billerMtnl.isBlank() ? billerMtnl.trim() : "MTNL00000DEL01";
+            if (billerMtnl != null && !billerMtnl.isBlank() && billerMtnl.trim().length() == 14) {
+                return billerMtnl.trim();
+            }
+            return "MTNL00000DEL01";
         }
         return billerId.trim();
     }
@@ -368,51 +383,66 @@ public class BbpsServiceImpl implements BbpsService {
 
         List<BillAvenueDtos.InputParam> inputs = new ArrayList<>();
         inputs.add(BillAvenueDtos.InputParam.builder().paramName("Mobile Number").paramValue(request.getMobileNumber().trim()).build());
-        String loc = cleanCircle(request.getCircle());
-        if (loc != null && !loc.isBlank()) {
-            inputs.add(BillAvenueDtos.InputParam.builder().paramName("Location").paramValue(loc).build());
+        // Location is ONLY accepted/configured for Airtel (BILAVAIRTEL001).
+        // Passing Location for Jio (BILAVJIO000001), Vi (VODA00000NAT01), BSNL, etc. causes BillAvenue to return:
+        // "Invalid parameter combination or missing input parameter (Code: 202)".
+        if ("BILAVAIRTEL001".equalsIgnoreCase(resolvedBillerId)) {
+            String loc = cleanCircle(request.getCircle());
+            if (loc != null && !loc.isBlank()) {
+                inputs.add(BillAvenueDtos.InputParam.builder().paramName("Location").paramValue(loc).build());
+            }
         }
 
-        BillAvenueDtos.BillPayRequest billPayReq = BillAvenueDtos.BillPayRequest.builder()
-                .billerAdhoc("true")
-                .agentId(billAvenueClient.getAgentId())
+        // Step 1: Best-effort BillFetch per BillAvenue mobile recharge integration (Section 3 of PHP reference)
+        BillAvenueDtos.BillFetchResponse fetchResp = null;
+        try {
+            fetchResp = billAvenueClient.fetchBill(resolvedBillerId, inputs, request.getMobileNumber().trim(), sanitizedIp);
+            if (fetchResp != null) {
+                log.info("BillFetch response for biller: {}, code: {}, reason: {}",
+                        resolvedBillerId, fetchResp.getResponseCode(), fetchResp.getResponseReason());
+            }
+        } catch (Exception e) {
+            log.warn("BillFetch for prepaid biller {} had exception (proceeding to pay): {}", resolvedBillerId, e.getMessage());
+        }
+
+        String effectiveRequestId = (fetchResp != null && fetchResp.isSuccess() && fetchResp.getFetchRequestId() != null && !fetchResp.getFetchRequestId().isBlank())
+                ? fetchResp.getFetchRequestId()
+                : requestId;
+        long billerRespPaise = (fetchResp != null && fetchResp.isSuccess() && fetchResp.getBillAmountPaise() > 0)
+                ? fetchResp.getBillAmountPaise()
+                : paise;
+        String billDate = (fetchResp != null && fetchResp.isSuccess()) ? fetchResp.getBillDate() : null;
+        String billNumber = (fetchResp != null && fetchResp.isSuccess()) ? fetchResp.getBillNumber() : null;
+        String customerName = (fetchResp != null && fetchResp.isSuccess() && fetchResp.getCustomerName() != null && !fetchResp.getCustomerName().isBlank())
+                ? fetchResp.getCustomerName()
+                : (user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName().trim() : "Retailer Customer");
+        List<BillAvenueDtos.InfoItem> addnlInfo = (fetchResp != null && fetchResp.isSuccess()) ? fetchResp.getAdditionalInfo() : null;
+
+        String remitterName = (user.getFullName() != null && !user.getFullName().isBlank()) ? user.getFullName().trim() : "Rupiksha Retailer";
+
+        // Step 2: Build XML Payment request matching the working PHP reference structure
+        BillAvenueDtos.BillPayXmlRequest xmlReq = BillAvenueDtos.BillPayXmlRequest.builder()
+                .fetchRequestId(effectiveRequestId)
                 .billerId(resolvedBillerId)
-                .agentDeviceInfo(BillAvenueDtos.AgentDeviceInfo.builder()
-                        .initChannel(initChannel)
-                        .ip(sanitizedIp)
-                        .mac("A1-B2-C3-D4-E5-F6")
-                        .app("RupikshaPortal")
-                        .build())
-                .customerInfo(BillAvenueDtos.CustomerInfo.builder()
-                        .customerMobile(request.getMobileNumber().trim())
-                        .customerEmail(user.getEmail() != null && !user.getEmail().isBlank() ? user.getEmail().trim() : "support@rupiksha.com")
-                        .build())
-                .inputParams(BillAvenueDtos.InputParams.builder()
-                        .input(inputs)
-                        .build())
-                .amountInfo(BillAvenueDtos.AmountInfo.builder()
-                        .amount(amountInPaise)
-                        .currency("356")
-                        .custConvFee("0")
-                        .build())
-                .paymentMethod(BillAvenueDtos.PaymentMethod.builder()
-                        .paymentMode(mode)
-                        .quickPay("Y")  // Prepaid recharge = no prior bill fetch → quickPay must be Y per Page 39
-                        .splitPay("N")
-                        .build())
-                .paymentInfo(BillAvenueDtos.PaymentInfo.builder()
-                        .info(List.of(
-                                BillAvenueDtos.InfoItem.builder().infoName("Remitter Name").infoValue(user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName().trim() : "Rupiksha Retailer").build(),
-                                BillAvenueDtos.InfoItem.builder().infoName("PaymentRefId").infoValue(merchantRefNo).build(),
-                                BillAvenueDtos.InfoItem.builder().infoName("Payment Account Info").infoValue(paymentAccountInfo).build(),
-                                BillAvenueDtos.InfoItem.builder().infoName("Payment mode").infoValue(mode).build()
-                        ))
-                        .build())
+                .customerMobile(request.getMobileNumber().trim())
+                .amountPaise(paise)
+                .billAmountPaise(billerRespPaise)
+                .billDate(billDate)
+                .billNumber(billNumber)
+                .customerName(customerName)
+                .additionalInfo(addnlInfo)
+                .inputParams(inputs)
+                .clientTxnId(merchantRefNo)
+                .paymentMode(mode)
+                .remitterName(remitterName)
+                .remarks("Received")
+                .paymentAccountInfo(paymentAccountInfo)
+                .clientIp(sanitizedIp)
                 .build();
 
         BillAvenueDtos.BillPayResponse payResp;
         try {
-            payResp = billAvenueClient.payBill(billPayReq, requestId);
+            payResp = billAvenueClient.payBillXml(xmlReq);
         } catch (BillAvenueTimeoutException te) {
             log.warn("BillAvenue timeout for merchantRef: {}. Keeping transaction PENDING.", merchantRefNo, te);
             txn.setStatus(TransactionStatus.PENDING);
