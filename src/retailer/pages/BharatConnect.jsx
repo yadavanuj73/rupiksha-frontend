@@ -12,7 +12,6 @@ const BharatConnect = () => {
     const navigate = useNavigate();
 
     const [searchQuery, setSearchQuery] = useState('');
-    const [activeTab, setActiveTab] = useState('popular'); // 'popular' | 'all'
 
     // Determine active category from route param or query param
     const activeCategoryId = paramCategoryId || searchParams.get('category');
@@ -21,16 +20,13 @@ const BharatConnect = () => {
         return getCategoryById(activeCategoryId);
     }, [activeCategoryId]);
 
-    // Categories filtered by search query or active tab
+    // Categories filtered by search query (all 35 categories displayed by default)
     const displayedCategories = useMemo(() => {
         if (searchQuery.trim()) {
             return searchCategories(searchQuery);
         }
-        if (activeTab === 'popular') {
-            return BBPS_CATEGORIES.slice(0, 10);
-        }
         return BBPS_CATEGORIES;
-    }, [searchQuery, activeTab]);
+    }, [searchQuery]);
 
     const handleSelectCategory = (category) => {
         navigate(`/bharat-connect/${category.id}`);
@@ -84,31 +80,19 @@ const BharatConnect = () => {
                                         </p>
                                     </div>
 
-                                    {/* Tabs Filter: Popular (10) vs All (35) */}
-                                    <div className="flex items-center gap-2 p-1 bg-[#F5F8FD] border border-[#DFE8F5] rounded-full shrink-0">
-                                        <button
-                                            type="button"
-                                            onClick={() => { setActiveTab('popular'); setSearchQuery(''); }}
-                                            className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                                                activeTab === 'popular' && !searchQuery
-                                                    ? 'bg-[#2463EB] text-white shadow-sm'
-                                                    : 'text-[#475467] hover:text-[#101828]'
-                                            }`}
-                                        >
-                                            Popular Services (10)
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => { setActiveTab('all'); setSearchQuery(''); }}
-                                            className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                                                activeTab === 'all' && !searchQuery
-                                                    ? 'bg-[#2463EB] text-white shadow-sm'
-                                                    : 'text-[#475467] hover:text-[#101828]'
-                                            }`}
-                                        >
-                                            <Layers className="w-3.5 h-3.5" />
-                                            <span>All BBPS (35)</span>
-                                        </button>
+                                    {/* 35 Registry Pill Badge */}
+                                    <div className="shrink-0 flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-[#F5F8FD] border border-[#DFE8F5]">
+                                        <div className="w-9 h-9 rounded-xl bg-[#2463EB] text-white flex items-center justify-center font-extrabold text-sm shadow-xs">
+                                            35
+                                        </div>
+                                        <div className="text-left leading-tight">
+                                            <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#667085]">
+                                                Registry
+                                            </div>
+                                            <div className="text-xs font-black text-[#101828]">
+                                                All BBPS Categories
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 

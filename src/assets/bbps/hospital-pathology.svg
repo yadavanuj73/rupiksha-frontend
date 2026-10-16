@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 400 300" width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <rect width="400" height="300" rx="20" fill="#FCE7F3" />
+    <defs>
+        
+    <filter id="studioShadow" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="12" />
+        <feOffset dx="0" dy="16" />
+        <feComponentTransfer><feFuncA type="linear" slope="0.14" /></feComponentTransfer>
+        <feMerge>
+            <feMergeNode />
+            <feMergeNode in="SourceGraphic" />
+        </feMerge>
+    </filter>
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+        <feGaussianBlur stdDeviation="8" result="blur" />
+        <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+        </feMerge>
+    </filter>
+    <radialGradient id="floorShadow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#0F172A" stop-opacity="0.18" />
+        <stop offset="60%" stop-color="#0F172A" stop-opacity="0.05" />
+        <stop offset="100%" stop-color="#0F172A" stop-opacity="0" />
+    </radialGradient>
+
+    </defs>
+    
+            <ellipse cx="200" cy="255" rx="115" ry="24" fill="url(#floorShadow)" />
+            <!-- Microscope -->
+            <g filter="url(#studioShadow)">
+                <!-- Base -->
+                <ellipse cx="160" cy="235" rx="45" ry="14" fill="#334155" />
+                <!-- Arm -->
+                <path d="M160 230 C220 230 220 120 160 120" fill="none" stroke="#0284C7" stroke-width="20" stroke-linecap="round" />
+                
+                <!-- Eyepiece Tube -->
+                <rect x="125" y="70" width="16" height="55" rx="3" fill="url(#chromeMetal)" transform="rotate(-25 135 90)" />
+                <rect x="110" y="65" width="24" height="12" rx="3" fill="#0F172A" transform="rotate(-25 120 70)" />
+                
+                <!-- Objective Lens -->
+                <rect x="145" y="150" width="12" height="28" rx="2" fill="url(#chromeMetal)" />
+                <!-- Stage -->
+                <rect x="120" y="180" width="60" height="8" rx="2" fill="#0F172A" />
+            </g>
+
+            <!-- Test Tubes with Serum in Foreground -->
+            <g filter="url(#studioShadow)">
+                <!-- Test Tube 1 (Red Serum) -->
+                <rect x="230" y="130" width="18" height="95" rx="9" fill="url(#glassGrad)" stroke="#CBD5E1" stroke-width="1.5" />
+                <rect x="232" y="170" width="14" height="52" rx="7" fill="#E11D48" opacity="0.85" />
+                <line x1="230" y1="135" x2="248" y2="135" stroke="#E2E8F0" stroke-width="3" />
+
+                <!-- Test Tube 2 (Blue Serum) -->
+                <rect x="255" y="115" width="18" height="110" rx="9" fill="url(#glassGrad)" stroke="#CBD5E1" stroke-width="1.5" />
+                <rect x="257" y="165" width="14" height="57" rx="7" fill="#0284C7" opacity="0.85" />
+                <line x1="255" y1="120" x2="273" y2="120" stroke="#E2E8F0" stroke-width="3" />
+            </g>
+            <defs>
+                <linearGradient id="glassGrad" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.6" />
+                    <stop offset="30%" stop-color="#BAE6FD" stop-opacity="0.2" />
+                    <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.7" />
+                </linearGradient>
+            </defs>
+        
+</svg>
