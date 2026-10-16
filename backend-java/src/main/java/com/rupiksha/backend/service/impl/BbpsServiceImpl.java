@@ -36,6 +36,53 @@ public class BbpsServiceImpl implements BbpsService {
     private final UserServiceRepository userServiceRepository;
     private final WalletService walletService;
 
+    @org.springframework.beans.factory.annotation.Value("${billavenue.biller.jio:JIO000000NAT01}")
+    private String billerJio;
+
+    @org.springframework.beans.factory.annotation.Value("${billavenue.biller.airtel:BILAVAIRTEL001}")
+    private String billerAirtel;
+
+    @org.springframework.beans.factory.annotation.Value("${billavenue.biller.vi:VODA00000NAT01}")
+    private String billerVi;
+
+    @org.springframework.beans.factory.annotation.Value("${billavenue.biller.bsnl:BSNL00000NATHL}")
+    private String billerBsnl;
+
+    @org.springframework.beans.factory.annotation.Value("${billavenue.biller.mtnl:MTNL00000DEL01}")
+    private String billerMtnl;
+
+    public String resolveBillAvenueBillerId(String billerId) {
+        if (billerId == null || billerId.isBlank()) return billerAirtel != null ? billerAirtel : "BILAVAIRTEL001";
+        String upper = billerId.trim().toUpperCase();
+        if (upper.contains("JIO")) {
+            return billerJio != null && !billerJio.isBlank() ? billerJio.trim() : "JIO000000NAT01";
+        }
+        if (upper.contains("AIRTEL")) {
+            return billerAirtel != null && !billerAirtel.isBlank() ? billerAirtel.trim() : "BILAVAIRTEL001";
+        }
+        if (upper.contains("VI") || upper.contains("VODA")) {
+            return billerVi != null && !billerVi.isBlank() ? billerVi.trim() : "VODA00000NAT01";
+        }
+        if (upper.contains("BSNL")) {
+            return billerBsnl != null && !billerBsnl.isBlank() ? billerBsnl.trim() : "BSNL00000NATHL";
+        }
+        if (upper.contains("MTNL")) {
+            return billerMtnl != null && !billerMtnl.isBlank() ? billerMtnl.trim() : "MTNL00000DEL01";
+        }
+        return billerId.trim();
+    }
+
+    private String cleanCircle(String circle) {
+        if (circle == null || circle.isBlank()) return "Delhi";
+        String cleaned = circle.replaceAll("&", "and")
+                .replaceAll("[^a-zA-Z0-9 ]", "")
+                .trim();
+        if (cleaned.length() > 20) {
+            cleaned = cleaned.substring(0, 20).trim();
+        }
+        return cleaned.isEmpty() ? "Delhi" : cleaned;
+    }
+
     private static final List<String> ALL_CIRCLES = List.of(
             "Delhi & NCR", "Mumbai", "Maharashtra & Goa", "Gujarat", "Uttar Pradesh (East)",
             "Uttar Pradesh (West)", "Bihar & Jharkhand", "West Bengal", "Kolkata", "Rajasthan",
@@ -277,24 +324,40 @@ public class BbpsServiceImpl implements BbpsService {
 
         // 8. Submit provider request to BillAvenue
         long paise = request.getAmount().multiply(BigDecimal.valueOf(100)).longValue();
+        String resolvedBillerId = resolveBillAvenueBillerId(request.getBillerId());
+        String mode = billAvenueClient.getPaymentMode();
+        if (mode == null || mode.isBlank()) {
+            mode = "Cash";
+        }
+        String initChannel = billAvenueClient.getInitChannel();
+        if (initChannel == null || initChannel.isBlank()) {
+            initChannel = "INT";
+        }
+        String paymentAccountInfo;
+        if ("Cash".equalsIgnoreCase(mode)) {
+            paymentAccountInfo = "Cash Payment";
+        } else {
+            paymentAccountInfo = "Paytm|" + (user.getMobile() != null ? user.getMobile() : request.getMobileNumber());
+        }
+
         BillAvenueDtos.BillPayRequest billPayReq = BillAvenueDtos.BillPayRequest.builder()
                 .billerAdhoc("true")
                 .agentId(billAvenueClient.getAgentId())
-                .billerId(request.getBillerId())
+                .billerId(resolvedBillerId)
                 .agentDeviceInfo(BillAvenueDtos.AgentDeviceInfo.builder()
-                        .initChannel(billAvenueClient.getInitChannel())
+                        .initChannel(initChannel)
                         .ip(clientIp != null ? clientIp : "127.0.0.1")
-                        .mac("01-23-45-67-89-ab")
+                        .mac("A1-B2-C3-D4-E5-F6")
                         .app("RupikshaPortal")
                         .build())
                 .customerInfo(BillAvenueDtos.CustomerInfo.builder()
                         .customerMobile(request.getMobileNumber())
-                        .customerEmail(user.getEmail())
+                        .customerEmail(user.getEmail() != null ? user.getEmail() : "support@rupiksha.com")
                         .build())
                 .inputParams(BillAvenueDtos.InputParams.builder()
                         .input(List.of(
                                 BillAvenueDtos.InputParam.builder().paramName("Mobile Number").paramValue(request.getMobileNumber()).build(),
-                                BillAvenueDtos.InputParam.builder().paramName("Location").paramValue(request.getCircle()).build()
+                                BillAvenueDtos.InputParam.builder().paramName("Location").paramValue(cleanCircle(request.getCircle())).build()
                         ))
                         .build())
                 .amountInfo(BillAvenueDtos.AmountInfo.builder()
@@ -303,15 +366,15 @@ public class BbpsServiceImpl implements BbpsService {
                         .custConvFee("0")
                         .build())
                 .paymentMethod(BillAvenueDtos.PaymentMethod.builder()
-                        .paymentMode("Wallet")
+                        .paymentMode(mode)
                         .quickPay("Y")
                         .splitPay("N")
                         .build())
                 .paymentInfo(BillAvenueDtos.PaymentInfo.builder()
                         .info(List.of(
-                                BillAvenueDtos.InfoItem.builder().infoName("Payment Account Info").infoValue("Rupiksha|" + (user.getMobile() != null ? user.getMobile() : request.getMobileNumber())).build(),
+                                BillAvenueDtos.InfoItem.builder().infoName("Payment Account Info").infoValue(paymentAccountInfo).build(),
                                 BillAvenueDtos.InfoItem.builder().infoName("PaymentRefId").infoValue(merchantRefNo).build(),
-                                BillAvenueDtos.InfoItem.builder().infoName("Remitter Name").infoValue(user.getFullName() != null ? user.getFullName() : "Rupiksha Customer").build()
+                                BillAvenueDtos.InfoItem.builder().infoName("Remitter Name").infoValue(user.getFullName() != null ? user.getFullName() : "Rupiksha Retailer").build()
                         ))
                         .build())
                 .build();
@@ -580,14 +643,13 @@ public class BbpsServiceImpl implements BbpsService {
 
     private String resolveBillerName(String billerId) {
         if (billerId == null) return "Mobile Operator";
-        return switch (billerId) {
-            case "BILAVAIRTEL001" -> "Airtel";
-            case "BILAVJIO000001" -> "Jio";
-            case "BILAVVI0000001" -> "Vi";
-            case "BILAVBSNL00001" -> "BSNL";
-            case "BILAVMTNL00001" -> "MTNL";
-            default -> "Mobile Prepaid";
-        };
+        String upper = billerId.trim().toUpperCase();
+        if (upper.contains("AIRTEL")) return "Airtel";
+        if (upper.contains("JIO")) return "Jio";
+        if (upper.contains("VI") || upper.contains("VODA")) return "Vi";
+        if (upper.contains("BSNL")) return "BSNL";
+        if (upper.contains("MTNL")) return "MTNL";
+        return "Mobile Prepaid";
     }
 
     private BbpsDtos.HistoryItem mapToHistoryItem(BbpsTransaction txn) {

@@ -18,7 +18,7 @@ public final class BillAvenueCryptoUtil {
     private static final String ALGORITHM = "AES";
     private static final String TRANSFORMATION = "AES/CBC/PKCS5Padding";
     private static final SecureRandom RANDOM = new SecureRandom();
-    private static final String ALPHANUMERIC = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    private static final String ALPHANUMERIC = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
     // Standard BillAvenue default 16-byte IV: 0, 1, 2, ..., 15
     private static final byte[] DEFAULT_IV = new byte[]{

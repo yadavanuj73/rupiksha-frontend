@@ -44,6 +44,9 @@ public class BillAvenueClient {
     @Value("${billavenue.init-channel:INT}")
     private String initChannel;
 
+    @Value("${billavenue.payment-mode:Cash}")
+    private String paymentMode;
+
     @Value("${billavenue.aes-iv:}")
     private String aesIv;
 
@@ -59,15 +62,33 @@ public class BillAvenueClient {
     }
 
     public String getAgentId() {
-        return agentId != null && !agentId.isBlank() ? agentId : "CC01BP66AGTU00000001";
+        return agentId != null && !agentId.isBlank() ? agentId.trim() : "CC01BP66AGTU00000001";
     }
 
     public String getInitChannel() {
-        return initChannel != null && !initChannel.isBlank() ? initChannel : "INT";
+        return initChannel != null && !initChannel.isBlank() ? initChannel.trim() : "INT";
+    }
+
+    public String getPaymentMode() {
+        return paymentMode != null && !paymentMode.isBlank() ? paymentMode.trim() : "Cash";
     }
 
     public String getInstituteId() {
-        return instituteId != null && !instituteId.isBlank() ? instituteId : "CC01";
+        return instituteId != null && !instituteId.isBlank() ? instituteId.trim() : "CC01";
+    }
+
+    public String getCleanBaseUrl() {
+        if (baseUrl == null || baseUrl.isBlank()) {
+            return "https://api.billavenue.com/billpay";
+        }
+        String clean = baseUrl.trim();
+        while (clean.endsWith("/")) {
+            clean = clean.substring(0, clean.length() - 1);
+        }
+        if (!clean.endsWith("/billpay")) {
+            clean = clean + "/billpay";
+        }
+        return clean;
     }
 
     public boolean isConfigured() {
@@ -80,12 +101,19 @@ public class BillAvenueClient {
      * POST /extBillPayCntrl/billPayRequest/json
      */
     public BillAvenueDtos.BillPayResponse payBill(BillAvenueDtos.BillPayRequest request, String requestId) {
-        String endpoint = baseUrl + "/extBillPayCntrl/billPayRequest/json";
-        log.info("Sending Bill Payment request to BillAvenue endpoint: {} with requestId: {}", endpoint, requestId);
+        String base = getCleanBaseUrl();
+        String endpoint = base + "/extBillPayCntrl/billPayRequest/json";
+        String urlWithQuery = String.format("%s?accessCode=%s&requestId=%s&ver=1.0&instituteId=%s",
+                endpoint,
+                accessCode != null ? accessCode.trim() : "",
+                requestId,
+                getInstituteId());
+
+        log.info("Sending Bill Payment request to BillAvenue endpoint: {} with requestId: {}", urlWithQuery, requestId);
 
         try {
             String plainJson = objectMapper.writeValueAsString(request);
-            log.debug("BillAvenue plain request payload: {}", plainJson);
+            log.info("Submitting BillAvenue plain payload for requestId {}: {}", requestId, plainJson);
 
             if (!isConfigured()) {
                 log.warn("BillAvenue credentials not configured (BILLAVENUE_ACCESS_CODE/BILLAVENUE_WORKING_KEY).");
@@ -103,7 +131,7 @@ public class BillAvenueClient {
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
             MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
-            map.add("accessCode", accessCode);
+            map.add("accessCode", accessCode.trim());
             map.add("requestId", requestId);
             map.add("encRequest", encRequest);
             map.add("ver", "1.0");
@@ -111,7 +139,7 @@ public class BillAvenueClient {
 
             HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(map, headers);
 
-            ResponseEntity<String> response = restTemplate.postForEntity(endpoint, entity, String.class);
+            ResponseEntity<String> response = restTemplate.postForEntity(urlWithQuery, entity, String.class);
             String rawBody = response.getBody();
             log.info("Received HTTP {} response from BillAvenue for requestId: {}", response.getStatusCode(), requestId);
 
