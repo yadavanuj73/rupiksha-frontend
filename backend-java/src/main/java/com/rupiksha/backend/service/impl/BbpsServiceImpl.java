@@ -55,10 +55,10 @@ public class BbpsServiceImpl implements BbpsService {
         if (billerId == null || billerId.isBlank()) return billerAirtel != null ? billerAirtel : "BILAVAIRTEL001";
         String upper = billerId.trim().toUpperCase();
         if (upper.contains("JIO")) {
-            if (billerJio != null && !billerJio.isBlank() && billerJio.trim().length() == 14) {
+            if (billerJio != null && !billerJio.isBlank() && !billerJio.equalsIgnoreCase("BILAVJIO000001")) {
                 return billerJio.trim();
             }
-            return "BILAVJIO000001";
+            return "JIOPREPAID";
         }
         if (upper.contains("AIRTEL")) {
             if (billerAirtel != null && !billerAirtel.isBlank() && billerAirtel.trim().length() == 14) {

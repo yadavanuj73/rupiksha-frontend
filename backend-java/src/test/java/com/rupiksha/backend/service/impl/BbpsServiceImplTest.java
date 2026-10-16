@@ -183,7 +183,7 @@ class BbpsServiceImplTest {
         assertEquals("SUCCESS", result.getStatus());
 
         BillAvenueDtos.BillPayXmlRequest captured = captor.getValue();
-        assertEquals("BILAVJIO000001", captured.getBillerId(), "Jio billerId must be 14-char BILAVJIO000001");
+        assertEquals("JIOPREPAID", captured.getBillerId(), "Jio billerId must resolve to JIOPREPAID");
         assertEquals(19800L, captured.getAmountPaise(), "Amount in paise must be 19800");
         // Verify input params contains Mobile Number and NOT Location
         assertNotNull(captured.getInputParams());
