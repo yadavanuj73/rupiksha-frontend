@@ -141,8 +141,8 @@ billavenue:
   working-key: ${BILLAVENUE_WORKING_KEY:}
   institute-id: ${BILLAVENUE_INSTITUTE_ID:CC01}
   agent-id: ${BILLAVENUE_AGENT_ID:CC01BP66AGTU00000001}
-  init-channel: ${BILLAVENUE_INIT_CHANNEL:AGT}
-  payment-mode: ${BILLAVENUE_PAYMENT_MODE:Cash}
+  init-channel: ${BILLAVENUE_INIT_CHANNEL:INT}
+  payment-mode: ${BILLAVENUE_PAYMENT_MODE:Internet Banking}
   aes-iv: ${BILLAVENUE_AES_IV:}
   timeout-seconds: ${BILLAVENUE_TIMEOUT_SECONDS:60}
   biller:

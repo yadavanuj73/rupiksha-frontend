@@ -327,35 +327,25 @@ public class BbpsServiceImpl implements BbpsService {
         // The amountInfo.amount field is the bill amount in rupees as a plain string (e.g. "198" for ₹198).
         String amountInRupees = request.getAmount().stripTrailingZeros().toPlainString();
         String resolvedBillerId = resolveBillAvenueBillerId(request.getBillerId());
+
+        // BillAvenue channel/mode rules (Section 5.0 / 6.0 of API doc):
+        // This is an online retailer portal — use INT channel + Internet Banking mode.
+        // "Cash" + AGT is for physical agent counters and is rejected by most billers (Code 202).
+        // Allowed INT combinations: Internet Banking, Debit Card, Credit Card, UPI, IMPS, NEFT, Wallet.
         String mode = billAvenueClient.getPaymentMode();
-        if (mode == null || mode.isBlank()) {
-            mode = "Cash";
+        if (mode == null || mode.isBlank() || "Cash".equalsIgnoreCase(mode)) {
+            // Cash is NOT valid for INT channel — override to Internet Banking
+            mode = "Internet Banking";
         }
         String initChannel = billAvenueClient.getInitChannel();
-        if (initChannel == null || initChannel.isBlank()) {
-            initChannel = "AGT";
+        if (initChannel == null || initChannel.isBlank() || "AGT".equalsIgnoreCase(initChannel)) {
+            // AGT = physical agent; this is an online portal — use INT
+            initChannel = "INT";
         }
 
-        // Strictly align channel and payment mode per BillAvenue Section 5.0 / 6.0:
-        // INT does NOT support Cash (INT + Cash is N).
-        // AGT does NOT support Wallet (AGT + Wallet is N).
-        if ("Cash".equalsIgnoreCase(mode)) {
-            if ("INT".equalsIgnoreCase(initChannel) || "MOB".equalsIgnoreCase(initChannel)) {
-                initChannel = "AGT";
-            }
-        } else if ("Wallet".equalsIgnoreCase(mode)) {
-            if ("AGT".equalsIgnoreCase(initChannel)) {
-                initChannel = "INT";
-            }
-        }
-
-        String paymentAccountInfo;
-        if ("Cash".equalsIgnoreCase(mode)) {
-            paymentAccountInfo = "Cash Payment";
-        } else {
-            String senderMobile = (user.getMobile() != null && !user.getMobile().isBlank()) ? user.getMobile().trim() : request.getMobileNumber().trim();
-            paymentAccountInfo = "Paytm|" + senderMobile;
-        }
+        // Build payment account info (mobile-linked identifier for online payment)
+        String senderMobile = (user.getMobile() != null && !user.getMobile().isBlank()) ? user.getMobile().trim() : request.getMobileNumber().trim();
+        String paymentAccountInfo = senderMobile;
 
         List<BillAvenueDtos.InputParam> inputs = new ArrayList<>();
         inputs.add(BillAvenueDtos.InputParam.builder().paramName("Mobile Number").paramValue(request.getMobileNumber()).build());
