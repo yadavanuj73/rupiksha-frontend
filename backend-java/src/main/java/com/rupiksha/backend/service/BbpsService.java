@@ -14,5 +14,6 @@ public interface BbpsService {
     BbpsDtos.RechargeResponse checkStatus(UUID userId, String txnId);
     BbpsDtos.RechargeResponse reconcile(UUID userId, String txnId);
     BbpsDtos.HistoryResponse getHistory(UUID userId, String status, String search, Instant startDate, Instant endDate, Pageable pageable);
+    Object getBillerInfo(String billerId);
     void handlePushNotification(String encResponse);
 }

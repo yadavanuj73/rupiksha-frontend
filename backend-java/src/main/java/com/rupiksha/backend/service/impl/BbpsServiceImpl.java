@@ -36,7 +36,7 @@ public class BbpsServiceImpl implements BbpsService {
     private final UserServiceRepository userServiceRepository;
     private final WalletService walletService;
 
-    @org.springframework.beans.factory.annotation.Value("${billavenue.biller.jio:JIO000000NAT01}")
+    @org.springframework.beans.factory.annotation.Value("${billavenue.biller.jio:JIOPREPAID}")
     private String billerJio;
 
     @org.springframework.beans.factory.annotation.Value("${billavenue.biller.airtel:BILAVAIRTEL001}")
@@ -55,7 +55,7 @@ public class BbpsServiceImpl implements BbpsService {
         if (billerId == null || billerId.isBlank()) return billerAirtel != null ? billerAirtel : "BILAVAIRTEL001";
         String upper = billerId.trim().toUpperCase();
         if (upper.contains("JIO")) {
-            return billerJio != null && !billerJio.isBlank() ? billerJio.trim() : "JIO000000NAT01";
+            return billerJio != null && !billerJio.isBlank() ? billerJio.trim() : "JIOPREPAID";
         }
         if (upper.contains("AIRTEL")) {
             return billerAirtel != null && !billerAirtel.isBlank() ? billerAirtel.trim() : "BILAVAIRTEL001";
@@ -331,13 +331,35 @@ public class BbpsServiceImpl implements BbpsService {
         }
         String initChannel = billAvenueClient.getInitChannel();
         if (initChannel == null || initChannel.isBlank()) {
-            initChannel = "INT";
+            initChannel = "AGT";
         }
+
+        // Strictly align channel and payment mode per BillAvenue Section 5.0 / 6.0:
+        // INT does NOT support Cash (INT + Cash is N).
+        // AGT does NOT support Wallet (AGT + Wallet is N).
+        if ("Cash".equalsIgnoreCase(mode)) {
+            if ("INT".equalsIgnoreCase(initChannel) || "MOB".equalsIgnoreCase(initChannel)) {
+                initChannel = "AGT";
+            }
+        } else if ("Wallet".equalsIgnoreCase(mode)) {
+            if ("AGT".equalsIgnoreCase(initChannel)) {
+                initChannel = "INT";
+            }
+        }
+
         String paymentAccountInfo;
         if ("Cash".equalsIgnoreCase(mode)) {
             paymentAccountInfo = "Cash Payment";
         } else {
-            paymentAccountInfo = "Paytm|" + (user.getMobile() != null ? user.getMobile() : request.getMobileNumber());
+            String senderMobile = (user.getMobile() != null && !user.getMobile().isBlank()) ? user.getMobile().trim() : request.getMobileNumber().trim();
+            paymentAccountInfo = "Paytm|" + senderMobile;
+        }
+
+        List<BillAvenueDtos.InputParam> inputs = new ArrayList<>();
+        inputs.add(BillAvenueDtos.InputParam.builder().paramName("Mobile Number").paramValue(request.getMobileNumber()).build());
+        String loc = cleanCircle(request.getCircle());
+        if (loc != null && !loc.isBlank()) {
+            inputs.add(BillAvenueDtos.InputParam.builder().paramName("Location").paramValue(loc).build());
         }
 
         BillAvenueDtos.BillPayRequest billPayReq = BillAvenueDtos.BillPayRequest.builder()
@@ -355,10 +377,7 @@ public class BbpsServiceImpl implements BbpsService {
                         .customerEmail(user.getEmail() != null ? user.getEmail() : "support@rupiksha.com")
                         .build())
                 .inputParams(BillAvenueDtos.InputParams.builder()
-                        .input(List.of(
-                                BillAvenueDtos.InputParam.builder().paramName("Mobile Number").paramValue(request.getMobileNumber()).build(),
-                                BillAvenueDtos.InputParam.builder().paramName("Location").paramValue(cleanCircle(request.getCircle())).build()
-                        ))
+                        .input(inputs)
                         .build())
                 .amountInfo(BillAvenueDtos.AmountInfo.builder()
                         .amount(String.valueOf(paise))
@@ -367,7 +386,7 @@ public class BbpsServiceImpl implements BbpsService {
                         .build())
                 .paymentMethod(BillAvenueDtos.PaymentMethod.builder()
                         .paymentMode(mode)
-                        .quickPay("Y")
+                        .quickPay("N")
                         .splitPay("N")
                         .build())
                 .paymentInfo(BillAvenueDtos.PaymentInfo.builder()
@@ -815,5 +834,11 @@ public class BbpsServiceImpl implements BbpsService {
             list.add(new BbpsDtos.PlanInfo("BSNL_2399", billerId, "Annual Plans", "Annual", new BigDecimal("2399.00"), "395 Days", "2.0 GB/Day", "Unlimited Calls", "100 SMS/Day", "395 Days Annual pack: Unlimited Calls, 2GB/day data, 100 SMS/day."));
         }
         return list;
+    }
+
+    @Override
+    public Object getBillerInfo(String billerId) {
+        String resolved = resolveBillAvenueBillerId(billerId);
+        return billAvenueClient.getBillerInfo(resolved);
     }
 }

@@ -41,7 +41,7 @@ public class BillAvenueClient {
     @Value("${billavenue.agent-id:CC01BP66AGTU00000001}")
     private String agentId;
 
-    @Value("${billavenue.init-channel:INT}")
+    @Value("${billavenue.init-channel:AGT}")
     private String initChannel;
 
     @Value("${billavenue.payment-mode:Cash}")
@@ -66,7 +66,7 @@ public class BillAvenueClient {
     }
 
     public String getInitChannel() {
-        return initChannel != null && !initChannel.isBlank() ? initChannel.trim() : "INT";
+        return initChannel != null && !initChannel.isBlank() ? initChannel.trim() : "AGT";
     }
 
     public String getPaymentMode() {
@@ -289,6 +289,19 @@ public class BillAvenueClient {
                 resp.setRequestId(root.path("requestId").asText(null));
             }
 
+            if (root.has("complianceCode")) {
+                resp.setComplianceCode(root.path("complianceCode").asText(null));
+            }
+            if (root.has("complianceReason")) {
+                resp.setComplianceReason(root.path("complianceReason").asText(null));
+            }
+            if (root.has("message")) {
+                resp.setMessage(root.path("message").asText(null));
+            }
+            if (root.has("errorMessage")) {
+                resp.setErrorMessage(root.path("errorMessage").asText(null));
+            }
+
             List<BillAvenueDtos.ErrorInfo> errors = extractErrors(root);
             if (!errors.isEmpty()) {
                 resp.setErrorInfo(errors);
@@ -305,8 +318,53 @@ public class BillAvenueClient {
         }
     }
 
+    /**
+     * Calls BillAvenue MDM Biller Info API (Section 11.0 of BillAvenue doc)
+     * POST /extMdmCntrl/mdmRequestNew/json
+     */
+    public JsonNode getBillerInfo(String billerId) {
+        String requestId = BillAvenueCryptoUtil.generateRequestId();
+        String endpoint = String.format("%s/extMdmCntrl/mdmRequestNew/json?accessCode=%s&requestId=%s&ver=1.0&instituteId=%s",
+                baseUrl, accessCode != null ? accessCode.trim() : "", requestId, getInstituteId());
+
+        try {
+            if (!isConfigured()) {
+                return null;
+            }
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            String bodyJson = String.format("{\"billerId\":[\"%s\"]}", billerId);
+            HttpEntity<String> entity = new HttpEntity<>(bodyJson, headers);
+
+            ResponseEntity<String> response = restTemplate.postForEntity(endpoint, entity, String.class);
+            String rawBody = response.getBody();
+            if (rawBody == null || rawBody.isBlank()) return null;
+
+            String jsonToParse = rawBody.trim();
+            if (!jsonToParse.startsWith("{") && !jsonToParse.startsWith("[")) {
+                jsonToParse = BillAvenueCryptoUtil.decrypt(jsonToParse, workingKey, aesIv);
+            }
+
+            log.info("Decrypted MDM BillerInfo for {}: {}", billerId, jsonToParse);
+            return objectMapper.readTree(jsonToParse);
+        } catch (Exception e) {
+            log.warn("MDM BillerInfo call failed for biller {}: {}", billerId, e.getMessage());
+            return null;
+        }
+    }
+
     private List<BillAvenueDtos.ErrorInfo> extractErrors(JsonNode root) {
         List<BillAvenueDtos.ErrorInfo> list = new ArrayList<>();
+
+        if (root.has("complianceCode") && !root.path("complianceCode").asText("").isBlank()) {
+            list.add(new BillAvenueDtos.ErrorInfo(
+                    root.path("complianceCode").asText(),
+                    root.path("complianceReason").asText("Validation compliance failed")
+            ));
+        }
+
         JsonNode errorInfoNode = root.path("errorInfo");
         if (errorInfoNode.isMissingNode() || errorInfoNode.isNull()) {
             errorInfoNode = root.path("error");

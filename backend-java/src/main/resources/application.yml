@@ -141,8 +141,16 @@ billavenue:
   working-key: ${BILLAVENUE_WORKING_KEY:}
   institute-id: ${BILLAVENUE_INSTITUTE_ID:CC01}
   agent-id: ${BILLAVENUE_AGENT_ID:CC01BP66AGTU00000001}
+  init-channel: ${BILLAVENUE_INIT_CHANNEL:AGT}
+  payment-mode: ${BILLAVENUE_PAYMENT_MODE:Cash}
   aes-iv: ${BILLAVENUE_AES_IV:}
   timeout-seconds: ${BILLAVENUE_TIMEOUT_SECONDS:60}
+  biller:
+    jio: ${BILLAVENUE_BILLER_JIO:JIOPREPAID}
+    airtel: ${BILLAVENUE_BILLER_AIRTEL:BILAVAIRTEL001}
+    vi: ${BILLAVENUE_BILLER_VI:BILAVVI0000001}
+    bsnl: ${BILLAVENUE_BILLER_BSNL:BILAVBSNL00001}
+    mtnl: ${BILLAVENUE_BILLER_MTNL:BILAVMTNL00001}
 
   services:
     # Note: Legacy AEPS provider config removed. Using Levin AEPS only.

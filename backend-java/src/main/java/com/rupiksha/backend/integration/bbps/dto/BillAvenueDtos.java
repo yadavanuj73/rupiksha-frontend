@@ -118,6 +118,10 @@ public class BillAvenueDtos {
         private String respAmount; // in paise
         private String respBillNumber;
         private String respCustomerName;
+        private String complianceCode;
+        private String complianceReason;
+        private String message;
+        private String errorMessage;
         private String requestId;
         private List<ErrorInfo> errorInfo;
 
@@ -127,6 +131,15 @@ public class BillAvenueDtos {
         }
 
         public String getErrorMessage() {
+            if (complianceReason != null && !complianceReason.isBlank()) {
+                return complianceReason + (complianceCode != null && !complianceCode.isBlank() ? " (" + complianceCode + ")" : "");
+            }
+            if (errorMessage != null && !errorMessage.isBlank()) {
+                return errorMessage;
+            }
+            if (message != null && !message.isBlank()) {
+                return message;
+            }
             if (errorInfo != null && !errorInfo.isEmpty()) {
                 ErrorInfo first = errorInfo.get(0);
                 if (first.getErrorMessage() != null && !first.getErrorMessage().isBlank()) {
@@ -135,6 +148,9 @@ public class BillAvenueDtos {
             }
             if (responseReason != null && !responseReason.isBlank() && !responseReason.equalsIgnoreCase("FAILURE")) {
                 return responseReason;
+            }
+            if ("202".equals(responseCode)) {
+                return "BillAvenue rejected request (Code 202: Invalid parameter combination or unsupported payment channel/mode for operator)";
             }
             if ("205".equals(responseCode)) {
                 return "BillAvenue rejected request (Code 205: Duplicate transaction or unmapped request/biller ID)";

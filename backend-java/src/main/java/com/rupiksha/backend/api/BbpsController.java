@@ -62,6 +62,15 @@ public class BbpsController {
     }
 
     /**
+     * Inspects BillAvenue MDM Biller Info for any biller ID (Section 11.0).
+     */
+    @GetMapping("/biller-info/{billerId}")
+    public ResponseEntity<Object> getBillerInfo(@PathVariable String billerId) {
+        Object info = bbpsService.getBillerInfo(billerId);
+        return ResponseEntity.ok(info != null ? info : Map.of("message", "No MDM info available"));
+    }
+
+    /**
      * Executes server-authoritative Mobile Prepaid Recharge with wallet debit,
      * BillAvenue integration, and idempotent failure refund.
      */
