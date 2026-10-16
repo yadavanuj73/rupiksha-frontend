@@ -36,7 +36,7 @@ public class BbpsServiceImpl implements BbpsService {
     private final UserServiceRepository userServiceRepository;
     private final WalletService walletService;
 
-    @org.springframework.beans.factory.annotation.Value("${billavenue.biller.jio:JIOPREPAID}")
+    @org.springframework.beans.factory.annotation.Value("${billavenue.biller.jio:BILAVJIO000001}")
     private String billerJio;
 
     @org.springframework.beans.factory.annotation.Value("${billavenue.biller.airtel:BILAVAIRTEL001}")
@@ -55,10 +55,10 @@ public class BbpsServiceImpl implements BbpsService {
         if (billerId == null || billerId.isBlank()) return billerAirtel != null ? billerAirtel : "BILAVAIRTEL001";
         String upper = billerId.trim().toUpperCase();
         if (upper.contains("JIO")) {
-            if (billerJio != null && !billerJio.isBlank() && !billerJio.equalsIgnoreCase("BILAVJIO000001")) {
+            if (billerJio != null && !billerJio.isBlank() && billerJio.trim().length() == 14) {
                 return billerJio.trim();
             }
-            return "JIOPREPAID";
+            return "BILAVJIO000001";
         }
         if (upper.contains("AIRTEL")) {
             if (billerAirtel != null && !billerAirtel.isBlank() && billerAirtel.trim().length() == 14) {
@@ -425,7 +425,6 @@ public class BbpsServiceImpl implements BbpsService {
                 .fetchRequestId(effectiveRequestId)
                 .billerId(resolvedBillerId)
                 .customerMobile(request.getMobileNumber().trim())
-                .customerEmail(user.getEmail() != null && !user.getEmail().isBlank() ? user.getEmail().trim() : "support@rupiksha.com")
                 .amountPaise(paise)
                 .billAmountPaise(billerRespPaise)
                 .billDate(billDate)

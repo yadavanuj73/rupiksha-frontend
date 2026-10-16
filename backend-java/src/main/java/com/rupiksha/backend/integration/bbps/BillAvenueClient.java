@@ -275,6 +275,7 @@ public class BillAvenueClient {
         }
 
         // 2. Build Biller Response XML (mirror what fetch returned, or send recharge amount)
+        // The XML API request amounts are in paise (see the API document's request field definitions).
         long billerRespPaise = (req.getBillAmountPaise() > 0) ? req.getBillAmountPaise() : req.getAmountPaise();
         StringBuilder billerRespXml = new StringBuilder("<billerResponse>");
         billerRespXml.append("<billAmount>").append(billerRespPaise).append("</billAmount>");
@@ -302,7 +303,7 @@ public class BillAvenueClient {
             addnlInfoXml.append("</additionalInfo>");
         }
 
-        // 4. Build Payment Account Info & Payment Info XML (Remitter Info per Section 3.0 / Page 23)
+        // 4. Build Payment Account Info & Payment Info XML
         String mode = (req.getPaymentMode() != null && !req.getPaymentMode().isBlank()) ? req.getPaymentMode() : "Cash";
         String remitter = (req.getRemitterName() != null && !req.getRemitterName().isBlank()) ? req.getRemitterName() : "Customer";
         String acctInfo = (req.getPaymentAccountInfo() != null && !req.getPaymentAccountInfo().isBlank()) ? req.getPaymentAccountInfo() : "Cash Payment";
@@ -310,36 +311,28 @@ public class BillAvenueClient {
 
         StringBuilder paymentInfoXml = new StringBuilder();
         paymentInfoXml.append("<info><infoName>Remitter Name</infoName><infoValue>").append(escapeXml(remitter)).append("</infoValue></info>");
-        if (req.getClientTxnId() != null && !req.getClientTxnId().isBlank()) {
-            paymentInfoXml.append("<info><infoName>PaymentRefId</infoName><infoValue>").append(escapeXml(req.getClientTxnId())).append("</infoValue></info>");
-        }
-        paymentInfoXml.append("<info><infoName>Payment Account Info</infoName><infoValue>").append(escapeXml(acctInfo)).append("</infoValue></info>");
-        paymentInfoXml.append("<info><infoName>Payment mode</infoName><infoValue>").append(escapeXml(mode)).append("</infoValue></info>");
         if ("Cash".equalsIgnoreCase(mode)) {
             paymentInfoXml.append("<info><infoName>Remarks</infoName><infoValue>").append(escapeXml(remarks)).append("</infoValue></info>");
         }
+        paymentInfoXml.append("<info><infoName>Payment Account Info</infoName><infoValue>").append(escapeXml(acctInfo)).append("</infoValue></info>");
+        paymentInfoXml.append("<info><infoName>Payment mode</infoName><infoValue>").append(escapeXml(mode)).append("</infoValue></info>");
 
-        // 5. Build Customer Info XML (Page 34, 36)
-        StringBuilder customerInfoXml = new StringBuilder("<customerInfo>");
-        if (req.getCustomerEmail() != null && !req.getCustomerEmail().isBlank()) {
-            customerInfoXml.append("<customerEmail>").append(escapeXml(req.getCustomerEmail().trim())).append("</customerEmail>");
-        }
-        customerInfoXml.append("<customerMobile>").append(escapeXml(req.getCustomerMobile())).append("</customerMobile>");
+        // 5. KYC (PAN / Aadhaar) rules for transactions >= 50,000 INR (5,000,000 paise)
+        StringBuilder kycXml = new StringBuilder();
         if (req.getAmountPaise() >= 5000000L) {
             if (req.getPan() != null && !req.getPan().isBlank()) {
-                customerInfoXml.append("<customerPan>").append(escapeXml(req.getPan().toUpperCase())).append("</customerPan>");
+                kycXml.append("<customerPan>").append(escapeXml(req.getPan().toUpperCase())).append("</customerPan>");
             }
             if (req.getAadhaar() != null && !req.getAadhaar().isBlank()) {
-                customerInfoXml.append("<customerAdhaar>").append(escapeXml(req.getAadhaar())).append("</customerAdhaar>");
+                kycXml.append("<customerAdhaar>").append(escapeXml(req.getAadhaar())).append("</customerAdhaar>");
             }
-            customerInfoXml.append("<REMITTER_NAME>").append(escapeXml(remitter)).append("</REMITTER_NAME>");
+            kycXml.append("<REMITTER_NAME>").append(escapeXml(remitter)).append("</REMITTER_NAME>");
         }
-        customerInfoXml.append("</customerInfo>");
 
         String sanitizedIp = (req.getClientIp() != null && req.getClientIp().matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"))
                 ? req.getClientIp() : "103.108.7.127";
 
-        // 6. Build Master Payment XML matching exact BillAvenue BBPS XML schema sequence (Pages 33-35)
+        // 6. Build Master Payment XML matching PHP structure
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
                 + "<billPaymentRequest>"
                 + addnlInfoXml
@@ -353,20 +346,25 @@ public class BillAvenueClient {
                 + "<agentId>" + escapeXml(getAgentId()) + "</agentId>"
                 + "<amountInfo>"
                 + "<amount>" + req.getAmountPaise() + "</amount>"
+                + "<CCF1>0</CCF1>"
                 + "<currency>356</currency>"
                 + "<custConvFee>0</custConvFee>"
                 + "</amountInfo>"
                 + "<billerId>" + escapeXml(req.getBillerId()) + "</billerId>"
                 + "<billerAdhoc>true</billerAdhoc>"
                 + billerRespXml
-                + customerInfoXml
+                + "<customerInfo>"
+                + "<customerMobile>" + escapeXml(req.getCustomerMobile()) + "</customerMobile>"
+                + kycXml
+                + "</customerInfo>"
                 + "<inputParams>" + inputXml + "</inputParams>"
-                + "<paymentInfo>" + paymentInfoXml + "</paymentInfo>"
                 + "<paymentMethod>"
                 + "<paymentMode>" + escapeXml(mode) + "</paymentMode>"
                 + "<quickPay>N</quickPay>"
                 + "<splitPay>N</splitPay>"
                 + "</paymentMethod>"
+                + "<paymentInfo>" + paymentInfoXml + "</paymentInfo>"
+                + "<paymentRefId>" + escapeXml(req.getClientTxnId()) + "</paymentRefId>"
                 + "</billPaymentRequest>";
 
         log.info("Sending Bill Payment XML for biller: {}, txnId: {}, requestId: {}",
