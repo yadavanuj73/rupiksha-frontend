@@ -50,6 +50,33 @@ const OPERATOR_META = {
 
 const PLAN_CATEGORIES = ['All', 'Popular', 'Unlimited', 'Data', 'Talktime', 'Validity', 'Annual'];
 
+const ALL_CIRCLES = [
+    'All India',
+    'Andhra Pradesh & Telangana',
+    'Assam',
+    'Bihar & Jharkhand',
+    'Chennai',
+    'Delhi NCR',
+    'Gujarat',
+    'Haryana',
+    'Himachal Pradesh',
+    'Jammu & Kashmir',
+    'Karnataka',
+    'Kerala',
+    'Kolkata',
+    'Madhya Pradesh & Chhattisgarh',
+    'Maharashtra & Goa',
+    'Mumbai',
+    'North East',
+    'Odisha',
+    'Punjab',
+    'Rajasthan',
+    'Tamil Nadu',
+    'UP East',
+    'UP West & Uttarakhand',
+    'West Bengal'
+];
+
 const MobilePrepaidFlow = ({ onBack }) => {
     const { balance, refreshWallet } = useWallet();
 
