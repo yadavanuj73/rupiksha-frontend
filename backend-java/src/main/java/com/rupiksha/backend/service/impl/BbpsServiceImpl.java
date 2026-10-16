@@ -323,7 +323,9 @@ public class BbpsServiceImpl implements BbpsService {
         }
 
         // 8. Submit provider request to BillAvenue
-        long paise = request.getAmount().multiply(BigDecimal.valueOf(100)).longValue();
+        // IMPORTANT: BillAvenue expects amount in RUPEES (not paise) per Section 4.3 of the API doc.
+        // The amountInfo.amount field is the bill amount in rupees as a plain string (e.g. "198" for ₹198).
+        String amountInRupees = request.getAmount().stripTrailingZeros().toPlainString();
         String resolvedBillerId = resolveBillAvenueBillerId(request.getBillerId());
         String mode = billAvenueClient.getPaymentMode();
         if (mode == null || mode.isBlank()) {
@@ -380,7 +382,7 @@ public class BbpsServiceImpl implements BbpsService {
                         .input(inputs)
                         .build())
                 .amountInfo(BillAvenueDtos.AmountInfo.builder()
-                        .amount(String.valueOf(paise))
+                        .amount(amountInRupees)
                         .currency("356")
                         .custConvFee("0")
                         .build())

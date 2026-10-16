@@ -74,7 +74,7 @@ public class BillAvenueDtos {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class AmountInfo {
-        private String amount; // in paise
+        private String amount; // in rupees (e.g. "198" for ₹198)
         private String currency; // "356"
         private String custConvFee; // "0"
         private String CCF1;
