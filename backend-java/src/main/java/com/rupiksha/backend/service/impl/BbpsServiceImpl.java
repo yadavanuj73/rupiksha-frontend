@@ -36,7 +36,7 @@ public class BbpsServiceImpl implements BbpsService {
     private final UserServiceRepository userServiceRepository;
     private final WalletService walletService;
 
-    @org.springframework.beans.factory.annotation.Value("${billavenue.biller.jio:BILAVJIO000001}")
+    @org.springframework.beans.factory.annotation.Value("${billavenue.biller.jio:JIOPREPAID}")
     private String billerJio;
 
     @org.springframework.beans.factory.annotation.Value("${billavenue.biller.airtel:BILAVAIRTEL001}")
@@ -55,7 +55,7 @@ public class BbpsServiceImpl implements BbpsService {
         if (billerId == null || billerId.isBlank()) return billerAirtel != null ? billerAirtel : "BILAVAIRTEL001";
         String upper = billerId.trim().toUpperCase();
         if (upper.contains("JIO")) {
-            return billerJio != null && !billerJio.isBlank() ? billerJio.trim() : "BILAVJIO000001";
+            return (billerJio != null && !billerJio.isBlank() && !billerJio.equalsIgnoreCase("BILAVJIO000001")) ? billerJio.trim() : "JIOPREPAID";
         }
         if (upper.contains("AIRTEL")) {
             return billerAirtel != null && !billerAirtel.isBlank() ? billerAirtel.trim() : "BILAVAIRTEL001";
@@ -73,14 +73,12 @@ public class BbpsServiceImpl implements BbpsService {
     }
 
     private String cleanCircle(String circle) {
-        if (circle == null || circle.isBlank()) return "Delhi";
-        String cleaned = circle.replaceAll("&", "and")
-                .replaceAll("[^a-zA-Z0-9 ]", "")
-                .trim();
-        if (cleaned.length() > 20) {
-            cleaned = cleaned.substring(0, 20).trim();
+        if (circle == null || circle.isBlank()) return null;
+        String trimmed = circle.trim();
+        if (trimmed.length() > 20) {
+            trimmed = trimmed.substring(0, 20).trim();
         }
-        return cleaned.isEmpty() ? "Delhi" : cleaned;
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private static final List<String> ALL_CIRCLES = List.of(
@@ -323,32 +321,53 @@ public class BbpsServiceImpl implements BbpsService {
         }
 
         // 8. Submit provider request to BillAvenue
-        // IMPORTANT: BillAvenue expects amount in RUPEES (not paise) per Section 4.3 of the API doc.
-        // The amountInfo.amount field is the bill amount in rupees as a plain string (e.g. "198" for ₹198).
-        String amountInRupees = request.getAmount().stripTrailingZeros().toPlainString();
+        // IMPORTANT: BillAvenue expects amount in PAISE per Section 4.3 (Page 39) & Section 3.0 (Page 7) of the API doc.
+        long paise = request.getAmount().multiply(BigDecimal.valueOf(100)).longValue();
+        String amountInPaise = String.valueOf(paise);
         String resolvedBillerId = resolveBillAvenueBillerId(request.getBillerId());
 
-        // BillAvenue channel/mode rules (Section 5.0 / 6.0 of API doc):
-        // This is an online retailer portal — use INT channel + Internet Banking mode.
-        // "Cash" + AGT is for physical agent counters and is rejected by most billers (Code 202).
-        // Allowed INT combinations: Internet Banking, Debit Card, Credit Card, UPI, IMPS, NEFT, Wallet.
         String mode = billAvenueClient.getPaymentMode();
-        if (mode == null || mode.isBlank() || "Cash".equalsIgnoreCase(mode)) {
-            // Cash is NOT valid for INT channel — override to Internet Banking
-            mode = "Internet Banking";
-        }
-        String initChannel = billAvenueClient.getInitChannel();
-        if (initChannel == null || initChannel.isBlank() || "AGT".equalsIgnoreCase(initChannel)) {
-            // AGT = physical agent; this is an online portal — use INT
-            initChannel = "INT";
+        if (mode == null || mode.isBlank()) {
+            mode = "Cash";
         }
 
-        // Build payment account info (mobile-linked identifier for online payment)
+        String initChannel = billAvenueClient.getInitChannel();
+        if (initChannel == null || initChannel.isBlank()) {
+            initChannel = "AGT";
+        }
+
+        // Align channel and payment mode per BillAvenue Section 5.0 / 6.0 & Page 23 Remitter Info rules:
+        // AGT channel is for agents/retailers (Agent ID CC01BP66AGTU00000001) and supports Cash.
+        // For Cash, Payment Account Info MUST be "Cash Payment" per Page 23 table.
+        // For Wallet, initChannel is INT, Payment Account Info is "Paytm|" + senderMobile.
+        // For UPI, initChannel is INT, Payment Account Info is senderMobile + "@upi".
+        String paymentAccountInfo;
         String senderMobile = (user.getMobile() != null && !user.getMobile().isBlank()) ? user.getMobile().trim() : request.getMobileNumber().trim();
-        String paymentAccountInfo = senderMobile;
+
+        if ("Cash".equalsIgnoreCase(mode)) {
+            initChannel = "AGT";
+            mode = "Cash";
+            paymentAccountInfo = "Cash Payment";
+        } else if ("Wallet".equalsIgnoreCase(mode)) {
+            initChannel = "INT";
+            paymentAccountInfo = "Paytm|" + senderMobile;
+        } else if ("UPI".equalsIgnoreCase(mode)) {
+            initChannel = "INT";
+            paymentAccountInfo = senderMobile.contains("@") ? senderMobile : (senderMobile + "@upi");
+        } else {
+            // Default to Cash for AGT agent
+            mode = "Cash";
+            initChannel = "AGT";
+            paymentAccountInfo = "Cash Payment";
+        }
+
+        // Sanitize client IP: must be IPv4 between 7 and 15 chars per Page 35 (<ip> tag validation)
+        String sanitizedIp = (clientIp != null && clientIp.matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"))
+                ? clientIp
+                : "103.108.7.127";
 
         List<BillAvenueDtos.InputParam> inputs = new ArrayList<>();
-        inputs.add(BillAvenueDtos.InputParam.builder().paramName("Mobile Number").paramValue(request.getMobileNumber()).build());
+        inputs.add(BillAvenueDtos.InputParam.builder().paramName("Mobile Number").paramValue(request.getMobileNumber().trim()).build());
         String loc = cleanCircle(request.getCircle());
         if (loc != null && !loc.isBlank()) {
             inputs.add(BillAvenueDtos.InputParam.builder().paramName("Location").paramValue(loc).build());
@@ -360,30 +379,30 @@ public class BbpsServiceImpl implements BbpsService {
                 .billerId(resolvedBillerId)
                 .agentDeviceInfo(BillAvenueDtos.AgentDeviceInfo.builder()
                         .initChannel(initChannel)
-                        .ip(clientIp != null ? clientIp : "127.0.0.1")
+                        .ip(sanitizedIp)
                         .mac("A1-B2-C3-D4-E5-F6")
                         .app("RupikshaPortal")
                         .build())
                 .customerInfo(BillAvenueDtos.CustomerInfo.builder()
-                        .customerMobile(request.getMobileNumber())
-                        .customerEmail(user.getEmail() != null ? user.getEmail() : "support@rupiksha.com")
+                        .customerMobile(request.getMobileNumber().trim())
+                        .customerEmail(user.getEmail() != null && !user.getEmail().isBlank() ? user.getEmail().trim() : "support@rupiksha.com")
                         .build())
                 .inputParams(BillAvenueDtos.InputParams.builder()
                         .input(inputs)
                         .build())
                 .amountInfo(BillAvenueDtos.AmountInfo.builder()
-                        .amount(amountInRupees)
+                        .amount(amountInPaise)
                         .currency("356")
                         .custConvFee("0")
                         .build())
                 .paymentMethod(BillAvenueDtos.PaymentMethod.builder()
                         .paymentMode(mode)
-                        .quickPay("Y")  // Prepaid recharge = no prior bill fetch → quickPay must be Y
+                        .quickPay("Y")  // Prepaid recharge = no prior bill fetch → quickPay must be Y per Page 39
                         .splitPay("N")
                         .build())
                 .paymentInfo(BillAvenueDtos.PaymentInfo.builder()
                         .info(List.of(
-                                BillAvenueDtos.InfoItem.builder().infoName("Remitter Name").infoValue(user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName() : "Rupiksha Retailer").build(),
+                                BillAvenueDtos.InfoItem.builder().infoName("Remitter Name").infoValue(user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName().trim() : "Rupiksha Retailer").build(),
                                 BillAvenueDtos.InfoItem.builder().infoName("PaymentRefId").infoValue(merchantRefNo).build(),
                                 BillAvenueDtos.InfoItem.builder().infoName("Payment Account Info").infoValue(paymentAccountInfo).build(),
                                 BillAvenueDtos.InfoItem.builder().infoName("Payment mode").infoValue(mode).build()

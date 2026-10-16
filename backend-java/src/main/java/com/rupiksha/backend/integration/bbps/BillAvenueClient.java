@@ -257,10 +257,19 @@ public class BillAvenueClient {
                 // Encrypted response: decrypt using shared workingKey
                 json = BillAvenueCryptoUtil.decrypt(json, workingKey, aesIv);
             }
-            log.info("Decrypted BillAvenue BillPay response for requestId {}: {}", requestId, json);
-
             JsonNode root = objectMapper.readTree(json);
+            if (root.has("ExtBillPayResponse")) {
+                root = root.get("ExtBillPayResponse");
+            } else if (root.has("extBillPayResponse")) {
+                root = root.get("extBillPayResponse");
+            } else if (root.has("billPaymentResponse")) {
+                root = root.get("billPaymentResponse");
+            } else if (root.has("billPayResponse")) {
+                root = root.get("billPayResponse");
+            }
+
             BillAvenueDtos.BillPayResponse resp = new BillAvenueDtos.BillPayResponse();
+            resp.setRawResponse(json);
             if (root.has("responseCode")) {
                 resp.setResponseCode(root.path("responseCode").asText(null));
             }

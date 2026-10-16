@@ -124,6 +124,7 @@ public class BillAvenueDtos {
         private String errorMessage;
         private String requestId;
         private List<ErrorInfo> errorInfo;
+        private String rawResponse;
 
         public boolean isSuccess() {
             return "000".equals(responseCode) &&
@@ -141,21 +142,28 @@ public class BillAvenueDtos {
                 return message;
             }
             if (errorInfo != null && !errorInfo.isEmpty()) {
-                ErrorInfo first = errorInfo.get(0);
-                if (first.getErrorMessage() != null && !first.getErrorMessage().isBlank()) {
-                    return first.getErrorMessage() + (first.getErrorCode() != null ? " (" + first.getErrorCode() + ")" : "");
+                for (ErrorInfo err : errorInfo) {
+                    if (err != null && err.getErrorMessage() != null && !err.getErrorMessage().isBlank()) {
+                        return err.getErrorMessage() + (err.getErrorCode() != null ? " (" + err.getErrorCode() + ")" : "");
+                    }
                 }
             }
             if (responseReason != null && !responseReason.isBlank() && !responseReason.equalsIgnoreCase("FAILURE")) {
                 return responseReason;
             }
-            if ("202".equals(responseCode)) {
-                return "BillAvenue rejected request (Code 202: Invalid parameter combination or unsupported payment channel/mode for operator)";
+            if (responseCode != null) {
+                String desc = switch (responseCode) {
+                    case "202" -> "Invalid parameter combination or missing input parameter";
+                    case "205" -> "Duplicate transaction or unmapped biller ID";
+                    case "001" -> "Request validation error";
+                    default -> "Provider rejected request";
+                };
+                if (responseReason != null && !responseReason.isBlank()) {
+                    return desc + " (Code " + responseCode + ": " + responseReason + ")";
+                }
+                return desc + " (Code: " + responseCode + ")";
             }
-            if ("205".equals(responseCode)) {
-                return "BillAvenue rejected request (Code 205: Duplicate transaction or unmapped request/biller ID)";
-            }
-            return responseReason != null ? responseReason : "Failed with code: " + responseCode;
+            return "Recharge request rejected by provider";
         }
     }
 
