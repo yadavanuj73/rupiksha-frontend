@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Zap, ArrowLeft, CheckCircle2, AlertCircle, Clock,
+    Zap, CheckCircle2, AlertCircle, Clock,
     Search, Check, ShieldCheck, RefreshCw, Printer,
     Wallet, ArrowRight, Info, X, Building2, User,
     FileText, Calendar, DollarSign, MapPin, ExternalLink
@@ -9,6 +9,7 @@ import {
 import confetti from 'canvas-confetti';
 import { bbpsService } from '../../../services/apiService';
 import { useWallet } from '../../../context/WalletContext';
+import BbpsServiceNav from './BbpsServiceNav';
 
 const ALL_INDIAN_STATES = [
     'All India',
@@ -331,49 +332,16 @@ const ElectricityFlow = ({ onBack }) => {
 
     return (
         <div className="space-y-5 font-['Inter',sans-serif] max-w-full">
-            {/* Top Navigation & Balance Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                <button
-                    type="button"
-                    onClick={onBack}
-                    className="group inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white border border-slate-300 text-black font-black text-xs hover:border-blue-600 hover:text-blue-700 hover:shadow-xs transition-all cursor-pointer"
-                >
-                    <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
-                    <span>Back to all BBPS categories</span>
-                </button>
-
-                <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-600">Wallet Available:</span>
-                    <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                        ₹{numBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </span>
-                </div>
-            </div>
-
-            {/* Header Banner */}
-            <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 md:p-6 shadow-xs">
-                <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 opacity-10 blur-2xl" />
-                <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 md:h-14 md:w-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-md flex items-center justify-center shrink-0">
-                            <Zap className="h-7 w-7" strokeWidth={2.3} />
-                        </div>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h1 className="text-lg md:text-2xl font-black text-black tracking-tight">
-                                    Electricity Bill Payment
-                                </h1>
-                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
-                                    Bharat Connect
-                                </span>
-                            </div>
-                            <p className="text-xs md:text-sm font-bold text-slate-700 mt-0.5">
-                                Official BBPS bill fetch & payment across 35+ state & private DISCOMs in India
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            {/* Top Navigation & Service Bar */}
+            <BbpsServiceNav
+                onBack={onBack}
+                title="Electricity Bill Payment"
+                icon={Zap}
+                gradient="from-amber-400 to-amber-600"
+                badgeText="Bharat Connect"
+                badgeColor="amber"
+                balance={numBalance}
+            />
 
             {/* Error Notification Banner */}
             {formError && (

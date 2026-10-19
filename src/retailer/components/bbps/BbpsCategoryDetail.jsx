@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-    ArrowLeft,
     Search,
     Building2,
     Lock
 } from 'lucide-react';
 import MobilePrepaidFlow from './MobilePrepaidFlow';
 import ElectricityFlow from './ElectricityFlow';
+import BbpsServiceNav from './BbpsServiceNav';
 
 const BbpsCategoryDetail = ({ category, onBack }) => {
     const [billerSearch, setBillerSearch] = useState('');
@@ -17,11 +17,11 @@ const BbpsCategoryDetail = ({ category, onBack }) => {
     if (!category) return null;
 
     if (category.id === 'mobile-prepaid') {
-        return <MobilePrepaidFlow onBack={onBack} />;
+        return <MobilePrepaidFlow onBack={onBack} category={category} />;
     }
 
     if (category.id === 'electricity') {
-        return <ElectricityFlow onBack={onBack} />;
+        return <ElectricityFlow onBack={onBack} category={category} />;
     }
 
     const Icon = category.icon;
@@ -29,49 +29,14 @@ const BbpsCategoryDetail = ({ category, onBack }) => {
 
     return (
         <div className="space-y-4 font-['Inter',sans-serif] max-w-full overflow-hidden">
-            {/* Top Navigation Row */}
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                <button
-                    type="button"
-                    onClick={onBack}
-                    className="group inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white border border-slate-300 text-black font-black text-xs hover:border-blue-600 hover:text-blue-700 hover:shadow-xs transition-all cursor-pointer"
-                >
-                    <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
-                    <span>Back to all categories</span>
-                </button>
-
-                <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                    <span className="text-slate-600">Bharat Connect</span>
-                    <span>/</span>
-                    <span className="text-black font-black">{category.name}</span>
-                </nav>
-            </div>
-
-            {/* Compact Category Header Card (Reduced Height ~40%) */}
-            <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="relative overflow-hidden rounded-2xl md:rounded-3xl border border-slate-200 bg-white p-3.5 md:py-3.5 md:px-5 shadow-xs"
-            >
-                <div className={`pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-gradient-to-br ${gradient} opacity-10 blur-2xl`} />
-
-                <div className="relative z-10 flex items-center gap-3.5 md:gap-4">
-                    <div
-                        className={`h-11 w-11 md:h-13 md:w-13 rounded-xl md:rounded-2xl bg-gradient-to-br ${gradient} text-white shadow-md flex items-center justify-center shrink-0`}
-                    >
-                        <Icon className="h-6 w-6 md:h-7 md:w-7 drop-shadow-sm" strokeWidth={2.3} />
-                    </div>
-
-                    <div className="min-w-0 flex-1 space-y-0.5">
-                        <h2 className="text-lg md:text-xl font-black text-black tracking-tight leading-snug">
-                            {category.name}
-                        </h2>
-                        <p className="text-xs md:text-[13px] font-bold text-slate-800 leading-snug line-clamp-2">
-                            {category.description}
-                        </p>
-                    </div>
-                </div>
-            </motion.div>
+            {/* Top Navigation & Service Bar */}
+            <BbpsServiceNav
+                onBack={onBack}
+                title={category.name}
+                icon={category.icon}
+                gradient={category.gradient || 'from-indigo-500 to-blue-600'}
+                badgeText="Bharat Connect"
+            />
 
             {/* Main Responsive Grid Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
