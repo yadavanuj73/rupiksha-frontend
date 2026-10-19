@@ -250,6 +250,7 @@ const ElectricityFlow = ({ onBack }) => {
         if (!isPrepaid || billAmount <= 0) return 0;
         const percent = selectedBiller?.ccf1Percent || 0;
         const flatFeePaise = selectedBiller?.ccf1FlatFeePaise || 0;
+        if (percent === 0 && flatFeePaise === 0) return 0;
         const amtPaise = billAmount * 100;
         const rawCcf1 = (amtPaise * percent / 100) + flatFeePaise;
         const gst = rawCcf1 * 0.18;

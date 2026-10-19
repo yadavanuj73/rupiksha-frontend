@@ -208,8 +208,6 @@ public class ElectricityBillerRegistry {
                 .supportBillValidation("OPTIONAL")
                 .prepaidMeterSupported(true)
                 .meterType("BOTH")
-                .ccf1Percent(1.2)
-                .ccf1FlatFeePaise(100L)
                 .description("BSES Rajdhani electricity distribution and prepaid meter recharge in South and West Delhi")
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("CA Number").dataType("NUMERIC").optional(false).minLength(9).maxLength(9).hint("9-digit CA Number on your BSES bill").build()
@@ -226,8 +224,6 @@ public class ElectricityBillerRegistry {
                 .supportBillValidation("OPTIONAL")
                 .prepaidMeterSupported(true)
                 .meterType("BOTH")
-                .ccf1Percent(1.2)
-                .ccf1FlatFeePaise(100L)
                 .description("BSES Yamuna electricity distribution and prepaid meter recharge in Central and East Delhi")
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("CA Number").dataType("NUMERIC").optional(false).minLength(9).maxLength(9).hint("9-digit CA Number on your BSES bill").build()
@@ -244,8 +240,6 @@ public class ElectricityBillerRegistry {
                 .supportBillValidation("OPTIONAL")
                 .prepaidMeterSupported(true)
                 .meterType("BOTH")
-                .ccf1Percent(1.2)
-                .ccf1FlatFeePaise(100L)
                 .description("Tata Power Delhi Distribution Limited in North and North-West Delhi")
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("CA Number").dataType("NUMERIC").optional(false).minLength(11).maxLength(11).hint("11-digit CA Number on Tata Power bill").build()
@@ -277,8 +271,6 @@ public class ElectricityBillerRegistry {
                 .supportBillValidation("OPTIONAL")
                 .prepaidMeterSupported(true)
                 .meterType("BOTH")
-                .ccf1Percent(1.2)
-                .ccf1FlatFeePaise(100L)
                 .description("UPPCL rural power consumers & smart prepaid recharge (MVVNL, DVVNL, PVVNL, PuVVNL Rural)")
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Account Number").dataType("NUMERIC").optional(false).minLength(12).maxLength(12).hint("12-digit rural electricity account number").build()
@@ -295,8 +287,6 @@ public class ElectricityBillerRegistry {
                 .supportBillValidation("OPTIONAL")
                 .prepaidMeterSupported(true)
                 .meterType("BOTH")
-                .ccf1Percent(1.2)
-                .ccf1FlatFeePaise(100L)
                 .description("UPPCL urban power consumers & smart prepaid recharge across cities in Uttar Pradesh")
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Account Number").dataType("NUMERIC").optional(false).minLength(10).maxLength(10).hint("10-digit urban electricity account ID").build()
@@ -486,8 +476,6 @@ public class ElectricityBillerRegistry {
                 .supportBillValidation("OPTIONAL")
                 .prepaidMeterSupported(true)
                 .meterType("BOTH")
-                .ccf1Percent(1.2)
-                .ccf1FlatFeePaise(100L)
                 .description("NBPDCL power distribution & Smart Prepaid Meter recharge in North Bihar districts")
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("CA Number").dataType("NUMERIC").optional(false).minLength(9).maxLength(16).hint("CA Number / Smart Meter Number (9-16 digits)").build()
@@ -504,8 +492,6 @@ public class ElectricityBillerRegistry {
                 .supportBillValidation("OPTIONAL")
                 .prepaidMeterSupported(true)
                 .meterType("BOTH")
-                .ccf1Percent(1.2)
-                .ccf1FlatFeePaise(100L)
                 .description("SBPDCL power distribution & Smart Prepaid Meter recharge in Patna and South Bihar districts")
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("CA Number").dataType("NUMERIC").optional(false).minLength(9).maxLength(16).hint("CA Number / Smart Meter Number (9-16 digits)").build()

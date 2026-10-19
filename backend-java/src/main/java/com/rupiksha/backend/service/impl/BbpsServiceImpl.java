@@ -823,17 +823,14 @@ public class BbpsServiceImpl implements BbpsService {
 
         electricityBillerRegistry.validateCustomerParams(biller, request.getCustomerParams());
 
-        BigDecimal convenienceFee = request.getConvenienceFee() != null && request.getConvenienceFee().compareTo(BigDecimal.ZERO) > 0
-                ? request.getConvenienceFee()
-                : BigDecimal.ZERO;
-        BigDecimal totalPayable = request.getAmount().add(convenienceFee);
         long paise = request.getAmount().multiply(BigDecimal.valueOf(100)).longValue();
 
         boolean isPrepaidMeter = "PREPAID".equalsIgnoreCase(request.getMeterType())
                 || "Prepaid Meter".equalsIgnoreCase(biller.getCategory())
                 || (biller.isPrepaidMeterSupported() && "PREPAID".equalsIgnoreCase(request.getMeterType()));
 
-        // Calculate CCF1 fee for Prepaid Meter billers per BillAvenue spec (Pages 71-75):
+        // Calculate CCF1 fee per BillAvenue spec (Pages 71-75):
+        // Only if biller has configured interchangeFeeCCF1 (flatFee and/or percentFee)
         // CCF1 = (Payment Amount * percentFee / 100) + flatFee
         // GST = CCF1 * 18 / 100
         // Total CCF1 (in paise) = floor(CCF1 + GST)
@@ -846,12 +843,14 @@ public class BbpsServiceImpl implements BbpsService {
                 double rawCcf1 = ((double) paise * percentFee / 100.0) + (double) flatFeePaise;
                 double gst = rawCcf1 * 0.18;
                 ccf1Paise = (long) Math.floor(rawCcf1 + gst);
-            } else if (request.getCcf1Fee() != null && request.getCcf1Fee().compareTo(BigDecimal.ZERO) > 0) {
-                ccf1Paise = request.getCcf1Fee().multiply(BigDecimal.valueOf(100)).longValue();
             }
         }
 
         BigDecimal ccf1FeeRupees = BigDecimal.valueOf(ccf1Paise).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+        BigDecimal convenienceFee = isPrepaidMeter
+                ? ccf1FeeRupees
+                : (request.getConvenienceFee() != null && request.getConvenienceFee().compareTo(BigDecimal.ZERO) > 0 ? request.getConvenienceFee() : BigDecimal.ZERO);
+        BigDecimal totalPayable = request.getAmount().add(convenienceFee);
 
         // 3. Server-enforced Idempotency check
         String idempotencyKey = request.getIdempotencyKey();
