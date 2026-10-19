@@ -171,6 +171,7 @@ public class BbpsDtos {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class BillFetchResult {
         private boolean success;
+        private boolean noBillDue;
         private String fetchRequestId;
         private String billerId;
         private String billerName;

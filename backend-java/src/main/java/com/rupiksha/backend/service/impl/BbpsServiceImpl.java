@@ -702,9 +702,12 @@ public class BbpsServiceImpl implements BbpsService {
                     sanitizedIp
             );
 
-            if (fetchResp != null && fetchResp.isSuccess()) {
-                BigDecimal billAmt = BigDecimal.valueOf(fetchResp.getBillAmountPaise())
-                        .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+            boolean isNoBillDue = fetchResp != null && (fetchResp.isNoBillDue() || (fetchResp.isSuccess() && fetchResp.getBillAmountPaise() == 0));
+
+            if (fetchResp != null && (fetchResp.isSuccess() || isNoBillDue)) {
+                BigDecimal billAmt = isNoBillDue
+                        ? BigDecimal.ZERO
+                        : BigDecimal.valueOf(fetchResp.getBillAmountPaise()).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
 
                 List<BbpsDtos.InfoItemDto> addnl = new ArrayList<>();
                 if (fetchResp.getAdditionalInfo() != null) {
@@ -721,8 +724,13 @@ public class BbpsServiceImpl implements BbpsService {
 
                 String primaryConsumer = electricityBillerRegistry.extractPrimaryConsumerNumber(request.getCustomerParams());
 
+                String message = isNoBillDue
+                        ? "Payment received for the billing period - no bill due"
+                        : "Bill fetched successfully";
+
                 return BbpsDtos.BillFetchResult.builder()
                         .success(true)
+                        .noBillDue(isNoBillDue)
                         .fetchRequestId(fetchResp.getFetchRequestId())
                         .billerId(biller.getBillerId())
                         .billerName(biller.getBillerName())
@@ -735,12 +743,13 @@ public class BbpsServiceImpl implements BbpsService {
                         .billPeriod(fetchResp.getBillPeriod())
                         .customerParams(request.getCustomerParams())
                         .additionalInfo(addnl)
-                        .message("Bill fetched successfully")
+                        .message(message)
                         .build();
             } else {
                 String errMsg = fetchResp != null ? fetchResp.getErrorMessage() : "Provider rejected bill fetch";
                 return BbpsDtos.BillFetchResult.builder()
                         .success(false)
+                        .noBillDue(false)
                         .billerId(biller.getBillerId())
                         .billerName(biller.getBillerName())
                         .customerParams(request.getCustomerParams())

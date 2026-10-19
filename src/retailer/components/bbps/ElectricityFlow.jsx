@@ -230,9 +230,10 @@ const ElectricityFlow = ({ onBack }) => {
 
     // Calculated amounts
     const billAmount = fetchedBill?.billAmount ? parseFloat(fetchedBill.billAmount) : 0;
+    const isNoBillDue = Boolean(fetchedBill?.noBillDue || (fetchedBill && billAmount === 0));
     const convenienceFee = 0; // standard BBPS CCF
     const totalPayable = billAmount + convenienceFee;
-    const hasSufficientBalance = numBalance >= totalPayable && totalPayable > 0;
+    const hasSufficientBalance = isNoBillDue ? true : (numBalance >= totalPayable && totalPayable > 0);
 
     const handleProceedToConfirm = () => {
         setFormError('');
@@ -240,8 +241,8 @@ const ElectricityFlow = ({ onBack }) => {
             setFormError('Please fetch and verify your bill before proceeding to payment.');
             return;
         }
-        if (totalPayable <= 0) {
-            setFormError('Invalid payable amount.');
+        if (isNoBillDue || totalPayable <= 0) {
+            setFormError('No payment required: all dues are already cleared for this billing period.');
             return;
         }
         if (!hasSufficientBalance) {
@@ -651,6 +652,19 @@ const ElectricityFlow = ({ onBack }) => {
                                     </span>
                                 </div>
 
+                                {/* Zero Due / All Cleared Banner */}
+                                {isNoBillDue && (
+                                    <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs font-bold space-y-1">
+                                        <div className="flex items-center gap-2 font-black text-emerald-800 text-sm">
+                                            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                                            <span>No Bill Due • All Dues Cleared</span>
+                                        </div>
+                                        <p className="text-[11px] text-emerald-700 leading-relaxed">
+                                            {fetchedBill.message || 'Payment received for the billing period - no bill due. There are no outstanding charges on this consumer account.'}
+                                        </p>
+                                    </div>
+                                )}
+
                                 {/* Bill Meta Information */}
                                 <div className="space-y-2.5 text-xs font-bold text-slate-700 bg-slate-50/80 p-4 rounded-2xl border border-slate-200/90">
                                     <div className="flex justify-between py-1 border-b border-slate-200/60">
@@ -715,8 +729,15 @@ const ElectricityFlow = ({ onBack }) => {
                                     </div>
                                 </div>
 
-                                {/* Wallet Balance Alert */}
-                                {!hasSufficientBalance ? (
+                                {/* Wallet Balance Alert / Status */}
+                                {isNoBillDue ? (
+                                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold flex items-center justify-between">
+                                        <div className="flex items-center gap-1.5">
+                                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                            <span>Account in good standing • No bill payment required</span>
+                                        </div>
+                                    </div>
+                                ) : !hasSufficientBalance ? (
                                     <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold space-y-1">
                                         <div className="flex items-center gap-1.5 font-black">
                                             <AlertCircle className="w-4 h-4 text-rose-600" />
@@ -736,16 +757,23 @@ const ElectricityFlow = ({ onBack }) => {
                                     </div>
                                 )}
 
-                                {/* Proceed to Confirm Button */}
-                                <button
-                                    type="button"
-                                    onClick={handleProceedToConfirm}
-                                    disabled={!hasSufficientBalance}
-                                    className="w-full py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-black text-xs md:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    <span>Proceed to Confirm Payment</span>
-                                    <ArrowRight className="w-4 h-4" />
-                                </button>
+                                {/* Proceed to Confirm Button / Zero Due State */}
+                                {isNoBillDue ? (
+                                    <div className="w-full py-3.5 px-4 rounded-2xl bg-emerald-100/70 border border-emerald-300 text-emerald-800 font-black text-xs md:text-sm text-center flex items-center justify-center gap-2">
+                                        <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                                        <span>No Bill Due • All Dues Cleared (₹0.00)</span>
+                                    </div>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={handleProceedToConfirm}
+                                        disabled={!hasSufficientBalance}
+                                        className="w-full py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-black text-xs md:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <span>Proceed to Confirm Payment</span>
+                                        <ArrowRight className="w-4 h-4" />
+                                    </button>
+                                )}
                             </motion.div>
                         ) : (
                             /* Informational Guidance Card */

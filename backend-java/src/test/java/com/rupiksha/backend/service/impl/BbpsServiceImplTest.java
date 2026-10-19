@@ -383,6 +383,38 @@ class BbpsServiceImplTest {
     }
 
     @Test
+    @DisplayName("Electricity bill fetch handles BFR004 (Payment received / no bill due) as verified zero-due state")
+    void testElectricityFetchNoBillDueBFR004() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)).thenReturn(Optional.empty());
+
+        BillAvenueDtos.BillFetchResponse fetchResponse = new BillAvenueDtos.BillFetchResponse();
+        fetchResponse.setResponseCode("001");
+        fetchResponse.setFetchRequestId("REQ-FETCH-BFR004-123");
+        fetchResponse.setBillAmountPaise(0L);
+        fetchResponse.setErrorInfo(java.util.List.of(
+                new BillAvenueDtos.ErrorInfo("BFR004", "Payment received for the billing period - no bill due")
+        ));
+
+        when(billAvenueClient.fetchBill(any(), any(), any(), any())).thenReturn(fetchResponse);
+
+        BbpsDtos.ElectricityFetchRequest request = new BbpsDtos.ElectricityFetchRequest();
+        request.setBillerId("NBPDCL000BHI01");
+        request.setCustomerMobile("8004480444");
+        request.setCustomerParams(java.util.Map.of("CA Number", "12720113063"));
+
+        BbpsDtos.BillFetchResult result = bbpsService.fetchElectricityBill(userId, request, "127.0.0.1");
+
+        assertNotNull(result);
+        assertTrue(result.isSuccess(), "Result should be marked successful when no bill is due");
+        assertTrue(result.isNoBillDue(), "noBillDue should be true");
+        assertEquals("12720113063", result.getConsumerNumber());
+        assertEquals(BigDecimal.ZERO, result.getBillAmount());
+        assertEquals("Payment received for the billing period - no bill due", result.getMessage());
+        assertNull(result.getErrorCode());
+    }
+
+    @Test
     @DisplayName("Electricity bill payment succeeds with wallet debit and fetchRequestId binding")
     void testElectricityPaySuccess() {
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));

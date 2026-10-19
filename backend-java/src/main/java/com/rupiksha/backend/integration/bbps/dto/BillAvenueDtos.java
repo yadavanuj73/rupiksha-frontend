@@ -80,6 +80,41 @@ public class BillAvenueDtos {
             return "000".equals(responseCode);
         }
 
+        public boolean isNoBillDue() {
+            if (errorInfo != null && !errorInfo.isEmpty()) {
+                for (ErrorInfo err : errorInfo) {
+                    if (err == null) continue;
+                    if ("BFR004".equalsIgnoreCase(err.getErrorCode())) {
+                        return true;
+                    }
+                    String msg = err.getErrorMessage();
+                    if (msg != null) {
+                        String lower = msg.toLowerCase();
+                        if (lower.contains("bfr004") ||
+                            lower.contains("no bill due") ||
+                            lower.contains("payment received for the billing period") ||
+                            lower.contains("no outstanding") ||
+                            lower.contains("bill already paid") ||
+                            lower.contains("zero bill")) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            if (responseReason != null) {
+                String lower = responseReason.toLowerCase();
+                if (lower.contains("bfr004") ||
+                    lower.contains("no bill due") ||
+                    lower.contains("payment received for the billing period") ||
+                    lower.contains("no outstanding") ||
+                    lower.contains("bill already paid") ||
+                    lower.contains("zero bill")) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public String getErrorMessage() {
             if (errorInfo != null && !errorInfo.isEmpty()) {
                 for (ErrorInfo err : errorInfo) {
