@@ -60,6 +60,10 @@ public class BbpsDtos {
         private String supportBillValidation;  // MANDATORY, OPTIONAL, NOT_SUPPORTED
         private List<InputParamInfo> inputParams;
         private String description;
+        private boolean prepaidMeterSupported;
+        private String meterType; // "POSTPAID" or "PREPAID" or "BOTH"
+        private Double ccf1Percent; // e.g. 1.2
+        private Long ccf1FlatFeePaise; // e.g. 100 paise
     }
 
     @Data
@@ -208,6 +212,8 @@ public class BbpsDtos {
         private BigDecimal amount;
 
         private BigDecimal convenienceFee;
+        private BigDecimal ccf1Fee;
+        private String meterType; // "POSTPAID" or "PREPAID"
         private String fetchRequestId;
         private String billNumber;
         private String billDate;
@@ -231,7 +237,9 @@ public class BbpsDtos {
         private String status;
         private BigDecimal amount;
         private BigDecimal convenienceFee;
+        private BigDecimal ccf1Fee;
         private BigDecimal totalAmount;
+        private String meterType;
         private String consumerNumber;
         private String customerName;
         private String customerMobile;

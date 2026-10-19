@@ -65,6 +65,10 @@ const ElectricityFlow = ({ onBack }) => {
     const [fetchError, setFetchError] = useState('');
     const [fetchedBill, setFetchedBill] = useState(null);
 
+    // Meter Mode: 'POSTPAID' | 'PREPAID'
+    const [meterMode, setMeterMode] = useState('POSTPAID');
+    const [prepaidRechargeAmount, setPrepaidRechargeAmount] = useState('');
+
     // Payment submission & outcome
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formError, setFormError] = useState('');
@@ -230,22 +234,53 @@ const ElectricityFlow = ({ onBack }) => {
     };
 
     // Calculated amounts
-    const billAmount = fetchedBill?.billAmount ? parseFloat(fetchedBill.billAmount) : 0;
-    const isNoBillDue = Boolean(fetchedBill?.noBillDue || (fetchedBill && billAmount === 0));
-    const convenienceFee = 0; // standard BBPS CCF
+    const isPrepaid = meterMode === 'PREPAID';
+    const parsedPrepaidAmt = parseFloat(prepaidRechargeAmount) || 0;
+    const billAmount = isPrepaid ? parsedPrepaidAmt : (fetchedBill?.billAmount ? parseFloat(fetchedBill.billAmount) : 0);
+    const isNoBillDue = !isPrepaid && Boolean(fetchedBill?.noBillDue || (fetchedBill && billAmount === 0));
+
+    // CCF1 fee calculation per BillAvenue doc (pages 71-75):
+    // CCF1 = (Payment Amount * percentFee / 100) + flatFee
+    // GST = CCF1 * 18 / 100
+    // Total CCF1 = Floor(CCF1 + GST)
+    const ccf1Fee = useMemo(() => {
+        if (!isPrepaid || billAmount <= 0) return 0;
+        const percent = selectedBiller?.ccf1Percent || 0;
+        const flatFeePaise = selectedBiller?.ccf1FlatFeePaise || 0;
+        const amtPaise = billAmount * 100;
+        const rawCcf1 = (amtPaise * percent / 100) + flatFeePaise;
+        const gst = rawCcf1 * 0.18;
+        const totalPaise = Math.floor(rawCcf1 + gst);
+        return totalPaise / 100;
+    }, [isPrepaid, billAmount, selectedBiller]);
+
+    const convenienceFee = isPrepaid ? ccf1Fee : 0; // standard BBPS CCF or Prepaid CCF1
     const totalPayable = billAmount + convenienceFee;
     const hasSufficientBalance = isNoBillDue ? true : (numBalance >= totalPayable && totalPayable > 0);
 
     const handleProceedToConfirm = () => {
         setFormError('');
-        if (!fetchedBill) {
-            setFormError('Please fetch and verify your bill before proceeding to payment.');
-            return;
+        if (isPrepaid) {
+            if (!validateInputs()) return;
+            if (billAmount < 10) {
+                setFormError('Please enter a valid prepaid recharge amount of at least ₹10.');
+                return;
+            }
+            if (billAmount > 50000) {
+                setFormError('Prepaid recharge amount cannot exceed ₹50,000.');
+                return;
+            }
+        } else {
+            if (!fetchedBill) {
+                setFormError('Please fetch and verify your bill before proceeding to payment.');
+                return;
+            }
+            if (isNoBillDue || totalPayable <= 0) {
+                setFormError('No payment required: all dues are already cleared for this billing period.');
+                return;
+            }
         }
-        if (isNoBillDue || totalPayable <= 0) {
-            setFormError('No payment required: all dues are already cleared for this billing period.');
-            return;
-        }
+
         if (!hasSufficientBalance) {
             setFormError(`Insufficient wallet balance. Required: ₹${totalPayable.toFixed(2)}, Available: ₹${numBalance.toFixed(2)}`);
             return;
@@ -267,11 +302,13 @@ const ElectricityFlow = ({ onBack }) => {
             customerParams: customerParams,
             amount: billAmount,
             convenienceFee: convenienceFee,
+            ccf1Fee: ccf1Fee,
+            meterType: isPrepaid ? 'PREPAID' : 'POSTPAID',
             fetchRequestId: fetchedBill?.fetchRequestId,
             billNumber: fetchedBill?.billNumber,
             billDate: fetchedBill?.billDate,
             dueDate: fetchedBill?.dueDate,
-            customerName: fetchedBill?.customerName,
+            customerName: fetchedBill?.customerName || (isPrepaid ? 'Prepaid Meter Consumer' : 'Electricity Consumer'),
             additionalInfo: fetchedBill?.additionalInfo,
             idempotencyKey: idempotencyKey
         };
@@ -305,8 +342,8 @@ const ElectricityFlow = ({ onBack }) => {
                 amount: billAmount,
                 totalAmount: totalPayable,
                 customerMobile: customerMobile,
-                consumerNumber: fetchedBill?.consumerNumber,
-                customerName: fetchedBill?.customerName,
+                consumerNumber: fetchedBill?.consumerNumber || Object.values(customerParams)[0] || 'N/A',
+                customerName: fetchedBill?.customerName || (isPrepaid ? 'Prepaid Meter Consumer' : 'Electricity Consumer'),
                 billerName: selectedBiller.billerName,
                 billNumber: fetchedBill?.billNumber,
                 message: msg
@@ -323,6 +360,7 @@ const ElectricityFlow = ({ onBack }) => {
         setCustomerParams({});
         setCustomerMobile('');
         setFetchedBill(null);
+        setPrepaidRechargeAmount('');
         setFetchError('');
         setFormError('');
         setParamErrors({});
@@ -644,7 +682,47 @@ const ElectricityFlow = ({ onBack }) => {
                                     </span>
                                 </div>
 
-                                <form onSubmit={handleFetchBill} className="space-y-3.5">
+                                {/* Meter Mode Switcher (Postpaid Bill vs Prepaid Smart Meter) */}
+                                {selectedBiller.prepaidMeterSupported && (
+                                    <div className="bg-slate-100 p-1 rounded-2xl flex items-center gap-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setMeterMode('POSTPAID');
+                                                setFetchedBill(null);
+                                                setFetchError('');
+                                                setFormError('');
+                                            }}
+                                            className={`flex-1 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                                                meterMode === 'POSTPAID'
+                                                    ? 'bg-white text-black shadow-xs'
+                                                    : 'text-slate-600 hover:text-black'
+                                            }`}
+                                        >
+                                            <FileText className="w-3.5 h-3.5 text-blue-600" />
+                                            <span>Postpaid Bill</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setMeterMode('PREPAID');
+                                                setFetchedBill(null);
+                                                setFetchError('');
+                                                setFormError('');
+                                            }}
+                                            className={`flex-1 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                                                meterMode === 'PREPAID'
+                                                    ? 'bg-amber-500 text-white shadow-xs'
+                                                    : 'text-slate-600 hover:text-black'
+                                            }`}
+                                        >
+                                            <Zap className="w-3.5 h-3.5" />
+                                            <span>Smart Prepaid Meter</span>
+                                        </button>
+                                    </div>
+                                )}
+
+                                <form onSubmit={isPrepaid ? (e) => { e.preventDefault(); handleProceedToConfirm(); } : handleFetchBill} className="space-y-3.5">
                                     {/* Registered Mobile Number */}
                                     <div>
                                         <label className="block text-xs font-black text-black mb-1">
@@ -720,25 +798,99 @@ const ElectricityFlow = ({ onBack }) => {
                                         );
                                     })}
 
-                                    {/* Fetch Bill Action Button */}
-                                    <div className="pt-2">
-                                        <button
-                                            type="submit"
-                                            disabled={isFetchingBill}
-                                            className="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 active:scale-[0.99] text-white font-black text-xs md:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-60"
-                                        >
-                                            {isFetchingBill ? (
-                                                <>
-                                                    <RefreshCw className="w-4 h-4 animate-spin" />
-                                                    <span>Fetching Verified Bill Details...</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <span>Fetch Bill Details</span>
-                                                    <ArrowRight className="w-4 h-4" />
-                                                </>
+                                    {/* Prepaid Meter Custom Amount Entry & Quick Pills */}
+                                    {isPrepaid && (
+                                        <div className="space-y-2 pt-1 border-t border-slate-100">
+                                            <label className="block text-xs font-black text-black">
+                                                Recharge Amount (₹) <span className="text-rose-500">*</span>
+                                            </label>
+                                            <div className="relative">
+                                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-black text-slate-500">
+                                                    ₹
+                                                </span>
+                                                <input
+                                                    type="number"
+                                                    min="10"
+                                                    max="50000"
+                                                    step="1"
+                                                    value={prepaidRechargeAmount}
+                                                    onChange={(e) => setPrepaidRechargeAmount(e.target.value)}
+                                                    placeholder="Enter recharge amount (e.g. 500)"
+                                                    className="w-full pl-8 pr-4 py-2.5 text-sm font-black rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 text-black placeholder-slate-400 shadow-2xs font-mono"
+                                                />
+                                            </div>
+
+                                            {/* Quick amount presets */}
+                                            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                                {['100', '200', '500', '1000', '2000'].map(amt => (
+                                                    <button
+                                                        key={amt}
+                                                        type="button"
+                                                        onClick={() => setPrepaidRechargeAmount(amt)}
+                                                        className={`px-2.5 py-1 text-[11px] font-black rounded-lg border transition-all cursor-pointer ${
+                                                            prepaidRechargeAmount === amt
+                                                                ? 'bg-amber-500 text-white border-amber-600 shadow-2xs'
+                                                                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                                                        }`}
+                                                    >
+                                                        +₹{amt}
+                                                    </button>
+                                                ))}
+                                            </div>
+
+                                            {/* CCF1 & Total Payable Notice for Prepaid Meter */}
+                                            {billAmount > 0 && (
+                                                <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 text-xs font-bold space-y-1 mt-2">
+                                                    <div className="flex justify-between items-center text-slate-600">
+                                                        <span>Recharge Amount:</span>
+                                                        <span className="font-black text-black">₹{billAmount.toFixed(2)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center text-slate-600">
+                                                        <span>CCF1 Fee (incl. 18% GST):</span>
+                                                        <span className="font-black text-amber-800">₹{ccf1Fee.toFixed(2)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center pt-1 border-t border-amber-200/60 font-black text-black text-sm">
+                                                        <span>Total Payable:</span>
+                                                        <span className="text-amber-700">₹{totalPayable.toFixed(2)}</span>
+                                                    </div>
+                                                    <div className="text-[10px] text-slate-500 pt-0.5">
+                                                        * Standard BBPS CCF1 tag applied per NBBL Prepaid Meter guidelines.
+                                                    </div>
+                                                </div>
                                             )}
-                                        </button>
+                                        </div>
+                                    )}
+
+                                    {/* Action Button */}
+                                    <div className="pt-2">
+                                        {isPrepaid ? (
+                                            <button
+                                                type="submit"
+                                                disabled={billAmount <= 0 || !hasSufficientBalance}
+                                                className="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 active:scale-[0.99] text-white font-black text-xs md:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-60"
+                                            >
+                                                <span>Proceed to Recharge ₹{totalPayable > 0 ? totalPayable.toFixed(2) : ''}</span>
+                                                <ArrowRight className="w-4 h-4" />
+                                            </button>
+                                        ) : (
+                                            <button
+                                                type="submit"
+                                                disabled={isFetchingBill}
+                                                className="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 active:scale-[0.99] text-white font-black text-xs md:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-60"
+                                            >
+                                                {isFetchingBill ? (
+                                                    <>
+                                                        <RefreshCw className="w-4 h-4 animate-spin" />
+                                                        <span>Fetching Verified Bill Details...</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <span>Fetch Bill Details</span>
+                                                        <ArrowRight className="w-4 h-4" />
+                                                    </>
+                                                )}
+                                            </button>
+                                        )}
                                     </div>
 
                                     {/* Fetch Error Callout */}
@@ -774,7 +926,7 @@ const ElectricityFlow = ({ onBack }) => {
             )}
 
             {/* STEP 2: CONFIRMATION MODAL / SCREEN */}
-            {flowStep === 'CONFIRM' && fetchedBill && (
+            {flowStep === 'CONFIRM' && (fetchedBill || isPrepaid) && (
                 <div className="max-w-xl mx-auto rounded-3xl border border-slate-200 bg-white p-6 md:p-8 shadow-xl space-y-5">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                         <div className="flex items-center gap-3">
@@ -782,14 +934,16 @@ const ElectricityFlow = ({ onBack }) => {
                                 <Zap className="w-5 h-5" />
                             </div>
                             <div>
-                                <h2 className="text-base font-black text-black">Confirm Electricity Payment</h2>
+                                <h2 className="text-base font-black text-black">
+                                    {isPrepaid ? 'Confirm Smart Prepaid Meter Recharge' : 'Confirm Electricity Payment'}
+                                </h2>
                                 <p className="text-xs text-slate-500 font-bold">Please verify the details before payment</p>
                             </div>
                         </div>
                         <button
                             type="button"
                             onClick={() => setFlowStep('FORM')}
-                            className="text-xs font-bold text-slate-600 hover:text-black"
+                            className="text-xs font-bold text-slate-600 hover:text-black cursor-pointer"
                         >
                             Edit
                         </button>
@@ -801,20 +955,26 @@ const ElectricityFlow = ({ onBack }) => {
                             <span className="font-black text-black">{selectedBiller.billerName}</span>
                         </div>
                         <div className="flex justify-between py-1 border-b border-slate-200/60">
-                            <span className="text-slate-500">Consumer Name</span>
-                            <span className="font-black text-black">{fetchedBill.customerName}</span>
+                            <span className="text-slate-500">Service Type</span>
+                            <span className="font-black text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                                {isPrepaid ? 'Smart Prepaid Meter Recharge' : 'Postpaid Electricity Bill'}
+                            </span>
                         </div>
                         <div className="flex justify-between py-1 border-b border-slate-200/60">
-                            <span className="text-slate-500">Consumer Number</span>
-                            <span className="font-mono font-black text-black">{fetchedBill.consumerNumber}</span>
+                            <span className="text-slate-500">Consumer Number / CA</span>
+                            <span className="font-mono font-black text-black">{fetchedBill?.consumerNumber || Object.values(customerParams)[0] || 'N/A'}</span>
                         </div>
-                        {fetchedBill.billNumber && (
+                        <div className="flex justify-between py-1 border-b border-slate-200/60">
+                            <span className="text-slate-500">Consumer Name</span>
+                            <span className="font-black text-black">{fetchedBill?.customerName || (isPrepaid ? 'Prepaid Meter Consumer' : 'Electricity Consumer')}</span>
+                        </div>
+                        {fetchedBill?.billNumber && (
                             <div className="flex justify-between py-1 border-b border-slate-200/60">
                                 <span className="text-slate-500">Bill Number</span>
                                 <span className="font-mono font-black text-black">{fetchedBill.billNumber}</span>
                             </div>
                         )}
-                        {fetchedBill.dueDate && (
+                        {fetchedBill?.dueDate && (
                             <div className="flex justify-between py-1 border-b border-slate-200/60">
                                 <span className="text-slate-500">Due Date</span>
                                 <span className="font-black text-amber-700">{fetchedBill.dueDate}</span>
@@ -831,6 +991,16 @@ const ElectricityFlow = ({ onBack }) => {
                                 Rupiksha Retailer Wallet
                             </span>
                         </div>
+                        <div className="flex justify-between py-1 border-b border-slate-200/60">
+                            <span className="text-slate-500">{isPrepaid ? 'Recharge Amount' : 'Bill Amount'}</span>
+                            <span className="font-black text-black">₹{billAmount.toFixed(2)}</span>
+                        </div>
+                        {isPrepaid && ccf1Fee > 0 && (
+                            <div className="flex justify-between py-1 border-b border-slate-200/60">
+                                <span className="text-slate-500">BBPS CCF1 Fee (incl. GST)</span>
+                                <span className="font-black text-amber-800">₹{ccf1Fee.toFixed(2)}</span>
+                            </div>
+                        )}
                         <div className="flex justify-between py-2 items-baseline text-sm">
                             <span className="font-black text-black">Total Amount Payable</span>
                             <span className="font-black text-amber-600 text-xl">₹{totalPayable.toFixed(2)}</span>
@@ -877,9 +1047,13 @@ const ElectricityFlow = ({ onBack }) => {
                                 <CheckCircle2 className="w-9 h-9" />
                             </div>
                             <div className="space-y-1">
-                                <h2 className="text-xl font-black text-black">Electricity Bill Paid!</h2>
+                                <h2 className="text-xl font-black text-black">
+                                    {isPrepaid || txnOutcome.meterType === 'PREPAID' ? 'Prepaid Meter Recharged!' : 'Electricity Bill Paid!'}
+                                </h2>
                                 <p className="text-xs font-bold text-slate-600">
-                                    Your electricity bill payment has been verified & completed via Bharat Connect
+                                    {isPrepaid || txnOutcome.meterType === 'PREPAID'
+                                        ? 'Your smart prepaid meter recharge token/credit has been generated via Bharat Connect'
+                                        : 'Your electricity bill payment has been verified & completed via Bharat Connect'}
                                 </p>
                             </div>
                         </>
@@ -932,7 +1106,13 @@ const ElectricityFlow = ({ onBack }) => {
                             <span className="font-black text-black">{txnOutcome.billerName || selectedBiller?.billerName}</span>
                         </div>
                         <div className="flex justify-between py-1 border-b border-slate-200/60">
-                            <span className="text-slate-500">Consumer Number</span>
+                            <span className="text-slate-500">Service Type</span>
+                            <span className="font-black text-slate-800">
+                                {isPrepaid || txnOutcome.meterType === 'PREPAID' ? 'Smart Prepaid Meter Recharge' : 'Postpaid Electricity Bill'}
+                            </span>
+                        </div>
+                        <div className="flex justify-between py-1 border-b border-slate-200/60">
+                            <span className="text-slate-500">Consumer Number / CA</span>
                             <span className="font-mono font-black text-black">{txnOutcome.consumerNumber || 'N/A'}</span>
                         </div>
                         {txnOutcome.customerName && (

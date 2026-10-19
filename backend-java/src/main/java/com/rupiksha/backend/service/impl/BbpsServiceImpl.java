@@ -819,6 +819,31 @@ public class BbpsServiceImpl implements BbpsService {
                 ? request.getConvenienceFee()
                 : BigDecimal.ZERO;
         BigDecimal totalPayable = request.getAmount().add(convenienceFee);
+        long paise = request.getAmount().multiply(BigDecimal.valueOf(100)).longValue();
+
+        boolean isPrepaidMeter = "PREPAID".equalsIgnoreCase(request.getMeterType())
+                || "Prepaid Meter".equalsIgnoreCase(biller.getCategory())
+                || (biller.isPrepaidMeterSupported() && "PREPAID".equalsIgnoreCase(request.getMeterType()));
+
+        // Calculate CCF1 fee for Prepaid Meter billers per BillAvenue spec (Pages 71-75):
+        // CCF1 = (Payment Amount * percentFee / 100) + flatFee
+        // GST = CCF1 * 18 / 100
+        // Total CCF1 (in paise) = floor(CCF1 + GST)
+        long ccf1Paise = 0L;
+        if (isPrepaidMeter) {
+            double percentFee = (biller.getCcf1Percent() != null) ? biller.getCcf1Percent() : 0.0;
+            long flatFeePaise = (biller.getCcf1FlatFeePaise() != null) ? biller.getCcf1FlatFeePaise() : 0L;
+
+            if (percentFee > 0.0 || flatFeePaise > 0L) {
+                double rawCcf1 = ((double) paise * percentFee / 100.0) + (double) flatFeePaise;
+                double gst = rawCcf1 * 0.18;
+                ccf1Paise = (long) Math.floor(rawCcf1 + gst);
+            } else if (request.getCcf1Fee() != null && request.getCcf1Fee().compareTo(BigDecimal.ZERO) > 0) {
+                ccf1Paise = request.getCcf1Fee().multiply(BigDecimal.valueOf(100)).longValue();
+            }
+        }
+
+        BigDecimal ccf1FeeRupees = BigDecimal.valueOf(ccf1Paise).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
 
         // 3. Server-enforced Idempotency check
         String idempotencyKey = request.getIdempotencyKey();
@@ -842,7 +867,9 @@ public class BbpsServiceImpl implements BbpsService {
                     .status(existing.getStatus())
                     .amount(existing.getAmount())
                     .convenienceFee(existing.getConvenienceFee())
+                    .ccf1Fee(ccf1FeeRupees)
                     .totalAmount(existing.getAmount().add(existing.getConvenienceFee() != null ? existing.getConvenienceFee() : BigDecimal.ZERO))
+                    .meterType(isPrepaidMeter ? "PREPAID" : "POSTPAID")
                     .consumerNumber(existing.getConsumerNumber())
                     .customerName(existing.getCustomerName())
                     .customerMobile(existing.getMobileNumber())
@@ -888,7 +915,7 @@ public class BbpsServiceImpl implements BbpsService {
         Txn txn = new Txn();
         txn.setUser(user);
         txn.setAmount(totalPayable);
-        txn.setServiceType("BBPS_ELECTRICITY");
+        txn.setServiceType(isPrepaidMeter ? "BBPS_ELECTRICITY_PREPAID" : "BBPS_ELECTRICITY");
         txn.setStatus(TransactionStatus.INITIATED);
         txn.setIdempotencyKey(idempotencyKey);
         txn = txnRepository.save(txn);
@@ -899,7 +926,7 @@ public class BbpsServiceImpl implements BbpsService {
         bbpsTxn.setIdempotencyKey(idempotencyKey);
         bbpsTxn.setRequestId(effectiveRequestId);
         bbpsTxn.setMerchantRefNo(merchantRefNo);
-        bbpsTxn.setCategory("Electricity");
+        bbpsTxn.setCategory(isPrepaidMeter ? "Prepaid Meter" : "Electricity");
         bbpsTxn.setBillerId(biller.getBillerId());
         bbpsTxn.setBillerName(biller.getBillerName());
         bbpsTxn.setCircle(biller.getState());
@@ -920,10 +947,13 @@ public class BbpsServiceImpl implements BbpsService {
         // 7. Atomically debit wallet using ledger-safe service debit
         String debitRef = txn.getId().toString();
         try {
+            String debitDesc = isPrepaidMeter
+                    ? "BBPS Prepaid Meter Recharge - " + biller.getBillerName() + " (" + primaryConsumerNumber + ")"
+                    : "BBPS Electricity Bill - " + biller.getBillerName() + " (" + primaryConsumerNumber + ")";
             walletService.debitForService(
                     userId,
                     totalPayable,
-                    "BBPS Electricity Bill - " + biller.getBillerName() + " (" + primaryConsumerNumber + ")",
+                    debitDesc,
                     WalletTransactionContext.BBPS_PAYMENT,
                     "BBPS",
                     clientIp != null ? clientIp : "127.0.0.1",
@@ -944,7 +974,6 @@ public class BbpsServiceImpl implements BbpsService {
         }
 
         // 8. Submit provider request to BillAvenue
-        long paise = request.getAmount().multiply(BigDecimal.valueOf(100)).longValue();
         long convFeePaise = convenienceFee.multiply(BigDecimal.valueOf(100)).longValue();
 
         String mode = billAvenueClient.getPaymentMode();
@@ -996,9 +1025,12 @@ public class BbpsServiceImpl implements BbpsService {
 
         String customerName = (request.getCustomerName() != null && !request.getCustomerName().isBlank() && !"NA".equalsIgnoreCase(request.getCustomerName().trim()))
                 ? request.getCustomerName().trim()
-                : "Electricity Consumer";
+                : (isPrepaidMeter ? "Prepaid Meter Consumer" : "Electricity Consumer");
 
         String remitterName = (user.getFullName() != null && !user.getFullName().isBlank()) ? user.getFullName().trim() : "Rupiksha Retailer";
+
+        // For prepaid meter recharges, billerAdhoc is true; for postpaid bill fetch, false
+        String billerAdhocVal = isPrepaidMeter ? "true" : "false";
 
         BillAvenueDtos.BillPayXmlRequest xmlReq = BillAvenueDtos.BillPayXmlRequest.builder()
                 .fetchRequestId(effectiveRequestId)
@@ -1017,8 +1049,9 @@ public class BbpsServiceImpl implements BbpsService {
                 .remarks("Received")
                 .paymentAccountInfo(paymentAccountInfo)
                 .clientIp(sanitizedIp)
-                .billerAdhoc("false")
+                .billerAdhoc(billerAdhocVal)
                 .custConvFeePaise(convFeePaise)
+                .ccf1Paise(ccf1Paise)
                 .build();
 
         BillAvenueDtos.BillPayResponse payResp;
@@ -1105,7 +1138,9 @@ public class BbpsServiceImpl implements BbpsService {
                     .status("SUCCESS")
                     .amount(request.getAmount())
                     .convenienceFee(convenienceFee)
+                    .ccf1Fee(ccf1FeeRupees)
                     .totalAmount(totalPayable)
+                    .meterType(isPrepaidMeter ? "PREPAID" : "POSTPAID")
                     .consumerNumber(primaryConsumerNumber)
                     .customerName(customerName)
                     .customerMobile(request.getCustomerMobile())
@@ -1113,7 +1148,7 @@ public class BbpsServiceImpl implements BbpsService {
                     .billerName(biller.getBillerName())
                     .billNumber(request.getBillNumber())
                     .dueDate(request.getDueDate())
-                    .message("Electricity bill paid successfully!")
+                    .message(isPrepaidMeter ? "Prepaid meter recharge completed successfully!" : "Electricity bill paid successfully!")
                     .walletBalance(bal.balance())
                     .createdAt(bbpsTxn.getCreatedAt())
                     .build();
@@ -1132,7 +1167,9 @@ public class BbpsServiceImpl implements BbpsService {
                     .status("FAILED")
                     .amount(request.getAmount())
                     .convenienceFee(convenienceFee)
+                    .ccf1Fee(ccf1FeeRupees)
                     .totalAmount(totalPayable)
+                    .meterType(isPrepaidMeter ? "PREPAID" : "POSTPAID")
                     .consumerNumber(primaryConsumerNumber)
                     .customerName(customerName)
                     .customerMobile(request.getCustomerMobile())
