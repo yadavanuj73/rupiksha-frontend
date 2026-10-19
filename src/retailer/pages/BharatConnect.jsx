@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, Sparkles, Layers } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { BBPS_CATEGORIES, getCategoryById, searchCategories } from '../data/bbpsCategories';
 import BbpsCategoryCard from '../components/bbps/BbpsCategoryCard';
 import BbpsCategoryDetail from '../components/bbps/BbpsCategoryDetail';
@@ -12,7 +12,6 @@ const BharatConnect = () => {
     const navigate = useNavigate();
 
     const [searchQuery, setSearchQuery] = useState('');
-    const [activeTab, setActiveTab] = useState('popular'); // 'popular' | 'all'
 
     // Determine active category from route param or query param
     const activeCategoryId = paramCategoryId || searchParams.get('category');
@@ -21,16 +20,10 @@ const BharatConnect = () => {
         return getCategoryById(activeCategoryId);
     }, [activeCategoryId]);
 
-    // Categories filtered by search query or active tab
-    const displayedCategories = useMemo(() => {
-        if (searchQuery.trim()) {
-            return searchCategories(searchQuery);
-        }
-        if (activeTab === 'popular') {
-            return BBPS_CATEGORIES.slice(0, 10);
-        }
-        return BBPS_CATEGORIES;
-    }, [searchQuery, activeTab]);
+    // Filter categories locally by search query as user types
+    const filteredCategories = useMemo(() => {
+        return searchCategories(searchQuery);
+    }, [searchQuery]);
 
     const handleSelectCategory = (category) => {
         navigate(`/bharat-connect/${category.id}`);
@@ -41,7 +34,7 @@ const BharatConnect = () => {
     };
 
     return (
-        <div className="bbps-page min-h-screen overflow-x-hidden font-['Inter',sans-serif]">
+        <div className="min-h-screen bg-[#f7f9fc] p-3 md:p-6 lg:px-8 pb-20 overflow-x-hidden font-['Inter',sans-serif]">
             <div className="max-w-[1440px] mx-auto space-y-6">
                 <AnimatePresence mode="wait">
                     {selectedCategory ? (
@@ -66,68 +59,48 @@ const BharatConnect = () => {
                             transition={{ duration: 0.2 }}
                             className="space-y-6"
                         >
-                            {/* Premium Top Context Banner */}
-                            <div className="relative overflow-hidden rounded-[26px] border border-[#DFE8F5] bg-white p-5 md:p-6 shadow-[0_5px_18px_rgba(32,72,140,0.055)]">
-                                <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-blue-500/5 blur-3xl" />
+                            {/* Compact Top Header Box */}
+                            <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 md:p-5 shadow-xs">
+                                <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-blue-500/5 blur-3xl" />
 
-                                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                    <div className="space-y-1">
-                                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EAF1FF] text-[#2463EB] text-[11px] font-extrabold uppercase tracking-wider">
-                                            <Sparkles className="w-3.5 h-3.5" />
-                                            <span>Bharat Connect • NPCI Certified</span>
+                                {/* Single Straight Line: Title and 35 Registry Pill */}
+                                <div className="relative z-10 flex items-center justify-between gap-4">
+                                    <h1 className="text-xl md:text-2xl lg:text-3xl font-black text-black tracking-tight">
+                                        Bharat Connect (BBPS)
+                                    </h1>
+
+                                    {/* 35 Registry Pill */}
+                                    <div className="shrink-0 flex items-center gap-2.5 px-3 py-1.5 rounded-2xl bg-slate-50 border border-slate-200/90 shadow-2xs">
+                                        <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow-xs">
+                                            35
                                         </div>
-                                        <h1 className="text-xl md:text-2xl lg:text-[28px] font-black text-[#101828] tracking-tight">
-                                            Bharat Connect (BBPS) Services
-                                        </h1>
-                                        <p className="text-xs md:text-sm text-[#475467] font-medium">
-                                            Instant bill payment, recharges, and utility fee collections with real-time settlement
-                                        </p>
-                                    </div>
-
-                                    {/* Tabs Filter: Popular (10) vs All (35) */}
-                                    <div className="flex items-center gap-2 p-1 bg-[#F5F8FD] border border-[#DFE8F5] rounded-full shrink-0">
-                                        <button
-                                            type="button"
-                                            onClick={() => { setActiveTab('popular'); setSearchQuery(''); }}
-                                            className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                                                activeTab === 'popular' && !searchQuery
-                                                    ? 'bg-[#2463EB] text-white shadow-sm'
-                                                    : 'text-[#475467] hover:text-[#101828]'
-                                            }`}
-                                        >
-                                            Popular Services (10)
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => { setActiveTab('all'); setSearchQuery(''); }}
-                                            className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                                                activeTab === 'all' && !searchQuery
-                                                    ? 'bg-[#2463EB] text-white shadow-sm'
-                                                    : 'text-[#475467] hover:text-[#101828]'
-                                            }`}
-                                        >
-                                            <Layers className="w-3.5 h-3.5" />
-                                            <span>All BBPS (35)</span>
-                                        </button>
+                                        <div className="text-left leading-tight">
+                                            <div className="text-[9px] font-black uppercase tracking-wider text-slate-700">
+                                                Registry
+                                            </div>
+                                            <div className="text-xs font-black text-black">
+                                                All BBPS Categories
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Search Bar */}
-                                <div className="relative z-10 mt-4 pt-3 border-t border-[#DFE8F5]/60">
+                                {/* Search Bar Directly Below */}
+                                <div className="relative z-10 mt-3.5">
                                     <div className="relative w-full">
-                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#667085]" />
+                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-700" />
                                         <input
                                             type="text"
                                             value={searchQuery}
                                             onChange={(e) => setSearchQuery(e.target.value)}
-                                            placeholder="Search BBPS services & billers (e.g. Fastag, Electricity, Gas, Mobile Prepaid)..."
-                                            className="w-full pl-11 pr-10 py-3 text-xs md:text-sm rounded-[18px] border border-[#DFE8F5] bg-[#F8FAFF] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2463EB]/25 focus:border-[#2463EB] font-semibold text-[#101828] placeholder-[#667085] transition-all"
+                                            placeholder="Search categories (e.g. Electricity, Fastag, Gas)..."
+                                            className="w-full pl-11 pr-10 py-2.5 text-xs md:text-sm rounded-2xl border border-slate-300 bg-slate-50/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 font-bold text-black placeholder-slate-500 transition-all shadow-2xs"
                                         />
                                         {searchQuery && (
                                             <button
                                                 type="button"
                                                 onClick={() => setSearchQuery('')}
-                                                className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-[#667085] hover:text-[#101828] hover:bg-[#DFE8F5]/50 transition-colors"
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-slate-600 hover:text-black hover:bg-slate-200 transition-colors"
                                                 title="Clear search"
                                             >
                                                 <X className="w-4 h-4" />
@@ -137,10 +110,10 @@ const BharatConnect = () => {
                                 </div>
                             </div>
 
-                            {/* Service Cards Grid (5 columns on desktop, 20px gap) */}
-                            {displayedCategories.length > 0 ? (
-                                <div className="bbps-services-grid">
-                                    {displayedCategories.map((category, index) => (
+                            {/* Category Grid Section */}
+                            {filteredCategories.length > 0 ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+                                    {filteredCategories.map((category, index) => (
                                         <BbpsCategoryCard
                                             key={category.id}
                                             category={category}
@@ -153,23 +126,23 @@ const BharatConnect = () => {
                                 <motion.div
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className="rounded-[26px] border border-[#DFE8F5] bg-white p-12 text-center shadow-[0_5px_18px_rgba(32,72,140,0.055)] space-y-4"
+                                    className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-xs space-y-3"
                                 >
-                                    <div className="mx-auto w-14 h-14 rounded-2xl bg-[#EAF1FF] text-[#2463EB] flex items-center justify-center">
-                                        <Search className="w-7 h-7" />
+                                    <div className="mx-auto w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-800">
+                                        <Search className="w-6 h-6" />
                                     </div>
                                     <div className="space-y-1">
-                                        <h3 className="text-lg font-extrabold text-[#101828]">
-                                            No BBPS categories matching &ldquo;{searchQuery}&rdquo;
+                                        <h3 className="text-base font-black text-black">
+                                            No categories matching &ldquo;{searchQuery}&rdquo;
                                         </h3>
-                                        <p className="text-xs md:text-sm text-[#475467] max-w-md mx-auto">
+                                        <p className="text-xs font-bold text-slate-700 max-w-sm mx-auto">
                                             Try searching with another keyword such as &ldquo;Fastag&rdquo;, &ldquo;Electricity&rdquo;, &ldquo;Water&rdquo;, or &ldquo;Insurance&rdquo;.
                                         </p>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={() => setSearchQuery('')}
-                                        className="px-5 py-2.5 rounded-full bg-[#2463EB] text-white font-bold text-xs hover:bg-[#1749C8] transition-colors cursor-pointer shadow-sm"
+                                        className="px-4 py-2 rounded-xl bg-black text-white font-black text-xs hover:bg-slate-800 transition-colors cursor-pointer"
                                     >
                                         Clear Search Query
                                     </button>

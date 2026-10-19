@@ -13,7 +13,7 @@ import mainLogo from '../../assets/logo rupiksha transprent.png';
 // Standalone MenuItem component with mini/expanded support
 const MenuItem = ({ item, isActive, onClick, isExpanded, toggleExpand, activeTab, setActiveTab, isSidebarOpen }) => {
     return (
-        <div className={isSidebarOpen ? "px-2" : "flex justify-center my-1"}>
+        <div className="px-1.5">
             <motion.div
                 whileTap={{ scale: 0.98 }}
                 onClick={() => {
@@ -23,28 +23,26 @@ const MenuItem = ({ item, isActive, onClick, isExpanded, toggleExpand, activeTab
                         onClick();
                     }
                 }}
-                className={`flex items-center cursor-pointer group transition-all duration-200 relative ${
-                    isSidebarOpen
-                        ? `justify-between px-3 py-2.5 my-0.5 rounded-xl border ${
-                            isActive
-                                ? 'bg-[#EAF1FF] text-[#2463EB] border-[#B8CEFF] font-extrabold shadow-xs'
-                                : 'border-transparent text-[#344054] hover:bg-[#F5F8FD] hover:text-[#101828]'
-                        }`
-                        : `w-[46px] h-[46px] rounded-[13px] justify-center ${
-                            isActive
-                                ? 'bg-[#EAF1FF] text-[#2463EB] shadow-xs ring-1 ring-[#B8CEFF]'
-                                : 'text-[#344054] hover:bg-[#F5F8FD] hover:text-[#101828]'
-                        }`
+                className={`flex items-center ${isSidebarOpen ? 'justify-between px-2.5' : 'justify-center px-0'} py-2 my-1 cursor-pointer group transition-all duration-200 rounded-xl relative border ${
+                    isActive
+                        ? 'bg-slate-950 text-white border-slate-900 shadow-sm'
+                        : 'border-transparent text-slate-950 hover:bg-gradient-to-r hover:from-blue-50/90 hover:via-indigo-50/80 hover:to-purple-50/80 hover:text-indigo-950 hover:border-indigo-100/80 hover:shadow-xs'
                 }`}
                 title={!isSidebarOpen ? item.label : undefined}
             >
                 <div className={`flex items-center ${isSidebarOpen ? 'space-x-2.5' : 'justify-center'} relative z-10 w-full min-w-0`}>
-                    <div className={`shrink-0 transition-transform duration-200 group-hover:scale-105 ${isActive ? 'text-[#2463EB]' : 'text-[#344054]'}`}>
-                        <item.icon size={21} strokeWidth={isActive ? 2.3 : 1.9} />
-                    </div>
+                    {item.iconColor ? (
+                        <div className={`p-1.5 rounded-lg shrink-0 transition-all duration-200 ${isActive ? 'bg-white/20 text-white ring-1 ring-white/30' : item.iconColor} group-hover:scale-105`}>
+                            <item.icon size={16} strokeWidth={2.5} />
+                        </div>
+                    ) : (
+                        <div className={`shrink-0 transition-all duration-200 ${isActive ? 'text-white' : 'text-slate-950 group-hover:text-blue-600'} group-hover:scale-105`}>
+                            <item.icon size={19} strokeWidth={isActive ? 2.5 : 2.2} />
+                        </div>
+                    )}
                     
                     {isSidebarOpen && (
-                        <span className={`font-bold text-[13px] tracking-tight truncate flex-1 ${isActive ? 'text-[#2463EB]' : 'text-[#344054]'}`}>
+                        <span className={`font-black text-[13px] tracking-tight truncate flex-1 ${isActive ? 'text-white' : 'text-slate-950 group-hover:text-indigo-950'}`}>
                             {item.label}
                         </span>
                     )}
@@ -196,19 +194,19 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
             initial={false}
             animate={{
                 width: typeof window !== 'undefined' && window.innerWidth >= 1024 
-                    ? (isExpanded ? 218 : 70) 
+                    ? (isExpanded ? 218 : 56) 
                     : 218,
                 x: typeof window !== 'undefined' && window.innerWidth < 1024 
                     ? (showMobileSidebar ? 0 : -230) 
                     : 0
             }}
             transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-            className={`fixed top-0 left-0 flex-shrink-0 border-r border-[#E5ECF6] flex flex-col h-screen font-['Inter',sans-serif] z-50 transition-colors duration-300 lg:top-[76px] lg:h-[calc(100vh-76px)] bg-white shadow-xs ${
+            className={`fixed top-0 left-0 flex-shrink-0 border-r border-slate-300 flex flex-col h-screen font-['Inter',sans-serif] z-50 transition-colors duration-300 lg:top-[76px] lg:h-[calc(100vh-76px)] bg-slate-50 shadow-md ${
                 !isLocked && isHovered ? 'shadow-2xl ring-1 ring-black/5 z-50' : ''
             }`}
         >
             {/* Header / Lock Area */}
-            <div className={`shrink-0 border-b border-[#E5ECF6] transition-all duration-300 ${
+            <div className={`shrink-0 border-b border-slate-200 transition-all duration-300 ${
                 isExpanded ? 'px-3 py-3' : 'px-2 py-2.5'
             }`}>
                 {isExpanded ? (
@@ -242,12 +240,12 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
                         <img
                             src={mainLogo}
                             alt="R"
-                            className="w-[42px] h-[42px] object-contain rounded-xl p-0.5"
+                            className="w-7 h-7 object-contain rounded"
                         />
                         <button
                             type="button"
                             onClick={toggleLock}
-                            className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition cursor-pointer"
+                            className="p-1.5 rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-300 transition cursor-pointer"
                             title="Click to lock sidebar open"
                         >
                             <Unlock size={13} />
@@ -326,10 +324,10 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
             </div>
 
             {/* Footer Merchant Profile */}
-            <div className="p-2 border-t border-[#E5ECF6]">
+            <div className="p-2 border-t border-slate-200">
                 <div className={`flex items-center ${isExpanded ? 'justify-between' : 'justify-center'} px-1 py-1`}>
                     <div className="flex items-center gap-2">
-                        <div className="w-[36px] h-[36px] rounded-full bg-white flex items-center justify-center border border-[#DFE8F5] overflow-hidden shrink-0 shadow-xs">
+                        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center border border-slate-300 overflow-hidden shrink-0 shadow-xs">
                             {(() => {
                                 const sideUid = currentUser?.id || currentUser?.userId || currentUser?.username;
                                 const sidePhoto = currentUser?.profilePhoto || currentUser?.photoUrl || (sideUid ? localStorage.getItem(`rupiksha_photo_${sideUid}`) : null);

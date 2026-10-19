@@ -244,7 +244,7 @@ const RetailerLayout = () => {
             />
 
             <div className={`h-full flex flex-col overflow-hidden relative pt-[76px] transition-all duration-300 ${
-                isSidebarLocked || isSidebarHovered ? 'lg:ml-[218px]' : 'lg:ml-[70px]'
+                isSidebarLocked || isSidebarHovered ? 'lg:ml-[218px]' : 'lg:ml-[56px]'
             }`}>
                 {/* pb-16 lg:pb-0 ensures content not hidden behind mobile bottom nav */}
                 <main className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 pb-16 lg:pb-0">
