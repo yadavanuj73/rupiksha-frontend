@@ -309,11 +309,11 @@ const ElectricityFlow = ({ onBack }) => {
             ccf1Fee: ccf1Fee,
             meterType: isPrepaid ? 'PREPAID' : 'POSTPAID',
             fetchRequestId: fetchedBill?.fetchRequestId,
-            billNumber: fetchedBill?.billNumber || (isPrepaid ? idempotencyKey : undefined),
-            billDate: fetchedBill?.billDate || (isPrepaid ? new Date().toISOString().split('T')[0] : undefined),
-            dueDate: fetchedBill?.dueDate || (isPrepaid ? new Date().toISOString().split('T')[0] : undefined),
-            billPeriod: fetchedBill?.billPeriod || (isPrepaid ? 'NA' : undefined),
-            customerName: fetchedBill?.customerName || (isPrepaid ? 'Prepaid Meter Consumer' : 'Electricity Consumer'),
+            billNumber: fetchedBill?.billNumber,
+            billDate: fetchedBill?.billDate,
+            dueDate: fetchedBill?.dueDate,
+            billPeriod: fetchedBill?.billPeriod,
+            customerName: fetchedBill?.customerName,
             additionalInfo: fetchedBill?.additionalInfo,
             idempotencyKey: idempotencyKey
         };

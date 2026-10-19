@@ -277,44 +277,52 @@ public class BillAvenueClient {
         }
 
         // 2. Build Biller Response XML (mirror what fetch returned, or send recharge amount)
-        // The XML API request amounts are in paise (see the API document's request field definitions).
-        long billerRespPaise = (req.getBillAmountPaise() > 0) ? req.getBillAmountPaise() : req.getAmountPaise();
-        StringBuilder billerRespXml = new StringBuilder("<billerResponse>");
-        billerRespXml.append("<billAmount>").append(billerRespPaise).append("</billAmount>");
-        // billDate: format must be YYYY-MM-DD per doc (Page 37). BillAvenue rejects missing date with "Bill date required (E022)".
-        String billDate = (req.getBillDate() != null && !req.getBillDate().isBlank() && !"N/A".equalsIgnoreCase(req.getBillDate().trim()))
-                ? req.getBillDate().trim()
-                : java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE);
-        billerRespXml.append("<billDate>").append(escapeXml(billDate)).append("</billDate>");
-        // billNumber: max length 100 alphanumeric with _@./#&+- per doc (Page 37). BillAvenue rejects missing billNumber with "Bill number is required (E024)".
-        String billNumber = (req.getBillNumber() != null && !req.getBillNumber().isBlank() && !"N/A".equalsIgnoreCase(req.getBillNumber().trim()))
-                ? req.getBillNumber().trim()
-                : (req.getClientTxnId() != null && !req.getClientTxnId().isBlank() ? req.getClientTxnId().trim() : "NA");
-        billerRespXml.append("<billNumber>").append(escapeXml(billNumber)).append("</billNumber>");
+        // 2. Build Biller Response XML (mirror what fetch returned verbatim per BBPS spec, or send fallback)
+        String billerRespXmlStr;
+        if (req.getRawBillerResponseXml() != null && !req.getRawBillerResponseXml().isBlank()) {
+            billerRespXmlStr = req.getRawBillerResponseXml().trim();
+        } else {
+            long billerRespPaise = (req.getBillAmountPaise() > 0) ? req.getBillAmountPaise() : req.getAmountPaise();
+            StringBuilder billerRespXml = new StringBuilder("<billerResponse>");
+            billerRespXml.append("<billAmount>").append(billerRespPaise).append("</billAmount>");
+            // billDate: format must be YYYY-MM-DD per doc (Page 37). BillAvenue rejects missing date with "Bill date required (E022)".
+            String billDate = (req.getBillDate() != null && !req.getBillDate().isBlank() && !"N/A".equalsIgnoreCase(req.getBillDate().trim()))
+                    ? req.getBillDate().trim()
+                    : java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE);
+            billerRespXml.append("<billDate>").append(escapeXml(billDate)).append("</billDate>");
+            // billNumber: max length 100 alphanumeric with _@./#&+- per doc (Page 37). BillAvenue rejects missing billNumber with "Bill number is required (E024)".
+            String billNumber = (req.getBillNumber() != null && !req.getBillNumber().isBlank() && !"N/A".equalsIgnoreCase(req.getBillNumber().trim()))
+                    ? req.getBillNumber().trim()
+                    : (req.getClientTxnId() != null && !req.getClientTxnId().isBlank() ? req.getClientTxnId().trim() : "NA");
+            billerRespXml.append("<billNumber>").append(escapeXml(billNumber)).append("</billNumber>");
 
-        // billPeriod: max length 35 alphanumeric with _,@./#&+'- per doc (Page 38). BillAvenue rejects missing billPeriod with "Bill period is required (E025)".
-        String billPeriod = (req.getBillPeriod() != null && !req.getBillPeriod().isBlank() && !"N/A".equalsIgnoreCase(req.getBillPeriod().trim()))
-                ? req.getBillPeriod().trim()
-                : "NA";
-        billerRespXml.append("<billPeriod>").append(escapeXml(billPeriod)).append("</billPeriod>");
+            // billPeriod: max length 35 alphanumeric with _,@./#&+'- per doc (Page 38). BillAvenue rejects missing billPeriod with "Bill period is required (E025)".
+            String billPeriod = (req.getBillPeriod() != null && !req.getBillPeriod().isBlank() && !"N/A".equalsIgnoreCase(req.getBillPeriod().trim()))
+                    ? req.getBillPeriod().trim()
+                    : "NA";
+            billerRespXml.append("<billPeriod>").append(escapeXml(billPeriod)).append("</billPeriod>");
 
-        // customerName: max length 100 alphanumeric with _ per doc (Page 38).
-        String customerName = (req.getCustomerName() != null && !req.getCustomerName().isBlank() && !"N/A".equalsIgnoreCase(req.getCustomerName().trim()))
-                ? req.getCustomerName().trim()
-                : "Customer";
-        billerRespXml.append("<customerName>").append(escapeXml(customerName)).append("</customerName>");
+            // customerName: max length 100 alphanumeric with _ per doc (Page 38).
+            String customerName = (req.getCustomerName() != null && !req.getCustomerName().isBlank() && !"N/A".equalsIgnoreCase(req.getCustomerName().trim()))
+                    ? req.getCustomerName().trim()
+                    : "Customer";
+            billerRespXml.append("<customerName>").append(escapeXml(customerName)).append("</customerName>");
 
-        // dueDate: format must be YYYY-MM-DD per doc (Page 38).
-        String dueDate = (req.getDueDate() != null && !req.getDueDate().isBlank() && !"N/A".equalsIgnoreCase(req.getDueDate().trim()))
-                ? req.getDueDate().trim()
-                : billDate;
-        billerRespXml.append("<dueDate>").append(escapeXml(dueDate)).append("</dueDate>");
-        billerRespXml.append("</billerResponse>");
+            // dueDate: format must be YYYY-MM-DD per doc (Page 38).
+            String dueDate = (req.getDueDate() != null && !req.getDueDate().isBlank() && !"N/A".equalsIgnoreCase(req.getDueDate().trim()))
+                    ? req.getDueDate().trim()
+                    : billDate;
+            billerRespXml.append("<dueDate>").append(escapeXml(dueDate)).append("</dueDate>");
+            billerRespXml.append("</billerResponse>");
+            billerRespXmlStr = billerRespXml.toString();
+        }
 
         // 3. Build Additional Info XML
-        StringBuilder addnlInfoXml = new StringBuilder();
-        if (req.getAdditionalInfo() != null && !req.getAdditionalInfo().isEmpty()) {
-            addnlInfoXml.append("<additionalInfo>");
+        String addnlInfoXmlStr;
+        if (req.getRawAdditionalInfoXml() != null && !req.getRawAdditionalInfoXml().isBlank()) {
+            addnlInfoXmlStr = req.getRawAdditionalInfoXml().trim();
+        } else if (req.getAdditionalInfo() != null && !req.getAdditionalInfo().isEmpty()) {
+            StringBuilder addnlInfoXml = new StringBuilder("<additionalInfo>");
             for (BillAvenueDtos.InfoItem info : req.getAdditionalInfo()) {
                 addnlInfoXml.append("<info>")
                         .append("<infoName>").append(escapeXml(info.getInfoName())).append("</infoName>")
@@ -322,6 +330,9 @@ public class BillAvenueClient {
                         .append("</info>");
             }
             addnlInfoXml.append("</additionalInfo>");
+            addnlInfoXmlStr = addnlInfoXml.toString();
+        } else {
+            addnlInfoXmlStr = "";
         }
 
         // 4. Build Payment Account Info & Payment Info XML
@@ -378,7 +389,7 @@ public class BillAvenueClient {
         // 6. Build Master Payment XML matching PHP structure
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
                 + "<billPaymentRequest>"
-                + addnlInfoXml
+                + addnlInfoXmlStr
                 + "<agentDeviceInfo>"
                 + "<app>BillPay</app>"
                 + "<imei>000000000000000</imei>"
@@ -395,7 +406,7 @@ public class BillAvenueClient {
                 + "</amountInfo>"
                 + "<billerId>" + escapeXml(req.getBillerId()) + "</billerId>"
                 + "<billerAdhoc>" + escapeXml(billerAdhoc) + "</billerAdhoc>"
-                + billerRespXml
+                + billerRespXmlStr
                 + "<customerInfo>"
                 + "<customerMobile>" + escapeXml(req.getCustomerMobile()) + "</customerMobile>"
                 + kycXml
@@ -844,6 +855,18 @@ public class BillAvenueClient {
                 .customerMobile(customerMobile)
                 .inputParams(inputParams)
                 .rawXml(xmlStr);
+
+        if (xmlStr != null) {
+            java.util.regex.Matcher brMatcher = java.util.regex.Pattern.compile("(?s)<billerResponse>.*?</billerResponse>", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(xmlStr);
+            if (brMatcher.find()) {
+                builder.rawBillerResponseXml(brMatcher.group());
+            }
+
+            java.util.regex.Matcher aiMatcher = java.util.regex.Pattern.compile("(?s)<additionalInfo>.*?</additionalInfo>", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(xmlStr);
+            if (aiMatcher.find()) {
+                builder.rawAdditionalInfoXml(aiMatcher.group());
+            }
+        }
 
         if (xmlStr == null || xmlStr.isBlank()) {
             return builder.responseCode("500").responseReason("Empty XML response").build();

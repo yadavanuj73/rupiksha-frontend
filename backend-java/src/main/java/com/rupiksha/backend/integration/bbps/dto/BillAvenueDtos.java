@@ -75,6 +75,8 @@ public class BillAvenueDtos {
         private List<InputParam> inputParams;
         private List<ErrorInfo> errorInfo;
         private String rawXml;
+        private String rawBillerResponseXml;
+        private String rawAdditionalInfoXml;
 
         public boolean isSuccess() {
             return "000".equals(responseCode);
@@ -159,6 +161,8 @@ public class BillAvenueDtos {
         private String quickPay;
         private long custConvFeePaise;
         private long ccf1Paise;
+        private String rawBillerResponseXml;
+        private String rawAdditionalInfoXml;
     }
 
     @Data

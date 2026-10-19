@@ -42,6 +42,7 @@ public class BbpsServiceImpl implements BbpsService {
     private final WalletService walletService;
     private final ElectricityBillerRegistry electricityBillerRegistry;
     private final ObjectMapper objectMapper;
+    private final Map<String, BillAvenueDtos.BillFetchResponse> fetchCache = new java.util.concurrent.ConcurrentHashMap<>();
 
     @org.springframework.beans.factory.annotation.Value("${billavenue.biller.jio:BILAVJIO000001}")
     private String billerJio;
@@ -709,6 +710,9 @@ public class BbpsServiceImpl implements BbpsService {
                     request.getCustomerMobile().trim(),
                     sanitizedIp
             );
+            if (fetchResp != null && fetchResp.getFetchRequestId() != null && !fetchResp.getFetchRequestId().isBlank()) {
+                fetchCache.put(fetchResp.getFetchRequestId().trim(), fetchResp);
+            }
 
             boolean isNoBillDue = fetchResp != null && (fetchResp.isNoBillDue() || (fetchResp.isSuccess() && fetchResp.getBillAmountPaise() == 0));
 
@@ -949,8 +953,29 @@ public class BbpsServiceImpl implements BbpsService {
             }
         }
 
+        String rawBillerResponseXml = null;
+        String rawAdditionalInfoXml = null;
+
+        if (effectiveRequestId != null) {
+            BillAvenueDtos.BillFetchResponse cached = fetchCache.get(effectiveRequestId);
+            if (cached != null) {
+                if (cached.getRawBillerResponseXml() != null) {
+                    rawBillerResponseXml = cached.getRawBillerResponseXml();
+                }
+                if (cached.getRawAdditionalInfoXml() != null) {
+                    rawAdditionalInfoXml = cached.getRawAdditionalInfoXml();
+                }
+                if (cached.getAdditionalInfo() != null && !cached.getAdditionalInfo().isEmpty() && addnlItems.isEmpty()) {
+                    addnlItems.addAll(cached.getAdditionalInfo());
+                }
+                if (customerName == null && cached.getCustomerName() != null && !cached.getCustomerName().isBlank()) {
+                    customerName = cached.getCustomerName().trim();
+                }
+            }
+        }
+
         // If fetchRequestId is not present but the biller requires or supports bill fetch:
-        // Automatically perform a pre-payment bill fetch with BillAvenue to establish the CU fetch session (resolves E210).
+        // Automatically perform a pre-payment bill fetch with BillAvenue to establish the CU fetch session (resolves E210 & E211).
         if (effectiveRequestId == null && !"NOT_SUPPORTED".equalsIgnoreCase(biller.getBillerFetchRequirement())) {
             log.info("Biller {} requires/supports fetch. Performing pre-payment bill fetch for consumer: {}",
                     biller.getBillerId(), primaryConsumerNumber);
@@ -963,26 +988,39 @@ public class BbpsServiceImpl implements BbpsService {
                 );
                 if (autoFetch != null && autoFetch.getFetchRequestId() != null && !autoFetch.getFetchRequestId().isBlank()) {
                     effectiveRequestId = autoFetch.getFetchRequestId().trim();
-                    if (customerName == null && autoFetch.getCustomerName() != null && !autoFetch.getCustomerName().isBlank() && !"NA".equalsIgnoreCase(autoFetch.getCustomerName().trim())) {
+                    fetchCache.put(effectiveRequestId, autoFetch);
+
+                    if (autoFetch.getRawBillerResponseXml() != null && !autoFetch.getRawBillerResponseXml().isBlank()) {
+                        rawBillerResponseXml = autoFetch.getRawBillerResponseXml().trim();
+                    }
+                    if (autoFetch.getRawAdditionalInfoXml() != null && !autoFetch.getRawAdditionalInfoXml().isBlank()) {
+                        rawAdditionalInfoXml = autoFetch.getRawAdditionalInfoXml().trim();
+                    }
+
+                    // Prioritize real customer name returned by the electricity board over dummy defaults
+                    if (autoFetch.getCustomerName() != null && !autoFetch.getCustomerName().isBlank()
+                            && !"NA".equalsIgnoreCase(autoFetch.getCustomerName().trim())
+                            && !"Prepaid Meter Consumer".equalsIgnoreCase(autoFetch.getCustomerName().trim())
+                            && !"Electricity Consumer".equalsIgnoreCase(autoFetch.getCustomerName().trim())) {
                         customerName = autoFetch.getCustomerName().trim();
                     }
-                    if (effectiveBillNumber == null && autoFetch.getBillNumber() != null && !autoFetch.getBillNumber().isBlank()) {
+                    if (autoFetch.getBillNumber() != null && !autoFetch.getBillNumber().isBlank()) {
                         effectiveBillNumber = autoFetch.getBillNumber().trim();
                     }
-                    if (effectiveBillDate == null && autoFetch.getBillDate() != null && !autoFetch.getBillDate().isBlank()) {
+                    if (autoFetch.getBillDate() != null && !autoFetch.getBillDate().isBlank()) {
                         effectiveBillDate = autoFetch.getBillDate().trim();
                     }
-                    if (effectiveDueDate == null && autoFetch.getDueDate() != null && !autoFetch.getDueDate().isBlank()) {
+                    if (autoFetch.getDueDate() != null && !autoFetch.getDueDate().isBlank()) {
                         effectiveDueDate = autoFetch.getDueDate().trim();
                     }
-                    if (effectiveBillPeriod == null && autoFetch.getBillPeriod() != null && !autoFetch.getBillPeriod().isBlank()) {
+                    if (autoFetch.getBillPeriod() != null && !autoFetch.getBillPeriod().isBlank()) {
                         effectiveBillPeriod = autoFetch.getBillPeriod().trim();
                     }
-                    if (addnlItems.isEmpty() && autoFetch.getAdditionalInfo() != null) {
-                        addnlItems.addAll(autoFetch.getAdditionalInfo());
+                    if (autoFetch.getAdditionalInfo() != null && !autoFetch.getAdditionalInfo().isEmpty()) {
+                        addnlItems = new ArrayList<>(autoFetch.getAdditionalInfo());
                     }
-                    log.info("Pre-payment fetch established CU session with fetchRequestId: {}, customer: {}",
-                            effectiveRequestId, customerName);
+                    log.info("Pre-payment fetch established CU session with fetchRequestId: {}, customer: {}, hasRawBillerResp: {}",
+                            effectiveRequestId, customerName, (rawBillerResponseXml != null));
                 } else {
                     log.warn("Pre-payment fetch did not return fetchRequestId for biller {}: {}",
                             biller.getBillerId(), autoFetch != null ? autoFetch.getResponseReason() : "null");
@@ -1145,6 +1183,8 @@ public class BbpsServiceImpl implements BbpsService {
                 .quickPay(quickPayFlag)
                 .custConvFeePaise(convFeePaise)
                 .ccf1Paise(ccf1Paise)
+                .rawBillerResponseXml(rawBillerResponseXml)
+                .rawAdditionalInfoXml(rawAdditionalInfoXml)
                 .build();
 
         BillAvenueDtos.BillPayResponse payResp;
