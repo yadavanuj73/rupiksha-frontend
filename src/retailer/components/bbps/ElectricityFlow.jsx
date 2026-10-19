@@ -440,7 +440,7 @@ const ElectricityFlow = ({ onBack }) => {
                             </div>
 
                             {/* DISCOM List Grid */}
-                            <div className="max-h-56 overflow-y-auto space-y-2 pr-1 scrollbar-thin">
+                            <div className="max-h-72 md:max-h-[380px] lg:max-h-[440px] overflow-y-auto space-y-2 pr-1 scrollbar-thin">
                                 {loadingBillers ? (
                                     <div className="py-8 text-center text-xs font-bold text-slate-500 flex items-center justify-center gap-2">
                                         <RefreshCw className="w-4 h-4 animate-spin text-amber-500" />
@@ -501,155 +501,37 @@ const ElectricityFlow = ({ onBack }) => {
                             </div>
                         </div>
 
-                        {/* Customer Parameters Form Card */}
-                        {selectedBiller && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xs space-y-4"
-                            >
-                                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                                    <div>
-                                        <h2 className="text-sm font-black text-black">2. Enter Consumer Details</h2>
-                                        <p className="text-xs text-slate-500 font-bold">
-                                            As specified by {selectedBiller.billerName}
-                                        </p>
-                                    </div>
-                                    <span className="text-[10px] font-mono font-bold text-slate-400">
-                                        {selectedBiller.billerId}
-                                    </span>
-                                </div>
-
-                                <form onSubmit={handleFetchBill} className="space-y-3.5">
-                                    {/* Registered Mobile Number */}
-                                    <div>
-                                        <label className="block text-xs font-black text-black mb-1">
-                                            Customer Mobile Number <span className="text-rose-500">*</span>
-                                        </label>
-                                        <div className="relative">
-                                            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500">
-                                                +91
-                                            </span>
-                                            <input
-                                                type="tel"
-                                                maxLength={10}
-                                                value={customerMobile}
-                                                onChange={(e) => {
-                                                    const val = e.target.value.replace(/\D/g, '');
-                                                    setCustomerMobile(val);
-                                                    if (paramErrors.customerMobile) {
-                                                        setParamErrors(prev => {
-                                                            const next = { ...prev };
-                                                            delete next.customerMobile;
-                                                            return next;
-                                                        });
-                                                    }
-                                                }}
-                                                placeholder="10-digit mobile number for bill alerts"
-                                                className={`w-full pl-12 pr-4 py-2.5 text-xs md:text-sm font-bold rounded-xl border bg-slate-50 focus:bg-white focus:outline-none transition-all ${
-                                                    paramErrors.customerMobile
-                                                        ? 'border-rose-300 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500'
-                                                        : 'border-slate-300 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500'
-                                                } text-black placeholder-slate-400 shadow-2xs`}
-                                            />
-                                        </div>
-                                        {paramErrors.customerMobile && (
-                                            <p className="text-[11px] font-bold text-rose-600 mt-1">
-                                                {paramErrors.customerMobile}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {/* Dynamic Input Parameters */}
-                                    {selectedBiller.inputParams && selectedBiller.inputParams.map((param) => {
-                                        const hasError = !!paramErrors[param.paramName];
-                                        return (
-                                            <div key={param.paramName}>
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <label className="text-xs font-black text-black">
-                                                        {param.paramName} {!param.optional && <span className="text-rose-500">*</span>}
-                                                    </label>
-                                                    {param.hint && (
-                                                        <span className="text-[10px] font-bold text-slate-400">
-                                                            {param.hint}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <input
-                                                    type="text"
-                                                    value={customerParams[param.paramName] || ''}
-                                                    maxLength={param.maxLength > 0 ? param.maxLength : 30}
-                                                    onChange={(e) => handleParamChange(param.paramName, e.target.value)}
-                                                    placeholder={param.hint || `Enter ${param.paramName}`}
-                                                    className={`w-full px-3.5 py-2.5 text-xs md:text-sm font-bold rounded-xl border bg-slate-50 focus:bg-white focus:outline-none transition-all ${
-                                                        hasError
-                                                            ? 'border-rose-300 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500'
-                                                            : 'border-slate-300 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500'
-                                                    } text-black placeholder-slate-400 shadow-2xs font-mono`}
-                                                />
-                                                {hasError && (
-                                                    <p className="text-[11px] font-bold text-rose-600 mt-1">
-                                                        {paramErrors[param.paramName]}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-
-                                    {/* Fetch Bill Action Button */}
-                                    <div className="pt-2">
-                                        <button
-                                            type="submit"
-                                            disabled={isFetchingBill}
-                                            className="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 active:scale-[0.99] text-white font-black text-xs md:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-60"
-                                        >
-                                            {isFetchingBill ? (
-                                                <>
-                                                    <RefreshCw className="w-4 h-4 animate-spin" />
-                                                    <span>Fetching Verified Bill Details...</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <span>Fetch Bill Details</span>
-                                                    <ArrowRight className="w-4 h-4" />
-                                                </>
-                                            )}
-                                        </button>
-                                    </div>
-
-                                    {/* Fetch Error Callout */}
-                                    {fetchError && (
-                                        <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-start gap-2.5">
-                                            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                                            <div>
-                                                <div className="font-black">Bill Fetch Failed</div>
-                                                <div className="text-[11px] mt-0.5 text-rose-700">{fetchError}</div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </form>
-                            </motion.div>
-                        )}
                     </div>
 
-                    {/* RIGHT COLUMN: Verified Bill Summary / Guidance Card (5 Cols) */}
+                    {/* RIGHT COLUMN: Step 2 Consumer Details OR Verified Bill Details (5 Cols) */}
                     <div className="lg:col-span-5 space-y-4">
                         {fetchedBill ? (
+                            /* Verified Bill Details */
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.98 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 className="rounded-3xl border border-slate-200 bg-white p-5 md:p-6 shadow-md space-y-5"
                             >
-                                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                                <div className="flex items-center justify-between border-b border-slate-100 pb-3 gap-2">
                                     <div className="flex items-center gap-2">
                                         <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                                         <span className="text-xs font-black uppercase tracking-wider text-emerald-700">
                                             Verified Bill Details
                                         </span>
                                     </div>
-                                    <span className="text-[10px] font-bold text-slate-500">
-                                        Live from CU
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setFetchedBill(null)}
+                                            className="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-[11px] font-black transition-colors cursor-pointer"
+                                            title="Click to edit mobile or consumer number"
+                                        >
+                                            Edit Details
+                                        </button>
+                                        <span className="text-[10px] font-bold text-slate-500 hidden sm:inline">
+                                            Live from CU
+                                        </span>
+                                    </div>
                                 </div>
 
                                 {/* Zero Due / All Cleared Banner */}
@@ -667,35 +549,35 @@ const ElectricityFlow = ({ onBack }) => {
 
                                 {/* Bill Meta Information */}
                                 <div className="space-y-2.5 text-xs font-bold text-slate-700 bg-slate-50/80 p-4 rounded-2xl border border-slate-200/90">
-                                    <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                        <span className="text-slate-500">Consumer Name</span>
-                                        <span className="font-black text-black">{fetchedBill.customerName || 'Electricity Consumer'}</span>
+                                    <div className="flex justify-between items-center py-1 border-b border-slate-200/60 gap-2">
+                                        <span className="text-slate-500 shrink-0">Consumer Name</span>
+                                        <span className="font-black text-black text-right truncate max-w-[65%]">{fetchedBill.customerName || 'Electricity Consumer'}</span>
                                     </div>
-                                    <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                        <span className="text-slate-500">Consumer Number</span>
-                                        <span className="font-mono font-black text-black">{fetchedBill.consumerNumber || 'N/A'}</span>
+                                    <div className="flex justify-between items-center py-1 border-b border-slate-200/60 gap-2">
+                                        <span className="text-slate-500 shrink-0">Consumer Number</span>
+                                        <span className="font-mono font-black text-black text-right truncate max-w-[65%]">{fetchedBill.consumerNumber || 'N/A'}</span>
                                     </div>
-                                    <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                        <span className="text-slate-500">Electricity Board</span>
-                                        <span className="font-black text-black">{selectedBiller.billerName}</span>
+                                    <div className="flex justify-between items-center py-1 border-b border-slate-200/60 gap-2">
+                                        <span className="text-slate-500 shrink-0">Electricity Board</span>
+                                        <span className="font-black text-black text-right truncate max-w-[65%]">{selectedBiller.billerName}</span>
                                     </div>
                                     {fetchedBill.billNumber && (
-                                        <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                            <span className="text-slate-500">Bill Number</span>
-                                            <span className="font-mono font-black text-black">{fetchedBill.billNumber}</span>
+                                        <div className="flex justify-between items-center py-1 border-b border-slate-200/60 gap-2">
+                                            <span className="text-slate-500 shrink-0">Bill Number</span>
+                                            <span className="font-mono font-black text-black text-right truncate max-w-[65%]">{fetchedBill.billNumber}</span>
                                         </div>
                                     )}
                                     {fetchedBill.dueDate && (
-                                        <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                            <span className="text-slate-500">Due Date</span>
+                                        <div className="flex justify-between items-center py-1 border-b border-slate-200/60 gap-2">
+                                            <span className="text-slate-500 shrink-0">Due Date</span>
                                             <span className="font-black text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
                                                 {fetchedBill.dueDate}
                                             </span>
                                         </div>
                                     )}
                                     {fetchedBill.billDate && (
-                                        <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                            <span className="text-slate-500">Bill Date</span>
+                                        <div className="flex justify-between items-center py-1 border-b border-slate-200/60 gap-2">
+                                            <span className="text-slate-500 shrink-0">Bill Date</span>
                                             <span className="font-black text-slate-800">{fetchedBill.billDate}</span>
                                         </div>
                                     )}
@@ -704,9 +586,9 @@ const ElectricityFlow = ({ onBack }) => {
                                     {fetchedBill.additionalInfo && fetchedBill.additionalInfo.length > 0 && (
                                         <div className="pt-1 space-y-1">
                                             {fetchedBill.additionalInfo.slice(0, 3).map((item, idx) => (
-                                                <div key={idx} className="flex justify-between text-[11px] text-slate-500">
-                                                    <span>{item.infoName}</span>
-                                                    <span className="text-slate-700 font-mono">{item.infoValue}</span>
+                                                <div key={idx} className="flex justify-between items-center text-[11px] text-slate-500 gap-2">
+                                                    <span className="shrink-0">{item.infoName}</span>
+                                                    <span className="text-slate-700 font-mono text-right truncate max-w-[65%]">{item.infoValue}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -775,46 +657,147 @@ const ElectricityFlow = ({ onBack }) => {
                                     </button>
                                 )}
                             </motion.div>
-                        ) : (
-                            /* Informational Guidance Card */
-                            <div className="rounded-3xl border border-slate-200 bg-white p-5 md:p-6 shadow-xs space-y-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0">
-                                        <Info className="w-5 h-5" />
+                        ) : selectedBiller ? (
+                            /* Step 2: Enter Consumer Details (moved to right side) */
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="rounded-3xl border border-slate-200 bg-white p-5 md:p-6 shadow-xs space-y-4"
+                            >
+                                <div className="flex items-center justify-between border-b border-slate-100 pb-3 gap-2">
+                                    <div className="min-w-0">
+                                        <h2 className="text-sm font-black text-black">2. Enter Consumer Details</h2>
+                                        <p className="text-xs text-slate-500 font-bold truncate max-w-[240px] sm:max-w-xs" title={selectedBiller.billerName}>
+                                            As specified by {selectedBiller.billerName}
+                                        </p>
                                     </div>
-                                    <div>
-                                        <h3 className="text-sm font-black text-black">How to find your Consumer ID</h3>
-                                        <p className="text-xs text-slate-500 font-bold">Check your physical electricity bill</p>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-3 text-xs text-slate-600 font-bold">
-                                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
-                                        <span className="font-black text-black block">MSEDCL / Mahavitaran (Maharashtra)</span>
-                                        <span className="text-[11px] text-slate-500">Requires 12-digit Consumer Number and 4-digit Billing Unit (BU) printed on top left.</span>
-                                    </div>
-
-                                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
-                                        <span className="font-black text-black block">BSES Rajdhani & Yamuna (Delhi)</span>
-                                        <span className="text-[11px] text-slate-500">Requires 9-digit CA Number located at the top right of the bill.</span>
-                                    </div>
-
-                                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
-                                        <span className="font-black text-black block">UPPCL (Uttar Pradesh)</span>
-                                        <span className="text-[11px] text-slate-500">Requires 10-digit Account Number for Rural / Urban connections.</span>
-                                    </div>
-
-                                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
-                                        <span className="font-black text-black block">BESCOM (Karnataka)</span>
-                                        <span className="text-[11px] text-slate-500">Requires 10-digit Consumer ID / Account ID.</span>
-                                    </div>
-                                </div>
-
-                                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-500">
-                                    <span className="flex items-center gap-1 text-emerald-700">
-                                        <ShieldCheck className="w-3.5 h-3.5" />
-                                        Official NPCI Bharat Connect Certified
+                                    <span className="text-[10px] font-mono font-bold text-slate-400 shrink-0 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200">
+                                        {selectedBiller.billerId}
                                     </span>
+                                </div>
+
+                                <form onSubmit={handleFetchBill} className="space-y-3.5">
+                                    {/* Registered Mobile Number */}
+                                    <div>
+                                        <label className="block text-xs font-black text-black mb-1">
+                                            Customer Mobile Number <span className="text-rose-500">*</span>
+                                        </label>
+                                        <div className="relative">
+                                            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500">
+                                                +91
+                                            </span>
+                                            <input
+                                                type="tel"
+                                                maxLength={10}
+                                                value={customerMobile}
+                                                onChange={(e) => {
+                                                    const val = e.target.value.replace(/\D/g, '');
+                                                    setCustomerMobile(val);
+                                                    if (paramErrors.customerMobile) {
+                                                        setParamErrors(prev => {
+                                                            const next = { ...prev };
+                                                            delete next.customerMobile;
+                                                            return next;
+                                                        });
+                                                    }
+                                                }}
+                                                placeholder="10-digit mobile number for bill alerts"
+                                                className={`w-full pl-12 pr-4 py-2.5 text-xs md:text-sm font-bold rounded-xl border bg-slate-50 focus:bg-white focus:outline-none transition-all ${
+                                                    paramErrors.customerMobile
+                                                        ? 'border-rose-300 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500'
+                                                        : 'border-slate-300 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500'
+                                                } text-black placeholder-slate-400 shadow-2xs`}
+                                            />
+                                        </div>
+                                        {paramErrors.customerMobile && (
+                                            <p className="text-[11px] font-bold text-rose-600 mt-1">
+                                                {paramErrors.customerMobile}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {/* Dynamic Input Parameters */}
+                                    {selectedBiller.inputParams && selectedBiller.inputParams.map((param) => {
+                                        const hasError = !!paramErrors[param.paramName];
+                                        return (
+                                            <div key={param.paramName}>
+                                                <div className="flex items-center justify-between mb-1 gap-2">
+                                                    <label className="text-xs font-black text-black truncate">
+                                                        {param.paramName} {!param.optional && <span className="text-rose-500">*</span>}
+                                                    </label>
+                                                    {param.hint && (
+                                                        <span className="text-[10px] font-bold text-slate-400 truncate max-w-[150px]">
+                                                            {param.hint}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    value={customerParams[param.paramName] || ''}
+                                                    maxLength={param.maxLength > 0 ? param.maxLength : 30}
+                                                    onChange={(e) => handleParamChange(param.paramName, e.target.value)}
+                                                    placeholder={param.hint || `Enter ${param.paramName}`}
+                                                    className={`w-full px-3.5 py-2.5 text-xs md:text-sm font-bold rounded-xl border bg-slate-50 focus:bg-white focus:outline-none transition-all ${
+                                                        hasError
+                                                            ? 'border-rose-300 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500'
+                                                            : 'border-slate-300 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500'
+                                                    } text-black placeholder-slate-400 shadow-2xs font-mono`}
+                                                />
+                                                {hasError && (
+                                                    <p className="text-[11px] font-bold text-rose-600 mt-1">
+                                                        {paramErrors[param.paramName]}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+
+                                    {/* Fetch Bill Action Button */}
+                                    <div className="pt-2">
+                                        <button
+                                            type="submit"
+                                            disabled={isFetchingBill}
+                                            className="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 active:scale-[0.99] text-white font-black text-xs md:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-60"
+                                        >
+                                            {isFetchingBill ? (
+                                                <>
+                                                    <RefreshCw className="w-4 h-4 animate-spin" />
+                                                    <span>Fetching Verified Bill Details...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span>Fetch Bill Details</span>
+                                                    <ArrowRight className="w-4 h-4" />
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+
+                                    {/* Fetch Error Callout */}
+                                    {fetchError && (
+                                        <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-start gap-2.5">
+                                            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                                            <div>
+                                                <div className="font-black">Bill Fetch Failed</div>
+                                                <div className="text-[11px] mt-0.5 text-rose-700">{fetchError}</div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </form>
+                            </motion.div>
+                        ) : (
+                            /* Guidance / Empty State when no biller is selected yet (replaces old static card) */
+                            <div className="hidden lg:flex rounded-3xl border border-dashed border-slate-200 bg-white p-8 text-center flex-col items-center justify-center min-h-[380px] shadow-xs">
+                                <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 text-amber-500 flex items-center justify-center mb-3">
+                                    <Zap className="w-7 h-7" />
+                                </div>
+                                <h3 className="text-sm font-black text-black">Select Electricity Board</h3>
+                                <p className="text-xs text-slate-500 font-bold max-w-xs mt-1 leading-relaxed">
+                                    Choose your state and electricity board (DISCOM) from the list on the left to enter consumer details and fetch your bill.
+                                </p>
+                                <div className="mt-5 inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
+                                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>Official NPCI Bharat Connect Certified</span>
                                 </div>
                             </div>
                         )}
