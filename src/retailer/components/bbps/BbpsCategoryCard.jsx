@@ -40,8 +40,8 @@ const BbpsCategoryCard = ({ category, onClick, index = 0 }) => {
             </div>
 
             {/* Bottom Row: Service Title + Circular Arrow Action */}
-            <div className="flex items-center justify-between gap-2.5 mt-3 pt-0.5 min-h-[44px]">
-                <h3 className="bbps-service-title m-0 text-[15px] sm:text-[16px] md:text-[17px] font-bold leading-snug line-clamp-2 flex-1">
+            <div className="flex items-center justify-between gap-2.5 mt-3 pt-0.5">
+                <h3 className="bbps-service-title m-0 truncate">
                     {category.name}
                 </h3>
 
