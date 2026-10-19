@@ -142,6 +142,8 @@ public class BillAvenueDtos {
         private long billAmountPaise;
         private String billDate;
         private String billNumber;
+        private String dueDate;
+        private String billPeriod;
         private String customerName;
         private List<InfoItem> additionalInfo;
         private List<InputParam> inputParams;

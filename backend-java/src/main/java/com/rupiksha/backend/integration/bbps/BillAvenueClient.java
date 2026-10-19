@@ -286,11 +286,23 @@ public class BillAvenueClient {
                 ? req.getBillDate().trim()
                 : java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE);
         billerRespXml.append("<billDate>").append(escapeXml(billDate)).append("</billDate>");
-        if (req.getBillNumber() != null && !req.getBillNumber().isBlank() && !"N/A".equalsIgnoreCase(req.getBillNumber())) {
-            billerRespXml.append("<billNumber>").append(escapeXml(req.getBillNumber())).append("</billNumber>");
+        // billNumber: max length 100 alphanumeric with _@./#&+- per doc (Page 37). BillAvenue rejects missing billNumber with "Bill number is required (E024)".
+        String billNumber = (req.getBillNumber() != null && !req.getBillNumber().isBlank() && !"N/A".equalsIgnoreCase(req.getBillNumber().trim()))
+                ? req.getBillNumber().trim()
+                : (req.getClientTxnId() != null && !req.getClientTxnId().isBlank() ? req.getClientTxnId().trim() : "NA");
+        billerRespXml.append("<billNumber>").append(escapeXml(billNumber)).append("</billNumber>");
+
+        if (req.getBillPeriod() != null && !req.getBillPeriod().isBlank() && !"N/A".equalsIgnoreCase(req.getBillPeriod().trim())) {
+            billerRespXml.append("<billPeriod>").append(escapeXml(req.getBillPeriod().trim())).append("</billPeriod>");
         }
-        if (req.getCustomerName() != null && !req.getCustomerName().isBlank() && !"N/A".equalsIgnoreCase(req.getCustomerName())) {
-            billerRespXml.append("<customerName>").append(escapeXml(req.getCustomerName())).append("</customerName>");
+
+        if (req.getCustomerName() != null && !req.getCustomerName().isBlank() && !"N/A".equalsIgnoreCase(req.getCustomerName().trim())) {
+            billerRespXml.append("<customerName>").append(escapeXml(req.getCustomerName().trim())).append("</customerName>");
+        }
+
+        // dueDate: format must be YYYY-MM-DD per doc (Page 38).
+        if (req.getDueDate() != null && !req.getDueDate().isBlank() && !"N/A".equalsIgnoreCase(req.getDueDate().trim())) {
+            billerRespXml.append("<dueDate>").append(escapeXml(req.getDueDate().trim())).append("</dueDate>");
         }
         billerRespXml.append("</billerResponse>");
 
