@@ -32,7 +32,26 @@ public class ElectricityBillerRegistry {
 
     public Optional<BbpsDtos.ElectricityBillerInfo> findById(String billerId) {
         if (billerId == null || billerId.isBlank()) return Optional.empty();
-        return Optional.ofNullable(billerMap.get(billerId.trim().toUpperCase()));
+        BbpsDtos.ElectricityBillerInfo found = billerMap.get(billerId.trim().toUpperCase());
+        if (found != null) {
+            return Optional.of(found);
+        }
+        // Fallback: If it's a valid 14-character BBPS biller ID, create a generic fetch-enabled electricity biller info on the fly
+        String clean = billerId.trim().toUpperCase();
+        if (clean.matches("^[A-Z0-9]{14}$")) {
+            return Optional.of(BbpsDtos.ElectricityBillerInfo.builder()
+                    .billerId(clean)
+                    .billerName("Electricity Provider (" + clean + ")")
+                    .category("Electricity")
+                    .billerFetchRequirement("MANDATORY")
+                    .billerPaymentExactness("Exact")
+                    .supportBillValidation("OPTIONAL")
+                    .inputParams(List.of(
+                            BbpsDtos.InputParamInfo.builder().paramName("Consumer Number").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).hint("Consumer / Account identifier").build()
+                    ))
+                    .build());
+        }
+        return Optional.empty();
     }
 
     /**
@@ -107,9 +126,16 @@ public class ElectricityBillerRegistry {
         return customerParams.values().iterator().next();
     }
 
-    private void addBiller(BbpsDtos.ElectricityBillerInfo info) {
+    private void addBiller(BbpsDtos.ElectricityBillerInfo info, String... aliases) {
         billers.add(info);
         billerMap.put(info.getBillerId().toUpperCase(), info);
+        if (aliases != null) {
+            for (String alias : aliases) {
+                if (alias != null && !alias.isBlank()) {
+                    billerMap.put(alias.trim().toUpperCase(), info);
+                }
+            }
+        }
     }
 
     private void initBillers() {
@@ -127,10 +153,10 @@ public class ElectricityBillerRegistry {
                         BbpsDtos.InputParamInfo.builder().paramName("Consumer Number").dataType("NUMERIC").optional(false).minLength(12).maxLength(12).hint("12-digit consumer number on bill").build(),
                         BbpsDtos.InputParamInfo.builder().paramName("Billing Unit (BU)").dataType("NUMERIC").optional(false).minLength(4).maxLength(4).hint("4-digit BU code printed on bill").build()
                 ))
-                .build());
+                .build(), "MAHA00000NATOM", "MSEDCL000MAH01");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("TATA00000MUM01")
+                .billerId("TATAPWR00MUM01")
                 .billerName("Tata Power - Mumbai")
                 .state("Maharashtra")
                 .category("Electricity")
@@ -141,10 +167,10 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Consumer Number").dataType("NUMERIC").optional(false).minLength(12).maxLength(12).hint("12-digit consumer number").build()
                 ))
-                .build());
+                .build(), "TATA00000MUM01");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("ADAN00000MUM01")
+                .billerId("RELI00000MUM03")
                 .billerName("Adani Electricity Mumbai Limited")
                 .state("Maharashtra")
                 .category("Electricity")
@@ -155,7 +181,7 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Consumer Number").dataType("NUMERIC").optional(false).minLength(9).maxLength(10).hint("9 or 10-digit consumer account number").build()
                 ))
-                .build());
+                .build(), "ADAN00000MUM01");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
                 .billerId("BEST00000MUM01")
@@ -173,7 +199,7 @@ public class ElectricityBillerRegistry {
 
         // ── DELHI ───────────────────────────────────────────────────────────────
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("BSES00000DEL01")
+                .billerId("BSESRAJPLDEL01")
                 .billerName("BSES Rajdhani Power Limited (BRPL)")
                 .state("Delhi")
                 .category("Electricity")
@@ -184,10 +210,10 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("CA Number").dataType("NUMERIC").optional(false).minLength(9).maxLength(9).hint("9-digit CA Number on your BSES bill").build()
                 ))
-                .build());
+                .build(), "BSES00000DEL01");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("BSES00000DEL02")
+                .billerId("BSESYAMPLDEL01")
                 .billerName("BSES Yamuna Power Limited (BYPL)")
                 .state("Delhi")
                 .category("Electricity")
@@ -198,10 +224,10 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("CA Number").dataType("NUMERIC").optional(false).minLength(9).maxLength(9).hint("9-digit CA Number on your BSES bill").build()
                 ))
-                .build());
+                .build(), "BSES00000DEL02");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("TPDD00000DEL01")
+                .billerId("TATAPWR00DEL01")
                 .billerName("Tata Power - DDL (North Delhi)")
                 .state("Delhi")
                 .category("Electricity")
@@ -212,7 +238,7 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("CA Number").dataType("NUMERIC").optional(false).minLength(11).maxLength(11).hint("11-digit CA Number on Tata Power bill").build()
                 ))
-                .build());
+                .build(), "TPDD00000DEL01");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
                 .billerId("NDMC00000DEL01")
@@ -230,7 +256,7 @@ public class ElectricityBillerRegistry {
 
         // ── UTTAR PRADESH ───────────────────────────────────────────────────────
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("UPPC00000UPE01")
+                .billerId("UPPC00000UTPAH")
                 .billerName("UPPCL (Uttar Pradesh Power Corp) - Rural")
                 .state("Uttar Pradesh")
                 .category("Electricity")
@@ -241,10 +267,10 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Account Number").dataType("NUMERIC").optional(false).minLength(12).maxLength(12).hint("12-digit rural electricity account number").build()
                 ))
-                .build());
+                .build(), "UPPC00000UPE01");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("UPPC00000UPE02")
+                .billerId("UPPC00000UTPAI")
                 .billerName("UPPCL (Uttar Pradesh Power Corp) - Urban")
                 .state("Uttar Pradesh")
                 .category("Electricity")
@@ -255,10 +281,10 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Account Number").dataType("NUMERIC").optional(false).minLength(10).maxLength(10).hint("10-digit urban electricity account ID").build()
                 ))
-                .build());
+                .build(), "UPPC00000UPE02");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("KESCO0000UPE01")
+                .billerId("KESCO0000UTP01")
                 .billerName("Kanpur Electricity Supply Company (KESCO)")
                 .state("Uttar Pradesh")
                 .category("Electricity")
@@ -269,25 +295,25 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Account Number").dataType("NUMERIC").optional(false).minLength(10).maxLength(10).hint("10-digit consumer account number").build()
                 ))
-                .build());
+                .build(), "KESCO0000UPE01");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("TORRENT000AGR1")
-                .billerName("Torrent Power - Agra")
+                .billerId("TORR00000NATLX")
+                .billerName("Torrent Power (Agra, Ahmedabad, Surat, Dahej)")
                 .state("Uttar Pradesh")
                 .category("Electricity")
                 .billerFetchRequirement("MANDATORY")
                 .billerPaymentExactness("Exact")
                 .supportBillValidation("OPTIONAL")
-                .description("Torrent Power electricity distribution in Agra city")
+                .description("Torrent Power electricity distribution in Agra, Ahmedabad, Surat & Dahej")
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Service Number").dataType("NUMERIC").optional(false).minLength(10).maxLength(10).hint("10-digit service number on Torrent bill").build()
                 ))
-                .build());
+                .build(), "TORRENT000AGR1", "TORRENT000AHM1", "TORRENT000SUR1");
 
         // ── KARNATAKA ───────────────────────────────────────────────────────────
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("BESC00000KAR01")
+                .billerId("BESCOM000KAR01")
                 .billerName("Bangalore Electricity Supply Company (BESCOM)")
                 .state("Karnataka")
                 .category("Electricity")
@@ -298,10 +324,10 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Consumer ID / Account ID").dataType("NUMERIC").optional(false).minLength(10).maxLength(10).hint("10-digit Account ID on BESCOM bill").build()
                 ))
-                .build());
+                .build(), "BESC00000KAR01");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("HESC00000KAR01")
+                .billerId("HESCOM000KAR01")
                 .billerName("Hubli Electricity Supply Company (HESCOM)")
                 .state("Karnataka")
                 .category("Electricity")
@@ -312,10 +338,10 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Account ID").dataType("NUMERIC").optional(false).minLength(10).maxLength(10).hint("10-digit Account ID").build()
                 ))
-                .build());
+                .build(), "HESC00000KAR01");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("MESC00000KAR01")
+                .billerId("MESCOM000KAR01")
                 .billerName("Mangalore Electricity Supply Company (MESCOM)")
                 .state("Karnataka")
                 .category("Electricity")
@@ -326,7 +352,7 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Account ID").dataType("NUMERIC").optional(false).minLength(10).maxLength(10).hint("10-digit Account ID").build()
                 ))
-                .build());
+                .build(), "MESC00000KAR01");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
                 .billerId("CESC00000KAR01")
@@ -344,7 +370,7 @@ public class ElectricityBillerRegistry {
 
         // ── TELANGANA & ANDHRA PRADESH ──────────────────────────────────────────
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("TSSP00000TEL01")
+                .billerId("THES00000TELN4")
                 .billerName("Telangana Southern Power Distribution (TSSPDCL)")
                 .state("Telangana")
                 .category("Electricity")
@@ -355,10 +381,10 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Unique Service Number (USCNO)").dataType("NUMERIC").optional(false).minLength(7).maxLength(10).hint("7 to 10-digit USCNO number").build()
                 ))
-                .build());
+                .build(), "TSSP00000TEL01");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("TSNP00000TEL01")
+                .billerId("THEN00000TELPR")
                 .billerName("Telangana Northern Power Distribution (TSNPDCL)")
                 .state("Telangana")
                 .category("Electricity")
@@ -369,10 +395,10 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Consumer Number").dataType("NUMERIC").optional(false).minLength(8).maxLength(10).hint("Consumer number on TSNPDCL bill").build()
                 ))
-                .build());
+                .build(), "TSNP00000TEL01");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("APSP00000AND01")
+                .billerId("ANDH00000ANPAO")
                 .billerName("Southern Power Distribution of AP (APSPDCL)")
                 .state("Andhra Pradesh")
                 .category("Electricity")
@@ -383,10 +409,10 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Service Number").dataType("ALPHANUMERIC").optional(false).minLength(8).maxLength(15).hint("Service number on APSPDCL bill").build()
                 ))
-                .build());
+                .build(), "APSP00000AND01");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("APEP00000AND01")
+                .billerId("EAST00000ANPAE")
                 .billerName("Eastern Power Distribution of AP (APEPDCL)")
                 .state("Andhra Pradesh")
                 .category("Electricity")
@@ -397,11 +423,11 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Service Number").dataType("ALPHANUMERIC").optional(false).minLength(8).maxLength(15).hint("Service number on APEPDCL bill").build()
                 ))
-                .build());
+                .build(), "APEP00000AND01");
 
         // ── WEST BENGAL ─────────────────────────────────────────────────────────
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("WBSE00000WES01")
+                .billerId("WEST00000WBL75")
                 .billerName("West Bengal State Electricity Distribution (WBSEDCL)")
                 .state("West Bengal")
                 .category("Electricity")
@@ -413,10 +439,10 @@ public class ElectricityBillerRegistry {
                         BbpsDtos.InputParamInfo.builder().paramName("Consumer ID").dataType("NUMERIC").optional(false).minLength(9).maxLength(9).hint("9-digit consumer ID on WBSEDCL bill").build(),
                         BbpsDtos.InputParamInfo.builder().paramName("Installation Number").dataType("NUMERIC").optional(true).minLength(0).maxLength(10).hint("Optional installation number").build()
                 ))
-                .build());
+                .build(), "WBSE00000WES01");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("CESC00000WES01")
+                .billerId("CESC00000KOL01")
                 .billerName("CESC Limited (Kolkata & Howrah)")
                 .state("West Bengal")
                 .category("Electricity")
@@ -427,11 +453,11 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Customer ID").dataType("NUMERIC").optional(false).minLength(11).maxLength(11).hint("11-digit Customer ID on CESC bill").build()
                 ))
-                .build());
+                .build(), "CESC00000WES01");
 
         // ── BIHAR ───────────────────────────────────────────────────────────────
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("NBPD00000BIH01")
+                .billerId("NBPDCL000BHI01")
                 .billerName("North Bihar Power Distribution Company (NBPDCL)")
                 .state("Bihar")
                 .category("Electricity")
@@ -442,10 +468,10 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("CA Number").dataType("NUMERIC").optional(false).minLength(11).maxLength(11).hint("11-digit CA Number on NBPDCL bill").build()
                 ))
-                .build());
+                .build(), "NBPD00000BIH01");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("SBPD00000BIH01")
+                .billerId("SBPDCL000BHI01")
                 .billerName("South Bihar Power Distribution Company (SBPDCL)")
                 .state("Bihar")
                 .category("Electricity")
@@ -456,11 +482,11 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("CA Number").dataType("NUMERIC").optional(false).minLength(11).maxLength(11).hint("11-digit CA Number on SBPDCL bill").build()
                 ))
-                .build());
+                .build(), "SBPD00000BIH01");
 
         // ── GUJARAT ─────────────────────────────────────────────────────────────
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("DGVCL0000GUJ01")
+                .billerId("DAKS00000GUJM5")
                 .billerName("Dakshin Gujarat Vij Company Ltd (DGVCL)")
                 .state("Gujarat")
                 .category("Electricity")
@@ -471,10 +497,10 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Consumer Number").dataType("NUMERIC").optional(false).minLength(11).maxLength(11).hint("11-digit consumer number").build()
                 ))
-                .build());
+                .build(), "DGVCL0000GUJ01");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("MGVCL0000GUJ01")
+                .billerId("MADH00000GUJOY")
                 .billerName("Madhya Gujarat Vij Company Ltd (MGVCL)")
                 .state("Gujarat")
                 .category("Electricity")
@@ -485,10 +511,10 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Consumer Number").dataType("NUMERIC").optional(false).minLength(11).maxLength(11).hint("11-digit consumer number").build()
                 ))
-                .build());
+                .build(), "MGVCL0000GUJ01");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("PGVCL0000GUJ01")
+                .billerId("PASC00000GUJ8A")
                 .billerName("Paschim Gujarat Vij Company Ltd (PGVCL)")
                 .state("Gujarat")
                 .category("Electricity")
@@ -499,10 +525,10 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Consumer Number").dataType("NUMERIC").optional(false).minLength(11).maxLength(11).hint("11-digit consumer number").build()
                 ))
-                .build());
+                .build(), "PGVCL0000GUJ01");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("UGVCL0000GUJ01")
+                .billerId("UTTA00000GUJAJ")
                 .billerName("Uttar Gujarat Vij Company Ltd (UGVCL)")
                 .state("Gujarat")
                 .category("Electricity")
@@ -513,39 +539,11 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Consumer Number").dataType("NUMERIC").optional(false).minLength(11).maxLength(11).hint("11-digit consumer number").build()
                 ))
-                .build());
-
-        addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("TORRENT000AHM1")
-                .billerName("Torrent Power - Ahmedabad & Gandhinagar")
-                .state("Gujarat")
-                .category("Electricity")
-                .billerFetchRequirement("MANDATORY")
-                .billerPaymentExactness("Exact")
-                .supportBillValidation("OPTIONAL")
-                .description("Torrent Power distribution in Ahmedabad and Gandhinagar cities")
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Service Number").dataType("NUMERIC").optional(false).minLength(10).maxLength(10).hint("10-digit service number on Torrent bill").build()
-                ))
-                .build());
-
-        addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("TORRENT000SUR1")
-                .billerName("Torrent Power - Surat")
-                .state("Gujarat")
-                .category("Electricity")
-                .billerFetchRequirement("MANDATORY")
-                .billerPaymentExactness("Exact")
-                .supportBillValidation("OPTIONAL")
-                .description("Torrent Power distribution in Surat city")
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Service Number").dataType("NUMERIC").optional(false).minLength(10).maxLength(10).hint("10-digit service number on Torrent bill").build()
-                ))
-                .build());
+                .build(), "UGVCL0000GUJ01");
 
         // ── RAJASTHAN ───────────────────────────────────────────────────────────
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("JVVN00000RAJ01")
+                .billerId("JVVNL0000RAJ01")
                 .billerName("Jaipur Vidyut Vitran Nigam Ltd (JVVNL)")
                 .state("Rajasthan")
                 .category("Electricity")
@@ -556,10 +554,10 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("K Number").dataType("NUMERIC").optional(false).minLength(12).maxLength(12).hint("12-digit K Number on JVVNL bill").build()
                 ))
-                .build());
+                .build(), "JVVN00000RAJ01");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("AVVN00000RAJ01")
+                .billerId("AVVNL0000RAJ01")
                 .billerName("Ajmer Vidyut Vitran Nigam Ltd (AVVNL)")
                 .state("Rajasthan")
                 .category("Electricity")
@@ -570,10 +568,10 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("K Number").dataType("NUMERIC").optional(false).minLength(12).maxLength(12).hint("12-digit K Number on AVVNL bill").build()
                 ))
-                .build());
+                .build(), "AVVN00000RAJ01");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("JDVV00000RAJ01")
+                .billerId("JDVVNL000RAJ01")
                 .billerName("Jodhpur Vidyut Vitran Nigam Ltd (JdVVNL)")
                 .state("Rajasthan")
                 .category("Electricity")
@@ -584,11 +582,11 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("K Number").dataType("NUMERIC").optional(false).minLength(12).maxLength(12).hint("12-digit K Number on JdVVNL bill").build()
                 ))
-                .build());
+                .build(), "JDVV00000RAJ01");
 
         // ── PUNJAB & HARYANA ────────────────────────────────────────────────────
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("PSPC00000PUN01")
+                .billerId("PSPCL0000PUN01")
                 .billerName("Punjab State Power Corporation (PSPCL)")
                 .state("Punjab")
                 .category("Electricity")
@@ -599,10 +597,10 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Account Number").dataType("ALPHANUMERIC").optional(false).minLength(10).maxLength(12).hint("10 to 12-character PSPCL account number").build()
                 ))
-                .build());
+                .build(), "PSPC00000PUN01");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("DHBV00000HAR01")
+                .billerId("DHBVN0000HAR01")
                 .billerName("Dakshin Haryana Bijli Vitran Nigam (DHBVN)")
                 .state("Haryana")
                 .category("Electricity")
@@ -613,10 +611,10 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Account Number").dataType("ALPHANUMERIC").optional(false).minLength(10).maxLength(10).hint("10-character DHBVN account number").build()
                 ))
-                .build());
+                .build(), "DHBV00000HAR01");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("UHBV00000HAR01")
+                .billerId("UHBVN0000HAR01")
                 .billerName("Uttar Haryana Bijli Vitran Nigam (UHBVN)")
                 .state("Haryana")
                 .category("Electricity")
@@ -627,11 +625,11 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Account Number").dataType("ALPHANUMERIC").optional(false).minLength(10).maxLength(10).hint("10-character UHBVN account number").build()
                 ))
-                .build());
+                .build(), "UHBV00000HAR01");
 
         // ── MADHYA PRADESH ──────────────────────────────────────────────────────
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("MPPK00000MAD01")
+                .billerId("MPEZ00000MAP02")
                 .billerName("MP Poorv Kshetra Vidyut Vitaran (Jabalpur)")
                 .state("Madhya Pradesh")
                 .category("Electricity")
@@ -642,10 +640,10 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Service Connection / IVRS Number").dataType("NUMERIC").optional(false).minLength(10).maxLength(10).hint("10-digit IVRS number on bill").build()
                 ))
-                .build());
+                .build(), "MPPK00000MAD01");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("MPMK00000MAD01")
+                .billerId("MPCZ00000MAP01")
                 .billerName("MP Madhya Kshetra Vidyut Vitaran (Bhopal)")
                 .state("Madhya Pradesh")
                 .category("Electricity")
@@ -656,10 +654,10 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("IVRS Number").dataType("NUMERIC").optional(false).minLength(10).maxLength(10).hint("10-digit IVRS number").build()
                 ))
-                .build());
+                .build(), "MPMK00000MAD01");
 
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("MPPK00000MAD02")
+                .billerId("MPPK00000MAP01")
                 .billerName("MP Paschim Kshetra Vidyut Vitaran (Indore)")
                 .state("Madhya Pradesh")
                 .category("Electricity")
@@ -670,11 +668,11 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("IVRS Number").dataType("NUMERIC").optional(false).minLength(10).maxLength(10).hint("10-digit IVRS number").build()
                 ))
-                .build());
+                .build(), "MPPK00000MAD02");
 
         // ── CHHATTISGARH ────────────────────────────────────────────────────────
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("CSPD00000CHH01")
+                .billerId("CSPDCL000CHH01")
                 .billerName("Chhattisgarh State Power Distribution (CSPDCL)")
                 .state("Chhattisgarh")
                 .category("Electricity")
@@ -685,11 +683,11 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Consumer Number / BP Number").dataType("NUMERIC").optional(false).minLength(10).maxLength(10).hint("10-digit BP / Consumer number").build()
                 ))
-                .build());
+                .build(), "CSPD00000CHH01");
 
         // ── ASSAM ───────────────────────────────────────────────────────────────
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("APDC00000ASS01")
+                .billerId("APDCL0000ASM02")
                 .billerName("Assam Power Distribution Company Ltd (APDCL)")
                 .state("Assam")
                 .category("Electricity")
@@ -700,11 +698,11 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Consumer Number").dataType("NUMERIC").optional(false).minLength(12).maxLength(12).hint("12-digit consumer number on APDCL bill").build()
                 ))
-                .build());
+                .build(), "APDC00000ASS01");
 
         // ── KERALA ──────────────────────────────────────────────────────────────
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("KSEB00000KER01")
+                .billerId("KSEBL0000KER01")
                 .billerName("Kerala State Electricity Board (KSEB)")
                 .state("Kerala")
                 .category("Electricity")
@@ -715,26 +713,26 @@ public class ElectricityBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Consumer Number").dataType("NUMERIC").optional(false).minLength(13).maxLength(13).hint("13-digit consumer number on KSEB bill").build()
                 ))
-                .build());
+                .build(), "KSEB00000KER01");
 
         // ── TAMIL NADU ──────────────────────────────────────────────────────────
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("TANG00000TAM01")
-                .billerName("Tamil Nadu Generation & Distribution (TANGEDCO)")
+                .billerId("TNEB00000TND01")
+                .billerName("Tamil Nadu Generation & Distribution (TANGEDCO / TNEB)")
                 .state("Tamil Nadu")
                 .category("Electricity")
                 .billerFetchRequirement("MANDATORY")
                 .billerPaymentExactness("Exact")
                 .supportBillValidation("OPTIONAL")
-                .description("TANGEDCO electricity supply across Tamil Nadu")
+                .description("TANGEDCO / TNEB electricity supply across Tamil Nadu")
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Consumer Number").dataType("NUMERIC").optional(false).minLength(9).maxLength(12).hint("Consumer number with section code").build()
                 ))
-                .build());
+                .build(), "TANG00000TAM01");
 
         // ── ODISHA ──────────────────────────────────────────────────────────────
         addBiller(BbpsDtos.ElectricityBillerInfo.builder()
-                .billerId("TPCO00000ODI01")
+                .billerId("CESU00000ODI01")
                 .billerName("TP Central Odisha Distribution Ltd (TPCODL)")
                 .state("Odisha")
                 .category("Electricity")
@@ -744,6 +742,51 @@ public class ElectricityBillerRegistry {
                 .description("TPCODL power distribution in Bhubaneswar, Cuttack, Puri")
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Consumer Number").dataType("NUMERIC").optional(false).minLength(12).maxLength(12).hint("12-digit consumer number").build()
+                ))
+                .build(), "TPCO00000ODI01");
+
+        // ── JHARKHAND ───────────────────────────────────────────────────────────
+        addBiller(BbpsDtos.ElectricityBillerInfo.builder()
+                .billerId("JBVNL0000JHA01")
+                .billerName("Jharkhand Bijli Vitran Nigam Ltd (JBVNL)")
+                .state("Jharkhand")
+                .category("Electricity")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("JBVNL electricity distribution across Jharkhand state")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Consumer Number").dataType("NUMERIC").optional(false).minLength(10).maxLength(12).hint("Consumer number on JBVNL bill").build()
+                ))
+                .build());
+
+        // ── HIMACHAL PRADESH ────────────────────────────────────────────────────
+        addBiller(BbpsDtos.ElectricityBillerInfo.builder()
+                .billerId("HPSEB0000HIP02")
+                .billerName("Himachal Pradesh State Electricity Board (HPSEB)")
+                .state("Himachal Pradesh")
+                .category("Electricity")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("HPSEBL power distribution across Himachal Pradesh")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Consumer ID").dataType("NUMERIC").optional(false).minLength(12).maxLength(12).hint("12-digit consumer ID on bill").build()
+                ))
+                .build());
+
+        // ── GOA ─────────────────────────────────────────────────────────────────
+        addBiller(BbpsDtos.ElectricityBillerInfo.builder()
+                .billerId("GED000000GOA01")
+                .billerName("Goa Electricity Department (GED)")
+                .state("Goa")
+                .category("Electricity")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("Goa Electricity Department power supply across Goa")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Contract Account Number").dataType("NUMERIC").optional(false).minLength(10).maxLength(11).hint("10 or 11-digit contract account number").build()
                 ))
                 .build());
     }
