@@ -25,6 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Slf4j
@@ -920,6 +922,18 @@ public class BbpsServiceImpl implements BbpsService {
         txn.setIdempotencyKey(idempotencyKey);
         txn = txnRepository.save(txn);
 
+        String customerName = (request.getCustomerName() != null && !request.getCustomerName().isBlank() && !"NA".equalsIgnoreCase(request.getCustomerName().trim()))
+                ? request.getCustomerName().trim()
+                : (isPrepaidMeter ? "Prepaid Meter Consumer" : "Electricity Consumer");
+
+        String effectiveBillDate = (request.getBillDate() != null && !request.getBillDate().isBlank() && !"N/A".equalsIgnoreCase(request.getBillDate().trim()))
+                ? request.getBillDate().trim()
+                : LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
+
+        String effectiveDueDate = (request.getDueDate() != null && !request.getDueDate().isBlank() && !"N/A".equalsIgnoreCase(request.getDueDate().trim()))
+                ? request.getDueDate().trim()
+                : effectiveBillDate;
+
         BbpsTransaction bbpsTxn = new BbpsTransaction();
         bbpsTxn.setUser(user);
         bbpsTxn.setTxn(txn);
@@ -932,10 +946,10 @@ public class BbpsServiceImpl implements BbpsService {
         bbpsTxn.setCircle(biller.getState());
         bbpsTxn.setMobileNumber(request.getCustomerMobile().trim());
         bbpsTxn.setConsumerNumber(primaryConsumerNumber);
-        bbpsTxn.setCustomerName(request.getCustomerName());
+        bbpsTxn.setCustomerName(customerName);
         bbpsTxn.setBillNumber(request.getBillNumber());
-        bbpsTxn.setBillDate(request.getBillDate());
-        bbpsTxn.setDueDate(request.getDueDate());
+        bbpsTxn.setBillDate(effectiveBillDate);
+        bbpsTxn.setDueDate(effectiveDueDate);
         bbpsTxn.setConvenienceFee(convenienceFee);
         bbpsTxn.setCustomerParams(customerParamsJson);
         bbpsTxn.setAdditionalInfo(additionalInfoJson);
@@ -1023,10 +1037,6 @@ public class BbpsServiceImpl implements BbpsService {
             }
         }
 
-        String customerName = (request.getCustomerName() != null && !request.getCustomerName().isBlank() && !"NA".equalsIgnoreCase(request.getCustomerName().trim()))
-                ? request.getCustomerName().trim()
-                : (isPrepaidMeter ? "Prepaid Meter Consumer" : "Electricity Consumer");
-
         String remitterName = (user.getFullName() != null && !user.getFullName().isBlank()) ? user.getFullName().trim() : "Rupiksha Retailer";
 
         // For prepaid meter recharges, billerAdhoc is true; for postpaid bill fetch, false
@@ -1038,7 +1048,7 @@ public class BbpsServiceImpl implements BbpsService {
                 .customerMobile(request.getCustomerMobile().trim())
                 .amountPaise(paise)
                 .billAmountPaise(paise)
-                .billDate(request.getBillDate())
+                .billDate(effectiveBillDate)
                 .billNumber(request.getBillNumber())
                 .customerName(customerName)
                 .additionalInfo(addnlItems.isEmpty() ? null : addnlItems)

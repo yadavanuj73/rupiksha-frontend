@@ -309,8 +309,8 @@ const ElectricityFlow = ({ onBack }) => {
             meterType: isPrepaid ? 'PREPAID' : 'POSTPAID',
             fetchRequestId: fetchedBill?.fetchRequestId,
             billNumber: fetchedBill?.billNumber,
-            billDate: fetchedBill?.billDate,
-            dueDate: fetchedBill?.dueDate,
+            billDate: fetchedBill?.billDate || (isPrepaid ? new Date().toISOString().split('T')[0] : undefined),
+            dueDate: fetchedBill?.dueDate || (isPrepaid ? new Date().toISOString().split('T')[0] : undefined),
             customerName: fetchedBill?.customerName || (isPrepaid ? 'Prepaid Meter Consumer' : 'Electricity Consumer'),
             additionalInfo: fetchedBill?.additionalInfo,
             idempotencyKey: idempotencyKey

@@ -281,9 +281,11 @@ public class BillAvenueClient {
         long billerRespPaise = (req.getBillAmountPaise() > 0) ? req.getBillAmountPaise() : req.getAmountPaise();
         StringBuilder billerRespXml = new StringBuilder("<billerResponse>");
         billerRespXml.append("<billAmount>").append(billerRespPaise).append("</billAmount>");
-        if (req.getBillDate() != null && !req.getBillDate().isBlank() && !"N/A".equalsIgnoreCase(req.getBillDate())) {
-            billerRespXml.append("<billDate>").append(escapeXml(req.getBillDate())).append("</billDate>");
-        }
+        // billDate: format must be YYYY-MM-DD per doc (Page 37). BillAvenue rejects missing date with "Bill date required (E022)".
+        String billDate = (req.getBillDate() != null && !req.getBillDate().isBlank() && !"N/A".equalsIgnoreCase(req.getBillDate().trim()))
+                ? req.getBillDate().trim()
+                : java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE);
+        billerRespXml.append("<billDate>").append(escapeXml(billDate)).append("</billDate>");
         if (req.getBillNumber() != null && !req.getBillNumber().isBlank() && !"N/A".equalsIgnoreCase(req.getBillNumber())) {
             billerRespXml.append("<billNumber>").append(escapeXml(req.getBillNumber())).append("</billNumber>");
         }
