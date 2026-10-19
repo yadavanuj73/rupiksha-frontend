@@ -392,6 +392,7 @@ class BbpsServiceImplTest {
         fetchResponse.setResponseCode("001");
         fetchResponse.setFetchRequestId("REQ-FETCH-BFR004-123");
         fetchResponse.setBillAmountPaise(0L);
+        fetchResponse.setCustomerName("RABINDRA PRASAD YADAV");
         fetchResponse.setErrorInfo(java.util.List.of(
                 new BillAvenueDtos.ErrorInfo("BFR004", "Payment received for the billing period - no bill due")
         ));
@@ -409,6 +410,7 @@ class BbpsServiceImplTest {
         assertTrue(result.isSuccess(), "Result should be marked successful when no bill is due");
         assertTrue(result.isNoBillDue(), "noBillDue should be true");
         assertEquals("12720113063", result.getConsumerNumber());
+        assertEquals("RABINDRA PRASAD YADAV", result.getCustomerName(), "Must return real electricity connection holder name, not the retailer's name");
         assertEquals(BigDecimal.ZERO, result.getBillAmount());
         assertEquals("Payment received for the billing period - no bill due", result.getMessage());
         assertNull(result.getErrorCode());

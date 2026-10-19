@@ -716,10 +716,26 @@ public class BbpsServiceImpl implements BbpsService {
                     }
                 }
 
-                String custName = fetchResp.getCustomerName();
+                String custName = (fetchResp.getCustomerName() != null && !fetchResp.getCustomerName().isBlank() && !"NA".equalsIgnoreCase(fetchResp.getCustomerName().trim()))
+                        ? fetchResp.getCustomerName().trim()
+                        : null;
+
                 if (custName == null || custName.isBlank()) {
-                    custName = user.getFullName() != null && !user.getFullName().isBlank()
-                            ? user.getFullName().trim() : "Electricity Consumer";
+                    if (request.getCustomerParams() != null) {
+                        for (Map.Entry<String, String> entry : request.getCustomerParams().entrySet()) {
+                            if (entry.getKey() != null && entry.getValue() != null && !entry.getValue().isBlank()) {
+                                String k = entry.getKey().trim().toLowerCase();
+                                if (k.contains("name") && !k.contains("number") && !k.contains("id") && !k.contains("unit")) {
+                                    custName = entry.getValue().trim();
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (custName == null || custName.isBlank()) {
+                    custName = "Electricity Consumer";
                 }
 
                 String primaryConsumer = electricityBillerRegistry.extractPrimaryConsumerNumber(request.getCustomerParams());
@@ -978,9 +994,9 @@ public class BbpsServiceImpl implements BbpsService {
             }
         }
 
-        String customerName = (request.getCustomerName() != null && !request.getCustomerName().isBlank())
+        String customerName = (request.getCustomerName() != null && !request.getCustomerName().isBlank() && !"NA".equalsIgnoreCase(request.getCustomerName().trim()))
                 ? request.getCustomerName().trim()
-                : (user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName().trim() : "Electricity Consumer");
+                : "Electricity Consumer";
 
         String remitterName = (user.getFullName() != null && !user.getFullName().isBlank()) ? user.getFullName().trim() : "Rupiksha Retailer";
 

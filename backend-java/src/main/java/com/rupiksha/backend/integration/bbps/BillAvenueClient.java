@@ -28,6 +28,8 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Component
@@ -818,26 +820,12 @@ public class BillAvenueClient {
             String code = getTagValue(root, "responseCode");
             builder.responseCode(!code.isBlank() ? code : "500");
 
-            Element billerResp = getFirstChildElement(root, "billerResponse");
-            if (billerResp != null) {
-                String amt = getTagValue(billerResp, "billAmount");
-                if (!amt.isBlank()) {
-                    try {
-                        builder.billAmountPaise(Long.parseLong(amt));
-                    } catch (NumberFormatException ignored) {}
-                }
-                builder.customerName(getTagValue(billerResp, "customerName"));
-                builder.billNumber(getTagValue(billerResp, "billNumber"));
-                builder.billDate(getTagValue(billerResp, "billDate"));
-                builder.dueDate(getTagValue(billerResp, "dueDate"));
-                builder.billPeriod(getTagValue(billerResp, "billPeriod"));
-            }
-
+            // Parse additionalInfo first so items can be inspected for customer name
+            List<BillAvenueDtos.InfoItem> items = new ArrayList<>();
             Element addnlElem = getFirstChildElement(root, "additionalInfo");
             if (addnlElem != null) {
                 NodeList infoList = addnlElem.getElementsByTagName("info");
                 if (infoList != null && infoList.getLength() > 0) {
-                    List<BillAvenueDtos.InfoItem> items = new ArrayList<>();
                     for (int i = 0; i < infoList.getLength(); i++) {
                         Element itemElem = (Element) infoList.item(i);
                         String name = getTagValue(itemElem, "infoName");
@@ -847,6 +835,37 @@ public class BillAvenueClient {
                     }
                     builder.additionalInfo(items);
                 }
+            }
+
+            Element billerResp = getFirstChildElement(root, "billerResponse");
+            if (billerResp != null) {
+                String amt = findFirstTagValue(billerResp, "billAmount", "RespAmount", "amount");
+                if (!amt.isBlank()) {
+                    try {
+                        builder.billAmountPaise(Long.parseLong(amt));
+                    } catch (NumberFormatException ignored) {}
+                }
+                builder.billNumber(findFirstTagValue(billerResp, "billNumber", "RespBillNumber", "billNo"));
+                builder.billDate(findFirstTagValue(billerResp, "billDate", "RespBillDate"));
+                builder.dueDate(findFirstTagValue(billerResp, "dueDate", "RespDueDate"));
+                builder.billPeriod(findFirstTagValue(billerResp, "billPeriod", "RespBillPeriod"));
+            } else {
+                String amt = findFirstTagValue(root, "billAmount", "RespAmount", "amount");
+                if (!amt.isBlank()) {
+                    try {
+                        builder.billAmountPaise(Long.parseLong(amt));
+                    } catch (NumberFormatException ignored) {}
+                }
+                builder.billNumber(findFirstTagValue(root, "billNumber", "RespBillNumber", "billNo"));
+                builder.billDate(findFirstTagValue(root, "billDate", "RespBillDate"));
+                builder.dueDate(findFirstTagValue(root, "dueDate", "RespDueDate"));
+                builder.billPeriod(findFirstTagValue(root, "billPeriod", "RespBillPeriod"));
+            }
+
+            // Extract the real customer connection holder name from all possible BBPS locations
+            String extractedCustName = extractCustomerName(root, billerResp, items, xmlStr);
+            if (!extractedCustName.isBlank()) {
+                builder.customerName(extractedCustName);
             }
 
             NodeList errNodes = root.getElementsByTagName("error");
@@ -896,6 +915,79 @@ public class BillAvenueClient {
             return node.getTextContent() != null ? node.getTextContent().trim() : "";
         }
         return "";
+    }
+
+    private String findFirstTagValue(Element parent, String... tagNames) {
+        if (parent == null) return "";
+        for (String t : tagNames) {
+            String v = getTagValue(parent, t);
+            if (v != null && !v.isBlank()) {
+                return v.trim();
+            }
+        }
+        // Case-insensitive check across child tags
+        NodeList children = parent.getElementsByTagName("*");
+        if (children != null) {
+            for (int i = 0; i < children.getLength(); i++) {
+                Node n = children.item(i);
+                if (n.getNodeType() == Node.ELEMENT_NODE) {
+                    String nodeName = n.getNodeName();
+                    for (String t : tagNames) {
+                        if (nodeName.equalsIgnoreCase(t)) {
+                            String v = n.getTextContent();
+                            if (v != null && !v.isBlank()) {
+                                return v.trim();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return "";
+    }
+
+    private String extractCustomerName(Element root, Element billerResp, List<BillAvenueDtos.InfoItem> items, String xmlStr) {
+        String val = "";
+        // 1. Check billerResponse first
+        if (billerResp != null) {
+            val = findFirstTagValue(billerResp, "customerName", "CustomerName", "RespCustomerName", "respCustomerName",
+                    "consumerName", "ConsumerName", "userName", "accountHolderName", "customer_name", "consumer_name");
+        }
+        // 2. Check directly under root (<billFetchResponse>)
+        if ((val == null || val.isBlank() || "NA".equalsIgnoreCase(val.trim())) && root != null) {
+            val = findFirstTagValue(root, "customerName", "CustomerName", "RespCustomerName", "respCustomerName",
+                    "consumerName", "ConsumerName", "userName", "accountHolderName", "customer_name", "consumer_name");
+        }
+        // 3. Check inside additionalInfo items
+        if ((val == null || val.isBlank() || "NA".equalsIgnoreCase(val.trim())) && items != null) {
+            for (BillAvenueDtos.InfoItem item : items) {
+                if (item == null || item.getInfoName() == null || item.getInfoValue() == null) continue;
+                String k = item.getInfoName().trim().toLowerCase();
+                if (k.equals("customer name") || k.equals("consumer name") ||
+                    k.equals("customername") || k.equals("consumername") ||
+                    k.equals("account holder name") || k.equals("accountholdername") ||
+                    k.equals("user name") || k.equals("subscriber name") ||
+                    k.equals("name") || k.contains("consumer name") || k.contains("customer name")) {
+                    String candidate = item.getInfoValue().trim();
+                    if (!candidate.isBlank() && !"NA".equalsIgnoreCase(candidate)) {
+                        val = candidate;
+                        break;
+                    }
+                }
+            }
+        }
+        // 4. Regex scan on raw XML as safety net
+        if ((val == null || val.isBlank() || "NA".equalsIgnoreCase(val.trim())) && xmlStr != null && !xmlStr.isBlank()) {
+            Pattern p = Pattern.compile("<(?:Resp)?(?:Customer|Consumer|User)Name>([^<]+)<", Pattern.CASE_INSENSITIVE);
+            Matcher m = p.matcher(xmlStr);
+            if (m.find()) {
+                String candidate = m.group(1).trim();
+                if (!candidate.isBlank() && !"NA".equalsIgnoreCase(candidate)) {
+                    val = candidate;
+                }
+            }
+        }
+        return (val != null && !val.isBlank() && !"NA".equalsIgnoreCase(val.trim())) ? val.trim() : "";
     }
 
     private static String escapeXml(String value) {
