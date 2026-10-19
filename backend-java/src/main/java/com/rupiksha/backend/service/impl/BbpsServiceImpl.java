@@ -899,12 +899,120 @@ public class BbpsServiceImpl implements BbpsService {
             throw new IllegalStateException("Insufficient wallet balance. Available: ₹" + availableBalance + ", Required: ₹" + totalPayable);
         }
 
-        // 5. Generate unique references
+        // 5. Generate unique references and build inputs
         String primaryConsumerNumber = electricityBillerRegistry.extractPrimaryConsumerNumber(request.getCustomerParams());
+        String merchantRefNo = "BBPSEL" + System.currentTimeMillis() + UUID.randomUUID().toString().replaceAll("-", "").substring(0, 6).toUpperCase();
+
+        String sanitizedIp = (clientIp != null && clientIp.matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"))
+                ? clientIp : "103.108.7.127";
+
+        List<BillAvenueDtos.InputParam> inputs = new ArrayList<>();
+        if (request.getCustomerParams() != null) {
+            for (Map.Entry<String, String> entry : request.getCustomerParams().entrySet()) {
+                if (entry.getValue() != null && !entry.getValue().isBlank()) {
+                    inputs.add(BillAvenueDtos.InputParam.builder()
+                            .paramName(entry.getKey().trim())
+                            .paramValue(entry.getValue().trim())
+                            .build());
+                }
+            }
+        }
+
         String effectiveRequestId = (request.getFetchRequestId() != null && !request.getFetchRequestId().isBlank())
                 ? request.getFetchRequestId().trim()
-                : BillAvenueCryptoUtil.generateRequestId();
-        String merchantRefNo = "BBPSEL" + System.currentTimeMillis() + UUID.randomUUID().toString().replaceAll("-", "").substring(0, 6).toUpperCase();
+                : null;
+
+        String customerName = (request.getCustomerName() != null && !request.getCustomerName().isBlank() && !"NA".equalsIgnoreCase(request.getCustomerName().trim()))
+                ? request.getCustomerName().trim()
+                : null;
+
+        String effectiveBillDate = (request.getBillDate() != null && !request.getBillDate().isBlank() && !"N/A".equalsIgnoreCase(request.getBillDate().trim()))
+                ? request.getBillDate().trim()
+                : null;
+
+        String effectiveDueDate = (request.getDueDate() != null && !request.getDueDate().isBlank() && !"N/A".equalsIgnoreCase(request.getDueDate().trim()))
+                ? request.getDueDate().trim()
+                : null;
+
+        String effectiveBillNumber = (request.getBillNumber() != null && !request.getBillNumber().isBlank() && !"N/A".equalsIgnoreCase(request.getBillNumber().trim()))
+                ? request.getBillNumber().trim()
+                : null;
+
+        String effectiveBillPeriod = (request.getBillPeriod() != null && !request.getBillPeriod().isBlank() && !"N/A".equalsIgnoreCase(request.getBillPeriod().trim()))
+                ? request.getBillPeriod().trim()
+                : null;
+
+        List<BillAvenueDtos.InfoItem> addnlItems = new ArrayList<>();
+        if (request.getAdditionalInfo() != null) {
+            for (BbpsDtos.InfoItemDto dto : request.getAdditionalInfo()) {
+                addnlItems.add(new BillAvenueDtos.InfoItem(dto.getInfoName(), dto.getInfoValue()));
+            }
+        }
+
+        // If fetchRequestId is not present but the biller requires or supports bill fetch:
+        // Automatically perform a pre-payment bill fetch with BillAvenue to establish the CU fetch session (resolves E210).
+        if (effectiveRequestId == null && !"NOT_SUPPORTED".equalsIgnoreCase(biller.getBillerFetchRequirement())) {
+            log.info("Biller {} requires/supports fetch. Performing pre-payment bill fetch for consumer: {}",
+                    biller.getBillerId(), primaryConsumerNumber);
+            try {
+                BillAvenueDtos.BillFetchResponse autoFetch = billAvenueClient.fetchBill(
+                        biller.getBillerId(),
+                        inputs,
+                        request.getCustomerMobile().trim(),
+                        sanitizedIp
+                );
+                if (autoFetch != null && autoFetch.getFetchRequestId() != null && !autoFetch.getFetchRequestId().isBlank()) {
+                    effectiveRequestId = autoFetch.getFetchRequestId().trim();
+                    if (customerName == null && autoFetch.getCustomerName() != null && !autoFetch.getCustomerName().isBlank() && !"NA".equalsIgnoreCase(autoFetch.getCustomerName().trim())) {
+                        customerName = autoFetch.getCustomerName().trim();
+                    }
+                    if (effectiveBillNumber == null && autoFetch.getBillNumber() != null && !autoFetch.getBillNumber().isBlank()) {
+                        effectiveBillNumber = autoFetch.getBillNumber().trim();
+                    }
+                    if (effectiveBillDate == null && autoFetch.getBillDate() != null && !autoFetch.getBillDate().isBlank()) {
+                        effectiveBillDate = autoFetch.getBillDate().trim();
+                    }
+                    if (effectiveDueDate == null && autoFetch.getDueDate() != null && !autoFetch.getDueDate().isBlank()) {
+                        effectiveDueDate = autoFetch.getDueDate().trim();
+                    }
+                    if (effectiveBillPeriod == null && autoFetch.getBillPeriod() != null && !autoFetch.getBillPeriod().isBlank()) {
+                        effectiveBillPeriod = autoFetch.getBillPeriod().trim();
+                    }
+                    if (addnlItems.isEmpty() && autoFetch.getAdditionalInfo() != null) {
+                        addnlItems.addAll(autoFetch.getAdditionalInfo());
+                    }
+                    log.info("Pre-payment fetch established CU session with fetchRequestId: {}, customer: {}",
+                            effectiveRequestId, customerName);
+                } else {
+                    log.warn("Pre-payment fetch did not return fetchRequestId for biller {}: {}",
+                            biller.getBillerId(), autoFetch != null ? autoFetch.getResponseReason() : "null");
+                }
+            } catch (Exception fe) {
+                log.warn("Pre-payment fetch exception for biller {}: {}", biller.getBillerId(), fe.getMessage());
+            }
+        }
+
+        boolean hasFetchSession = (effectiveRequestId != null && !effectiveRequestId.isBlank());
+        if (effectiveRequestId == null) {
+            effectiveRequestId = BillAvenueCryptoUtil.generateRequestId();
+        }
+        String quickPayFlag = hasFetchSession ? "N" : "Y";
+
+        if (customerName == null || customerName.isBlank()) {
+            customerName = isPrepaidMeter ? "Prepaid Meter Consumer" : "Electricity Consumer";
+        }
+        if (effectiveBillDate == null || effectiveBillDate.isBlank()) {
+            effectiveBillDate = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
+        }
+        if (effectiveDueDate == null || effectiveDueDate.isBlank()) {
+            effectiveDueDate = effectiveBillDate;
+        }
+        if (effectiveBillNumber == null || effectiveBillNumber.isBlank()) {
+            effectiveBillNumber = merchantRefNo;
+        }
+        if (effectiveBillPeriod == null || effectiveBillPeriod.isBlank()) {
+            effectiveBillPeriod = "NA";
+        }
 
         String customerParamsJson = null;
         try {
@@ -913,8 +1021,8 @@ public class BbpsServiceImpl implements BbpsService {
 
         String additionalInfoJson = null;
         try {
-            if (request.getAdditionalInfo() != null) {
-                additionalInfoJson = objectMapper.writeValueAsString(request.getAdditionalInfo());
+            if (!addnlItems.isEmpty()) {
+                additionalInfoJson = objectMapper.writeValueAsString(addnlItems);
             }
         } catch (Exception ignored) {}
 
@@ -926,26 +1034,6 @@ public class BbpsServiceImpl implements BbpsService {
         txn.setStatus(TransactionStatus.INITIATED);
         txn.setIdempotencyKey(idempotencyKey);
         txn = txnRepository.save(txn);
-
-        String customerName = (request.getCustomerName() != null && !request.getCustomerName().isBlank() && !"NA".equalsIgnoreCase(request.getCustomerName().trim()))
-                ? request.getCustomerName().trim()
-                : (isPrepaidMeter ? "Prepaid Meter Consumer" : "Electricity Consumer");
-
-        String effectiveBillDate = (request.getBillDate() != null && !request.getBillDate().isBlank() && !"N/A".equalsIgnoreCase(request.getBillDate().trim()))
-                ? request.getBillDate().trim()
-                : LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
-
-        String effectiveDueDate = (request.getDueDate() != null && !request.getDueDate().isBlank() && !"N/A".equalsIgnoreCase(request.getDueDate().trim()))
-                ? request.getDueDate().trim()
-                : effectiveBillDate;
-
-        String effectiveBillNumber = (request.getBillNumber() != null && !request.getBillNumber().isBlank() && !"N/A".equalsIgnoreCase(request.getBillNumber().trim()))
-                ? request.getBillNumber().trim()
-                : merchantRefNo;
-
-        String effectiveBillPeriod = (request.getBillPeriod() != null && !request.getBillPeriod().isBlank() && !"N/A".equalsIgnoreCase(request.getBillPeriod().trim()))
-                ? request.getBillPeriod().trim()
-                : "NA";
 
         BbpsTransaction bbpsTxn = new BbpsTransaction();
         bbpsTxn.setUser(user);
@@ -1029,28 +1117,6 @@ public class BbpsServiceImpl implements BbpsService {
             paymentAccountInfo = "Cash Payment";
         }
 
-        String sanitizedIp = (clientIp != null && clientIp.matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"))
-                ? clientIp : "103.108.7.127";
-
-        List<BillAvenueDtos.InputParam> inputs = new ArrayList<>();
-        if (request.getCustomerParams() != null) {
-            for (Map.Entry<String, String> entry : request.getCustomerParams().entrySet()) {
-                if (entry.getValue() != null && !entry.getValue().isBlank()) {
-                    inputs.add(BillAvenueDtos.InputParam.builder()
-                            .paramName(entry.getKey().trim())
-                            .paramValue(entry.getValue().trim())
-                            .build());
-                }
-            }
-        }
-
-        List<BillAvenueDtos.InfoItem> addnlItems = new ArrayList<>();
-        if (request.getAdditionalInfo() != null) {
-            for (BbpsDtos.InfoItemDto dto : request.getAdditionalInfo()) {
-                addnlItems.add(new BillAvenueDtos.InfoItem(dto.getInfoName(), dto.getInfoValue()));
-            }
-        }
-
         String remitterName = (user.getFullName() != null && !user.getFullName().isBlank()) ? user.getFullName().trim() : "Rupiksha Retailer";
 
         // For prepaid meter recharges, billerAdhoc is true; for postpaid bill fetch, false
@@ -1076,6 +1142,7 @@ public class BbpsServiceImpl implements BbpsService {
                 .paymentAccountInfo(paymentAccountInfo)
                 .clientIp(sanitizedIp)
                 .billerAdhoc(billerAdhocVal)
+                .quickPay(quickPayFlag)
                 .custConvFeePaise(convFeePaise)
                 .ccf1Paise(ccf1Paise)
                 .build();

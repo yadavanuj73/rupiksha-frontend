@@ -156,6 +156,7 @@ public class BillAvenueDtos {
         private String pan;
         private String aadhaar;
         private String billerAdhoc;
+        private String quickPay;
         private long custConvFeePaise;
         private long ccf1Paise;
     }

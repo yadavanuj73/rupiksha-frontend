@@ -371,6 +371,10 @@ public class BillAvenueClient {
         long ccf1 = req.getCcf1Paise();
         long custConvFee = req.getCustConvFeePaise();
 
+        String quickPay = (req.getQuickPay() != null && !req.getQuickPay().isBlank())
+                ? req.getQuickPay().trim().toUpperCase()
+                : ((req.getFetchRequestId() != null && !req.getFetchRequestId().isBlank()) ? "N" : "Y");
+
         // 6. Build Master Payment XML matching PHP structure
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
                 + "<billPaymentRequest>"
@@ -399,7 +403,7 @@ public class BillAvenueClient {
                 + "<inputParams>" + inputXml + "</inputParams>"
                 + "<paymentMethod>"
                 + "<paymentMode>" + escapeXml(mode) + "</paymentMode>"
-                + "<quickPay>N</quickPay>"
+                + "<quickPay>" + escapeXml(quickPay) + "</quickPay>"
                 + "<splitPay>N</splitPay>"
                 + "</paymentMethod>"
                 + "<paymentInfo>" + paymentInfoXml + "</paymentInfo>"
