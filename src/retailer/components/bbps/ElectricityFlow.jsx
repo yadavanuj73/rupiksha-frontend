@@ -172,11 +172,14 @@ const ElectricityFlow = ({ onBack }) => {
                 if (!param.optional && !val) {
                     errors[param.paramName] = `${param.paramName} is required`;
                 } else if (val) {
-                    if (param.minLength > 0 && val.length < param.minLength) {
-                        errors[param.paramName] = `Must be at least ${param.minLength} characters`;
+                    const effectiveMinLength = isPrepaid ? Math.min(param.minLength, 9) : param.minLength;
+                    const effectiveMaxLength = isPrepaid ? Math.max(param.maxLength, 20) : param.maxLength;
+
+                    if (effectiveMinLength > 0 && val.length < effectiveMinLength) {
+                        errors[param.paramName] = `Must be at least ${effectiveMinLength} characters`;
                     }
-                    if (param.maxLength > 0 && val.length > param.maxLength) {
-                        errors[param.paramName] = `Cannot exceed ${param.maxLength} characters`;
+                    if (effectiveMaxLength > 0 && val.length > effectiveMaxLength) {
+                        errors[param.paramName] = `Cannot exceed ${effectiveMaxLength} characters`;
                     }
                     if (param.dataType === 'NUMERIC' && !/^\d+$/.test(val)) {
                         errors[param.paramName] = 'Must contain numbers only';
@@ -765,24 +768,24 @@ const ElectricityFlow = ({ onBack }) => {
                                     {/* Dynamic Input Parameters */}
                                     {selectedBiller.inputParams && selectedBiller.inputParams.map((param) => {
                                         const hasError = !!paramErrors[param.paramName];
+                                        const effectiveMaxLength = isPrepaid ? Math.max(param.maxLength, 25) : (param.maxLength > 0 ? param.maxLength : 30);
+                                        const effectiveHint = isPrepaid ? 'CA Number or Smart Meter Number (e.g. 9 to 16+ digits)' : (param.hint || `Enter ${param.paramName}`);
                                         return (
                                             <div key={param.paramName}>
                                                 <div className="flex items-center justify-between mb-1 gap-2">
                                                     <label className="text-xs font-black text-black truncate">
-                                                        {param.paramName} {!param.optional && <span className="text-rose-500">*</span>}
+                                                        {isPrepaid ? 'CA Number / Smart Meter Number' : param.paramName} {!param.optional && <span className="text-rose-500">*</span>}
                                                     </label>
-                                                    {param.hint && (
-                                                        <span className="text-[10px] font-bold text-slate-400 truncate max-w-[150px]">
-                                                            {param.hint}
-                                                        </span>
-                                                    )}
+                                                    <span className="text-[10px] font-bold text-slate-400 truncate max-w-[180px]">
+                                                        {effectiveHint}
+                                                    </span>
                                                 </div>
                                                 <input
                                                     type="text"
                                                     value={customerParams[param.paramName] || ''}
-                                                    maxLength={param.maxLength > 0 ? param.maxLength : 30}
+                                                    maxLength={effectiveMaxLength}
                                                     onChange={(e) => handleParamChange(param.paramName, e.target.value)}
-                                                    placeholder={param.hint || `Enter ${param.paramName}`}
+                                                    placeholder={effectiveHint}
                                                     className={`w-full px-3.5 py-2.5 text-xs md:text-sm font-bold rounded-xl border bg-slate-50 focus:bg-white focus:outline-none transition-all ${
                                                         hasError
                                                             ? 'border-rose-300 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500'

@@ -490,7 +490,7 @@ public class ElectricityBillerRegistry {
                 .ccf1FlatFeePaise(100L)
                 .description("NBPDCL power distribution & Smart Prepaid Meter recharge in North Bihar districts")
                 .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("CA Number").dataType("NUMERIC").optional(false).minLength(11).maxLength(11).hint("11-digit CA Number on NBPDCL bill/meter").build()
+                        BbpsDtos.InputParamInfo.builder().paramName("CA Number").dataType("NUMERIC").optional(false).minLength(9).maxLength(16).hint("CA Number / Smart Meter Number (9-16 digits)").build()
                 ))
                 .build(), "NBPD00000BIH01");
 
@@ -508,7 +508,7 @@ public class ElectricityBillerRegistry {
                 .ccf1FlatFeePaise(100L)
                 .description("SBPDCL power distribution & Smart Prepaid Meter recharge in Patna and South Bihar districts")
                 .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("CA Number").dataType("NUMERIC").optional(false).minLength(11).maxLength(11).hint("11-digit CA Number on SBPDCL bill/meter").build()
+                        BbpsDtos.InputParamInfo.builder().paramName("CA Number").dataType("NUMERIC").optional(false).minLength(9).maxLength(16).hint("CA Number / Smart Meter Number (9-16 digits)").build()
                 ))
                 .build(), "SBPD00000BIH01");
 
