@@ -421,6 +421,9 @@ public class BbpsServiceImpl implements BbpsService {
         String billDate = (fetchResp != null && fetchResp.isSuccess()) ? fetchResp.getBillDate() : null;
         String billNumber = (fetchResp != null && fetchResp.isSuccess()) ? fetchResp.getBillNumber() : null;
         String dueDate = (fetchResp != null && fetchResp.isSuccess()) ? fetchResp.getDueDate() : null;
+        String billPeriod = (fetchResp != null && fetchResp.isSuccess() && fetchResp.getBillPeriod() != null && !fetchResp.getBillPeriod().isBlank())
+                ? fetchResp.getBillPeriod()
+                : "NA";
         String customerName = (fetchResp != null && fetchResp.isSuccess() && fetchResp.getCustomerName() != null && !fetchResp.getCustomerName().isBlank())
                 ? fetchResp.getCustomerName()
                 : (user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName().trim() : "Retailer Customer");
@@ -438,6 +441,7 @@ public class BbpsServiceImpl implements BbpsService {
                 .billDate(billDate)
                 .billNumber(billNumber)
                 .dueDate(dueDate)
+                .billPeriod(billPeriod)
                 .customerName(customerName)
                 .additionalInfo(addnlInfo)
                 .inputParams(inputs)
@@ -940,6 +944,10 @@ public class BbpsServiceImpl implements BbpsService {
                 ? request.getBillNumber().trim()
                 : merchantRefNo;
 
+        String effectiveBillPeriod = (request.getBillPeriod() != null && !request.getBillPeriod().isBlank() && !"N/A".equalsIgnoreCase(request.getBillPeriod().trim()))
+                ? request.getBillPeriod().trim()
+                : "NA";
+
         BbpsTransaction bbpsTxn = new BbpsTransaction();
         bbpsTxn.setUser(user);
         bbpsTxn.setTxn(txn);
@@ -956,6 +964,7 @@ public class BbpsServiceImpl implements BbpsService {
         bbpsTxn.setBillNumber(effectiveBillNumber);
         bbpsTxn.setBillDate(effectiveBillDate);
         bbpsTxn.setDueDate(effectiveDueDate);
+        bbpsTxn.setBillPeriod(effectiveBillPeriod);
         bbpsTxn.setConvenienceFee(convenienceFee);
         bbpsTxn.setCustomerParams(customerParamsJson);
         bbpsTxn.setAdditionalInfo(additionalInfoJson);
@@ -1057,6 +1066,7 @@ public class BbpsServiceImpl implements BbpsService {
                 .billDate(effectiveBillDate)
                 .billNumber(effectiveBillNumber)
                 .dueDate(effectiveDueDate)
+                .billPeriod(effectiveBillPeriod)
                 .customerName(customerName)
                 .additionalInfo(addnlItems.isEmpty() ? null : addnlItems)
                 .inputParams(inputs)

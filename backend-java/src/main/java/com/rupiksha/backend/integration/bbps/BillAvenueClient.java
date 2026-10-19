@@ -292,18 +292,23 @@ public class BillAvenueClient {
                 : (req.getClientTxnId() != null && !req.getClientTxnId().isBlank() ? req.getClientTxnId().trim() : "NA");
         billerRespXml.append("<billNumber>").append(escapeXml(billNumber)).append("</billNumber>");
 
-        if (req.getBillPeriod() != null && !req.getBillPeriod().isBlank() && !"N/A".equalsIgnoreCase(req.getBillPeriod().trim())) {
-            billerRespXml.append("<billPeriod>").append(escapeXml(req.getBillPeriod().trim())).append("</billPeriod>");
-        }
+        // billPeriod: max length 35 alphanumeric with _,@./#&+'- per doc (Page 38). BillAvenue rejects missing billPeriod with "Bill period is required (E025)".
+        String billPeriod = (req.getBillPeriod() != null && !req.getBillPeriod().isBlank() && !"N/A".equalsIgnoreCase(req.getBillPeriod().trim()))
+                ? req.getBillPeriod().trim()
+                : "NA";
+        billerRespXml.append("<billPeriod>").append(escapeXml(billPeriod)).append("</billPeriod>");
 
-        if (req.getCustomerName() != null && !req.getCustomerName().isBlank() && !"N/A".equalsIgnoreCase(req.getCustomerName().trim())) {
-            billerRespXml.append("<customerName>").append(escapeXml(req.getCustomerName().trim())).append("</customerName>");
-        }
+        // customerName: max length 100 alphanumeric with _ per doc (Page 38).
+        String customerName = (req.getCustomerName() != null && !req.getCustomerName().isBlank() && !"N/A".equalsIgnoreCase(req.getCustomerName().trim()))
+                ? req.getCustomerName().trim()
+                : "Customer";
+        billerRespXml.append("<customerName>").append(escapeXml(customerName)).append("</customerName>");
 
         // dueDate: format must be YYYY-MM-DD per doc (Page 38).
-        if (req.getDueDate() != null && !req.getDueDate().isBlank() && !"N/A".equalsIgnoreCase(req.getDueDate().trim())) {
-            billerRespXml.append("<dueDate>").append(escapeXml(req.getDueDate().trim())).append("</dueDate>");
-        }
+        String dueDate = (req.getDueDate() != null && !req.getDueDate().isBlank() && !"N/A".equalsIgnoreCase(req.getDueDate().trim()))
+                ? req.getDueDate().trim()
+                : billDate;
+        billerRespXml.append("<dueDate>").append(escapeXml(dueDate)).append("</dueDate>");
         billerRespXml.append("</billerResponse>");
 
         // 3. Build Additional Info XML

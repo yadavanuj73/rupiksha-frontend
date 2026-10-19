@@ -311,6 +311,7 @@ const ElectricityFlow = ({ onBack }) => {
             billNumber: fetchedBill?.billNumber || (isPrepaid ? idempotencyKey : undefined),
             billDate: fetchedBill?.billDate || (isPrepaid ? new Date().toISOString().split('T')[0] : undefined),
             dueDate: fetchedBill?.dueDate || (isPrepaid ? new Date().toISOString().split('T')[0] : undefined),
+            billPeriod: fetchedBill?.billPeriod || (isPrepaid ? 'NA' : undefined),
             customerName: fetchedBill?.customerName || (isPrepaid ? 'Prepaid Meter Consumer' : 'Electricity Consumer'),
             additionalInfo: fetchedBill?.additionalInfo,
             idempotencyKey: idempotencyKey

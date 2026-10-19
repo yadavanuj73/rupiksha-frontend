@@ -218,6 +218,7 @@ public class BbpsDtos {
         private String billNumber;
         private String billDate;
         private String dueDate;
+        private String billPeriod;
         private String customerName;
         private List<InfoItemDto> additionalInfo;
         private String idempotencyKey;
