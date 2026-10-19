@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     History, Search, Filter, Calendar, RefreshCw, AlertCircle,
     CheckCircle2, Clock, XCircle, Printer, Eye, ChevronLeft,
-    ChevronRight, ArrowUpRight, ShieldCheck, Download, Smartphone
+    ChevronRight, ArrowUpRight, ShieldCheck, Download, Smartphone, Zap
 } from 'lucide-react';
 import { bbpsService } from '../../services/apiService';
 
@@ -15,12 +15,19 @@ const STATUS_CONFIG = {
     REFUNDED: { label: 'REFUNDED', bg: 'bg-purple-50 text-purple-700 border-purple-200', icon: RefreshCw }
 };
 
+const CATEGORY_TABS = [
+    { id: 'ALL', label: 'All Services' },
+    { id: 'Electricity', label: 'Electricity', icon: Zap },
+    { id: 'Mobile Prepaid', label: 'Mobile Prepaid', icon: Smartphone }
+];
+
 const BbpsHistory = () => {
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     // Filters
+    const [categoryFilter, setCategoryFilter] = useState('ALL');
     const [statusFilter, setStatusFilter] = useState('ALL');
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -51,6 +58,7 @@ const BbpsHistory = () => {
             const params = {
                 page,
                 size,
+                category: categoryFilter !== 'ALL' ? categoryFilter : undefined,
                 status: statusFilter !== 'ALL' ? statusFilter : undefined,
                 search: debouncedSearch || undefined
             };
@@ -67,7 +75,7 @@ const BbpsHistory = () => {
         } finally {
             setLoading(false);
         }
-    }, [page, size, statusFilter, debouncedSearch]);
+    }, [page, size, categoryFilter, statusFilter, debouncedSearch]);
 
     useEffect(() => {
         fetchHistory();
@@ -165,9 +173,51 @@ const BbpsHistory = () => {
                 )}
 
                 {/* Filter and Search Bar */}
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs flex flex-wrap items-center justify-between gap-3">
-                    {/* Status Tabs */}
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs space-y-3">
+                    {/* Top Row: Category Tabs */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+                            <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 mr-1">Category:</span>
+                            {CATEGORY_TABS.map(cat => {
+                                const Icon = cat.icon;
+                                const isSelected = categoryFilter === cat.id;
+                                return (
+                                    <button
+                                        key={cat.id}
+                                        type="button"
+                                        onClick={() => {
+                                            setCategoryFilter(cat.id);
+                                            setPage(0);
+                                        }}
+                                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black shrink-0 transition-all cursor-pointer ${
+                                            isSelected
+                                                ? 'bg-black text-white shadow-xs'
+                                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-black'
+                                        }`}
+                                    >
+                                        {Icon && <Icon className="w-3.5 h-3.5" />}
+                                        <span>{cat.label}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {/* Search Input */}
+                        <div className="relative w-full sm:w-72">
+                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Search consumer, ref, board, mobile..."
+                                className="w-full pl-9 pr-3.5 py-2 text-xs font-bold rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 text-black placeholder-slate-400"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Bottom Row: Status Tabs */}
                     <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+                        <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 mr-1">Status:</span>
                         {['ALL', 'SUCCESS', 'PENDING', 'FAILED', 'REFUNDED'].map(st => (
                             <button
                                 key={st}
@@ -185,18 +235,6 @@ const BbpsHistory = () => {
                                 {st}
                             </button>
                         ))}
-                    </div>
-
-                    {/* Search Input */}
-                    <div className="relative w-full sm:w-72">
-                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search mobile, ref, operator..."
-                            className="w-full pl-9 pr-3.5 py-2 text-xs font-bold rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 text-black placeholder-slate-400"
-                        />
                     </div>
                 </div>
 
@@ -226,9 +264,10 @@ const BbpsHistory = () => {
                                     <thead>
                                         <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-black uppercase tracking-wider text-slate-600">
                                             <th className="py-3.5 px-4">Date & Time</th>
+                                            <th className="py-3.5 px-4">Service</th>
                                             <th className="py-3.5 px-4">Transaction Ref</th>
-                                            <th className="py-3.5 px-4">Operator / Mobile</th>
-                                            <th className="py-3.5 px-4">Circle</th>
+                                            <th className="py-3.5 px-4">Biller / Consumer</th>
+                                            <th className="py-3.5 px-4">State / Circle</th>
                                             <th className="py-3.5 px-4 text-right">Amount</th>
                                             <th className="py-3.5 px-4">Status</th>
                                             <th className="py-3.5 px-4">Provider Ref</th>
@@ -240,6 +279,7 @@ const BbpsHistory = () => {
                                             const statusObj = STATUS_CONFIG[item.status] || STATUS_CONFIG.PENDING;
                                             const StatusIcon = statusObj.icon;
                                             const isPending = item.status === 'PENDING' || item.status === 'INITIATED';
+                                            const isElectricity = item.category === 'Electricity';
 
                                             return (
                                                 <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
@@ -249,14 +289,34 @@ const BbpsHistory = () => {
                                                             hour: '2-digit', minute: '2-digit'
                                                         }) : 'N/A'}
                                                     </td>
+                                                    <td className="py-3 px-4 whitespace-nowrap">
+                                                        {isElectricity ? (
+                                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-50 text-amber-800 border border-amber-200">
+                                                                <Zap className="w-3 h-3 text-amber-600" />
+                                                                Electricity
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-50 text-blue-700 border border-blue-200">
+                                                                <Smartphone className="w-3 h-3 text-blue-600" />
+                                                                Prepaid
+                                                            </span>
+                                                        )}
+                                                    </td>
                                                     <td className="py-3 px-4 font-mono text-black font-black whitespace-nowrap">
                                                         {item.merchantRefNo || item.id.substring(0, 8)}
                                                     </td>
                                                     <td className="py-3 px-4">
                                                         <div className="font-black text-black">{item.billerName}</div>
-                                                        <div className="text-[11px] text-slate-500 font-mono">
-                                                            {item.maskedMobileNumber || item.mobileNumber}
-                                                        </div>
+                                                        {isElectricity ? (
+                                                            <div className="text-[11px] text-slate-600 font-mono">
+                                                                ID: {item.consumerNumber || item.maskedMobileNumber || '—'}
+                                                                {item.customerName ? ` (${item.customerName})` : ''}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="text-[11px] text-slate-500 font-mono">
+                                                                {item.maskedMobileNumber || item.mobileNumber}
+                                                            </div>
+                                                        )}
                                                     </td>
                                                     <td className="py-3 px-4 text-slate-600 whitespace-nowrap">
                                                         {item.circle || 'All India'}
@@ -278,8 +338,8 @@ const BbpsHistory = () => {
                                                             <button
                                                                 type="button"
                                                                 onClick={() => setSelectedTxn(item)}
-                                                                className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 hover:text-black transition-colors"
-                                                                title="View details"
+                                                                className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 hover:text-black transition-colors cursor-pointer"
+                                                                title="View receipt"
                                                             >
                                                                 <Eye className="w-3.5 h-3.5" />
                                                             </button>
@@ -288,7 +348,7 @@ const BbpsHistory = () => {
                                                                     type="button"
                                                                     onClick={() => handleReconcile(item.id)}
                                                                     disabled={reconcilingId === item.id}
-                                                                    className="px-2 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black transition-colors"
+                                                                    className="px-2 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black transition-colors cursor-pointer"
                                                                     title="Reconcile with BillAvenue"
                                                                 >
                                                                     {reconcilingId === item.id ? 'Checking...' : 'Check Status'}
@@ -314,7 +374,7 @@ const BbpsHistory = () => {
                                         type="button"
                                         onClick={() => setPage(p => Math.max(0, p - 1))}
                                         disabled={page === 0}
-                                        className="p-1.5 rounded-lg border border-slate-300 bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100"
+                                        className="p-1.5 rounded-lg border border-slate-300 bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 cursor-pointer"
                                     >
                                         <ChevronLeft className="w-4 h-4" />
                                     </button>
@@ -325,7 +385,7 @@ const BbpsHistory = () => {
                                         type="button"
                                         onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
                                         disabled={page >= totalPages - 1}
-                                        className="p-1.5 rounded-lg border border-slate-300 bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100"
+                                        className="p-1.5 rounded-lg border border-slate-300 bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 cursor-pointer"
                                     >
                                         <ChevronRight className="w-4 h-4" />
                                     </button>
@@ -337,9 +397,9 @@ const BbpsHistory = () => {
                             <History className="w-8 h-8 text-slate-400 mx-auto" />
                             <h3 className="text-sm font-black text-black">No transactions found</h3>
                             <p className="text-xs text-slate-500">
-                                {statusFilter !== 'ALL' || debouncedSearch
+                                {statusFilter !== 'ALL' || categoryFilter !== 'ALL' || debouncedSearch
                                     ? 'Try adjusting your filters or search keywords.'
-                                    : 'When you perform a BBPS recharge, records will appear here.'}
+                                    : 'When you perform a BBPS transaction, records will appear here.'}
                             </p>
                         </div>
                     )}
@@ -358,13 +418,19 @@ const BbpsHistory = () => {
                         >
                             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                                 <div className="flex items-center gap-2">
-                                    <Smartphone className="w-5 h-5 text-blue-600" />
-                                    <h3 className="text-sm font-black text-black">BBPS Transaction Receipt</h3>
+                                    {selectedTxn.category === 'Electricity' ? (
+                                        <Zap className="w-5 h-5 text-amber-500" />
+                                    ) : (
+                                        <Smartphone className="w-5 h-5 text-blue-600" />
+                                    )}
+                                    <h3 className="text-sm font-black text-black">
+                                        {selectedTxn.category === 'Electricity' ? 'Electricity Bill Receipt' : 'Mobile Recharge Receipt'}
+                                    </h3>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={() => setSelectedTxn(null)}
-                                    className="p-1 rounded-lg text-slate-400 hover:text-black"
+                                    className="p-1 rounded-lg text-slate-400 hover:text-black cursor-pointer"
                                 >
                                     ✕
                                 </button>
@@ -382,17 +448,52 @@ const BbpsHistory = () => {
                                     </span>
                                 </div>
                                 <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                    <span className="text-slate-500">Mobile Number</span>
-                                    <span className="font-mono font-black text-black">{selectedTxn.mobileNumber}</span>
+                                    <span className="text-slate-500">Category</span>
+                                    <span className="font-black text-black">{selectedTxn.category || 'Mobile Prepaid'}</span>
                                 </div>
                                 <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                    <span className="text-slate-500">Operator</span>
+                                    <span className="text-slate-500">{selectedTxn.category === 'Electricity' ? 'Electricity Board' : 'Operator'}</span>
                                     <span className="font-black text-black">{selectedTxn.billerName}</span>
                                 </div>
-                                <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                    <span className="text-slate-500">Circle</span>
-                                    <span className="font-black text-black">{selectedTxn.circle || 'All India'}</span>
-                                </div>
+                                {selectedTxn.category === 'Electricity' ? (
+                                    <>
+                                        {selectedTxn.consumerNumber && (
+                                            <div className="flex justify-between py-1 border-b border-slate-200/60">
+                                                <span className="text-slate-500">Consumer Number</span>
+                                                <span className="font-mono font-black text-black">{selectedTxn.consumerNumber}</span>
+                                            </div>
+                                        )}
+                                        {selectedTxn.customerName && (
+                                            <div className="flex justify-between py-1 border-b border-slate-200/60">
+                                                <span className="text-slate-500">Consumer Name</span>
+                                                <span className="font-black text-black">{selectedTxn.customerName}</span>
+                                            </div>
+                                        )}
+                                        {selectedTxn.billNumber && (
+                                            <div className="flex justify-between py-1 border-b border-slate-200/60">
+                                                <span className="text-slate-500">Bill Number</span>
+                                                <span className="font-mono font-black text-black">{selectedTxn.billNumber}</span>
+                                            </div>
+                                        )}
+                                        {selectedTxn.dueDate && (
+                                            <div className="flex justify-between py-1 border-b border-slate-200/60">
+                                                <span className="text-slate-500">Due Date</span>
+                                                <span className="font-black text-amber-700">{selectedTxn.dueDate}</span>
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="flex justify-between py-1 border-b border-slate-200/60">
+                                            <span className="text-slate-500">Mobile Number</span>
+                                            <span className="font-mono font-black text-black">{selectedTxn.mobileNumber}</span>
+                                        </div>
+                                        <div className="flex justify-between py-1 border-b border-slate-200/60">
+                                            <span className="text-slate-500">Circle</span>
+                                            <span className="font-black text-black">{selectedTxn.circle || 'All India'}</span>
+                                        </div>
+                                    </>
+                                )}
                                 <div className="flex justify-between py-1 border-b border-slate-200/60">
                                     <span className="text-slate-500">Provider Ref</span>
                                     <span className="font-mono font-black text-black">{selectedTxn.providerTxnId || '—'}</span>
@@ -408,7 +509,7 @@ const BbpsHistory = () => {
                                     </div>
                                 )}
                                 <div className="flex justify-between py-1.5 items-baseline text-sm">
-                                    <span className="font-black text-black">Recharge Amount</span>
+                                    <span className="font-black text-black">Amount Paid</span>
                                     <span className="font-black text-blue-600 text-base">₹{Number(selectedTxn.amount).toFixed(2)}</span>
                                 </div>
                             </div>
@@ -417,7 +518,7 @@ const BbpsHistory = () => {
                                 <button
                                     type="button"
                                     onClick={() => window.print()}
-                                    className="flex-1 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-black text-xs flex items-center justify-center gap-1.5"
+                                    className="flex-1 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-black text-xs flex items-center justify-center gap-1.5 cursor-pointer"
                                 >
                                     <Printer className="w-3.5 h-3.5" />
                                     <span>Print</span>
@@ -425,7 +526,7 @@ const BbpsHistory = () => {
                                 <button
                                     type="button"
                                     onClick={() => setSelectedTxn(null)}
-                                    className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs"
+                                    className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs cursor-pointer"
                                 >
                                     Close
                                 </button>

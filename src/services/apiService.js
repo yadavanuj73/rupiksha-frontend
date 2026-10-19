@@ -284,6 +284,23 @@ export const bbpsService = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  getElectricityBillers: (state) =>
+    apiFetch(`/bbps/electricity/billers${state ? `?state=${encodeURIComponent(state)}` : ''}`),
+  fetchElectricityBill: (payload) =>
+    apiFetch("/bbps/electricity/fetch", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  payElectricityBill: (data) => {
+    const idempotencyKey = data.idempotencyKey || `BBPS-EL-${Date.now()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+    return apiFetch("/bbps/electricity/pay", {
+      method: "POST",
+      headers: {
+        "X-Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify({ ...data, idempotencyKey }),
+    });
+  },
 };
 
 // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────

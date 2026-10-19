@@ -61,6 +61,36 @@ public class BbpsTransaction {
     @Column(name = "plan_description", columnDefinition = "TEXT")
     private String planDescription;
 
+    @Column(name = "consumer_number", length = 100)
+    private String consumerNumber;
+
+    @Column(name = "customer_name", length = 150)
+    private String customerName;
+
+    @Column(name = "bill_number", length = 100)
+    private String billNumber;
+
+    @Column(name = "bill_date", length = 30)
+    private String billDate;
+
+    @Column(name = "due_date", length = 30)
+    private String dueDate;
+
+    @Column(name = "bill_period", length = 50)
+    private String billPeriod;
+
+    @Column(name = "fetch_request_id", length = 40)
+    private String fetchRequestId;
+
+    @Column(name = "convenience_fee", precision = 18, scale = 2)
+    private BigDecimal convenienceFee = BigDecimal.ZERO;
+
+    @Column(name = "customer_params", columnDefinition = "TEXT")
+    private String customerParams;
+
+    @Column(name = "additional_info", columnDefinition = "TEXT")
+    private String additionalInfo;
+
     @Column(nullable = false, precision = 18, scale = 2)
     private BigDecimal amount;
 

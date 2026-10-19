@@ -332,6 +332,11 @@ public class BillAvenueClient {
         String sanitizedIp = (req.getClientIp() != null && req.getClientIp().matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"))
                 ? req.getClientIp() : "103.108.7.127";
 
+        String billerAdhoc = (req.getBillerAdhoc() != null && !req.getBillerAdhoc().isBlank())
+                ? req.getBillerAdhoc().trim() : "true";
+        long ccf1 = req.getCcf1Paise();
+        long custConvFee = req.getCustConvFeePaise();
+
         // 6. Build Master Payment XML matching PHP structure
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
                 + "<billPaymentRequest>"
@@ -346,12 +351,12 @@ public class BillAvenueClient {
                 + "<agentId>" + escapeXml(getAgentId()) + "</agentId>"
                 + "<amountInfo>"
                 + "<amount>" + req.getAmountPaise() + "</amount>"
-                + "<CCF1>0</CCF1>"
+                + "<CCF1>" + ccf1 + "</CCF1>"
                 + "<currency>356</currency>"
-                + "<custConvFee>0</custConvFee>"
+                + "<custConvFee>" + custConvFee + "</custConvFee>"
                 + "</amountInfo>"
                 + "<billerId>" + escapeXml(req.getBillerId()) + "</billerId>"
-                + "<billerAdhoc>true</billerAdhoc>"
+                + "<billerAdhoc>" + escapeXml(billerAdhoc) + "</billerAdhoc>"
                 + billerRespXml
                 + "<customerInfo>"
                 + "<customerMobile>" + escapeXml(req.getCustomerMobile()) + "</customerMobile>"

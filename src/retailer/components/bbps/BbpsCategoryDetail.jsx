@@ -7,6 +7,7 @@ import {
     Lock
 } from 'lucide-react';
 import MobilePrepaidFlow from './MobilePrepaidFlow';
+import ElectricityFlow from './ElectricityFlow';
 
 const BbpsCategoryDetail = ({ category, onBack }) => {
     const [billerSearch, setBillerSearch] = useState('');
@@ -17,6 +18,10 @@ const BbpsCategoryDetail = ({ category, onBack }) => {
 
     if (category.id === 'mobile-prepaid') {
         return <MobilePrepaidFlow onBack={onBack} />;
+    }
+
+    if (category.id === 'electricity') {
+        return <ElectricityFlow onBack={onBack} />;
     }
 
     const Icon = category.icon;

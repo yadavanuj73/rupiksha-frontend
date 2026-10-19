@@ -12,7 +12,9 @@ import com.rupiksha.backend.repository.TxnRepository;
 import com.rupiksha.backend.repository.UserRepository;
 import com.rupiksha.backend.repository.UserServiceRepository;
 import com.rupiksha.backend.service.BbpsService;
+import com.rupiksha.backend.integration.bbps.ElectricityBillerRegistry;
 import com.rupiksha.backend.service.WalletService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -21,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.*;
 
@@ -35,6 +38,8 @@ public class BbpsServiceImpl implements BbpsService {
     private final UserRepository userRepository;
     private final UserServiceRepository userServiceRepository;
     private final WalletService walletService;
+    private final ElectricityBillerRegistry electricityBillerRegistry;
+    private final ObjectMapper objectMapper;
 
     @org.springframework.beans.factory.annotation.Value("${billavenue.biller.jio:BILAVJIO000001}")
     private String billerJio;
@@ -645,21 +650,496 @@ public class BbpsServiceImpl implements BbpsService {
     }
 
     @Override
-    public BbpsDtos.HistoryResponse getHistory(UUID userId, String status, String search, Instant startDate, Instant endDate, Pageable pageable) {
+    public List<BbpsDtos.ElectricityBillerInfo> getElectricityBillers(String state) {
+        return electricityBillerRegistry.getAllBillers(state);
+    }
+
+    @Override
+    public BbpsDtos.BillFetchResult fetchElectricityBill(UUID userId, BbpsDtos.ElectricityFetchRequest request, String clientIp) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        boolean isServiceEnabled = userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)
+                .map(UserService::getIsEnabled)
+                .orElse(true);
+
+        if (!isServiceEnabled) {
+            log.warn("BBPS service disabled for user: {}", userId);
+            throw new IllegalStateException("BBPS service is disabled for your account by administrator");
+        }
+
+        if (request.getCustomerMobile() == null || !request.getCustomerMobile().matches("^[6-9]\\d{9}$")) {
+            throw new IllegalArgumentException("Valid 10-digit Indian mobile number starting with 6-9 is required");
+        }
+
+        BbpsDtos.ElectricityBillerInfo biller = electricityBillerRegistry.findById(request.getBillerId())
+                .orElseThrow(() -> new IllegalArgumentException("Unknown or unmapped electricity biller: " + request.getBillerId()));
+
+        // Validate dynamic customer parameters
+        electricityBillerRegistry.validateCustomerParams(biller, request.getCustomerParams());
+
+        // Prepare BillAvenue Input Params
+        List<BillAvenueDtos.InputParam> inputs = new ArrayList<>();
+        if (request.getCustomerParams() != null) {
+            for (Map.Entry<String, String> entry : request.getCustomerParams().entrySet()) {
+                if (entry.getValue() != null && !entry.getValue().isBlank()) {
+                    inputs.add(BillAvenueDtos.InputParam.builder()
+                            .paramName(entry.getKey().trim())
+                            .paramValue(entry.getValue().trim())
+                            .build());
+                }
+            }
+        }
+
+        String sanitizedIp = (clientIp != null && clientIp.matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"))
+                ? clientIp : "103.108.7.127";
+
+        try {
+            BillAvenueDtos.BillFetchResponse fetchResp = billAvenueClient.fetchBill(
+                    biller.getBillerId(),
+                    inputs,
+                    request.getCustomerMobile().trim(),
+                    sanitizedIp
+            );
+
+            if (fetchResp != null && fetchResp.isSuccess()) {
+                BigDecimal billAmt = BigDecimal.valueOf(fetchResp.getBillAmountPaise())
+                        .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+
+                List<BbpsDtos.InfoItemDto> addnl = new ArrayList<>();
+                if (fetchResp.getAdditionalInfo() != null) {
+                    for (BillAvenueDtos.InfoItem item : fetchResp.getAdditionalInfo()) {
+                        addnl.add(new BbpsDtos.InfoItemDto(item.getInfoName(), item.getInfoValue()));
+                    }
+                }
+
+                String custName = fetchResp.getCustomerName();
+                if (custName == null || custName.isBlank()) {
+                    custName = user.getFullName() != null && !user.getFullName().isBlank()
+                            ? user.getFullName().trim() : "Electricity Consumer";
+                }
+
+                String primaryConsumer = electricityBillerRegistry.extractPrimaryConsumerNumber(request.getCustomerParams());
+
+                return BbpsDtos.BillFetchResult.builder()
+                        .success(true)
+                        .fetchRequestId(fetchResp.getFetchRequestId())
+                        .billerId(biller.getBillerId())
+                        .billerName(biller.getBillerName())
+                        .consumerNumber(primaryConsumer)
+                        .billAmount(billAmt)
+                        .customerName(custName)
+                        .billNumber(fetchResp.getBillNumber())
+                        .billDate(fetchResp.getBillDate())
+                        .dueDate(fetchResp.getDueDate())
+                        .billPeriod(fetchResp.getBillPeriod())
+                        .customerParams(request.getCustomerParams())
+                        .additionalInfo(addnl)
+                        .message("Bill fetched successfully")
+                        .build();
+            } else {
+                String errMsg = fetchResp != null ? fetchResp.getErrorMessage() : "Provider rejected bill fetch";
+                return BbpsDtos.BillFetchResult.builder()
+                        .success(false)
+                        .billerId(biller.getBillerId())
+                        .billerName(biller.getBillerName())
+                        .customerParams(request.getCustomerParams())
+                        .message(errMsg)
+                        .errorCode(fetchResp != null ? fetchResp.getResponseCode() : "500")
+                        .build();
+            }
+        } catch (Exception e) {
+            log.error("Exception fetching electricity bill for biller {}: {}", biller.getBillerId(), e.getMessage());
+            return BbpsDtos.BillFetchResult.builder()
+                    .success(false)
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .customerParams(request.getCustomerParams())
+                    .message("Failed to fetch bill from provider: " + e.getMessage())
+                    .errorCode("500")
+                    .build();
+        }
+    }
+
+    @Override
+    @Transactional
+    public BbpsDtos.ElectricityPayResponse payElectricityBill(UUID userId, BbpsDtos.ElectricityPayRequest request, String clientIp) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        // 1. Verify service permission in user_services
+        boolean isServiceEnabled = userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)
+                .map(UserService::getIsEnabled)
+                .orElse(true);
+
+        if (!isServiceEnabled) {
+            log.warn("BBPS service disabled for user: {}", userId);
+            throw new IllegalStateException("BBPS service is disabled for your account by administrator");
+        }
+
+        // 2. Validate input
+        if (request.getCustomerMobile() == null || !request.getCustomerMobile().matches("^[6-9]\\d{9}$")) {
+            throw new IllegalArgumentException("Valid 10-digit Indian mobile number starting with 6-9 is required");
+        }
+        if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Bill payment amount must be greater than zero");
+        }
+
+        BbpsDtos.ElectricityBillerInfo biller = electricityBillerRegistry.findById(request.getBillerId())
+                .orElseThrow(() -> new IllegalArgumentException("Unknown electricity biller: " + request.getBillerId()));
+
+        electricityBillerRegistry.validateCustomerParams(biller, request.getCustomerParams());
+
+        BigDecimal convenienceFee = request.getConvenienceFee() != null && request.getConvenienceFee().compareTo(BigDecimal.ZERO) > 0
+                ? request.getConvenienceFee()
+                : BigDecimal.ZERO;
+        BigDecimal totalPayable = request.getAmount().add(convenienceFee);
+
+        // 3. Server-enforced Idempotency check
+        String idempotencyKey = request.getIdempotencyKey();
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            idempotencyKey = "BBPS-ELEC-" + UUID.randomUUID();
+        }
+
+        Optional<BbpsTransaction> existingOpt = bbpsTransactionRepository.findByIdempotencyKey(idempotencyKey);
+        if (existingOpt.isPresent()) {
+            BbpsTransaction existing = existingOpt.get();
+            log.info("Idempotent request duplicate detected for electricity payment key: {}. Returning existing status: {}",
+                    idempotencyKey, existing.getStatus());
+
+            WalletDtos.WalletBalanceResponse currentBal = walletService.getBalance(userId.toString());
+            return BbpsDtos.ElectricityPayResponse.builder()
+                    .success("SUCCESS".equals(existing.getStatus()))
+                    .transactionId(existing.getId().toString())
+                    .merchantRefNo(existing.getMerchantRefNo())
+                    .providerTxnId(existing.getProviderTxnId())
+                    .approvalRefNo(existing.getApprovalRefNo())
+                    .status(existing.getStatus())
+                    .amount(existing.getAmount())
+                    .convenienceFee(existing.getConvenienceFee())
+                    .totalAmount(existing.getAmount().add(existing.getConvenienceFee() != null ? existing.getConvenienceFee() : BigDecimal.ZERO))
+                    .consumerNumber(existing.getConsumerNumber())
+                    .customerName(existing.getCustomerName())
+                    .customerMobile(existing.getMobileNumber())
+                    .billerId(existing.getBillerId())
+                    .billerName(existing.getBillerName())
+                    .billNumber(existing.getBillNumber())
+                    .dueDate(existing.getDueDate())
+                    .message(existing.getProviderMessage() != null ? existing.getProviderMessage() : "Existing transaction returned")
+                    .walletBalance(currentBal.balance())
+                    .createdAt(existing.getCreatedAt())
+                    .build();
+        }
+
+        // 4. Authoritative backend wallet balance enforcement
+        WalletDtos.WalletBalanceResponse balanceResponse = walletService.getBalance(userId.toString());
+        BigDecimal availableBalance = balanceResponse.availableBalance() != null ? balanceResponse.availableBalance() : BigDecimal.ZERO;
+        if (availableBalance.compareTo(totalPayable) < 0) {
+            log.warn("Insufficient wallet balance for user {}. Required: {}, Available: {}",
+                    userId, totalPayable, availableBalance);
+            throw new IllegalStateException("Insufficient wallet balance. Available: ₹" + availableBalance + ", Required: ₹" + totalPayable);
+        }
+
+        // 5. Generate unique references
+        String primaryConsumerNumber = electricityBillerRegistry.extractPrimaryConsumerNumber(request.getCustomerParams());
+        String effectiveRequestId = (request.getFetchRequestId() != null && !request.getFetchRequestId().isBlank())
+                ? request.getFetchRequestId().trim()
+                : BillAvenueCryptoUtil.generateRequestId();
+        String merchantRefNo = "BBPS-EL-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+
+        String customerParamsJson = null;
+        try {
+            customerParamsJson = objectMapper.writeValueAsString(request.getCustomerParams());
+        } catch (Exception ignored) {}
+
+        String additionalInfoJson = null;
+        try {
+            if (request.getAdditionalInfo() != null) {
+                additionalInfoJson = objectMapper.writeValueAsString(request.getAdditionalInfo());
+            }
+        } catch (Exception ignored) {}
+
+        // 6. Persist Core Txn and BbpsTransaction in INITIATED state
+        Txn txn = new Txn();
+        txn.setUser(user);
+        txn.setAmount(totalPayable);
+        txn.setServiceType("BBPS_ELECTRICITY");
+        txn.setStatus(TransactionStatus.INITIATED);
+        txn.setIdempotencyKey(idempotencyKey);
+        txn = txnRepository.save(txn);
+
+        BbpsTransaction bbpsTxn = new BbpsTransaction();
+        bbpsTxn.setUser(user);
+        bbpsTxn.setTxn(txn);
+        bbpsTxn.setIdempotencyKey(idempotencyKey);
+        bbpsTxn.setRequestId(effectiveRequestId);
+        bbpsTxn.setMerchantRefNo(merchantRefNo);
+        bbpsTxn.setCategory("Electricity");
+        bbpsTxn.setBillerId(biller.getBillerId());
+        bbpsTxn.setBillerName(biller.getBillerName());
+        bbpsTxn.setCircle(biller.getState());
+        bbpsTxn.setMobileNumber(request.getCustomerMobile().trim());
+        bbpsTxn.setConsumerNumber(primaryConsumerNumber);
+        bbpsTxn.setCustomerName(request.getCustomerName());
+        bbpsTxn.setBillNumber(request.getBillNumber());
+        bbpsTxn.setBillDate(request.getBillDate());
+        bbpsTxn.setDueDate(request.getDueDate());
+        bbpsTxn.setConvenienceFee(convenienceFee);
+        bbpsTxn.setCustomerParams(customerParamsJson);
+        bbpsTxn.setAdditionalInfo(additionalInfoJson);
+        bbpsTxn.setFetchRequestId(request.getFetchRequestId());
+        bbpsTxn.setAmount(request.getAmount());
+        bbpsTxn.setStatus("INITIATED");
+        bbpsTxn = bbpsTransactionRepository.save(bbpsTxn);
+
+        // 7. Atomically debit wallet using ledger-safe service debit
+        String debitRef = txn.getId().toString();
+        try {
+            walletService.debitForService(
+                    userId,
+                    totalPayable,
+                    "BBPS Electricity Bill - " + biller.getBillerName() + " (" + primaryConsumerNumber + ")",
+                    WalletTransactionContext.BBPS_PAYMENT,
+                    "BBPS",
+                    clientIp != null ? clientIp : "127.0.0.1",
+                    debitRef
+            );
+            bbpsTxn.setWalletDebitRef(debitRef);
+            bbpsTxn = bbpsTransactionRepository.save(bbpsTxn);
+        } catch (Exception e) {
+            log.error("Failed to debit wallet for BBPS electricity payment. MerchantRef: {}", merchantRefNo, e);
+            txn.setStatus(TransactionStatus.FAILED);
+            txnRepository.save(txn);
+
+            bbpsTxn.setStatus("FAILED");
+            bbpsTxn.setProviderMessage("Wallet debit failed: " + e.getMessage());
+            bbpsTransactionRepository.save(bbpsTxn);
+
+            throw new IllegalStateException("Wallet debit failed: " + e.getMessage());
+        }
+
+        // 8. Submit provider request to BillAvenue
+        long paise = request.getAmount().multiply(BigDecimal.valueOf(100)).longValue();
+        long convFeePaise = convenienceFee.multiply(BigDecimal.valueOf(100)).longValue();
+
+        String mode = billAvenueClient.getPaymentMode();
+        if (mode == null || mode.isBlank()) mode = "Cash";
+        String initChannel = billAvenueClient.getInitChannel();
+        if (initChannel == null || initChannel.isBlank()) initChannel = "AGT";
+
+        String paymentAccountInfo;
+        String senderMobile = (user.getMobile() != null && !user.getMobile().isBlank())
+                ? user.getMobile().trim() : request.getCustomerMobile().trim();
+
+        if ("Cash".equalsIgnoreCase(mode)) {
+            initChannel = "AGT";
+            mode = "Cash";
+            paymentAccountInfo = "Cash Payment";
+        } else if ("Wallet".equalsIgnoreCase(mode)) {
+            initChannel = "INT";
+            paymentAccountInfo = "Paytm|" + senderMobile;
+        } else if ("UPI".equalsIgnoreCase(mode)) {
+            initChannel = "INT";
+            paymentAccountInfo = senderMobile.contains("@") ? senderMobile : (senderMobile + "@upi");
+        } else {
+            mode = "Cash";
+            initChannel = "AGT";
+            paymentAccountInfo = "Cash Payment";
+        }
+
+        String sanitizedIp = (clientIp != null && clientIp.matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"))
+                ? clientIp : "103.108.7.127";
+
+        List<BillAvenueDtos.InputParam> inputs = new ArrayList<>();
+        if (request.getCustomerParams() != null) {
+            for (Map.Entry<String, String> entry : request.getCustomerParams().entrySet()) {
+                if (entry.getValue() != null && !entry.getValue().isBlank()) {
+                    inputs.add(BillAvenueDtos.InputParam.builder()
+                            .paramName(entry.getKey().trim())
+                            .paramValue(entry.getValue().trim())
+                            .build());
+                }
+            }
+        }
+
+        List<BillAvenueDtos.InfoItem> addnlItems = new ArrayList<>();
+        if (request.getAdditionalInfo() != null) {
+            for (BbpsDtos.InfoItemDto dto : request.getAdditionalInfo()) {
+                addnlItems.add(new BillAvenueDtos.InfoItem(dto.getInfoName(), dto.getInfoValue()));
+            }
+        }
+
+        String customerName = (request.getCustomerName() != null && !request.getCustomerName().isBlank())
+                ? request.getCustomerName().trim()
+                : (user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName().trim() : "Electricity Consumer");
+
+        String remitterName = (user.getFullName() != null && !user.getFullName().isBlank()) ? user.getFullName().trim() : "Rupiksha Retailer";
+
+        BillAvenueDtos.BillPayXmlRequest xmlReq = BillAvenueDtos.BillPayXmlRequest.builder()
+                .fetchRequestId(effectiveRequestId)
+                .billerId(biller.getBillerId())
+                .customerMobile(request.getCustomerMobile().trim())
+                .amountPaise(paise)
+                .billAmountPaise(paise)
+                .billDate(request.getBillDate())
+                .billNumber(request.getBillNumber())
+                .customerName(customerName)
+                .additionalInfo(addnlItems.isEmpty() ? null : addnlItems)
+                .inputParams(inputs)
+                .clientTxnId(merchantRefNo)
+                .paymentMode(mode)
+                .remitterName(remitterName)
+                .remarks("Received")
+                .paymentAccountInfo(paymentAccountInfo)
+                .clientIp(sanitizedIp)
+                .billerAdhoc("false")
+                .custConvFeePaise(convFeePaise)
+                .build();
+
+        BillAvenueDtos.BillPayResponse payResp;
+        try {
+            payResp = billAvenueClient.payBillXml(xmlReq);
+        } catch (BillAvenueTimeoutException te) {
+            log.warn("BillAvenue timeout for electricity payment ref: {}. Keeping transaction PENDING.", merchantRefNo, te);
+            txn.setStatus(TransactionStatus.PENDING);
+            txnRepository.save(txn);
+
+            bbpsTxn.setStatus("PENDING");
+            bbpsTxn.setProviderMessage("Transaction processing at provider. Reconciling status.");
+            bbpsTransactionRepository.save(bbpsTxn);
+
+            WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
+            return BbpsDtos.ElectricityPayResponse.builder()
+                    .success(false)
+                    .transactionId(bbpsTxn.getId().toString())
+                    .merchantRefNo(merchantRefNo)
+                    .status("PENDING")
+                    .amount(request.getAmount())
+                    .convenienceFee(convenienceFee)
+                    .totalAmount(totalPayable)
+                    .consumerNumber(primaryConsumerNumber)
+                    .customerName(customerName)
+                    .customerMobile(request.getCustomerMobile())
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .billNumber(request.getBillNumber())
+                    .dueDate(request.getDueDate())
+                    .message("Bill payment is processing at electricity board. Status will update shortly.")
+                    .walletBalance(bal.balance())
+                    .createdAt(bbpsTxn.getCreatedAt())
+                    .build();
+        } catch (Exception ex) {
+            log.error("Unexpected exception calling BillAvenue for electricity payment. Performing safe refund. Ref: {}", merchantRefNo, ex);
+            handleFailureAndRefund(userId, txn, bbpsTxn, totalPayable, "Provider communication error: " + ex.getMessage(), clientIp);
+            WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
+            return BbpsDtos.ElectricityPayResponse.builder()
+                    .success(false)
+                    .transactionId(bbpsTxn.getId().toString())
+                    .merchantRefNo(merchantRefNo)
+                    .status("FAILED")
+                    .amount(request.getAmount())
+                    .convenienceFee(convenienceFee)
+                    .totalAmount(totalPayable)
+                    .consumerNumber(primaryConsumerNumber)
+                    .customerName(customerName)
+                    .customerMobile(request.getCustomerMobile())
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .billNumber(request.getBillNumber())
+                    .dueDate(request.getDueDate())
+                    .message("Bill payment failed: " + ex.getMessage() + ". Amount has been refunded to your wallet.")
+                    .walletBalance(bal.balance())
+                    .createdAt(bbpsTxn.getCreatedAt())
+                    .build();
+        }
+
+        // 9. Process Provider Outcome
+        if (payResp != null && payResp.isSuccess()) {
+            log.info("BillAvenue electricity payment SUCCESS. TxnRefId: {}, ApprovalRef: {}",
+                    payResp.getTxnRefId(), payResp.getApprovalRefNumber());
+
+            txn.setStatus(TransactionStatus.SUCCESS);
+            txn.setProviderRef(payResp.getTxnRefId());
+            txnRepository.save(txn);
+
+            bbpsTxn.setStatus("SUCCESS");
+            bbpsTxn.setProviderTxnId(payResp.getTxnRefId());
+            bbpsTxn.setApprovalRefNo(payResp.getApprovalRefNumber());
+            bbpsTxn.setProviderResponseCode(payResp.getResponseCode());
+            bbpsTxn.setProviderMessage("Electricity bill payment completed successfully");
+            bbpsTxn.setCompletedAt(Instant.now());
+            bbpsTransactionRepository.save(bbpsTxn);
+
+            WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
+            return BbpsDtos.ElectricityPayResponse.builder()
+                    .success(true)
+                    .transactionId(bbpsTxn.getId().toString())
+                    .merchantRefNo(merchantRefNo)
+                    .providerTxnId(payResp.getTxnRefId())
+                    .approvalRefNo(payResp.getApprovalRefNumber())
+                    .status("SUCCESS")
+                    .amount(request.getAmount())
+                    .convenienceFee(convenienceFee)
+                    .totalAmount(totalPayable)
+                    .consumerNumber(primaryConsumerNumber)
+                    .customerName(customerName)
+                    .customerMobile(request.getCustomerMobile())
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .billNumber(request.getBillNumber())
+                    .dueDate(request.getDueDate())
+                    .message("Electricity bill paid successfully!")
+                    .walletBalance(bal.balance())
+                    .createdAt(bbpsTxn.getCreatedAt())
+                    .build();
+        } else {
+            String errReason = payResp != null ? payResp.getErrorMessage() : "Provider rejected bill payment";
+            log.warn("BillAvenue electricity payment failed. Code: {}, Reason: {}. Issuing refund.",
+                    payResp != null ? payResp.getResponseCode() : "NULL", errReason);
+
+            handleFailureAndRefund(userId, txn, bbpsTxn, totalPayable, errReason, clientIp);
+
+            WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
+            return BbpsDtos.ElectricityPayResponse.builder()
+                    .success(false)
+                    .transactionId(bbpsTxn.getId().toString())
+                    .merchantRefNo(merchantRefNo)
+                    .status("FAILED")
+                    .amount(request.getAmount())
+                    .convenienceFee(convenienceFee)
+                    .totalAmount(totalPayable)
+                    .consumerNumber(primaryConsumerNumber)
+                    .customerName(customerName)
+                    .customerMobile(request.getCustomerMobile())
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .billNumber(request.getBillNumber())
+                    .dueDate(request.getDueDate())
+                    .message(errReason + ". Amount has been refunded to your wallet.")
+                    .walletBalance(bal.balance())
+                    .createdAt(bbpsTxn.getCreatedAt())
+                    .build();
+        }
+    }
+
+    @Override
+    public BbpsDtos.HistoryResponse getHistory(UUID userId, String category, String status, String search, Instant startDate, Instant endDate, Pageable pageable) {
         String cleanStatus = (status != null && !status.equalsIgnoreCase("ALL") && !status.isBlank()) ? status.toUpperCase() : null;
+        String cleanCategory = (category != null && !category.equalsIgnoreCase("ALL") && !category.isBlank()) ? category.trim() : null;
         String cleanSearch = (search != null && !search.isBlank()) ? search.trim() : null;
 
-        Page<BbpsTransaction> page = bbpsTransactionRepository.findWithFilters(userId, cleanStatus, startDate, endDate, cleanSearch, pageable);
+        Page<BbpsTransaction> page = bbpsTransactionRepository.findWithFilters(userId, cleanStatus, cleanCategory, startDate, endDate, cleanSearch, pageable);
 
         List<BbpsDtos.HistoryItem> items = page.getContent().stream()
                 .map(this::mapToHistoryItem)
                 .toList();
 
-        long totalTx = bbpsTransactionRepository.countByUserAndStatus(userId, null);
-        long successTx = bbpsTransactionRepository.countByUserAndStatus(userId, "SUCCESS");
-        long pendingTx = bbpsTransactionRepository.countByUserAndStatus(userId, "PENDING") + bbpsTransactionRepository.countByUserAndStatus(userId, "INITIATED");
-        long failedTx = bbpsTransactionRepository.countByUserAndStatus(userId, "FAILED");
-        long refundedTx = bbpsTransactionRepository.countByUserAndStatus(userId, "REFUNDED");
+        long totalTx = bbpsTransactionRepository.countByUserCategoryAndStatus(userId, cleanCategory, null);
+        long successTx = bbpsTransactionRepository.countByUserCategoryAndStatus(userId, cleanCategory, "SUCCESS");
+        long pendingTx = bbpsTransactionRepository.countByUserCategoryAndStatus(userId, cleanCategory, "PENDING")
+                + bbpsTransactionRepository.countByUserCategoryAndStatus(userId, cleanCategory, "INITIATED");
+        long failedTx = bbpsTransactionRepository.countByUserCategoryAndStatus(userId, cleanCategory, "FAILED");
+        long refundedTx = bbpsTransactionRepository.countByUserCategoryAndStatus(userId, cleanCategory, "REFUNDED");
 
         BigDecimal totalVol = items.stream()
                 .filter(i -> "SUCCESS".equalsIgnoreCase(i.getStatus()))
@@ -710,7 +1190,11 @@ public class BbpsServiceImpl implements BbpsService {
         if (upper.contains("VI") || upper.contains("VODA")) return "Vi";
         if (upper.contains("BSNL")) return "BSNL";
         if (upper.contains("MTNL")) return "MTNL";
-        return "Mobile Prepaid";
+        Optional<BbpsDtos.ElectricityBillerInfo> elec = electricityBillerRegistry.findById(billerId);
+        if (elec.isPresent()) {
+            return elec.get().getBillerName();
+        }
+        return "Electricity Provider";
     }
 
     private BbpsDtos.HistoryItem mapToHistoryItem(BbpsTransaction txn) {
@@ -725,6 +1209,11 @@ public class BbpsServiceImpl implements BbpsService {
                 .circle(txn.getCircle())
                 .mobileNumber(txn.getMobileNumber())
                 .maskedMobileNumber(maskMobile(txn.getMobileNumber()))
+                .consumerNumber(txn.getConsumerNumber())
+                .customerName(txn.getCustomerName())
+                .billNumber(txn.getBillNumber())
+                .dueDate(txn.getDueDate())
+                .convenienceFee(txn.getConvenienceFee())
                 .planId(txn.getPlanId())
                 .planDescription(txn.getPlanDescription())
                 .amount(txn.getAmount())

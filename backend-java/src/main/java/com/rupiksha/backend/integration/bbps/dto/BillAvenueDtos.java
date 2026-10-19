@@ -118,6 +118,9 @@ public class BillAvenueDtos {
         private String clientIp;
         private String pan;
         private String aadhaar;
+        private String billerAdhoc;
+        private long custConvFeePaise;
+        private long ccf1Paise;
     }
 
     @Data

@@ -130,11 +130,67 @@ public class BbpsController {
     }
 
     /**
+     * Retrieves electricity billers / DISCOMs, optionally filtered by state.
+     */
+    @GetMapping("/electricity/billers")
+    public List<BbpsDtos.ElectricityBillerInfo> getElectricityBillers(
+            @RequestParam(required = false) String state
+    ) {
+        return bbpsService.getElectricityBillers(state);
+    }
+
+    /**
+     * Fetches real bill details from BillAvenue CU for specified electricity DISCOM.
+     */
+    @PostMapping("/electricity/fetch")
+    public ResponseEntity<BbpsDtos.BillFetchResult> fetchElectricityBill(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @Valid @RequestBody BbpsDtos.ElectricityFetchRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        if (principal == null) {
+            throw new IllegalArgumentException("Unauthorized");
+        }
+        UUID userId = UUID.fromString(principal.userId());
+        String clientIp = resolveClientIp(servletRequest);
+        BbpsDtos.BillFetchResult response = bbpsService.fetchElectricityBill(userId, request, clientIp);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Executes server-authoritative Electricity Bill Payment with wallet debit,
+     * BillAvenue integration, fetchRequestId binding, and idempotent failure refund.
+     */
+    @PostMapping("/electricity/pay")
+    public ResponseEntity<BbpsDtos.ElectricityPayResponse> payElectricityBill(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKeyHeader,
+            @Valid @RequestBody BbpsDtos.ElectricityPayRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        if (principal == null) {
+            throw new IllegalArgumentException("Unauthorized");
+        }
+        UUID userId = UUID.fromString(principal.userId());
+
+        // Respect header idempotency key if body idempotencyKey is not provided
+        if ((request.getIdempotencyKey() == null || request.getIdempotencyKey().isBlank())
+                && idempotencyKeyHeader != null && !idempotencyKeyHeader.isBlank()) {
+            request.setIdempotencyKey(idempotencyKeyHeader.trim());
+        }
+
+        String clientIp = resolveClientIp(servletRequest);
+        BbpsDtos.ElectricityPayResponse response = bbpsService.payElectricityBill(userId, request, clientIp);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * Dedicated BBPS Transaction History with pagination, filters, and summary metrics.
      */
     @GetMapping("/history")
     public ResponseEntity<BbpsDtos.HistoryResponse> getHistory(
             @AuthenticationPrincipal JwtPrincipal principal,
+            @RequestParam(required = false) String category,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant startDate,
@@ -147,7 +203,7 @@ public class BbpsController {
         }
         UUID userId = UUID.fromString(principal.userId());
         Pageable pageable = PageRequest.of(page, Math.min(size, 100), Sort.by(Sort.Direction.DESC, "createdAt"));
-        BbpsDtos.HistoryResponse response = bbpsService.getHistory(userId, status, search, startDate, endDate, pageable);
+        BbpsDtos.HistoryResponse response = bbpsService.getHistory(userId, category, status, search, startDate, endDate, pageable);
         return ResponseEntity.ok(response);
     }
 

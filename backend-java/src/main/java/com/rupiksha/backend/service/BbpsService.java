@@ -13,7 +13,13 @@ public interface BbpsService {
     BbpsDtos.RechargeResponse recharge(UUID userId, BbpsDtos.RechargeRequest request, String clientIp);
     BbpsDtos.RechargeResponse checkStatus(UUID userId, String txnId);
     BbpsDtos.RechargeResponse reconcile(UUID userId, String txnId);
-    BbpsDtos.HistoryResponse getHistory(UUID userId, String status, String search, Instant startDate, Instant endDate, Pageable pageable);
+    List<BbpsDtos.ElectricityBillerInfo> getElectricityBillers(String state);
+    BbpsDtos.BillFetchResult fetchElectricityBill(UUID userId, BbpsDtos.ElectricityFetchRequest request, String clientIp);
+    BbpsDtos.ElectricityPayResponse payElectricityBill(UUID userId, BbpsDtos.ElectricityPayRequest request, String clientIp);
+    BbpsDtos.HistoryResponse getHistory(UUID userId, String category, String status, String search, Instant startDate, Instant endDate, Pageable pageable);
+    default BbpsDtos.HistoryResponse getHistory(UUID userId, String status, String search, Instant startDate, Instant endDate, Pageable pageable) {
+        return getHistory(userId, null, status, search, startDate, endDate, pageable);
+    }
     Object getBillerInfo(String billerId);
     void handlePushNotification(String encResponse);
 }
