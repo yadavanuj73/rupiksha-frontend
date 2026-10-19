@@ -287,7 +287,7 @@ public class BbpsServiceImpl implements BbpsService {
 
         // 5. Generate unique references
         String requestId = BillAvenueCryptoUtil.generateRequestId();
-        String merchantRefNo = "BBPS-MP-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+        String merchantRefNo = "BBPSMP" + System.currentTimeMillis() + UUID.randomUUID().toString().replaceAll("-", "").substring(0, 6).toUpperCase();
         String billerName = resolveBillerName(request.getBillerId());
 
         // 6. Persist Core Txn and BbpsTransaction in INITIATED state
@@ -904,7 +904,7 @@ public class BbpsServiceImpl implements BbpsService {
         String effectiveRequestId = (request.getFetchRequestId() != null && !request.getFetchRequestId().isBlank())
                 ? request.getFetchRequestId().trim()
                 : BillAvenueCryptoUtil.generateRequestId();
-        String merchantRefNo = "BBPS-EL-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+        String merchantRefNo = "BBPSEL" + System.currentTimeMillis() + UUID.randomUUID().toString().replaceAll("-", "").substring(0, 6).toUpperCase();
 
         String customerParamsJson = null;
         try {

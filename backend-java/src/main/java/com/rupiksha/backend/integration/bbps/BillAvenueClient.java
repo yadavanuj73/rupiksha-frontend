@@ -330,8 +330,21 @@ public class BillAvenueClient {
         String acctInfo = (req.getPaymentAccountInfo() != null && !req.getPaymentAccountInfo().isBlank()) ? req.getPaymentAccountInfo() : "Cash Payment";
         String remarks = (req.getRemarks() != null && !req.getRemarks().isBlank()) ? req.getRemarks() : "Received";
 
+        String rawRef = (req.getClientTxnId() != null && !req.getClientTxnId().isBlank())
+                ? req.getClientTxnId() : requestId;
+        String cleanPaymentRefId = rawRef.replaceAll("[^a-zA-Z0-9]", "");
+        if (cleanPaymentRefId.isBlank()) {
+            cleanPaymentRefId = (requestId != null && !requestId.isBlank())
+                    ? requestId.replaceAll("[^a-zA-Z0-9]", "")
+                    : "TXN" + System.currentTimeMillis();
+        }
+        if (cleanPaymentRefId.length() > 35) {
+            cleanPaymentRefId = cleanPaymentRefId.substring(0, 35);
+        }
+
         StringBuilder paymentInfoXml = new StringBuilder();
         paymentInfoXml.append("<info><infoName>Remitter Name</infoName><infoValue>").append(escapeXml(remitter)).append("</infoValue></info>");
+        paymentInfoXml.append("<info><infoName>PaymentRefId</infoName><infoValue>").append(escapeXml(cleanPaymentRefId)).append("</infoValue></info>");
         if ("Cash".equalsIgnoreCase(mode)) {
             paymentInfoXml.append("<info><infoName>Remarks</infoName><infoValue>").append(escapeXml(remarks)).append("</infoValue></info>");
         }
@@ -390,7 +403,7 @@ public class BillAvenueClient {
                 + "<splitPay>N</splitPay>"
                 + "</paymentMethod>"
                 + "<paymentInfo>" + paymentInfoXml + "</paymentInfo>"
-                + "<paymentRefId>" + escapeXml(req.getClientTxnId()) + "</paymentRefId>"
+                + "<paymentRefId>" + escapeXml(cleanPaymentRefId) + "</paymentRefId>"
                 + "</billPaymentRequest>";
 
         log.info("Sending Bill Payment XML for biller: {}, txnId: {}, requestId: {}",
