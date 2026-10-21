@@ -429,7 +429,6 @@ const MobilePrepaidFlow = ({ onBack }) => {
                 gradient="from-blue-500 to-indigo-600"
                 badgeText="Bharat Connect"
                 badgeColor="blue"
-                balance={numBalance}
             />
 
             {/* Error Notification Banner */}

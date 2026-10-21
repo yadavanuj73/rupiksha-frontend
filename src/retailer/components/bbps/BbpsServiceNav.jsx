@@ -1,26 +1,28 @@
 import React from 'react';
 import { ArrowLeft, Zap } from 'lucide-react';
-import { useWallet } from '../../../context/WalletContext';
 
+/**
+ * Standard Navigation Header for all 35 BBPS / Bharat Connect Services
+ * Features:
+ *  - Left: Back to categories navigation button
+ *  - Center: Category Icon, Title, and Certified Badge
+ *  - Right: Official Bharat Connect Primary Logo (replaces duplicate wallet balance)
+ *  - Fully responsive with zero overflow and fixed sleek height across all devices
+ */
 const BbpsServiceNav = ({
     onBack,
     title = 'Bharat Connect',
     icon: IconComponent = Zap,
     gradient = 'from-blue-500 to-indigo-600',
     badgeText = 'Bharat Connect',
-    badgeColor = 'blue',
-    balance: balanceProp
+    badgeColor = 'blue'
 }) => {
-    const { balance: ctxBalance } = useWallet();
-    const effectiveBalance = balanceProp !== undefined ? balanceProp : ctxBalance;
-    const numBalance = typeof effectiveBalance === 'number' ? effectiveBalance : parseFloat(effectiveBalance) || 0;
-
     const badgeStyle = badgeColor === 'amber'
         ? 'bg-amber-50 text-amber-800 border-amber-200'
         : 'bg-blue-50 text-blue-700 border-blue-200';
 
     return (
-        <div className="grid grid-cols-[auto_1fr_auto] lg:grid-cols-3 items-center gap-2 sm:gap-4 w-full">
+        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 sm:gap-4 w-full max-w-full overflow-hidden">
             {/* Left: Back Button */}
             <div className="flex items-center justify-start shrink-0">
                 <button
@@ -50,24 +52,21 @@ const BbpsServiceNav = ({
 
                 {badgeText && (
                     <span
-                        className={`hidden sm:inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border shrink-0 ${badgeStyle}`}
+                        className={`hidden md:inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border shrink-0 ${badgeStyle}`}
                     >
                         {badgeText}
                     </span>
                 )}
             </div>
 
-            {/* Right: Wallet Balance */}
-            <div className="flex items-center justify-end gap-1.5 sm:gap-2 shrink-0">
-                <span className="text-xs font-bold text-slate-600 hidden md:inline">
-                    Wallet Available:
-                </span>
-                <span className="text-xs font-bold text-slate-600 hidden sm:inline md:hidden">
-                    Wallet:
-                </span>
-                <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2 sm:px-2.5 py-1 rounded-full border border-emerald-200 shrink-0 whitespace-nowrap">
-                    ₹{numBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                </span>
+            {/* Right: Official Bharat Connect Primary Logo (no extra API calls, sleek height, zero overflow) */}
+            <div className="flex items-center justify-end shrink-0">
+                <img
+                    src="/Bharat Connect Primary Logo_PNG.png"
+                    alt="Bharat Connect Official Logo"
+                    className="h-6 sm:h-7 md:h-8 w-auto max-w-[90px] sm:max-w-[125px] md:max-w-[150px] object-contain shrink-0"
+                    loading="eager"
+                />
             </div>
         </div>
     );

@@ -386,7 +386,6 @@ const ElectricityFlow = ({ onBack }) => {
                 gradient="from-amber-400 to-amber-600"
                 badgeText="Bharat Connect"
                 badgeColor="amber"
-                balance={numBalance}
             />
 
             {/* Error Notification Banner */}
