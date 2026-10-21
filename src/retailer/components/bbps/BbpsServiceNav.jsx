@@ -14,13 +14,9 @@ const BbpsServiceNav = ({
     title = 'Bharat Connect',
     icon: IconComponent = Zap,
     gradient = 'from-blue-500 to-indigo-600',
-    badgeText = 'Bharat Connect',
+    badgeText = null,
     badgeColor = 'blue'
 }) => {
-    const badgeStyle = badgeColor === 'amber'
-        ? 'bg-amber-50 text-amber-800 border-amber-200'
-        : 'bg-blue-50 text-blue-700 border-blue-200';
-
     return (
         <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 sm:gap-4 w-full max-w-full overflow-hidden">
             {/* Left: Back Button */}
@@ -36,7 +32,7 @@ const BbpsServiceNav = ({
                 </button>
             </div>
 
-            {/* Center: Service Logo + Name + Bharat Connect Badge */}
+            {/* Center: Service Logo + Name */}
             <div className="flex items-center justify-center gap-1.5 sm:gap-2.5 min-w-0 px-1 text-center">
                 <div
                     className={`w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-lg md:rounded-xl bg-gradient-to-br ${gradient} text-white flex items-center justify-center shrink-0 shadow-2xs`}
@@ -49,26 +45,14 @@ const BbpsServiceNav = ({
                 <h1 className="text-xs sm:text-sm md:text-base font-black text-slate-900 tracking-tight truncate leading-none">
                     {title}
                 </h1>
-
-                {badgeText && (
-                    <span
-                        className={`hidden md:inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border shrink-0 ${badgeStyle}`}
-                    >
-                        {badgeText}
-                    </span>
-                )}
             </div>
 
-            {/* Right: Official Bharat Connect Primary Logo (reduced by 90% with hard style limits) */}
-            <div
-                className="flex items-center justify-end shrink-0"
-                style={{ height: '32px', maxWidth: '120px', overflow: 'hidden' }}
-            >
+            {/* Right: Official Bharat Connect Primary Logo (prominently sized to fill the designated area) */}
+            <div className="flex items-center justify-end shrink-0">
                 <img
                     src="/Bharat Connect Primary Logo_PNG.png"
                     alt="Bharat Connect Official Logo"
-                    className="object-contain shrink-0"
-                    style={{ height: '26px', maxHeight: '26px', width: 'auto', maxWidth: '110px' }}
+                    className="h-9 sm:h-11 md:h-12 w-auto max-h-12 max-w-[120px] sm:max-w-[150px] object-contain shrink-0"
                     loading="eager"
                 />
             </div>
