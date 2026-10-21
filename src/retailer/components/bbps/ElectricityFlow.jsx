@@ -10,6 +10,7 @@ import confetti from 'canvas-confetti';
 import { bbpsService } from '../../../services/apiService';
 import { useWallet } from '../../../context/WalletContext';
 import BbpsServiceNav from './BbpsServiceNav';
+import BbpsReceiptCard from './BbpsReceiptCard';
 
 const ALL_INDIAN_STATES = [
     'All India',
@@ -344,6 +345,7 @@ const ElectricityFlow = ({ onBack }) => {
             setTxnOutcome({
                 success: false,
                 status: 'FAILED',
+                merchantRefNo: idempotencyKey,
                 amount: billAmount,
                 totalAmount: totalPayable,
                 customerMobile: customerMobile,
@@ -351,6 +353,7 @@ const ElectricityFlow = ({ onBack }) => {
                 customerName: fetchedBill?.customerName || (isPrepaid ? 'Prepaid Meter Consumer' : 'Electricity Consumer'),
                 billerName: selectedBiller.billerName,
                 billNumber: fetchedBill?.billNumber,
+                createdAt: new Date().toISOString(),
                 message: msg
             });
             setFlowStep('RESULT');
@@ -1045,118 +1048,16 @@ const ElectricityFlow = ({ onBack }) => {
 
             {/* STEP 3: TRANSACTION RESULT / RECEIPT SCREEN */}
             {flowStep === 'RESULT' && txnOutcome && (
-                <div className="max-w-xl mx-auto rounded-3xl border border-slate-200 bg-white p-6 md:p-8 shadow-xl text-center space-y-5">
-                    {txnOutcome.status === 'SUCCESS' ? (
-                        <>
-                            <div className="w-16 h-16 rounded-full bg-emerald-50 border-4 border-emerald-100 flex items-center justify-center mx-auto text-emerald-600 shadow-xs">
-                                <CheckCircle2 className="w-9 h-9" />
-                            </div>
-                            <div className="space-y-1">
-                                <h2 className="text-xl font-black text-black">
-                                    {isPrepaid || txnOutcome.meterType === 'PREPAID' ? 'Prepaid Meter Recharged!' : 'Electricity Bill Paid!'}
-                                </h2>
-                                <p className="text-xs font-bold text-slate-600">
-                                    {isPrepaid || txnOutcome.meterType === 'PREPAID'
-                                        ? 'Your smart prepaid meter recharge token/credit has been generated via Bharat Connect'
-                                        : 'Your electricity bill payment has been verified & completed via Bharat Connect'}
-                                </p>
-                            </div>
-                        </>
-                    ) : txnOutcome.status === 'PENDING' ? (
-                        <>
-                            <div className="w-16 h-16 rounded-full bg-amber-50 border-4 border-amber-100 flex items-center justify-center mx-auto text-amber-600 shadow-xs">
-                                <Clock className="w-9 h-9" />
-                            </div>
-                            <div className="space-y-1">
-                                <h2 className="text-xl font-black text-black">Payment In Progress</h2>
-                                <p className="text-xs font-bold text-slate-600">
-                                    The electricity board is reconciling the transaction. You can check the final status in BBPS History.
-                                </p>
-                            </div>
-                        </>
-                    ) : (
-                        <>
-                            <div className="w-16 h-16 rounded-full bg-rose-50 border-4 border-rose-100 flex items-center justify-center mx-auto text-rose-600 shadow-xs">
-                                <AlertCircle className="w-9 h-9" />
-                            </div>
-                            <div className="space-y-1">
-                                <h2 className="text-xl font-black text-black">Payment Failed</h2>
-                                <p className="text-xs font-bold text-slate-600">
-                                    {txnOutcome.message || 'The bill payment could not be processed.'}
-                                </p>
-                            </div>
-                        </>
-                    )}
-
-                    {/* Printable Receipt Box */}
-                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-left text-xs font-bold space-y-2">
-                        <div className="flex justify-between py-1 border-b border-slate-200/60">
-                            <span className="text-slate-500">Transaction ID</span>
-                            <span className="font-mono font-black text-black">{txnOutcome.merchantRefNo || txnOutcome.transactionId || 'N/A'}</span>
-                        </div>
-                        {txnOutcome.providerTxnId && (
-                            <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                <span className="text-slate-500">BBPS Provider Ref</span>
-                                <span className="font-mono font-black text-black">{txnOutcome.providerTxnId}</span>
-                            </div>
-                        )}
-                        {txnOutcome.approvalRefNo && (
-                            <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                <span className="text-slate-500">Approval Number</span>
-                                <span className="font-mono font-black text-black">{txnOutcome.approvalRefNo}</span>
-                            </div>
-                        )}
-                        <div className="flex justify-between py-1 border-b border-slate-200/60">
-                            <span className="text-slate-500">Electricity Board</span>
-                            <span className="font-black text-black">{txnOutcome.billerName || selectedBiller?.billerName}</span>
-                        </div>
-                        <div className="flex justify-between py-1 border-b border-slate-200/60">
-                            <span className="text-slate-500">Service Type</span>
-                            <span className="font-black text-slate-800">
-                                {isPrepaid || txnOutcome.meterType === 'PREPAID' ? 'Smart Prepaid Meter Recharge' : 'Postpaid Electricity Bill'}
-                            </span>
-                        </div>
-                        <div className="flex justify-between py-1 border-b border-slate-200/60">
-                            <span className="text-slate-500">Consumer Number / CA</span>
-                            <span className="font-mono font-black text-black">{txnOutcome.consumerNumber || 'N/A'}</span>
-                        </div>
-                        {txnOutcome.customerName && (
-                            <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                <span className="text-slate-500">Customer Name</span>
-                                <span className="font-black text-black">{txnOutcome.customerName}</span>
-                            </div>
-                        )}
-                        {txnOutcome.billNumber && (
-                            <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                <span className="text-slate-500">Bill Number</span>
-                                <span className="font-mono font-black text-black">{txnOutcome.billNumber}</span>
-                            </div>
-                        )}
-                        <div className="flex justify-between py-1 items-baseline">
-                            <span className="text-slate-500">Amount Paid</span>
-                            <span className="font-black text-amber-600 text-base">₹{Number(txnOutcome.amount || txnOutcome.totalAmount || 0).toFixed(2)}</span>
-                        </div>
-                    </div>
-
-                    {/* Receipt Actions */}
-                    <div className="flex items-center gap-3 pt-2">
-                        <button
-                            type="button"
-                            onClick={() => window.print()}
-                            className="flex-1 py-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-black text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
-                        >
-                            <Printer className="w-4 h-4" />
-                            <span>Print Receipt</span>
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleResetAll}
-                            className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-xs transition-all cursor-pointer shadow-sm"
-                        >
-                            + Pay Another Bill
-                        </button>
-                    </div>
-                </div>
+                <BbpsReceiptCard
+                    txnOutcome={txnOutcome}
+                    category="electricity"
+                    isPrepaid={isPrepaid}
+                    billerName={selectedBiller?.billerName}
+                    consumerNumber={fetchedBill?.consumerNumber || Object.values(customerParams)[0] || ''}
+                    customerName={fetchedBill?.customerName || ''}
+                    onReset={handleResetAll}
+                    resetButtonText="+ Pay Another Bill"
+                />
             )}
         </div>
     );

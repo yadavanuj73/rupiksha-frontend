@@ -9,6 +9,7 @@ import confetti from 'canvas-confetti';
 import { bbpsService } from '../../../services/apiService';
 import { useWallet } from '../../../context/WalletContext';
 import BbpsServiceNav from './BbpsServiceNav';
+import BbpsReceiptCard from './BbpsReceiptCard';
 
 // Operator brand styling
 const OPERATOR_META = {
@@ -394,10 +395,12 @@ const MobilePrepaidFlow = ({ onBack }) => {
             setTxnOutcome({
                 success: false,
                 status: 'FAILED',
+                merchantRefNo: payload.idempotencyKey,
                 amount: finalAmount,
                 mobileNumber,
                 billerName: selectedOperator.operatorName,
                 circle: selectedCircle,
+                createdAt: new Date().toISOString(),
                 message: msg
             });
             setFlowStep('RESULT');
@@ -794,96 +797,15 @@ const MobilePrepaidFlow = ({ onBack }) => {
 
             {/* TRANSACTION RESULT SCREEN */}
             {flowStep === 'RESULT' && txnOutcome && (
-                <div className="max-w-xl mx-auto rounded-3xl border border-slate-200 bg-white p-6 md:p-8 shadow-lg text-center space-y-5">
-                    {txnOutcome.status === 'SUCCESS' ? (
-                        <>
-                            <div className="w-16 h-16 rounded-full bg-emerald-50 border-4 border-emerald-100 flex items-center justify-center mx-auto text-emerald-600 shadow-xs">
-                                <CheckCircle2 className="w-9 h-9" />
-                            </div>
-                            <div className="space-y-1">
-                                <h2 className="text-xl font-black text-black">Recharge Successful!</h2>
-                                <p className="text-xs font-bold text-slate-600">
-                                    Your prepaid mobile has been recharged instantly via BBPS
-                                </p>
-                            </div>
-                        </>
-                    ) : txnOutcome.status === 'PENDING' ? (
-                        <>
-                            <div className="w-16 h-16 rounded-full bg-amber-50 border-4 border-amber-100 flex items-center justify-center mx-auto text-amber-600 shadow-xs">
-                                <Clock className="w-9 h-9" />
-                            </div>
-                            <div className="space-y-1">
-                                <h2 className="text-xl font-black text-black">Recharge In Progress</h2>
-                                <p className="text-xs font-bold text-slate-600">
-                                    The provider network is confirming the transaction. Status will update in BBPS History.
-                                </p>
-                            </div>
-                        </>
-                    ) : (
-                        <>
-                            <div className="w-16 h-16 rounded-full bg-rose-50 border-4 border-rose-100 flex items-center justify-center mx-auto text-rose-600 shadow-xs">
-                                <AlertCircle className="w-9 h-9" />
-                            </div>
-                            <div className="space-y-1">
-                                <h2 className="text-xl font-black text-black">Recharge Failed</h2>
-                                <p className="text-xs font-bold text-slate-600">
-                                    {txnOutcome.message || 'The recharge could not be completed.'}
-                                </p>
-                            </div>
-                        </>
-                    )}
-
-                    {/* Receipt Details Box */}
-                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-left text-xs font-bold space-y-2">
-                        <div className="flex justify-between py-1 border-b border-slate-200/60">
-                            <span className="text-slate-500">Transaction Ref</span>
-                            <span className="font-mono font-black text-black">{txnOutcome.merchantRefNo || txnOutcome.transactionId || 'N/A'}</span>
-                        </div>
-                        {txnOutcome.providerTxnId && (
-                            <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                <span className="text-slate-500">BBPS Provider Ref</span>
-                                <span className="font-mono font-black text-black">{txnOutcome.providerTxnId}</span>
-                            </div>
-                        )}
-                        {txnOutcome.approvalRefNo && (
-                            <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                <span className="text-slate-500">Approval Number</span>
-                                <span className="font-mono font-black text-black">{txnOutcome.approvalRefNo}</span>
-                            </div>
-                        )}
-                        <div className="flex justify-between py-1 border-b border-slate-200/60">
-                            <span className="text-slate-500">Mobile Number</span>
-                            <span className="font-black text-black">+91 {txnOutcome.mobileNumber}</span>
-                        </div>
-                        <div className="flex justify-between py-1 border-b border-slate-200/60">
-                            <span className="text-slate-500">Operator</span>
-                            <span className="font-black text-black">{txnOutcome.billerName}</span>
-                        </div>
-                        <div className="flex justify-between py-1 items-baseline">
-                            <span className="text-slate-500">Amount Paid</span>
-                            <span className="font-black text-blue-600 text-base">₹{txnOutcome.amount}</span>
-                        </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-3 pt-2">
-                        <button
-                            type="button"
-                            onClick={() => window.print()}
-                            className="flex-1 py-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-black text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
-                        >
-                            <Printer className="w-4 h-4" />
-                            <span>Print Receipt</span>
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleResetAll}
-                            className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs transition-all cursor-pointer shadow-sm"
-                        >
-                            + New Recharge
-                        </button>
-                    </div>
-                </div>
+                <BbpsReceiptCard
+                    txnOutcome={txnOutcome}
+                    category="mobile-prepaid"
+                    billerName={selectedOperator?.operatorName}
+                    consumerNumber={mobileNumber}
+                    customerName={txnOutcome.customerName || 'Mobile Subscriber'}
+                    onReset={handleResetAll}
+                    resetButtonText="+ New Recharge"
+                />
             )}
         </div>
     );

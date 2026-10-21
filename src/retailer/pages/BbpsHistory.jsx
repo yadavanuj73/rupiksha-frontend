@@ -6,6 +6,7 @@ import {
     ChevronRight, ArrowUpRight, ShieldCheck, Download, Smartphone, Zap
 } from 'lucide-react';
 import { bbpsService } from '../../services/apiService';
+import BbpsReceiptCard from '../components/bbps/BbpsReceiptCard';
 
 const STATUS_CONFIG = {
     SUCCESS: { label: 'SUCCESS', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle2 },
@@ -409,128 +410,35 @@ const BbpsHistory = () => {
             {/* Receipt Modal */}
             <AnimatePresence>
                 {selectedTxn && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto">
                         <motion.div
                             initial={{ scale: 0.95, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
-                            className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4"
+                            className="w-full max-w-xl my-auto"
                         >
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                                <div className="flex items-center gap-2">
-                                    {selectedTxn.category === 'Electricity' ? (
-                                        <Zap className="w-5 h-5 text-amber-500" />
-                                    ) : (
-                                        <Smartphone className="w-5 h-5 text-blue-600" />
-                                    )}
-                                    <h3 className="text-sm font-black text-black">
-                                        {selectedTxn.category === 'Electricity' ? 'Electricity Bill Receipt' : 'Mobile Recharge Receipt'}
-                                    </h3>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setSelectedTxn(null)}
-                                    className="p-1 rounded-lg text-slate-400 hover:text-black cursor-pointer"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-
-                            <div className="space-y-2.5 text-xs font-bold text-slate-700 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                                <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                    <span className="text-slate-500">Transaction ID</span>
-                                    <span className="font-mono font-black text-black">{selectedTxn.merchantRefNo || selectedTxn.id}</span>
-                                </div>
-                                <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                    <span className="text-slate-500">Date & Time</span>
-                                    <span className="font-black text-black">
-                                        {selectedTxn.createdAt ? new Date(selectedTxn.createdAt).toLocaleString('en-IN') : 'N/A'}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                    <span className="text-slate-500">Category</span>
-                                    <span className="font-black text-black">{selectedTxn.category || 'Mobile Prepaid'}</span>
-                                </div>
-                                <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                    <span className="text-slate-500">{selectedTxn.category === 'Electricity' ? 'Electricity Board' : 'Operator'}</span>
-                                    <span className="font-black text-black">{selectedTxn.billerName}</span>
-                                </div>
-                                {selectedTxn.category === 'Electricity' ? (
-                                    <>
-                                        {selectedTxn.consumerNumber && (
-                                            <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                                <span className="text-slate-500">Consumer Number</span>
-                                                <span className="font-mono font-black text-black">{selectedTxn.consumerNumber}</span>
-                                            </div>
-                                        )}
-                                        {selectedTxn.customerName && (
-                                            <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                                <span className="text-slate-500">Consumer Name</span>
-                                                <span className="font-black text-black">{selectedTxn.customerName}</span>
-                                            </div>
-                                        )}
-                                        {selectedTxn.billNumber && (
-                                            <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                                <span className="text-slate-500">Bill Number</span>
-                                                <span className="font-mono font-black text-black">{selectedTxn.billNumber}</span>
-                                            </div>
-                                        )}
-                                        {selectedTxn.dueDate && (
-                                            <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                                <span className="text-slate-500">Due Date</span>
-                                                <span className="font-black text-amber-700">{selectedTxn.dueDate}</span>
-                                            </div>
-                                        )}
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                            <span className="text-slate-500">Mobile Number</span>
-                                            <span className="font-mono font-black text-black">{selectedTxn.mobileNumber}</span>
-                                        </div>
-                                        <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                            <span className="text-slate-500">Circle</span>
-                                            <span className="font-black text-black">{selectedTxn.circle || 'All India'}</span>
-                                        </div>
-                                    </>
-                                )}
-                                <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                    <span className="text-slate-500">Provider Ref</span>
-                                    <span className="font-mono font-black text-black">{selectedTxn.providerTxnId || '—'}</span>
-                                </div>
-                                <div className="flex justify-between py-1 border-b border-slate-200/60">
-                                    <span className="text-slate-500">Approval Ref</span>
-                                    <span className="font-mono font-black text-black">{selectedTxn.approvalRefNo || '—'}</span>
-                                </div>
-                                {selectedTxn.walletRefundRef && (
-                                    <div className="flex justify-between py-1 border-b border-slate-200/60 text-purple-700">
-                                        <span>Refund Ledger Ref</span>
-                                        <span className="font-mono font-black">{selectedTxn.walletRefundRef}</span>
-                                    </div>
-                                )}
-                                <div className="flex justify-between py-1.5 items-baseline text-sm">
-                                    <span className="font-black text-black">Amount Paid</span>
-                                    <span className="font-black text-blue-600 text-base">₹{Number(selectedTxn.amount).toFixed(2)}</span>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 pt-2">
-                                <button
-                                    type="button"
-                                    onClick={() => window.print()}
-                                    className="flex-1 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-black text-xs flex items-center justify-center gap-1.5 cursor-pointer"
-                                >
-                                    <Printer className="w-3.5 h-3.5" />
-                                    <span>Print</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setSelectedTxn(null)}
-                                    className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs cursor-pointer"
-                                >
-                                    Close
-                                </button>
-                            </div>
+                            <BbpsReceiptCard
+                                txnOutcome={{
+                                    ...selectedTxn,
+                                    status: selectedTxn.status,
+                                    merchantRefNo: selectedTxn.merchantRefNo || selectedTxn.id,
+                                    providerTxnId: selectedTxn.providerTxnId,
+                                    approvalRefNo: selectedTxn.approvalRefNo,
+                                    amount: selectedTxn.amount,
+                                    billerName: selectedTxn.billerName,
+                                    consumerNumber: selectedTxn.consumerNumber || selectedTxn.mobileNumber,
+                                    customerName: selectedTxn.customerName || (selectedTxn.category === 'Electricity' ? 'Electricity Consumer' : 'Mobile Subscriber'),
+                                    meterType: selectedTxn.meterType || (selectedTxn.billerName?.toLowerCase().includes('prepaid') ? 'PREPAID' : 'POSTPAID'),
+                                    createdAt: selectedTxn.createdAt
+                                }}
+                                category={selectedTxn.category === 'Electricity' ? 'electricity' : 'mobile-prepaid'}
+                                isPrepaid={selectedTxn.meterType === 'PREPAID' || (selectedTxn.category === 'Electricity' && selectedTxn.billerName?.toLowerCase().includes('prepaid'))}
+                                billerName={selectedTxn.billerName}
+                                consumerNumber={selectedTxn.consumerNumber || selectedTxn.mobileNumber}
+                                customerName={selectedTxn.customerName}
+                                onReset={() => setSelectedTxn(null)}
+                                resetButtonText="Close Receipt"
+                            />
                         </motion.div>
                     </div>
                 )}
