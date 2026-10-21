@@ -10,6 +10,7 @@ import { bbpsService } from '../../../services/apiService';
 import { useWallet } from '../../../context/WalletContext';
 import BbpsServiceNav from './BbpsServiceNav';
 import BbpsReceiptCard from './BbpsReceiptCard';
+import { primeBharatConnectSound, playBharatConnectSuccessSound } from '../../../utils/bbpsSound';
 
 // Operator brand styling
 const OPERATOR_META = {
@@ -358,6 +359,7 @@ const MobilePrepaidFlow = ({ onBack }) => {
         if (isSubmitting) return;
         setIsSubmitting(true);
         setFormError('');
+        primeBharatConnectSound();
 
         const payload = {
             mobileNumber,
@@ -380,6 +382,7 @@ const MobilePrepaidFlow = ({ onBack }) => {
             setFlowStep('RESULT');
 
             if (res.success || res.status === 'SUCCESS') {
+                playBharatConnectSuccessSound();
                 try {
                     confetti({
                         particleCount: 90,

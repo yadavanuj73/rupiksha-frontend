@@ -10,6 +10,7 @@ import { dataService } from '../../services/dataService';
 import { bbpsService } from '../../services/apiService';
 import { BILL_CATEGORIES as BILL_CATEGORIES_DATA } from './utilityData';
 import { initSpeech, announceSuccess, announceFailure, announceProcessing, speak, announceError, announceWarning, announceGrandSuccess } from '../../services/speechService';
+import { primeBharatConnectSound, playBharatConnectSuccessSound } from '../../utils/bbpsSound';
 
 
 const NAVY = '#0f2557';
@@ -388,6 +389,7 @@ export default function UtilityBill({ location }) {
             return;
         }
         try {
+            primeBharatConnectSound();
             initSpeech();
             announceProcessing("आपका पेमेंट प्रोसेस हो रहा है। कृपया पेज रिफ्रेश न करें।");
             const data = await bbpsService.payBill({
@@ -400,6 +402,7 @@ export default function UtilityBill({ location }) {
             });
 
             if (data.success) {
+                playBharatConnectSuccessSound();
                 // Confetti for success
                 try {
                     const { default: confetti } = await import('canvas-confetti');

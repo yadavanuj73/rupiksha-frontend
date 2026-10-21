@@ -14,6 +14,7 @@ import {
     PAN_API, RECHARGE_API, BILL_PAY_API, BILL_FETCH_API
 } from './utilityData';
 import { initSpeech, announceSuccess, announceFailure, announceProcessing, speak, announceError, announceWarning, announceGrandSuccess, playApplause } from '../../services/speechService';
+import { primeBharatConnectSound, playBharatConnectSuccessSound } from '../../utils/bbpsSound';
 import UtilityBill from './UtilityBill';
 
 const NAVY = '#0f2557';
@@ -834,6 +835,7 @@ function BillTab() {
             return;
         }
         try {
+            primeBharatConnectSound();
             initSpeech(); announceProcessing("बिल पेमेंट हो रहा है।");
             const result = await bbpsService.payBill({
                 userId: user.id,
@@ -844,6 +846,7 @@ function BillTab() {
                 opcode: billerOpcode
             });
             if (result.success) {
+                playBharatConnectSuccessSound();
                 await dataService.logTransaction(user.id, `BILL_${billerOpcode}`, fetchedBill.amount, billerName, consumerNo, 'SUCCESS');
                 announceGrandSuccess(
                     `आपका ₹${fetchedBill.amount} का ${billerName} बिल पेमेंट सफल हो गया।`,
