@@ -6,7 +6,7 @@ import { ArrowLeft, Zap } from 'lucide-react';
  * Features:
  *  - Left: Back to categories navigation button
  *  - Center: Category Icon, Title, and Certified Badge
- *  - Right: Official Bharat Connect Primary Logo (replaces duplicate wallet balance)
+ *  - Right: Official Bharat Connect Primary Logo (reduced by 90% to sleek 26px height, strictly bounded)
  *  - Fully responsive with zero overflow and fixed sleek height across all devices
  */
 const BbpsServiceNav = ({
@@ -59,12 +59,16 @@ const BbpsServiceNav = ({
                 )}
             </div>
 
-            {/* Right: Official B Assured Logo (no extra API calls, sleek height, zero overflow) */}
-            <div className="flex items-center justify-end shrink-0">
+            {/* Right: Official Bharat Connect Primary Logo (reduced by 90% with hard style limits) */}
+            <div
+                className="flex items-center justify-end shrink-0"
+                style={{ height: '32px', maxWidth: '120px', overflow: 'hidden' }}
+            >
                 <img
-                    src="/B Assured Logo_PNG.png"
-                    alt="B Assured Official Logo"
-                    className="h-7 sm:h-8 md:h-9 w-auto max-w-[40px] sm:max-w-[45px] md:max-w-[50px] object-contain shrink-0"
+                    src="/Bharat Connect Primary Logo_PNG.png"
+                    alt="Bharat Connect Official Logo"
+                    className="object-contain shrink-0"
+                    style={{ height: '26px', maxHeight: '26px', width: 'auto', maxWidth: '110px' }}
                     loading="eager"
                 />
             </div>
