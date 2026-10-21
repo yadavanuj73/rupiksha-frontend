@@ -4,7 +4,6 @@ import {
     Clock,
     AlertCircle,
     Download,
-    Printer,
     ShieldCheck,
     RefreshCw
 } from 'lucide-react';
@@ -215,16 +214,11 @@ const BbpsReceiptCard = ({
 
             // 3. DETAILS TABLE HEADER
             pdf.setFont('helvetica', 'bold');
-            pdf.setFontSize(9.5);
+            pdf.setFontSize(10);
             pdf.setTextColor(15, 23, 42);
             pdf.text('TRANSACTION DETAILS', margin, currentY);
 
-            currentY += 3;
-            pdf.setDrawColor(203, 213, 225); // slate-300
-            pdf.setLineWidth(0.4);
-            pdf.line(margin, currentY, pageWidth - margin, currentY);
-
-            currentY += 2;
+            currentY += 4.5;
 
             // Ordered Rows
             const rows = isSuccess ? [
@@ -246,27 +240,40 @@ const BbpsReceiptCard = ({
                 { label: 'Amount Paid', value: `INR ${amountVal}`, isAmount: true }
             ];
 
-            // 4. DRAW TABLE ROWS
-            const rowHeight = 8.5;
-            rows.forEach((row, idx) => {
-                // Zebra stripe
-                if (idx % 2 === 0) {
-                    pdf.setFillColor(248, 250, 252); // slate-50
-                    pdf.rect(margin, currentY, contentWidth, rowHeight, 'F');
-                }
+            // 4. DRAW PROPER BOX TABLE (Plain White Background, Full Grid Borders, Zero Overflow)
+            const tableStartY = currentY;
+            const col1Width = 56; // Label column width (mm)
+            const col2Width = contentWidth - col1Width; // Value column width (mm) = 122mm
+            const maxValueWidth = col2Width - 8; // Available text width = 114mm
 
-                // Row bottom border
-                pdf.setDrawColor(241, 245, 249); // slate-100
-                pdf.setLineWidth(0.2);
-                pdf.line(margin, currentY + rowHeight, pageWidth - margin, currentY + rowHeight);
+            rows.forEach((row) => {
+                const valStr = String(row.value || 'N/A');
 
-                // Label
+                // Split text dynamically so long names never overflow
+                pdf.setFont('helvetica', 'bold');
+                pdf.setFontSize(row.isAmount ? 10.5 : 8.5);
+                const valLines = pdf.splitTextToSize(valStr, maxValueWidth);
+                const rHeight = Math.max(8.5, valLines.length * 4.4 + 4.2);
+
+                // Plain White Background for every cell (pure white, no odd/even zebra stripes)
+                pdf.setFillColor(255, 255, 255);
+                pdf.rect(margin, currentY, contentWidth, rHeight, 'F');
+
+                // Horizontal bottom border
+                pdf.setDrawColor(203, 213, 225); // slate-300
+                pdf.setLineWidth(0.3);
+                pdf.line(margin, currentY + rHeight, margin + contentWidth, currentY + rHeight);
+
+                // Vertical column divider between label and value
+                pdf.line(margin + col1Width, currentY, margin + col1Width, currentY + rHeight);
+
+                // Label Column Text (Left-aligned, vertically centered)
                 pdf.setFont('helvetica', 'bold');
                 pdf.setFontSize(8.5);
-                pdf.setTextColor(100, 116, 139); // slate-500
-                pdf.text(row.label, margin + 4, currentY + 5.5);
+                pdf.setTextColor(71, 85, 105); // slate-600
+                pdf.text(row.label, margin + 4, currentY + (rHeight / 2) + 1.5);
 
-                // Value
+                // Value Column Text (Right-aligned, cleanly formatted)
                 if (row.isAmount) {
                     pdf.setFont('helvetica', 'bold');
                     pdf.setFontSize(10.5);
@@ -277,11 +284,24 @@ const BbpsReceiptCard = ({
                     pdf.setTextColor(15, 23, 42); // slate-900
                 }
 
-                const valStr = String(row.value || 'N/A');
-                pdf.text(valStr, pageWidth - margin - 4, currentY + 5.5, { align: 'right' });
+                if (valLines.length === 1) {
+                    pdf.text(valLines[0], margin + contentWidth - 4, currentY + (rHeight / 2) + 1.5, { align: 'right' });
+                } else {
+                    let textY = currentY + 5.2;
+                    valLines.forEach((line) => {
+                        pdf.text(line, margin + contentWidth - 4, textY, { align: 'right' });
+                        textY += 4.2;
+                    });
+                }
 
-                currentY += rowHeight;
+                currentY += rHeight;
             });
+
+            // Outer Box Table Border (encloses entire table perfectly)
+            const totalTableHeight = currentY - tableStartY;
+            pdf.setDrawColor(203, 213, 225); // slate-300
+            pdf.setLineWidth(0.4);
+            pdf.rect(margin, tableStartY, contentWidth, totalTableHeight, 'D');
 
             // 5. FOOTER ASSURANCE BOX
             currentY += 8;
@@ -367,7 +387,7 @@ const BbpsReceiptCard = ({
                     {/* B Assured Logo Watermark in Background of Details Box */}
                     <div
                         aria-hidden="true"
-                        className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.07] select-none"
+                        className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.17] select-none"
                     >
                         <img
                             src="/B Assured Logo_PNG.png"
@@ -537,16 +557,6 @@ const BbpsReceiptCard = ({
                             <span>Download Receipt</span>
                         </>
                     )}
-                </button>
-
-                {/* Optional Print Shortcut */}
-                <button
-                    type="button"
-                    onClick={() => window.print()}
-                    title="Print Receipt"
-                    className="p-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 hover:text-black transition-colors cursor-pointer shadow-xs shrink-0"
-                >
-                    <Printer className="w-4 h-4" />
                 </button>
 
                 {/* Pay Another Bill Button */}
