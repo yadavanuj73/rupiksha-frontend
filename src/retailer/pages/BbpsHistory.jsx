@@ -73,59 +73,40 @@ const BbpsHistory = () => {
         setError(null);
         try {
             if (categoryFilter === 'Electricity') {
-                // Fetch both 'Electricity' and 'Prepaid Meter' so all records (both smart meter & postpaid) are returned
-                const [resElec, resPrepaid] = await Promise.allSettled([
-                    bbpsService.getHistory({
-                        page,
-                        size,
-                        category: 'Electricity',
-                        status: statusFilter !== 'ALL' ? statusFilter : undefined,
-                        search: debouncedSearch || undefined
-                    }),
-                    bbpsService.getHistory({
+                // Fetch Electricity records directly from server
+                const resElec = await bbpsService.getHistory({
+                    page,
+                    size,
+                    category: 'Electricity',
+                    status: statusFilter !== 'ALL' ? statusFilter : undefined,
+                    search: debouncedSearch || undefined
+                });
+
+                // If Electricity records found, use them directly (prevents double-counting stats)
+                if (resElec && ((resElec.totalElements && resElec.totalElements > 0) || (resElec.content && resElec.content.length > 0))) {
+                    setTransactions(resElec.content || []);
+                    setTotalPages(resElec.totalPages || 1);
+                    setTotalElements(resElec.totalElements || 0);
+                    if (resElec.summary) setSummary(resElec.summary);
+                } else {
+                    // Fallback query if server has records saved under 'Prepaid Meter'
+                    const resPrepaid = await bbpsService.getHistory({
                         page,
                         size,
                         category: 'Prepaid Meter',
                         status: statusFilter !== 'ALL' ? statusFilter : undefined,
                         search: debouncedSearch || undefined
-                    })
-                ]);
-
-                const itemsElec = resElec.status === 'fulfilled' && resElec.value?.content ? resElec.value.content : [];
-                const itemsPrepaid = resPrepaid.status === 'fulfilled' && resPrepaid.value?.content ? resPrepaid.value.content : [];
-
-                // Deduplicate by ID / merchantRefNo
-                const seen = new Set();
-                const merged = [];
-                [...itemsElec, ...itemsPrepaid].forEach(item => {
-                    const key = item.id || item.merchantRefNo;
-                    if (key && !seen.has(key)) {
-                        seen.add(key);
-                        merged.push(item);
-                    }
-                });
-
-                // Sort descending by date
-                merged.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-
-                const totalElec = (resElec.status === 'fulfilled' && resElec.value?.totalElements) || 0;
-                const totalPrepaid = (resPrepaid.status === 'fulfilled' && resPrepaid.value?.totalElements) || 0;
-                const sumElec = resElec.status === 'fulfilled' ? resElec.value?.summary : null;
-                const sumPrepaid = resPrepaid.status === 'fulfilled' ? resPrepaid.value?.summary : null;
-
-                setTransactions(merged);
-                setTotalPages(Math.max(1, Math.ceil((totalElec + totalPrepaid) / size)));
-                setTotalElements(totalElec + totalPrepaid);
-
-                if (sumElec || sumPrepaid) {
-                    setSummary({
-                        totalTransactions: (sumElec?.totalTransactions || 0) + (sumPrepaid?.totalTransactions || 0),
-                        successCount: (sumElec?.successCount || 0) + (sumPrepaid?.successCount || 0),
-                        pendingCount: (sumElec?.pendingCount || 0) + (sumPrepaid?.pendingCount || 0),
-                        failedCount: (sumElec?.failedCount || 0) + (sumPrepaid?.failedCount || 0),
-                        refundedCount: (sumElec?.refundedCount || 0) + (sumPrepaid?.refundedCount || 0),
-                        totalVolume: (sumElec?.totalVolume || 0) + (sumPrepaid?.totalVolume || 0)
                     });
+                    if (resPrepaid) {
+                        setTransactions(resPrepaid.content || []);
+                        setTotalPages(resPrepaid.totalPages || 1);
+                        setTotalElements(resPrepaid.totalElements || 0);
+                        if (resPrepaid.summary) setSummary(resPrepaid.summary);
+                    } else {
+                        setTransactions([]);
+                        setTotalPages(1);
+                        setTotalElements(0);
+                    }
                 }
             } else {
                 const params = {
