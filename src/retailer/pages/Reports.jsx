@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, Navigate } from 'react-router-dom';
 import { 
     FileText, Search, Download, Calendar, IndianRupee, 
@@ -110,6 +110,15 @@ const Reports = () => {
     const [fromDate, setFromDate] = useState('');
     const [toDate, setToDate] = useState('');
     
+    // Applied filters (single source of truth for active query)
+    const [appliedFilters, setAppliedFilters] = useState({
+        search: '',
+        status: '',
+        provider: '',
+        fromDate: '',
+        toDate: ''
+    });
+
     // Sorting & Pagination
     const [sortBy, setSortBy] = useState('createdAt');
     const [sortDirection, setSortDirection] = useState('desc');
@@ -147,19 +156,40 @@ const Reports = () => {
 
     const currentConfig = reportConfigs[reportType] || reportConfigs.aeps_1;
 
+    // Reset filters and page when reportType changes
+    useEffect(() => {
+        setCurrentPage(0);
+        setSearchTerm('');
+        setStatusFilter('');
+        setProviderFilter('');
+        setFromDate('');
+        setToDate('');
+        setAppliedFilters({
+            search: '',
+            status: '',
+            provider: '',
+            fromDate: '',
+            toDate: ''
+        });
+        setTransactions([]);
+        setSummary(initialSummary);
+        setTotalPages(0);
+        setTotalElements(0);
+    }, [reportType]);
+
     // Fetch dynamic transaction data
-    const fetchHistoryData = async (overridePage = currentPage) => {
+    const fetchHistoryData = useCallback(async (overridePage = currentPage, filtersToUse = appliedFilters) => {
         setLoading(true);
         try {
             const params = {
                 reportType: getReportEnum(reportType),
                 page: overridePage,
                 size: pageSize,
-                search: searchTerm,
-                status: statusFilter,
-                provider: providerFilter,
-                fromDate,
-                toDate,
+                search: filtersToUse.search,
+                status: filtersToUse.status,
+                provider: filtersToUse.provider,
+                fromDate: filtersToUse.fromDate,
+                toDate: filtersToUse.toDate,
                 sortBy,
                 sortDirection
             };
@@ -189,25 +219,33 @@ const Reports = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [reportType, pageSize, sortBy, sortDirection, appliedFilters]);
 
-    useEffect(() => {
-        setCurrentPage(0);
-        setTransactions([]);
-        setSummary(initialSummary);
-        setTotalPages(0);
-        setTotalElements(0);
-    }, [reportType]);
-
+    // Single unified fetch trigger
     useEffect(() => {
         fetchHistoryData(currentPage);
-    }, [reportType, currentPage, pageSize, statusFilter, providerFilter, sortBy, sortDirection]);
-
+    }, [fetchHistoryData, currentPage]);
 
     const handleSearchSubmit = (e) => {
         if (e) e.preventDefault();
         setCurrentPage(0);
-        fetchHistoryData();
+        setAppliedFilters({
+            search: searchTerm,
+            status: statusFilter,
+            provider: providerFilter,
+            fromDate,
+            toDate
+        });
+    };
+
+    const handleStatusChange = (e) => {
+        const val = e.target.value;
+        setStatusFilter(val);
+        setCurrentPage(0);
+        setAppliedFilters(prev => ({
+            ...prev,
+            status: val
+        }));
     };
 
     // Quick Filters
@@ -236,9 +274,27 @@ const Reports = () => {
         setFromDate(from);
         setToDate(to);
         setCurrentPage(0);
-        setTimeout(() => {
-            fetchHistoryData();
-        }, 50);
+        setAppliedFilters(prev => ({
+            ...prev,
+            fromDate: from,
+            toDate: to
+        }));
+    };
+
+    const handleResetFilters = () => {
+        setFromDate('');
+        setToDate('');
+        setSearchTerm('');
+        setStatusFilter('');
+        setProviderFilter('');
+        setCurrentPage(0);
+        setAppliedFilters({
+            search: '',
+            status: '',
+            provider: '',
+            fromDate: '',
+            toDate: ''
+        });
     };
 
     // Row Details Handler
@@ -274,11 +330,11 @@ const Reports = () => {
             setLoading(true);
             const params = {
                 reportType: getReportEnum(reportType),
-                search: searchTerm,
-                status: statusFilter,
-                provider: providerFilter,
-                fromDate,
-                toDate,
+                search: appliedFilters.search,
+                status: appliedFilters.status,
+                provider: appliedFilters.provider,
+                fromDate: appliedFilters.fromDate,
+                toDate: appliedFilters.toDate,
                 sortBy,
                 sortDirection
             };
@@ -321,11 +377,11 @@ const Reports = () => {
             setLoading(true);
             const params = {
                 reportType: getReportEnum(reportType),
-                search: searchTerm,
-                status: statusFilter,
-                provider: providerFilter,
-                fromDate,
-                toDate,
+                search: appliedFilters.search,
+                status: appliedFilters.status,
+                provider: appliedFilters.provider,
+                fromDate: appliedFilters.fromDate,
+                toDate: appliedFilters.toDate,
                 sortBy,
                 sortDirection
             };
@@ -405,7 +461,7 @@ const Reports = () => {
                         CSV
                     </button>
                     <button 
-                        onClick={fetchHistoryData}
+                        onClick={() => fetchHistoryData(currentPage)}
                         disabled={loading}
                         className="w-12 h-12 bg-white border border-slate-200 rounded-xl shadow-sm flex items-center justify-center hover:shadow-md transition-all active:rotate-180 hover:border-[#4a148c] disabled:opacity-50"
                     >
@@ -501,7 +557,7 @@ const Reports = () => {
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider block ml-1">Status</label>
                         <select
                             value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
+                            onChange={handleStatusChange}
                             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:border-[#4a148c20] focus:ring-4 focus:ring-[#4a148c]/5 outline-none transition-all text-slate-700"
                         >
                             <option value="">All Status</option>
@@ -537,15 +593,7 @@ const Reports = () => {
                         </button>
                     ))}
                     <button
-                        onClick={() => {
-                            setFromDate('');
-                            setToDate('');
-                            setSearchTerm('');
-                            setStatusFilter('');
-                            setProviderFilter('');
-                            setCurrentPage(0);
-                            setTimeout(() => fetchHistoryData(), 50);
-                        }}
+                        onClick={handleResetFilters}
                         className="px-3.5 py-1.5 bg-slate-900 text-white rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ml-auto"
                     >
                         Reset Filters
