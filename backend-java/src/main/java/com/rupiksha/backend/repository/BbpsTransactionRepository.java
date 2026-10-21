@@ -19,7 +19,7 @@ public interface BbpsTransactionRepository extends JpaRepository<BbpsTransaction
 
     @Query("SELECT b FROM BbpsTransaction b WHERE (:userId IS NULL OR b.user.id = :userId) " +
            "AND (:status IS NULL OR b.status = :status) " +
-           "AND (:category IS NULL OR b.category = :category) " +
+           "AND (:category IS NULL OR b.category = :category OR (lower(:category) = 'electricity' AND lower(b.category) IN ('electricity', 'prepaid meter'))) " +
            "AND (cast(:startDate as timestamp) IS NULL OR b.createdAt >= :startDate) " +
            "AND (cast(:endDate as timestamp) IS NULL OR b.createdAt <= :endDate) " +
            "AND (:search IS NULL OR " +
@@ -39,7 +39,7 @@ public interface BbpsTransactionRepository extends JpaRepository<BbpsTransaction
     );
 
     @Query("SELECT COUNT(b) FROM BbpsTransaction b WHERE (:userId IS NULL OR b.user.id = :userId) " +
-           "AND (:category IS NULL OR b.category = :category) " +
+           "AND (:category IS NULL OR b.category = :category OR (lower(:category) = 'electricity' AND lower(b.category) IN ('electricity', 'prepaid meter'))) " +
            "AND (:status IS NULL OR b.status = :status)")
     long countByUserCategoryAndStatus(@Param("userId") UUID userId, @Param("category") String category, @Param("status") String status);
 

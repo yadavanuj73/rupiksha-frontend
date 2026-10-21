@@ -1079,7 +1079,7 @@ public class BbpsServiceImpl implements BbpsService {
         bbpsTxn.setIdempotencyKey(idempotencyKey);
         bbpsTxn.setRequestId(effectiveRequestId);
         bbpsTxn.setMerchantRefNo(merchantRefNo);
-        bbpsTxn.setCategory(isPrepaidMeter ? "Prepaid Meter" : "Electricity");
+        bbpsTxn.setCategory("Electricity");
         bbpsTxn.setBillerId(biller.getBillerId());
         bbpsTxn.setBillerName(biller.getBillerName());
         bbpsTxn.setCircle(biller.getState());

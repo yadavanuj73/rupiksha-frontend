@@ -22,6 +22,22 @@ const CATEGORY_TABS = [
     { id: 'Mobile Prepaid', label: 'Mobile Prepaid', icon: Smartphone }
 ];
 
+// Helper to reliably identify electricity transactions across categories and billers
+const isElectricityTxn = (txn) => {
+    if (!txn) return false;
+    const cat = String(txn.category || '').toLowerCase();
+    const ref = String(txn.merchantRefNo || txn.id || '').toUpperCase();
+    const bName = String(txn.billerName || '').toLowerCase();
+    return (
+        cat.includes('electr') ||
+        cat.includes('meter') ||
+        ref.startsWith('BBPSEL') ||
+        bName.includes('power') ||
+        bName.includes('electric') ||
+        bName.includes('discom')
+    );
+};
+
 const BbpsHistory = () => {
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -56,19 +72,76 @@ const BbpsHistory = () => {
         setLoading(true);
         setError(null);
         try {
-            const params = {
-                page,
-                size,
-                category: categoryFilter !== 'ALL' ? categoryFilter : undefined,
-                status: statusFilter !== 'ALL' ? statusFilter : undefined,
-                search: debouncedSearch || undefined
-            };
-            const res = await bbpsService.getHistory(params);
-            if (res) {
-                setTransactions(res.content || []);
-                setTotalPages(res.totalPages || 1);
-                setTotalElements(res.totalElements || 0);
-                if (res.summary) setSummary(res.summary);
+            if (categoryFilter === 'Electricity') {
+                // Fetch both 'Electricity' and 'Prepaid Meter' so all records (both smart meter & postpaid) are returned
+                const [resElec, resPrepaid] = await Promise.allSettled([
+                    bbpsService.getHistory({
+                        page,
+                        size,
+                        category: 'Electricity',
+                        status: statusFilter !== 'ALL' ? statusFilter : undefined,
+                        search: debouncedSearch || undefined
+                    }),
+                    bbpsService.getHistory({
+                        page,
+                        size,
+                        category: 'Prepaid Meter',
+                        status: statusFilter !== 'ALL' ? statusFilter : undefined,
+                        search: debouncedSearch || undefined
+                    })
+                ]);
+
+                const itemsElec = resElec.status === 'fulfilled' && resElec.value?.content ? resElec.value.content : [];
+                const itemsPrepaid = resPrepaid.status === 'fulfilled' && resPrepaid.value?.content ? resPrepaid.value.content : [];
+
+                // Deduplicate by ID / merchantRefNo
+                const seen = new Set();
+                const merged = [];
+                [...itemsElec, ...itemsPrepaid].forEach(item => {
+                    const key = item.id || item.merchantRefNo;
+                    if (key && !seen.has(key)) {
+                        seen.add(key);
+                        merged.push(item);
+                    }
+                });
+
+                // Sort descending by date
+                merged.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+                const totalElec = (resElec.status === 'fulfilled' && resElec.value?.totalElements) || 0;
+                const totalPrepaid = (resPrepaid.status === 'fulfilled' && resPrepaid.value?.totalElements) || 0;
+                const sumElec = resElec.status === 'fulfilled' ? resElec.value?.summary : null;
+                const sumPrepaid = resPrepaid.status === 'fulfilled' ? resPrepaid.value?.summary : null;
+
+                setTransactions(merged);
+                setTotalPages(Math.max(1, Math.ceil((totalElec + totalPrepaid) / size)));
+                setTotalElements(totalElec + totalPrepaid);
+
+                if (sumElec || sumPrepaid) {
+                    setSummary({
+                        totalTransactions: (sumElec?.totalTransactions || 0) + (sumPrepaid?.totalTransactions || 0),
+                        successCount: (sumElec?.successCount || 0) + (sumPrepaid?.successCount || 0),
+                        pendingCount: (sumElec?.pendingCount || 0) + (sumPrepaid?.pendingCount || 0),
+                        failedCount: (sumElec?.failedCount || 0) + (sumPrepaid?.failedCount || 0),
+                        refundedCount: (sumElec?.refundedCount || 0) + (sumPrepaid?.refundedCount || 0),
+                        totalVolume: (sumElec?.totalVolume || 0) + (sumPrepaid?.totalVolume || 0)
+                    });
+                }
+            } else {
+                const params = {
+                    page,
+                    size,
+                    category: categoryFilter !== 'ALL' ? categoryFilter : undefined,
+                    status: statusFilter !== 'ALL' ? statusFilter : undefined,
+                    search: debouncedSearch || undefined
+                };
+                const res = await bbpsService.getHistory(params);
+                if (res) {
+                    setTransactions(res.content || []);
+                    setTotalPages(res.totalPages || 1);
+                    setTotalElements(res.totalElements || 0);
+                    if (res.summary) setSummary(res.summary);
+                }
             }
         } catch (err) {
             console.error('Failed to load BBPS history:', err);
@@ -280,7 +353,7 @@ const BbpsHistory = () => {
                                             const statusObj = STATUS_CONFIG[item.status] || STATUS_CONFIG.PENDING;
                                             const StatusIcon = statusObj.icon;
                                             const isPending = item.status === 'PENDING' || item.status === 'INITIATED';
-                                            const isElectricity = item.category === 'Electricity';
+                                            const isElectricity = isElectricityTxn(item);
 
                                             return (
                                                 <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
@@ -299,7 +372,7 @@ const BbpsHistory = () => {
                                                         ) : (
                                                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-50 text-blue-700 border border-blue-200">
                                                                 <Smartphone className="w-3 h-3 text-blue-600" />
-                                                                Prepaid
+                                                                Mobile Prepaid
                                                             </span>
                                                         )}
                                                     </td>
@@ -417,28 +490,34 @@ const BbpsHistory = () => {
                             exit={{ scale: 0.95, opacity: 0 }}
                             className="w-full max-w-xl my-auto"
                         >
-                            <BbpsReceiptCard
-                                txnOutcome={{
-                                    ...selectedTxn,
-                                    status: selectedTxn.status,
-                                    merchantRefNo: selectedTxn.merchantRefNo || selectedTxn.id,
-                                    providerTxnId: selectedTxn.providerTxnId,
-                                    approvalRefNo: selectedTxn.approvalRefNo,
-                                    amount: selectedTxn.amount,
-                                    billerName: selectedTxn.billerName,
-                                    consumerNumber: selectedTxn.consumerNumber || selectedTxn.mobileNumber,
-                                    customerName: selectedTxn.customerName || (selectedTxn.category === 'Electricity' ? 'Electricity Consumer' : 'Mobile Subscriber'),
-                                    meterType: selectedTxn.meterType || (selectedTxn.billerName?.toLowerCase().includes('prepaid') ? 'PREPAID' : 'POSTPAID'),
-                                    createdAt: selectedTxn.createdAt
-                                }}
-                                category={selectedTxn.category === 'Electricity' ? 'electricity' : 'mobile-prepaid'}
-                                isPrepaid={selectedTxn.meterType === 'PREPAID' || (selectedTxn.category === 'Electricity' && selectedTxn.billerName?.toLowerCase().includes('prepaid'))}
-                                billerName={selectedTxn.billerName}
-                                consumerNumber={selectedTxn.consumerNumber || selectedTxn.mobileNumber}
-                                customerName={selectedTxn.customerName}
-                                onReset={() => setSelectedTxn(null)}
-                                resetButtonText="Close Receipt"
-                            />
+                            {(() => {
+                                const isElec = isElectricityTxn(selectedTxn);
+                                const isPrepaidMeter = selectedTxn.category === 'Prepaid Meter' || selectedTxn.meterType === 'PREPAID' || selectedTxn.billerName?.toLowerCase().includes('prepaid');
+                                return (
+                                    <BbpsReceiptCard
+                                        txnOutcome={{
+                                            ...selectedTxn,
+                                            status: selectedTxn.status,
+                                            merchantRefNo: selectedTxn.merchantRefNo || selectedTxn.id,
+                                            providerTxnId: selectedTxn.providerTxnId,
+                                            approvalRefNo: selectedTxn.approvalRefNo,
+                                            amount: selectedTxn.amount,
+                                            billerName: selectedTxn.billerName,
+                                            consumerNumber: selectedTxn.consumerNumber || selectedTxn.mobileNumber,
+                                            customerName: selectedTxn.customerName || (isElec ? (isPrepaidMeter ? 'Prepaid Meter Consumer' : 'Electricity Consumer') : 'Mobile Subscriber'),
+                                            meterType: isPrepaidMeter ? 'PREPAID' : (selectedTxn.meterType || 'POSTPAID'),
+                                            createdAt: selectedTxn.createdAt
+                                        }}
+                                        category={isElec ? 'electricity' : 'mobile-prepaid'}
+                                        isPrepaid={isElec && isPrepaidMeter}
+                                        billerName={selectedTxn.billerName}
+                                        consumerNumber={selectedTxn.consumerNumber || selectedTxn.mobileNumber}
+                                        customerName={selectedTxn.customerName}
+                                        onReset={() => setSelectedTxn(null)}
+                                        resetButtonText="Close Receipt"
+                                    />
+                                );
+                            })()}
                         </motion.div>
                     </div>
                 )}
