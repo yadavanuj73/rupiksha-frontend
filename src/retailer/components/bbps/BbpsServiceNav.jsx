@@ -59,12 +59,12 @@ const BbpsServiceNav = ({
                 )}
             </div>
 
-            {/* Right: Official Bharat Connect Primary Logo (no extra API calls, sleek height, zero overflow) */}
+            {/* Right: Official B Assured Logo (no extra API calls, sleek height, zero overflow) */}
             <div className="flex items-center justify-end shrink-0">
                 <img
-                    src="/Bharat Connect Primary Logo_PNG.png"
-                    alt="Bharat Connect Official Logo"
-                    className="h-6 sm:h-7 md:h-8 w-auto max-w-[90px] sm:max-w-[125px] md:max-w-[150px] object-contain shrink-0"
+                    src="/B Assured Logo_PNG.png"
+                    alt="B Assured Official Logo"
+                    className="h-7 sm:h-8 md:h-9 w-auto max-w-[40px] sm:max-w-[45px] md:max-w-[50px] object-contain shrink-0"
                     loading="eager"
                 />
             </div>
