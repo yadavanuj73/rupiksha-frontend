@@ -622,13 +622,13 @@ class BbpsServiceImplTest {
         List<BbpsDtos.LoanBillerInfo> annapurnaExact = bbpsService.getLoanBillers("Annapurna Finance Private Limited-MFI");
         assertNotNull(annapurnaExact);
         assertFalse(annapurnaExact.isEmpty(), "Annapurna Finance Private Limited-MFI must be found");
-        assertTrue(annapurnaExact.stream().anyMatch(b -> b.getBillerId().equals("ANNA00000NAT01")));
+        assertTrue(annapurnaExact.stream().anyMatch(b -> b.getBillerId().equals("ANNA00000NATUO")));
 
         // Search by partial text
         List<BbpsDtos.LoanBillerInfo> annapurnaPartial = bbpsService.getLoanBillers("Annapurna");
         assertNotNull(annapurnaPartial);
         assertFalse(annapurnaPartial.isEmpty());
-        assertTrue(annapurnaPartial.stream().anyMatch(b -> b.getBillerId().equals("ANNA00000NAT01")));
+        assertTrue(annapurnaPartial.stream().anyMatch(b -> b.getBillerId().equals("ANNA00000NATUO")));
     }
 
     @Test

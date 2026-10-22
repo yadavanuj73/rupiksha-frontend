@@ -194,7 +194,7 @@ public class LoanBillerRegistry {
     private void initBillers() {
         // ── PROMINENT MICROFINANCE INSTITUTIONS (MFIs) & SPECIALIZED NBFCs ────────
         addBiller(BbpsDtos.LoanBillerInfo.builder()
-                .billerId("ANNA00000NAT01")
+                .billerId("ANNA00000NATUO")
                 .billerName("Annapurna Finance Private Limited-MFI")
                 .category("Loan Repayment")
                 .billerFetchRequirement("MANDATORY")
@@ -202,10 +202,22 @@ public class LoanBillerRegistry {
                 .supportBillValidation("OPTIONAL")
                 .description("Annapurna Finance microfinance loans, MSME business loans, and group loan installment repayments")
                 .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(30).hint("Annapurna Loan Account Number / LAN").build(),
-                        BbpsDtos.InputParamInfo.builder().paramName("Mobile Number").dataType("NUMERIC").optional(true).minLength(10).maxLength(10).hint("Registered Mobile Number (Optional)").build()
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(30).hint("Annapurna Loan Account Number / LAN").build()
                 ))
-                .build(), "ANNA00000NAT02", "ANNA00000MFIP01", "ANNAPURNA", "ANNAPURNAFINANCE", "ANNAPURNAMFI", "Annapurna Finance Pvt Ltd");
+                .build(), "ANNA00000NAT01", "ANNA00000NAT02", "ANNA00000MFIP01", "ANNAPURNA", "ANNAPURNAFINANCE", "ANNAPURNAMFI", "Annapurna Finance Pvt Ltd");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("ANNA00000NATMR")
+                .billerName("Annapurna Finance Private Limited - MSME")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("Annapurna Finance MSME business loan installments")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(30).hint("Annapurna MSME Loan Account Number").build()
+                ))
+                .build(), "ANNAPURNAMSME");
 
         addBiller(BbpsDtos.LoanBillerInfo.builder()
                 .billerId("AROH00000NAT01")
