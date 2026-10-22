@@ -202,9 +202,40 @@ public class WalletServiceImpl implements WalletService {
         return BigDecimal.ZERO;
     }
 
+    private String resolvePartyCode(User u) {
+        if (u == null) return "";
+        if (u.getPartyCode() != null && !u.getPartyCode().isBlank()) {
+            return u.getPartyCode();
+        }
+        RoleName role = u.getRoles().isEmpty() ? RoleName.RETAILER : u.getRoles().iterator().next().getName();
+        String rolePrefix = switch (role) {
+            case SUPER_DISTRIBUTOR -> "RPSD";
+            case DISTRIBUTOR -> "RPD";
+            case ADMIN -> "RPADM";
+            default -> "RPR";
+        };
+        String state = u.getStateName();
+        String plate = "BR";
+        if (state != null && !state.isBlank()) {
+            String upper = state.trim().toUpperCase();
+            if (upper.length() == 2 && upper.matches("[A-Z]{2}")) plate = upper;
+            else if (upper.contains("MAHA") || upper.contains("MH")) plate = "MH";
+            else if (upper.contains("UP") || upper.contains("UTTAR")) plate = "UP";
+            else if (upper.contains("DL") || upper.contains("DELHI")) plate = "DL";
+        }
+        int codeNum = Math.abs(u.getId().hashCode() % 90000) + 10000;
+        String generated = rolePrefix + plate + codeNum;
+        try {
+            u.setPartyCode(generated);
+            userRepository.save(u);
+        } catch (Exception ignored) {}
+        return generated;
+    }
+
     private WalletDtos.WalletBalanceResponse mapBalanceResponse(Wallet w) {
         User u = w.getUser();
         String roleStr = u.getRoles().isEmpty() ? "RETAILER" : u.getRoles().iterator().next().getName().name();
+        String partyCode = resolvePartyCode(u);
         return new WalletDtos.WalletBalanceResponse(
                 u.getId().toString(),
                 u.getFullName(),
@@ -215,7 +246,8 @@ public class WalletServiceImpl implements WalletService {
                 w.getLockedBalance(),
                 w.getBalance().subtract(w.getLockedBalance()),
                 getGstRateForUser(u),
-                w.getStatus().name()
+                w.getStatus().name(),
+                partyCode
         );
     }
 

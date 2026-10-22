@@ -18,8 +18,17 @@ public class WalletDtos {
             BigDecimal lockedAmount,
             BigDecimal availableBalance,
             BigDecimal gst_rate,
-            String status
-    ) {}
+            String status,
+            String partyCode
+    ) {
+        public WalletBalanceResponse(
+                String id, String name, String username, String mobile, String role,
+                BigDecimal balance, BigDecimal lockedAmount, BigDecimal availableBalance,
+                BigDecimal gst_rate, String status
+        ) {
+            this(id, name, username, mobile, role, balance, lockedAmount, availableBalance, gst_rate, status, null);
+        }
+    }
 
     public record WalletEntryRequest(
             @NotBlank String userId,

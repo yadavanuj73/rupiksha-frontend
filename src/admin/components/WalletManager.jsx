@@ -64,30 +64,49 @@ const WalletManager = ({ initialTab, activeSection, onNavigate }) => {
             const cached = localStorage.getItem('rupiksha_users_cache');
             if (cached) {
                 const list = JSON.parse(cached);
-                if (Array.isArray(list) && list.length > 0) return list;
+                if (Array.isArray(list) && list.length > 0) {
+                    return list.map((u, idx) => {
+                        let pc = u.partyCode || u.userCode || '';
+                        if (!pc || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pc)) {
+                            const rRole = String(u.role || (Array.isArray(u.roles) ? u.roles[0] : 'RETAILER')).toUpperCase();
+                            const prefix = rRole.includes('SUPER') ? 'RPSDBR' : rRole.includes('DIST') ? 'RPDMH' : 'RPRBR';
+                            pc = `${prefix}${70000 + (idx % 90000)}`;
+                        }
+                        return { ...u, partyCode: pc };
+                    });
+                }
             }
             const localUsers = dataService.getData()?.users;
             if (Array.isArray(localUsers) && localUsers.length > 0) {
-                return localUsers.map(u => ({
-                    ...u,
-                    id: u.id || u._id || u.userId || u.username || u.mobile,
-                    userId: u.userId || u.id || u._id || u.username,
-                    username: u.username || u.mobile || u.id,
-                    name: u.name || u.fullName || u.username || 'User',
-                    fullName: u.fullName || u.name || u.username || 'User',
-                    mobile: u.mobile || u.phone || u.username || '',
-                    role: u.role || (Array.isArray(u.roles) ? u.roles[0] : 'RETAILER'),
-                    balance: parseFloat(String(u.balance ?? u.walletBalance ?? 0).replace(/,/g, '')) || 0,
-                    lockedAmount: parseFloat(String(u.lockedAmount || 0).replace(/,/g, '')) || 0,
-                    isFrozen: Boolean(
-                        u.isFrozen || 
-                        u.walletStatus === 'FROZEN' || 
-                        u.status === 'FROZEN' ||
-                        localStorage.getItem(`rupiksha_frozen_${u.id}`) === 'true' ||
-                        localStorage.getItem(`rupiksha_frozen_${u.username}`) === 'true' ||
-                        localStorage.getItem(`rupiksha_frozen_${u.mobile}`) === 'true'
-                    )
-                }));
+                return localUsers.map((u, idx) => {
+                    let pc = u.partyCode || u.userCode || '';
+                    if (!pc || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pc)) {
+                        const rRole = String(u.role || (Array.isArray(u.roles) ? u.roles[0] : 'RETAILER')).toUpperCase();
+                        const prefix = rRole.includes('SUPER') ? 'RPSDBR' : rRole.includes('DIST') ? 'RPDMH' : 'RPRBR';
+                        pc = `${prefix}${70000 + (idx % 90000)}`;
+                    }
+                    return {
+                        ...u,
+                        id: u.id || u._id || u.userId || u.username || u.mobile,
+                        userId: u.userId || u.id || u._id || u.username,
+                        username: u.username || u.mobile || u.id,
+                        name: u.name || u.fullName || u.username || 'User',
+                        fullName: u.fullName || u.name || u.username || 'User',
+                        mobile: u.mobile || u.phone || u.username || '',
+                        partyCode: pc,
+                        role: u.role || (Array.isArray(u.roles) ? u.roles[0] : 'RETAILER'),
+                        balance: parseFloat(String(u.balance ?? u.walletBalance ?? 0).replace(/,/g, '')) || 0,
+                        lockedAmount: parseFloat(String(u.lockedAmount || 0).replace(/,/g, '')) || 0,
+                        isFrozen: Boolean(
+                            u.isFrozen || 
+                            u.walletStatus === 'FROZEN' || 
+                            u.status === 'FROZEN' ||
+                            localStorage.getItem(`rupiksha_frozen_${u.id}`) === 'true' ||
+                            localStorage.getItem(`rupiksha_frozen_${u.username}`) === 'true' ||
+                            localStorage.getItem(`rupiksha_frozen_${u.mobile}`) === 'true'
+                        )
+                    };
+                });
             }
         } catch (_) {}
         return [];
@@ -132,27 +151,66 @@ const WalletManager = ({ initialTab, activeSection, onNavigate }) => {
                 } catch (_) {}
             }
 
-            const normalized = (list || []).map(u => ({
-                ...u,
-                id: u.id || u._id || u.userId || u.username || u.mobile,
-                userId: u.userId || u.id || u._id || u.username,
-                username: u.username || u.mobile || u.id,
-                name: u.name || u.fullName || u.username || 'User',
-                fullName: u.fullName || u.name || u.username || 'User',
-                mobile: u.mobile || u.phone || u.username || '',
-                partyCode: u.partyCode || u.userCode || u.id || '',
-                role: u.role || (Array.isArray(u.roles) ? u.roles[0] : 'RETAILER'),
-                balance: parseFloat(String(u.balance ?? u.walletBalance ?? u.availableBalance ?? 0).replace(/,/g, '')) || 0,
-                lockedAmount: parseFloat(String(u.lockedAmount || 0).replace(/,/g, '')) || 0,
-                isFrozen: Boolean(
-                    u.isFrozen || 
-                    u.walletStatus === 'FROZEN' || 
-                    u.status === 'FROZEN' ||
-                    localStorage.getItem(`rupiksha_frozen_${u.id}`) === 'true' ||
-                    localStorage.getItem(`rupiksha_frozen_${u.username}`) === 'true' ||
-                    localStorage.getItem(`rupiksha_frozen_${u.mobile}`) === 'true'
-                )
-            }));
+            // Cross-reference user directory to get exact party codes
+            let allUsersMap = new Map();
+            try {
+                const allUsers = await dataService.getAllUsers();
+                if (Array.isArray(allUsers) && allUsers.length > 0) {
+                    allUsers.forEach(au => {
+                        const pc = au.partyCode || au.userCode;
+                        const isPcUuid = pc && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pc);
+                        const cleanPc = isPcUuid ? '' : pc;
+                        if (cleanPc) {
+                            if (au.id) allUsersMap.set(String(au.id).toLowerCase(), cleanPc);
+                            if (au.userId) allUsersMap.set(String(au.userId).toLowerCase(), cleanPc);
+                            if (au.username) allUsersMap.set(String(au.username).toLowerCase(), cleanPc);
+                            if (au.mobile) allUsersMap.set(String(au.mobile).toLowerCase(), cleanPc);
+                        }
+                    });
+                }
+            } catch (_) {}
+
+            const normalized = (list || []).map((u, idx) => {
+                const idStr = String(u.id || u.userId || u._id || '').toLowerCase();
+                const unameStr = String(u.username || '').toLowerCase();
+                const mobStr = String(u.mobile || u.phone || '').toLowerCase();
+
+                const fallbackPcFromMap = allUsersMap.get(idStr) || allUsersMap.get(unameStr) || allUsersMap.get(mobStr);
+
+                let rawPartyCode = u.partyCode || u.userCode || fallbackPcFromMap || '';
+                // Never treat UUID as party code
+                if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawPartyCode)) {
+                    rawPartyCode = fallbackPcFromMap || '';
+                }
+
+                if (!rawPartyCode) {
+                    const rRole = String(u.role || (Array.isArray(u.roles) ? u.roles[0] : 'RETAILER')).toUpperCase();
+                    const prefix = rRole.includes('SUPER') ? 'RPSDBR' : rRole.includes('DIST') ? 'RPDMH' : 'RPRBR';
+                    rawPartyCode = `${prefix}${70000 + (idx % 90000)}`;
+                }
+
+                return {
+                    ...u,
+                    id: u.id || u._id || u.userId || u.username || u.mobile,
+                    userId: u.userId || u.id || u._id || u.username,
+                    username: u.username || u.mobile || u.id,
+                    name: u.name || u.fullName || u.username || 'User',
+                    fullName: u.fullName || u.name || u.username || 'User',
+                    mobile: u.mobile || u.phone || u.username || '',
+                    partyCode: rawPartyCode,
+                    role: u.role || (Array.isArray(u.roles) ? u.roles[0] : 'RETAILER'),
+                    balance: parseFloat(String(u.balance ?? u.walletBalance ?? u.availableBalance ?? 0).replace(/,/g, '')) || 0,
+                    lockedAmount: parseFloat(String(u.lockedAmount || 0).replace(/,/g, '')) || 0,
+                    isFrozen: Boolean(
+                        u.isFrozen || 
+                        u.walletStatus === 'FROZEN' || 
+                        u.status === 'FROZEN' ||
+                        localStorage.getItem(`rupiksha_frozen_${u.id}`) === 'true' ||
+                        localStorage.getItem(`rupiksha_frozen_${u.username}`) === 'true' ||
+                        localStorage.getItem(`rupiksha_frozen_${u.mobile}`) === 'true'
+                    )
+                };
+            });
 
             setWallets(normalized);
             try {

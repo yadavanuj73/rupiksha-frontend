@@ -248,7 +248,7 @@ const CmsRefundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
                                                 <div className="truncate">
                                                     <p className="text-xs font-black text-slate-900 truncate">{selectedUser.name}</p>
                                                     <p className="text-[10px] text-slate-500 font-medium">
-                                                        {selectedUser.mobile || selectedUser.username} · Role: <span className="font-bold text-amber-700">{selectedUser.role}</span>
+                                                        {selectedUser.mobile || selectedUser.username} {selectedUser.partyCode && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedUser.partyCode) ? `· Code: ${selectedUser.partyCode}` : ''} · Role: <span className="font-bold text-amber-700">{selectedUser.role}</span>
                                                     </p>
                                                 </div>
                                             </div>

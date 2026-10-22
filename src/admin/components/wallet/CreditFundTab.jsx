@@ -212,7 +212,7 @@ const CreditFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
                                                 <div className="truncate">
                                                     <p className="text-xs font-black text-slate-900 truncate">{selectedUser.name || selectedUser.fullName}</p>
                                                     <p className="text-[10px] text-slate-500 font-medium">
-                                                        {selectedUser.mobile || selectedUser.username} · <span className="font-bold text-emerald-700 uppercase">{selectedUser.role || 'Member'}</span>
+                                                        {selectedUser.mobile || selectedUser.username} {selectedUser.partyCode && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedUser.partyCode) ? `· Code: ${selectedUser.partyCode}` : ''} · <span className="font-bold text-emerald-700 uppercase">{selectedUser.role || 'Member'}</span>
                                                     </p>
                                                 </div>
                                             </div>

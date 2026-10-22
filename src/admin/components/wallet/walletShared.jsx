@@ -138,11 +138,20 @@ export const UserSelector = ({ users = [], value, onChange, placeholder, disable
         u.username === value || u.userId == value || u.id == value || u.mobile === value
     ) || (users || []).find(u => u.username === value || u.userId == value || u.id == value || u.mobile === value);
 
+    const getCleanPartyCode = (u) => {
+        if (!u) return '';
+        const raw = u.partyCode || u.userCode || '';
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) {
+            return '';
+        }
+        return raw;
+    };
+
     const filtered = pool.filter(u => {
         const nameStr = (u.name || u.fullName || '').toLowerCase();
         const unameStr = (u.username || '').toLowerCase();
         const mobStr = String(u.mobile || u.phone || '');
-        const pcodeStr = String(u.partyCode || '').toLowerCase();
+        const pcodeStr = getCleanPartyCode(u).toLowerCase();
         const q = search.trim().toLowerCase();
         return !q || nameStr.includes(q) || unameStr.includes(q) || mobStr.includes(q) || pcodeStr.includes(q);
     });
@@ -174,6 +183,11 @@ export const UserSelector = ({ users = [], value, onChange, placeholder, disable
                             <span className="text-slate-400 font-normal text-xs ml-1.5">
                                 ({selected.mobile || selected.username})
                             </span>
+                            {getCleanPartyCode(selected) && (
+                                <span className="text-indigo-600 font-mono text-[11px] font-bold ml-1.5">
+                                    · Code: {getCleanPartyCode(selected)}
+                                </span>
+                            )}
                         </span>
                         <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase border shrink-0 ${getRoleBadge(selected.role)}`}>
                             {selected.role || 'Member'}
@@ -212,6 +226,7 @@ export const UserSelector = ({ users = [], value, onChange, placeholder, disable
                             ) : (
                                 filtered.map((u, i) => {
                                     const bal = parseFloat(String(u.balance ?? u.walletBalance ?? 0).replace(/,/g, '')) || 0;
+                                    const code = getCleanPartyCode(u);
                                     return (
                                         <button
                                             key={u.id || u.username || i}
@@ -230,7 +245,7 @@ export const UserSelector = ({ users = [], value, onChange, placeholder, disable
                                                 <div className="truncate">
                                                     <p className="text-xs font-bold text-slate-800 truncate">{u.name || u.fullName || u.username}</p>
                                                     <p className="text-[10px] text-slate-400 truncate">
-                                                        {u.mobile || u.username} · {u.partyCode ? `Code: ${u.partyCode} · ` : ''}
+                                                        {u.mobile || u.username} · {code ? <span className="font-mono font-bold text-indigo-600">Code: {code} · </span> : ''}
                                                         <span className="font-semibold text-slate-600">{u.role || 'Member'}</span>
                                                     </p>
                                                 </div>

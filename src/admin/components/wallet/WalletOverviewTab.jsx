@@ -202,7 +202,7 @@ const WalletOverviewTab = ({ wallets = [], loading, onRefresh, onNavigate }) => 
                                             <div className="truncate">
                                                 <p className="text-xs font-black text-slate-800 truncate">{w.name || w.fullName}</p>
                                                 <p className="text-[10px] text-slate-400 truncate">
-                                                    {w.mobile || w.phone || w.username} {w.partyCode ? `· ${w.partyCode}` : ''}
+                                                    {w.mobile || w.phone || w.username} {w.partyCode && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(w.partyCode) ? `· ${w.partyCode}` : ''}
                                                 </p>
                                             </div>
                                         </div>
