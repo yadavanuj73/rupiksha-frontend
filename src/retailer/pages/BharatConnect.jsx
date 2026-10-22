@@ -34,8 +34,8 @@ const BharatConnect = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#f7f9fc] p-3 md:p-6 lg:px-8 pb-20 overflow-x-hidden font-['Inter',sans-serif]">
-            <div className="max-w-[1440px] mx-auto space-y-6">
+        <div className={`min-h-screen bg-[#f7f9fc] p-3 md:p-5 overflow-x-hidden font-['Inter',sans-serif] ${selectedCategory ? 'pb-3' : 'pb-20'}`}>
+            <div className={`max-w-[1440px] mx-auto ${selectedCategory ? 'space-y-3' : 'space-y-6'}`}>
                 <AnimatePresence mode="wait">
                     {selectedCategory ? (
                         <motion.div

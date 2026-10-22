@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     HandCoins, CheckCircle2, AlertCircle, Clock,
     Search, Check, ShieldCheck, RefreshCw, Printer,
     Wallet, ArrowRight, Info, X, Building2, User,
-    FileText, Calendar, DollarSign, ExternalLink, Lock
+    FileText, Calendar, DollarSign, ExternalLink, Lock,
+    ChevronDown, ChevronRight
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { bbpsService } from '../../../services/apiService';
@@ -25,6 +26,19 @@ const LoanRepaymentFlow = ({ onBack, category }) => {
     const [loadingBillers, setLoadingBillers] = useState(true);
     const [billerSearch, setBillerSearch] = useState('');
     const [selectedBiller, setSelectedBiller] = useState(null);
+    const [isComboboxOpen, setIsComboboxOpen] = useState(false);
+    const comboboxRef = useRef(null);
+
+    // Close combobox when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (comboboxRef.current && !comboboxRef.current.contains(e.target)) {
+                setIsComboboxOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     // Dynamic customer inputs
     const [customerParams, setCustomerParams] = useState({});
@@ -107,6 +121,8 @@ const LoanRepaymentFlow = ({ onBack, category }) => {
     // On biller selection, initialize customer input parameters
     const handleSelectBiller = (biller) => {
         setSelectedBiller(biller);
+        setIsComboboxOpen(false);
+        setBillerSearch('');
         setFetchedBill(null);
         setFetchError('');
         setFormError('');
@@ -120,6 +136,14 @@ const LoanRepaymentFlow = ({ onBack, category }) => {
             });
         }
         setCustomerParams(initialParams);
+    };
+
+    const handleChangeLender = () => {
+        setSelectedBiller(null);
+        setFetchedBill(null);
+        setFetchError('');
+        setFormError('');
+        setIsComboboxOpen(true);
     };
 
     const handleParamChange = (paramName, value) => {
@@ -349,7 +373,7 @@ const LoanRepaymentFlow = ({ onBack, category }) => {
     };
 
     return (
-        <div className="space-y-4 font-['Inter',sans-serif] max-w-full overflow-hidden">
+        <div className="space-y-3 font-['Inter',sans-serif] max-w-full">
             {/* Top Navigation & Service Bar */}
             <BbpsServiceNav
                 onBack={onBack}
@@ -359,148 +383,305 @@ const LoanRepaymentFlow = ({ onBack, category }) => {
                 badgeText="Bharat Connect"
             />
 
-            {/* Step 1: FORM (Biller selection + Input + Fetch/Validate) */}
+            {/* Step 1: FORM (Compact side-by-side without page scroll) */}
             {flowStep === 'FORM' && (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-                    {/* LEFT COLUMN: Biller Search & Catalogue Selection */}
-                    <div className="lg:col-span-7 space-y-4">
-                        <div className="rounded-2xl md:rounded-3xl border border-slate-200 bg-white p-4 md:p-5 shadow-xs">
-                            <div className="flex items-center justify-between mb-3.5">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                    {/* LEFT COLUMN: Lender Selection + Customer Loan Parameters */}
+                    <div className="lg:col-span-6 space-y-3">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 shadow-xs space-y-3">
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                                 <div>
                                     <h3 className="text-sm md:text-base font-black text-black flex items-center gap-2">
                                         <Building2 className="w-4 h-4 text-emerald-600" />
-                                        Select Lender / Financier
+                                        Select Lender & Details
                                     </h3>
-                                    <p className="text-xs text-slate-700 font-bold">
-                                        Choose from 470+ Bharat Connect registered banks, NBFCs & MFIs
+                                    <p className="text-[11px] text-slate-700 font-bold">
+                                        Choose from 470+ Bharat Connect registered lenders
                                     </p>
                                 </div>
-                                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300">
-                                    Official BBPS Lenders
+                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300">
+                                    Official BBPS
                                 </span>
                             </div>
 
-                            {/* Search Box */}
-                            <div className="relative mb-3">
-                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-600" />
-                                <input
-                                    type="text"
-                                    value={billerSearch}
-                                    onChange={(e) => setBillerSearch(e.target.value)}
-                                    placeholder="Search lenders (e.g. Annapurna, Bajaj, Muthoot, Tata Capital, HDFC, L&T, Hero...)"
-                                    className="w-full pl-10 pr-4 py-2.5 text-xs md:text-sm rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-bold text-black placeholder-slate-500 transition-all shadow-2xs"
-                                />
-                            </div>
+                            {/* Form error alert */}
+                            {formError && (
+                                <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-xs font-bold flex items-start gap-2">
+                                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                                    <span>{formError}</span>
+                                </div>
+                            )}
 
-                            {/* Biller Cards Grid */}
-                            <div className="max-h-[380px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                                {loadingBillers ? (
-                                    <div className="py-10 text-center space-y-2">
-                                        <RefreshCw className="w-6 h-6 animate-spin text-emerald-600 mx-auto" />
-                                        <p className="text-xs font-bold text-slate-700">Loading verified loan billers...</p>
-                                    </div>
-                                ) : filteredBillers.length === 0 ? (
-                                    <div className="py-6 text-center border-2 border-dashed border-slate-200 rounded-xl p-4 space-y-3">
-                                        <p className="text-xs font-bold text-slate-700">No lenders found matching "{billerSearch}"</p>
-                                        <div className="flex flex-wrap items-center justify-center gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => setBillerSearch('')}
-                                                className="text-xs font-bold text-emerald-700 hover:text-emerald-800 underline"
-                                            >
-                                                Clear search
-                                            </button>
-                                            {billerSearch.trim().length >= 8 && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleSelectBiller({
-                                                        billerId: billerSearch.trim().toUpperCase(),
-                                                        billerName: billerSearch.trim(),
-                                                        category: 'Loan Repayment',
-                                                        billerFetchRequirement: 'MANDATORY',
-                                                        billerPaymentExactness: 'Exact',
-                                                        supportBillValidation: 'OPTIONAL',
-                                                        description: 'Bharat Connect Registered Loan Provider',
-                                                        inputParams: [
-                                                            { paramName: 'Loan Account Number', dataType: 'ALPHANUMERIC', optional: false, minLength: 4, maxLength: 30, hint: 'Loan Account Number / LAN' }
-                                                        ]
-                                                    })}
-                                                    className="text-xs font-bold bg-emerald-100/70 text-emerald-900 border border-emerald-300 rounded-lg px-3 py-1.5 hover:bg-emerald-200/80 transition-colors"
-                                                >
-                                                    Pay using Biller ID "{billerSearch.trim().toUpperCase()}"
-                                                </button>
-                                            )}
+                            {/* Fetch error alert */}
+                            {fetchError && (
+                                <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-xs font-bold flex items-start gap-2">
+                                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                                    <span>{fetchError}</span>
+                                </div>
+                            )}
+
+                            {/* LENDER SELECTION: Combobox Dropdown */}
+                            <div className="space-y-1 relative" ref={comboboxRef}>
+                                <label className="block text-xs font-black text-black">
+                                    Lender / Financier <span className="text-rose-600">*</span>
+                                </label>
+
+                                {selectedBiller ? (
+                                    /* Selected Lender Badge with Change Option */
+                                    <div className="flex items-center justify-between p-2.5 rounded-xl border border-emerald-300 bg-emerald-50/70 shadow-2xs">
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white font-black text-xs flex items-center justify-center shrink-0">
+                                                {selectedBiller.billerName.slice(0, 2).toUpperCase()}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <div className="flex items-center gap-1.5">
+                                                    <h4 className="text-xs md:text-sm font-black text-black truncate">
+                                                        {selectedBiller.billerName}
+                                                    </h4>
+                                                    <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-emerald-600 text-white shrink-0">
+                                                        <Check className="w-2 h-2" />
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] font-mono font-bold text-slate-600">
+                                                        {selectedBiller.billerId}
+                                                    </span>
+                                                    <span className="text-[10px] font-bold text-emerald-800">
+                                                        {selectedBiller.billerFetchRequirement === 'NOT_SUPPORTED' ? 'Instant Pay' : 'Fetch Supported'}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
+                                        <button
+                                            type="button"
+                                            onClick={handleChangeLender}
+                                            className="px-2.5 py-1 text-xs font-black text-emerald-800 hover:text-emerald-950 hover:bg-emerald-100 rounded-lg transition-colors cursor-pointer shrink-0"
+                                        >
+                                            Change
+                                        </button>
                                     </div>
                                 ) : (
-                                    <>
-                                        {visibleBillers.map((biller) => {
-                                            const isSelected = selectedBiller?.billerId === biller.billerId;
-                                            return (
-                                                <div
-                                                    key={biller.billerId}
-                                                    onClick={() => handleSelectBiller(biller)}
-                                                    className={`p-3 md:p-3.5 rounded-xl border cursor-pointer transition-all flex items-start justify-between gap-3 ${
-                                                        isSelected
-                                                            ? 'border-emerald-600 bg-emerald-50/60 shadow-xs'
-                                                            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/70 bg-white'
-                                                    }`}
-                                                >
-                                                    <div className="space-y-1 min-w-0">
-                                                        <div className="flex items-center gap-2">
-                                                            <h4 className="text-xs md:text-sm font-black text-black truncate">
-                                                                {biller.billerName}
-                                                            </h4>
-                                                            {isSelected && (
-                                                                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-600 text-white">
-                                                                    <Check className="w-2.5 h-2.5" />
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <p className="text-[11px] font-bold text-slate-700 line-clamp-1">
-                                                            {biller.description || 'Bharat Connect Registered Lender'}
-                                                        </p>
-                                                        <div className="flex items-center gap-2 pt-0.5">
-                                                            <span className="text-[10px] font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                                                                {biller.billerId}
-                                                            </span>
-                                                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
-                                                                {biller.billerFetchRequirement === 'NOT_SUPPORTED' ? 'Instant Pay' : 'Bill Fetch Supported'}
-                                                            </span>
+                                    /* Dropdown Input Trigger */
+                                    <div className="relative">
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
+                                            <input
+                                                type="text"
+                                                value={billerSearch}
+                                                onFocus={() => setIsComboboxOpen(true)}
+                                                onChange={(e) => {
+                                                    setBillerSearch(e.target.value);
+                                                    setIsComboboxOpen(true);
+                                                }}
+                                                placeholder={loadingBillers ? "Loading 470+ lenders..." : "Select or search lender (e.g. Annapurna, Bajaj, Muthoot, Tata...)"}
+                                                className="w-full pl-9 pr-8 py-2 text-xs md:text-sm rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-bold text-black placeholder-slate-500 transition-all shadow-2xs"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsComboboxOpen(prev => !prev)}
+                                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-black cursor-pointer"
+                                            >
+                                                <ChevronDown className={`w-4 h-4 transition-transform ${isComboboxOpen ? 'rotate-180' : ''}`} />
+                                            </button>
+                                        </div>
+
+                                        {/* Floating Combobox Dropdown (Absolute - zero document height added!) */}
+                                        {isComboboxOpen && (
+                                            <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden max-h-64 flex flex-col">
+                                                {/* Popular Quick-Select Pills */}
+                                                {!billerSearch && (
+                                                    <div className="p-2 border-b border-slate-100 bg-slate-50/70">
+                                                        <span className="text-[10px] font-bold text-slate-500 block mb-1">Quick Select Popular:</span>
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {['Annapurna', 'Aadhar', 'Aditya Birla', 'Piramal', 'Aavas', '121 Finance'].map(pill => (
+                                                                <button
+                                                                    key={pill}
+                                                                    type="button"
+                                                                    onClick={() => setBillerSearch(pill)}
+                                                                    className="px-2 py-0.5 text-[10px] font-bold bg-white text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 border border-slate-200 rounded-full transition-colors cursor-pointer"
+                                                                >
+                                                                    {pill}
+                                                                </button>
+                                                            ))}
                                                         </div>
                                                     </div>
-                                                    <ArrowRight className={`w-4 h-4 shrink-0 transition-transform ${isSelected ? 'text-emerald-700 translate-x-1' : 'text-slate-400'}`} />
-                                                </div>
-                                            );
-                                        })}
+                                                )}
 
-                                        {filteredBillers.length > displayLimit && (
-                                            <div className="pt-1.5">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setDisplayLimit((prev) => prev + 30)}
-                                                    className="w-full py-2.5 px-4 text-xs font-bold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition-colors shadow-2xs"
-                                                >
-                                                    Showing {visibleBillers.length} of {filteredBillers.length} lenders — Click to load 30 more
-                                                </button>
+                                                {/* Searchable Options */}
+                                                <div className="overflow-y-auto max-h-52 divide-y divide-slate-100 custom-scrollbar">
+                                                    {loadingBillers ? (
+                                                        <div className="p-4 text-center">
+                                                            <RefreshCw className="w-4 h-4 animate-spin text-emerald-600 mx-auto mb-1" />
+                                                            <p className="text-[11px] font-bold text-slate-500">Loading lenders...</p>
+                                                        </div>
+                                                    ) : filteredBillers.length === 0 ? (
+                                                        <div className="p-3 text-center space-y-2">
+                                                            <p className="text-xs font-bold text-slate-600">No lenders found matching "{billerSearch}"</p>
+                                                            {billerSearch.trim().length >= 8 && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleSelectBiller({
+                                                                        billerId: billerSearch.trim().toUpperCase(),
+                                                                        billerName: billerSearch.trim(),
+                                                                        category: 'Loan Repayment',
+                                                                        billerFetchRequirement: 'MANDATORY',
+                                                                        billerPaymentExactness: 'Exact',
+                                                                        supportBillValidation: 'OPTIONAL',
+                                                                        description: 'Bharat Connect Registered Loan Provider',
+                                                                        inputParams: [
+                                                                            { paramName: 'Loan Account Number', dataType: 'ALPHANUMERIC', optional: false, minLength: 4, maxLength: 30, hint: 'Loan Account Number / LAN' }
+                                                                        ]
+                                                                    })}
+                                                                    className="text-[11px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-lg px-2.5 py-1 hover:bg-emerald-200 transition-colors"
+                                                                >
+                                                                    Use ID "{billerSearch.trim().toUpperCase()}"
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        filteredBillers.slice(0, 40).map((biller) => (
+                                                            <div
+                                                                key={biller.billerId}
+                                                                onClick={() => handleSelectBiller(biller)}
+                                                                className="p-2.5 hover:bg-emerald-50/60 cursor-pointer transition-colors flex items-center justify-between gap-2.5 text-left"
+                                                            >
+                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                    <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-800 font-black text-[10px] flex items-center justify-center shrink-0 border border-slate-200">
+                                                                        {biller.billerName.slice(0, 2).toUpperCase()}
+                                                                    </div>
+                                                                    <div className="min-w-0">
+                                                                        <div className="text-xs font-black text-black truncate">
+                                                                            {biller.billerName}
+                                                                        </div>
+                                                                        <div className="text-[10px] font-mono text-slate-500">
+                                                                            {biller.billerId}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 shrink-0">
+                                                                    {biller.billerFetchRequirement === 'NOT_SUPPORTED' ? 'Pay' : 'Fetch'}
+                                                                </span>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
                                             </div>
                                         )}
-                                    </>
+                                    </div>
                                 )}
                             </div>
+
+                            {/* CUSTOMER LOAN PARAMETERS FORM */}
+                            <form onSubmit={handleFetchBill} className="space-y-3 pt-1">
+                                {selectedBiller && selectedBiller.inputParams?.map((param) => {
+                                    const val = customerParams[param.paramName] || '';
+                                    const hasErr = Boolean(paramErrors[param.paramName]);
+                                    return (
+                                        <div key={param.paramName} className="space-y-1">
+                                            <label className="block text-xs font-black text-black">
+                                                {param.paramName}
+                                                {!param.optional && <span className="text-rose-600 ml-1">*</span>}
+                                            </label>
+                                            <input
+                                                type={param.dataType === 'NUMERIC' ? 'tel' : 'text'}
+                                                value={val}
+                                                maxLength={param.maxLength > 0 ? param.maxLength : undefined}
+                                                onChange={(e) => handleParamChange(param.paramName, e.target.value)}
+                                                placeholder={param.hint || `Enter ${param.paramName}`}
+                                                className={`w-full px-3 py-2 text-xs md:text-sm rounded-xl border font-bold text-black placeholder-slate-400 transition-all ${
+                                                    hasErr
+                                                        ? 'border-rose-400 bg-rose-50/50 focus:ring-2 focus:ring-rose-500/20'
+                                                        : 'border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600'
+                                                }`}
+                                            />
+                                            {hasErr && (
+                                                <p className="text-[11px] font-bold text-rose-600">{paramErrors[param.paramName]}</p>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+
+                                {!selectedBiller && (
+                                    <div className="space-y-1 opacity-60 pointer-events-none">
+                                        <label className="block text-xs font-black text-slate-700">
+                                            Loan Account Number / LAN <span className="text-rose-600">*</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            disabled
+                                            placeholder="Select a lender above to enter Loan Account Number"
+                                            className="w-full px-3 py-2 text-xs md:text-sm rounded-xl border border-slate-300 bg-slate-100 font-bold text-slate-500 cursor-not-allowed"
+                                        />
+                                    </div>
+                                )}
+
+                                {/* Customer Mobile Number */}
+                                <div className="space-y-1">
+                                    <label className="block text-xs font-black text-black">
+                                        Customer Mobile Number <span className="text-rose-600">*</span>
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        maxLength={10}
+                                        value={customerMobile}
+                                        disabled={!selectedBiller}
+                                        onChange={(e) => {
+                                            const v = e.target.value.replace(/\D/g, '');
+                                            setCustomerMobile(v);
+                                            if (paramErrors.customerMobile) {
+                                                setParamErrors(prev => {
+                                                    const next = { ...prev };
+                                                    delete next.customerMobile;
+                                                    return next;
+                                                });
+                                            }
+                                        }}
+                                        placeholder="10-digit customer mobile for SMS receipt"
+                                        className={`w-full px-3 py-2 text-xs md:text-sm rounded-xl border font-bold text-black placeholder-slate-400 transition-all ${
+                                            !selectedBiller
+                                                ? 'border-slate-200 bg-slate-100 opacity-60 cursor-not-allowed'
+                                                : paramErrors.customerMobile
+                                                ? 'border-rose-400 bg-rose-50/50'
+                                                : 'border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600'
+                                        }`}
+                                    />
+                                    {paramErrors.customerMobile && (
+                                        <p className="text-[11px] font-bold text-rose-600">{paramErrors.customerMobile}</p>
+                                    )}
+                                </div>
+
+                                {/* Fetch / Verify Account Button */}
+                                <button
+                                    type="submit"
+                                    disabled={!selectedBiller || isFetchingBill}
+                                    className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-black text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs disabled:opacity-50 cursor-pointer"
+                                >
+                                    {isFetchingBill ? (
+                                        <>
+                                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                            <span>Connecting to Lender...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Search className="w-3.5 h-3.5" />
+                                            <span>{selectedBiller?.billerFetchRequirement === 'NOT_SUPPORTED' ? 'Verify Account' : 'Fetch Loan Details'}</span>
+                                        </>
+                                    )}
+                                </button>
+                            </form>
                         </div>
                     </div>
 
-                    {/* RIGHT COLUMN: Customer Parameter Inputs & Bill Details Card */}
-                    <div className="lg:col-span-5 space-y-4">
-                        <div className="rounded-2xl md:rounded-3xl border border-slate-200 bg-white p-4 md:p-5 shadow-xs space-y-4">
-                            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                    {/* RIGHT COLUMN: Account Details & Repayment Summary */}
+                    <div className="lg:col-span-6 space-y-3">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 shadow-xs space-y-3">
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                                 <div>
                                     <h3 className="text-sm md:text-base font-black text-black">
                                         Loan Account Details
                                     </h3>
-                                    <p className="text-xs text-slate-700 font-bold">
-                                        {selectedBiller ? selectedBiller.billerName : 'Select a lender to enter account details'}
+                                    <p className="text-[11px] text-slate-700 font-bold">
+                                        {selectedBiller ? selectedBiller.billerName : 'Verified Bharat Connect Bill'}
                                     </p>
                                 </div>
                                 <div className="text-right">
@@ -509,120 +690,36 @@ const LoanRepaymentFlow = ({ onBack, category }) => {
                                 </div>
                             </div>
 
-                            {/* Form error alert */}
-                            {formError && (
-                                <div className="p-3 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-xs font-bold flex items-start gap-2">
-                                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                                    <span>{formError}</span>
-                                </div>
-                            )}
-
-                            {/* Fetch error alert */}
-                            {fetchError && (
-                                <div className="p-3 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-xs font-bold flex items-start gap-2">
-                                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                                    <span>{fetchError}</span>
-                                </div>
-                            )}
-
-                            {!selectedBiller ? (
-                                <div className="p-8 text-center border-2 border-dashed border-slate-200 rounded-xl space-y-2">
-                                    <Building2 className="w-8 h-8 text-slate-400 mx-auto" />
-                                    <p className="text-xs font-bold text-slate-700">Please choose a loan provider from the list to continue.</p>
+                            {/* State 1: Awaiting Fetch */}
+                            {!fetchedBill ? (
+                                <div className="py-8 px-4 text-center border-2 border-dashed border-slate-200 rounded-xl space-y-3">
+                                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center mx-auto border border-emerald-200">
+                                        <HandCoins className="w-6 h-6" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <h4 className="text-xs font-black text-black">Awaiting Loan Verification</h4>
+                                        <p className="text-[11px] font-bold text-slate-600 max-w-sm mx-auto">
+                                            Select your lender and enter your Loan Account Number on the left, then click <span className="text-slate-900">"Fetch Loan Details"</span>.
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center justify-center gap-3 pt-2 text-[10px] font-black text-slate-700">
+                                        <span className="flex items-center gap-1">
+                                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> NPCI Certified
+                                        </span>
+                                        <span className="flex items-center gap-1">
+                                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Instant Receipt
+                                        </span>
+                                        <span className="flex items-center gap-1">
+                                            <Check className="w-3.5 h-3.5 text-emerald-600" /> ₹0 Convenience Fee
+                                        </span>
+                                    </div>
                                 </div>
                             ) : (
-                                <form onSubmit={handleFetchBill} className="space-y-3.5">
-                                    {/* Dynamic Biller Parameters */}
-                                    {selectedBiller.inputParams?.map((param) => {
-                                        const val = customerParams[param.paramName] || '';
-                                        const hasErr = Boolean(paramErrors[param.paramName]);
-                                        return (
-                                            <div key={param.paramName} className="space-y-1">
-                                                <label className="block text-xs font-black text-black">
-                                                    {param.paramName}
-                                                    {!param.optional && <span className="text-rose-600 ml-1">*</span>}
-                                                </label>
-                                                <input
-                                                    type={param.dataType === 'NUMERIC' ? 'tel' : 'text'}
-                                                    value={val}
-                                                    maxLength={param.maxLength > 0 ? param.maxLength : undefined}
-                                                    onChange={(e) => handleParamChange(param.paramName, e.target.value)}
-                                                    placeholder={param.hint || `Enter ${param.paramName}`}
-                                                    className={`w-full px-3.5 py-2.5 text-xs md:text-sm rounded-xl border font-bold text-black placeholder-slate-500 transition-all ${
-                                                        hasErr
-                                                            ? 'border-rose-400 bg-rose-50/50 focus:ring-2 focus:ring-rose-500/20'
-                                                            : 'border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600'
-                                                    }`}
-                                                />
-                                                {hasErr && (
-                                                    <p className="text-[11px] font-bold text-rose-600">{paramErrors[param.paramName]}</p>
-                                                )}
-                                                {param.hint && !hasErr && (
-                                                    <p className="text-[10px] font-bold text-slate-500">{param.hint}</p>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-
-                                    {/* Customer Mobile Number */}
-                                    <div className="space-y-1">
-                                        <label className="block text-xs font-black text-black">
-                                            Customer Mobile Number <span className="text-rose-600">*</span>
-                                        </label>
-                                        <input
-                                            type="tel"
-                                            maxLength={10}
-                                            value={customerMobile}
-                                            onChange={(e) => {
-                                                const v = e.target.value.replace(/\D/g, '');
-                                                setCustomerMobile(v);
-                                                if (paramErrors.customerMobile) {
-                                                    setParamErrors(prev => {
-                                                        const next = { ...prev };
-                                                        delete next.customerMobile;
-                                                        return next;
-                                                    });
-                                                }
-                                            }}
-                                            placeholder="10-digit customer mobile for SMS receipt"
-                                            className={`w-full px-3.5 py-2.5 text-xs md:text-sm rounded-xl border font-bold text-black placeholder-slate-500 transition-all ${
-                                                paramErrors.customerMobile
-                                                    ? 'border-rose-400 bg-rose-50/50'
-                                                    : 'border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600'
-                                            }`}
-                                        />
-                                        {paramErrors.customerMobile && (
-                                            <p className="text-[11px] font-bold text-rose-600">{paramErrors.customerMobile}</p>
-                                        )}
-                                    </div>
-
-                                    {/* Fetch Bill / Validate Account Button */}
-                                    <button
-                                        type="submit"
-                                        disabled={isFetchingBill}
-                                        className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-black text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs disabled:opacity-60 cursor-pointer"
-                                    >
-                                        {isFetchingBill ? (
-                                            <>
-                                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                                <span>Connecting to Lender...</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Search className="w-3.5 h-3.5" />
-                                                <span>{selectedBiller.billerFetchRequirement === 'NOT_SUPPORTED' ? 'Verify Account' : 'Fetch Loan Details'}</span>
-                                            </>
-                                        )}
-                                    </button>
-                                </form>
-                            )}
-
-                            {/* Fetched Loan Details Card */}
-                            {fetchedBill && (
+                                /* State 2: Fetched Loan Details Card */
                                 <motion.div
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className="p-4 rounded-2xl border border-emerald-300 bg-emerald-50/50 space-y-3"
+                                    className="p-3.5 rounded-xl border border-emerald-300 bg-emerald-50/50 space-y-3"
                                 >
                                     <div className="flex items-center justify-between">
                                         <span className="text-[11px] font-black uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
@@ -636,6 +733,7 @@ const LoanRepaymentFlow = ({ onBack, category }) => {
                                         )}
                                     </div>
 
+                                    {/* Breakdown in the exact series requested: Consumer Name, BillerName, Consumer Number, Ref, Period */}
                                     <div className="space-y-1.5 bg-white p-3 rounded-xl border border-emerald-200">
                                         <div className="flex justify-between items-center text-xs">
                                             <span className="font-bold text-slate-700">Consumer Name</span>
@@ -668,14 +766,14 @@ const LoanRepaymentFlow = ({ onBack, category }) => {
                                     {/* Amount Section */}
                                     <div className="space-y-2">
                                         {isNoBillDue && (
-                                            <div className="p-3 rounded-xl bg-teal-100 text-teal-900 border border-teal-300 text-xs font-bold flex items-center gap-2">
+                                            <div className="p-2.5 rounded-xl bg-teal-100 text-teal-900 border border-teal-300 text-xs font-bold flex items-center gap-2">
                                                 <CheckCircle2 className="w-4 h-4 text-teal-700 shrink-0" />
-                                                <span>No pending EMI due for this loan account. You can optionally make an advance repayment:</span>
+                                                <span>No pending EMI due. You may enter an advance repayment amount:</span>
                                             </div>
                                         )}
 
                                         {fetchedBill.billAmount && !isNoBillDue ? (
-                                            <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-emerald-200">
+                                            <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-emerald-200">
                                                 <span className="text-xs font-black text-black">EMI / Payable Amount</span>
                                                 <span className="text-base font-black text-emerald-700">
                                                     ₹{parseFloat(fetchedBill.billAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -692,37 +790,37 @@ const LoanRepaymentFlow = ({ onBack, category }) => {
                                                     value={customAmount}
                                                     onChange={(e) => setCustomAmount(e.target.value)}
                                                     placeholder="Enter repayment amount"
-                                                    className="w-full px-3.5 py-2.5 text-xs md:text-sm rounded-xl border border-slate-300 bg-white font-black text-black focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                                                    className="w-full px-3 py-2 text-xs md:text-sm rounded-xl border border-slate-300 bg-white font-black text-black focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
                                                 />
                                             </div>
                                         )}
 
-                                            {/* Insufficient balance warning */}
-                                            {isInsufficient && (
-                                                <div className="p-3 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-xs font-bold flex items-start gap-2">
-                                                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
-                                                    <div>
-                                                        <span className="font-black block">Insufficient Wallet Balance</span>
-                                                        <span>Available: ₹{numBalance.toFixed(2)} | Required: ₹{totalPayable.toFixed(2)}. Please top up your wallet.</span>
-                                                    </div>
+                                        {/* Insufficient balance warning */}
+                                        {isInsufficient && (
+                                            <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-xs font-bold flex items-start gap-2">
+                                                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+                                                <div>
+                                                    <span className="font-black block">Insufficient Wallet Balance</span>
+                                                    <span>Available: ₹{numBalance.toFixed(2)} | Required: ₹{totalPayable.toFixed(2)}. Please top up your wallet.</span>
                                                 </div>
-                                            )}
+                                            </div>
+                                        )}
 
-                                            {/* Proceed to Payment Button */}
-                                            <button
-                                                type="button"
-                                                onClick={handleOpenConfirm}
-                                                disabled={isInsufficient || totalPayable <= 0}
-                                                className={`w-full py-3 px-5 rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md ${
-                                                    isInsufficient || totalPayable <= 0
-                                                        ? 'bg-slate-200 text-slate-600 cursor-not-allowed border border-slate-300'
-                                                        : 'bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white cursor-pointer active:scale-[0.99]'
-                                                }`}
-                                            >
-                                                <ShieldCheck className="w-4 h-4" />
-                                                <span>Review & Pay ₹{totalPayable.toFixed(2)}</span>
-                                            </button>
-                                        </div>
+                                        {/* Proceed to Payment Button */}
+                                        <button
+                                            type="button"
+                                            onClick={handleOpenConfirm}
+                                            disabled={isInsufficient || totalPayable <= 0}
+                                            className={`w-full py-2.5 px-4 rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md ${
+                                                isInsufficient || totalPayable <= 0
+                                                    ? 'bg-slate-200 text-slate-600 cursor-not-allowed border border-slate-300'
+                                                    : 'bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white cursor-pointer active:scale-[0.99]'
+                                            }`}
+                                        >
+                                            <ShieldCheck className="w-4 h-4" />
+                                            <span>Review & Pay ₹{totalPayable.toFixed(2)}</span>
+                                        </button>
+                                    </div>
                                 </motion.div>
                             )}
                         </div>
