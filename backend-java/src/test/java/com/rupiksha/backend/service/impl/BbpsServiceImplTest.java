@@ -811,5 +811,71 @@ class BbpsServiceImplTest {
                 any(), any(), any(), any(), any()
         );
     }
+
+    @Test
+    @DisplayName("Annapurna Finance BFR008 (Unable to get bill details) is recognized as noBillDue with active session")
+    void testAnnapurnaFinanceBFR008NoBillDue() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)).thenReturn(Optional.empty());
+
+        BillAvenueDtos.BillFetchResponse bfr008Resp = new BillAvenueDtos.BillFetchResponse();
+        bfr008Resp.setResponseCode("001");
+        bfr008Resp.setFetchRequestId("REQ-ANNA-25735642");
+        bfr008Resp.setErrorInfo(List.of(new BillAvenueDtos.ErrorInfo("BFR008", "Unable to get bill details from Biller")));
+
+        when(billAvenueClient.fetchBill(eq("ANNA00000NATUO"), any(), any(), any())).thenReturn(bfr008Resp);
+
+        BbpsDtos.LoanFetchRequest request = new BbpsDtos.LoanFetchRequest();
+        request.setBillerId("ANNA00000NATUO");
+        request.setCustomerMobile("9892506507");
+        request.setCustomerParams(java.util.Map.of("Loan Account Number", "25735642"));
+
+        BbpsDtos.BillFetchResult result = bbpsService.fetchLoanBill(userId, request, "127.0.0.1");
+
+        assertNotNull(result);
+        assertTrue(result.isSuccess(), "BFR008 must be treated as successful account fetch with no bill due");
+        assertTrue(result.isNoBillDue(), "noBillDue must be true for BFR008");
+        assertEquals("ANNA00000NATUO", result.getBillerId());
+        assertEquals("25735642", result.getConsumerNumber());
+        assertEquals(BigDecimal.ZERO, result.getBillAmount());
+        assertEquals("REQ-ANNA-25735642", result.getFetchRequestId());
+    }
+
+    @Test
+    @DisplayName("DMI Finance automatically adapts Loan Account Number to Loan ID to satisfy BBPS schema")
+    void testDmiFinanceParameterAdaptation() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)).thenReturn(Optional.empty());
+
+        BillAvenueDtos.BillFetchResponse dmiSuccess = new BillAvenueDtos.BillFetchResponse();
+        dmiSuccess.setResponseCode("000");
+        dmiSuccess.setFetchRequestId("REQ-DMI-57662896");
+        dmiSuccess.setBillAmountPaise(325000L); // ₹3,250.00
+        dmiSuccess.setCustomerName("DMI Borrower");
+
+        when(billAvenueClient.fetchBill(eq("DMIF00000NATMN"), any(), any(), any())).thenReturn(dmiSuccess);
+
+        BbpsDtos.LoanFetchRequest request = new BbpsDtos.LoanFetchRequest();
+        request.setBillerId("DMIF00000NATMN");
+        request.setCustomerMobile("9892506507");
+        // User entered "Loan Account Number", which should be mapped to "Loan ID"
+        request.setCustomerParams(java.util.Map.of("Loan Account Number", "DMI0057662896"));
+
+        BbpsDtos.BillFetchResult result = bbpsService.fetchLoanBill(userId, request, "127.0.0.1");
+
+        assertNotNull(result);
+        assertTrue(result.isSuccess());
+        assertEquals("DMIF00000NATMN", result.getBillerId());
+        assertEquals("DMI0057662896", result.getConsumerNumber());
+        assertEquals(new BigDecimal("3250.00"), result.getBillAmount());
+
+        // Verify that billAvenueClient received "Loan ID" parameter name, not raw "Loan Account Number"
+        verify(billAvenueClient).fetchBill(
+                eq("DMIF00000NATMN"),
+                argThat(inputs -> inputs.stream().anyMatch(i -> "Loan ID".equals(i.getParamName()) && "DMI0057662896".equals(i.getParamValue()))),
+                eq("9892506507"),
+                any()
+        );
+    }
 }
 

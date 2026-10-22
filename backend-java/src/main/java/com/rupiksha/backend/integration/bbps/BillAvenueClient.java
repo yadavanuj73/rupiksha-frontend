@@ -306,6 +306,127 @@ public class BillAvenueClient {
         }
     }
 
+    private final java.util.Map<String, BillAvenueDtos.BillerInfoResponse> mdmCache = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * Executes Biller Info API (MDM) per BBPS Specification Section 4.1 (Pages 11-22).
+     * Endpoint: extMdmCntrl/mdmRequestNew/xml
+     * Note: Respects the BillAvenue quota (15 requests per 24 hours) by caching responses in memory.
+     */
+    public BillAvenueDtos.BillerInfoResponse fetchBillerInfo(String billerId) {
+        if (billerId == null || billerId.isBlank()) return null;
+        String cleanId = billerId.trim().toUpperCase();
+        BillAvenueDtos.BillerInfoResponse cached = mdmCache.get(cleanId);
+        if (cached != null) {
+            log.info("Returning cached Biller Info MDM for: {}", cleanId);
+            return cached;
+        }
+
+        if (!isConfigured()) {
+            return null;
+        }
+
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+                + "<billerInfoRequest>"
+                + "<billerId>" + escapeXml(cleanId) + "</billerId>"
+                + "</billerInfoRequest>";
+
+        String requestId = BillAvenueCryptoUtil.generateRequestId();
+        log.info("Sending Biller Info MDM XML request for biller: {}, requestId: {}", cleanId, requestId);
+
+        try {
+            String rawResp = executeXmlApiCall("extMdmCntrl/mdmRequestNew/xml", xml, "1.0", requestId);
+            if (rawResp == null || rawResp.isBlank()) return null;
+
+            String decryptedXml = decryptResponseIfNeeded(rawResp);
+            log.info("Decrypted Biller Info MDM XML response for {}: {}", cleanId, decryptedXml);
+            BillAvenueDtos.BillerInfoResponse parsed = parseBillerInfoXmlResponse(decryptedXml, cleanId);
+            if (parsed != null && parsed.isSuccess()) {
+                mdmCache.put(cleanId, parsed);
+            }
+            return parsed;
+        } catch (Exception e) {
+            log.warn("Exception during Biller Info MDM fetch for biller {}: {}", cleanId, e.getMessage());
+            return null;
+        }
+    }
+
+    public BillAvenueDtos.BillerInfoResponse parseBillerInfoXmlResponse(String xmlStr, String billerId) {
+        BillAvenueDtos.BillerInfoResponse.BillerInfoResponseBuilder builder = BillAvenueDtos.BillerInfoResponse.builder()
+                .billerId(billerId)
+                .rawXml(xmlStr);
+        if (xmlStr == null || xmlStr.isBlank()) {
+            return builder.responseCode("500").responseReason("Empty XML response").build();
+        }
+
+        try {
+            Document doc = parseXml(xmlStr.trim());
+            Element root = doc.getDocumentElement();
+
+            String code = getTagValue(root, "responseCode");
+            String reason = getTagValue(root, "responseReason");
+            builder.responseCode(!code.isBlank() ? code : "500");
+            builder.responseReason(!reason.isBlank() ? reason : "Unknown");
+
+            Element billerElem = getFirstChildElement(root, "biller");
+            if (billerElem != null) {
+                builder.billerName(getTagValue(billerElem, "billerName"));
+                builder.billerCategory(getTagValue(billerElem, "billerCategory"));
+                builder.billerAdhoc(getTagValue(billerElem, "billerAdhoc"));
+                builder.billerFetchRequirement(getTagValue(billerElem, "billerFetchRequiremet"));
+                builder.billerPaymentExactness(getTagValue(billerElem, "billerPaymentExactness"));
+                builder.billerSupportBillValidation(getTagValue(billerElem, "billerSupportBillValidation"));
+
+                Element inputParamsElem = getFirstChildElement(billerElem, "billerInputParams");
+                if (inputParamsElem != null) {
+                    List<BillAvenueDtos.BillerParamInfo> paramList = new ArrayList<>();
+                    NodeList params = inputParamsElem.getElementsByTagName("paramInfo");
+                    for (int i = 0; i < params.getLength(); i++) {
+                        Element pElem = (Element) params.item(i);
+                        String pName = getTagValue(pElem, "paramName");
+                        String dType = getTagValue(pElem, "dataType");
+                        String isOpt = getTagValue(pElem, "isOptional");
+                        String minL = getTagValue(pElem, "minLength");
+                        String maxL = getTagValue(pElem, "maxLength");
+                        String regEx = getTagValue(pElem, "regEx");
+
+                        int min = 0;
+                        int max = 0;
+                        try { if (!minL.isBlank()) min = Integer.parseInt(minL); } catch (Exception ignored) {}
+                        try { if (!maxL.isBlank()) max = Integer.parseInt(maxL); } catch (Exception ignored) {}
+
+                        paramList.add(BillAvenueDtos.BillerParamInfo.builder()
+                                .paramName(pName)
+                                .dataType(dType)
+                                .optional("true".equalsIgnoreCase(isOpt))
+                                .minLength(min)
+                                .maxLength(max)
+                                .regEx(regEx)
+                                .build());
+                    }
+                    builder.inputParams(paramList);
+                }
+            }
+
+            NodeList errNodes = root.getElementsByTagName("error");
+            if (errNodes != null && errNodes.getLength() > 0) {
+                List<BillAvenueDtos.ErrorInfo> errors = new ArrayList<>();
+                for (int i = 0; i < errNodes.getLength(); i++) {
+                    Element errElem = (Element) errNodes.item(i);
+                    String errCode = getTagValue(errElem, "errorCode");
+                    String errMsg = getTagValue(errElem, "errorMessage");
+                    errors.add(new BillAvenueDtos.ErrorInfo(errCode, errMsg));
+                }
+                builder.errorInfo(errors);
+            }
+
+            return builder.build();
+        } catch (Exception e) {
+            log.warn("Error parsing Biller Info MDM XML: {}", e.getMessage());
+            return builder.responseCode("PARSE_ERROR").responseReason("Failed to parse MDM XML: " + e.getMessage()).build();
+        }
+    }
+
     /**
      * Executes Bill Payment via XML matching the PHP working reference (Section 4 of PHP code)
      */

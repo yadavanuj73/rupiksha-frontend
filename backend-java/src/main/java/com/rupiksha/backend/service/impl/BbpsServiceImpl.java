@@ -1348,23 +1348,13 @@ public class BbpsServiceImpl implements BbpsService {
         // Validate dynamic customer parameters
         loanBillerRegistry.validateCustomerParams(biller, request.getCustomerParams());
 
-        // Prepare BillAvenue Input Params
-        List<BillAvenueDtos.InputParam> inputs = new ArrayList<>();
-        if (request.getCustomerParams() != null) {
-            for (Map.Entry<String, String> entry : request.getCustomerParams().entrySet()) {
-                if (entry.getValue() != null && !entry.getValue().isBlank()) {
-                    inputs.add(BillAvenueDtos.InputParam.builder()
-                            .paramName(entry.getKey().trim())
-                            .paramValue(entry.getValue().trim())
-                            .build());
-                }
-            }
-        }
-
         String sanitizedIp = (clientIp != null && clientIp.matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"))
                 ? clientIp : "103.108.7.127";
 
         String primaryLoanAccount = loanBillerRegistry.extractPrimaryLoanAccountNumber(request.getCustomerParams());
+
+        // Prepare BillAvenue Input Params mapped to biller schema
+        List<BillAvenueDtos.InputParam> inputs = buildLoanInputParams(biller, request.getCustomerParams(), request.getCustomerMobile());
 
         // If biller fetch requirement is NOT_SUPPORTED, check if bill validation is supported
         if ("NOT_SUPPORTED".equalsIgnoreCase(biller.getBillerFetchRequirement())) {
@@ -1443,25 +1433,67 @@ public class BbpsServiceImpl implements BbpsService {
                             request.getCustomerMobile().trim(),
                             sanitizedIp
                     );
-                    if (fetchResp != null) {
-                        boolean isE133 = false;
-                        if (fetchResp.getResponseReason() != null && fetchResp.getResponseReason().contains("E133")) {
-                            isE133 = true;
-                        }
-                        if (!isE133 && fetchResp.getErrorInfo() != null) {
-                            for (BillAvenueDtos.ErrorInfo err : fetchResp.getErrorInfo()) {
-                                if (err != null && ("E133".equalsIgnoreCase(err.getErrorCode()) ||
-                                        (err.getErrorMessage() != null && err.getErrorMessage().contains("E133")))) {
-                                    isE133 = true;
+
+                    // Check for invalid biller ID (E133)
+                    if (fetchResp != null && isE133Error(fetchResp)) {
+                        log.warn("Candidate billerId {} returned E133 for {}. Attempting fallback if available.", candidateId, biller.getBillerName());
+                        continue;
+                    }
+
+                    // Check for input parameter mismatch (E135)
+                    if (fetchResp != null && isE135Error(fetchResp)) {
+                        log.warn("Candidate billerId {} returned E135 for {}. Resolving parameter schema via MDM / parameter variations.", candidateId, biller.getBillerName());
+
+                        // 1. Try Biller Info MDM API per Section 4.1 of BillAvenue doc
+                        try {
+                            BillAvenueDtos.BillerInfoResponse mdm = billAvenueClient.fetchBillerInfo(candidateId);
+                            if (mdm != null && mdm.isSuccess() && mdm.getInputParams() != null && !mdm.getInputParams().isEmpty()) {
+                                loanBillerRegistry.updateFromMdm(candidateId, mdm);
+                                biller = loanBillerRegistry.findById(candidateId).orElse(biller);
+                                List<BillAvenueDtos.InputParam> mdmInputs = buildLoanInputParams(biller, request.getCustomerParams(), request.getCustomerMobile());
+                                BillAvenueDtos.BillFetchResponse mdmResp = billAvenueClient.fetchBill(
+                                        candidateId,
+                                        mdmInputs,
+                                        request.getCustomerMobile().trim(),
+                                        sanitizedIp
+                                );
+                                if (mdmResp != null && !isE135Error(mdmResp)) {
+                                    fetchResp = mdmResp;
+                                    inputs = mdmInputs;
+                                    activeBillerId = candidateId;
                                     break;
                                 }
                             }
+                        } catch (Exception mdmEx) {
+                            log.warn("Biller Info MDM lookup failed for {}: {}", candidateId, mdmEx.getMessage());
                         }
-                        if (!isE133) {
-                            activeBillerId = candidateId;
-                            break;
+
+                        // 2. Try candidate parameter name variations (Loan ID, Loan Account Number, LAN, etc.)
+                        List<List<BillAvenueDtos.InputParam>> variations = generateLoanParameterVariations(primaryLoanAccount, request.getCustomerMobile().trim());
+                        for (List<BillAvenueDtos.InputParam> altInputs : variations) {
+                            try {
+                                BillAvenueDtos.BillFetchResponse altResp = billAvenueClient.fetchBill(
+                                        candidateId,
+                                        altInputs,
+                                        request.getCustomerMobile().trim(),
+                                        sanitizedIp
+                                );
+                                if (altResp != null && !isE135Error(altResp)) {
+                                    fetchResp = altResp;
+                                    inputs = altInputs;
+                                    loanBillerRegistry.updateWorkingInputParams(candidateId, altInputs);
+                                    activeBillerId = candidateId;
+                                    break;
+                                }
+                            } catch (Exception exVar) {
+                                log.debug("Candidate input variation fetch error: {}", exVar.getMessage());
+                            }
                         }
-                        log.warn("Candidate billerId {} returned E133 for {}. Attempting fallback if available.", candidateId, biller.getBillerName());
+                    }
+
+                    if (fetchResp != null && !isE133Error(fetchResp) && !isE135Error(fetchResp)) {
+                        activeBillerId = candidateId;
+                        break;
                     }
                 } catch (Exception ex) {
                     log.warn("Candidate billerId {} fetch error: {}", candidateId, ex.getMessage());
@@ -1640,17 +1672,7 @@ public class BbpsServiceImpl implements BbpsService {
         String sanitizedIp = (clientIp != null && clientIp.matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"))
                 ? clientIp : "103.108.7.127";
 
-        List<BillAvenueDtos.InputParam> inputs = new ArrayList<>();
-        if (request.getCustomerParams() != null) {
-            for (Map.Entry<String, String> entry : request.getCustomerParams().entrySet()) {
-                if (entry.getValue() != null && !entry.getValue().isBlank()) {
-                    inputs.add(BillAvenueDtos.InputParam.builder()
-                            .paramName(entry.getKey().trim())
-                            .paramValue(entry.getValue().trim())
-                            .build());
-                }
-            }
-        }
+        List<BillAvenueDtos.InputParam> inputs = buildLoanInputParams(biller, request.getCustomerParams(), request.getCustomerMobile());
 
         String effectiveRequestId = (request.getFetchRequestId() != null && !request.getFetchRequestId().isBlank())
                 ? request.getFetchRequestId().trim()
@@ -1690,7 +1712,11 @@ public class BbpsServiceImpl implements BbpsService {
             BillAvenueDtos.BillFetchResponse cached = fetchCache.get(effectiveRequestId);
             if (cached != null) {
                 if (cached.getRawBillerResponseXml() != null) {
-                    rawBillerResponseXml = cached.getRawBillerResponseXml();
+                    String raw = cached.getRawBillerResponseXml();
+                    // If billAmount is 0 (as in no-bill-due / adhoc), omit rawBillerResponseXml so BillAvenueClient sets positive billAmount equal to paise
+                    if (!raw.contains("<billAmount>0</billAmount>") && !raw.contains("<billAmount>0.00</billAmount>")) {
+                        rawBillerResponseXml = raw;
+                    }
                 }
                 if (cached.getRawAdditionalInfoXml() != null) {
                     rawAdditionalInfoXml = cached.getRawAdditionalInfoXml();
@@ -1865,7 +1891,7 @@ public class BbpsServiceImpl implements BbpsService {
 
         String remitterName = (user.getFullName() != null && !user.getFullName().isBlank()) ? user.getFullName().trim() : "Rupiksha Retailer";
 
-        String billerAdhocVal = hasFetchSession ? "false" : "true";
+        String billerAdhocVal = biller.isBillerAdhoc() ? "true" : (hasFetchSession ? "false" : "true");
 
         BillAvenueDtos.BillPayXmlRequest xmlReq = BillAvenueDtos.BillPayXmlRequest.builder()
                 .fetchRequestId(effectiveRequestId)
@@ -2270,6 +2296,149 @@ public class BbpsServiceImpl implements BbpsService {
             list.add(new BbpsDtos.PlanInfo("BSNL_2399", billerId, "Annual Plans", "Annual", new BigDecimal("2399.00"), "395 Days", "2.0 GB/Day", "Unlimited Calls", "100 SMS/Day", "395 Days Annual pack: Unlimited Calls, 2GB/day data, 100 SMS/day."));
         }
         return list;
+    }
+
+    private boolean isE133Error(BillAvenueDtos.BillFetchResponse resp) {
+        if (resp == null) return false;
+        if (resp.getResponseReason() != null && resp.getResponseReason().toUpperCase().contains("E133")) {
+            return true;
+        }
+        if (resp.getErrorInfo() != null) {
+            for (BillAvenueDtos.ErrorInfo err : resp.getErrorInfo()) {
+                if (err != null && ("E133".equalsIgnoreCase(err.getErrorCode()) ||
+                        (err.getErrorMessage() != null && err.getErrorMessage().toUpperCase().contains("E133")))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean isE135Error(BillAvenueDtos.BillFetchResponse resp) {
+        if (resp == null) return false;
+        if (resp.getResponseReason() != null) {
+            String r = resp.getResponseReason().toLowerCase();
+            if (r.contains("e135") || r.contains("mandatory input parameter") || r.contains("mismatch")) {
+                return true;
+            }
+        }
+        if (resp.getErrorInfo() != null) {
+            for (BillAvenueDtos.ErrorInfo err : resp.getErrorInfo()) {
+                if (err != null) {
+                    if ("E135".equalsIgnoreCase(err.getErrorCode())) return true;
+                    if (err.getErrorMessage() != null) {
+                        String m = err.getErrorMessage().toLowerCase();
+                        if (m.contains("e135") || m.contains("mandatory input parameter") || m.contains("mismatch")) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private List<BillAvenueDtos.InputParam> buildLoanInputParams(
+            BbpsDtos.LoanBillerInfo biller,
+            Map<String, String> customerParams,
+            String customerMobile
+    ) {
+        List<BillAvenueDtos.InputParam> inputs = new ArrayList<>();
+        String primaryLoanAccount = loanBillerRegistry.extractPrimaryLoanAccountNumber(customerParams);
+
+        if (biller != null && biller.getInputParams() != null && !biller.getInputParams().isEmpty()) {
+            for (BbpsDtos.InputParamInfo pInfo : biller.getInputParams()) {
+                String pName = pInfo.getParamName();
+                String val = null;
+
+                if (customerParams != null) {
+                    val = customerParams.get(pName);
+                    if (val == null || val.isBlank()) {
+                        for (Map.Entry<String, String> e : customerParams.entrySet()) {
+                            if (e.getKey().equalsIgnoreCase(pName)) {
+                                val = e.getValue();
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if ((val == null || val.isBlank()) && loanBillerRegistry.isLoanAccountIdentifier(pName)) {
+                    val = primaryLoanAccount;
+                }
+
+                if ((val == null || val.isBlank()) && pName.toLowerCase().contains("mobile")) {
+                    val = (customerMobile != null && !customerMobile.isBlank())
+                            ? customerMobile
+                            : (customerParams != null ? customerParams.get("Mobile Number") : null);
+                }
+
+                if (val != null && !val.isBlank() && !"UNKNOWN".equalsIgnoreCase(val)) {
+                    inputs.add(BillAvenueDtos.InputParam.builder()
+                            .paramName(pName.trim())
+                            .paramValue(val.trim())
+                            .build());
+                }
+            }
+        }
+
+        if (inputs.isEmpty() && customerParams != null) {
+            for (Map.Entry<String, String> entry : customerParams.entrySet()) {
+                if (entry.getValue() != null && !entry.getValue().isBlank()) {
+                    inputs.add(BillAvenueDtos.InputParam.builder()
+                            .paramName(entry.getKey().trim())
+                            .paramValue(entry.getValue().trim())
+                            .build());
+                }
+            }
+        }
+
+        return inputs;
+    }
+
+    private List<List<BillAvenueDtos.InputParam>> generateLoanParameterVariations(String loanAcct, String mobile) {
+        List<List<BillAvenueDtos.InputParam>> variations = new ArrayList<>();
+        if (loanAcct == null || loanAcct.isBlank() || "UNKNOWN".equalsIgnoreCase(loanAcct)) {
+            return variations;
+        }
+
+        // Variation 1: Loan ID + Mobile Number
+        if (mobile != null && !mobile.isBlank()) {
+            variations.add(List.of(
+                    BillAvenueDtos.InputParam.builder().paramName("Loan ID").paramValue(loanAcct).build(),
+                    BillAvenueDtos.InputParam.builder().paramName("Mobile Number").paramValue(mobile).build()
+            ));
+        }
+
+        // Variation 2: Loan ID only
+        variations.add(List.of(
+                BillAvenueDtos.InputParam.builder().paramName("Loan ID").paramValue(loanAcct).build()
+        ));
+
+        // Variation 3: Loan Account Number + Mobile Number
+        if (mobile != null && !mobile.isBlank()) {
+            variations.add(List.of(
+                    BillAvenueDtos.InputParam.builder().paramName("Loan Account Number").paramValue(loanAcct).build(),
+                    BillAvenueDtos.InputParam.builder().paramName("Mobile Number").paramValue(mobile).build()
+            ));
+        }
+
+        // Variation 4: Loan Account Number only
+        variations.add(List.of(
+                BillAvenueDtos.InputParam.builder().paramName("Loan Account Number").paramValue(loanAcct).build()
+        ));
+
+        // Variation 5: LAN only
+        variations.add(List.of(
+                BillAvenueDtos.InputParam.builder().paramName("LAN").paramValue(loanAcct).build()
+        ));
+
+        // Variation 6: Loan Number
+        variations.add(List.of(
+                BillAvenueDtos.InputParam.builder().paramName("Loan Number").paramValue(loanAcct).build()
+        ));
+
+        return variations;
     }
 
     @Override

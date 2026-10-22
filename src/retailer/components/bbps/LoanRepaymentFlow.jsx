@@ -635,35 +635,36 @@ const LoanRepaymentFlow = ({ onBack, category }) => {
                                     </div>
 
                                     {/* Amount Section */}
-                                    {isNoBillDue ? (
-                                        <div className="p-3 rounded-xl bg-teal-100 text-teal-900 border border-teal-300 text-xs font-bold flex items-center gap-2">
-                                            <CheckCircle2 className="w-4 h-4 text-teal-700 shrink-0" />
-                                            <span>No pending EMI due for this loan account!</span>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            {fetchedBill.billAmount ? (
-                                                <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-emerald-200">
-                                                    <span className="text-xs font-black text-black">EMI / Payable Amount</span>
-                                                    <span className="text-base font-black text-emerald-700">
-                                                        ₹{parseFloat(fetchedBill.billAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <div className="space-y-1">
-                                                    <label className="block text-xs font-black text-black">
-                                                        Repayment Amount (₹) <span className="text-rose-600">*</span>
-                                                    </label>
-                                                    <input
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={customAmount}
-                                                        onChange={(e) => setCustomAmount(e.target.value)}
-                                                        placeholder="Enter EMI repayment amount"
-                                                        className="w-full px-3.5 py-2.5 text-xs md:text-sm rounded-xl border border-slate-300 bg-white font-black text-black focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
-                                                    />
-                                                </div>
-                                            )}
+                                    <div className="space-y-2">
+                                        {isNoBillDue && (
+                                            <div className="p-3 rounded-xl bg-teal-100 text-teal-900 border border-teal-300 text-xs font-bold flex items-center gap-2">
+                                                <CheckCircle2 className="w-4 h-4 text-teal-700 shrink-0" />
+                                                <span>No pending EMI due for this loan account. You can optionally make an advance repayment:</span>
+                                            </div>
+                                        )}
+
+                                        {fetchedBill.billAmount && !isNoBillDue ? (
+                                            <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-emerald-200">
+                                                <span className="text-xs font-black text-black">EMI / Payable Amount</span>
+                                                <span className="text-base font-black text-emerald-700">
+                                                    ₹{parseFloat(fetchedBill.billAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-1">
+                                                <label className="block text-xs font-black text-black">
+                                                    {isNoBillDue ? 'Advance / Repayment Amount (₹)' : 'Repayment Amount (₹)'} <span className="text-rose-600">*</span>
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={customAmount}
+                                                    onChange={(e) => setCustomAmount(e.target.value)}
+                                                    placeholder="Enter repayment amount"
+                                                    className="w-full px-3.5 py-2.5 text-xs md:text-sm rounded-xl border border-slate-300 bg-white font-black text-black focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                                                />
+                                            </div>
+                                        )}
 
                                             {/* Insufficient balance warning */}
                                             {isInsufficient && (
@@ -691,7 +692,6 @@ const LoanRepaymentFlow = ({ onBack, category }) => {
                                                 <span>Review & Pay ₹{totalPayable.toFixed(2)}</span>
                                             </button>
                                         </div>
-                                    )}
                                 </motion.div>
                             )}
                         </div>

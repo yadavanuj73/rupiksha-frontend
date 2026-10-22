@@ -86,13 +86,15 @@ public class BillAvenueDtos {
             if (errorInfo != null && !errorInfo.isEmpty()) {
                 for (ErrorInfo err : errorInfo) {
                     if (err == null) continue;
-                    if ("BFR004".equalsIgnoreCase(err.getErrorCode())) {
+                    if ("BFR004".equalsIgnoreCase(err.getErrorCode()) || "BFR008".equalsIgnoreCase(err.getErrorCode())) {
                         return true;
                     }
                     String msg = err.getErrorMessage();
                     if (msg != null) {
                         String lower = msg.toLowerCase();
                         if (lower.contains("bfr004") ||
+                            lower.contains("bfr008") ||
+                            lower.contains("unable to get bill details from biller") ||
                             lower.contains("no bill due") ||
                             lower.contains("payment received for the billing period") ||
                             lower.contains("no outstanding") ||
@@ -106,11 +108,22 @@ public class BillAvenueDtos {
             if (responseReason != null) {
                 String lower = responseReason.toLowerCase();
                 if (lower.contains("bfr004") ||
+                    lower.contains("bfr008") ||
+                    lower.contains("unable to get bill details from biller") ||
                     lower.contains("no bill due") ||
                     lower.contains("payment received for the billing period") ||
                     lower.contains("no outstanding") ||
                     lower.contains("bill already paid") ||
                     lower.contains("zero bill")) {
+                    return true;
+                }
+            }
+            if (rawXml != null) {
+                String lower = rawXml.toLowerCase();
+                if (lower.contains("bfr004") ||
+                    lower.contains("bfr008") ||
+                    lower.contains("unable to get bill details from biller") ||
+                    lower.contains("no bill due")) {
                     return true;
                 }
             }
@@ -409,6 +422,44 @@ public class BillAvenueDtos {
             }
             return "Bill validation failed";
         }
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class BillerInfoResponse {
+        private String responseCode;
+        private String responseReason;
+        private String billerId;
+        private String billerName;
+        private String billerCategory;
+        private String billerAdhoc;
+        private String billerFetchRequirement;
+        private String billerPaymentExactness;
+        private String billerSupportBillValidation;
+        private List<BillerParamInfo> inputParams;
+        private List<ErrorInfo> errorInfo;
+        private String rawXml;
+
+        public boolean isSuccess() {
+            return "000".equals(responseCode);
+        }
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class BillerParamInfo {
+        private String paramName;
+        private String dataType;
+        private boolean optional;
+        private int minLength;
+        private int maxLength;
+        private String regEx;
     }
 }
 

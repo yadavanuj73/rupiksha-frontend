@@ -265,6 +265,7 @@ public class BbpsDtos {
         private String billerFetchRequirement; // MANDATORY, OPTIONAL, NOT_SUPPORTED
         private String billerPaymentExactness; // Exact, Exact and above, Exact and below
         private String supportBillValidation;  // MANDATORY, OPTIONAL, NOT_SUPPORTED
+        private boolean billerAdhoc;           // Accepts adhoc payments
         private List<InputParamInfo> inputParams;
         private String description;
     }

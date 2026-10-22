@@ -1,6 +1,7 @@
 package com.rupiksha.backend.integration.bbps;
 
 import com.rupiksha.backend.api.dto.BbpsDtos;
+import com.rupiksha.backend.integration.bbps.dto.BillAvenueDtos;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -125,6 +126,63 @@ public class LoanBillerRegistry {
         return List.of(clean);
     }
 
+    public void updateFromMdm(String billerId, BillAvenueDtos.BillerInfoResponse mdm) {
+        if (mdm == null || !mdm.isSuccess() || mdm.getInputParams() == null || mdm.getInputParams().isEmpty()) {
+            return;
+        }
+        Optional<BbpsDtos.LoanBillerInfo> opt = findById(billerId);
+        if (opt.isPresent()) {
+            BbpsDtos.LoanBillerInfo existing = opt.get();
+            List<BbpsDtos.InputParamInfo> newParams = new ArrayList<>();
+            for (BillAvenueDtos.BillerParamInfo p : mdm.getInputParams()) {
+                newParams.add(BbpsDtos.InputParamInfo.builder()
+                        .paramName(p.getParamName())
+                        .dataType(p.getDataType() != null ? p.getDataType() : "ALPHANUMERIC")
+                        .optional(p.isOptional())
+                        .minLength(p.getMinLength())
+                        .maxLength(p.getMaxLength())
+                        .regEx(p.getRegEx())
+                        .hint(p.getParamName())
+                        .build());
+            }
+            existing.setInputParams(newParams);
+            if (mdm.getBillerFetchRequirement() != null && !mdm.getBillerFetchRequirement().isBlank()) {
+                existing.setBillerFetchRequirement(mdm.getBillerFetchRequirement());
+            }
+            if ("true".equalsIgnoreCase(mdm.getBillerAdhoc())) {
+                existing.setBillerAdhoc(true);
+            }
+        }
+    }
+
+    public void updateWorkingInputParams(String billerId, List<BillAvenueDtos.InputParam> workingInputs) {
+        if (workingInputs == null || workingInputs.isEmpty()) return;
+        Optional<BbpsDtos.LoanBillerInfo> opt = findById(billerId);
+        if (opt.isPresent()) {
+            BbpsDtos.LoanBillerInfo existing = opt.get();
+            List<BbpsDtos.InputParamInfo> newParams = new ArrayList<>();
+            for (BillAvenueDtos.InputParam p : workingInputs) {
+                newParams.add(BbpsDtos.InputParamInfo.builder()
+                        .paramName(p.getParamName())
+                        .dataType(p.getParamName().toLowerCase().contains("mobile") ? "NUMERIC" : "ALPHANUMERIC")
+                        .optional(false)
+                        .minLength(p.getParamValue() != null ? Math.min(4, p.getParamValue().length()) : 4)
+                        .maxLength(30)
+                        .hint(p.getParamName())
+                        .build());
+            }
+            existing.setInputParams(newParams);
+        }
+    }
+
+    public boolean isLoanAccountIdentifier(String key) {
+        if (key == null) return false;
+        String k = key.toLowerCase();
+        return k.contains("loan") || k.contains("lan") || k.contains("account") ||
+               k.contains("contract") || k.contains("agreement") || k.contains("proposal") ||
+               k.contains("application") || k.contains("id");
+    }
+
     /**
      * Validates client-supplied customer parameters against the loan biller's documented schema.
      */
@@ -150,6 +208,14 @@ public class LoanBillerRegistry {
                         value = entry.getValue();
                         break;
                     }
+                }
+            }
+
+            // Synonym fallback: map Loan Account Number <-> Loan ID <-> LAN
+            if ((value == null || value.isBlank()) && isLoanAccountIdentifier(expected.getParamName())) {
+                String candidate = extractPrimaryLoanAccountNumber(customerParams);
+                if (!"UNKNOWN".equalsIgnoreCase(candidate) && !candidate.isBlank()) {
+                    value = candidate;
                 }
             }
 
@@ -227,6 +293,7 @@ public class LoanBillerRegistry {
                 .category("Loan Repayment")
                 .billerFetchRequirement("MANDATORY")
                 .billerPaymentExactness("Exact")
+                .billerAdhoc(true)
                 .supportBillValidation("OPTIONAL")
                 .description("Annapurna Finance microfinance loans, MSME business loans, and group loan installment repayments")
                 .inputParams(List.of(
@@ -240,6 +307,7 @@ public class LoanBillerRegistry {
                 .category("Loan Repayment")
                 .billerFetchRequirement("MANDATORY")
                 .billerPaymentExactness("Exact")
+                .billerAdhoc(true)
                 .supportBillValidation("OPTIONAL")
                 .description("Annapurna Finance MSME business loan installments")
                 .inputParams(List.of(
@@ -253,10 +321,12 @@ public class LoanBillerRegistry {
                 .category("Loan Repayment")
                 .billerFetchRequirement("MANDATORY")
                 .billerPaymentExactness("Exact")
+                .billerAdhoc(true)
                 .supportBillValidation("OPTIONAL")
                 .description("DMI Finance personal loans, Samsung Finance+, and digital consumer finance EMIs")
                 .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(30).hint("DMI Loan Account Number / LAN").build()
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan ID").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(30).hint("DMI Loan ID / Account Number (e.g. DMI0057662896)").build(),
+                        BbpsDtos.InputParamInfo.builder().paramName("Mobile Number").dataType("NUMERIC").optional(true).minLength(10).maxLength(10).hint("Registered Mobile Number").build()
                 ))
                 .build(), "DMIF00000NAT01", "DMIF00000NAT02", "DMIFINANCE", "DMI", "Samsung Finance+");
 
