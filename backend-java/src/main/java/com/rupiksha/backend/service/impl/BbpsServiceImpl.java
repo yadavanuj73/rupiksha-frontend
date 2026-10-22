@@ -1431,12 +1431,43 @@ public class BbpsServiceImpl implements BbpsService {
         }
 
         try {
-            BillAvenueDtos.BillFetchResponse fetchResp = billAvenueClient.fetchBill(
-                    biller.getBillerId(),
-                    inputs,
-                    request.getCustomerMobile().trim(),
-                    sanitizedIp
-            );
+            BillAvenueDtos.BillFetchResponse fetchResp = null;
+            List<String> candidateIds = loanBillerRegistry.getBillerCandidateIds(biller.getBillerId());
+            String activeBillerId = biller.getBillerId();
+
+            for (String candidateId : candidateIds) {
+                try {
+                    fetchResp = billAvenueClient.fetchBill(
+                            candidateId,
+                            inputs,
+                            request.getCustomerMobile().trim(),
+                            sanitizedIp
+                    );
+                    if (fetchResp != null) {
+                        boolean isE133 = false;
+                        if (fetchResp.getResponseReason() != null && fetchResp.getResponseReason().contains("E133")) {
+                            isE133 = true;
+                        }
+                        if (!isE133 && fetchResp.getErrorInfo() != null) {
+                            for (BillAvenueDtos.ErrorInfo err : fetchResp.getErrorInfo()) {
+                                if (err != null && ("E133".equalsIgnoreCase(err.getErrorCode()) ||
+                                        (err.getErrorMessage() != null && err.getErrorMessage().contains("E133")))) {
+                                    isE133 = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (!isE133) {
+                            activeBillerId = candidateId;
+                            break;
+                        }
+                        log.warn("Candidate billerId {} returned E133 for {}. Attempting fallback if available.", candidateId, biller.getBillerName());
+                    }
+                } catch (Exception ex) {
+                    log.warn("Candidate billerId {} fetch error: {}", candidateId, ex.getMessage());
+                }
+            }
+
             if (fetchResp != null && fetchResp.getFetchRequestId() != null && !fetchResp.getFetchRequestId().isBlank()) {
                 fetchCache.put(fetchResp.getFetchRequestId().trim(), fetchResp);
             }
@@ -1485,7 +1516,7 @@ public class BbpsServiceImpl implements BbpsService {
                         .success(true)
                         .noBillDue(isNoBillDue)
                         .fetchRequestId(fetchResp.getFetchRequestId())
-                        .billerId(biller.getBillerId())
+                        .billerId(activeBillerId)
                         .billerName(biller.getBillerName())
                         .consumerNumber(primaryLoanAccount)
                         .billAmount(billAmt)
@@ -1503,7 +1534,7 @@ public class BbpsServiceImpl implements BbpsService {
                 return BbpsDtos.BillFetchResult.builder()
                         .success(false)
                         .noBillDue(false)
-                        .billerId(biller.getBillerId())
+                        .billerId(activeBillerId)
                         .billerName(biller.getBillerName())
                         .customerParams(request.getCustomerParams())
                         .message(errMsg)

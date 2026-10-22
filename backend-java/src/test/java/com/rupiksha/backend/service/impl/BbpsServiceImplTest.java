@@ -611,12 +611,18 @@ class BbpsServiceImplTest {
         List<BbpsDtos.LoanBillerInfo> bajajBillers = bbpsService.getLoanBillers("Bajaj");
         assertNotNull(bajajBillers);
         assertFalse(bajajBillers.isEmpty());
-        assertTrue(bajajBillers.stream().anyMatch(b -> b.getBillerId().equals("BAJA00000NAT01")));
+        assertTrue(bajajBillers.stream().anyMatch(b -> b.getBillerId().equals("BFL000000NAT01")));
 
         List<BbpsDtos.LoanBillerInfo> muthoot = bbpsService.getLoanBillers("Muthoot");
         assertNotNull(muthoot);
         assertFalse(muthoot.isEmpty());
-        assertTrue(muthoot.stream().anyMatch(b -> b.getBillerId().equals("MUTH00000NAT01")));
+        assertTrue(muthoot.stream().anyMatch(b -> b.getBillerId().equals("MUTH00000NATX8")));
+
+        // Search for DMI Finance
+        List<BbpsDtos.LoanBillerInfo> dmi = bbpsService.getLoanBillers("DMI");
+        assertNotNull(dmi);
+        assertFalse(dmi.isEmpty(), "DMI Finance must be found");
+        assertTrue(dmi.stream().anyMatch(b -> b.getBillerId().equals("DMIF00000NATMN")));
 
         // Search for Annapurna Finance Private Limited-MFI exactly as typed by user
         List<BbpsDtos.LoanBillerInfo> annapurnaExact = bbpsService.getLoanBillers("Annapurna Finance Private Limited-MFI");
@@ -650,7 +656,7 @@ class BbpsServiceImplTest {
         when(billAvenueClient.fetchBill(any(), any(), any(), any())).thenReturn(fetchResponse);
 
         BbpsDtos.LoanFetchRequest request = new BbpsDtos.LoanFetchRequest();
-        request.setBillerId("BAJA00000NAT01");
+        request.setBillerId("BFL000000NAT01");
         request.setCustomerMobile("9892506507");
         request.setCustomerParams(java.util.Map.of("Loan Account Number", "LAN9988776655"));
 
@@ -659,7 +665,7 @@ class BbpsServiceImplTest {
         assertNotNull(result);
         assertTrue(result.isSuccess());
         assertFalse(result.isNoBillDue());
-        assertEquals("BAJA00000NAT01", result.getBillerId());
+        assertEquals("BFL000000NAT01", result.getBillerId());
         assertEquals("Bajaj Finance Limited", result.getBillerName());
         assertEquals(new BigDecimal("4500.00"), result.getBillAmount());
         assertEquals("Sunil Sharma", result.getCustomerName());
@@ -696,7 +702,7 @@ class BbpsServiceImplTest {
         when(billAvenueClient.payBillXml(any())).thenReturn(payResponse);
 
         BbpsDtos.LoanPayRequest payRequest = new BbpsDtos.LoanPayRequest();
-        payRequest.setBillerId("BAJA00000NAT01");
+        payRequest.setBillerId("BFL000000NAT01");
         payRequest.setCustomerMobile("9892506507");
         payRequest.setAmount(new BigDecimal("4500.00"));
         payRequest.setFetchRequestId("REQ-LOAN-FETCH-1122");
@@ -727,7 +733,7 @@ class BbpsServiceImplTest {
         // Verify XML payment request bound the fetchRequestId
         verify(billAvenueClient, times(1)).payBillXml(argThat(req ->
                 "REQ-LOAN-FETCH-1122".equals(req.getFetchRequestId()) &&
-                "BAJA00000NAT01".equals(req.getBillerId()) &&
+                "BFL000000NAT01".equals(req.getBillerId()) &&
                 req.getAmountPaise() == 450000L &&
                 "Cash".equals(req.getPaymentMode())
         ));
