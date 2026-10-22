@@ -560,7 +560,7 @@ public class LoanBillerRegistry {
                 .build(), "ICIC00000NAT01", "ICICILOAN");
 
         addBiller(BbpsDtos.LoanBillerInfo.builder()
-                .billerId("HDFC00000NAT01")
+                .billerId("HDFC00000NAT64")
                 .billerName("HDFC Bank - Retail Loan Repayment")
                 .category("Loan Repayment")
                 .billerFetchRequirement("MANDATORY")
@@ -570,7 +570,7 @@ public class LoanBillerRegistry {
                 .inputParams(List.of(
                         BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(8).maxLength(20).hint("16-digit Loan Account Number").build()
                 ))
-                .build(), "HDFCLOAN", "HDFC00000RET01");
+                .build(), "HDFC00000NAT01", "HDFCLOAN", "HDFC00000RET01");
 
         addBiller(BbpsDtos.LoanBillerInfo.builder()
                 .billerId("AROH00000WBL0I")
@@ -805,5 +805,396 @@ public class LoanBillerRegistry {
                         BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(25).hint("Loanfront Loan Account Number").build()
                 ))
                 .build(), "LOANFRONT", "LOAN00000NAT01");
+
+        // ── ADDITIONAL PROMINENT NBFCs, HOUSING FINANCE & DIGITAL LENDERS ────────
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("CHOL00000NAT18")
+                .billerName("Cholamandalam Investment and Finance Company Limited")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("Cholamandalam vehicle finance, home equity, and MSME loan repayments")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(30).hint("Chola Agreement / LAN Number").build()
+                ))
+                .build(), "CHOL00000NAT01", "CHOLAFIN", "CIFCL0000NAT01");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("FULL00000NAT8R")
+                .billerName("SMFG India Credit (formerly Fullerton India)")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("SMFG India Credit personal, business, and two-wheeler installment repayment")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(25).hint("SMFG / Fullerton Loan Account Number").build()
+                ))
+                .build(), "FULL00000NAT01", "SMFGCREDIT", "FULLERTON");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("CLIX00000NAT28")
+                .billerName("Clix Capital Services Private Limited")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("Clix Capital personal, business, healthcare, and digital loan installments")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(25).hint("Clix Loan Account Number").build()
+                ))
+                .build(), "CLIX00000NAT01", "CLIXCAPITAL");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("FIBE00000NAT39")
+                .billerName("Fibe (formerly EarlySalary - Social Worth Technologies)")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("Fibe instant salary advance, medical loans, and school fee financing")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(25).hint("Fibe / EarlySalary Loan Number").build()
+                ))
+                .build(), "EARL00000NAT01", "EARLYSALARY", "FIBELOANS");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("INCR00000NAT82")
+                .billerName("InCred Financial Services Limited")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("InCred personal loans, education loans, and SME business finance")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(25).hint("InCred Loan Account Number").build()
+                ))
+                .build(), "INCR00000NAT01", "INCREDFIN");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("FEDF00000NAT2C")
+                .billerName("Fedbank Financial Services Limited (Fedfina)")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("Fedfina gold loans, home loans, and business installment repayments")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(25).hint("Fedfina Loan Account Number").build()
+                ))
+                .build(), "FEDF00000NAT01", "FEDFINA");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("TATA00000NAT0F")
+                .billerName("Tata Motors Finance Limited")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("Tata Motors commercial vehicle, passenger vehicle, and fuel financing")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Contract / Agreement Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(25).hint("Contract Number on Tata Motors agreement").build()
+                ))
+                .build(), "TMFL00000NAT01", "TATAMOTORSFIN");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("FINO00000NAT6F")
+                .billerName("Finova Capital Private Limited")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("Finova Capital MSME, home construction, and small business loan repayment")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(25).hint("Finova Loan Account Number").build()
+                ))
+                .build(), "FINO00000NAT01", "FINOVACAPITAL");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("AVAN00000NAT2M")
+                .billerName("Avanse Financial Services Limited")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("Avanse higher education loans and school infrastructure financing")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(25).hint("Avanse Loan Account Number").build()
+                ))
+                .build(), "AVAN00000NAT01", "AVANSEFIN");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("FIVE00000NAT7G")
+                .billerName("Five-Star Business Finance Limited")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("Five Star small business loans and self-employed enterprise repayments")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(25).hint("Five Star Loan Account Number").build()
+                ))
+                .build(), "FIVE00000NAT01", "FIVESTARFIN");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("PNBH00000NAT8L")
+                .billerName("PNB Housing Finance Limited")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("PNB Housing individual home loans and loan against property installments")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(8).maxLength(25).hint("PNB Housing Loan Account Number").build()
+                ))
+                .build(), "PNBH00000NAT01", "PNBHOUSING");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("LICH00000NAT08")
+                .billerName("LIC Housing Finance Limited")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("LIC Housing individual housing loans, plot purchase, and home improvement loans")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("NUMERIC").optional(false).minLength(9).maxLength(15).hint("LIC HFL Loan Account Number").build()
+                ))
+                .build(), "LICH00000NAT01", "LICHOUSING");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("IBHL00000NAT37")
+                .billerName("Indiabulls Housing Finance Limited (Sammaan Capital)")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("Indiabulls / Sammaan Capital home loans and mortgage repayments")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(25).hint("Indiabulls Loan Account Number").build()
+                ))
+                .build(), "INDI00000NAT01", "INDIABULLSHFL", "SAMMAANCAPITAL");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("PAYU00000NAT25")
+                .billerName("PayU Finance (LazyPay)")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("LazyPay credit limit and Buy-Now-Pay-Later bill settlement")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Registered Mobile Number").dataType("NUMERIC").optional(false).minLength(10).maxLength(10).hint("10-digit LazyPay Mobile Number").build()
+                ))
+                .build(), "PAYU00000NAT01", "LAZYPAY");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("BHAN00000NAT19")
+                .billerName("CASHe (Bhanix Finance and Investment)")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("CASHe salaried instant personal loans and credit line installments")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan / Mobile Number").dataType("ALPHANUMERIC").optional(false).minLength(8).maxLength(25).hint("CASHe Loan or Mobile Number").build()
+                ))
+                .build(), "BHAN00000NAT01", "CASHE");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("MAYF00000NAT21")
+                .billerName("mPokket (Mayfair Financial Facilities)")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("mPokket college student and young professional pocket loans")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(25).hint("mPokket Loan / User ID").build()
+                ))
+                .build(), "MAYF00000NAT01", "MPOKKET");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("HIND00000NAT38")
+                .billerName("Hinduja Leyland Finance Limited")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("Hinduja Leyland commercial vehicle, construction equipment, and used vehicle financing")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Proposal / Agreement Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(25).hint("Hinduja Agreement Number").build()
+                ))
+                .build(), "HIND00000NAT01", "HINDUJALEYLAND", "HLFL00000NAT01");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("CAPR00000NAT42")
+                .billerName("Capri Global Capital Limited")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("Capri Global MSME loans, affordable housing, and construction finance")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(25).hint("Capri Global Loan Account Number").build()
+                ))
+                .build(), "CAPR00000NAT01", "CAPRIGLOBAL");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("NEOG00000NAT15")
+                .billerName("NeoGrowth Credit Private Limited")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("NeoGrowth digital merchant cash advances and business loan repayment")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(25).hint("NeoGrowth Loan Account Number").build()
+                ))
+                .build(), "NEOG00000NAT01", "NEOGROWTH");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("MASF00000NAT33")
+                .billerName("MAS Financial Services Limited")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("MAS Financial micro-enterprise, SME, two-wheeler, and commercial vehicle loans")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(25).hint("MAS Financial Loan Number").build()
+                ))
+                .build(), "MASF00000NAT01", "MASFINANCIAL");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("UGRO00000NAT29")
+                .billerName("UGRO Capital Limited")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("UGRO Capital data-tech driven MSME business loans and supply chain financing")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(25).hint("UGRO Loan Account Number").build()
+                ))
+                .build(), "UGRO00000NAT01", "UGROCAPITAL");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("LEND00000NAT17")
+                .billerName("Lendingkart Finance Limited")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("Lendingkart collateral-free working capital and business loans for MSMEs")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(25).hint("Lendingkart Application / LAN").build()
+                ))
+                .build(), "LEND00000NAT01", "LENDINGKART");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("AYEF00000NAT31")
+                .billerName("Aye Finance Private Limited")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("Aye Finance cluster-based micro-enterprise business loans")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(25).hint("Aye Finance Loan Account Number").build()
+                ))
+                .build(), "AYEF00000NAT01", "AYEFINANCE");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("AUXI00000NAT14")
+                .billerName("Auxilo Finserve Private Limited")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("Auxilo higher education loans and educational institution finance")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(25).hint("Auxilo Loan Account Number").build()
+                ))
+                .build(), "AUXI00000NAT01", "AUXILOFIN");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("THIR00000NAT16")
+                .billerName("Varthana (Thirumeni Finance Private Limited)")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("Varthana affordable school loans and college student financing")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(25).hint("Varthana Loan Account Number").build()
+                ))
+                .build(), "THIR00000NAT01", "VARTHANA");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("REPC00000NAT12")
+                .billerName("Repco Home Finance Limited")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("Repco individual housing loans and property mortgage installments")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(25).hint("Repco Loan Account Number").build()
+                ))
+                .build(), "REPC00000NAT01", "REPCOHOME");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("GICH00000NAT19")
+                .billerName("GIC Housing Finance Limited")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("GIC Housing retail home loans and repair/renovation financing")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(25).hint("GIC Housing Loan Account Number").build()
+                ))
+                .build(), "GICH00000NAT01", "GICHOUSING");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("CENT00000NAT22")
+                .billerName("Centrum Financial Services Limited")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("Centrum MSME business loans, commercial real estate, and structured credit")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(25).hint("Centrum Loan Account Number").build()
+                ))
+                .build(), "CENT00000NAT01", "CENTRUMFIN");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("INDS00000NAT18")
+                .billerName("IndoStar Capital Finance Limited")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("IndoStar commercial vehicle loans, SME loans, and affordable home finance")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(25).hint("IndoStar Loan Account Number").build()
+                ))
+                .build(), "INDS00000NAT01", "INDOSTAR");
+
+        addBiller(BbpsDtos.LoanBillerInfo.builder()
+                .billerId("NORT00000NAT25")
+                .billerName("Northern Arc Capital Limited")
+                .category("Loan Repayment")
+                .billerFetchRequirement("MANDATORY")
+                .billerPaymentExactness("Exact")
+                .supportBillValidation("OPTIONAL")
+                .description("Northern Arc retail MSME, vehicle finance, and micro-loans")
+                .inputParams(List.of(
+                        BbpsDtos.InputParamInfo.builder().paramName("Loan Account Number").dataType("ALPHANUMERIC").optional(false).minLength(6).maxLength(25).hint("Northern Arc Loan Account Number").build()
+                ))
+                .build(), "NORT00000NAT01", "NORTHERNARC");
     }
 }
