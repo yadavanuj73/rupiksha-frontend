@@ -613,12 +613,18 @@ const LoanRepaymentFlow = ({ onBack, category }) => {
 
                                     <div className="space-y-1.5 bg-white p-3 rounded-xl border border-emerald-200">
                                         <div className="flex justify-between items-center text-xs">
-                                            <span className="font-bold text-slate-700">Borrower Name</span>
-                                            <span className="font-black text-black">{fetchedBill.customerName || 'Loan Borrower'}</span>
+                                            <span className="font-bold text-slate-700">Consumer Name</span>
+                                            <span className="font-black text-black">{fetchedBill.customerName || 'Consumer'}</span>
                                         </div>
                                         <div className="flex justify-between items-center text-xs">
-                                            <span className="font-bold text-slate-700">Account / LAN</span>
-                                            <span className="font-mono font-black text-black">{maskAccount(primaryAccountVal)}</span>
+                                            <span className="font-bold text-slate-700">Biller Name</span>
+                                            <span className="font-black text-black text-right max-w-[65%] truncate" title={fetchedBill.billerName || selectedBiller?.billerName}>
+                                                {fetchedBill.billerName || selectedBiller?.billerName}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-xs">
+                                            <span className="font-bold text-slate-700">Consumer Number</span>
+                                            <span className="font-mono font-black text-black">{primaryAccountVal || fetchedBill.consumerNumber}</span>
                                         </div>
                                         {fetchedBill.billNumber && (
                                             <div className="flex justify-between items-center text-xs">
@@ -729,16 +735,16 @@ const LoanRepaymentFlow = ({ onBack, category }) => {
                         {/* Breakdown summary */}
                         <div className="space-y-2 bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs font-bold">
                             <div className="flex justify-between items-center">
-                                <span className="text-slate-700">Lender / NBFC</span>
-                                <span className="font-black text-black text-right max-w-[200px] truncate">{selectedBiller?.billerName}</span>
+                                <span className="text-slate-700">Biller Name</span>
+                                <span className="font-black text-black text-right max-w-[200px] truncate">{fetchedBill?.billerName || selectedBiller?.billerName}</span>
                             </div>
                             <div className="flex justify-between items-center">
-                                <span className="text-slate-700">Loan Account</span>
-                                <span className="font-mono font-black text-black">{maskAccount(primaryAccountVal)}</span>
+                                <span className="text-slate-700">Consumer Number</span>
+                                <span className="font-mono font-black text-black">{primaryAccountVal || fetchedBill?.consumerNumber}</span>
                             </div>
                             <div className="flex justify-between items-center">
-                                <span className="text-slate-700">Borrower Name</span>
-                                <span className="font-black text-black">{fetchedBill?.customerName || 'Loan Borrower'}</span>
+                                <span className="text-slate-700">Consumer Name</span>
+                                <span className="font-black text-black">{fetchedBill?.customerName || 'Consumer'}</span>
                             </div>
                             {fetchedBill?.dueDate && (
                                 <div className="flex justify-between items-center">
