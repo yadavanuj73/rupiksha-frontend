@@ -65,15 +65,32 @@ const LoanRepaymentFlow = ({ onBack, category }) => {
         return () => { isMounted = false; };
     }, []);
 
-    // Filtered billers list based on search
+    // Filtered billers list based on search with token & symbol normalization
     const filteredBillers = useMemo(() => {
         if (!billerSearch || !billerSearch.trim()) return billers;
-        const query = billerSearch.toLowerCase().trim();
-        return billers.filter(b =>
-            (b.billerName && b.billerName.toLowerCase().includes(query)) ||
-            (b.billerId && b.billerId.toLowerCase().includes(query)) ||
-            (b.description && b.description.toLowerCase().includes(query))
-        );
+        const raw = billerSearch.trim().toLowerCase();
+        const normalized = raw.replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+        const tokens = normalized.split(' ').filter(t => t.length >= 2);
+
+        return billers.filter(b => {
+            const name = (b.billerName || '').toLowerCase();
+            const id = (b.billerId || '').toLowerCase();
+            const desc = (b.description || '').toLowerCase();
+            const fullRaw = `${name} ${id} ${desc}`;
+            const fullNorm = fullRaw.replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ');
+
+            // 1. Direct raw substring match
+            if (fullRaw.includes(raw) || fullNorm.includes(normalized)) {
+                return true;
+            }
+
+            // 2. Multi-token match (all tokens match somewhere in name, ID, or description)
+            if (tokens.length > 0 && tokens.every(t => fullNorm.includes(t))) {
+                return true;
+            }
+
+            return false;
+        });
     }, [billers, billerSearch]);
 
     // On biller selection, initialize customer input parameters
@@ -344,7 +361,7 @@ const LoanRepaymentFlow = ({ onBack, category }) => {
                                         Select Lender / Financier
                                     </h3>
                                     <p className="text-xs text-slate-700 font-bold">
-                                        Choose from 35+ Bharat Connect registered banks & NBFCs
+                                        Choose from 100+ Bharat Connect registered banks, NBFCs & MFIs
                                     </p>
                                 </div>
                                 <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300">
@@ -359,7 +376,7 @@ const LoanRepaymentFlow = ({ onBack, category }) => {
                                     type="text"
                                     value={billerSearch}
                                     onChange={(e) => setBillerSearch(e.target.value)}
-                                    placeholder="Search lenders (e.g. Bajaj, Muthoot, Tata Capital, HDFC, L&T, Hero...)"
+                                    placeholder="Search lenders (e.g. Annapurna, Bajaj, Muthoot, Tata Capital, HDFC, L&T, Hero...)"
                                     className="w-full pl-10 pr-4 py-2.5 text-xs md:text-sm rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-bold text-black placeholder-slate-500 transition-all shadow-2xs"
                                 />
                             </div>
@@ -372,8 +389,37 @@ const LoanRepaymentFlow = ({ onBack, category }) => {
                                         <p className="text-xs font-bold text-slate-700">Loading verified loan billers...</p>
                                     </div>
                                 ) : filteredBillers.length === 0 ? (
-                                    <div className="py-8 text-center border-2 border-dashed border-slate-200 rounded-xl p-4">
+                                    <div className="py-6 text-center border-2 border-dashed border-slate-200 rounded-xl p-4 space-y-3">
                                         <p className="text-xs font-bold text-slate-700">No lenders found matching "{billerSearch}"</p>
+                                        <div className="flex flex-wrap items-center justify-center gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setBillerSearch('')}
+                                                className="text-xs font-bold text-emerald-700 hover:text-emerald-800 underline"
+                                            >
+                                                Clear search
+                                            </button>
+                                            {billerSearch.trim().length >= 8 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleSelectBiller({
+                                                        billerId: billerSearch.trim().toUpperCase(),
+                                                        billerName: billerSearch.trim(),
+                                                        category: 'Loan Repayment',
+                                                        billerFetchRequirement: 'MANDATORY',
+                                                        billerPaymentExactness: 'Exact',
+                                                        supportBillValidation: 'OPTIONAL',
+                                                        description: 'Bharat Connect Registered Loan Provider',
+                                                        inputParams: [
+                                                            { paramName: 'Loan Account Number', dataType: 'ALPHANUMERIC', optional: false, minLength: 4, maxLength: 30, hint: 'Loan Account Number / LAN' }
+                                                        ]
+                                                    })}
+                                                    className="text-xs font-bold bg-emerald-100/70 text-emerald-900 border border-emerald-300 rounded-lg px-3 py-1.5 hover:bg-emerald-200/80 transition-colors"
+                                                >
+                                                    Pay using Biller ID "{billerSearch.trim().toUpperCase()}"
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 ) : (
                                     filteredBillers.map((biller) => {

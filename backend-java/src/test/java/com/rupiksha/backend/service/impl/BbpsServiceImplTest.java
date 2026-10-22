@@ -617,6 +617,18 @@ class BbpsServiceImplTest {
         assertNotNull(muthoot);
         assertFalse(muthoot.isEmpty());
         assertTrue(muthoot.stream().anyMatch(b -> b.getBillerId().equals("MUTH00000NAT01")));
+
+        // Search for Annapurna Finance Private Limited-MFI exactly as typed by user
+        List<BbpsDtos.LoanBillerInfo> annapurnaExact = bbpsService.getLoanBillers("Annapurna Finance Private Limited-MFI");
+        assertNotNull(annapurnaExact);
+        assertFalse(annapurnaExact.isEmpty(), "Annapurna Finance Private Limited-MFI must be found");
+        assertTrue(annapurnaExact.stream().anyMatch(b -> b.getBillerId().equals("ANNA00000NAT01")));
+
+        // Search by partial text
+        List<BbpsDtos.LoanBillerInfo> annapurnaPartial = bbpsService.getLoanBillers("Annapurna");
+        assertNotNull(annapurnaPartial);
+        assertFalse(annapurnaPartial.isEmpty());
+        assertTrue(annapurnaPartial.stream().anyMatch(b -> b.getBillerId().equals("ANNA00000NAT01")));
     }
 
     @Test
