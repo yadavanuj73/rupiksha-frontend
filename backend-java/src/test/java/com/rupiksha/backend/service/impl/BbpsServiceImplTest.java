@@ -55,6 +55,10 @@ class BbpsServiceImplTest {
             new com.rupiksha.backend.integration.bbps.ElectricityBillerRegistry();
 
     @org.mockito.Spy
+    private com.rupiksha.backend.integration.bbps.LoanBillerRegistry loanBillerRegistry =
+            new com.rupiksha.backend.integration.bbps.LoanBillerRegistry();
+
+    @org.mockito.Spy
     private com.fasterxml.jackson.databind.ObjectMapper objectMapper =
             new com.fasterxml.jackson.databind.ObjectMapper();
 
@@ -596,4 +600,198 @@ class BbpsServiceImplTest {
         // Zero refunds on ambiguous timeout
         verify(walletService, never()).refundForService(any(), any(), any(), any(), any(), any(), any(), any());
     }
+
+    @Test
+    @DisplayName("Loan lenders catalogue is accessible and filters by search")
+    void testLoanBillerList() {
+        List<BbpsDtos.LoanBillerInfo> allBillers = bbpsService.getLoanBillers(null);
+        assertNotNull(allBillers);
+        assertTrue(allBillers.size() >= 30, "Should have 30+ lenders/NBFCs configured");
+
+        List<BbpsDtos.LoanBillerInfo> bajajBillers = bbpsService.getLoanBillers("Bajaj");
+        assertNotNull(bajajBillers);
+        assertFalse(bajajBillers.isEmpty());
+        assertTrue(bajajBillers.stream().anyMatch(b -> b.getBillerId().equals("BAJA00000NAT01")));
+
+        List<BbpsDtos.LoanBillerInfo> muthoot = bbpsService.getLoanBillers("Muthoot");
+        assertNotNull(muthoot);
+        assertFalse(muthoot.isEmpty());
+        assertTrue(muthoot.stream().anyMatch(b -> b.getBillerId().equals("MUTH00000NAT01")));
+    }
+
+    @Test
+    @DisplayName("Fetch loan bill succeeds and extracts bill amount, loan account, and borrower name")
+    void testLoanFetchBillSuccess() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)).thenReturn(Optional.empty());
+
+        BillAvenueDtos.BillFetchResponse fetchResponse = new BillAvenueDtos.BillFetchResponse();
+        fetchResponse.setResponseCode("000");
+        fetchResponse.setFetchRequestId("REQ-LOAN-FETCH-1122");
+        fetchResponse.setBillAmountPaise(450000L); // ₹4,500.00
+        fetchResponse.setCustomerName("Sunil Sharma");
+        fetchResponse.setBillNumber("EMI-OCT-2026");
+        fetchResponse.setBillDate("2026-10-05");
+        fetchResponse.setDueDate("2026-10-25");
+        fetchResponse.setBillPeriod("Monthly EMI");
+
+        when(billAvenueClient.fetchBill(any(), any(), any(), any())).thenReturn(fetchResponse);
+
+        BbpsDtos.LoanFetchRequest request = new BbpsDtos.LoanFetchRequest();
+        request.setBillerId("BAJA00000NAT01");
+        request.setCustomerMobile("9892506507");
+        request.setCustomerParams(java.util.Map.of("Loan Account Number", "LAN9988776655"));
+
+        BbpsDtos.BillFetchResult result = bbpsService.fetchLoanBill(userId, request, "127.0.0.1");
+
+        assertNotNull(result);
+        assertTrue(result.isSuccess());
+        assertFalse(result.isNoBillDue());
+        assertEquals("BAJA00000NAT01", result.getBillerId());
+        assertEquals("Bajaj Finance Limited", result.getBillerName());
+        assertEquals(new BigDecimal("4500.00"), result.getBillAmount());
+        assertEquals("Sunil Sharma", result.getCustomerName());
+        assertEquals("LAN9988776655", result.getConsumerNumber());
+        assertEquals("REQ-LOAN-FETCH-1122", result.getFetchRequestId());
+    }
+
+    @Test
+    @DisplayName("Loan repayment payment succeeds with wallet debit and fetchRequestId binding")
+    void testLoanPaySuccess() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)).thenReturn(Optional.empty());
+        when(walletService.getBalance(userId.toString())).thenReturn(mockBalance(new BigDecimal("10000.00"), new BigDecimal("10000.00")));
+
+        when(txnRepository.save(any(Txn.class))).thenAnswer(invocation -> {
+            Txn t = invocation.getArgument(0);
+            if (t.getId() == null) t.setId(UUID.randomUUID());
+            return t;
+        });
+
+        when(bbpsTransactionRepository.save(any(BbpsTransaction.class))).thenAnswer(invocation -> {
+            BbpsTransaction b = invocation.getArgument(0);
+            if (b.getId() == null) b.setId(UUID.randomUUID());
+            if (b.getCreatedAt() == null) b.setCreatedAt(java.time.Instant.now());
+            return b;
+        });
+
+        BillAvenueDtos.BillPayResponse payResponse = new BillAvenueDtos.BillPayResponse();
+        payResponse.setResponseCode("000");
+        payResponse.setResponseReason("Successful");
+        payResponse.setTxnRefId("BA-LOAN-REF-100200");
+        payResponse.setApprovalRefNumber("APR-LN-999");
+
+        when(billAvenueClient.payBillXml(any())).thenReturn(payResponse);
+
+        BbpsDtos.LoanPayRequest payRequest = new BbpsDtos.LoanPayRequest();
+        payRequest.setBillerId("BAJA00000NAT01");
+        payRequest.setCustomerMobile("9892506507");
+        payRequest.setAmount(new BigDecimal("4500.00"));
+        payRequest.setFetchRequestId("REQ-LOAN-FETCH-1122");
+        payRequest.setIdempotencyKey("LOAN-IDEMP-001");
+        payRequest.setCustomerParams(java.util.Map.of("Loan Account Number", "LAN9988776655"));
+        payRequest.setCustomerName("Sunil Sharma");
+        payRequest.setBillNumber("EMI-OCT-2026");
+        payRequest.setDueDate("2026-10-25");
+
+        BbpsDtos.LoanPayResponse response = bbpsService.payLoan(userId, payRequest, "192.168.1.100");
+
+        assertNotNull(response);
+        assertTrue(response.isSuccess());
+        assertEquals("SUCCESS", response.getStatus());
+        assertEquals("BA-LOAN-REF-100200", response.getProviderTxnId());
+        assertEquals("APR-LN-999", response.getApprovalRefNo());
+        assertEquals(new BigDecimal("4500.00"), response.getAmount());
+        assertEquals("LAN9988776655", response.getLoanAccountNumber());
+
+        // Verify debit happened with correct amount
+        verify(walletService, times(1)).debitForService(
+                eq(userId),
+                eq(new BigDecimal("4500.00")),
+                contains("LAN9988776655"),
+                any(), any(), any(), any()
+        );
+
+        // Verify XML payment request bound the fetchRequestId
+        verify(billAvenueClient, times(1)).payBillXml(argThat(req ->
+                "REQ-LOAN-FETCH-1122".equals(req.getFetchRequestId()) &&
+                "BAJA00000NAT01".equals(req.getBillerId()) &&
+                req.getAmountPaise() == 450000L &&
+                "Cash".equals(req.getPaymentMode())
+        ));
+    }
+
+    @Test
+    @DisplayName("Loan payment fails pre-check when wallet balance is insufficient")
+    void testLoanPayInsufficientBalance() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)).thenReturn(Optional.empty());
+        // Available balance is only ₹100, while loan payment requires ₹5,000
+        when(walletService.getBalance(userId.toString())).thenReturn(mockBalance(new BigDecimal("100.00"), new BigDecimal("100.00")));
+
+        BbpsDtos.LoanPayRequest payRequest = new BbpsDtos.LoanPayRequest();
+        payRequest.setBillerId("BAJA00000NAT01");
+        payRequest.setCustomerMobile("9892506507");
+        payRequest.setAmount(new BigDecimal("5000.00"));
+        payRequest.setIdempotencyKey("LOAN-INSUFF-001");
+        payRequest.setCustomerParams(java.util.Map.of("Loan Account Number", "LAN9988776655"));
+
+        assertThrows(IllegalStateException.class,
+                () -> bbpsService.payLoan(userId, payRequest, "127.0.0.1"));
+
+        // Verify zero wallet debits and zero provider calls occurred
+        verify(walletService, never()).debitForService(any(), any(), any(), any(), any(), any(), any());
+        verify(billAvenueClient, never()).payBillXml(any());
+    }
+
+    @Test
+    @DisplayName("Loan payment confirmed failure triggers single refund to wallet")
+    void testLoanPayFailureRefund() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)).thenReturn(Optional.empty());
+        when(walletService.getBalance(userId.toString())).thenReturn(mockBalance(new BigDecimal("10000.00"), new BigDecimal("10000.00")));
+
+        when(txnRepository.save(any(Txn.class))).thenAnswer(invocation -> {
+            Txn t = invocation.getArgument(0);
+            if (t.getId() == null) t.setId(UUID.randomUUID());
+            return t;
+        });
+
+        when(bbpsTransactionRepository.save(any(BbpsTransaction.class))).thenAnswer(invocation -> {
+            BbpsTransaction b = invocation.getArgument(0);
+            if (b.getId() == null) b.setId(UUID.randomUUID());
+            if (b.getCreatedAt() == null) b.setCreatedAt(java.time.Instant.now());
+            return b;
+        });
+
+        BillAvenueDtos.BillPayResponse failResp = new BillAvenueDtos.BillPayResponse();
+        failResp.setResponseCode("201");
+        failResp.setResponseReason("FAILURE");
+        failResp.setErrorMessage("Loan account closed or invalid");
+
+        when(billAvenueClient.payBillXml(any())).thenReturn(failResp);
+
+        BbpsDtos.LoanPayRequest payRequest = new BbpsDtos.LoanPayRequest();
+        payRequest.setBillerId("BAJA00000NAT01");
+        payRequest.setCustomerMobile("9892506507");
+        payRequest.setAmount(new BigDecimal("2000.00"));
+        payRequest.setIdempotencyKey("LOAN-FAIL-001");
+        payRequest.setCustomerParams(java.util.Map.of("Loan Account Number", "LAN9988776655"));
+
+        BbpsDtos.LoanPayResponse response = bbpsService.payLoan(userId, payRequest, "127.0.0.1");
+
+        assertNotNull(response);
+        assertFalse(response.isSuccess());
+        assertEquals("FAILED", response.getStatus());
+
+        // Verify debit AND refund occurred exactly once
+        verify(walletService, times(1)).debitForService(eq(userId), eq(new BigDecimal("2000.00")), any(), any(), any(), any(), any());
+        verify(walletService, times(1)).refundForService(
+                eq(userId),
+                eq(new BigDecimal("2000.00")),
+                contains("BBPS Recharge Failed Refund"),
+                any(), any(), any(), any(), any()
+        );
+    }
 }
+

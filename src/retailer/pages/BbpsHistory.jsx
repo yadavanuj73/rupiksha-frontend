@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     History, Search, Filter, Calendar, RefreshCw, AlertCircle,
     CheckCircle2, Clock, XCircle, Printer, Eye, ChevronLeft,
-    ChevronRight, ArrowUpRight, ShieldCheck, Download, Smartphone, Zap
+    ChevronRight, ArrowUpRight, ShieldCheck, Download, Smartphone, Zap, HandCoins
 } from 'lucide-react';
 import { bbpsService } from '../../services/apiService';
 import BbpsReceiptCard from '../components/bbps/BbpsReceiptCard';
@@ -19,6 +19,7 @@ const STATUS_CONFIG = {
 const CATEGORY_TABS = [
     { id: 'ALL', label: 'All Services' },
     { id: 'Electricity', label: 'Electricity', icon: Zap },
+    { id: 'Loan Repayment', label: 'Loan Repayment', icon: HandCoins },
     { id: 'Mobile Prepaid', label: 'Mobile Prepaid', icon: Smartphone }
 ];
 
@@ -35,6 +36,21 @@ const isElectricityTxn = (txn) => {
         bName.includes('power') ||
         bName.includes('electric') ||
         bName.includes('discom')
+    );
+};
+
+// Helper to reliably identify loan repayment transactions across categories and billers
+const isLoanTxn = (txn) => {
+    if (!txn) return false;
+    const cat = String(txn.category || '').toLowerCase();
+    const ref = String(txn.merchantRefNo || txn.id || '').toUpperCase();
+    const bName = String(txn.billerName || '').toLowerCase();
+    return (
+        cat.includes('loan') ||
+        ref.startsWith('BBPSLN') ||
+        bName.includes('finance') ||
+        bName.includes('capital') ||
+        bName.includes('fincorp')
     );
 };
 
@@ -335,6 +351,7 @@ const BbpsHistory = () => {
                                             const StatusIcon = statusObj.icon;
                                             const isPending = item.status === 'PENDING' || item.status === 'INITIATED';
                                             const isElectricity = isElectricityTxn(item);
+                                            const isLoan = isLoanTxn(item);
 
                                             return (
                                                 <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
@@ -349,6 +366,11 @@ const BbpsHistory = () => {
                                                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-50 text-amber-800 border border-amber-200">
                                                                 <Zap className="w-3 h-3 text-amber-600" />
                                                                 Electricity
+                                                            </span>
+                                                        ) : isLoan ? (
+                                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                                                <HandCoins className="w-3 h-3 text-emerald-600" />
+                                                                Loan Repayment
                                                             </span>
                                                         ) : (
                                                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-50 text-blue-700 border border-blue-200">
@@ -365,6 +387,11 @@ const BbpsHistory = () => {
                                                         {isElectricity ? (
                                                             <div className="text-[11px] text-slate-600 font-mono">
                                                                 ID: {item.consumerNumber || item.maskedMobileNumber || '—'}
+                                                                {item.customerName ? ` (${item.customerName})` : ''}
+                                                            </div>
+                                                        ) : isLoan ? (
+                                                            <div className="text-[11px] text-slate-600 font-mono">
+                                                                LAN: {item.consumerNumber || item.maskedMobileNumber || '—'}
                                                                 {item.customerName ? ` (${item.customerName})` : ''}
                                                             </div>
                                                         ) : (
@@ -473,6 +500,7 @@ const BbpsHistory = () => {
                         >
                             {(() => {
                                 const isElec = isElectricityTxn(selectedTxn);
+                                const isLoan = isLoanTxn(selectedTxn);
                                 const isPrepaidMeter = selectedTxn.category === 'Prepaid Meter' || selectedTxn.meterType === 'PREPAID' || selectedTxn.billerName?.toLowerCase().includes('prepaid');
                                 return (
                                     <BbpsReceiptCard
@@ -485,11 +513,11 @@ const BbpsHistory = () => {
                                             amount: selectedTxn.amount,
                                             billerName: selectedTxn.billerName,
                                             consumerNumber: selectedTxn.consumerNumber || selectedTxn.mobileNumber,
-                                            customerName: selectedTxn.customerName || (isElec ? (isPrepaidMeter ? 'Prepaid Meter Consumer' : 'Electricity Consumer') : 'Mobile Subscriber'),
+                                            customerName: selectedTxn.customerName || (isElec ? (isPrepaidMeter ? 'Prepaid Meter Consumer' : 'Electricity Consumer') : isLoan ? 'Borrower / Customer' : 'Mobile Subscriber'),
                                             meterType: isPrepaidMeter ? 'PREPAID' : (selectedTxn.meterType || 'POSTPAID'),
                                             createdAt: selectedTxn.createdAt
                                         }}
-                                        category={isElec ? 'electricity' : 'mobile-prepaid'}
+                                        category={isElec ? 'electricity' : isLoan ? 'loan-repayment' : 'mobile-prepaid'}
                                         isPrepaid={isElec && isPrepaidMeter}
                                         billerName={selectedTxn.billerName}
                                         consumerNumber={selectedTxn.consumerNumber || selectedTxn.mobileNumber}

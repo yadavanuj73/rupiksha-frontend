@@ -25,6 +25,8 @@ public interface BbpsTransactionRepository extends JpaRepository<BbpsTransaction
            "AND (:search IS NULL OR " +
            "     lower(b.mobileNumber) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
            "     lower(coalesce(b.consumerNumber, '')) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "     lower(coalesce(b.loanAccountNumber, '')) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "     lower(coalesce(b.borrowerName, '')) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
            "     lower(b.merchantRefNo) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
            "     lower(coalesce(b.providerTxnId, '')) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
            "     lower(b.billerName) LIKE concat('%', lower(cast(:search as string)), '%'))")

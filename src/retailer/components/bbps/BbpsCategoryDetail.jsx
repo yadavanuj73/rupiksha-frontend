@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import MobilePrepaidFlow from './MobilePrepaidFlow';
 import ElectricityFlow from './ElectricityFlow';
+import LoanRepaymentFlow from './LoanRepaymentFlow';
 import BbpsServiceNav from './BbpsServiceNav';
 
 const BbpsCategoryDetail = ({ category, onBack }) => {
@@ -22,6 +23,10 @@ const BbpsCategoryDetail = ({ category, onBack }) => {
 
     if (category.id === 'electricity') {
         return <ElectricityFlow onBack={onBack} category={category} />;
+    }
+
+    if (category.id === 'loan-repayment' || category.id === 'loan') {
+        return <LoanRepaymentFlow onBack={onBack} category={category} />;
     }
 
     const Icon = category.icon;

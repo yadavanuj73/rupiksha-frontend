@@ -301,6 +301,23 @@ export const bbpsService = {
       body: JSON.stringify({ ...data, idempotencyKey }),
     });
   },
+  getLoanBillers: (search) =>
+    apiFetch(`/bbps/loan/billers${search ? `?search=${encodeURIComponent(search)}` : ''}`),
+  fetchLoanBill: (payload) =>
+    apiFetch("/bbps/loan/fetch", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  payLoanBill: (data) => {
+    const idempotencyKey = data.idempotencyKey || `BBPS-LN-${Date.now()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+    return apiFetch("/bbps/loan/pay", {
+      method: "POST",
+      headers: {
+        "X-Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify({ ...data, idempotencyKey }),
+    });
+  },
 };
 
 // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────

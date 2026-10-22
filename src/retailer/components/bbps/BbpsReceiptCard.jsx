@@ -57,6 +57,7 @@ const BbpsReceiptCard = ({
     const isFailed = !isSuccess && !isPending;
     const isElectricity = category === 'electricity';
     const isMobile = category === 'mobile-prepaid';
+    const isLoan = category === 'loan-repayment' || category === 'loan' || String(category || '').toLowerCase().includes('loan');
 
     // Format paid date nicely
     const formatPaidDate = (dateVal) => {
@@ -80,16 +81,18 @@ const BbpsReceiptCard = ({
     const txnId = txnOutcome.merchantRefNo || txnOutcome.transactionId || 'N/A';
     const refNo = txnOutcome.providerTxnId || txnOutcome.bankRRN || txnOutcome.refNo || 'N/A';
     const approvalNo = txnOutcome.approvalRefNo || txnOutcome.approvalNumber || 'AB123456';
-    const displayBiller = txnOutcome.billerName || billerName || (isElectricity ? 'Electricity Board' : 'Telecom Operator');
+    const displayBiller = txnOutcome.billerName || billerName || (isElectricity ? 'Electricity Board' : isLoan ? 'Lender / Financier' : 'Telecom Operator');
     const isPrepaidMeter = isPrepaid || txnOutcome.meterType === 'PREPAID';
 
     const serviceType = isElectricity
         ? (isPrepaidMeter ? 'Smart Prepaid Meter Recharge' : 'Postpaid Electricity Bill')
-        : (isMobile ? 'Smart Prepaid Mobile Recharge' : 'Bharat Connect Utility Payment');
+        : isLoan
+            ? 'Loan Repayment (EMI / Advance)'
+            : (isMobile ? 'Smart Prepaid Mobile Recharge' : 'Bharat Connect Utility Payment');
 
     const paidDate = formatPaidDate(txnOutcome.createdAt || txnOutcome.completedAt || txnOutcome.billDate || new Date());
     const caNumber = txnOutcome.consumerNumber || txnOutcome.mobileNumber || consumerNumber || 'N/A';
-    const custName = txnOutcome.customerName || customerName || (isElectricity ? (isPrepaidMeter ? 'Prepaid Meter Consumer' : 'Electricity Consumer') : 'Customer');
+    const custName = txnOutcome.customerName || customerName || (isElectricity ? (isPrepaidMeter ? 'Prepaid Meter Consumer' : 'Electricity Consumer') : isLoan ? 'Borrower / Customer' : 'Customer');
     const amountVal = Number(txnOutcome.amount || txnOutcome.totalAmount || 0).toFixed(2);
 
     // Direct, reliable PDF download using jsPDF vector engine
@@ -225,17 +228,17 @@ const BbpsReceiptCard = ({
                 { label: 'Transaction ID', value: txnId },
                 { label: 'Refrence No', value: refNo },
                 { label: 'Approval No', value: approvalNo },
-                { label: isElectricity ? 'Electricity Board' : 'Operator', value: displayBiller },
+                { label: isElectricity ? 'Electricity Board' : isLoan ? 'Lender / Financier' : 'Operator', value: displayBiller },
                 { label: 'Service Type', value: serviceType },
                 { label: 'Bill Date', value: paidDate },
-                { label: isElectricity ? 'CA Number' : 'Mobile Number', value: caNumber },
+                { label: isElectricity ? 'CA Number' : isLoan ? 'Loan Account No (LAN)' : 'Mobile Number', value: caNumber },
                 { label: 'Customer Name', value: custName },
                 { label: 'Amount Paid', value: `INR ${amountVal}`, isAmount: true }
             ] : [
                 { label: 'Transaction ID', value: txnId },
-                { label: isElectricity ? 'Electricity Board' : 'Operator', value: displayBiller },
+                { label: isElectricity ? 'Electricity Board' : isLoan ? 'Lender / Financier' : 'Operator', value: displayBiller },
                 { label: 'Service Type', value: serviceType },
-                { label: isElectricity ? 'Consumer Number / CA' : 'Mobile Number', value: caNumber },
+                { label: isElectricity ? 'Consumer Number / CA' : isLoan ? 'Loan Account No (LAN)' : 'Mobile Number', value: caNumber },
                 { label: 'Customer Name', value: custName },
                 { label: 'Amount Paid', value: `INR ${amountVal}`, isAmount: true }
             ];
@@ -345,14 +348,18 @@ const BbpsReceiptCard = ({
                             <h2 className="text-xl font-black text-black tracking-tight">
                                 {isElectricity
                                     ? (isPrepaidMeter ? 'Prepaid Meter Recharged!' : 'Electricity Bill Paid!')
-                                    : 'Recharge Successful!'}
+                                    : isLoan
+                                        ? 'Loan Repayment Successful!'
+                                        : 'Recharge Successful!'}
                             </h2>
                             <p className="text-xs font-bold text-slate-600 max-w-md mx-auto leading-relaxed">
                                 {isElectricity
                                     ? (isPrepaidMeter
                                         ? 'Your smart prepaid meter recharge token/credit has been generated via Bharat Connect'
                                         : 'Your electricity bill payment has been verified & completed via Bharat Connect')
-                                    : 'Your prepaid mobile has been recharged instantly via Bharat Connect'}
+                                    : isLoan
+                                        ? 'Your loan repayment / EMI installment has been processed successfully via Bharat Connect'
+                                        : 'Your prepaid mobile has been recharged instantly via Bharat Connect'}
                             </p>
                         </div>
                     </div>
@@ -433,7 +440,7 @@ const BbpsReceiptCard = ({
                                 </div>
 
                                 <div className="flex justify-between items-center py-1 border-b border-slate-200/70 gap-2">
-                                    <span className="text-slate-500 shrink-0">{isElectricity ? 'Electricity Board' : 'Operator'}</span>
+                                    <span className="text-slate-500 shrink-0">{isElectricity ? 'Electricity Board' : isLoan ? 'Lender / Financier' : 'Operator'}</span>
                                     <span className="font-black text-black text-right break-words max-w-[65%]">
                                         {displayBiller}
                                     </span>
@@ -454,7 +461,7 @@ const BbpsReceiptCard = ({
                                 </div>
 
                                 <div className="flex justify-between items-center py-1 border-b border-slate-200/70 gap-2">
-                                    <span className="text-slate-500 shrink-0">{isElectricity ? 'CA Number' : 'Mobile Number'}</span>
+                                    <span className="text-slate-500 shrink-0">{isElectricity ? 'CA Number' : isLoan ? 'Loan Account No' : 'Mobile Number'}</span>
                                     <span className="font-mono font-black text-black text-right break-all">
                                         {caNumber}
                                     </span>
@@ -477,9 +484,9 @@ const BbpsReceiptCard = ({
                         ) : (
                             /* FAILED (or Pending) DETAILS:
                                - Transaction ID
-                               - Electricity Board
+                               - Electricity Board / Lender / Operator
                                - Service Type
-                               - Consumer Number / CA
+                               - Consumer Number / CA / Loan Account
                                - Customer Name
                                - Amount Paid
                             */
@@ -492,7 +499,7 @@ const BbpsReceiptCard = ({
                                 </div>
 
                                 <div className="flex justify-between items-center py-1 border-b border-slate-200/70 gap-2">
-                                    <span className="text-slate-500 shrink-0">{isElectricity ? 'Electricity Board' : 'Operator'}</span>
+                                    <span className="text-slate-500 shrink-0">{isElectricity ? 'Electricity Board' : isLoan ? 'Lender / Financier' : 'Operator'}</span>
                                     <span className="font-black text-black text-right break-words max-w-[65%]">
                                         {displayBiller}
                                     </span>
@@ -506,7 +513,7 @@ const BbpsReceiptCard = ({
                                 </div>
 
                                 <div className="flex justify-between items-center py-1 border-b border-slate-200/70 gap-2">
-                                    <span className="text-slate-500 shrink-0">{isElectricity ? 'Consumer Number / CA' : 'Mobile Number'}</span>
+                                    <span className="text-slate-500 shrink-0">{isElectricity ? 'Consumer Number / CA' : isLoan ? 'Loan Account No' : 'Mobile Number'}</span>
                                     <span className="font-mono font-black text-black text-right break-all">
                                         {caNumber}
                                     </span>

@@ -13,6 +13,7 @@ import com.rupiksha.backend.repository.UserRepository;
 import com.rupiksha.backend.repository.UserServiceRepository;
 import com.rupiksha.backend.service.BbpsService;
 import com.rupiksha.backend.integration.bbps.ElectricityBillerRegistry;
+import com.rupiksha.backend.integration.bbps.LoanBillerRegistry;
 import com.rupiksha.backend.service.WalletService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,7 @@ public class BbpsServiceImpl implements BbpsService {
     private final UserServiceRepository userServiceRepository;
     private final WalletService walletService;
     private final ElectricityBillerRegistry electricityBillerRegistry;
+    private final LoanBillerRegistry loanBillerRegistry;
     private final ObjectMapper objectMapper;
     private final Map<String, BillAvenueDtos.BillFetchResponse> fetchCache = new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -1318,6 +1320,679 @@ public class BbpsServiceImpl implements BbpsService {
     }
 
     @Override
+    public List<BbpsDtos.LoanBillerInfo> getLoanBillers(String search) {
+        return loanBillerRegistry.getAllBillers(search);
+    }
+
+    @Override
+    public BbpsDtos.BillFetchResult fetchLoanBill(UUID userId, BbpsDtos.LoanFetchRequest request, String clientIp) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        boolean isServiceEnabled = userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)
+                .map(UserService::getIsEnabled)
+                .orElse(true);
+
+        if (!isServiceEnabled) {
+            log.warn("BBPS service disabled for user: {}", userId);
+            throw new IllegalStateException("BBPS service is disabled for your account by administrator");
+        }
+
+        if (request.getCustomerMobile() == null || !request.getCustomerMobile().matches("^[6-9]\\d{9}$")) {
+            throw new IllegalArgumentException("Valid 10-digit Indian mobile number starting with 6-9 is required");
+        }
+
+        BbpsDtos.LoanBillerInfo biller = loanBillerRegistry.findById(request.getBillerId())
+                .orElseThrow(() -> new IllegalArgumentException("Unknown or unmapped loan biller: " + request.getBillerId()));
+
+        // Validate dynamic customer parameters
+        loanBillerRegistry.validateCustomerParams(biller, request.getCustomerParams());
+
+        // Prepare BillAvenue Input Params
+        List<BillAvenueDtos.InputParam> inputs = new ArrayList<>();
+        if (request.getCustomerParams() != null) {
+            for (Map.Entry<String, String> entry : request.getCustomerParams().entrySet()) {
+                if (entry.getValue() != null && !entry.getValue().isBlank()) {
+                    inputs.add(BillAvenueDtos.InputParam.builder()
+                            .paramName(entry.getKey().trim())
+                            .paramValue(entry.getValue().trim())
+                            .build());
+                }
+            }
+        }
+
+        String sanitizedIp = (clientIp != null && clientIp.matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"))
+                ? clientIp : "103.108.7.127";
+
+        String primaryLoanAccount = loanBillerRegistry.extractPrimaryLoanAccountNumber(request.getCustomerParams());
+
+        // If biller fetch requirement is NOT_SUPPORTED, check if bill validation is supported
+        if ("NOT_SUPPORTED".equalsIgnoreCase(biller.getBillerFetchRequirement())) {
+            if (!"NOT_SUPPORTED".equalsIgnoreCase(biller.getSupportBillValidation())) {
+                try {
+                    BillAvenueDtos.BillValidationResponse valResp = billAvenueClient.validateBillXml(biller.getBillerId(), inputs);
+                    if (valResp != null && valResp.isSuccess()) {
+                        List<BbpsDtos.InfoItemDto> addnl = new ArrayList<>();
+                        if (valResp.getAdditionalInfo() != null) {
+                            for (BillAvenueDtos.InfoItem item : valResp.getAdditionalInfo()) {
+                                addnl.add(new BbpsDtos.InfoItemDto(item.getInfoName(), item.getInfoValue()));
+                            }
+                        }
+                        return BbpsDtos.BillFetchResult.builder()
+                                .success(true)
+                                .noBillDue(false)
+                                .fetchRequestId(BillAvenueCryptoUtil.generateRequestId())
+                                .billerId(biller.getBillerId())
+                                .billerName(biller.getBillerName())
+                                .consumerNumber(primaryLoanAccount)
+                                .billAmount(null) // Payment-only biller without pre-fetched bill amount
+                                .customerName("Loan Borrower")
+                                .customerParams(request.getCustomerParams())
+                                .additionalInfo(addnl)
+                                .message("Loan account verified successfully with lender")
+                                .build();
+                    } else {
+                        String errMsg = valResp != null ? valResp.getErrorMessage() : "Loan account validation failed";
+                        return BbpsDtos.BillFetchResult.builder()
+                                .success(false)
+                                .noBillDue(false)
+                                .billerId(biller.getBillerId())
+                                .billerName(biller.getBillerName())
+                                .customerParams(request.getCustomerParams())
+                                .message(errMsg)
+                                .errorCode(valResp != null ? valResp.getResponseCode() : "500")
+                                .build();
+                    }
+                } catch (Exception ve) {
+                    log.error("Exception validating loan bill for biller {}: {}", biller.getBillerId(), ve.getMessage());
+                    return BbpsDtos.BillFetchResult.builder()
+                            .success(false)
+                            .billerId(biller.getBillerId())
+                            .billerName(biller.getBillerName())
+                            .customerParams(request.getCustomerParams())
+                            .message("Failed to validate loan account: " + ve.getMessage())
+                            .errorCode("500")
+                            .build();
+                }
+            } else {
+                return BbpsDtos.BillFetchResult.builder()
+                        .success(true)
+                        .noBillDue(false)
+                        .fetchRequestId(BillAvenueCryptoUtil.generateRequestId())
+                        .billerId(biller.getBillerId())
+                        .billerName(biller.getBillerName())
+                        .consumerNumber(primaryLoanAccount)
+                        .billAmount(null)
+                        .customerName("Loan Borrower")
+                        .customerParams(request.getCustomerParams())
+                        .message("Biller does not support bill fetch. Enter repayment amount to proceed.")
+                        .build();
+            }
+        }
+
+        try {
+            BillAvenueDtos.BillFetchResponse fetchResp = billAvenueClient.fetchBill(
+                    biller.getBillerId(),
+                    inputs,
+                    request.getCustomerMobile().trim(),
+                    sanitizedIp
+            );
+            if (fetchResp != null && fetchResp.getFetchRequestId() != null && !fetchResp.getFetchRequestId().isBlank()) {
+                fetchCache.put(fetchResp.getFetchRequestId().trim(), fetchResp);
+            }
+
+            boolean isNoBillDue = fetchResp != null && (fetchResp.isNoBillDue() || (fetchResp.isSuccess() && fetchResp.getBillAmountPaise() == 0));
+
+            if (fetchResp != null && (fetchResp.isSuccess() || isNoBillDue)) {
+                BigDecimal billAmt = isNoBillDue
+                        ? BigDecimal.ZERO
+                        : BigDecimal.valueOf(fetchResp.getBillAmountPaise()).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+
+                List<BbpsDtos.InfoItemDto> addnl = new ArrayList<>();
+                if (fetchResp.getAdditionalInfo() != null) {
+                    for (BillAvenueDtos.InfoItem item : fetchResp.getAdditionalInfo()) {
+                        addnl.add(new BbpsDtos.InfoItemDto(item.getInfoName(), item.getInfoValue()));
+                    }
+                }
+
+                String custName = (fetchResp.getCustomerName() != null && !fetchResp.getCustomerName().isBlank() && !"NA".equalsIgnoreCase(fetchResp.getCustomerName().trim()))
+                        ? fetchResp.getCustomerName().trim()
+                        : null;
+
+                if (custName == null || custName.isBlank()) {
+                    if (request.getCustomerParams() != null) {
+                        for (Map.Entry<String, String> entry : request.getCustomerParams().entrySet()) {
+                            if (entry.getKey() != null && entry.getValue() != null && !entry.getValue().isBlank()) {
+                                String k = entry.getKey().trim().toLowerCase();
+                                if (k.contains("name") && !k.contains("number") && !k.contains("id") && !k.contains("unit") && !k.contains("account")) {
+                                    custName = entry.getValue().trim();
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (custName == null || custName.isBlank()) {
+                    custName = "Loan Borrower";
+                }
+
+                String message = isNoBillDue
+                        ? "No pending EMI or loan dues for this account"
+                        : "Loan bill details fetched successfully";
+
+                return BbpsDtos.BillFetchResult.builder()
+                        .success(true)
+                        .noBillDue(isNoBillDue)
+                        .fetchRequestId(fetchResp.getFetchRequestId())
+                        .billerId(biller.getBillerId())
+                        .billerName(biller.getBillerName())
+                        .consumerNumber(primaryLoanAccount)
+                        .billAmount(billAmt)
+                        .customerName(custName)
+                        .billNumber(fetchResp.getBillNumber())
+                        .billDate(fetchResp.getBillDate())
+                        .dueDate(fetchResp.getDueDate())
+                        .billPeriod(fetchResp.getBillPeriod())
+                        .customerParams(request.getCustomerParams())
+                        .additionalInfo(addnl)
+                        .message(message)
+                        .build();
+            } else {
+                String errMsg = fetchResp != null ? fetchResp.getErrorMessage() : "Provider rejected loan bill fetch";
+                return BbpsDtos.BillFetchResult.builder()
+                        .success(false)
+                        .noBillDue(false)
+                        .billerId(biller.getBillerId())
+                        .billerName(biller.getBillerName())
+                        .customerParams(request.getCustomerParams())
+                        .message(errMsg)
+                        .errorCode(fetchResp != null ? fetchResp.getResponseCode() : "500")
+                        .build();
+            }
+        } catch (Exception e) {
+            log.error("Exception fetching loan bill for biller {}: {}", biller.getBillerId(), e.getMessage());
+            return BbpsDtos.BillFetchResult.builder()
+                    .success(false)
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .customerParams(request.getCustomerParams())
+                    .message("Failed to fetch loan details from provider: " + e.getMessage())
+                    .errorCode("500")
+                    .build();
+        }
+    }
+
+    @Override
+    @Transactional
+    public BbpsDtos.LoanPayResponse payLoan(UUID userId, BbpsDtos.LoanPayRequest request, String clientIp) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        // 1. Verify service permission in user_services
+        boolean isServiceEnabled = userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)
+                .map(UserService::getIsEnabled)
+                .orElse(true);
+
+        if (!isServiceEnabled) {
+            log.warn("BBPS service disabled for user: {}", userId);
+            throw new IllegalStateException("BBPS service is disabled for your account by administrator");
+        }
+
+        // 2. Validate input
+        if (request.getCustomerMobile() == null || !request.getCustomerMobile().matches("^[6-9]\\d{9}$")) {
+            throw new IllegalArgumentException("Valid 10-digit Indian mobile number starting with 6-9 is required");
+        }
+        if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Loan repayment amount must be greater than zero");
+        }
+
+        BbpsDtos.LoanBillerInfo biller = loanBillerRegistry.findById(request.getBillerId())
+                .orElseThrow(() -> new IllegalArgumentException("Unknown loan biller: " + request.getBillerId()));
+
+        loanBillerRegistry.validateCustomerParams(biller, request.getCustomerParams());
+
+        BigDecimal convenienceFee = (request.getConvenienceFee() != null && request.getConvenienceFee().compareTo(BigDecimal.ZERO) > 0)
+                ? request.getConvenienceFee()
+                : BigDecimal.ZERO;
+        BigDecimal totalPayable = request.getAmount().add(convenienceFee);
+
+        // 3. Server-enforced Idempotency check
+        String idempotencyKey = request.getIdempotencyKey();
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            idempotencyKey = "BBPS-LOAN-" + UUID.randomUUID();
+        }
+
+        Optional<BbpsTransaction> existingOpt = bbpsTransactionRepository.findByIdempotencyKey(idempotencyKey);
+        if (existingOpt.isPresent()) {
+            BbpsTransaction existing = existingOpt.get();
+            log.info("Idempotent request duplicate detected for loan payment key: {}. Returning existing status: {}",
+                    idempotencyKey, existing.getStatus());
+
+            WalletDtos.WalletBalanceResponse currentBal = walletService.getBalance(userId.toString());
+            return BbpsDtos.LoanPayResponse.builder()
+                    .success("SUCCESS".equals(existing.getStatus()))
+                    .transactionId(existing.getId().toString())
+                    .merchantRefNo(existing.getMerchantRefNo())
+                    .providerTxnId(existing.getProviderTxnId())
+                    .approvalRefNo(existing.getApprovalRefNo())
+                    .status(existing.getStatus())
+                    .amount(existing.getAmount())
+                    .convenienceFee(existing.getConvenienceFee())
+                    .totalAmount(existing.getAmount().add(existing.getConvenienceFee() != null ? existing.getConvenienceFee() : BigDecimal.ZERO))
+                    .loanAccountNumber(existing.getConsumerNumber())
+                    .customerName(existing.getCustomerName())
+                    .customerMobile(existing.getMobileNumber())
+                    .billerId(existing.getBillerId())
+                    .billerName(existing.getBillerName())
+                    .billNumber(existing.getBillNumber())
+                    .dueDate(existing.getDueDate())
+                    .message(existing.getProviderMessage() != null ? existing.getProviderMessage() : "Existing transaction returned")
+                    .walletBalance(currentBal.balance())
+                    .createdAt(existing.getCreatedAt())
+                    .build();
+        }
+
+        // 4. Authoritative backend wallet balance enforcement
+        WalletDtos.WalletBalanceResponse balanceResponse = walletService.getBalance(userId.toString());
+        BigDecimal availableBalance = balanceResponse.availableBalance() != null ? balanceResponse.availableBalance() : BigDecimal.ZERO;
+        if (availableBalance.compareTo(totalPayable) < 0) {
+            log.warn("Insufficient wallet balance for user {}. Required: {}, Available: {}",
+                    userId, totalPayable, availableBalance);
+            throw new IllegalStateException("Insufficient wallet balance. Available: ₹" + availableBalance + ", Required: ₹" + totalPayable);
+        }
+
+        // 5. Generate unique references and build inputs
+        String primaryLoanAccount = loanBillerRegistry.extractPrimaryLoanAccountNumber(request.getCustomerParams());
+        String merchantRefNo = "BBPSLN" + System.currentTimeMillis() + UUID.randomUUID().toString().replaceAll("-", "").substring(0, 6).toUpperCase();
+
+        String sanitizedIp = (clientIp != null && clientIp.matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"))
+                ? clientIp : "103.108.7.127";
+
+        List<BillAvenueDtos.InputParam> inputs = new ArrayList<>();
+        if (request.getCustomerParams() != null) {
+            for (Map.Entry<String, String> entry : request.getCustomerParams().entrySet()) {
+                if (entry.getValue() != null && !entry.getValue().isBlank()) {
+                    inputs.add(BillAvenueDtos.InputParam.builder()
+                            .paramName(entry.getKey().trim())
+                            .paramValue(entry.getValue().trim())
+                            .build());
+                }
+            }
+        }
+
+        String effectiveRequestId = (request.getFetchRequestId() != null && !request.getFetchRequestId().isBlank())
+                ? request.getFetchRequestId().trim()
+                : null;
+
+        String customerName = (request.getCustomerName() != null && !request.getCustomerName().isBlank() && !"NA".equalsIgnoreCase(request.getCustomerName().trim()))
+                ? request.getCustomerName().trim()
+                : null;
+
+        String effectiveBillDate = (request.getBillDate() != null && !request.getBillDate().isBlank() && !"N/A".equalsIgnoreCase(request.getBillDate().trim()))
+                ? request.getBillDate().trim()
+                : null;
+
+        String effectiveDueDate = (request.getDueDate() != null && !request.getDueDate().isBlank() && !"N/A".equalsIgnoreCase(request.getDueDate().trim()))
+                ? request.getDueDate().trim()
+                : null;
+
+        String effectiveBillNumber = (request.getBillNumber() != null && !request.getBillNumber().isBlank() && !"N/A".equalsIgnoreCase(request.getBillNumber().trim()))
+                ? request.getBillNumber().trim()
+                : null;
+
+        String effectiveBillPeriod = (request.getBillPeriod() != null && !request.getBillPeriod().isBlank() && !"N/A".equalsIgnoreCase(request.getBillPeriod().trim()))
+                ? request.getBillPeriod().trim()
+                : null;
+
+        List<BillAvenueDtos.InfoItem> addnlItems = new ArrayList<>();
+        if (request.getAdditionalInfo() != null) {
+            for (BbpsDtos.InfoItemDto dto : request.getAdditionalInfo()) {
+                addnlItems.add(new BillAvenueDtos.InfoItem(dto.getInfoName(), dto.getInfoValue()));
+            }
+        }
+
+        String rawBillerResponseXml = null;
+        String rawAdditionalInfoXml = null;
+
+        if (effectiveRequestId != null) {
+            BillAvenueDtos.BillFetchResponse cached = fetchCache.get(effectiveRequestId);
+            if (cached != null) {
+                if (cached.getRawBillerResponseXml() != null) {
+                    rawBillerResponseXml = cached.getRawBillerResponseXml();
+                }
+                if (cached.getRawAdditionalInfoXml() != null) {
+                    rawAdditionalInfoXml = cached.getRawAdditionalInfoXml();
+                }
+                if (cached.getAdditionalInfo() != null && !cached.getAdditionalInfo().isEmpty() && addnlItems.isEmpty()) {
+                    addnlItems.addAll(cached.getAdditionalInfo());
+                }
+                if (customerName == null && cached.getCustomerName() != null && !cached.getCustomerName().isBlank()) {
+                    customerName = cached.getCustomerName().trim();
+                }
+            }
+        }
+
+        // If fetchRequestId is not present but the biller requires or supports bill fetch:
+        // Automatically perform a pre-payment bill fetch with BillAvenue to establish the CU fetch session
+        if (effectiveRequestId == null && !"NOT_SUPPORTED".equalsIgnoreCase(biller.getBillerFetchRequirement())) {
+            log.info("Loan biller {} requires/supports fetch. Performing pre-payment bill fetch for loan: {}",
+                    biller.getBillerId(), primaryLoanAccount);
+            try {
+                BillAvenueDtos.BillFetchResponse autoFetch = billAvenueClient.fetchBill(
+                        biller.getBillerId(),
+                        inputs,
+                        request.getCustomerMobile().trim(),
+                        sanitizedIp
+                );
+                if (autoFetch != null && autoFetch.getFetchRequestId() != null && !autoFetch.getFetchRequestId().isBlank()) {
+                    effectiveRequestId = autoFetch.getFetchRequestId().trim();
+                    fetchCache.put(effectiveRequestId, autoFetch);
+
+                    if (autoFetch.getRawBillerResponseXml() != null && !autoFetch.getRawBillerResponseXml().isBlank()) {
+                        rawBillerResponseXml = autoFetch.getRawBillerResponseXml().trim();
+                    }
+                    if (autoFetch.getRawAdditionalInfoXml() != null && !autoFetch.getRawAdditionalInfoXml().isBlank()) {
+                        rawAdditionalInfoXml = autoFetch.getRawAdditionalInfoXml().trim();
+                    }
+
+                    if (autoFetch.getCustomerName() != null && !autoFetch.getCustomerName().isBlank()
+                            && !"NA".equalsIgnoreCase(autoFetch.getCustomerName().trim())
+                            && !"Loan Borrower".equalsIgnoreCase(autoFetch.getCustomerName().trim())) {
+                        customerName = autoFetch.getCustomerName().trim();
+                    }
+                    if (autoFetch.getBillNumber() != null && !autoFetch.getBillNumber().isBlank()) {
+                        effectiveBillNumber = autoFetch.getBillNumber().trim();
+                    }
+                    if (autoFetch.getBillDate() != null && !autoFetch.getBillDate().isBlank()) {
+                        effectiveBillDate = autoFetch.getBillDate().trim();
+                    }
+                    if (autoFetch.getDueDate() != null && !autoFetch.getDueDate().isBlank()) {
+                        effectiveDueDate = autoFetch.getDueDate().trim();
+                    }
+                    if (autoFetch.getBillPeriod() != null && !autoFetch.getBillPeriod().isBlank()) {
+                        effectiveBillPeriod = autoFetch.getBillPeriod().trim();
+                    }
+                    if (autoFetch.getAdditionalInfo() != null && !autoFetch.getAdditionalInfo().isEmpty()) {
+                        addnlItems = new ArrayList<>(autoFetch.getAdditionalInfo());
+                    }
+                }
+            } catch (Exception fe) {
+                log.warn("Pre-payment loan fetch exception for biller {}: {}", biller.getBillerId(), fe.getMessage());
+            }
+        }
+
+        boolean hasFetchSession = (effectiveRequestId != null && !effectiveRequestId.isBlank());
+        if (effectiveRequestId == null) {
+            effectiveRequestId = BillAvenueCryptoUtil.generateRequestId();
+        }
+        String quickPayFlag = hasFetchSession ? "N" : "Y";
+
+        if (customerName == null || customerName.isBlank()) {
+            customerName = "Loan Borrower";
+        }
+        if (effectiveBillDate == null || effectiveBillDate.isBlank()) {
+            effectiveBillDate = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
+        }
+        if (effectiveDueDate == null || effectiveDueDate.isBlank()) {
+            effectiveDueDate = effectiveBillDate;
+        }
+        if (effectiveBillNumber == null || effectiveBillNumber.isBlank()) {
+            effectiveBillNumber = merchantRefNo;
+        }
+        if (effectiveBillPeriod == null || effectiveBillPeriod.isBlank()) {
+            effectiveBillPeriod = "NA";
+        }
+
+        String customerParamsJson = null;
+        try {
+            customerParamsJson = objectMapper.writeValueAsString(request.getCustomerParams());
+        } catch (Exception ignored) {}
+
+        String additionalInfoJson = null;
+        try {
+            if (!addnlItems.isEmpty()) {
+                additionalInfoJson = objectMapper.writeValueAsString(addnlItems);
+            }
+        } catch (Exception ignored) {}
+
+        // 6. Persist Core Txn and BbpsTransaction in INITIATED state
+        Txn txn = new Txn();
+        txn.setUser(user);
+        txn.setAmount(totalPayable);
+        txn.setServiceType("BBPS_LOAN_REPAYMENT");
+        txn.setStatus(TransactionStatus.INITIATED);
+        txn.setIdempotencyKey(idempotencyKey);
+        txn = txnRepository.save(txn);
+
+        BbpsTransaction bbpsTxn = new BbpsTransaction();
+        bbpsTxn.setUser(user);
+        bbpsTxn.setTxn(txn);
+        bbpsTxn.setIdempotencyKey(idempotencyKey);
+        bbpsTxn.setRequestId(effectiveRequestId);
+        bbpsTxn.setMerchantRefNo(merchantRefNo);
+        bbpsTxn.setCategory("Loan Repayment");
+        bbpsTxn.setBillerId(biller.getBillerId());
+        bbpsTxn.setBillerName(biller.getBillerName());
+        bbpsTxn.setCircle("National");
+        bbpsTxn.setMobileNumber(request.getCustomerMobile().trim());
+        bbpsTxn.setConsumerNumber(primaryLoanAccount);
+        bbpsTxn.setCustomerName(customerName);
+        bbpsTxn.setLoanAccountNumber(primaryLoanAccount);
+        bbpsTxn.setBorrowerName(customerName);
+        bbpsTxn.setPaymentMode("Cash");
+        bbpsTxn.setPaymentChannel("AGT");
+        bbpsTxn.setBillNumber(effectiveBillNumber);
+        bbpsTxn.setBillDate(effectiveBillDate);
+        bbpsTxn.setDueDate(effectiveDueDate);
+        bbpsTxn.setBillPeriod(effectiveBillPeriod);
+        bbpsTxn.setConvenienceFee(convenienceFee);
+        bbpsTxn.setCustomerParams(customerParamsJson);
+        bbpsTxn.setAdditionalInfo(additionalInfoJson);
+        bbpsTxn.setFetchRequestId(request.getFetchRequestId());
+        bbpsTxn.setAmount(request.getAmount());
+        bbpsTxn.setStatus("INITIATED");
+        bbpsTxn = bbpsTransactionRepository.save(bbpsTxn);
+
+        // 7. Atomically debit wallet using ledger-safe service debit
+        String debitRef = txn.getId().toString();
+        try {
+            String debitDesc = "BBPS Loan Repayment - " + biller.getBillerName() + " (" + primaryLoanAccount + ")";
+            walletService.debitForService(
+                    userId,
+                    totalPayable,
+                    debitDesc,
+                    WalletTransactionContext.BBPS_PAYMENT,
+                    "BBPS",
+                    clientIp != null ? clientIp : "127.0.0.1",
+                    debitRef
+            );
+            bbpsTxn.setWalletDebitRef(debitRef);
+            bbpsTxn = bbpsTransactionRepository.save(bbpsTxn);
+        } catch (Exception e) {
+            log.error("Failed to debit wallet for BBPS loan repayment. MerchantRef: {}", merchantRefNo, e);
+            txn.setStatus(TransactionStatus.FAILED);
+            txnRepository.save(txn);
+
+            bbpsTxn.setStatus("FAILED");
+            bbpsTxn.setProviderMessage("Wallet debit failed: " + e.getMessage());
+            bbpsTransactionRepository.save(bbpsTxn);
+
+            throw new IllegalStateException("Wallet debit failed: " + e.getMessage());
+        }
+
+        // 8. Submit provider request to BillAvenue
+        long paise = request.getAmount().multiply(BigDecimal.valueOf(100)).longValue();
+        long convFeePaise = convenienceFee.multiply(BigDecimal.valueOf(100)).longValue();
+
+        // Note: As per official BillAvenue documentation page 23:
+        // "For Credit Card and Loan Repayment biller category, these payment modes are disabled: Credit Card, Wallet, Prepaid Card"
+        // Therefore, for Loan Repayment the paymentMode is Cash (initChannel AGT, paymentAccountInfo "Cash Payment")
+        String mode = "Cash";
+        String initChannel = "AGT";
+        String paymentAccountInfo = "Cash Payment";
+
+        String remitterName = (user.getFullName() != null && !user.getFullName().isBlank()) ? user.getFullName().trim() : "Rupiksha Retailer";
+
+        String billerAdhocVal = hasFetchSession ? "false" : "true";
+
+        BillAvenueDtos.BillPayXmlRequest xmlReq = BillAvenueDtos.BillPayXmlRequest.builder()
+                .fetchRequestId(effectiveRequestId)
+                .billerId(biller.getBillerId())
+                .customerMobile(request.getCustomerMobile().trim())
+                .amountPaise(paise)
+                .billAmountPaise(paise)
+                .billDate(effectiveBillDate)
+                .billNumber(effectiveBillNumber)
+                .dueDate(effectiveDueDate)
+                .billPeriod(effectiveBillPeriod)
+                .customerName(customerName)
+                .additionalInfo(addnlItems.isEmpty() ? null : addnlItems)
+                .inputParams(inputs)
+                .clientTxnId(merchantRefNo)
+                .paymentMode(mode)
+                .remitterName(remitterName)
+                .remarks("Loan Repayment")
+                .paymentAccountInfo(paymentAccountInfo)
+                .clientIp(sanitizedIp)
+                .billerAdhoc(billerAdhocVal)
+                .quickPay(quickPayFlag)
+                .custConvFeePaise(convFeePaise)
+                .ccf1Paise(0L)
+                .rawBillerResponseXml(rawBillerResponseXml)
+                .rawAdditionalInfoXml(rawAdditionalInfoXml)
+                .build();
+
+        BillAvenueDtos.BillPayResponse payResp;
+        try {
+            payResp = billAvenueClient.payBillXml(xmlReq);
+        } catch (BillAvenueTimeoutException te) {
+            log.warn("BillAvenue timeout for loan payment ref: {}. Keeping transaction PENDING.", merchantRefNo, te);
+            txn.setStatus(TransactionStatus.PENDING);
+            txnRepository.save(txn);
+
+            bbpsTxn.setStatus("PENDING");
+            bbpsTxn.setProviderMessage("Transaction processing at provider. Reconciling status.");
+            bbpsTransactionRepository.save(bbpsTxn);
+
+            WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
+            return BbpsDtos.LoanPayResponse.builder()
+                    .success(false)
+                    .transactionId(bbpsTxn.getId().toString())
+                    .merchantRefNo(merchantRefNo)
+                    .status("PENDING")
+                    .amount(request.getAmount())
+                    .convenienceFee(convenienceFee)
+                    .totalAmount(totalPayable)
+                    .loanAccountNumber(primaryLoanAccount)
+                    .customerName(customerName)
+                    .customerMobile(request.getCustomerMobile())
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .billNumber(request.getBillNumber())
+                    .dueDate(request.getDueDate())
+                    .message("Loan repayment is processing with lender. Status will update shortly.")
+                    .walletBalance(bal.balance())
+                    .createdAt(bbpsTxn.getCreatedAt())
+                    .build();
+        } catch (Exception ex) {
+            log.error("Unexpected exception calling BillAvenue for loan payment. Performing safe refund. Ref: {}", merchantRefNo, ex);
+            handleFailureAndRefund(userId, txn, bbpsTxn, totalPayable, "Provider communication error: " + ex.getMessage(), clientIp);
+            WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
+            return BbpsDtos.LoanPayResponse.builder()
+                    .success(false)
+                    .transactionId(bbpsTxn.getId().toString())
+                    .merchantRefNo(merchantRefNo)
+                    .status("FAILED")
+                    .amount(request.getAmount())
+                    .convenienceFee(convenienceFee)
+                    .totalAmount(totalPayable)
+                    .loanAccountNumber(primaryLoanAccount)
+                    .customerName(customerName)
+                    .customerMobile(request.getCustomerMobile())
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .billNumber(request.getBillNumber())
+                    .dueDate(request.getDueDate())
+                    .message("Loan repayment failed: " + ex.getMessage() + ". Amount has been refunded to your wallet.")
+                    .walletBalance(bal.balance())
+                    .createdAt(bbpsTxn.getCreatedAt())
+                    .build();
+        }
+
+        // 9. Process Provider Outcome
+        if (payResp != null && payResp.isSuccess()) {
+            log.info("BillAvenue loan payment SUCCESS. TxnRefId: {}, ApprovalRef: {}",
+                    payResp.getTxnRefId(), payResp.getApprovalRefNumber());
+
+            txn.setStatus(TransactionStatus.SUCCESS);
+            txn.setProviderRef(payResp.getTxnRefId());
+            txnRepository.save(txn);
+
+            bbpsTxn.setStatus("SUCCESS");
+            bbpsTxn.setProviderTxnId(payResp.getTxnRefId());
+            bbpsTxn.setApprovalRefNo(payResp.getApprovalRefNumber());
+            bbpsTxn.setValidationRefNo(payResp.getApprovalRefNumber());
+            bbpsTxn.setProviderResponseCode(payResp.getResponseCode());
+            bbpsTxn.setProviderMessage("Loan repayment completed successfully");
+            bbpsTxn.setCompletedAt(Instant.now());
+            bbpsTransactionRepository.save(bbpsTxn);
+
+            WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
+            return BbpsDtos.LoanPayResponse.builder()
+                    .success(true)
+                    .transactionId(bbpsTxn.getId().toString())
+                    .merchantRefNo(merchantRefNo)
+                    .providerTxnId(payResp.getTxnRefId())
+                    .approvalRefNo(payResp.getApprovalRefNumber())
+                    .status("SUCCESS")
+                    .amount(request.getAmount())
+                    .convenienceFee(convenienceFee)
+                    .totalAmount(totalPayable)
+                    .loanAccountNumber(primaryLoanAccount)
+                    .customerName(customerName)
+                    .customerMobile(request.getCustomerMobile())
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .billNumber(request.getBillNumber())
+                    .dueDate(request.getDueDate())
+                    .message("Loan repayment completed successfully!")
+                    .walletBalance(bal.balance())
+                    .createdAt(bbpsTxn.getCreatedAt())
+                    .build();
+        } else {
+            String errReason = payResp != null ? payResp.getErrorMessage() : "Provider rejected loan repayment";
+            log.warn("BillAvenue loan payment failed. Code: {}, Reason: {}. Issuing refund.",
+                    payResp != null ? payResp.getResponseCode() : "NULL", errReason);
+
+            bbpsTxn.setComplianceCode(payResp != null ? payResp.getResponseCode() : "500");
+            bbpsTxn.setComplianceReason(errReason);
+            handleFailureAndRefund(userId, txn, bbpsTxn, totalPayable, errReason, clientIp);
+
+            WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
+            return BbpsDtos.LoanPayResponse.builder()
+                    .success(false)
+                    .transactionId(bbpsTxn.getId().toString())
+                    .merchantRefNo(merchantRefNo)
+                    .status("FAILED")
+                    .amount(request.getAmount())
+                    .convenienceFee(convenienceFee)
+                    .totalAmount(totalPayable)
+                    .loanAccountNumber(primaryLoanAccount)
+                    .customerName(customerName)
+                    .customerMobile(request.getCustomerMobile())
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .billNumber(request.getBillNumber())
+                    .dueDate(request.getDueDate())
+                    .message(errReason + ". Amount has been refunded to your wallet.")
+                    .walletBalance(bal.balance())
+                    .createdAt(bbpsTxn.getCreatedAt())
+                    .build();
+        }
+    }
+
+    @Override
     public BbpsDtos.HistoryResponse getHistory(UUID userId, String category, String status, String search, Instant startDate, Instant endDate, Pageable pageable) {
         String cleanStatus = (status != null && !status.equalsIgnoreCase("ALL") && !status.isBlank()) ? status.toUpperCase() : null;
         String cleanCategory = (category != null && !category.equalsIgnoreCase("ALL") && !category.isBlank()) ? category.trim() : null;
@@ -1389,7 +2064,11 @@ public class BbpsServiceImpl implements BbpsService {
         if (elec.isPresent()) {
             return elec.get().getBillerName();
         }
-        return "Electricity Provider";
+        Optional<BbpsDtos.LoanBillerInfo> loan = loanBillerRegistry.findById(billerId);
+        if (loan.isPresent()) {
+            return loan.get().getBillerName();
+        }
+        return "BBPS Provider";
     }
 
     private BbpsDtos.HistoryItem mapToHistoryItem(BbpsTransaction txn) {

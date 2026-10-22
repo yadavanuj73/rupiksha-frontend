@@ -185,6 +185,61 @@ public class BbpsController {
     }
 
     /**
+     * Retrieves loan lenders & NBFCs, optionally filtered by search query.
+     */
+    @GetMapping("/loan/billers")
+    public List<BbpsDtos.LoanBillerInfo> getLoanBillers(
+            @RequestParam(required = false) String search
+    ) {
+        return bbpsService.getLoanBillers(search);
+    }
+
+    /**
+     * Fetches real loan details from BillAvenue CU or validates loan account for specified lender.
+     */
+    @PostMapping("/loan/fetch")
+    public ResponseEntity<BbpsDtos.BillFetchResult> fetchLoanBill(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @Valid @RequestBody BbpsDtos.LoanFetchRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        if (principal == null) {
+            throw new IllegalArgumentException("Unauthorized");
+        }
+        UUID userId = UUID.fromString(principal.userId());
+        String clientIp = resolveClientIp(servletRequest);
+        BbpsDtos.BillFetchResult response = bbpsService.fetchLoanBill(userId, request, clientIp);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Executes server-authoritative Loan Repayment with wallet debit,
+     * BillAvenue integration, fetchRequestId binding, and idempotent failure refund.
+     */
+    @PostMapping("/loan/pay")
+    public ResponseEntity<BbpsDtos.LoanPayResponse> payLoan(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKeyHeader,
+            @Valid @RequestBody BbpsDtos.LoanPayRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        if (principal == null) {
+            throw new IllegalArgumentException("Unauthorized");
+        }
+        UUID userId = UUID.fromString(principal.userId());
+
+        // Respect header idempotency key if body idempotencyKey is not provided
+        if ((request.getIdempotencyKey() == null || request.getIdempotencyKey().isBlank())
+                && idempotencyKeyHeader != null && !idempotencyKeyHeader.isBlank()) {
+            request.setIdempotencyKey(idempotencyKeyHeader.trim());
+        }
+
+        String clientIp = resolveClientIp(servletRequest);
+        BbpsDtos.LoanPayResponse response = bbpsService.payLoan(userId, request, clientIp);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * Dedicated BBPS Transaction History with pagination, filters, and summary metrics.
      */
     @GetMapping("/history")

@@ -91,6 +91,36 @@ public class BbpsTransaction {
     @Column(name = "additional_info", columnDefinition = "TEXT")
     private String additionalInfo;
 
+    @Column(name = "loan_account_number", length = 100)
+    private String loanAccountNumber;
+
+    @Column(name = "borrower_name", length = 150)
+    private String borrowerName;
+
+    @Column(name = "compliance_code", length = 50)
+    private String complianceCode;
+
+    @Column(name = "compliance_reason", length = 255)
+    private String complianceReason;
+
+    @Column(name = "validation_ref_no", length = 64)
+    private String validationRefNo;
+
+    @Column(name = "late_payment_fee", precision = 18, scale = 2)
+    private BigDecimal latePaymentFee = BigDecimal.ZERO;
+
+    @Column(name = "fixed_charges", precision = 18, scale = 2)
+    private BigDecimal fixedCharges = BigDecimal.ZERO;
+
+    @Column(name = "additional_charges", precision = 18, scale = 2)
+    private BigDecimal additionalCharges = BigDecimal.ZERO;
+
+    @Column(name = "payment_mode", length = 50)
+    private String paymentMode = "Cash";
+
+    @Column(name = "payment_channel", length = 20)
+    private String paymentChannel = "AGT";
+
     @Column(nullable = false, precision = 18, scale = 2)
     private BigDecimal amount;
 

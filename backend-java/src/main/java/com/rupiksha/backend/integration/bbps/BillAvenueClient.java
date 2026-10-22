@@ -250,6 +250,63 @@ public class BillAvenueClient {
     }
 
     /**
+     * Executes Biller Validation API call for payment-only billers per BBPS specification (Pages 58-62).
+     */
+    public BillAvenueDtos.BillValidationResponse validateBillXml(
+            String billerId,
+            List<BillAvenueDtos.InputParam> inputParams
+    ) {
+        if (!isConfigured()) {
+            return BillAvenueDtos.BillValidationResponse.builder()
+                    .responseCode("001")
+                    .responseReason("BillAvenue credentials not configured")
+                    .build();
+        }
+
+        StringBuilder inputXml = new StringBuilder();
+        if (inputParams != null) {
+            for (BillAvenueDtos.InputParam p : inputParams) {
+                inputXml.append("<input>")
+                        .append("<paramName>").append(escapeXml(p.getParamName())).append("</paramName>")
+                        .append("<paramValue>").append(escapeXml(p.getParamValue())).append("</paramValue>")
+                        .append("</input>");
+            }
+        }
+
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+                + "<billValidationRequest>"
+                + "<agentId>" + escapeXml(getAgentId()) + "</agentId>"
+                + "<billerId>" + escapeXml(billerId) + "</billerId>"
+                + "<inputParams>" + inputXml + "</inputParams>"
+                + "</billValidationRequest>";
+
+        String requestId = BillAvenueCryptoUtil.generateRequestId();
+        log.info("Sending BillValidation XML request for biller: {}, requestId: {}", billerId, requestId);
+
+        try {
+            String rawResp = executeXmlApiCall("extBillValCntrl/billValidationRequest/xml", xml, "1.0", requestId);
+            if (rawResp == null || rawResp.isBlank()) {
+                return BillAvenueDtos.BillValidationResponse.builder()
+                        .responseCode("500")
+                        .responseReason("Empty response from BillAvenue provider")
+                        .build();
+            }
+
+            String decryptedXml = decryptResponseIfNeeded(rawResp);
+            log.info("Decrypted BillValidation XML response: {}", decryptedXml);
+            return parseBillValidationXmlResponse(decryptedXml);
+        } catch (BillAvenueTimeoutException te) {
+            throw te;
+        } catch (Exception e) {
+            log.warn("Exception during BillValidation for biller {}: {}", billerId, e.getMessage());
+            return BillAvenueDtos.BillValidationResponse.builder()
+                    .responseCode("500")
+                    .responseReason("Bill validation error: " + e.getMessage())
+                    .build();
+        }
+    }
+
+    /**
      * Executes Bill Payment via XML matching the PHP working reference (Section 4 of PHP code)
      */
     public BillAvenueDtos.BillPayResponse payBillXml(BillAvenueDtos.BillPayXmlRequest req) {
@@ -943,6 +1000,57 @@ public class BillAvenueClient {
         } catch (Exception e) {
             log.warn("Error parsing BillFetch XML response: {}", e.getMessage());
             return builder.responseCode("PARSE_ERROR").responseReason("Failed to parse BillFetch XML: " + e.getMessage()).build();
+        }
+    }
+
+    public BillAvenueDtos.BillValidationResponse parseBillValidationXmlResponse(String xmlStr) {
+        BillAvenueDtos.BillValidationResponse.BillValidationResponseBuilder builder = BillAvenueDtos.BillValidationResponse.builder()
+                .rawXml(xmlStr);
+        if (xmlStr == null || xmlStr.isBlank()) {
+            return builder.responseCode("500").responseReason("Empty XML response").build();
+        }
+        try {
+            Document doc = parseXml(xmlStr.trim());
+            Element root = doc.getDocumentElement();
+
+            String code = getTagValue(root, "responseCode");
+            String reason = getTagValue(root, "responseReason");
+            builder.responseCode(!code.isBlank() ? code : "500");
+            builder.responseReason(!reason.isBlank() ? reason : "Unknown");
+
+            builder.complianceCode(getTagValue(root, "complianceCode"));
+            builder.complianceReason(getTagValue(root, "complianceReason"));
+            builder.approvalRefNo(getTagValue(root, "approvalRefNo"));
+
+            List<BillAvenueDtos.InfoItem> items = new ArrayList<>();
+            Element addnlElem = getFirstChildElement(root, "additionalInfo");
+            if (addnlElem != null) {
+                NodeList infoList = addnlElem.getElementsByTagName("info");
+                for (int i = 0; i < infoList.getLength(); i++) {
+                    Element itemElem = (Element) infoList.item(i);
+                    String name = getTagValue(itemElem, "infoName");
+                    String val = getTagValue(itemElem, "infoValue");
+                    items.add(new BillAvenueDtos.InfoItem(name, val));
+                }
+                builder.additionalInfo(items);
+            }
+
+            NodeList errNodes = root.getElementsByTagName("error");
+            if (errNodes != null && errNodes.getLength() > 0) {
+                List<BillAvenueDtos.ErrorInfo> errors = new ArrayList<>();
+                for (int i = 0; i < errNodes.getLength(); i++) {
+                    Element errElem = (Element) errNodes.item(i);
+                    String errCode = getTagValue(errElem, "errorCode");
+                    String errMsg = getTagValue(errElem, "errorMessage");
+                    errors.add(new BillAvenueDtos.ErrorInfo(errCode, errMsg));
+                }
+                builder.errorInfo(errors);
+            }
+
+            return builder.build();
+        } catch (Exception e) {
+            log.warn("Error parsing BillValidation XML: {}", e.getMessage());
+            return builder.responseCode("PARSE_ERROR").responseReason("Failed to parse BillValidation XML: " + e.getMessage()).build();
         }
     }
 

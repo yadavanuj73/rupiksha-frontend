@@ -16,6 +16,9 @@ public interface BbpsService {
     List<BbpsDtos.ElectricityBillerInfo> getElectricityBillers(String state);
     BbpsDtos.BillFetchResult fetchElectricityBill(UUID userId, BbpsDtos.ElectricityFetchRequest request, String clientIp);
     BbpsDtos.ElectricityPayResponse payElectricityBill(UUID userId, BbpsDtos.ElectricityPayRequest request, String clientIp);
+    List<BbpsDtos.LoanBillerInfo> getLoanBillers(String search);
+    BbpsDtos.BillFetchResult fetchLoanBill(UUID userId, BbpsDtos.LoanFetchRequest request, String clientIp);
+    BbpsDtos.LoanPayResponse payLoan(UUID userId, BbpsDtos.LoanPayRequest request, String clientIp);
     BbpsDtos.HistoryResponse getHistory(UUID userId, String category, String status, String search, Instant startDate, Instant endDate, Pageable pageable);
     default BbpsDtos.HistoryResponse getHistory(UUID userId, String status, String search, Instant startDate, Instant endDate, Pageable pageable) {
         return getHistory(userId, null, status, search, startDate, endDate, pageable);

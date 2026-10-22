@@ -372,4 +372,43 @@ public class BillAvenueDtos {
         private String paramName;
         private String paramValue;
     }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class BillValidationResponse {
+        private String responseCode;
+        private String responseReason;
+        private String complianceCode;
+        private String complianceReason;
+        private String approvalRefNo;
+        private List<InfoItem> additionalInfo;
+        private List<ErrorInfo> errorInfo;
+        private String rawXml;
+
+        public boolean isSuccess() {
+            return "000".equals(responseCode) &&
+                    (responseReason == null || responseReason.equalsIgnoreCase("Successful") || responseReason.equalsIgnoreCase("SUCCESS"));
+        }
+
+        public String getErrorMessage() {
+            if (complianceReason != null && !complianceReason.isBlank()) {
+                return complianceReason + (complianceCode != null && !complianceCode.isBlank() ? " (" + complianceCode + ")" : "");
+            }
+            if (errorInfo != null && !errorInfo.isEmpty()) {
+                for (ErrorInfo err : errorInfo) {
+                    if (err != null && err.getErrorMessage() != null && !err.getErrorMessage().isBlank()) {
+                        return err.getErrorMessage() + (err.getErrorCode() != null ? " (" + err.getErrorCode() + ")" : "");
+                    }
+                }
+            }
+            if (responseReason != null && !responseReason.isBlank()) {
+                return responseReason;
+            }
+            return "Bill validation failed";
+        }
+    }
 }
+
