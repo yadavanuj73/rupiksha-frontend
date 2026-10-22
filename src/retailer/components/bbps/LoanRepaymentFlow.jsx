@@ -539,17 +539,18 @@ const LoanRepaymentFlow = ({ onBack, category }) => {
                                                             )}
                                                         </div>
                                                     ) : (
-                                                        filteredBillers.slice(0, 40).map((biller) => (
-                                                            <div
-                                                                key={biller.billerId}
-                                                                onClick={() => handleSelectBiller(biller)}
-                                                                className="p-2.5 hover:bg-emerald-50/60 cursor-pointer transition-colors flex items-center justify-between gap-2.5 text-left"
-                                                            >
-                                                                <div className="flex items-center gap-2 min-w-0">
-                                                                    <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-800 font-black text-[10px] flex items-center justify-center shrink-0 border border-slate-200">
-                                                                        {biller.billerName.slice(0, 2).toUpperCase()}
-                                                                    </div>
-                                                                    <div className="min-w-0">
+                                                        <>
+                                                            {visibleBillers.map((biller) => (
+                                                                <div
+                                                                    key={biller.billerId}
+                                                                    onClick={() => handleSelectBiller(biller)}
+                                                                    className="p-2.5 hover:bg-emerald-50/60 cursor-pointer transition-colors flex items-center justify-between gap-2.5 text-left"
+                                                                >
+                                                                    <div className="flex items-center gap-2 min-w-0">
+                                                                        <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-800 font-black text-[10px] flex items-center justify-center shrink-0 border border-slate-200">
+                                                                            {biller.billerName.slice(0, 2).toUpperCase()}
+                                                                        </div>
+                                                                        <div className="min-w-0">
                                                                         <div className="text-xs font-black text-black truncate">
                                                                             {biller.billerName}
                                                                         </div>
@@ -562,11 +563,50 @@ const LoanRepaymentFlow = ({ onBack, category }) => {
                                                                     {biller.billerFetchRequirement === 'NOT_SUPPORTED' ? 'Pay' : 'Fetch'}
                                                                 </span>
                                                             </div>
-                                                        ))
-                                                    )}
-                                                </div>
+                                                        ))}
+
+                                                        {/* Bottom pagination & "See All / Next" button */}
+                                                        {filteredBillers.length > displayLimit ? (
+                                                            <div className="p-2.5 bg-slate-50 border-t border-slate-200 sticky bottom-0 flex items-center justify-between gap-2 shadow-xs">
+                                                                <span className="text-[11px] font-bold text-slate-700">
+                                                                    Showing <span className="font-black text-black">{visibleBillers.length}</span> of {filteredBillers.length}
+                                                                </span>
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => {
+                                                                            e.preventDefault();
+                                                                            e.stopPropagation();
+                                                                            setDisplayLimit(prev => Math.min(prev + 30, filteredBillers.length));
+                                                                        }}
+                                                                        className="px-3 py-1.5 text-xs font-black text-white bg-slate-900 hover:bg-black rounded-lg shadow-2xs flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                                                                    >
+                                                                        <span>Next Lenders</span>
+                                                                        <ChevronRight className="w-3.5 h-3.5" />
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => {
+                                                                            e.preventDefault();
+                                                                            e.stopPropagation();
+                                                                            setDisplayLimit(filteredBillers.length);
+                                                                        }}
+                                                                        className="px-2.5 py-1.5 text-[11px] font-black text-emerald-800 hover:bg-emerald-100 rounded-lg border border-emerald-300 transition-colors cursor-pointer"
+                                                                    >
+                                                                        See All ({filteredBillers.length})
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ) : filteredBillers.length > 30 && (
+                                                            <div className="p-2 text-center text-[10px] font-bold text-slate-500 bg-slate-50 border-t border-slate-200">
+                                                                Showing all {filteredBillers.length} registered lenders
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                )}
                                             </div>
-                                        )}
+                                        </div>
+                                    )}
                                     </div>
                                 )}
                             </div>
