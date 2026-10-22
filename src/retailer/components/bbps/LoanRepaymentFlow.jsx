@@ -93,6 +93,17 @@ const LoanRepaymentFlow = ({ onBack, category }) => {
         });
     }, [billers, billerSearch]);
 
+    // Progressive pagination limit to ensure fast rendering of 470+ billers without DOM freezing
+    const [displayLimit, setDisplayLimit] = useState(30);
+
+    useEffect(() => {
+        setDisplayLimit(30);
+    }, [billerSearch]);
+
+    const visibleBillers = useMemo(() => {
+        return filteredBillers.slice(0, displayLimit);
+    }, [filteredBillers, displayLimit]);
+
     // On biller selection, initialize customer input parameters
     const handleSelectBiller = (biller) => {
         setSelectedBiller(biller);
@@ -361,7 +372,7 @@ const LoanRepaymentFlow = ({ onBack, category }) => {
                                         Select Lender / Financier
                                     </h3>
                                     <p className="text-xs text-slate-700 font-bold">
-                                        Choose from 100+ Bharat Connect registered banks, NBFCs & MFIs
+                                        Choose from 470+ Bharat Connect registered banks, NBFCs & MFIs
                                     </p>
                                 </div>
                                 <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300">
@@ -422,45 +433,59 @@ const LoanRepaymentFlow = ({ onBack, category }) => {
                                         </div>
                                     </div>
                                 ) : (
-                                    filteredBillers.map((biller) => {
-                                        const isSelected = selectedBiller?.billerId === biller.billerId;
-                                        return (
-                                            <div
-                                                key={biller.billerId}
-                                                onClick={() => handleSelectBiller(biller)}
-                                                className={`p-3 md:p-3.5 rounded-xl border cursor-pointer transition-all flex items-start justify-between gap-3 ${
-                                                    isSelected
-                                                        ? 'border-emerald-600 bg-emerald-50/60 shadow-xs'
-                                                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/70 bg-white'
-                                                }`}
-                                            >
-                                                <div className="space-y-1 min-w-0">
-                                                    <div className="flex items-center gap-2">
-                                                        <h4 className="text-xs md:text-sm font-black text-black truncate">
-                                                            {biller.billerName}
-                                                        </h4>
-                                                        {isSelected && (
-                                                            <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-600 text-white">
-                                                                <Check className="w-2.5 h-2.5" />
+                                    <>
+                                        {visibleBillers.map((biller) => {
+                                            const isSelected = selectedBiller?.billerId === biller.billerId;
+                                            return (
+                                                <div
+                                                    key={biller.billerId}
+                                                    onClick={() => handleSelectBiller(biller)}
+                                                    className={`p-3 md:p-3.5 rounded-xl border cursor-pointer transition-all flex items-start justify-between gap-3 ${
+                                                        isSelected
+                                                            ? 'border-emerald-600 bg-emerald-50/60 shadow-xs'
+                                                            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/70 bg-white'
+                                                    }`}
+                                                >
+                                                    <div className="space-y-1 min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <h4 className="text-xs md:text-sm font-black text-black truncate">
+                                                                {biller.billerName}
+                                                            </h4>
+                                                            {isSelected && (
+                                                                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-600 text-white">
+                                                                    <Check className="w-2.5 h-2.5" />
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-[11px] font-bold text-slate-700 line-clamp-1">
+                                                            {biller.description || 'Bharat Connect Registered Lender'}
+                                                        </p>
+                                                        <div className="flex items-center gap-2 pt-0.5">
+                                                            <span className="text-[10px] font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                                                                {biller.billerId}
                                                             </span>
-                                                        )}
+                                                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                                                                {biller.billerFetchRequirement === 'NOT_SUPPORTED' ? 'Instant Pay' : 'Bill Fetch Supported'}
+                                                            </span>
+                                                        </div>
                                                     </div>
-                                                    <p className="text-[11px] font-bold text-slate-700 line-clamp-1">
-                                                        {biller.description || 'Bharat Connect Registered Lender'}
-                                                    </p>
-                                                    <div className="flex items-center gap-2 pt-0.5">
-                                                        <span className="text-[10px] font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                                                            {biller.billerId}
-                                                        </span>
-                                                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
-                                                            {biller.billerFetchRequirement === 'NOT_SUPPORTED' ? 'Instant Pay' : 'Bill Fetch Supported'}
-                                                        </span>
-                                                    </div>
+                                                    <ArrowRight className={`w-4 h-4 shrink-0 transition-transform ${isSelected ? 'text-emerald-700 translate-x-1' : 'text-slate-400'}`} />
                                                 </div>
-                                                <ArrowRight className={`w-4 h-4 shrink-0 transition-transform ${isSelected ? 'text-emerald-700 translate-x-1' : 'text-slate-400'}`} />
+                                            );
+                                        })}
+
+                                        {filteredBillers.length > displayLimit && (
+                                            <div className="pt-1.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setDisplayLimit((prev) => prev + 30)}
+                                                    className="w-full py-2.5 px-4 text-xs font-bold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition-colors shadow-2xs"
+                                                >
+                                                    Showing {visibleBillers.length} of {filteredBillers.length} lenders — Click to load 30 more
+                                                </button>
                                             </div>
-                                        );
-                                    })
+                                        )}
+                                    </>
                                 )}
                             </div>
                         </div>
