@@ -279,6 +279,7 @@ const CreditCardFlow = ({ onBack, category }) => {
             }
             // Ensure registered mobile parameter is seamlessly passed in customerParams
             cleanParams['Registered Mobile No'] = customerMobile.trim();
+            cleanParams['Mobile Number'] = customerMobile.trim();
 
             const payload = {
                 billerId: selectedBiller.billerId,
@@ -401,6 +402,7 @@ const CreditCardFlow = ({ onBack, category }) => {
                 cleanParams[k] = (k.toLowerCase().includes('card') || k.toLowerCase().includes('last 4')) ? (v || '').replace(/\s+/g, '') : v;
             }
             cleanParams['Registered Mobile No'] = customerMobile.trim();
+            cleanParams['Mobile Number'] = customerMobile.trim();
 
             const payload = {
                 billerId: selectedBiller.billerId,
