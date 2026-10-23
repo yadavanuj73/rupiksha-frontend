@@ -39,24 +39,60 @@ public class CreditCardBillerRegistry {
 
     private BbpsDtos.InputParamInfo cardNumberParam() {
         return BbpsDtos.InputParamInfo.builder()
-                .paramName("Credit Card Number")
+                .paramName("Last 4 Digits of Credit Card")
                 .dataType("NUMERIC")
                 .optional(false)
-                .minLength(15)
-                .maxLength(19)
-                .hint("Enter 15 to 19-digit credit card number")
+                .minLength(4)
+                .maxLength(4)
+                .hint("Enter last 4 digits of credit card")
                 .build();
     }
 
     private BbpsDtos.InputParamInfo mobileParam() {
         return BbpsDtos.InputParamInfo.builder()
-                .paramName("Mobile Number")
+                .paramName("Registered Mobile No")
                 .dataType("NUMERIC")
                 .optional(false)
                 .minLength(10)
                 .maxLength(10)
                 .hint("10-digit registered mobile number")
                 .build();
+    }
+
+    public List<BbpsDtos.InputParamInfo> defaultCreditCardParams() {
+        return List.of(cardNumberParam(), mobileParam());
+    }
+
+    /**
+     * Updates biller schema dynamically if BillAvenue MDM provides updated parameter details.
+     */
+    public void updateFromMdm(String billerId, BillAvenueDtos.BillerInfoResponse mdm) {
+        if (mdm == null || !mdm.isSuccess() || mdm.getInputParams() == null || mdm.getInputParams().isEmpty()) {
+            return;
+        }
+        Optional<BbpsDtos.CreditCardBillerInfo> opt = findById(billerId);
+        if (opt.isPresent()) {
+            BbpsDtos.CreditCardBillerInfo existing = opt.get();
+            List<BbpsDtos.InputParamInfo> newParams = new ArrayList<>();
+            for (BillAvenueDtos.BillerParamInfo p : mdm.getInputParams()) {
+                newParams.add(BbpsDtos.InputParamInfo.builder()
+                        .paramName(p.getParamName())
+                        .dataType(p.getDataType() != null ? p.getDataType() : "NUMERIC")
+                        .optional(p.isOptional())
+                        .minLength(p.getMinLength())
+                        .maxLength(p.getMaxLength())
+                        .regEx(p.getRegEx())
+                        .hint(p.getParamName())
+                        .build());
+            }
+            existing.setInputParams(newParams);
+            if (mdm.getBillerFetchRequirement() != null && !mdm.getBillerFetchRequirement().isBlank()) {
+                existing.setBillerFetchRequirement(mdm.getBillerFetchRequirement());
+            }
+            if ("true".equalsIgnoreCase(mdm.getBillerAdhoc())) {
+                existing.setBillerAdhoc(true);
+            }
+        }
     }
 
     private void initBillers() {
@@ -584,28 +620,72 @@ public class CreditCardBillerRegistry {
     }
 
     public void validateCustomerParams(BbpsDtos.CreditCardBillerInfo biller, Map<String, String> params) {
-        if (biller == null || biller.getInputParams() == null) return;
+        if (biller == null) return;
+        List<BbpsDtos.InputParamInfo> expected = (biller.getInputParams() != null && !biller.getInputParams().isEmpty())
+                ? biller.getInputParams()
+                : defaultCreditCardParams();
+
         List<String> errors = new ArrayList<>();
-        for (BbpsDtos.InputParamInfo param : biller.getInputParams()) {
-            String val = params != null ? (params.get(param.getParamName()) != null ? params.get(param.getParamName()).trim() : "") : "";
-            // Strip spaces for card number check
-            if (param.getParamName().toLowerCase().contains("card") && param.getParamName().toLowerCase().contains("number")) {
-                val = val.replaceAll("\\D", "");
-            }
-            if (!param.isOptional() && val.isEmpty()) {
+        for (BbpsDtos.InputParamInfo param : expected) {
+            String val = resolveCustomerParamValue(param.getParamName(), params);
+            String pNameLower = param.getParamName().toLowerCase();
+
+            if (!param.isOptional() && val.isBlank()) {
                 errors.add(param.getParamName() + " is required");
-            } else if (!val.isEmpty()) {
-                if (param.getMinLength() > 0 && val.length() < param.getMinLength()) {
-                    errors.add(param.getParamName() + " must be at least " + param.getMinLength() + " digits");
-                }
-                if (param.getMaxLength() > 0 && val.length() > param.getMaxLength()) {
-                    errors.add(param.getParamName() + " cannot exceed " + param.getMaxLength() + " digits");
+            } else if (!val.isBlank()) {
+                String digits = val.replaceAll("\\D", "");
+                if (pNameLower.contains("last") || pNameLower.contains("4")) {
+                    if (digits.length() < 4) {
+                        errors.add(param.getParamName() + " must have at least 4 digits");
+                    }
+                } else if (pNameLower.contains("card") && !pNameLower.contains("mobile")) {
+                    if (digits.length() < 4) {
+                        errors.add(param.getParamName() + " must have at least 4 digits");
+                    }
+                } else if (pNameLower.contains("mobile") || pNameLower.contains("phone")) {
+                    if (!digits.matches("^[6-9]\\d{9}$")) {
+                        errors.add(param.getParamName() + " must be a valid 10-digit mobile number");
+                    }
+                } else {
+                    if (param.getMinLength() > 0 && val.length() < param.getMinLength()) {
+                        errors.add(param.getParamName() + " must be at least " + param.getMinLength() + " characters");
+                    }
+                    if (param.getMaxLength() > 0 && val.length() > param.getMaxLength()) {
+                        errors.add(param.getParamName() + " cannot exceed " + param.getMaxLength() + " characters");
+                    }
                 }
             }
         }
         if (!errors.isEmpty()) {
             throw new IllegalArgumentException("Credit card validation failed: " + String.join(", ", errors));
         }
+    }
+
+    private String resolveCustomerParamValue(String paramName, Map<String, String> params) {
+        if (params == null || paramName == null) return "";
+        String direct = params.get(paramName);
+        if (direct != null && !direct.isBlank()) return direct.trim();
+
+        String pLower = paramName.toLowerCase();
+        if (pLower.contains("card") || pLower.contains("last") || pLower.contains("pan") || pLower.contains("credit")) {
+            for (Map.Entry<String, String> entry : params.entrySet()) {
+                String k = entry.getKey().toLowerCase();
+                if ((k.contains("card") || k.contains("last") || k.contains("credit") || k.contains("pan")) && !k.contains("mobile")) {
+                    String v = entry.getValue();
+                    if (v != null && !v.isBlank()) return v.trim();
+                }
+            }
+        }
+        if (pLower.contains("mobile") || pLower.contains("phone")) {
+            for (Map.Entry<String, String> entry : params.entrySet()) {
+                String k = entry.getKey().toLowerCase();
+                if (k.contains("mobile") || k.contains("phone")) {
+                    String v = entry.getValue();
+                    if (v != null && !v.isBlank()) return v.trim();
+                }
+            }
+        }
+        return "";
     }
 
     /**
@@ -617,7 +697,7 @@ public class CreditCardBillerRegistry {
         for (Map.Entry<String, String> entry : params.entrySet()) {
             String key = entry.getKey().toLowerCase();
             String val = entry.getValue();
-            if (val != null && !val.isBlank() && key.contains("card") && key.contains("number")) {
+            if (val != null && !val.isBlank() && (key.contains("card") || key.contains("last") || key.contains("credit")) && !key.contains("mobile")) {
                 String digits = val.replaceAll("\\D", "");
                 if (digits.length() >= 4) {
                     return digits.substring(digits.length() - 4);
@@ -629,42 +709,93 @@ public class CreditCardBillerRegistry {
 
     /**
      * Builds BillAvenue InputParam list from customer params for Credit Card bill fetch/pay.
-     * Credit Card billers accept: Credit Card Number, Mobile Number as primary identifiers.
+     * Strictly matches BillAvenue BBPS specification (Pages 31 & 46):
+     *   - Param 1: "Last 4 Digits of Credit Card" (4 digits)
+     *   - Param 2: "Registered Mobile No" (10 digits)
+     * Automatically extracts the last 4 digits if the user or client supplied a full 16-digit card number.
      */
     public List<BillAvenueDtos.InputParam> buildCreditCardInputParams(BbpsDtos.CreditCardBillerInfo biller, Map<String, String> params, String customerMobile) {
         List<BillAvenueDtos.InputParam> inputs = new ArrayList<>();
-        if (params == null || params.isEmpty()) {
-            inputs.add(BillAvenueDtos.InputParam.builder().paramName("Mobile Number").paramValue(customerMobile != null ? customerMobile.trim() : "").build());
-            return inputs;
+        Map<String, String> normalizedIncoming = new HashMap<>();
+        if (params != null) {
+            params.forEach((k, v) -> {
+                if (k != null && v != null) {
+                    normalizedIncoming.put(k.trim(), v.trim());
+                }
+            });
         }
-        if (biller.getInputParams() != null) {
-            for (BbpsDtos.InputParamInfo paramInfo : biller.getInputParams()) {
-                String val = params.get(paramInfo.getParamName());
-                if (val != null && !val.isBlank()) {
-                    String cleanVal = paramInfo.getParamName().toLowerCase().contains("card")
-                            ? val.replaceAll("\\D", "")
-                            : val.trim();
-                    inputs.add(BillAvenueDtos.InputParam.builder()
-                            .paramName(paramInfo.getParamName())
-                            .paramValue(cleanVal)
-                            .build());
-                }
-            }
-        } else {
-            for (Map.Entry<String, String> entry : params.entrySet()) {
-                if (entry.getValue() != null && !entry.getValue().isBlank()) {
-                    inputs.add(BillAvenueDtos.InputParam.builder()
-                            .paramName(entry.getKey().trim())
-                            .paramValue(entry.getValue().trim())
-                            .build());
-                }
+
+        // Extract card value (could be full 16 digits or last 4 digits)
+        String rawCardVal = "";
+        for (Map.Entry<String, String> entry : normalizedIncoming.entrySet()) {
+            String k = entry.getKey().toLowerCase();
+            if ((k.contains("card") || k.contains("credit") || k.contains("pan") || k.contains("last")) && !k.contains("mobile")) {
+                rawCardVal = entry.getValue().replaceAll("\\D", "");
+                if (!rawCardVal.isEmpty()) break;
             }
         }
-        // Ensure mobile is included
-        boolean hasMobile = inputs.stream().anyMatch(i -> "Mobile Number".equalsIgnoreCase(i.getParamName()));
-        if (!hasMobile && customerMobile != null && !customerMobile.isBlank()) {
-            inputs.add(BillAvenueDtos.InputParam.builder().paramName("Mobile Number").paramValue(customerMobile.trim()).build());
+
+        // Extract mobile value
+        String rawMobileVal = "";
+        for (Map.Entry<String, String> entry : normalizedIncoming.entrySet()) {
+            String k = entry.getKey().toLowerCase();
+            if (k.contains("mobile") || k.contains("phone")) {
+                rawMobileVal = entry.getValue().replaceAll("\\D", "");
+                if (!rawMobileVal.isEmpty()) break;
+            }
         }
+        if (rawMobileVal.isEmpty() && customerMobile != null) {
+            rawMobileVal = customerMobile.replaceAll("\\D", "");
+        }
+
+        List<BbpsDtos.InputParamInfo> expected = (biller != null && biller.getInputParams() != null && !biller.getInputParams().isEmpty())
+                ? biller.getInputParams()
+                : defaultCreditCardParams();
+
+        for (BbpsDtos.InputParamInfo paramInfo : expected) {
+            String pName = paramInfo.getParamName();
+            String pNameLower = pName.toLowerCase();
+            String directVal = normalizedIncoming.get(pName);
+
+            if (pNameLower.contains("last") || pNameLower.contains("4") || pNameLower.contains("last4")) {
+                String digits = (directVal != null && !directVal.isBlank()) ? directVal.replaceAll("\\D", "") : rawCardVal;
+                String last4 = digits.length() >= 4 ? digits.substring(digits.length() - 4) : digits;
+                inputs.add(BillAvenueDtos.InputParam.builder()
+                        .paramName(pName)
+                        .paramValue(last4)
+                        .build());
+            } else if (pNameLower.contains("card") && !pNameLower.contains("mobile")) {
+                String digits = (directVal != null && !directVal.isBlank()) ? directVal.replaceAll("\\D", "") : rawCardVal;
+                inputs.add(BillAvenueDtos.InputParam.builder()
+                        .paramName(pName)
+                        .paramValue(digits)
+                        .build());
+            } else if (pNameLower.contains("mobile") || pNameLower.contains("phone")) {
+                String digits = (directVal != null && !directVal.isBlank()) ? directVal.replaceAll("\\D", "") : rawMobileVal;
+                inputs.add(BillAvenueDtos.InputParam.builder()
+                        .paramName(pName)
+                        .paramValue(digits)
+                        .build());
+            } else {
+                String val = directVal != null ? directVal : normalizedIncoming.getOrDefault(pName, "");
+                inputs.add(BillAvenueDtos.InputParam.builder()
+                        .paramName(pName)
+                        .paramValue(val)
+                        .build());
+            }
+        }
+
+        // Safety fallback: ensure both standard BBPS credit card tags exist if somehow missing
+        boolean hasCardParam = inputs.stream().anyMatch(i -> i.getParamName().toLowerCase().contains("card") || i.getParamName().toLowerCase().contains("last"));
+        if (!hasCardParam) {
+            String last4 = rawCardVal.length() >= 4 ? rawCardVal.substring(rawCardVal.length() - 4) : rawCardVal;
+            inputs.add(0, BillAvenueDtos.InputParam.builder().paramName("Last 4 Digits of Credit Card").paramValue(last4).build());
+        }
+        boolean hasMobileParam = inputs.stream().anyMatch(i -> i.getParamName().toLowerCase().contains("mobile") || i.getParamName().toLowerCase().contains("phone"));
+        if (!hasMobileParam) {
+            inputs.add(BillAvenueDtos.InputParam.builder().paramName("Registered Mobile No").paramValue(rawMobileVal).build());
+        }
+
         return inputs;
     }
 }

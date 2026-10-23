@@ -357,6 +357,7 @@ public class BbpsDtos {
         private String billerPaymentExactness;
         private String supportBillValidation;
         private List<InputParamInfo> inputParams;
+        private boolean billerAdhoc;
         private String description;
     }
 

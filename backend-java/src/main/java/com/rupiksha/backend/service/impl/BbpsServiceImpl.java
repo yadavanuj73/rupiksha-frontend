@@ -2077,6 +2077,17 @@ public class BbpsServiceImpl implements BbpsService {
         BbpsDtos.CreditCardBillerInfo biller = creditCardBillerRegistry.findById(request.getBillerId())
                 .orElseThrow(() -> new IllegalArgumentException("Unknown or unmapped credit card issuer: " + request.getBillerId()));
 
+        // Sync with BillAvenue MDM Biller Info API if available (cached in-memory per 24h quota)
+        try {
+            BillAvenueDtos.BillerInfoResponse mdm = billAvenueClient.fetchBillerInfo(biller.getBillerId());
+            if (mdm != null && mdm.isSuccess() && mdm.getInputParams() != null && !mdm.getInputParams().isEmpty()) {
+                creditCardBillerRegistry.updateFromMdm(biller.getBillerId(), mdm);
+                biller = creditCardBillerRegistry.findById(biller.getBillerId()).orElse(biller);
+            }
+        } catch (Exception mdmEx) {
+            log.warn("MDM lookup error for credit card biller {}: {}", biller.getBillerId(), mdmEx.getMessage());
+        }
+
         // Validate dynamic customer parameters (Card number length, format)
         creditCardBillerRegistry.validateCustomerParams(biller, request.getCustomerParams());
 
@@ -2193,6 +2204,17 @@ public class BbpsServiceImpl implements BbpsService {
 
         BbpsDtos.CreditCardBillerInfo biller = creditCardBillerRegistry.findById(request.getBillerId())
                 .orElseThrow(() -> new IllegalArgumentException("Unknown credit card biller: " + request.getBillerId()));
+
+        // Sync with BillAvenue MDM Biller Info API if available (cached in-memory per 24h quota)
+        try {
+            BillAvenueDtos.BillerInfoResponse mdm = billAvenueClient.fetchBillerInfo(biller.getBillerId());
+            if (mdm != null && mdm.isSuccess() && mdm.getInputParams() != null && !mdm.getInputParams().isEmpty()) {
+                creditCardBillerRegistry.updateFromMdm(biller.getBillerId(), mdm);
+                biller = creditCardBillerRegistry.findById(biller.getBillerId()).orElse(biller);
+            }
+        } catch (Exception mdmEx) {
+            log.warn("MDM lookup error for credit card biller {}: {}", biller.getBillerId(), mdmEx.getMessage());
+        }
 
         creditCardBillerRegistry.validateCustomerParams(biller, request.getCustomerParams());
 

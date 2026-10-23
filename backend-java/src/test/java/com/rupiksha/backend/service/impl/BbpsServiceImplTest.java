@@ -59,6 +59,10 @@ class BbpsServiceImplTest {
             new com.rupiksha.backend.integration.bbps.LoanBillerRegistry();
 
     @org.mockito.Spy
+    private com.rupiksha.backend.integration.bbps.CreditCardBillerRegistry creditCardBillerRegistry =
+            new com.rupiksha.backend.integration.bbps.CreditCardBillerRegistry();
+
+    @org.mockito.Spy
     private com.fasterxml.jackson.databind.ObjectMapper objectMapper =
             new com.fasterxml.jackson.databind.ObjectMapper();
 
@@ -875,6 +879,105 @@ class BbpsServiceImplTest {
                 argThat(inputs -> inputs.stream().anyMatch(i -> "Loan ID".equals(i.getParamName()) && "DMI0057662896".equals(i.getParamValue()))),
                 eq("9892506507"),
                 any()
+        );
+    }
+
+    @Test
+    @DisplayName("Credit card fetch adapts 16-digit card number and mobile to Last 4 Digits of Credit Card and Registered Mobile No")
+    void testCreditCardBillFetchParameterAdaptation() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)).thenReturn(Optional.empty());
+
+        BillAvenueDtos.BillFetchResponse axisSuccess = new BillAvenueDtos.BillFetchResponse();
+        axisSuccess.setResponseCode("000");
+        axisSuccess.setFetchRequestId("REQ-AXIS-998877");
+        axisSuccess.setBillAmountPaise(1577000L); // ₹15,770.00
+        axisSuccess.setCustomerName("Srinivas");
+        axisSuccess.setDueDate("2026-11-15");
+        axisSuccess.setBillNumber("BILL-AXIS-01");
+
+        when(billAvenueClient.fetchBill(eq("AXIS00000NATKF"), any(), any(), any())).thenReturn(axisSuccess);
+
+        BbpsDtos.CreditCardFetchRequest request = new BbpsDtos.CreditCardFetchRequest();
+        request.setBillerId("AXIS00000NATKF");
+        request.setCustomerMobile("7292987918");
+        // User/client supplied "Credit Card Number" and "Mobile Number"
+        request.setCustomerParams(java.util.Map.of(
+                "Credit Card Number", "6529570000390998",
+                "Mobile Number", "7292987918"
+        ));
+
+        BbpsDtos.BillFetchResult result = bbpsService.fetchCreditCardBill(userId, request, "127.0.0.1");
+
+        assertNotNull(result);
+        assertTrue(result.isSuccess(), "Credit card bill fetch should succeed");
+        assertEquals("AXIS00000NATKF", result.getBillerId());
+        assertEquals("•••• 0998", result.getConsumerNumber());
+        assertEquals(new BigDecimal("15770.00"), result.getBillAmount());
+        assertEquals("Srinivas", result.getCustomerName());
+
+        // Verify that BillAvenue received the exact official BBPS parameters:
+        // "Last 4 Digits of Credit Card" with value "0998"
+        // "Registered Mobile No" with value "7292987918"
+        verify(billAvenueClient).fetchBill(
+                eq("AXIS00000NATKF"),
+                argThat(inputs -> inputs.stream().anyMatch(i -> "Last 4 Digits of Credit Card".equals(i.getParamName()) && "0998".equals(i.getParamValue()))
+                        && inputs.stream().anyMatch(i -> "Registered Mobile No".equals(i.getParamName()) && "7292987918".equals(i.getParamValue()))),
+                eq("7292987918"),
+                any()
+        );
+    }
+
+    @Test
+    @DisplayName("Credit card payment dispatches official Last 4 Digits of Credit Card and Registered Mobile No")
+    void testCreditCardPaymentParameterMapping() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)).thenReturn(Optional.empty());
+        when(walletService.getBalance(userId.toString())).thenReturn(mockBalance(new BigDecimal("20000.00"), new BigDecimal("20000.00")));
+
+        when(txnRepository.save(any(Txn.class))).thenAnswer(invocation -> {
+            Txn t = invocation.getArgument(0);
+            if (t.getId() == null) t.setId(UUID.randomUUID());
+            return t;
+        });
+
+        when(bbpsTransactionRepository.save(any(BbpsTransaction.class))).thenAnswer(invocation -> {
+            BbpsTransaction b = invocation.getArgument(0);
+            if (b.getId() == null) b.setId(UUID.randomUUID());
+            if (b.getCreatedAt() == null) b.setCreatedAt(java.time.Instant.now());
+            return b;
+        });
+
+        BillAvenueDtos.BillPayResponse payResp = new BillAvenueDtos.BillPayResponse();
+        payResp.setResponseCode("000");
+        payResp.setResponseReason("Successful");
+        payResp.setTxnRefId("CC015062BAAE00071903");
+        payResp.setApprovalRefNumber("AB123456");
+
+        when(billAvenueClient.payBillXml(any())).thenReturn(payResp);
+
+        BbpsDtos.CreditCardPayRequest payRequest = new BbpsDtos.CreditCardPayRequest();
+        payRequest.setBillerId("AXIS00000NATKF");
+        payRequest.setCustomerMobile("7292987918");
+        payRequest.setAmount(new BigDecimal("1500.00"));
+        payRequest.setIdempotencyKey("CC-PAY-TEST-001");
+        payRequest.setFetchRequestId("REQ-AXIS-998877");
+        payRequest.setCustomerParams(java.util.Map.of(
+                "Credit Card Number", "6529570000390998",
+                "Mobile Number", "7292987918"
+        ));
+
+        BbpsDtos.CreditCardPayResponse response = bbpsService.payCreditCardBill(userId, payRequest, "127.0.0.1");
+
+        assertNotNull(response);
+        assertTrue(response.isSuccess());
+        assertEquals("SUCCESS", response.getStatus());
+        assertEquals("0998", response.getCardLastFour());
+
+        // Verify that billAvenueClient payBillXml received "Last 4 Digits of Credit Card" = 0998
+        verify(billAvenueClient).payBillXml(
+                argThat(req -> req.getInputParams().stream().anyMatch(i -> "Last 4 Digits of Credit Card".equals(i.getParamName()) && "0998".equals(i.getParamValue()))
+                        && req.getInputParams().stream().anyMatch(i -> "Registered Mobile No".equals(i.getParamName()) && "7292987918".equals(i.getParamValue())))
         );
     }
 }

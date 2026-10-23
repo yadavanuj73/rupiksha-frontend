@@ -179,8 +179,8 @@ const CreditCardFlow = ({ onBack, category }) => {
     };
 
     const handleParamChange = (paramName, rawValue) => {
-        const isCardNum = paramName.toLowerCase().includes('card') && paramName.toLowerCase().includes('number');
-        const formatted = isCardNum ? formatCardInput(rawValue) : rawValue;
+        const isCardInput = (paramName.toLowerCase().includes('card') || paramName.toLowerCase().includes('last 4') || paramName.toLowerCase().includes('digits')) && !paramName.toLowerCase().includes('mobile');
+        const formatted = isCardInput ? formatCardInput(rawValue) : rawValue;
 
         setCustomerParams(prev => ({
             ...prev,
@@ -202,7 +202,7 @@ const CreditCardFlow = ({ onBack, category }) => {
     // Extract raw card digits and last 4
     const rawCardDigits = useMemo(() => {
         for (const [k, v] of Object.entries(customerParams)) {
-            if (k.toLowerCase().includes('card') && k.toLowerCase().includes('number')) {
+            if ((k.toLowerCase().includes('card') || k.toLowerCase().includes('last 4') || k.toLowerCase().includes('digits')) && !k.toLowerCase().includes('mobile')) {
                 return (v || '').replace(/\D/g, '');
             }
         }
@@ -215,7 +215,7 @@ const CreditCardFlow = ({ onBack, category }) => {
         if (rawCardDigits.length >= 4) {
             return rawCardDigits.slice(-4);
         }
-        return '';
+        return rawCardDigits;
     }, [rawCardDigits]);
 
     // Client-side validation
@@ -232,19 +232,24 @@ const CreditCardFlow = ({ onBack, category }) => {
 
         if (selectedBiller.inputParams && Array.isArray(selectedBiller.inputParams)) {
             selectedBiller.inputParams.forEach(param => {
+                const pLower = param.paramName.toLowerCase();
+                // Mobile is validated via customerMobile
+                if (pLower.includes('mobile')) return;
+
                 const rawVal = customerParams[param.paramName] || '';
-                const val = param.paramName.toLowerCase().includes('card')
+                const val = (pLower.includes('card') || pLower.includes('last 4') || pLower.includes('digits'))
                     ? rawVal.replace(/\D/g, '')
                     : rawVal.trim();
 
                 if (!param.optional && !val) {
                     errors[param.paramName] = `${param.paramName} is required`;
                 } else if (val) {
-                    if (param.minLength > 0 && val.length < param.minLength) {
+                    if (pLower.includes('last') || pLower.includes('4')) {
+                        if (val.length < 4) {
+                            errors[param.paramName] = 'Must enter at least 4 digits';
+                        }
+                    } else if (param.minLength > 0 && val.length < param.minLength) {
                         errors[param.paramName] = `Must be at least ${param.minLength} digits`;
-                    }
-                    if (param.maxLength > 0 && val.length > param.maxLength) {
-                        errors[param.paramName] = `Cannot exceed ${param.maxLength} digits`;
                     }
                     if (param.dataType === 'NUMERIC' && !/^\d+$/.test(val)) {
                         errors[param.paramName] = 'Must contain numbers only';
@@ -270,8 +275,10 @@ const CreditCardFlow = ({ onBack, category }) => {
             // Strip formatting spaces from card number before sending to backend
             const cleanParams = {};
             for (const [k, v] of Object.entries(customerParams)) {
-                cleanParams[k] = k.toLowerCase().includes('card') ? (v || '').replace(/\s+/g, '') : v;
+                cleanParams[k] = (k.toLowerCase().includes('card') || k.toLowerCase().includes('last 4')) ? (v || '').replace(/\s+/g, '') : v;
             }
+            // Ensure registered mobile parameter is seamlessly passed in customerParams
+            cleanParams['Registered Mobile No'] = customerMobile.trim();
 
             const payload = {
                 billerId: selectedBiller.billerId,
@@ -391,8 +398,9 @@ const CreditCardFlow = ({ onBack, category }) => {
             // Clean card number for submission
             const cleanParams = {};
             for (const [k, v] of Object.entries(customerParams)) {
-                cleanParams[k] = k.toLowerCase().includes('card') ? (v || '').replace(/\s+/g, '') : v;
+                cleanParams[k] = (k.toLowerCase().includes('card') || k.toLowerCase().includes('last 4')) ? (v || '').replace(/\s+/g, '') : v;
             }
+            cleanParams['Registered Mobile No'] = customerMobile.trim();
 
             const payload = {
                 billerId: selectedBiller.billerId,
@@ -637,9 +645,8 @@ const CreditCardFlow = ({ onBack, category }) => {
                             {/* DYNAMIC PARAMETERS (CARD NUMBER + REGISTERED MOBILE) */}
                             {selectedBiller && (
                                 <form onSubmit={handleFetchBill} className="space-y-3 pt-1">
-                                    {selectedBiller.inputParams?.map(param => {
-                                        const isCardNum = param.paramName.toLowerCase().includes('card') && param.paramName.toLowerCase().includes('number');
-                                        const isMobileNum = param.paramName.toLowerCase().includes('mobile');
+                                    {selectedBiller.inputParams?.filter(p => !p.paramName.toLowerCase().includes('mobile')).map(param => {
+                                        const isCardInput = (param.paramName.toLowerCase().includes('card') || param.paramName.toLowerCase().includes('last 4') || param.paramName.toLowerCase().includes('digits')) && !param.paramName.toLowerCase().includes('mobile');
                                         const val = customerParams[param.paramName] || '';
                                         const err = paramErrors[param.paramName];
 
@@ -649,7 +656,7 @@ const CreditCardFlow = ({ onBack, category }) => {
                                                     <label className="block text-xs font-black text-black">
                                                         {param.paramName} {!param.optional && <span className="text-rose-600">*</span>}
                                                     </label>
-                                                    {isCardNum && cardNetwork && rawCardDigits.length >= 2 && (
+                                                    {isCardInput && cardNetwork && rawCardDigits.length >= 2 && (
                                                         <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${cardNetwork.badge}`}>
                                                             {cardNetwork.name}
                                                         </span>
@@ -658,11 +665,11 @@ const CreditCardFlow = ({ onBack, category }) => {
 
                                                 <div className="relative">
                                                     <input
-                                                        type={isCardNum && !showCardNumber ? 'password' : 'text'}
+                                                        type={isCardInput && !showCardNumber ? 'password' : 'text'}
                                                         inputMode="numeric"
                                                         value={val}
                                                         onChange={(e) => handleParamChange(param.paramName, e.target.value)}
-                                                        placeholder={param.hint || (isCardNum ? '4532 •••• •••• 9812' : 'Enter registered mobile')}
+                                                        placeholder={param.hint || (isCardInput ? 'Enter last 4 digits (e.g. 0998) or card number' : `Enter ${param.paramName}`)}
                                                         className={`w-full px-3 py-2 text-xs md:text-sm rounded-xl border font-bold text-black placeholder-slate-400 focus:outline-none transition-all shadow-2xs font-mono ${
                                                             err
                                                                 ? 'border-rose-400 bg-rose-50/50 focus:ring-1 focus:ring-rose-500'
@@ -670,7 +677,7 @@ const CreditCardFlow = ({ onBack, category }) => {
                                                         }`}
                                                     />
 
-                                                    {isCardNum && (
+                                                    {isCardInput && (
                                                         <button
                                                             type="button"
                                                             onClick={() => setShowCardNumber(!showCardNumber)}
