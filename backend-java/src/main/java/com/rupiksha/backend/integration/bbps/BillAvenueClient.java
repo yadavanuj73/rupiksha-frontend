@@ -183,6 +183,17 @@ public class BillAvenueClient {
             String customerMobile,
             String clientIp
     ) {
+        return fetchBill(billerId, inputParams, customerMobile, clientIp, null, null);
+    }
+
+    public BillAvenueDtos.BillFetchResponse fetchBill(
+            String billerId,
+            List<BillAvenueDtos.InputParam> inputParams,
+            String customerMobile,
+            String clientIp,
+            String initChannel,
+            String customerEmail
+    ) {
         if (!isConfigured()) {
             return BillAvenueDtos.BillFetchResponse.builder()
                     .responseCode("001")
@@ -203,18 +214,35 @@ public class BillAvenueClient {
         String sanitizedIp = (clientIp != null && clientIp.matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"))
                 ? clientIp : "103.108.7.127";
 
+        String effectiveChannel = (initChannel != null && !initChannel.isBlank())
+                ? initChannel.trim().toUpperCase()
+                : getInitChannel();
+
+        StringBuilder deviceXml = new StringBuilder("<agentDeviceInfo>");
+        if ("INT".equalsIgnoreCase(effectiveChannel) || "INTB".equalsIgnoreCase(effectiveChannel)) {
+            deviceXml.append("<initChannel>").append(escapeXml(effectiveChannel)).append("</initChannel>")
+                    .append("<ip>").append(escapeXml(sanitizedIp)).append("</ip>")
+                    .append("<mac>01-23-45-67-89-ab</mac>");
+        } else {
+            deviceXml.append("<app>tripozo</app>")
+                    .append("<imei>000000000000000</imei>")
+                    .append("<initChannel>").append(escapeXml(effectiveChannel)).append("</initChannel>")
+                    .append("<ip>").append(escapeXml(sanitizedIp)).append("</ip>")
+                    .append("<os>android</os>");
+        }
+        deviceXml.append("</agentDeviceInfo>");
+
+        String emailTag = (customerEmail != null && !customerEmail.isBlank())
+                ? "<customerEmail>" + escapeXml(customerEmail.trim()) + "</customerEmail>"
+                : "<customerEmail>customer@rupiksha.in</customerEmail>";
+
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
                 + "<billFetchRequest>"
-                + "<agentDeviceInfo>"
-                + "<app>BillPay</app>"
-                + "<imei>000000000000000</imei>"
-                + "<initChannel>AGT</initChannel>"
-                + "<ip>" + escapeXml(sanitizedIp) + "</ip>"
-                + "<os>android</os>"
-                + "</agentDeviceInfo>"
+                + deviceXml
                 + "<agentId>" + escapeXml(getAgentId()) + "</agentId>"
                 + "<billerId>" + escapeXml(billerId) + "</billerId>"
                 + "<customerInfo>"
+                + emailTag
                 + "<customerMobile>" + escapeXml(customerMobile) + "</customerMobile>"
                 + "</customerInfo>"
                 + "<inputParams>" + inputXml + "</inputParams>"
@@ -564,17 +592,33 @@ public class BillAvenueClient {
                 ? req.getQuickPay().trim().toUpperCase()
                 : ((req.getFetchRequestId() != null && !req.getFetchRequestId().isBlank()) ? "N" : "Y");
 
+        String effectiveChannel = (req.getInitChannel() != null && !req.getInitChannel().isBlank())
+                ? req.getInitChannel().trim().toUpperCase()
+                : getInitChannel();
+
+        StringBuilder deviceXml = new StringBuilder("<agentDeviceInfo>");
+        if ("INT".equalsIgnoreCase(effectiveChannel) || "INTB".equalsIgnoreCase(effectiveChannel)) {
+            deviceXml.append("<initChannel>").append(escapeXml(effectiveChannel)).append("</initChannel>")
+                    .append("<ip>").append(escapeXml(sanitizedIp)).append("</ip>")
+                    .append("<mac>01-23-45-67-89-ab</mac>");
+        } else {
+            deviceXml.append("<app>tripozo</app>")
+                    .append("<imei>000000000000000</imei>")
+                    .append("<initChannel>").append(escapeXml(effectiveChannel)).append("</initChannel>")
+                    .append("<ip>").append(escapeXml(sanitizedIp)).append("</ip>")
+                    .append("<os>android</os>");
+        }
+        deviceXml.append("</agentDeviceInfo>");
+
+        String emailTag = (req.getCustomerEmail() != null && !req.getCustomerEmail().isBlank())
+                ? "<customerEmail>" + escapeXml(req.getCustomerEmail().trim()) + "</customerEmail>"
+                : "<customerEmail>customer@rupiksha.in</customerEmail>";
+
         // 6. Build Master Payment XML matching PHP structure
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
                 + "<billPaymentRequest>"
                 + addnlInfoXmlStr
-                + "<agentDeviceInfo>"
-                + "<app>BillPay</app>"
-                + "<imei>000000000000000</imei>"
-                + "<initChannel>AGT</initChannel>"
-                + "<ip>" + escapeXml(sanitizedIp) + "</ip>"
-                + "<os>android</os>"
-                + "</agentDeviceInfo>"
+                + deviceXml
                 + "<agentId>" + escapeXml(getAgentId()) + "</agentId>"
                 + "<amountInfo>"
                 + "<amount>" + req.getAmountPaise() + "</amount>"
@@ -586,6 +630,7 @@ public class BillAvenueClient {
                 + "<billerAdhoc>" + escapeXml(billerAdhoc) + "</billerAdhoc>"
                 + billerRespXmlStr
                 + "<customerInfo>"
+                + emailTag
                 + "<customerMobile>" + escapeXml(req.getCustomerMobile()) + "</customerMobile>"
                 + kycXml
                 + "</customerInfo>"

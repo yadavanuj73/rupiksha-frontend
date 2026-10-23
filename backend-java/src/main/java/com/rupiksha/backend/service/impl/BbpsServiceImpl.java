@@ -2103,17 +2103,22 @@ public class BbpsServiceImpl implements BbpsService {
         // Build BillAvenue Input Params mapped to biller schema
         List<BillAvenueDtos.InputParam> inputs = creditCardBillerRegistry.buildCreditCardInputParams(biller, request.getCustomerParams(), request.getCustomerMobile());
 
+        String userEmail = (user.getEmail() != null && !user.getEmail().isBlank()) ? user.getEmail().trim() : "customer@rupiksha.in";
+
         try {
+            // Per official BBPS doc (Pages 9, 31, 46): Credit Card requires MOB channel (AGT is N)
             BillAvenueDtos.BillFetchResponse fetchResp = billAvenueClient.fetchBill(
                     biller.getBillerId(),
                     inputs,
                     request.getCustomerMobile().trim(),
-                    sanitizedIp
+                    sanitizedIp,
+                    "MOB",
+                    userEmail
             );
 
-            // Handle parameter mismatch (E135) with intelligent fallback and MDM discovery
+            // Handle parameter mismatch (E135) with intelligent fallback across channels and schemas
             if (fetchResp != null && isE135Error(fetchResp)) {
-                log.warn("Credit card billerId {} returned E135 for {}. Resolving parameter schema via MDM / parameter variations.",
+                log.warn("Credit card billerId {} returned E135 for {}. Resolving parameter schema via MDM / parameter variations on MOB.",
                         biller.getBillerId(), biller.getBillerName());
 
                 // 1. Try Biller Info MDM API per Section 4.1 of BillAvenue doc
@@ -2127,7 +2132,9 @@ public class BbpsServiceImpl implements BbpsService {
                                 biller.getBillerId(),
                                 mdmInputs,
                                 request.getCustomerMobile().trim(),
-                                sanitizedIp
+                                sanitizedIp,
+                                "MOB",
+                                userEmail
                         );
                         if (mdmResp != null && !isE135Error(mdmResp)) {
                             fetchResp = mdmResp;
@@ -2139,20 +2146,23 @@ public class BbpsServiceImpl implements BbpsService {
                     log.warn("Biller Info MDM lookup failed for {}: {}", biller.getBillerId(), mdmEx.getMessage());
                 }
 
-                // 2. If still E135 or MDM was not available/failed, try candidate parameter variations
+                // 2. Candidate parameter variations on channel MOB
                 if (fetchResp == null || isE135Error(fetchResp)) {
                     List<List<BillAvenueDtos.InputParam>> variations = generateCreditCardParameterVariations(
                             cardLastFour,
                             rawCardDigits,
                             request.getCustomerMobile().trim()
                     );
+
                     for (List<BillAvenueDtos.InputParam> altInputs : variations) {
                         try {
                             BillAvenueDtos.BillFetchResponse altResp = billAvenueClient.fetchBill(
                                     biller.getBillerId(),
                                     altInputs,
                                     request.getCustomerMobile().trim(),
-                                    sanitizedIp
+                                    sanitizedIp,
+                                    "MOB",
+                                    userEmail
                             );
                             if (altResp != null && !isE135Error(altResp)) {
                                 fetchResp = altResp;
@@ -2161,7 +2171,55 @@ public class BbpsServiceImpl implements BbpsService {
                                 break;
                             }
                         } catch (Exception exVar) {
-                            log.debug("Credit card candidate input variation fetch error: {}", exVar.getMessage());
+                            log.debug("Credit card MOB variation fetch error: {}", exVar.getMessage());
+                        }
+                    }
+
+                    // 3. Fallback to channel INT if MOB still returns E135
+                    if (fetchResp == null || isE135Error(fetchResp)) {
+                        for (List<BillAvenueDtos.InputParam> altInputs : variations) {
+                            try {
+                                BillAvenueDtos.BillFetchResponse altResp = billAvenueClient.fetchBill(
+                                        biller.getBillerId(),
+                                        altInputs,
+                                        request.getCustomerMobile().trim(),
+                                        sanitizedIp,
+                                        "INT",
+                                        userEmail
+                                );
+                                if (altResp != null && !isE135Error(altResp)) {
+                                    fetchResp = altResp;
+                                    inputs = altInputs;
+                                    creditCardBillerRegistry.updateWorkingInputParams(biller.getBillerId(), altInputs);
+                                    break;
+                                }
+                            } catch (Exception exVar) {
+                                log.debug("Credit card INT variation fetch error: {}", exVar.getMessage());
+                            }
+                        }
+                    }
+
+                    // 4. Fallback to channel AGT as last resort
+                    if (fetchResp == null || isE135Error(fetchResp)) {
+                        for (List<BillAvenueDtos.InputParam> altInputs : variations) {
+                            try {
+                                BillAvenueDtos.BillFetchResponse altResp = billAvenueClient.fetchBill(
+                                        biller.getBillerId(),
+                                        altInputs,
+                                        request.getCustomerMobile().trim(),
+                                        sanitizedIp,
+                                        "AGT",
+                                        userEmail
+                                );
+                                if (altResp != null && !isE135Error(altResp)) {
+                                    fetchResp = altResp;
+                                    inputs = altInputs;
+                                    creditCardBillerRegistry.updateWorkingInputParams(biller.getBillerId(), altInputs);
+                                    break;
+                                }
+                            } catch (Exception exVar) {
+                                log.debug("Credit card AGT variation fetch error: {}", exVar.getMessage());
+                            }
                         }
                     }
                 }
@@ -2450,7 +2508,7 @@ public class BbpsServiceImpl implements BbpsService {
         bbpsTxn.setTotalDue(request.getTotalDue() != null ? request.getTotalDue() : BigDecimal.ZERO);
         bbpsTxn.setStatementDate(effectiveStatementDate);
         bbpsTxn.setPaymentMode("Cash");
-        bbpsTxn.setPaymentChannel("AGT");
+        bbpsTxn.setPaymentChannel("MOB");
         bbpsTxn.setBillNumber(effectiveBillNumber);
         bbpsTxn.setBillDate(effectiveBillDate);
         bbpsTxn.setDueDate(effectiveDueDate);
@@ -2495,14 +2553,17 @@ public class BbpsServiceImpl implements BbpsService {
         long convFeePaise = convenienceFee.multiply(BigDecimal.valueOf(100)).longValue();
 
         String mode = "Cash";
-        String initChannel = "AGT";
+        String initChannel = "MOB";
         String paymentAccountInfo = "Cash Payment";
         String remitterName = (user.getFullName() != null && !user.getFullName().isBlank()) ? user.getFullName().trim() : "Rupiksha Retailer";
+        String userEmail = (user.getEmail() != null && !user.getEmail().isBlank()) ? user.getEmail().trim() : "customer@rupiksha.in";
 
         BillAvenueDtos.BillPayXmlRequest xmlReq = BillAvenueDtos.BillPayXmlRequest.builder()
                 .fetchRequestId(effectiveRequestId)
                 .billerId(biller.getBillerId())
                 .customerMobile(request.getCustomerMobile().trim())
+                .customerEmail(userEmail)
+                .initChannel(initChannel)
                 .amountPaise(paise)
                 .billAmountPaise(paise)
                 .billDate(effectiveBillDate)
@@ -2949,17 +3010,25 @@ public class BbpsServiceImpl implements BbpsService {
         if (resp == null) return false;
         if (resp.getResponseReason() != null) {
             String r = resp.getResponseReason().toLowerCase();
-            if (r.contains("e135") || r.contains("mandatory input parameter") || r.contains("mismatch")) {
+            if (r.contains("e135") || r.contains("mandatory input parameter") || r.contains("mismatch")
+                    || r.contains("ve007") || r.contains("ve008") || r.contains("ve009") || r.contains("ve010")
+                    || r.contains("ve011") || r.contains("ve012") || r.contains("customer input parameter")) {
                 return true;
             }
         }
         if (resp.getErrorInfo() != null) {
             for (BillAvenueDtos.ErrorInfo err : resp.getErrorInfo()) {
                 if (err != null) {
-                    if ("E135".equalsIgnoreCase(err.getErrorCode())) return true;
+                    String code = err.getErrorCode();
+                    if ("E135".equalsIgnoreCase(code) || "VE007".equalsIgnoreCase(code) || "VE008".equalsIgnoreCase(code)
+                            || "VE009".equalsIgnoreCase(code) || "VE010".equalsIgnoreCase(code) || "VE011".equalsIgnoreCase(code)
+                            || "VE012".equalsIgnoreCase(code) || "BVR002".equalsIgnoreCase(code)) {
+                        return true;
+                    }
                     if (err.getErrorMessage() != null) {
                         String m = err.getErrorMessage().toLowerCase();
-                        if (m.contains("e135") || m.contains("mandatory input parameter") || m.contains("mismatch")) {
+                        if (m.contains("e135") || m.contains("mandatory input parameter") || m.contains("mismatch")
+                                || m.contains("input parameter") || m.contains("not present")) {
                             return true;
                         }
                     }
@@ -3088,20 +3157,28 @@ public class BbpsServiceImpl implements BbpsService {
         String raw = (rawCardDigits != null && !rawCardDigits.isBlank()) ? rawCardDigits.trim() : c4;
         String mob = (mobile != null && !mobile.isBlank()) ? mobile.replaceAll("\\D", "").trim() : "";
 
-        // Variation 1: Single parameter "Last 4 Digits of Credit Card" (Standard BBPS switch format when mobile is in customerMobile)
+        // Variation 1: "Last 4 Digits of Credit Card" + "Registered Mobile No" (Official BillAvenue Pages 31 & 46)
+        if (!mob.isEmpty()) {
+            variations.add(List.of(
+                    BillAvenueDtos.InputParam.builder().paramName("Last 4 Digits of Credit Card").paramValue(c4).build(),
+                    BillAvenueDtos.InputParam.builder().paramName("Registered Mobile No").paramValue(mob).build()
+            ));
+        }
+
+        // Variation 2: Single parameter "Last 4 Digits of Credit Card" (When mobile is in customerInfo)
         variations.add(List.of(
                 BillAvenueDtos.InputParam.builder().paramName("Last 4 Digits of Credit Card").paramValue(c4).build()
         ));
 
-        // Variation 2: "Last 4 Digits of Credit Card" + "Registered Mobile No" (BillAvenue doc specification Pages 31 & 46)
+        // Variation 3: Reverse order "Registered Mobile No" + "Last 4 Digits of Credit Card"
         if (!mob.isEmpty()) {
             variations.add(List.of(
-                    BillAvenueDtos.InputParam.builder().paramName("Last 4 Digits of Credit Card").paramValue(c4).build(),
-                    BillAvenueDtos.InputParam.builder().paramName("Registered Mobile No").paramValue(mob).build()
+                    BillAvenueDtos.InputParam.builder().paramName("Registered Mobile No").paramValue(mob).build(),
+                    BillAvenueDtos.InputParam.builder().paramName("Last 4 Digits of Credit Card").paramValue(c4).build()
             ));
         }
 
-        // Variation 3: "Last 4 Digits of Credit Card" + "Mobile Number"
+        // Variation 4: "Last 4 Digits of Credit Card" + "Mobile Number"
         if (!mob.isEmpty()) {
             variations.add(List.of(
                     BillAvenueDtos.InputParam.builder().paramName("Last 4 Digits of Credit Card").paramValue(c4).build(),
@@ -3109,33 +3186,7 @@ public class BbpsServiceImpl implements BbpsService {
             ));
         }
 
-        // Variation 4: "Credit Card Number" only
-        variations.add(List.of(
-                BillAvenueDtos.InputParam.builder().paramName("Credit Card Number").paramValue(raw).build()
-        ));
-
-        // Variation 5: "Credit Card Number" + "Registered Mobile No"
-        if (!mob.isEmpty()) {
-            variations.add(List.of(
-                    BillAvenueDtos.InputParam.builder().paramName("Credit Card Number").paramValue(raw).build(),
-                    BillAvenueDtos.InputParam.builder().paramName("Registered Mobile No").paramValue(mob).build()
-            ));
-        }
-
-        // Variation 6: "Credit Card Number" + "Mobile Number"
-        if (!mob.isEmpty()) {
-            variations.add(List.of(
-                    BillAvenueDtos.InputParam.builder().paramName("Credit Card Number").paramValue(raw).build(),
-                    BillAvenueDtos.InputParam.builder().paramName("Mobile Number").paramValue(mob).build()
-            ));
-        }
-
-        // Variation 7: "Credit Card Last 4 Digits"
-        variations.add(List.of(
-                BillAvenueDtos.InputParam.builder().paramName("Credit Card Last 4 Digits").paramValue(c4).build()
-        ));
-
-        // Variation 8: "Last 4 Digits of Credit Card" + "Registered Mobile Number"
+        // Variation 5: "Last 4 Digits of Credit Card" + "Registered Mobile Number"
         if (!mob.isEmpty()) {
             variations.add(List.of(
                     BillAvenueDtos.InputParam.builder().paramName("Last 4 Digits of Credit Card").paramValue(c4).build(),
@@ -3143,7 +3194,49 @@ public class BbpsServiceImpl implements BbpsService {
             ));
         }
 
-        // Variation 9: "Card Number"
+        // Variation 6: "Last 4 Digits of Credit Card" + "Registered Mobile No." (with dot)
+        if (!mob.isEmpty()) {
+            variations.add(List.of(
+                    BillAvenueDtos.InputParam.builder().paramName("Last 4 Digits of Credit Card").paramValue(c4).build(),
+                    BillAvenueDtos.InputParam.builder().paramName("Registered Mobile No.").paramValue(mob).build()
+            ));
+        }
+
+        // Variation 7: "Last 4 digits of Credit Card" (lowercase d) + "Registered Mobile No"
+        if (!mob.isEmpty()) {
+            variations.add(List.of(
+                    BillAvenueDtos.InputParam.builder().paramName("Last 4 digits of Credit Card").paramValue(c4).build(),
+                    BillAvenueDtos.InputParam.builder().paramName("Registered Mobile No").paramValue(mob).build()
+            ));
+        }
+
+        // Variation 8: "Credit Card Number" only
+        variations.add(List.of(
+                BillAvenueDtos.InputParam.builder().paramName("Credit Card Number").paramValue(raw).build()
+        ));
+
+        // Variation 9: "Credit Card Number" + "Registered Mobile No"
+        if (!mob.isEmpty()) {
+            variations.add(List.of(
+                    BillAvenueDtos.InputParam.builder().paramName("Credit Card Number").paramValue(raw).build(),
+                    BillAvenueDtos.InputParam.builder().paramName("Registered Mobile No").paramValue(mob).build()
+            ));
+        }
+
+        // Variation 10: "Credit Card Number" + "Mobile Number"
+        if (!mob.isEmpty()) {
+            variations.add(List.of(
+                    BillAvenueDtos.InputParam.builder().paramName("Credit Card Number").paramValue(raw).build(),
+                    BillAvenueDtos.InputParam.builder().paramName("Mobile Number").paramValue(mob).build()
+            ));
+        }
+
+        // Variation 11: "Credit Card Last 4 Digits"
+        variations.add(List.of(
+                BillAvenueDtos.InputParam.builder().paramName("Credit Card Last 4 Digits").paramValue(c4).build()
+        ));
+
+        // Variation 12: "Card Number"
         variations.add(List.of(
                 BillAvenueDtos.InputParam.builder().paramName("Card Number").paramValue(raw).build()
         ));

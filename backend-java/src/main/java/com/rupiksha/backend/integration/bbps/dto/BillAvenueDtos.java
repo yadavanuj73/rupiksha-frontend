@@ -176,6 +176,8 @@ public class BillAvenueDtos {
         private long ccf1Paise;
         private String rawBillerResponseXml;
         private String rawAdditionalInfoXml;
+        private String initChannel;
+        private String customerEmail;
     }
 
     @Data
