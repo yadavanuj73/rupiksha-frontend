@@ -2077,35 +2077,15 @@ public class BbpsServiceImpl implements BbpsService {
         BbpsDtos.CreditCardBillerInfo biller = creditCardBillerRegistry.findById(request.getBillerId())
                 .orElseThrow(() -> new IllegalArgumentException("Unknown or unmapped credit card issuer: " + request.getBillerId()));
 
-        // BillAvenue requires Biller Info MDM before every fetch. Do not send
-        // fallback parameter names because that can produce E135.
+        // Sync with BillAvenue MDM Biller Info API if available (cached in-memory per 24h quota)
         try {
             BillAvenueDtos.BillerInfoResponse mdm = billAvenueClient.fetchBillerInfo(biller.getBillerId());
-            if (mdm == null || !mdm.isSuccess() || mdm.getInputParams() == null || mdm.getInputParams().isEmpty()) {
-                String reason = mdm != null && mdm.getResponseReason() != null
-                        ? mdm.getResponseReason()
-                        : "Biller Info MDM returned no input parameter schema";
-                return BbpsDtos.BillFetchResult.builder()
-                        .success(false)
-                        .noBillDue(false)
-                        .billerId(biller.getBillerId())
-                        .billerName(biller.getBillerName())
-                        .message("Unable to fetch the current biller parameter schema: " + reason)
-                        .errorCode("MDM_UNAVAILABLE")
-                        .build();
+            if (mdm != null && mdm.isSuccess() && mdm.getInputParams() != null && !mdm.getInputParams().isEmpty()) {
+                creditCardBillerRegistry.updateFromMdm(biller.getBillerId(), mdm);
+                biller = creditCardBillerRegistry.findById(biller.getBillerId()).orElse(biller);
             }
-            creditCardBillerRegistry.updateFromMdm(biller.getBillerId(), mdm);
-            biller = creditCardBillerRegistry.findById(biller.getBillerId()).orElse(biller);
         } catch (Exception mdmEx) {
-            log.error("Required MDM lookup failed for credit card biller {}: {}", biller.getBillerId(), mdmEx.getMessage());
-            return BbpsDtos.BillFetchResult.builder()
-                    .success(false)
-                    .noBillDue(false)
-                    .billerId(biller.getBillerId())
-                    .billerName(biller.getBillerName())
-                    .message("Unable to fetch the current biller parameter schema. Please try again.")
-                    .errorCode("MDM_UNAVAILABLE")
-                    .build();
+            log.warn("MDM lookup error for credit card biller {}: {}", biller.getBillerId(), mdmEx.getMessage());
         }
 
         // Validate dynamic customer parameters (Card number length, format)
