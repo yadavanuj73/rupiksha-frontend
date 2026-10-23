@@ -70,11 +70,6 @@ public class CreditCardBillerRegistry {
         if (mdm == null || !mdm.isSuccess() || mdm.getInputParams() == null || mdm.getInputParams().isEmpty()) {
             return;
         }
-        // Axis's official contract uses these two exact fields. The MDM response
-        // has previously exposed a different schema and caused E135 mismatches.
-        if ("AXIS00000NATKF".equalsIgnoreCase(billerId)) {
-            return;
-        }
         Optional<BbpsDtos.CreditCardBillerInfo> opt = findById(billerId);
         if (opt.isPresent()) {
             BbpsDtos.CreditCardBillerInfo existing = opt.get();
@@ -756,23 +751,6 @@ public class CreditCardBillerRegistry {
         }
         if (rawMobileVal.isEmpty() && customerMobile != null) {
             rawMobileVal = customerMobile.replaceAll("\\D", "");
-        }
-
-        // Axis requires these exact parameter names and the last four card digits.
-        // Do not allow an MDM schema refresh to replace this biller-specific contract.
-        if (biller != null && "AXIS00000NATKF".equalsIgnoreCase(biller.getBillerId())) {
-            return List.of(
-                    BillAvenueDtos.InputParam.builder()
-                            .paramName("Last 4 Digits of Credit Card")
-                            .paramValue(rawCardVal.length() >= 4
-                                    ? rawCardVal.substring(rawCardVal.length() - 4)
-                                    : rawCardVal)
-                            .build(),
-                    BillAvenueDtos.InputParam.builder()
-                            .paramName("Registered Mobile No")
-                            .paramValue(rawMobileVal)
-                            .build()
-            );
         }
 
         List<BbpsDtos.InputParamInfo> expected = (biller != null && biller.getInputParams() != null && !biller.getInputParams().isEmpty())
