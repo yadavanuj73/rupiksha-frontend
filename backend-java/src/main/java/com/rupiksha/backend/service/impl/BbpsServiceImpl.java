@@ -2456,7 +2456,9 @@ public class BbpsServiceImpl implements BbpsService {
                 .paymentAccountInfo(paymentAccountInfo)
                 .clientIp(sanitizedIp)
                 .billerAdhoc("false")
-                .quickPay("0")
+                // Credit-card payments are submitted against the fetched bill.
+                // BillAvenue expects the quick-pay flag as Y/N, not 0/1.
+                .quickPay(effectiveRequestId != null ? "N" : "Y")
                 .custConvFeePaise(convFeePaise)
                 .ccf1Paise(0L)
                 .rawBillerResponseXml(rawBillerResponseXml)

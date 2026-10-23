@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
@@ -1008,10 +1009,16 @@ class BbpsServiceImplTest {
         assertEquals("SUCCESS", response.getStatus());
         assertEquals("0998", response.getCardLastFour());
 
-        // Verify that billAvenueClient payBillXml received "Last 4 Digits of Credit Card" = 0998
-        verify(billAvenueClient).payBillXml(
-                argThat(req -> req.getInputParams().stream().anyMatch(i -> "Last 4 Digits of Credit Card".equals(i.getParamName()) && "0998".equals(i.getParamValue()))
-                        && req.getInputParams().stream().anyMatch(i -> "Registered Mobile No".equals(i.getParamName()) && "7292987918".equals(i.getParamValue())))
-        );
+        ArgumentCaptor<BillAvenueDtos.BillPayXmlRequest> requestCaptor =
+                ArgumentCaptor.forClass(BillAvenueDtos.BillPayXmlRequest.class);
+        verify(billAvenueClient).payBillXml(requestCaptor.capture());
+        BillAvenueDtos.BillPayXmlRequest providerRequest = requestCaptor.getValue();
+
+        // Verify that BillAvenue received the official input names and fetch flow flag.
+        assertTrue(providerRequest.getInputParams().stream()
+                .anyMatch(i -> "Last 4 Digits of Credit Card".equals(i.getParamName()) && "0998".equals(i.getParamValue())));
+        assertTrue(providerRequest.getInputParams().stream()
+                .anyMatch(i -> "Registered Mobile No".equals(i.getParamName()) && "7292987918".equals(i.getParamValue())));
+        assertEquals("N", providerRequest.getQuickPay());
     }
 }
