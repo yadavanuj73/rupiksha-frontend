@@ -11,7 +11,6 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
@@ -123,29 +122,21 @@ public class BillAvenueClient {
         String encRequest = BillAvenueCryptoUtil.encrypt(xmlRequest, workingKey, aesIv);
         String v = (ver != null && !ver.isBlank()) ? ver : "1.0";
 
-        // BillAvenue requires encRequest as the raw POST body for XML APIs. It must not
-        // be sent as a form field or query parameter.
-        String urlWithQuery = UriComponentsBuilder
-                .fromHttpUrl(base + "/" + endpointPath)
-                .queryParam("accessCode", accessCode != null ? accessCode.trim() : "")
-                .queryParam("requestId", requestId)
-                .queryParam("ver", v)
-                .queryParam("instituteId", getInstituteId())
-                .build()
-                .encode()
-                .toUriString();
+        // In the working PHP reference, queryParams contains: accessCode, requestId, encRequest, ver, instituteId
+        // with empty POST body. We also support falling back to application/x-www-form-urlencoded body.
+        String urlWithQuery = String.format("%s/%s?accessCode=%s&requestId=%s&encRequest=%s&ver=%s&instituteId=%s",
+                base,
+                endpointPath,
+                accessCode != null ? accessCode.trim() : "",
+                requestId,
+                encRequest,
+                v,
+                getInstituteId());
 
         log.info("Dispatching BillAvenue XML API call to {} for requestId: {}", endpointPath, requestId);
 
         try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.TEXT_PLAIN);
-            headers.setAccept(Collections.singletonList(MediaType.TEXT_PLAIN));
-            ResponseEntity<String> response = restTemplate.postForEntity(
-                    urlWithQuery,
-                    new HttpEntity<>(encRequest, headers),
-                    String.class
-            );
+            ResponseEntity<String> response = restTemplate.postForEntity(urlWithQuery, HttpEntity.EMPTY, String.class);
             String rawBody = response.getBody();
             if (rawBody != null && !rawBody.isBlank()) {
                 log.info("Received response from BillAvenue XML endpoint: {} for requestId: {}", endpointPath, requestId);
@@ -155,21 +146,28 @@ public class BillAvenueClient {
             log.error("Network timeout calling BillAvenue XML API: {}", endpointPath, re);
             throw new BillAvenueTimeoutException("Timeout communicating with BillAvenue: " + re.getMessage(), re);
         } catch (Exception e) {
-            log.warn("POST with raw encrypted body for XML endpoint {} failed: {}",
+            log.warn("POST with query string for XML endpoint {} returned exception ({}). Trying form body fallback.",
                     endpointPath, e.getMessage());
             try {
                 HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.APPLICATION_XML);
-                ResponseEntity<String> response = restTemplate.postForEntity(
-                        urlWithQuery,
-                        new HttpEntity<>(encRequest, headers),
-                        String.class
-                );
+                headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+                MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
+                map.add("accessCode", accessCode != null ? accessCode.trim() : "");
+                map.add("requestId", requestId);
+                map.add("encRequest", encRequest);
+                map.add("ver", v);
+                map.add("instituteId", getInstituteId());
+
+                String fallbackUrl = String.format("%s/%s?accessCode=%s&requestId=%s&ver=%s&instituteId=%s",
+                        base, endpointPath, accessCode != null ? accessCode.trim() : "", requestId, v, getInstituteId());
+
+                ResponseEntity<String> response = restTemplate.postForEntity(fallbackUrl, new HttpEntity<>(map, headers), String.class);
                 return response.getBody();
             } catch (ResourceAccessException re2) {
                 throw new BillAvenueTimeoutException("Timeout communicating with BillAvenue: " + re2.getMessage(), re2);
             } catch (Exception ex2) {
-                log.error("XML retry with raw encrypted body also failed for endpoint: {}", endpointPath, ex2);
+                log.error("XML form fallback also failed for endpoint: {}", endpointPath, ex2);
                 return null;
             }
         }
