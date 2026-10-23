@@ -70,11 +70,6 @@ public class CreditCardBillerRegistry {
         if (mdm == null || !mdm.isSuccess() || mdm.getInputParams() == null || mdm.getInputParams().isEmpty()) {
             return;
         }
-        // Axis's official contract uses these two exact fields. The MDM response
-        // has previously exposed a different schema and caused E135 mismatches.
-        if ("AXIS00000NATKF".equalsIgnoreCase(billerId)) {
-            return;
-        }
         Optional<BbpsDtos.CreditCardBillerInfo> opt = findById(billerId);
         if (opt.isPresent()) {
             BbpsDtos.CreditCardBillerInfo existing = opt.get();
