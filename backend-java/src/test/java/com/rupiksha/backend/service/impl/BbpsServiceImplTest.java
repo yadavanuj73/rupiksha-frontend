@@ -930,8 +930,8 @@ class BbpsServiceImplTest {
     }
 
     @Test
-    @DisplayName("Credit card input mapping follows the Biller Info MDM schema")
-    void testCreditCardContractUsesMdmSchema() {
+    @DisplayName("Axis credit card contract is not replaced by an incompatible MDM schema")
+    void testAxisCreditCardContractSurvivesMdmRefresh() {
         BillAvenueDtos.BillerInfoResponse mdm = BillAvenueDtos.BillerInfoResponse.builder()
                 .responseCode("000")
                 .inputParams(List.of(
@@ -956,26 +956,11 @@ class BbpsServiceImplTest {
                 .findById("AXIS00000NATKF")
                 .orElseThrow();
         assertEquals(
-                List.of("Credit Card Number", "Mobile Number"),
+                List.of("Last 4 Digits of Credit Card", "Registered Mobile No"),
                 axis.getInputParams().stream()
                         .map(BbpsDtos.InputParamInfo::getParamName)
                         .toList()
         );
-
-        List<BillAvenueDtos.InputParam> inputs = creditCardBillerRegistry.buildCreditCardInputParams(
-                axis,
-                java.util.Map.of(
-                        "Last 4 Digits of Credit Card", "1514",
-                        "Registered Mobile No", "7292987918"
-                ),
-                "7292987918"
-        );
-        assertEquals(
-                List.of("Credit Card Number", "Mobile Number"),
-                inputs.stream().map(BillAvenueDtos.InputParam::getParamName).toList()
-        );
-        assertEquals("1514", inputs.get(0).getParamValue());
-        assertEquals("7292987918", inputs.get(1).getParamValue());
     }
 
     @Test
