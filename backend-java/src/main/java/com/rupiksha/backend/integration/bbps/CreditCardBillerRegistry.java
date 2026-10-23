@@ -14,7 +14,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *
  * Per BillAvenue API doc (Section Page 23):
  *   - Payment modes disabled for Credit Card: Credit Card, Wallet, Prepaid Card.
- *   - Use Cash payment mode with the configured initChannel and paymentAccountInfo="Cash Payment".
+ *   - Use Cash payment mode with initChannel=AGT and paymentAccountInfo="Cash Payment".
  *   - billerFetchRequirement is typically MANDATORY for credit card billers.
  *   - Security: Only the last 4 digits of the card number are persisted. Full PAN and CVV are never stored.
  */
