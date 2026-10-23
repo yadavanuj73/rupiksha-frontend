@@ -897,6 +897,24 @@ class BbpsServiceImplTest {
         axisSuccess.setDueDate("2026-11-15");
         axisSuccess.setBillNumber("BILL-AXIS-01");
 
+        when(billAvenueClient.fetchBillerInfo("AXIS00000NATKF"))
+                .thenReturn(BillAvenueDtos.BillerInfoResponse.builder()
+                        .responseCode("000")
+                        .inputParams(List.of(
+                                BillAvenueDtos.BillerParamInfo.builder()
+                                        .paramName("Last 4 Digits of Credit Card")
+                                        .dataType("NUMERIC")
+                                        .minLength(4)
+                                        .maxLength(4)
+                                        .build(),
+                                BillAvenueDtos.BillerParamInfo.builder()
+                                        .paramName("Registered Mobile No")
+                                        .dataType("NUMERIC")
+                                        .minLength(10)
+                                        .maxLength(10)
+                                        .build()
+                        ))
+                        .build());
         when(billAvenueClient.fetchBill(eq("AXIS00000NATKF"), any(), any(), any())).thenReturn(axisSuccess);
 
         BbpsDtos.CreditCardFetchRequest request = new BbpsDtos.CreditCardFetchRequest();
