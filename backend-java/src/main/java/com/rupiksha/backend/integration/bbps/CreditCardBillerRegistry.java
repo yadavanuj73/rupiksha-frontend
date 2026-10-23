@@ -748,6 +748,21 @@ public class CreditCardBillerRegistry {
             rawMobileVal = customerMobile.replaceAll("\\D", "");
         }
 
+        // Axis requires these exact BBPS names and the last four card digits.
+        // Do not allow an MDM schema refresh to change this contract.
+        if (biller != null && "AXIS00000NATKF".equalsIgnoreCase(biller.getBillerId())) {
+            return List.of(
+                    BillAvenueDtos.InputParam.builder()
+                            .paramName("Last 4 Digits of Credit Card")
+                            .paramValue(rawCardVal.length() >= 4 ? rawCardVal.substring(rawCardVal.length() - 4) : rawCardVal)
+                            .build(),
+                    BillAvenueDtos.InputParam.builder()
+                            .paramName("Registered Mobile No")
+                            .paramValue(rawMobileVal)
+                            .build()
+            );
+        }
+
         List<BbpsDtos.InputParamInfo> expected = (biller != null && biller.getInputParams() != null && !biller.getInputParams().isEmpty())
                 ? biller.getInputParams()
                 : defaultCreditCardParams();
@@ -797,5 +812,31 @@ public class CreditCardBillerRegistry {
         }
 
         return inputs;
+    }
+
+    /**
+     * Returns only the BBPS-safe identifiers for API responses and persistence.
+     */
+    public Map<String, String> sanitizeCustomerParams(Map<String, String> params, String customerMobile) {
+        String cardLastFour = extractCardLastFour(params);
+        String mobile = customerMobile != null ? customerMobile.replaceAll("\\D", "") : "";
+        if ((mobile.isBlank()) && params != null) {
+            for (Map.Entry<String, String> entry : params.entrySet()) {
+                String key = entry.getKey() == null ? "" : entry.getKey().toLowerCase();
+                if ((key.contains("mobile") || key.contains("phone")) && entry.getValue() != null) {
+                    mobile = entry.getValue().replaceAll("\\D", "");
+                    break;
+                }
+            }
+        }
+
+        Map<String, String> safe = new LinkedHashMap<>();
+        if (cardLastFour != null) {
+            safe.put("Last 4 Digits of Credit Card", cardLastFour);
+        }
+        if (!mobile.isBlank()) {
+            safe.put("Registered Mobile No", mobile);
+        }
+        return safe;
     }
 }

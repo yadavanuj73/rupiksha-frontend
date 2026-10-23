@@ -2096,6 +2096,8 @@ public class BbpsServiceImpl implements BbpsService {
 
         String cardLastFour = creditCardBillerRegistry.extractCardLastFour(request.getCustomerParams());
         String displayCardIdentifier = cardLastFour != null ? "•••• " + cardLastFour : request.getCustomerMobile();
+        Map<String, String> safeCustomerParams = creditCardBillerRegistry.sanitizeCustomerParams(
+                request.getCustomerParams(), request.getCustomerMobile());
 
         // Build BillAvenue Input Params mapped to biller schema
         List<BillAvenueDtos.InputParam> inputs = creditCardBillerRegistry.buildCreditCardInputParams(biller, request.getCustomerParams(), request.getCustomerMobile());
@@ -2147,7 +2149,7 @@ public class BbpsServiceImpl implements BbpsService {
                         .billDate(fetchResp.getBillDate())
                         .dueDate(fetchResp.getDueDate())
                         .billPeriod(fetchResp.getBillPeriod())
-                        .customerParams(request.getCustomerParams())
+                        .customerParams(safeCustomerParams)
                         .additionalInfo(addnl)
                         .message(message)
                         .build();
@@ -2159,7 +2161,7 @@ public class BbpsServiceImpl implements BbpsService {
                         .billerId(biller.getBillerId())
                         .billerName(biller.getBillerName())
                         .consumerNumber(displayCardIdentifier)
-                        .customerParams(request.getCustomerParams())
+                        .customerParams(safeCustomerParams)
                         .message(errMsg)
                         .errorCode(fetchResp != null ? fetchResp.getResponseCode() : "500")
                         .build();
@@ -2171,7 +2173,7 @@ public class BbpsServiceImpl implements BbpsService {
                     .billerId(biller.getBillerId())
                     .billerName(biller.getBillerName())
                     .consumerNumber(displayCardIdentifier)
-                    .customerParams(request.getCustomerParams())
+                    .customerParams(safeCustomerParams)
                     .message("Failed to fetch credit card bill: " + e.getMessage())
                     .errorCode("500")
                     .build();
@@ -2342,18 +2344,8 @@ public class BbpsServiceImpl implements BbpsService {
         }
 
         // SECURITY: Mask card params before persisting JSON
-        Map<String, String> safeCustomerParams = new HashMap<>();
-        if (request.getCustomerParams() != null) {
-            for (Map.Entry<String, String> entry : request.getCustomerParams().entrySet()) {
-                String k = entry.getKey();
-                String v = entry.getValue();
-                if (k.toLowerCase().contains("card") && k.toLowerCase().contains("number") && v != null && v.length() >= 4) {
-                    safeCustomerParams.put(k, "•••• •••• •••• " + v.substring(v.length() - 4));
-                } else {
-                    safeCustomerParams.put(k, v);
-                }
-            }
-        }
+        Map<String, String> safeCustomerParams = creditCardBillerRegistry.sanitizeCustomerParams(
+                request.getCustomerParams(), request.getCustomerMobile());
 
         String customerParamsJson = null;
         try {
