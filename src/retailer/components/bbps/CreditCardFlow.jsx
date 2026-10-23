@@ -172,10 +172,9 @@ const CreditCardFlow = ({ onBack, category }) => {
         setIsComboboxOpen(true);
     };
 
-    // Format card number with spaces (e.g., 4532 1234 5678 9012)
+    // BBPS credit-card billers require only the last four digits.
     const formatCardInput = (value) => {
-        const digits = value.replace(/\D/g, '').slice(0, 19);
-        return digits.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
+        return value.replace(/\D/g, '').slice(0, 4);
     };
 
     const handleParamChange = (paramName, rawValue) => {
@@ -245,8 +244,8 @@ const CreditCardFlow = ({ onBack, category }) => {
                     errors[param.paramName] = `${param.paramName} is required`;
                 } else if (val) {
                     if (pLower.includes('last') || pLower.includes('4')) {
-                        if (val.length < 4) {
-                            errors[param.paramName] = 'Must enter at least 4 digits';
+                        if (val.length !== 4) {
+                            errors[param.paramName] = 'Enter exactly the last 4 digits';
                         }
                     } else if (param.minLength > 0 && val.length < param.minLength) {
                         errors[param.paramName] = `Must be at least ${param.minLength} digits`;
@@ -669,7 +668,7 @@ const CreditCardFlow = ({ onBack, category }) => {
                                                         inputMode="numeric"
                                                         value={val}
                                                         onChange={(e) => handleParamChange(param.paramName, e.target.value)}
-                                                        placeholder={param.hint || (isCardInput ? 'Enter last 4 digits (e.g. 0998) or card number' : `Enter ${param.paramName}`)}
+                                                        placeholder={param.hint || (isCardInput ? 'Enter last 4 digits (e.g. 0998)' : `Enter ${param.paramName}`)}
                                                         className={`w-full px-3 py-2 text-xs md:text-sm rounded-xl border font-bold text-black placeholder-slate-400 focus:outline-none transition-all shadow-2xs font-mono ${
                                                             err
                                                                 ? 'border-rose-400 bg-rose-50/50 focus:ring-1 focus:ring-rose-500'

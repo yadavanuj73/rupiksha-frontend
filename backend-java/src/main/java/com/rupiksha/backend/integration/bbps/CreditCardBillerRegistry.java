@@ -75,14 +75,19 @@ public class CreditCardBillerRegistry {
             BbpsDtos.CreditCardBillerInfo existing = opt.get();
             List<BbpsDtos.InputParamInfo> newParams = new ArrayList<>();
             for (BillAvenueDtos.BillerParamInfo p : mdm.getInputParams()) {
+                String paramName = p.getParamName() != null ? p.getParamName() : "";
+                boolean cardParam = (paramName.toLowerCase().contains("card")
+                        || paramName.toLowerCase().contains("credit")
+                        || paramName.toLowerCase().contains("pan"))
+                        && !paramName.toLowerCase().contains("mobile");
                 newParams.add(BbpsDtos.InputParamInfo.builder()
-                        .paramName(p.getParamName())
+                        .paramName(paramName)
                         .dataType(p.getDataType() != null ? p.getDataType() : "NUMERIC")
                         .optional(p.isOptional())
-                        .minLength(p.getMinLength())
-                        .maxLength(p.getMaxLength())
+                        .minLength(cardParam ? 4 : p.getMinLength())
+                        .maxLength(cardParam ? 4 : p.getMaxLength())
                         .regEx(p.getRegEx())
-                        .hint(p.getParamName())
+                        .hint(cardParam ? "Enter last 4 digits of credit card" : paramName)
                         .build());
             }
             existing.setInputParams(newParams);
@@ -636,11 +641,11 @@ public class CreditCardBillerRegistry {
                 String digits = val.replaceAll("\\D", "");
                 if (pNameLower.contains("last") || pNameLower.contains("4")) {
                     if (digits.length() < 4) {
-                        errors.add(param.getParamName() + " must have at least 4 digits");
+                        errors.add(param.getParamName() + " must contain at least 4 digits");
                     }
                 } else if (pNameLower.contains("card") && !pNameLower.contains("mobile")) {
                     if (digits.length() < 4) {
-                        errors.add(param.getParamName() + " must have at least 4 digits");
+                        errors.add(param.getParamName() + " must contain at least 4 digits");
                     }
                 } else if (pNameLower.contains("mobile") || pNameLower.contains("phone")) {
                     if (!digits.matches("^[6-9]\\d{9}$")) {
@@ -768,7 +773,7 @@ public class CreditCardBillerRegistry {
                 String digits = (directVal != null && !directVal.isBlank()) ? directVal.replaceAll("\\D", "") : rawCardVal;
                 inputs.add(BillAvenueDtos.InputParam.builder()
                         .paramName(pName)
-                        .paramValue(digits)
+                        .paramValue(digits.length() >= 4 ? digits.substring(digits.length() - 4) : digits)
                         .build());
             } else if (pNameLower.contains("mobile") || pNameLower.contains("phone")) {
                 String digits = (directVal != null && !directVal.isBlank()) ? directVal.replaceAll("\\D", "") : rawMobileVal;
