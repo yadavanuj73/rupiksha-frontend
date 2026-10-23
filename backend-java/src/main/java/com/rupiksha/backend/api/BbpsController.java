@@ -240,6 +240,61 @@ public class BbpsController {
     }
 
     /**
+     * Retrieves Credit Card billers / issuers, optionally filtered by search query.
+     */
+    @GetMapping("/credit-card/billers")
+    public List<BbpsDtos.CreditCardBillerInfo> getCreditCardBillers(
+            @RequestParam(required = false) String search
+    ) {
+        return bbpsService.getCreditCardBillers(search);
+    }
+
+    /**
+     * Fetches real credit card bill details from BillAvenue CU.
+     */
+    @PostMapping("/credit-card/fetch")
+    public ResponseEntity<BbpsDtos.BillFetchResult> fetchCreditCardBill(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @Valid @RequestBody BbpsDtos.CreditCardFetchRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        if (principal == null) {
+            throw new IllegalArgumentException("Unauthorized");
+        }
+        UUID userId = UUID.fromString(principal.userId());
+        String clientIp = resolveClientIp(servletRequest);
+        BbpsDtos.BillFetchResult response = bbpsService.fetchCreditCardBill(userId, request, clientIp);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Executes server-authoritative Credit Card Bill Payment with wallet debit,
+     * BillAvenue integration, fetchRequestId binding, and idempotent failure refund.
+     */
+    @PostMapping("/credit-card/pay")
+    public ResponseEntity<BbpsDtos.CreditCardPayResponse> payCreditCardBill(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKeyHeader,
+            @Valid @RequestBody BbpsDtos.CreditCardPayRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        if (principal == null) {
+            throw new IllegalArgumentException("Unauthorized");
+        }
+        UUID userId = UUID.fromString(principal.userId());
+
+        // Respect header idempotency key if body idempotencyKey is not provided
+        if ((request.getIdempotencyKey() == null || request.getIdempotencyKey().isBlank())
+                && idempotencyKeyHeader != null && !idempotencyKeyHeader.isBlank()) {
+            request.setIdempotencyKey(idempotencyKeyHeader.trim());
+        }
+
+        String clientIp = resolveClientIp(servletRequest);
+        BbpsDtos.CreditCardPayResponse response = bbpsService.payCreditCardBill(userId, request, clientIp);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * Dedicated BBPS Transaction History with pagination, filters, and summary metrics.
      */
     @GetMapping("/history")

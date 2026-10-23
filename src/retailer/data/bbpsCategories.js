@@ -265,7 +265,7 @@ export const BBPS_CATEGORIES = [
         name: 'Credit Card',
         icon: CreditCard,
         gradient: 'from-amber-500 to-yellow-600',
-        description: 'Pay Visa, Mastercard, RuPay, and American Express credit card bills instantly',
+        description: 'Pay Visa, Mastercard, and RuPay credit card bills across 38 registered Indian banks instantly',
         fieldLabel: 'Last 4 Digits & Registered Mobile',
         fieldPlaceholder: 'e.g. 4321 + Mobile Number',
     },

@@ -318,6 +318,23 @@ export const bbpsService = {
       body: JSON.stringify({ ...data, idempotencyKey }),
     });
   },
+  getCreditCardBillers: (search) =>
+    apiFetch(`/bbps/credit-card/billers${search ? `?search=${encodeURIComponent(search)}` : ''}`),
+  fetchCreditCardBill: (payload) =>
+    apiFetch("/bbps/credit-card/fetch", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  payCreditCardBill: (data) => {
+    const idempotencyKey = data.idempotencyKey || `BBPS-CC-${Date.now()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+    return apiFetch("/bbps/credit-card/pay", {
+      method: "POST",
+      headers: {
+        "X-Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify({ ...data, idempotencyKey }),
+    });
+  },
 };
 
 // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────

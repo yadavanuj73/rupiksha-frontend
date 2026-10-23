@@ -19,6 +19,9 @@ public interface BbpsService {
     List<BbpsDtos.LoanBillerInfo> getLoanBillers(String search);
     BbpsDtos.BillFetchResult fetchLoanBill(UUID userId, BbpsDtos.LoanFetchRequest request, String clientIp);
     BbpsDtos.LoanPayResponse payLoan(UUID userId, BbpsDtos.LoanPayRequest request, String clientIp);
+    List<BbpsDtos.CreditCardBillerInfo> getCreditCardBillers(String search);
+    BbpsDtos.BillFetchResult fetchCreditCardBill(UUID userId, BbpsDtos.CreditCardFetchRequest request, String clientIp);
+    BbpsDtos.CreditCardPayResponse payCreditCardBill(UUID userId, BbpsDtos.CreditCardPayRequest request, String clientIp);
     BbpsDtos.HistoryResponse getHistory(UUID userId, String category, String status, String search, Instant startDate, Instant endDate, Pageable pageable);
     default BbpsDtos.HistoryResponse getHistory(UUID userId, String status, String search, Instant startDate, Instant endDate, Pageable pageable) {
         return getHistory(userId, null, status, search, startDate, endDate, pageable);

@@ -115,6 +115,26 @@ public class BbpsTransaction {
     @Column(name = "additional_charges", precision = 18, scale = 2)
     private BigDecimal additionalCharges = BigDecimal.ZERO;
 
+    // Credit Card specific fields (V49 migration)
+    // SECURITY: Only last 4 digits stored — never CVV, full PAN, or ATM PIN
+    @Column(name = "card_last_four", length = 4)
+    private String cardLastFour;
+
+    @Column(name = "card_issuer", length = 100)
+    private String cardIssuer;
+
+    @Column(name = "minimum_due", precision = 18, scale = 2)
+    private BigDecimal minimumDue = BigDecimal.ZERO;
+
+    @Column(name = "total_due", precision = 18, scale = 2)
+    private BigDecimal totalDue = BigDecimal.ZERO;
+
+    @Column(name = "unbilled_amount", precision = 18, scale = 2)
+    private BigDecimal unbilledAmount = BigDecimal.ZERO;
+
+    @Column(name = "statement_date", length = 30)
+    private String statementDate;
+
     @Column(name = "payment_mode", length = 50)
     private String paymentMode = "Cash";
 

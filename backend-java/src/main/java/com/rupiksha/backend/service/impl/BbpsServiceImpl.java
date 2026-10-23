@@ -14,6 +14,7 @@ import com.rupiksha.backend.repository.UserServiceRepository;
 import com.rupiksha.backend.service.BbpsService;
 import com.rupiksha.backend.integration.bbps.ElectricityBillerRegistry;
 import com.rupiksha.backend.integration.bbps.LoanBillerRegistry;
+import com.rupiksha.backend.integration.bbps.CreditCardBillerRegistry;
 import com.rupiksha.backend.service.WalletService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,7 @@ public class BbpsServiceImpl implements BbpsService {
     private final WalletService walletService;
     private final ElectricityBillerRegistry electricityBillerRegistry;
     private final LoanBillerRegistry loanBillerRegistry;
+    private final CreditCardBillerRegistry creditCardBillerRegistry;
     private final ObjectMapper objectMapper;
     private final Map<String, BillAvenueDtos.BillFetchResponse> fetchCache = new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -2050,6 +2052,549 @@ public class BbpsServiceImpl implements BbpsService {
     }
 
     @Override
+    public List<BbpsDtos.CreditCardBillerInfo> getCreditCardBillers(String search) {
+        return creditCardBillerRegistry.getAllBillers(search);
+    }
+
+    @Override
+    public BbpsDtos.BillFetchResult fetchCreditCardBill(UUID userId, BbpsDtos.CreditCardFetchRequest request, String clientIp) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        boolean isServiceEnabled = userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)
+                .map(UserService::getIsEnabled)
+                .orElse(true);
+
+        if (!isServiceEnabled) {
+            log.warn("BBPS service disabled for user: {}", userId);
+            throw new IllegalStateException("BBPS service is disabled for your account by administrator");
+        }
+
+        if (request.getCustomerMobile() == null || !request.getCustomerMobile().matches("^[6-9]\\d{9}$")) {
+            throw new IllegalArgumentException("Valid 10-digit Indian mobile number starting with 6-9 is required");
+        }
+
+        BbpsDtos.CreditCardBillerInfo biller = creditCardBillerRegistry.findById(request.getBillerId())
+                .orElseThrow(() -> new IllegalArgumentException("Unknown or unmapped credit card issuer: " + request.getBillerId()));
+
+        // Validate dynamic customer parameters (Card number length, format)
+        creditCardBillerRegistry.validateCustomerParams(biller, request.getCustomerParams());
+
+        String sanitizedIp = (clientIp != null && clientIp.matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"))
+                ? clientIp : "103.108.7.127";
+
+        String cardLastFour = creditCardBillerRegistry.extractCardLastFour(request.getCustomerParams());
+        String displayCardIdentifier = cardLastFour != null ? "•••• " + cardLastFour : request.getCustomerMobile();
+
+        // Build BillAvenue Input Params mapped to biller schema
+        List<BillAvenueDtos.InputParam> inputs = creditCardBillerRegistry.buildCreditCardInputParams(biller, request.getCustomerParams(), request.getCustomerMobile());
+
+        try {
+            BillAvenueDtos.BillFetchResponse fetchResp = billAvenueClient.fetchBill(
+                    biller.getBillerId(),
+                    inputs,
+                    request.getCustomerMobile().trim(),
+                    sanitizedIp
+            );
+
+            if (fetchResp != null && fetchResp.getFetchRequestId() != null && !fetchResp.getFetchRequestId().isBlank()) {
+                fetchCache.put(fetchResp.getFetchRequestId().trim(), fetchResp);
+            }
+
+            boolean isNoBillDue = fetchResp != null && (fetchResp.isNoBillDue() || (fetchResp.isSuccess() && fetchResp.getBillAmountPaise() == 0));
+
+            if (fetchResp != null && (fetchResp.isSuccess() || isNoBillDue)) {
+                BigDecimal billAmt = isNoBillDue
+                        ? BigDecimal.ZERO
+                        : BigDecimal.valueOf(fetchResp.getBillAmountPaise()).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+
+                List<BbpsDtos.InfoItemDto> addnl = new ArrayList<>();
+                if (fetchResp.getAdditionalInfo() != null) {
+                    for (BillAvenueDtos.InfoItem item : fetchResp.getAdditionalInfo()) {
+                        addnl.add(new BbpsDtos.InfoItemDto(item.getInfoName(), item.getInfoValue()));
+                    }
+                }
+
+                String custName = (fetchResp.getCustomerName() != null && !fetchResp.getCustomerName().isBlank() && !"NA".equalsIgnoreCase(fetchResp.getCustomerName().trim()))
+                        ? fetchResp.getCustomerName().trim()
+                        : "Credit Card Customer";
+
+                String message = isNoBillDue
+                        ? "No pending bill dues for this credit card"
+                        : "Credit card bill fetched successfully";
+
+                return BbpsDtos.BillFetchResult.builder()
+                        .success(true)
+                        .noBillDue(isNoBillDue)
+                        .fetchRequestId(fetchResp.getFetchRequestId())
+                        .billerId(biller.getBillerId())
+                        .billerName(biller.getBillerName())
+                        .consumerNumber(displayCardIdentifier)
+                        .billAmount(billAmt)
+                        .customerName(custName)
+                        .billNumber(fetchResp.getBillNumber())
+                        .billDate(fetchResp.getBillDate())
+                        .dueDate(fetchResp.getDueDate())
+                        .billPeriod(fetchResp.getBillPeriod())
+                        .customerParams(request.getCustomerParams())
+                        .additionalInfo(addnl)
+                        .message(message)
+                        .build();
+            } else {
+                String errMsg = fetchResp != null ? fetchResp.getErrorMessage() : "Provider rejected credit card bill fetch";
+                return BbpsDtos.BillFetchResult.builder()
+                        .success(false)
+                        .noBillDue(false)
+                        .billerId(biller.getBillerId())
+                        .billerName(biller.getBillerName())
+                        .consumerNumber(displayCardIdentifier)
+                        .customerParams(request.getCustomerParams())
+                        .message(errMsg)
+                        .errorCode(fetchResp != null ? fetchResp.getResponseCode() : "500")
+                        .build();
+            }
+        } catch (Exception e) {
+            log.error("Exception fetching credit card bill for biller {}: {}", biller.getBillerId(), e.getMessage());
+            return BbpsDtos.BillFetchResult.builder()
+                    .success(false)
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .consumerNumber(displayCardIdentifier)
+                    .customerParams(request.getCustomerParams())
+                    .message("Failed to fetch credit card bill: " + e.getMessage())
+                    .errorCode("500")
+                    .build();
+        }
+    }
+
+    @Override
+    @Transactional
+    public BbpsDtos.CreditCardPayResponse payCreditCardBill(UUID userId, BbpsDtos.CreditCardPayRequest request, String clientIp) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        // 1. Verify service permission in user_services
+        boolean isServiceEnabled = userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)
+                .map(UserService::getIsEnabled)
+                .orElse(true);
+
+        if (!isServiceEnabled) {
+            log.warn("BBPS service disabled for user: {}", userId);
+            throw new IllegalStateException("BBPS service is disabled for your account by administrator");
+        }
+
+        // 2. Validate input
+        if (request.getCustomerMobile() == null || !request.getCustomerMobile().matches("^[6-9]\\d{9}$")) {
+            throw new IllegalArgumentException("Valid 10-digit Indian mobile number starting with 6-9 is required");
+        }
+        if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ONE) < 0) {
+            throw new IllegalArgumentException("Credit card bill payment amount must be at least ₹1.00");
+        }
+
+        BbpsDtos.CreditCardBillerInfo biller = creditCardBillerRegistry.findById(request.getBillerId())
+                .orElseThrow(() -> new IllegalArgumentException("Unknown credit card biller: " + request.getBillerId()));
+
+        creditCardBillerRegistry.validateCustomerParams(biller, request.getCustomerParams());
+
+        BigDecimal convenienceFee = (request.getConvenienceFee() != null && request.getConvenienceFee().compareTo(BigDecimal.ZERO) > 0)
+                ? request.getConvenienceFee()
+                : BigDecimal.ZERO;
+        BigDecimal totalPayable = request.getAmount().add(convenienceFee);
+
+        // 3. Server-enforced Idempotency check
+        String idempotencyKey = request.getIdempotencyKey();
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            idempotencyKey = "BBPS-CC-" + UUID.randomUUID();
+        }
+
+        Optional<BbpsTransaction> existingOpt = bbpsTransactionRepository.findByIdempotencyKey(idempotencyKey);
+        if (existingOpt.isPresent()) {
+            BbpsTransaction existing = existingOpt.get();
+            log.info("Idempotent request duplicate detected for credit card payment key: {}. Returning existing status: {}",
+                    idempotencyKey, existing.getStatus());
+
+            WalletDtos.WalletBalanceResponse currentBal = walletService.getBalance(userId.toString());
+            return BbpsDtos.CreditCardPayResponse.builder()
+                    .success("SUCCESS".equals(existing.getStatus()))
+                    .transactionId(existing.getId().toString())
+                    .merchantRefNo(existing.getMerchantRefNo())
+                    .providerTxnId(existing.getProviderTxnId())
+                    .approvalRefNo(existing.getApprovalRefNo())
+                    .status(existing.getStatus())
+                    .amount(existing.getAmount())
+                    .convenienceFee(existing.getConvenienceFee())
+                    .totalAmount(existing.getAmount().add(existing.getConvenienceFee() != null ? existing.getConvenienceFee() : BigDecimal.ZERO))
+                    .cardLastFour(existing.getCardLastFour())
+                    .cardIssuer(existing.getCardIssuer())
+                    .customerName(existing.getCustomerName())
+                    .customerMobile(existing.getMobileNumber())
+                    .billerId(existing.getBillerId())
+                    .billerName(existing.getBillerName())
+                    .billNumber(existing.getBillNumber())
+                    .dueDate(existing.getDueDate())
+                    .statementDate(existing.getStatementDate())
+                    .minimumDue(existing.getMinimumDue())
+                    .totalDue(existing.getTotalDue())
+                    .message(existing.getProviderMessage() != null ? existing.getProviderMessage() : "Existing transaction returned")
+                    .walletBalance(currentBal.balance())
+                    .createdAt(existing.getCreatedAt())
+                    .build();
+        }
+
+        // 4. Authoritative backend wallet balance enforcement
+        WalletDtos.WalletBalanceResponse balanceResponse = walletService.getBalance(userId.toString());
+        BigDecimal availableBalance = balanceResponse.availableBalance() != null ? balanceResponse.availableBalance() : BigDecimal.ZERO;
+        if (availableBalance.compareTo(totalPayable) < 0) {
+            log.warn("Insufficient wallet balance for user {}. Required: {}, Available: {}",
+                    userId, totalPayable, availableBalance);
+            throw new IllegalStateException("Insufficient wallet balance. Available: ₹" + availableBalance + ", Required: ₹" + totalPayable);
+        }
+
+        // 5. Generate unique references and build inputs
+        String cardLastFour = creditCardBillerRegistry.extractCardLastFour(request.getCustomerParams());
+        String displayCardIdentifier = cardLastFour != null ? "•••• " + cardLastFour : request.getCustomerMobile();
+        String merchantRefNo = "BBPSCC" + System.currentTimeMillis() + UUID.randomUUID().toString().replaceAll("-", "").substring(0, 6).toUpperCase();
+
+        String sanitizedIp = (clientIp != null && clientIp.matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"))
+                ? clientIp : "103.108.7.127";
+
+        List<BillAvenueDtos.InputParam> inputs = creditCardBillerRegistry.buildCreditCardInputParams(biller, request.getCustomerParams(), request.getCustomerMobile());
+
+        String effectiveRequestId = (request.getFetchRequestId() != null && !request.getFetchRequestId().isBlank())
+                ? request.getFetchRequestId().trim()
+                : null;
+
+        String customerName = (request.getCustomerName() != null && !request.getCustomerName().isBlank() && !"NA".equalsIgnoreCase(request.getCustomerName().trim()))
+                ? request.getCustomerName().trim()
+                : "Credit Card Customer";
+
+        String effectiveBillDate = (request.getBillDate() != null && !request.getBillDate().isBlank() && !"N/A".equalsIgnoreCase(request.getBillDate().trim()))
+                ? request.getBillDate().trim()
+                : null;
+
+        String effectiveDueDate = (request.getDueDate() != null && !request.getDueDate().isBlank() && !"N/A".equalsIgnoreCase(request.getDueDate().trim()))
+                ? request.getDueDate().trim()
+                : null;
+
+        String effectiveBillNumber = (request.getBillNumber() != null && !request.getBillNumber().isBlank() && !"N/A".equalsIgnoreCase(request.getBillNumber().trim()))
+                ? request.getBillNumber().trim()
+                : null;
+
+        String effectiveBillPeriod = (request.getBillPeriod() != null && !request.getBillPeriod().isBlank() && !"N/A".equalsIgnoreCase(request.getBillPeriod().trim()))
+                ? request.getBillPeriod().trim()
+                : "NA";
+
+        String effectiveStatementDate = (request.getStatementDate() != null && !request.getStatementDate().isBlank())
+                ? request.getStatementDate().trim()
+                : null;
+
+        List<BillAvenueDtos.InfoItem> addnlItems = new ArrayList<>();
+        if (request.getAdditionalInfo() != null) {
+            for (BbpsDtos.InfoItemDto dto : request.getAdditionalInfo()) {
+                addnlItems.add(new BillAvenueDtos.InfoItem(dto.getInfoName(), dto.getInfoValue()));
+            }
+        }
+
+        String rawBillerResponseXml = null;
+        String rawAdditionalInfoXml = null;
+
+        if (effectiveRequestId != null) {
+            BillAvenueDtos.BillFetchResponse cached = fetchCache.get(effectiveRequestId);
+            if (cached != null) {
+                if (cached.getRawBillerResponseXml() != null) {
+                    String raw = cached.getRawBillerResponseXml();
+                    if (!raw.contains("<billAmount>0</billAmount>") && !raw.contains("<billAmount>0.00</billAmount>")) {
+                        rawBillerResponseXml = raw;
+                    }
+                }
+                if (cached.getRawAdditionalInfoXml() != null) {
+                    rawAdditionalInfoXml = cached.getRawAdditionalInfoXml();
+                }
+                if (cached.getAdditionalInfo() != null && !cached.getAdditionalInfo().isEmpty() && addnlItems.isEmpty()) {
+                    addnlItems.addAll(cached.getAdditionalInfo());
+                }
+                if (customerName == null && cached.getCustomerName() != null && !cached.getCustomerName().isBlank()) {
+                    customerName = cached.getCustomerName().trim();
+                }
+            }
+        }
+
+        // SECURITY: Mask card params before persisting JSON
+        Map<String, String> safeCustomerParams = new HashMap<>();
+        if (request.getCustomerParams() != null) {
+            for (Map.Entry<String, String> entry : request.getCustomerParams().entrySet()) {
+                String k = entry.getKey();
+                String v = entry.getValue();
+                if (k.toLowerCase().contains("card") && k.toLowerCase().contains("number") && v != null && v.length() >= 4) {
+                    safeCustomerParams.put(k, "•••• •••• •••• " + v.substring(v.length() - 4));
+                } else {
+                    safeCustomerParams.put(k, v);
+                }
+            }
+        }
+
+        String customerParamsJson = null;
+        try {
+            customerParamsJson = objectMapper.writeValueAsString(safeCustomerParams);
+        } catch (Exception ignored) {}
+
+        String additionalInfoJson = null;
+        try {
+            if (!addnlItems.isEmpty()) {
+                additionalInfoJson = objectMapper.writeValueAsString(addnlItems);
+            }
+        } catch (Exception ignored) {}
+
+        // 6. Persist Core Txn and BbpsTransaction in INITIATED state
+        Txn txn = new Txn();
+        txn.setUser(user);
+        txn.setAmount(totalPayable);
+        txn.setServiceType("BBPS_CREDIT_CARD");
+        txn.setStatus(TransactionStatus.INITIATED);
+        txn.setIdempotencyKey(idempotencyKey);
+        txn = txnRepository.save(txn);
+
+        BbpsTransaction bbpsTxn = new BbpsTransaction();
+        bbpsTxn.setUser(user);
+        bbpsTxn.setTxn(txn);
+        bbpsTxn.setIdempotencyKey(idempotencyKey);
+        bbpsTxn.setRequestId(effectiveRequestId);
+        bbpsTxn.setMerchantRefNo(merchantRefNo);
+        bbpsTxn.setCategory("Credit Card");
+        bbpsTxn.setBillerId(biller.getBillerId());
+        bbpsTxn.setBillerName(biller.getBillerName());
+        bbpsTxn.setCircle("National");
+        bbpsTxn.setMobileNumber(request.getCustomerMobile().trim());
+        bbpsTxn.setConsumerNumber(displayCardIdentifier);
+        bbpsTxn.setCustomerName(customerName);
+        bbpsTxn.setCardLastFour(cardLastFour);
+        bbpsTxn.setCardIssuer(biller.getIssuer() != null ? biller.getIssuer() : biller.getBillerName());
+        bbpsTxn.setMinimumDue(request.getMinimumDue() != null ? request.getMinimumDue() : BigDecimal.ZERO);
+        bbpsTxn.setTotalDue(request.getTotalDue() != null ? request.getTotalDue() : BigDecimal.ZERO);
+        bbpsTxn.setStatementDate(effectiveStatementDate);
+        bbpsTxn.setPaymentMode("Cash");
+        bbpsTxn.setPaymentChannel("AGT");
+        bbpsTxn.setBillNumber(effectiveBillNumber);
+        bbpsTxn.setBillDate(effectiveBillDate);
+        bbpsTxn.setDueDate(effectiveDueDate);
+        bbpsTxn.setBillPeriod(effectiveBillPeriod);
+        bbpsTxn.setConvenienceFee(convenienceFee);
+        bbpsTxn.setCustomerParams(customerParamsJson);
+        bbpsTxn.setAdditionalInfo(additionalInfoJson);
+        bbpsTxn.setFetchRequestId(request.getFetchRequestId());
+        bbpsTxn.setAmount(request.getAmount());
+        bbpsTxn.setStatus("INITIATED");
+        bbpsTxn = bbpsTransactionRepository.save(bbpsTxn);
+
+        // 7. Atomically debit wallet using ledger-safe service debit
+        String debitRef = txn.getId().toString();
+        try {
+            String debitDesc = "BBPS Credit Card Bill - " + biller.getBillerName() + " (" + displayCardIdentifier + ")";
+            walletService.debitForService(
+                    userId,
+                    totalPayable,
+                    debitDesc,
+                    WalletTransactionContext.BBPS_PAYMENT,
+                    "BBPS",
+                    clientIp != null ? clientIp : "127.0.0.1",
+                    debitRef
+            );
+            bbpsTxn.setWalletDebitRef(debitRef);
+            bbpsTxn = bbpsTransactionRepository.save(bbpsTxn);
+        } catch (Exception e) {
+            log.error("Failed to debit wallet for BBPS credit card payment. MerchantRef: {}", merchantRefNo, e);
+            txn.setStatus(TransactionStatus.FAILED);
+            txnRepository.save(txn);
+
+            bbpsTxn.setStatus("FAILED");
+            bbpsTxn.setProviderMessage("Wallet debit failed: " + e.getMessage());
+            bbpsTransactionRepository.save(bbpsTxn);
+
+            throw new IllegalStateException("Wallet debit failed: " + e.getMessage());
+        }
+
+        // 8. Submit provider request to BillAvenue
+        long paise = request.getAmount().multiply(BigDecimal.valueOf(100)).longValue();
+        long convFeePaise = convenienceFee.multiply(BigDecimal.valueOf(100)).longValue();
+
+        String mode = "Cash";
+        String initChannel = "AGT";
+        String paymentAccountInfo = "Cash Payment";
+        String remitterName = (user.getFullName() != null && !user.getFullName().isBlank()) ? user.getFullName().trim() : "Rupiksha Retailer";
+
+        BillAvenueDtos.BillPayXmlRequest xmlReq = BillAvenueDtos.BillPayXmlRequest.builder()
+                .fetchRequestId(effectiveRequestId)
+                .billerId(biller.getBillerId())
+                .customerMobile(request.getCustomerMobile().trim())
+                .amountPaise(paise)
+                .billAmountPaise(paise)
+                .billDate(effectiveBillDate)
+                .billNumber(effectiveBillNumber)
+                .dueDate(effectiveDueDate)
+                .billPeriod(effectiveBillPeriod)
+                .customerName(customerName)
+                .additionalInfo(addnlItems.isEmpty() ? null : addnlItems)
+                .inputParams(inputs)
+                .clientTxnId(merchantRefNo)
+                .paymentMode(mode)
+                .remitterName(remitterName)
+                .remarks("Credit Card Bill Payment")
+                .paymentAccountInfo(paymentAccountInfo)
+                .clientIp(sanitizedIp)
+                .billerAdhoc("false")
+                .quickPay("0")
+                .custConvFeePaise(convFeePaise)
+                .ccf1Paise(0L)
+                .rawBillerResponseXml(rawBillerResponseXml)
+                .rawAdditionalInfoXml(rawAdditionalInfoXml)
+                .build();
+
+        BillAvenueDtos.BillPayResponse payResp;
+        try {
+            payResp = billAvenueClient.payBillXml(xmlReq);
+        } catch (BillAvenueTimeoutException te) {
+            log.warn("BillAvenue timeout for credit card payment ref: {}. Keeping transaction PENDING.", merchantRefNo, te);
+            txn.setStatus(TransactionStatus.PENDING);
+            txnRepository.save(txn);
+
+            bbpsTxn.setStatus("PENDING");
+            bbpsTxn.setProviderMessage("Transaction processing at issuer bank. Reconciling status.");
+            bbpsTransactionRepository.save(bbpsTxn);
+
+            WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
+            return BbpsDtos.CreditCardPayResponse.builder()
+                    .success(false)
+                    .transactionId(bbpsTxn.getId().toString())
+                    .merchantRefNo(merchantRefNo)
+                    .status("PENDING")
+                    .amount(request.getAmount())
+                    .convenienceFee(convenienceFee)
+                    .totalAmount(totalPayable)
+                    .cardLastFour(cardLastFour)
+                    .cardIssuer(biller.getIssuer())
+                    .customerName(customerName)
+                    .customerMobile(request.getCustomerMobile())
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .billNumber(request.getBillNumber())
+                    .dueDate(request.getDueDate())
+                    .statementDate(effectiveStatementDate)
+                    .minimumDue(request.getMinimumDue())
+                    .totalDue(request.getTotalDue())
+                    .message("Credit card bill payment is processing with bank. Status will update shortly.")
+                    .walletBalance(bal.balance())
+                    .createdAt(bbpsTxn.getCreatedAt())
+                    .build();
+        } catch (Exception ex) {
+            log.error("Unexpected exception calling BillAvenue for credit card payment. Performing safe refund. Ref: {}", merchantRefNo, ex);
+            handleFailureAndRefund(userId, txn, bbpsTxn, totalPayable, "Provider communication error: " + ex.getMessage(), clientIp);
+            WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
+            return BbpsDtos.CreditCardPayResponse.builder()
+                    .success(false)
+                    .transactionId(bbpsTxn.getId().toString())
+                    .merchantRefNo(merchantRefNo)
+                    .status("FAILED")
+                    .amount(request.getAmount())
+                    .convenienceFee(convenienceFee)
+                    .totalAmount(totalPayable)
+                    .cardLastFour(cardLastFour)
+                    .cardIssuer(biller.getIssuer())
+                    .customerName(customerName)
+                    .customerMobile(request.getCustomerMobile())
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .billNumber(request.getBillNumber())
+                    .dueDate(request.getDueDate())
+                    .statementDate(effectiveStatementDate)
+                    .minimumDue(request.getMinimumDue())
+                    .totalDue(request.getTotalDue())
+                    .message("Credit card bill payment failed: " + ex.getMessage() + ". Amount has been refunded to your wallet.")
+                    .walletBalance(bal.balance())
+                    .createdAt(bbpsTxn.getCreatedAt())
+                    .build();
+        }
+
+        // 9. Process Provider Outcome
+        if (payResp != null && payResp.isSuccess()) {
+            log.info("BillAvenue credit card payment SUCCESS. TxnRefId: {}, ApprovalRef: {}",
+                    payResp.getTxnRefId(), payResp.getApprovalRefNumber());
+
+            txn.setStatus(TransactionStatus.SUCCESS);
+            txn.setProviderRef(payResp.getTxnRefId());
+            txnRepository.save(txn);
+
+            bbpsTxn.setStatus("SUCCESS");
+            bbpsTxn.setProviderTxnId(payResp.getTxnRefId());
+            bbpsTxn.setApprovalRefNo(payResp.getApprovalRefNumber());
+            bbpsTxn.setValidationRefNo(payResp.getApprovalRefNumber());
+            bbpsTxn.setProviderResponseCode(payResp.getResponseCode());
+            bbpsTxn.setProviderMessage("Credit card bill payment completed successfully");
+            bbpsTxn.setCompletedAt(Instant.now());
+            bbpsTransactionRepository.save(bbpsTxn);
+
+            WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
+            return BbpsDtos.CreditCardPayResponse.builder()
+                    .success(true)
+                    .transactionId(bbpsTxn.getId().toString())
+                    .merchantRefNo(merchantRefNo)
+                    .providerTxnId(payResp.getTxnRefId())
+                    .approvalRefNo(payResp.getApprovalRefNumber())
+                    .status("SUCCESS")
+                    .amount(request.getAmount())
+                    .convenienceFee(convenienceFee)
+                    .totalAmount(totalPayable)
+                    .cardLastFour(cardLastFour)
+                    .cardIssuer(biller.getIssuer())
+                    .customerName(customerName)
+                    .customerMobile(request.getCustomerMobile())
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .billNumber(request.getBillNumber())
+                    .dueDate(request.getDueDate())
+                    .statementDate(effectiveStatementDate)
+                    .minimumDue(request.getMinimumDue())
+                    .totalDue(request.getTotalDue())
+                    .message("Credit card bill payment completed successfully!")
+                    .walletBalance(bal.balance())
+                    .createdAt(bbpsTxn.getCreatedAt())
+                    .build();
+        } else {
+            String errReason = payResp != null ? payResp.getErrorMessage() : "Issuer bank rejected credit card bill payment";
+            log.warn("BillAvenue credit card payment failed. Code: {}, Reason: {}. Issuing refund.",
+                    payResp != null ? payResp.getResponseCode() : "NULL", errReason);
+
+            bbpsTxn.setComplianceCode(payResp != null ? payResp.getResponseCode() : "500");
+            bbpsTxn.setComplianceReason(errReason);
+            handleFailureAndRefund(userId, txn, bbpsTxn, totalPayable, errReason, clientIp);
+
+            WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
+            return BbpsDtos.CreditCardPayResponse.builder()
+                    .success(false)
+                    .transactionId(bbpsTxn.getId().toString())
+                    .merchantRefNo(merchantRefNo)
+                    .status("FAILED")
+                    .amount(request.getAmount())
+                    .convenienceFee(convenienceFee)
+                    .totalAmount(totalPayable)
+                    .cardLastFour(cardLastFour)
+                    .cardIssuer(biller.getIssuer())
+                    .customerName(customerName)
+                    .customerMobile(request.getCustomerMobile())
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .billNumber(request.getBillNumber())
+                    .dueDate(request.getDueDate())
+                    .statementDate(effectiveStatementDate)
+                    .minimumDue(request.getMinimumDue())
+                    .totalDue(request.getTotalDue())
+                    .message(errReason + ". Amount has been refunded to your wallet.")
+                    .walletBalance(bal.balance())
+                    .createdAt(bbpsTxn.getCreatedAt())
+                    .build();
+        }
+    }
+
+    @Override
     public BbpsDtos.HistoryResponse getHistory(UUID userId, String category, String status, String search, Instant startDate, Instant endDate, Pageable pageable) {
         String cleanStatus = (status != null && !status.equalsIgnoreCase("ALL") && !status.isBlank()) ? status.toUpperCase() : null;
         String cleanCategory = (category != null && !category.equalsIgnoreCase("ALL") && !category.isBlank()) ? category.trim() : null;
@@ -2125,6 +2670,10 @@ public class BbpsServiceImpl implements BbpsService {
         if (loan.isPresent()) {
             return loan.get().getBillerName();
         }
+        Optional<BbpsDtos.CreditCardBillerInfo> cc = creditCardBillerRegistry.findById(billerId);
+        if (cc.isPresent()) {
+            return cc.get().getBillerName();
+        }
         return "BBPS Provider";
     }
 
@@ -2152,6 +2701,11 @@ public class BbpsServiceImpl implements BbpsService {
                 .walletDebitRef(txn.getWalletDebitRef())
                 .walletRefundRef(txn.getWalletRefundRef())
                 .providerMessage(txn.getProviderMessage())
+                .cardLastFour(txn.getCardLastFour())
+                .cardIssuer(txn.getCardIssuer())
+                .minimumDue(txn.getMinimumDue())
+                .totalDue(txn.getTotalDue())
+                .statementDate(txn.getStatementDate())
                 .createdAt(txn.getCreatedAt())
                 .completedAt(txn.getCompletedAt())
                 .build();

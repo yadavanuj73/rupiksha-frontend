@@ -342,6 +342,103 @@ public class BbpsDtos {
         private Instant createdAt;
     }
 
+    // ── Credit Card Bill Payment DTOs ────────────────────────────────────────────
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public static class CreditCardBillerInfo {
+        private String billerId;
+        private String billerName;
+        private String issuer;
+        private String billerFetchRequirement;
+        private String billerPaymentExactness;
+        private String supportBillValidation;
+        private List<InputParamInfo> inputParams;
+        private String description;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CreditCardFetchRequest {
+        @NotBlank(message = "Biller ID is required")
+        private String billerId;
+
+        @NotBlank(message = "Customer mobile number is required")
+        @Pattern(regexp = "^[6-9]\\d{9}$", message = "Invalid 10-digit mobile number")
+        private String customerMobile;
+
+        @NotEmpty(message = "Customer parameters required")
+        private Map<String, String> customerParams;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CreditCardPayRequest {
+        @NotBlank(message = "Biller ID is required")
+        private String billerId;
+
+        @NotBlank(message = "Customer mobile number is required")
+        @Pattern(regexp = "^[6-9]\\d{9}$", message = "Invalid 10-digit mobile number")
+        private String customerMobile;
+
+        @NotEmpty(message = "Customer parameters required")
+        private Map<String, String> customerParams;
+
+        @NotNull(message = "Amount is required")
+        @DecimalMin(value = "1.00", message = "Amount must be at least ₹1")
+        @DecimalMax(value = "5000000.00", message = "Amount cannot exceed ₹50,00,000")
+        private BigDecimal amount;
+
+        private BigDecimal convenienceFee;
+        private String fetchRequestId;
+        private String billNumber;
+        private String billDate;
+        private String dueDate;
+        private String billPeriod;
+        private String statementDate;
+        private String customerName;
+        private BigDecimal minimumDue;
+        private BigDecimal totalDue;
+        private List<InfoItemDto> additionalInfo;
+        private String idempotencyKey;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public static class CreditCardPayResponse {
+        private boolean success;
+        private String transactionId;
+        private String merchantRefNo;
+        private String providerTxnId;
+        private String approvalRefNo;
+        private String status;
+        private BigDecimal amount;
+        private BigDecimal convenienceFee;
+        private BigDecimal totalAmount;
+        private String cardLastFour;
+        private String cardIssuer;
+        private String customerName;
+        private String customerMobile;
+        private String billerId;
+        private String billerName;
+        private String billNumber;
+        private String dueDate;
+        private String statementDate;
+        private BigDecimal minimumDue;
+        private BigDecimal totalDue;
+        private String message;
+        private BigDecimal walletBalance;
+        private Instant createdAt;
+    }
+
     @Data
     @Builder
     @NoArgsConstructor
@@ -369,6 +466,11 @@ public class BbpsDtos {
         private String walletDebitRef;
         private String walletRefundRef;
         private String providerMessage;
+        private String cardLastFour;
+        private String cardIssuer;
+        private BigDecimal minimumDue;
+        private BigDecimal totalDue;
+        private String statementDate;
         private Instant createdAt;
         private Instant completedAt;
     }
