@@ -929,6 +929,40 @@ class BbpsServiceImplTest {
     }
 
     @Test
+    @DisplayName("Axis credit card contract is not replaced by an incompatible MDM schema")
+    void testAxisCreditCardContractSurvivesMdmRefresh() {
+        BillAvenueDtos.BillerInfoResponse mdm = BillAvenueDtos.BillerInfoResponse.builder()
+                .responseCode("000")
+                .inputParams(List.of(
+                        BillAvenueDtos.BillerParamInfo.builder()
+                                .paramName("Credit Card Number")
+                                .dataType("NUMERIC")
+                                .minLength(16)
+                                .maxLength(16)
+                                .build(),
+                        BillAvenueDtos.BillerParamInfo.builder()
+                                .paramName("Mobile Number")
+                                .dataType("NUMERIC")
+                                .minLength(10)
+                                .maxLength(10)
+                                .build()
+                ))
+                .build();
+
+        creditCardBillerRegistry.updateFromMdm("AXIS00000NATKF", mdm);
+
+        BbpsDtos.CreditCardBillerInfo axis = creditCardBillerRegistry
+                .findById("AXIS00000NATKF")
+                .orElseThrow();
+        assertEquals(
+                List.of("Last 4 Digits of Credit Card", "Registered Mobile No"),
+                axis.getInputParams().stream()
+                        .map(BbpsDtos.InputParamInfo::getParamName)
+                        .toList()
+        );
+    }
+
+    @Test
     @DisplayName("Credit card payment dispatches official Last 4 Digits of Credit Card and Registered Mobile No")
     void testCreditCardPaymentParameterMapping() {
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
@@ -981,4 +1015,3 @@ class BbpsServiceImplTest {
         );
     }
 }
-
