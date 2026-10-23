@@ -748,21 +748,6 @@ public class CreditCardBillerRegistry {
             rawMobileVal = customerMobile.replaceAll("\\D", "");
         }
 
-        // Axis requires these exact BBPS names and the last four card digits.
-        // Do not allow an MDM schema refresh to change this contract.
-        if (biller != null && "AXIS00000NATKF".equalsIgnoreCase(biller.getBillerId())) {
-            return List.of(
-                    BillAvenueDtos.InputParam.builder()
-                            .paramName("Last 4 Digits of Credit Card")
-                            .paramValue(rawCardVal.length() >= 4 ? rawCardVal.substring(rawCardVal.length() - 4) : rawCardVal)
-                            .build(),
-                    BillAvenueDtos.InputParam.builder()
-                            .paramName("Registered Mobile No")
-                            .paramValue(rawMobileVal)
-                            .build()
-            );
-        }
-
         List<BbpsDtos.InputParamInfo> expected = (biller != null && biller.getInputParams() != null && !biller.getInputParams().isEmpty())
                 ? biller.getInputParams()
                 : defaultCreditCardParams();
