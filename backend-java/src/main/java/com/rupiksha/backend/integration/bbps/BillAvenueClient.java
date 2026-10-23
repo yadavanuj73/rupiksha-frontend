@@ -366,6 +366,7 @@ public class BillAvenueClient {
             String code = getTagValue(root, "responseCode");
             String reason = getTagValue(root, "responseReason");
             builder.responseCode(!code.isBlank() ? code : "500");
+            builder.responseReason(!reason.isBlank() ? reason : "Unknown");
 
             Element billerElem = getFirstChildElement(root, "biller");
             if (billerElem != null) {
@@ -417,16 +418,8 @@ public class BillAvenueClient {
                     errors.add(new BillAvenueDtos.ErrorInfo(errCode, errMsg));
                 }
                 builder.errorInfo(errors);
-                if (reason.isBlank()) {
-                    reason = errors.stream()
-                            .map(BillAvenueDtos.ErrorInfo::getErrorMessage)
-                            .filter(message -> message != null && !message.isBlank())
-                            .findFirst()
-                            .orElse("");
-                }
             }
 
-            builder.responseReason(!reason.isBlank() ? reason : "Unknown");
             return builder.build();
         } catch (Exception e) {
             log.warn("Error parsing Biller Info MDM XML: {}", e.getMessage());
