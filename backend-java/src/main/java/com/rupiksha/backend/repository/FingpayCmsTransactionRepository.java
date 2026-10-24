@@ -23,13 +23,13 @@ public interface FingpayCmsTransactionRepository extends JpaRepository<FingpayCm
     List<FingpayCmsTransaction> findByUserIdOrderByCreatedAtDesc(UUID userId);
 
     @Query("SELECT t FROM FingpayCmsTransaction t WHERE (:userId IS NULL OR t.user.id = :userId) " +
-           "AND (:status IS NULL OR t.internalStatus = :status) " +
+           "AND (cast(:status as string) IS NULL OR t.internalStatus = cast(:status as string)) " +
            "AND (cast(:startDate as timestamp) IS NULL OR t.createdAt >= :startDate) " +
            "AND (cast(:endDate as timestamp) IS NULL OR t.createdAt <= :endDate) " +
-           "AND (:search IS NULL OR lower(t.merchantTransactionId) LIKE concat('%', lower(:search), '%') " +
-           "     OR lower(t.fpTransactionId) LIKE concat('%', lower(:search), '%') " +
-           "     OR lower(t.bcLoginId) LIKE concat('%', lower(:search), '%') " +
-           "     OR (t.remarks IS NOT NULL AND lower(t.remarks) LIKE concat('%', lower(:search), '%')))")
+           "AND (cast(:search as string) IS NULL OR lower(t.merchantTransactionId) LIKE concat('%', lower(cast(:search as string)), '%') " +
+           "     OR lower(t.fpTransactionId) LIKE concat('%', lower(cast(:search as string)), '%') " +
+           "     OR lower(t.bcLoginId) LIKE concat('%', lower(cast(:search as string)), '%') " +
+           "     OR (t.remarks IS NOT NULL AND lower(t.remarks) LIKE concat('%', lower(cast(:search as string)), '%')))")
     Page<FingpayCmsTransaction> findWithFilters(
             @Param("userId") UUID userId,
             @Param("status") String status,
@@ -39,13 +39,13 @@ public interface FingpayCmsTransactionRepository extends JpaRepository<FingpayCm
             Pageable pageable);
 
     @Query("SELECT t FROM FingpayCmsTransaction t WHERE (:userId IS NULL OR t.user.id = :userId) " +
-           "AND (:status IS NULL OR t.internalStatus = :status) " +
+           "AND (cast(:status as string) IS NULL OR t.internalStatus = cast(:status as string)) " +
            "AND (cast(:startDate as timestamp) IS NULL OR t.createdAt >= :startDate) " +
            "AND (cast(:endDate as timestamp) IS NULL OR t.createdAt <= :endDate) " +
-           "AND (:search IS NULL OR lower(t.merchantTransactionId) LIKE concat('%', lower(:search), '%') " +
-           "     OR lower(t.fpTransactionId) LIKE concat('%', lower(:search), '%') " +
-           "     OR lower(t.bcLoginId) LIKE concat('%', lower(:search), '%') " +
-           "     OR (t.remarks IS NOT NULL AND lower(t.remarks) LIKE concat('%', lower(:search), '%')))")
+           "AND (cast(:search as string) IS NULL OR lower(t.merchantTransactionId) LIKE concat('%', lower(cast(:search as string)), '%') " +
+           "     OR lower(t.fpTransactionId) LIKE concat('%', lower(cast(:search as string)), '%') " +
+           "     OR lower(t.bcLoginId) LIKE concat('%', lower(cast(:search as string)), '%') " +
+           "     OR (t.remarks IS NOT NULL AND lower(t.remarks) LIKE concat('%', lower(cast(:search as string)), '%')))")
     List<FingpayCmsTransaction> findAllWithFilters(
             @Param("userId") UUID userId,
             @Param("status") String status,
@@ -54,7 +54,7 @@ public interface FingpayCmsTransactionRepository extends JpaRepository<FingpayCm
             @Param("search") String search,
             Sort sort);
 
-    @Query("SELECT COUNT(t) FROM FingpayCmsTransaction t WHERE (:userId IS NULL OR t.user.id = :userId) AND t.internalStatus = :status")
+    @Query("SELECT COUNT(t) FROM FingpayCmsTransaction t WHERE (:userId IS NULL OR t.user.id = :userId) AND (cast(:status as string) IS NULL OR t.internalStatus = cast(:status as string))")
     long countByUserIdAndStatus(@Param("userId") UUID userId, @Param("status") String status);
 
     @Query("SELECT COALESCE(SUM(t.amount), 0) FROM FingpayCmsTransaction t WHERE (:userId IS NULL OR t.user.id = :userId) AND t.internalStatus = 'SUCCESS'")
