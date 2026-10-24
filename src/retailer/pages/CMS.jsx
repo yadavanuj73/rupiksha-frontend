@@ -118,21 +118,21 @@ const CMS = () => {
     const mobileDisplay = user?.mobile || user?.username || 'N/A';
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col overflow-x-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+        <div className="w-full bg-slate-50 flex flex-col" style={{ fontFamily: "'Inter', sans-serif" }}>
 
             {/* Top Navigation & Status Bar */}
-            <div className="shrink-0 bg-white border-b border-slate-200/90 px-4 sm:px-6 py-4 shadow-sm">
+            <div className="shrink-0 bg-white border-b border-slate-200/90 px-4 sm:px-6 py-2.5 shadow-sm">
                 <div className="flex items-center justify-between max-w-6xl mx-auto">
                     <div className="flex items-center gap-3">
-                        <Icon3D icon={Building2} color="#4f46e5" size={42} />
+                        <Icon3D icon={Building2} color="#4f46e5" size={38} />
                         <div>
                             <div className="flex items-center gap-2">
-                                <h1 className="text-lg md:text-xl font-black text-slate-900 leading-none">Fingpay Cms</h1>
+                                <h1 className="text-base md:text-lg font-black text-slate-900 leading-none">Fingpay Cms</h1>
                                 <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200">
                                     Uber CMS
                                 </span>
                             </div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
                                 Cash Management Services & Collections
                             </p>
                         </div>
@@ -148,37 +148,37 @@ const CMS = () => {
             </div>
 
             {/* Main Terminal Body */}
-            <div className="flex-1 p-4 sm:p-6 md:p-8 max-w-6xl w-full mx-auto space-y-6">
+            <div className="flex-1 p-3 sm:p-5 md:p-6 max-w-6xl w-full mx-auto">
 
                 {/* Hero Launch Console */}
-                <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 relative overflow-hidden">
+                <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-5 sm:p-6 relative overflow-hidden">
                     <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-indigo-50/50 rounded-full blur-3xl pointer-events-none" />
 
-                    <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-                        <div className="lg:col-span-7 space-y-4">
+                    <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                        <div className="lg:col-span-7 space-y-3">
                             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-black uppercase tracking-wider">
                                 <ShieldCheck size={14} className="text-indigo-600" /> Authorized Retailer BC Terminal
                             </div>
 
-                            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-snug">
+                            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-snug">
                                 Cash Drop & EMI Collection Terminal
                             </h2>
 
-                            <p className="text-sm font-medium text-slate-600 leading-relaxed">
+                            <p className="text-xs sm:text-sm font-medium text-slate-600 leading-relaxed">
                                 Access the official Fingpay Uber CMS system to process instant cash collections, corporate drops (CDC), and loan repayments for leading financial institutions. Authenticated directly with your Rupiksha retailer BC credentials.
                             </p>
 
                             {/* Merchant Identity Badges */}
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
-                                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+                                <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
                                     <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">BC Merchant ID</span>
                                     <span className="text-xs font-black text-slate-800 tracking-tight block mt-0.5 truncate">{merchantIdDisplay}</span>
                                 </div>
-                                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                                <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
                                     <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Registered Mobile</span>
                                     <span className="text-xs font-black text-slate-800 tracking-tight block mt-0.5">{mobileDisplay}</span>
                                 </div>
-                                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 col-span-2 sm:col-span-1">
+                                <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100 col-span-2 sm:col-span-1">
                                     <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">GPS Coordinates</span>
                                     <span className="text-xs font-black text-slate-800 tracking-tight block mt-0.5 flex items-center gap-1">
                                         <MapPin size={11} className={coords.acquired ? "text-emerald-500" : "text-amber-500"} />
@@ -189,7 +189,7 @@ const CMS = () => {
                         </div>
 
                         {/* Action Panel */}
-                        <div className="lg:col-span-5 flex flex-col justify-center items-stretch space-y-4 bg-gradient-to-br from-slate-50 to-indigo-50/40 p-6 sm:p-8 rounded-3xl border border-slate-200/80">
+                        <div className="lg:col-span-5 flex flex-col justify-center items-stretch space-y-3 bg-gradient-to-br from-slate-50 to-indigo-50/40 p-5 rounded-3xl border border-slate-200/80">
                             <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
                                 <span className="text-xs font-black uppercase tracking-wider text-slate-500">Terminal Status</span>
                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider">
@@ -198,14 +198,14 @@ const CMS = () => {
                             </div>
 
                             {errorMsg && (
-                                <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-start gap-2">
+                                <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-start gap-2">
                                     <AlertTriangle size={16} className="shrink-0 mt-0.5 text-rose-600" />
                                     <span>{errorMsg}</span>
                                 </div>
                             )}
 
                             {popupBlocked && (
-                                <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold space-y-2">
+                                <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold space-y-2">
                                     <div className="flex items-center gap-2">
                                         <Info size={16} className="shrink-0 text-amber-600" />
                                         <span>Browser blocked the popup window.</span>
@@ -227,7 +227,7 @@ const CMS = () => {
                                 disabled={loading}
                                 whileHover={{ scale: 1.01, y: -2 }}
                                 whileTap={{ scale: 0.98 }}
-                                className="w-full py-4 sm:py-4.5 rounded-2xl text-white font-black text-xs sm:text-sm uppercase tracking-widest relative overflow-hidden shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2.5"
+                                className="w-full py-3.5 rounded-2xl text-white font-black text-xs sm:text-sm uppercase tracking-widest relative overflow-hidden shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2.5"
                                 style={{
                                     background: `linear-gradient(135deg, ${NAVY}, ${NAVY3})`,
                                     boxShadow: `0 8px 24px ${NAVY}40`
@@ -257,7 +257,7 @@ const CMS = () => {
                             {/* Secondary Link to History */}
                             <button
                                 onClick={() => navigate('/reports?report=fingpay_cms')}
-                                className="w-full py-3 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wider hover:bg-slate-100 hover:text-slate-900 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                                className="w-full py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wider hover:bg-slate-100 hover:text-slate-900 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
                             >
                                 <History size={15} className="text-purple-600" />
                                 View CMS Transactions History
