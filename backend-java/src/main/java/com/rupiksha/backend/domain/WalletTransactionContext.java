@@ -27,5 +27,6 @@ public enum WalletTransactionContext {
     REVERSAL,
     PLAN_UPGRADE,
     WALLET_TRANSFER,
-    CMS_REFUND
+    CMS_REFUND,
+    CMS_DEBIT
 }

@@ -51,7 +51,9 @@ public class SecurityConfig {
                 "/api/v1/recharge/callback",
                 "/api/v1/certificates/verify/**",
                 "/api/v1/id-payment/**",
-                "/api/v1/bbps/callback"
+                "/api/v1/bbps/callback",
+                "/api/v1/fingpay-cms/callback/**",
+                "/api/v1/cms/**"
         ));
 
         // Swagger and API docs are only public outside production.

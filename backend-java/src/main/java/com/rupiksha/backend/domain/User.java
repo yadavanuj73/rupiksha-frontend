@@ -88,6 +88,12 @@ public class User {
     @Column(name = "aeps_kyc_done", nullable = false)
     private Boolean aepsKycDone = false;
 
+    @Column(name = "cms_merchant_id", length = 80)
+    private String cmsMerchantId;
+
+    @Column(name = "cms_merchant_pin", length = 80)
+    private String cmsMerchantPin;
+
     @Column(name = "aeps_kyc_refid", length = 255)
     private String aepsKycRefId;
 

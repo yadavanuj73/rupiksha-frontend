@@ -269,6 +269,16 @@ fingpay:
   default-bank-iin: ${FINGPAY_DEFAULT_BANK_IIN:607152}
   security:
     key: ${FINGPAY_SECURITY_KEY:${FINGPAY_API_SECRET:}}
+  cms:
+    launch-url: ${FINGPAY_CMS_LAUNCH_URL:https://fpcorp.tapits.in/UberCMSBC/#/login}
+    launch-url-uat: ${FINGPAY_CMS_LAUNCH_URL_UAT:https://fpuat.tapits.in/UberCMSBC/#/login}
+    supermerchant-id: ${FINGPAY_CMS_SUPERMERCHANT_ID:${FINGPAY_SUPERMERCHANT_ID:1407}}
+    supermerchant-skey: ${FINGPAY_CMS_SUPERMERCHANT_SKEY:1234567891011121}
+    skey: ${FINGPAY_CMS_SKEY:1b271b5bb9d119e6004d588f80737bf5fbb9bb3bbe40834839e26bb93d2e6a}
+    security-key: ${FINGPAY_CMS_SECURITY_KEY:${FINGPAY_SECURITY_KEY:${FINGPAY_API_SECRET:1234567890;}}}
+    funding-mode: ${FINGPAY_CMS_FUNDING_MODE:RUPIKSHA_WALLET}
+    login-type: ${FINGPAY_CMS_LOGIN_TYPE:2}
+
 
 ---
 # Production profile overrides. Activated with SPRING_PROFILES_ACTIVE=prod.

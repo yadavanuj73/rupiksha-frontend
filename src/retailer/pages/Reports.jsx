@@ -40,98 +40,7 @@ const getReportEnum = (type) => {
     return mapping[type] || 'AEPS_FINGPAY';
 };
 
-const FINGPAY_CMS_MOCK_DATA = [
-    {
-        transactionId: "RXCMS9281041",
-        providerReference: "FP-CMS-892101",
-        bankReference: "410294829101",
-        createdAt: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
-        updatedAt: new Date(Date.now() - 1000 * 60 * 24).toISOString(),
-        serviceType: "CMS Collection",
-        provider: "Fingpay",
-        amount: 8500.00,
-        commission: 25.50,
-        openingBalance: 42150.00,
-        closingBalance: 50675.50,
-        status: "SUCCESS",
-        remarks: "L&T Finance - Loan EMI Collection (ID: LT98234190)"
-    },
-    {
-        transactionId: "RXCMS9281042",
-        providerReference: "FP-CMS-892102",
-        bankReference: "410294829102",
-        createdAt: new Date(Date.now() - 1000 * 60 * 85).toISOString(),
-        updatedAt: new Date(Date.now() - 1000 * 60 * 84).toISOString(),
-        serviceType: "CMS Collection",
-        provider: "Fingpay",
-        amount: 14200.00,
-        commission: 42.60,
-        openingBalance: 27950.00,
-        closingBalance: 42192.60,
-        status: "SUCCESS",
-        remarks: "Bajaj Finance - Two Wheeler EMI (ID: BJ8829103)"
-    },
-    {
-        transactionId: "RXCMS9281043",
-        providerReference: "FP-CMS-892103",
-        bankReference: "410294829103",
-        createdAt: new Date(Date.now() - 1000 * 60 * 210).toISOString(),
-        updatedAt: new Date(Date.now() - 1000 * 60 * 209).toISOString(),
-        serviceType: "CMS Collection",
-        provider: "Fingpay",
-        amount: 5400.00,
-        commission: 16.20,
-        openingBalance: 22550.00,
-        closingBalance: 27966.20,
-        status: "SUCCESS",
-        remarks: "Hero Fincorp - Personal Loan EMI (ID: HF4491022)"
-    },
-    {
-        transactionId: "RXCMS9281044",
-        providerReference: "FP-CMS-892104",
-        bankReference: "410294829104",
-        createdAt: new Date(Date.now() - 1000 * 60 * 480).toISOString(),
-        updatedAt: new Date(Date.now() - 1000 * 60 * 479).toISOString(),
-        serviceType: "CMS Collection",
-        provider: "Fingpay",
-        amount: 12000.00,
-        commission: 36.00,
-        openingBalance: 10550.00,
-        closingBalance: 22586.00,
-        status: "SUCCESS",
-        remarks: "Muthoot Finance - Gold Loan EMI (ID: MF7738192)"
-    },
-    {
-        transactionId: "RXCMS9281045",
-        providerReference: "FP-CMS-892105",
-        bankReference: "410294829105",
-        createdAt: new Date(Date.now() - 1000 * 60 * 1440).toISOString(),
-        updatedAt: new Date(Date.now() - 1000 * 60 * 1438).toISOString(),
-        serviceType: "CMS Collection",
-        provider: "Fingpay",
-        amount: 6750.00,
-        commission: 20.25,
-        openingBalance: 3800.00,
-        closingBalance: 10570.25,
-        status: "SUCCESS",
-        remarks: "Mahindra Finance - Tractor Loan EMI (ID: MM1192039)"
-    },
-    {
-        transactionId: "RXCMS9281046",
-        providerReference: "FP-CMS-892106",
-        bankReference: "",
-        createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-        updatedAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-        serviceType: "CMS Collection",
-        provider: "Fingpay",
-        amount: 3200.00,
-        commission: 9.60,
-        openingBalance: 50675.50,
-        closingBalance: 50675.50,
-        status: "PENDING",
-        remarks: "Cholamandalam Finance - Auto Loan (ID: CH5529103)"
-    }
-];
+
 
 const Icon3D = ({ icon: Icon, color, size = 24 }) => (
     <div className="relative group">
@@ -289,57 +198,11 @@ const Reports = () => {
             };
 
             const response = await transactionService.getHistory(params);
-            if (response && response.success && response.data && response.data.length > 0) {
-                setTransactions(response.data);
-                setTotalPages(response.pagination?.totalPages || 1);
-                setTotalElements(response.pagination?.totalElements || response.data.length);
-                if (response.summary) {
-                    setSummary(response.summary);
-                } else {
-                    setSummary(initialSummary);
-                }
-            } else if (reportType === 'fingpay_cms') {
-                let filtered = [...FINGPAY_CMS_MOCK_DATA];
-                if (filtersToUse.search) {
-                    const q = filtersToUse.search.toLowerCase();
-                    filtered = filtered.filter(item => 
-                        (item.transactionId && item.transactionId.toLowerCase().includes(q)) ||
-                        (item.providerReference && item.providerReference.toLowerCase().includes(q)) ||
-                        (item.bankReference && item.bankReference.toLowerCase().includes(q)) ||
-                        (item.remarks && item.remarks.toLowerCase().includes(q))
-                    );
-                }
-                if (filtersToUse.status) {
-                    filtered = filtered.filter(item => item.status?.toUpperCase() === filtersToUse.status.toUpperCase());
-                }
-                if (filtersToUse.fromDate) {
-                    filtered = filtered.filter(item => item.createdAt >= filtersToUse.fromDate);
-                }
-                if (filtersToUse.toDate) {
-                    const toEnd = filtersToUse.toDate + 'T23:59:59';
-                    filtered = filtered.filter(item => item.createdAt <= toEnd);
-                }
-
-                setTransactions(filtered);
-                setTotalElements(filtered.length);
-                setTotalPages(Math.max(1, Math.ceil(filtered.length / pageSize)));
-
-                const totalVol = filtered.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
-                const commEarned = filtered.reduce((acc, curr) => acc + (Number(curr.commission) || 0), 0);
-                const success = filtered.filter(t => t.status === 'SUCCESS').length;
-                const failed = filtered.filter(t => t.status === 'FAILED').length;
-                const pending = filtered.length - success - failed;
-
-                setSummary({
-                    totalTransactions: filtered.length,
-                    successCount: success,
-                    failedCount: failed,
-                    pendingCount: pending,
-                    totalVolume: totalVol,
-                    cashWithdrawalVolume: 0,
-                    cashDepositVolume: 0,
-                    commissionEarned: commEarned
-                });
+            if (response && response.success) {
+                setTransactions(response.data || []);
+                setTotalPages(response.pagination?.totalPages || (response.data && response.data.length > 0 ? 1 : 0));
+                setTotalElements(response.pagination?.totalElements || (response.data ? response.data.length : 0));
+                setSummary(response.summary || initialSummary);
             } else {
                 setTransactions(response?.data || []);
                 setSummary(response?.summary || initialSummary);
@@ -348,27 +211,10 @@ const Reports = () => {
             }
         } catch (error) {
             console.error("Failed to load history data:", error);
-            if (reportType === 'fingpay_cms') {
-                let filtered = [...FINGPAY_CMS_MOCK_DATA];
-                setTransactions(filtered);
-                setTotalElements(filtered.length);
-                setTotalPages(1);
-                const totalVol = filtered.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
-                const commEarned = filtered.reduce((acc, curr) => acc + (Number(curr.commission) || 0), 0);
-                setSummary({
-                    totalTransactions: filtered.length,
-                    successCount: filtered.filter(t => t.status === 'SUCCESS').length,
-                    failedCount: 0,
-                    pendingCount: filtered.filter(t => t.status === 'PENDING').length,
-                    totalVolume: totalVol,
-                    commissionEarned: commEarned
-                });
-            } else {
-                setTransactions([]);
-                setSummary(initialSummary);
-                setTotalPages(0);
-                setTotalElements(0);
-            }
+            setTransactions([]);
+            setSummary(initialSummary);
+            setTotalPages(0);
+            setTotalElements(0);
         } finally {
             setLoading(false);
         }

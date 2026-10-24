@@ -805,6 +805,15 @@ export const adminTransactionService = {
   },
 };
 
+// ─── FINGPAY CMS SERVICE ──────────────────────────────────────────────────
+export const fingpayCmsService = {
+  launch: (data = {}) =>
+    apiFetch('/fingpay-cms/launch', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
 
 
 

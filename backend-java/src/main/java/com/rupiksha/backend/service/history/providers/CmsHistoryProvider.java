@@ -2,9 +2,11 @@ package com.rupiksha.backend.service.history.providers;
 
 import com.rupiksha.backend.api.dto.TransactionHistoryResponseDto;
 import com.rupiksha.backend.api.dto.TransactionHistorySummaryDto;
+import com.rupiksha.backend.domain.FingpayCmsTransaction;
 import com.rupiksha.backend.domain.TransactionReportType;
 import com.rupiksha.backend.domain.TransactionStatus;
 import com.rupiksha.backend.domain.Txn;
+import com.rupiksha.backend.repository.FingpayCmsTransactionRepository;
 import com.rupiksha.backend.repository.TxnRepository;
 import com.rupiksha.backend.repository.WalletEntryRepository;
 import com.rupiksha.backend.service.history.BaseHistoryProvider;
@@ -15,9 +17,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -27,11 +29,14 @@ import java.util.stream.Collectors;
 public class CmsHistoryProvider extends BaseHistoryProvider {
 
     private final TxnRepository txnRepository;
+    private final FingpayCmsTransactionRepository cmsTransactionRepository;
 
     public CmsHistoryProvider(WalletEntryRepository walletEntryRepository,
-                              TxnRepository txnRepository) {
+                              TxnRepository txnRepository,
+                              FingpayCmsTransactionRepository cmsTransactionRepository) {
         super(walletEntryRepository);
         this.txnRepository = txnRepository;
+        this.cmsTransactionRepository = cmsTransactionRepository;
     }
 
     @Override
@@ -45,14 +50,21 @@ public class CmsHistoryProvider extends BaseHistoryProvider {
             UUID userId, String search, String status, String provider,
             LocalDateTime fromDate, LocalDateTime toDate, Pageable pageable) {
 
-        TransactionStatus txnStatus = getTxnStatus(status);
         Instant start = fromDate != null ? fromDate.atZone(ZoneId.systemDefault()).toInstant() : null;
         Instant end = toDate != null ? toDate.atZone(ZoneId.systemDefault()).toInstant() : null;
-        String cmsProvider = reportType == TransactionReportType.CMS_AIRTEL ? "Airtel" : "Fingpay";
+        String cleanSearch = (search != null && !search.isBlank()) ? search.trim() : null;
+        String cleanStatus = (status != null && !status.isBlank()) ? status.trim().toUpperCase() : null;
 
+        if (reportType == TransactionReportType.CMS_FINGPAY) {
+            Page<FingpayCmsTransaction> cmsTxns = cmsTransactionRepository.findWithFilters(
+                    userId, cleanStatus, start, end, cleanSearch, pageable);
+            return cmsTxns.map(this::mapCmsToDto);
+        }
+
+        TransactionStatus txnStatus = getTxnStatus(status);
+        String cmsProvider = "Airtel";
         Page<Txn> txns = txnRepository.findWithFilters(
-                userId, "CMS", false, txnStatus, cmsProvider, start, end, search, pageable);
-
+                userId, "CMS", false, txnStatus, cmsProvider, start, end, cleanSearch, pageable);
         return txns.map(t -> mapToDto(t, cmsProvider));
     }
 
@@ -62,14 +74,21 @@ public class CmsHistoryProvider extends BaseHistoryProvider {
             UUID userId, String search, String status, String provider,
             LocalDateTime fromDate, LocalDateTime toDate, Sort sort) {
 
-        TransactionStatus txnStatus = getTxnStatus(status);
         Instant start = fromDate != null ? fromDate.atZone(ZoneId.systemDefault()).toInstant() : null;
         Instant end = toDate != null ? toDate.atZone(ZoneId.systemDefault()).toInstant() : null;
-        String cmsProvider = reportType == TransactionReportType.CMS_AIRTEL ? "Airtel" : "Fingpay";
+        String cleanSearch = (search != null && !search.isBlank()) ? search.trim() : null;
+        String cleanStatus = (status != null && !status.isBlank()) ? status.trim().toUpperCase() : null;
 
+        if (reportType == TransactionReportType.CMS_FINGPAY) {
+            List<FingpayCmsTransaction> cmsTxns = cmsTransactionRepository.findAllWithFilters(
+                    userId, cleanStatus, start, end, cleanSearch, sort);
+            return cmsTxns.stream().map(this::mapCmsToDto).collect(Collectors.toList());
+        }
+
+        TransactionStatus txnStatus = getTxnStatus(status);
+        String cmsProvider = "Airtel";
         List<Txn> txns = txnRepository.findAllWithFilters(
-                userId, "CMS", false, txnStatus, cmsProvider, start, end, search, sort);
-
+                userId, "CMS", false, txnStatus, cmsProvider, start, end, cleanSearch, sort);
         return txns.stream().map(t -> mapToDto(t, cmsProvider)).collect(Collectors.toList());
     }
 
@@ -111,6 +130,33 @@ public class CmsHistoryProvider extends BaseHistoryProvider {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private TransactionHistoryResponseDto mapCmsToDto(FingpayCmsTransaction t) {
+        String referenceLookup = t.getTxn() != null ? t.getTxn().getId().toString() : t.getMerchantTransactionId();
+        WalletBalances balances = getBalancesAndCommission(referenceLookup);
+
+        String remarks = (t.getRemarks() != null && !t.getRemarks().isBlank())
+                ? t.getRemarks()
+                : "Fingpay CMS " + t.getTypeOfTransaction() + " (BC: " + t.getBcLoginId() + ")";
+
+        return TransactionHistoryResponseDto.builder()
+                .transactionId(t.getMerchantTransactionId())
+                .providerReference(t.getFpTransactionId())
+                .providerTransactionId(t.getFpTransactionId())
+                .bankReference(t.getFpTransactionId())
+                .retailerId(t.getUser().getId().toString())
+                .serviceType("CMS Collection")
+                .provider("FINGPAY")
+                .amount(t.getAmount())
+                .commission(balances.commission != null ? balances.commission : BigDecimal.ZERO)
+                .openingBalance(balances.openingBalance)
+                .closingBalance(balances.closingBalance)
+                .status(t.getInternalStatus())
+                .remarks(remarks)
+                .createdAt(LocalDateTime.ofInstant(t.getCreatedAt(), ZoneId.systemDefault()))
+                .updatedAt(LocalDateTime.ofInstant(t.getUpdatedAt(), ZoneId.systemDefault()))
+                .build();
     }
 
     private TransactionHistoryResponseDto mapToDto(Txn txn, String cmsProvider) {
