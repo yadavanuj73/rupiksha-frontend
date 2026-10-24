@@ -2,11 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Building2, RefreshCw, ExternalLink, ShieldCheck, MapPin, 
-    Coins, History, AlertTriangle, CheckCircle, Info, BellRing,
-    Lock, ArrowRight, UserCheck, Smartphone, Landmark
+    History, AlertTriangle, CheckCircle, Info,
+    Lock, UserCheck, Smartphone
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { initSpeech, speak, announceProcessing, announceGrandSuccess, announceWarning } from '../../services/speechService';
 import { dataService } from '../../services/dataService';
 import { userService, fingpayCmsService } from '../../services/apiService';
 import DisabledServiceBanner from '../../components/shared/DisabledServiceBanner';
@@ -75,9 +74,6 @@ const CMS = () => {
         setPopupBlocked(false);
         setLoading(true);
 
-        initSpeech();
-        announceProcessing("फिंगपे सी एम एस पोर्टल तैयार किया जा रहा है।");
-
         try {
             const response = await fingpayCmsService.launch({
                 latitude: coords.latitude,
@@ -96,8 +92,6 @@ const CMS = () => {
                     colors: ['#4f46e5', '#2563eb', '#10b981', '#fbbf24']
                 });
 
-                announceGrandSuccess("Fingpay CMS Ready", "Opening secure Fingpay Cash Management portal");
-
                 // Open the authenticated Fingpay Uber CMS web application in a new secure window
                 const newWindow = window.open(response.launchUrl, '_blank', 'noopener,noreferrer');
                 if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
@@ -106,13 +100,11 @@ const CMS = () => {
             } else {
                 const msg = response?.message || "Failed to initialize Fingpay CMS session";
                 setErrorMsg(msg);
-                announceWarning("सी एम एस कनेक्शन विफल रहा");
             }
         } catch (err) {
             console.error("CMS Launch error:", err);
             const msg = err.response?.data?.message || err.message || "Failed to connect to Fingpay CMS provider";
             setErrorMsg(msg);
-            announceWarning("कनेक्शन त्रुटि");
         } finally {
             setLoading(false);
         }
@@ -141,25 +133,16 @@ const CMS = () => {
                                 </span>
                             </div>
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                Cash Management Services & Corporate Collections
+                                Cash Management Services & Collections
                             </p>
                         </div>
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200">
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200">
                             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
                             <span className="text-[10px] font-black text-emerald-700 uppercase tracking-wider">Gateway Live</span>
                         </div>
-                        <button
-                            onClick={() => {
-                                initSpeech();
-                                speak("फिंगपे सी एम एस कैश मैनेजमेंट सर्विस में आपका स्वागत है।", "hi-IN");
-                            }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 text-[10px] font-black text-slate-600 hover:border-purple-300 hover:text-purple-700 transition-all cursor-pointer"
-                        >
-                            <BellRing size={12} /> Voice
-                        </button>
                     </div>
                 </div>
             </div>
@@ -178,7 +161,7 @@ const CMS = () => {
                             </div>
 
                             <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-snug">
-                                Cash Drop & Corporate EMI Collection Terminal
+                                Cash Drop & EMI Collection Terminal
                             </h2>
 
                             <p className="text-sm font-medium text-slate-600 leading-relaxed">
@@ -260,12 +243,12 @@ const CMS = () => {
                                     {loading ? (
                                         <>
                                             <RefreshCw className="animate-spin" size={18} />
-                                            INITIALIZING TERMINAL...
+                                            OPENING FINGPAY CMS...
                                         </>
                                     ) : (
                                         <>
                                             <ExternalLink size={18} />
-                                            OPEN FINGPAY UBER CMS
+                                            Open Fingpay CMS
                                         </>
                                     )}
                                 </span>
@@ -279,67 +262,7 @@ const CMS = () => {
                                 <History size={15} className="text-purple-600" />
                                 View CMS Transactions History
                             </button>
-
-                            <p className="text-[10px] font-semibold text-slate-400 text-center leading-tight">
-                                Encrypted with 128-bit AES & SHA-256 HMAC cryptographic signatures.
-                            </p>
                         </div>
-                    </div>
-                </div>
-
-                {/* Features & Service Overview Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
-                        <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shadow-sm">
-                            <Coins size={24} />
-                        </div>
-                        <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Corporate Cash Drops (CDC)</h3>
-                        <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                            Collect cash drops from field logistics, e-commerce delivery executives, and corporate loan recovery agents with real-time BC wallet balance sync.
-                        </p>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
-                        <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-sm">
-                            <Landmark size={24} />
-                        </div>
-                        <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Loan & EMI Collections</h3>
-                        <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                            Collect loan repayments for major NBFCs and banks, including Bajaj Finance, L&T Finance, Hero Fincorp, Muthoot Finance, and Mahindra Finance.
-                        </p>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-sm">
-                            <ShieldCheck size={24} />
-                        </div>
-                        <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Instant Float Reconciliation</h3>
-                        <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                            Server-to-server callback integration with cryptographic authenticity verification, duplicate protection, and automated financial refunds.
-                        </p>
-                    </div>
-                </div>
-
-                {/* BC Agent Best Practices & Checklist */}
-                <div className="bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200">BC Merchant Security Advisory</span>
-                            </div>
-                            <h4 className="text-lg font-black tracking-tight">Cash Collection Security Guidelines</h4>
-                            <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
-                                Always count and verify physical currency notes before confirming collection. Ensure your Rupiksha wallet has sufficient float balance to authorize the debit callback from Fingpay.
-                            </p>
-                        </div>
-
-                        <button
-                            onClick={() => navigate('/reports?report=fingpay_cms')}
-                            className="shrink-0 px-5 py-3 rounded-xl bg-white text-slate-950 font-black text-xs uppercase tracking-wider hover:bg-slate-100 transition-all flex items-center gap-2 cursor-pointer shadow-md"
-                        >
-                            Open CMS Logs <ArrowRight size={14} />
-                        </button>
                     </div>
                 </div>
             </div>
