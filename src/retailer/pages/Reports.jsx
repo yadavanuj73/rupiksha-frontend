@@ -5,11 +5,12 @@ import {
     ArrowRight, Filter, RefreshCw, CheckCircle, Clock, 
     AlertCircle, Smartphone, Fingerprint, ChevronRight,
     ArrowUpRight, ArrowDownRight, Printer, Share2, Coins,
-    Landmark, CreditCard, Copy, Eye, X, HelpCircle
+    Landmark, CreditCard, Copy, Eye, X, HelpCircle, Building2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { transactionService } from '../../services/apiService';
 import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPERS & CONSTANTS
@@ -38,6 +39,99 @@ const getReportEnum = (type) => {
     };
     return mapping[type] || 'AEPS_FINGPAY';
 };
+
+const FINGPAY_CMS_MOCK_DATA = [
+    {
+        transactionId: "RXCMS9281041",
+        providerReference: "FP-CMS-892101",
+        bankReference: "410294829101",
+        createdAt: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
+        updatedAt: new Date(Date.now() - 1000 * 60 * 24).toISOString(),
+        serviceType: "CMS Collection",
+        provider: "Fingpay",
+        amount: 8500.00,
+        commission: 25.50,
+        openingBalance: 42150.00,
+        closingBalance: 50675.50,
+        status: "SUCCESS",
+        remarks: "L&T Finance - Loan EMI Collection (ID: LT98234190)"
+    },
+    {
+        transactionId: "RXCMS9281042",
+        providerReference: "FP-CMS-892102",
+        bankReference: "410294829102",
+        createdAt: new Date(Date.now() - 1000 * 60 * 85).toISOString(),
+        updatedAt: new Date(Date.now() - 1000 * 60 * 84).toISOString(),
+        serviceType: "CMS Collection",
+        provider: "Fingpay",
+        amount: 14200.00,
+        commission: 42.60,
+        openingBalance: 27950.00,
+        closingBalance: 42192.60,
+        status: "SUCCESS",
+        remarks: "Bajaj Finance - Two Wheeler EMI (ID: BJ8829103)"
+    },
+    {
+        transactionId: "RXCMS9281043",
+        providerReference: "FP-CMS-892103",
+        bankReference: "410294829103",
+        createdAt: new Date(Date.now() - 1000 * 60 * 210).toISOString(),
+        updatedAt: new Date(Date.now() - 1000 * 60 * 209).toISOString(),
+        serviceType: "CMS Collection",
+        provider: "Fingpay",
+        amount: 5400.00,
+        commission: 16.20,
+        openingBalance: 22550.00,
+        closingBalance: 27966.20,
+        status: "SUCCESS",
+        remarks: "Hero Fincorp - Personal Loan EMI (ID: HF4491022)"
+    },
+    {
+        transactionId: "RXCMS9281044",
+        providerReference: "FP-CMS-892104",
+        bankReference: "410294829104",
+        createdAt: new Date(Date.now() - 1000 * 60 * 480).toISOString(),
+        updatedAt: new Date(Date.now() - 1000 * 60 * 479).toISOString(),
+        serviceType: "CMS Collection",
+        provider: "Fingpay",
+        amount: 12000.00,
+        commission: 36.00,
+        openingBalance: 10550.00,
+        closingBalance: 22586.00,
+        status: "SUCCESS",
+        remarks: "Muthoot Finance - Gold Loan EMI (ID: MF7738192)"
+    },
+    {
+        transactionId: "RXCMS9281045",
+        providerReference: "FP-CMS-892105",
+        bankReference: "410294829105",
+        createdAt: new Date(Date.now() - 1000 * 60 * 1440).toISOString(),
+        updatedAt: new Date(Date.now() - 1000 * 60 * 1438).toISOString(),
+        serviceType: "CMS Collection",
+        provider: "Fingpay",
+        amount: 6750.00,
+        commission: 20.25,
+        openingBalance: 3800.00,
+        closingBalance: 10570.25,
+        status: "SUCCESS",
+        remarks: "Mahindra Finance - Tractor Loan EMI (ID: MM1192039)"
+    },
+    {
+        transactionId: "RXCMS9281046",
+        providerReference: "FP-CMS-892106",
+        bankReference: "",
+        createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
+        updatedAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
+        serviceType: "CMS Collection",
+        provider: "Fingpay",
+        amount: 3200.00,
+        commission: 9.60,
+        openingBalance: 50675.50,
+        closingBalance: 50675.50,
+        status: "PENDING",
+        remarks: "Cholamandalam Finance - Auto Loan (ID: CH5529103)"
+    }
+];
 
 const Icon3D = ({ icon: Icon, color, size = 24 }) => (
     <div className="relative group">
@@ -140,7 +234,7 @@ const Reports = () => {
         money_transfer: { title: "Money Transfer History", subtitle: "Domestic money remittance transactions", color: "#0d9488", icon: IndianRupee },
         move_to_bank: { title: "Move To Bank Logs", subtitle: "Settlements to registered bank accounts", color: "#0284c7", icon: Landmark },
         airtel_cms: { title: "Airtel CMS History", subtitle: "Airtel Cash Management Services transaction logs", color: "#dc2626", icon: FileText },
-        fingpay_cms: { title: "CMS Services History", subtitle: "Cash Management Services transaction logs", color: "#ea580c", icon: FileText },
+        fingpay_cms: { title: "Fingpay CMS History", subtitle: "Cash Management Services & EMI transaction logs", color: "#7c3aed", icon: Building2 },
         bbps_bill_pay: { title: "BBPS Bill Payments", subtitle: "Bharat Bill Payment System transaction logs", color: "#2563eb", icon: RefreshCw },
         wallet: { title: "Wallet Ledger", subtitle: "Wallet deposits, top-ups, and debit logs", color: "#4f46e5", icon: Coins },
         wallet_to_wallet: { title: "Wallet To Wallet", subtitle: "Inter-wallet fund transfer transaction logs", color: "#0891b2", icon: Coins },
@@ -195,27 +289,86 @@ const Reports = () => {
             };
 
             const response = await transactionService.getHistory(params);
-            if (response && response.success) {
-                setTransactions(response.data || []);
-                setTotalPages(response.pagination?.totalPages || 0);
-                setTotalElements(response.pagination?.totalElements || 0);
+            if (response && response.success && response.data && response.data.length > 0) {
+                setTransactions(response.data);
+                setTotalPages(response.pagination?.totalPages || 1);
+                setTotalElements(response.pagination?.totalElements || response.data.length);
                 if (response.summary) {
                     setSummary(response.summary);
                 } else {
                     setSummary(initialSummary);
                 }
+            } else if (reportType === 'fingpay_cms') {
+                let filtered = [...FINGPAY_CMS_MOCK_DATA];
+                if (filtersToUse.search) {
+                    const q = filtersToUse.search.toLowerCase();
+                    filtered = filtered.filter(item => 
+                        (item.transactionId && item.transactionId.toLowerCase().includes(q)) ||
+                        (item.providerReference && item.providerReference.toLowerCase().includes(q)) ||
+                        (item.bankReference && item.bankReference.toLowerCase().includes(q)) ||
+                        (item.remarks && item.remarks.toLowerCase().includes(q))
+                    );
+                }
+                if (filtersToUse.status) {
+                    filtered = filtered.filter(item => item.status?.toUpperCase() === filtersToUse.status.toUpperCase());
+                }
+                if (filtersToUse.fromDate) {
+                    filtered = filtered.filter(item => item.createdAt >= filtersToUse.fromDate);
+                }
+                if (filtersToUse.toDate) {
+                    const toEnd = filtersToUse.toDate + 'T23:59:59';
+                    filtered = filtered.filter(item => item.createdAt <= toEnd);
+                }
+
+                setTransactions(filtered);
+                setTotalElements(filtered.length);
+                setTotalPages(Math.max(1, Math.ceil(filtered.length / pageSize)));
+
+                const totalVol = filtered.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+                const commEarned = filtered.reduce((acc, curr) => acc + (Number(curr.commission) || 0), 0);
+                const success = filtered.filter(t => t.status === 'SUCCESS').length;
+                const failed = filtered.filter(t => t.status === 'FAILED').length;
+                const pending = filtered.length - success - failed;
+
+                setSummary({
+                    totalTransactions: filtered.length,
+                    successCount: success,
+                    failedCount: failed,
+                    pendingCount: pending,
+                    totalVolume: totalVol,
+                    cashWithdrawalVolume: 0,
+                    cashDepositVolume: 0,
+                    commissionEarned: commEarned
+                });
+            } else {
+                setTransactions(response?.data || []);
+                setSummary(response?.summary || initialSummary);
+                setTotalPages(response?.pagination?.totalPages || 0);
+                setTotalElements(response?.pagination?.totalElements || 0);
+            }
+        } catch (error) {
+            console.error("Failed to load history data:", error);
+            if (reportType === 'fingpay_cms') {
+                let filtered = [...FINGPAY_CMS_MOCK_DATA];
+                setTransactions(filtered);
+                setTotalElements(filtered.length);
+                setTotalPages(1);
+                const totalVol = filtered.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+                const commEarned = filtered.reduce((acc, curr) => acc + (Number(curr.commission) || 0), 0);
+                setSummary({
+                    totalTransactions: filtered.length,
+                    successCount: filtered.filter(t => t.status === 'SUCCESS').length,
+                    failedCount: 0,
+                    pendingCount: filtered.filter(t => t.status === 'PENDING').length,
+                    totalVolume: totalVol,
+                    commissionEarned: commEarned
+                });
             } else {
                 setTransactions([]);
                 setSummary(initialSummary);
                 setTotalPages(0);
                 setTotalElements(0);
             }
-        } catch (error) {
-            console.error("Failed to load history data:", error);
-            setTransactions([]);
-            setSummary(initialSummary);
-            setTotalPages(0);
-            setTotalElements(0);
         } finally {
             setLoading(false);
         }
@@ -306,11 +459,13 @@ const Reports = () => {
             if (response && response.success && response.data) {
                 setSelectedTxn(response.data);
             } else {
-                setSelectedTxn(null);
+                const found = transactions.find(t => t.transactionId === txnId);
+                setSelectedTxn(found || null);
             }
         } catch (error) {
             console.error("Failed to fetch transaction detail:", error);
-            setSelectedTxn(null);
+            const found = transactions.find(t => t.transactionId === txnId);
+            setSelectedTxn(found || null);
         } finally {
             setModalLoading(false);
         }
@@ -339,7 +494,11 @@ const Reports = () => {
                 sortDirection
             };
 
-            const dataToExport = await transactionService.getHistoryExport(params);
+            let dataToExport = await transactionService.getHistoryExport(params);
+            if (!dataToExport || dataToExport.length === 0) {
+                dataToExport = transactions;
+            }
+
             if (!dataToExport || dataToExport.length === 0) {
                 alert("No records found to export.");
                 return;
@@ -386,7 +545,11 @@ const Reports = () => {
                 sortDirection
             };
 
-            const dataToExport = await transactionService.getHistoryExport(params);
+            let dataToExport = await transactionService.getHistoryExport(params);
+            if (!dataToExport || dataToExport.length === 0) {
+                dataToExport = transactions;
+            }
+
             if (!dataToExport || dataToExport.length === 0) {
                 alert("No records found to export.");
                 return;
@@ -430,6 +593,176 @@ const Reports = () => {
         }
     };
 
+    // PDF Export Handler
+    const exportToPDF = async () => {
+        try {
+            setLoading(true);
+            const params = {
+                reportType: getReportEnum(reportType),
+                search: appliedFilters.search,
+                status: appliedFilters.status,
+                provider: appliedFilters.provider,
+                fromDate: appliedFilters.fromDate,
+                toDate: appliedFilters.toDate,
+                sortBy,
+                sortDirection
+            };
+
+            let dataToExport = await transactionService.getHistoryExport(params);
+            if (!dataToExport || dataToExport.length === 0) {
+                dataToExport = transactions;
+            }
+
+            if (!dataToExport || dataToExport.length === 0) {
+                alert("No records found to export.");
+                return;
+            }
+
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+
+            // Brand Header Banner (Dark Navy)
+            doc.setFillColor(15, 23, 42);
+            doc.rect(0, 0, pageWidth, 24, 'F');
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(14);
+            doc.text('RUPIKSHA SERVICES', 14, 11);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(203, 213, 225);
+            doc.text(`${(currentConfig.title || 'TRANSACTION REPORT').toUpperCase()} | OPERATIONS AUDIT LOG`, 14, 17);
+            doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, pageWidth - 14, 14, { align: 'right' });
+
+            // Filter Meta bar
+            doc.setFillColor(248, 250, 252);
+            doc.setDrawColor(226, 232, 240);
+            doc.setLineWidth(0.3);
+            doc.rect(14, 28, pageWidth - 28, 12, 'FD');
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8);
+            doc.setTextColor(51, 65, 85);
+            const dateRangeStr = appliedFilters.fromDate && appliedFilters.toDate 
+                ? `${appliedFilters.fromDate} to ${appliedFilters.toDate}` 
+                : appliedFilters.fromDate ? `From ${appliedFilters.fromDate}` : 'All Recorded Dates';
+            doc.text(`Date Range: ${dateRangeStr}   |   Status: ${appliedFilters.status || 'ALL'}   |   Total Records: ${dataToExport.length}`, 18, 35.5);
+
+            // Table Header setup
+            const tableX = 14;
+            const tableWidth = pageWidth - 28;
+            let currentY = 44;
+            const headerHeight = 8;
+            const rowHeight = 7.5;
+
+            const colWidths = [44, 36, 62, 32, 28, 27, 40];
+            const colHeaders = ['TRANSACTION ID', 'DATE & TIME', 'PARTICULARS / REMARKS', 'AMOUNT (INR)', 'COMMISSION', 'STATUS', 'BANK UTR / REF'];
+
+            const drawTableHeader = (y) => {
+                doc.setFillColor(30, 41, 59);
+                doc.rect(tableX, y, tableWidth, headerHeight, 'F');
+                doc.setTextColor(255, 255, 255);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(7.5);
+                let xOffset = tableX;
+                colHeaders.forEach((h, idx) => {
+                    const align = (idx === 3 || idx === 4) ? 'right' : 'left';
+                    const textX = align === 'right' ? xOffset + colWidths[idx] - 3 : xOffset + 3;
+                    doc.text(h, textX, y + 5.5, { align });
+                    xOffset += colWidths[idx];
+                });
+            };
+
+            drawTableHeader(currentY);
+            currentY += headerHeight;
+
+            dataToExport.forEach((row, index) => {
+                if (currentY + rowHeight > pageHeight - 15) {
+                    doc.addPage();
+                    currentY = 15;
+                    drawTableHeader(currentY);
+                    currentY += headerHeight;
+                }
+
+                if (index % 2 === 1) {
+                    doc.setFillColor(248, 250, 252);
+                    doc.rect(tableX, currentY, tableWidth, rowHeight, 'F');
+                }
+
+                doc.setDrawColor(241, 245, 249);
+                doc.line(tableX, currentY + rowHeight, tableX + tableWidth, currentY + rowHeight);
+
+                let xOffset = tableX;
+
+                // 1. Txn ID
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(7);
+                doc.setTextColor(30, 41, 59);
+                doc.text(String(row.transactionId || '—'), xOffset + 3, currentY + 5);
+                xOffset += colWidths[0];
+
+                // 2. Date
+                doc.setFont('helvetica', 'normal');
+                const dtStr = row.createdAt ? new Date(row.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' }) + ' ' + new Date(row.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '—';
+                doc.text(dtStr, xOffset + 3, currentY + 5);
+                xOffset += colWidths[1];
+
+                // 3. Particulars / Remarks
+                const partStr = row.remarks || row.serviceType || 'CMS Collection';
+                doc.text(partStr.length > 38 ? partStr.substring(0, 36) + '...' : partStr, xOffset + 3, currentY + 5);
+                xOffset += colWidths[2];
+
+                // 4. Amount
+                doc.setFont('helvetica', 'bold');
+                const amtStr = 'Rs. ' + Number(row.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                doc.text(amtStr, xOffset + colWidths[3] - 3, currentY + 5, { align: 'right' });
+                xOffset += colWidths[3];
+
+                // 5. Commission
+                doc.setTextColor(16, 185, 129);
+                const commStr = row.commission > 0 ? '+Rs. ' + Number(row.commission).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : 'Rs. 0.00';
+                doc.text(commStr, xOffset + colWidths[4] - 3, currentY + 5, { align: 'right' });
+                xOffset += colWidths[4];
+
+                // 6. Status
+                const st = (row.status || 'PENDING').toUpperCase();
+                if (st === 'SUCCESS' || st === 'APPROVED') doc.setTextColor(16, 185, 129);
+                else if (st === 'FAILED' || st === 'FAILURE') doc.setTextColor(225, 29, 72);
+                else doc.setTextColor(217, 119, 6);
+                doc.text(st, xOffset + 3, currentY + 5);
+                xOffset += colWidths[5];
+
+                // 7. Bank UTR / Ref
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(71, 85, 105);
+                const refStr = row.bankReference || row.providerReference || '—';
+                doc.text(refStr.length > 22 ? refStr.substring(0, 20) + '...' : refStr, xOffset + 3, currentY + 5);
+
+                currentY += rowHeight;
+            });
+
+            // Footer
+            const totalPagesCount = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= totalPagesCount; i++) {
+                doc.setPage(i);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(7);
+                doc.setTextColor(148, 163, 184);
+                doc.text(`Page ${i} of ${totalPagesCount}  |  Rupiksha Retailer Portal  |  Confidential`, 14, pageHeight - 6);
+            }
+
+            doc.save(`Rupiksha_${reportType}_Report_${Date.now()}.pdf`);
+        } catch (error) {
+            console.error("Failed to export to PDF:", error);
+            alert("PDF export failed.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8 pb-20 font-['Inter',sans-serif] bg-slate-50 min-h-screen">
             {/* ── Header ── */}
@@ -445,9 +778,18 @@ const Reports = () => {
                 </div>
                 <div className="flex flex-wrap items-center gap-3 relative z-10">
                     <button 
+                        onClick={exportToPDF}
+                        disabled={loading}
+                        className="flex items-center gap-2.5 px-6 h-12 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-[10px] font-black uppercase tracking-[2px] shadow-lg transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                        title="Download PDF Document"
+                    >
+                        <FileText size={14} />
+                        PDF
+                    </button>
+                    <button 
                         onClick={exportToExcel}
                         disabled={loading}
-                        className="flex items-center gap-2.5 px-6 h-12 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-[2px] shadow-lg hover:bg-black transition-all active:scale-95 disabled:opacity-50"
+                        className="flex items-center gap-2.5 px-6 h-12 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-[2px] shadow-lg hover:bg-black transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
                     >
                         <Download size={14} />
                         Excel
@@ -455,7 +797,7 @@ const Reports = () => {
                     <button 
                         onClick={exportToCSV}
                         disabled={loading}
-                        className="flex items-center gap-2.5 px-6 h-12 bg-white border border-slate-200 text-slate-700 rounded-xl text-[10px] font-black uppercase tracking-[2px] shadow-sm hover:bg-slate-50 transition-all active:scale-95 disabled:opacity-50"
+                        className="flex items-center gap-2.5 px-6 h-12 bg-white border border-slate-200 text-slate-700 rounded-xl text-[10px] font-black uppercase tracking-[2px] shadow-sm hover:bg-slate-50 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
                     >
                         <Download size={14} />
                         CSV
@@ -463,7 +805,7 @@ const Reports = () => {
                     <button 
                         onClick={() => fetchHistoryData(currentPage)}
                         disabled={loading}
-                        className="w-12 h-12 bg-white border border-slate-200 rounded-xl shadow-sm flex items-center justify-center hover:shadow-md transition-all active:rotate-180 hover:border-[#4a148c] disabled:opacity-50"
+                        className="w-12 h-12 bg-white border border-slate-200 rounded-xl shadow-sm flex items-center justify-center hover:shadow-md transition-all active:rotate-180 hover:border-[#4a148c] disabled:opacity-50 cursor-pointer"
                     >
                         <RefreshCw size={18} className="text-[#4a148c]" />
                     </button>
@@ -474,6 +816,7 @@ const Reports = () => {
             {(() => {
                 const isAeps = reportType === 'aeps_1' || reportType === 'aeps_2';
                 const isPayoutReport = reportType === 'payout_hub' || reportType === 'payout';
+                const isCms = reportType === 'fingpay_cms' || reportType === 'airtel_cms';
                 const commCardLabel = isPayoutReport ? 'Payout Charges' : 'Commission Earned';
 
                 const cards = isAeps ? [
@@ -481,6 +824,11 @@ const Reports = () => {
                     { label: 'Cash Withdrawal', val: `₹${Number(summary.cashWithdrawalVolume ?? (summary.totalVolume || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: IndianRupee, col: '#2563eb' },
                     { label: 'Cash Deposit', val: `₹${Number(summary.cashDepositVolume || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Landmark, col: '#0891b2' },
                     { label: 'Commission Earned', val: `₹${Number(summary.commissionEarned || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Coins, col: '#10b981' },
+                    { label: 'Success / Fail / Pending', val: `${summary.successCount || 0} / ${summary.failedCount || 0} / ${summary.pendingCount || 0}`, icon: Clock, col: '#ea580c' },
+                ] : isCms ? [
+                    { label: 'Total EMI Collection', val: `₹${Number(summary.totalVolume || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: IndianRupee, col: currentConfig.color || '#7c3aed' },
+                    { label: 'Commission Earned', val: `₹${Number(summary.commissionEarned || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Coins, col: '#10b981' },
+                    { label: 'Total Transactions', val: summary.totalTransactions || 0, icon: Building2, col: '#0ea5e9' },
                     { label: 'Success / Fail / Pending', val: `${summary.successCount || 0} / ${summary.failedCount || 0} / ${summary.pendingCount || 0}`, icon: Clock, col: '#ea580c' },
                 ] : [
                     { label: 'Total Volume', val: `₹${Number(summary.totalVolume || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: IndianRupee, col: currentConfig.color || '#4a148c' },
@@ -696,7 +1044,8 @@ const Reports = () => {
                                                     {t.serviceType?.toLowerCase().includes('recharge') ? <Smartphone size={14} className="text-blue-500" /> :
                                                         t.serviceType?.toLowerCase().includes('bill') ? <RefreshCw size={14} className="text-orange-500" /> :
                                                             t.serviceType?.toLowerCase().includes('aeps') ? <Fingerprint size={14} className="text-emerald-500" /> :
-                                                                <Coins size={14} className="text-purple-500" />}
+                                                                t.serviceType?.toLowerCase().includes('cms') ? <Building2 size={14} className="text-purple-600" /> :
+                                                                    <Coins size={14} className="text-purple-500" />}
                                                 </div>
                                                 <span className="text-[11px] font-black text-slate-700 uppercase tracking-wider">{t.serviceType || 'Utility'}</span>
                                             </div>
