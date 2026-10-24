@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, Navigate } from 'react-router-dom';
 import { 
     FileText, Search, Download, Calendar, IndianRupee, 
@@ -136,6 +136,10 @@ const Reports = () => {
     const [modalLoading, setModalLoading] = useState(false);
     const [copySuccess, setCopySuccess] = useState('');
 
+    // Fetch deduplication & request synchronization refs
+    const lastFetchSignatureRef = useRef('');
+    const activeReqIdRef = useRef(0);
+
     const reportConfigs = {
         aeps_1: { title: "AEPS 1 History", subtitle: "Aadhaar Enabled Payment System 1 transaction logs", color: "#2563eb", icon: Fingerprint },
         aeps_2: { title: "AEPS 2 History", subtitle: "Aadhaar Enabled Payment System 2 transaction logs", color: "#4f46e5", icon: Fingerprint },
@@ -167,12 +171,17 @@ const Reports = () => {
         setProviderFilter('');
         setFromDate('');
         setToDate('');
-        setAppliedFilters({
-            search: '',
-            status: '',
-            provider: '',
-            fromDate: '',
-            toDate: ''
+        setAppliedFilters(prev => {
+            if (!prev.search && !prev.status && !prev.provider && !prev.fromDate && !prev.toDate) {
+                return prev;
+            }
+            return {
+                search: '',
+                status: '',
+                provider: '',
+                fromDate: '',
+                toDate: ''
+            };
         });
         setTransactions([]);
         setSummary(initialSummary);
@@ -181,7 +190,15 @@ const Reports = () => {
     }, [reportType]);
 
     // Fetch dynamic transaction data
-    const fetchHistoryData = useCallback(async (overridePage = currentPage, filtersToUse = appliedFilters) => {
+    const fetchHistoryData = useCallback(async (overridePage = currentPage, filtersToUse = appliedFilters, force = false) => {
+        const signature = `${reportType}_${overridePage}_${pageSize}_${sortBy}_${sortDirection}_${filtersToUse.search || ''}_${filtersToUse.status || ''}_${filtersToUse.provider || ''}_${filtersToUse.fromDate || ''}_${filtersToUse.toDate || ''}`;
+        
+        if (!force && lastFetchSignatureRef.current === signature) {
+            return;
+        }
+        lastFetchSignatureRef.current = signature;
+
+        const reqId = ++activeReqIdRef.current;
         setLoading(true);
         try {
             const params = {
@@ -197,7 +214,9 @@ const Reports = () => {
                 sortDirection
             };
 
-            const response = await transactionService.getHistory(params);
+            const response = await transactionService.getHistory(params, force);
+            if (activeReqIdRef.current !== reqId) return;
+
             if (response && response.success) {
                 setTransactions(response.data || []);
                 setTotalPages(response.pagination?.totalPages || (response.data && response.data.length > 0 ? 1 : 0));
@@ -210,15 +229,28 @@ const Reports = () => {
                 setTotalElements(response?.pagination?.totalElements || 0);
             }
         } catch (error) {
+            if (activeReqIdRef.current !== reqId) return;
             console.error("Failed to load history data:", error);
             setTransactions([]);
             setSummary(initialSummary);
             setTotalPages(0);
             setTotalElements(0);
         } finally {
-            setLoading(false);
+            if (activeReqIdRef.current === reqId) {
+                setLoading(false);
+            }
         }
-    }, [reportType, pageSize, sortBy, sortDirection, appliedFilters]);
+    }, [
+        reportType,
+        pageSize,
+        sortBy,
+        sortDirection,
+        appliedFilters.search,
+        appliedFilters.status,
+        appliedFilters.provider,
+        appliedFilters.fromDate,
+        appliedFilters.toDate
+    ]);
 
     // Single unified fetch trigger
     useEffect(() => {
@@ -287,12 +319,18 @@ const Reports = () => {
         setStatusFilter('');
         setProviderFilter('');
         setCurrentPage(0);
-        setAppliedFilters({
-            search: '',
-            status: '',
-            provider: '',
-            fromDate: '',
-            toDate: ''
+        lastFetchSignatureRef.current = '';
+        setAppliedFilters(prev => {
+            if (!prev.search && !prev.status && !prev.provider && !prev.fromDate && !prev.toDate) {
+                return prev;
+            }
+            return {
+                search: '',
+                status: '',
+                provider: '',
+                fromDate: '',
+                toDate: ''
+            };
         });
     };
 
@@ -649,7 +687,7 @@ const Reports = () => {
                         CSV
                     </button>
                     <button 
-                        onClick={() => fetchHistoryData(currentPage)}
+                        onClick={() => fetchHistoryData(currentPage, appliedFilters, true)}
                         disabled={loading}
                         className="w-12 h-12 bg-white border border-slate-200 rounded-xl shadow-sm flex items-center justify-center hover:shadow-md transition-all active:rotate-180 hover:border-[#4a148c] disabled:opacity-50 cursor-pointer"
                     >

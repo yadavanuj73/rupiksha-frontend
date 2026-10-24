@@ -361,21 +361,36 @@ export const transactionService = {
     }
   },
   getStatus: (txnId) => apiFetch(`/transactions/${encodeURIComponent(txnId)}`).catch(() => null),
-  getHistory: (filters = {}) => {
-    const cleanFilters = {
-      reportType: filters.reportType || 'ALL',
-      page: filters.page ?? 0,
-      size: filters.size ?? 20,
-      ...filters
-    };
-    const params = new URLSearchParams();
-    Object.entries(cleanFilters).forEach(([k, v]) => {
-      if (v !== undefined && v !== null && v !== '') {
-        params.append(k, v);
+  getHistory: (() => {
+    const inFlightRequests = new Map();
+    return (filters = {}, force = false) => {
+      const cleanFilters = {
+        reportType: filters.reportType || 'ALL',
+        page: filters.page ?? 0,
+        size: filters.size ?? 20,
+        ...filters
+      };
+      const params = new URLSearchParams();
+      Object.entries(cleanFilters).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '') {
+          params.append(k, v);
+        }
+      });
+      const url = `/transactions/history?${params.toString()}`;
+      if (!force && inFlightRequests.has(url)) {
+        return inFlightRequests.get(url);
       }
-    });
-    return apiFetch(`/transactions/history?${params.toString()}`).catch(() => ({ success: false, data: [] }));
-  },
+      const reqPromise = apiFetch(url)
+        .catch(() => ({ success: false, data: [] }))
+        .finally(() => {
+          setTimeout(() => {
+            inFlightRequests.delete(url);
+          }, 400);
+        });
+      inFlightRequests.set(url, reqPromise);
+      return reqPromise;
+    };
+  })(),
   getHistoryDetail: (txnId) => apiFetch(`/transactions/history/${encodeURIComponent(txnId)}`).catch(() => null),
   getHistoryExport: (filters = {}) => {
     const cleanFilters = {
