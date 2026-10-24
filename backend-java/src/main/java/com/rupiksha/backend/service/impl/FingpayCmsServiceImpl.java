@@ -92,9 +92,8 @@ public class FingpayCmsServiceImpl implements FingpayCmsService {
             payloadMap.put("supermerchantId", supermerchantId);
             payloadMap.put("merchantId", merchantId);
             payloadMap.put("merchantPin", merchantPin);
-            payloadMap.put("mobileNumber", mobileNumber);
-            payloadMap.put("amount", "0");
-            payloadMap.put("superMerchantSkey", supermerchantSkey);
+            String payloadSkey = resolvePayloadSkey(supermerchantSkey);
+            payloadMap.put("superMerchantSkey", payloadSkey);
 
             String jsonPayload = objectMapper.writeValueAsString(payloadMap);
             log.info("Fingpay CMS auth payload generated for merchantId: {}, supermerchantId: {}", merchantId, supermerchantId);
@@ -103,7 +102,8 @@ public class FingpayCmsServiceImpl implements FingpayCmsService {
             String encryptedData = encryptPayload(jsonPayload, supermerchantSkey);
 
             // Construct approved Fingpay CMS URL
-            String fullLaunchUrl = launchUrl + "?data=" + encryptedData + "&skey=" + skey;
+            String urlSkey = resolveUrlSkey(skey);
+            String fullLaunchUrl = launchUrl + "?data=" + encryptedData + "&skey=" + urlSkey;
 
             return FingpayCmsDtos.LaunchResponse.builder()
                     .success(true)
@@ -436,15 +436,7 @@ public class FingpayCmsServiceImpl implements FingpayCmsService {
     }
 
     public String encryptPayload(String jsonPayload, String superMerchantSkey) throws Exception {
-        byte[] keyBytes;
-        try {
-            keyBytes = Base64.getDecoder().decode(superMerchantSkey.trim());
-            if (keyBytes.length != 16 && keyBytes.length != 24 && keyBytes.length != 32) {
-                keyBytes = normalizeKeyBytes(superMerchantSkey.trim());
-            }
-        } catch (IllegalArgumentException e) {
-            keyBytes = normalizeKeyBytes(superMerchantSkey.trim());
-        }
+        byte[] keyBytes = resolveKeyBytes(superMerchantSkey);
 
         SecretKeySpec secretKeySpec = new SecretKeySpec(keyBytes, "AES");
         Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
@@ -457,8 +449,53 @@ public class FingpayCmsServiceImpl implements FingpayCmsService {
         return Base64.getEncoder().encodeToString(base64Encrypted.getBytes(StandardCharsets.UTF_8));
     }
 
+    public byte[] resolveKeyBytes(String keyStr) {
+        if (keyStr == null || keyStr.isBlank()) {
+            return new byte[16];
+        }
+        String trimmed = keyStr.trim();
+        // If it's a 32-character hex key (like raw API secret substr: openssl_encrypt aes-256-ecb with 32 bytes)
+        if (trimmed.length() == 32 && trimmed.matches("^[a-fA-F0-9]{32}$")) {
+            return trimmed.getBytes(StandardCharsets.UTF_8);
+        }
+        // If it's a Base64 string
+        try {
+            byte[] decoded = Base64.getDecoder().decode(trimmed);
+            if (decoded.length == 16 || decoded.length == 24 || decoded.length == 32) {
+                return decoded;
+            }
+        } catch (IllegalArgumentException ignored) {
+        }
+        return normalizeKeyBytes(trimmed);
+    }
+
+    public String resolveUrlSkey(String skey) {
+        if (skey == null || skey.isBlank()) return "";
+        String trimmed = skey.trim();
+        // If 32-character hex key (e.g. substr(api_secret, 0, 32)), PHP does: $parsed64key = base64_encode($key);
+        if (trimmed.length() == 32 && trimmed.matches("^[a-fA-F0-9]{32}$")) {
+            return Base64.getEncoder().encodeToString(trimmed.getBytes(StandardCharsets.UTF_8));
+        }
+        return trimmed;
+    }
+
+    public String resolvePayloadSkey(String superMerchantSkey) {
+        if (superMerchantSkey == null || superMerchantSkey.isBlank()) return "";
+        String trimmed = superMerchantSkey.trim();
+        // If 32-character hex key, Base64 encode it so Fingpay's CryptoJS.enc.Base64.parse() recovers the 32 bytes
+        if (trimmed.length() == 32 && trimmed.matches("^[a-fA-F0-9]{32}$")) {
+            return Base64.getEncoder().encodeToString(trimmed.getBytes(StandardCharsets.UTF_8));
+        }
+        return trimmed;
+    }
+
     private byte[] normalizeKeyBytes(String keyStr) {
         byte[] raw = keyStr.getBytes(StandardCharsets.UTF_8);
+        if (raw.length >= 32) {
+            byte[] key32 = new byte[32];
+            System.arraycopy(raw, 0, key32, 0, 32);
+            return key32;
+        }
         byte[] key16 = new byte[16];
         System.arraycopy(raw, 0, key16, 0, Math.min(raw.length, 16));
         return key16;
