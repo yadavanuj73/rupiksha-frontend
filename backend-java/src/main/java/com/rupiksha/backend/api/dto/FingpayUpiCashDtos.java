@@ -211,6 +211,7 @@ public class FingpayUpiCashDtos {
         private boolean onboarded;
         private boolean kycDone;
         private boolean bankEkycDone;
+        private boolean daily2faDone;
         private String source;
     }
 }

@@ -228,4 +228,24 @@ public class FingpayUpiCashServiceImplTest {
                 eq("UPICW-CREDIT-RXUPI54321")
         );
     }
+
+    @Test
+    @DisplayName("Verify candidate resolution preserves exact casing from aepskyc outlet")
+    void testCandidateCasingPreserved() {
+        long uidLong = testUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
+        AepsKyc kyc = new AepsKyc();
+        kyc.setUid(uidLong);
+        kyc.setOutlet("radhika_outlet_1");
+        kyc.setMerchantId("12345");
+        when(aepsKycRepository.findByUid(uidLong)).thenReturn(Optional.of(kyc));
+
+        java.util.List<String> candidates = upiCashService.resolveMerchantCandidates(testUser);
+        assertNotNull(candidates);
+        assertFalse(candidates.isEmpty());
+        // Candidate 0 must be exact original casing
+        assertEquals("radhika_outlet_1", candidates.get(0));
+        // Followed by uppercase variant
+        assertTrue(candidates.contains("RADHIKA_OUTLET_1"));
+    }
 }
+

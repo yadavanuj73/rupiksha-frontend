@@ -227,14 +227,15 @@ public class FingpayUpiCashServiceImpl implements FingpayUpiCashService {
                 lastErrorMsg = errorMsg;
                 lastRespCode = respCode;
 
-                boolean shouldTryNext = errorMsg.toLowerCase().contains("being validated")
-                        || errorMsg.toLowerCase().contains("account is being validated")
-                        || "10002".equals(respCode)
-                        || "FI006".equalsIgnoreCase(respCode);
+                // CRITICAL FIX: Only retry next candidate if Fingpay explicitly reports FI006 ("Invalid merchantId")!
+                // If Fingpay returns 10002 ("Your account is being validated..."), the merchant ID IS VALID & RECOGNIZED.
+                // Do NOT discard a recognized merchant ID, as doing so leads to subsequent candidates failing with FI006.
+                boolean isInvalidMerchant = "FI006".equalsIgnoreCase(respCode)
+                        || (errorMsg != null && errorMsg.toLowerCase().contains("invalid merchantid"));
 
-                if (shouldTryNext && i + 1 < candidateIds.size()) {
-                    log.warn("BC candidate [{}] rejected with code [{}] msg [{}]. Automatically attempting candidate [{}]...",
-                            maskString(currentBcId), respCode, errorMsg, maskString(candidateIds.get(i + 1)));
+                if (isInvalidMerchant && i + 1 < candidateIds.size()) {
+                    log.warn("BC candidate [{}] rejected as invalid merchantId ({}). Automatically attempting fallback candidate [{}]...",
+                            maskString(currentBcId), respCode, maskString(candidateIds.get(i + 1)));
                     continue;
                 }
                 break;
@@ -915,23 +916,39 @@ public class FingpayUpiCashServiceImpl implements FingpayUpiCashService {
 
         // 1. Explicit admin override on User entity
         if (user.getUpicwMerchantId() != null && !user.getUpicwMerchantId().isBlank()) {
-            candidates.add(user.getUpicwMerchantId().trim().toUpperCase());
+            String custom = user.getUpicwMerchantId().trim();
+            candidates.add(custom);
+            if (!custom.equals(custom.toUpperCase())) {
+                candidates.add(custom.toUpperCase());
+            }
         }
 
         // 2. Authoritative Fingpay KYC mapping from aepskyc table (Highest Priority)
         Optional<AepsKyc> fingKycOpt = findFingKyc(user);
         if (fingKycOpt.isPresent()) {
             AepsKyc kyc = fingKycOpt.get();
-            String outlet = kyc.getOutlet() != null ? kyc.getOutlet().trim().toUpperCase() : null;
-            String merchantId = kyc.getMerchantId() != null ? kyc.getMerchantId().trim().toUpperCase() : null;
+            String rawOutlet = kyc.getOutlet() != null ? kyc.getOutlet().trim() : null;
+            String rawMerchantId = kyc.getMerchantId() != null ? kyc.getMerchantId().trim() : null;
 
-            // In Fingpay, outlet is the BC Login ID. If outlet is an internal partyCode (starts with RPR/RP),
-            // and merchantId is also present, include both so either can be validated.
-            if (outlet != null && !outlet.isBlank()) {
-                candidates.add(outlet);
+            // In Fingpay, outlet is the BC Login ID assigned during onboarding.
+            // Preserving the exact original casing is critical as Fingpay bcLoginId can be case-sensitive.
+            if (rawOutlet != null && !rawOutlet.isBlank()) {
+                candidates.add(rawOutlet);
+                if (!rawOutlet.equals(rawOutlet.toUpperCase())) {
+                    candidates.add(rawOutlet.toUpperCase());
+                }
+                if (!rawOutlet.equals(rawOutlet.toLowerCase())) {
+                    candidates.add(rawOutlet.toLowerCase());
+                }
             }
-            if (merchantId != null && !merchantId.isBlank()) {
-                candidates.add(merchantId);
+            if (rawMerchantId != null && !rawMerchantId.isBlank()) {
+                candidates.add(rawMerchantId);
+                if (!rawMerchantId.equals(rawMerchantId.toUpperCase())) {
+                    candidates.add(rawMerchantId.toUpperCase());
+                }
+                if (!rawMerchantId.equals(rawMerchantId.toLowerCase())) {
+                    candidates.add(rawMerchantId.toLowerCase());
+                }
             }
         }
 
@@ -941,43 +958,56 @@ public class FingpayUpiCashServiceImpl implements FingpayUpiCashService {
             if (aepsUserOpt.isPresent()) {
                 com.rupiksha.aeps.entity.User aepsUser = aepsUserOpt.get();
                 if (aepsUser.getAepsAgentId() != null && !aepsUser.getAepsAgentId().isBlank()) {
-                    candidates.add(aepsUser.getAepsAgentId().trim().toUpperCase());
+                    String agent = aepsUser.getAepsAgentId().trim();
+                    candidates.add(agent);
+                    if (!agent.equals(agent.toUpperCase())) candidates.add(agent.toUpperCase());
                 }
                 if (aepsUser.getAepsMerchantId() != null && !aepsUser.getAepsMerchantId().isBlank()) {
-                    candidates.add(aepsUser.getAepsMerchantId().trim().toUpperCase());
+                    String merchant = aepsUser.getAepsMerchantId().trim();
+                    candidates.add(merchant);
+                    if (!merchant.equals(merchant.toUpperCase())) candidates.add(merchant.toUpperCase());
                 }
             }
         }
 
         // 4. Core User aepsMerchantId / aepsAgentId
-        if (user.getAepsMerchantId() != null && !user.getAepsMerchantId().isBlank()) {
-            candidates.add(user.getAepsMerchantId().trim().toUpperCase());
-        }
         if (user.getAepsAgentId() != null && !user.getAepsAgentId().isBlank()) {
-            candidates.add(user.getAepsAgentId().trim().toUpperCase());
+            String agent = user.getAepsAgentId().trim();
+            candidates.add(agent);
+            if (!agent.equals(agent.toUpperCase())) candidates.add(agent.toUpperCase());
+        }
+        if (user.getAepsMerchantId() != null && !user.getAepsMerchantId().isBlank()) {
+            String merchant = user.getAepsMerchantId().trim();
+            candidates.add(merchant);
+            if (!merchant.equals(merchant.toUpperCase())) candidates.add(merchant.toUpperCase());
         }
 
         // 5. User partyCode
         if (user.getPartyCode() != null && !user.getPartyCode().isBlank()) {
-            candidates.add(user.getPartyCode().trim().toUpperCase());
+            String party = user.getPartyCode().trim();
+            candidates.add(party);
+            if (!party.equals(party.toUpperCase())) candidates.add(party.toUpperCase());
         }
 
         // 6. CMS Merchant ID
         if (user.getCmsMerchantId() != null && !user.getCmsMerchantId().isBlank()) {
-            candidates.add(user.getCmsMerchantId().trim().toUpperCase());
+            String cms = user.getCmsMerchantId().trim();
+            candidates.add(cms);
+            if (!cms.equals(cms.toUpperCase())) candidates.add(cms.toUpperCase());
         }
 
         // 7. Aggregator default BC ID
         if (defaultMerchantId != null && !defaultMerchantId.isBlank()) {
-            candidates.add(defaultMerchantId.trim().toUpperCase());
+            candidates.add(defaultMerchantId.trim());
         }
 
-        // 8. Username / Mobile fallback
-        if (user.getUsername() != null && !user.getUsername().isBlank()) {
-            candidates.add(user.getUsername().trim().toUpperCase());
-        }
-        if (user.getMobile() != null && !user.getMobile().isBlank()) {
-            candidates.add(user.getMobile().trim());
+        // 8. Fallback if empty
+        if (candidates.isEmpty()) {
+            if (user.getMobile() != null && !user.getMobile().isBlank()) {
+                candidates.add(user.getMobile().trim());
+            } else {
+                candidates.add("MERCHANT");
+            }
         }
 
         return new ArrayList<>(candidates);
@@ -1057,6 +1087,14 @@ public class FingpayUpiCashServiceImpl implements FingpayUpiCashService {
             if (Boolean.TRUE.equals(kyc.getBankEkycDone())) bankEkycDone = true;
         }
 
+        boolean daily2faDone = isSessionValid(user.getAeps2faAuthenticatedAt());
+        if (!daily2faDone && aepsUserRepository != null) {
+            Optional<com.rupiksha.aeps.entity.User> aepsUserOpt = findAepsUser(user);
+            if (aepsUserOpt.isPresent() && aepsUserOpt.get().getAeps2faAuthenticatedAt() != null) {
+                daily2faDone = isSessionValid(aepsUserOpt.get().getAeps2faAuthenticatedAt());
+            }
+        }
+
         return MerchantInfoResponse.builder()
                 .bcLoginId(bcLoginId)
                 .outlet(outlet)
@@ -1064,8 +1102,25 @@ public class FingpayUpiCashServiceImpl implements FingpayUpiCashService {
                 .onboarded(onboarded)
                 .kycDone(kycDone)
                 .bankEkycDone(bankEkycDone)
+                .daily2faDone(daily2faDone)
                 .source(source)
                 .build();
+    }
+
+    private boolean isSessionValid(Instant authenticatedAt) {
+        if (authenticatedAt == null) return false;
+        Instant now = Instant.now();
+        if (authenticatedAt.isAfter(now)) return false;
+        LocalDate authDate = authenticatedAt.atZone(IST_ZONE).toLocalDate();
+        LocalDate today = LocalDate.now(IST_ZONE);
+        return authDate.isEqual(today);
+    }
+
+    private boolean isSessionValid(LocalDateTime authenticatedAt) {
+        if (authenticatedAt == null) return false;
+        LocalDate authDate = authenticatedAt.toLocalDate();
+        LocalDate today = LocalDate.now(IST_ZONE);
+        return authDate.isEqual(today);
     }
 
     private String maskString(String val) {
