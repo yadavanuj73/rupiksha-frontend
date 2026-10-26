@@ -526,11 +526,11 @@ const UpiCashPoint = () => {
                     </div>
 
                     <div className="p-3 bg-white/80 rounded-2xl border border-amber-200/60 text-[11px] text-amber-800 space-y-1.5">
-                        <p className="font-semibold text-slate-700">What does this mean?</p>
+                        <p className="font-semibold text-slate-700">Why are you seeing this?</p>
                         <ul className="list-disc list-inside space-y-1 text-slate-600">
-                            <li>Fingpay (Tapits Technologies) is currently verifying your Business Correspondent (BC) credentials for cash withdrawal compliance mandated by NPCI.</li>
-                            <li>Validation typically completes in 24–48 working hours. Once verified, QR generation and withdrawals activate automatically.</li>
-                            <li>If you have not completed your AEPS Bank eKYC (biometric authentication), doing so expedites your approval.</li>
+                            <li><strong className="text-slate-800">Mandatory Daily 2FA:</strong> NPCI mandates daily biometric authentication for every Business Correspondent (BC). If you haven't scanned your fingerprint in AEPS today, Fingpay holds your account in validation until today's 2FA session is active.</li>
+                            <li><strong className="text-slate-800">Bank eKYC (BeKYC):</strong> If you recently registered, complete your Aadhaar Biometric Bank eKYC in AEPS to activate cash withdrawal permissions.</li>
+                            <li><strong className="text-slate-800">Terminal Activation:</strong> If Daily 2FA and eKYC are already done, your BC UPI terminal is awaiting activation by Fingpay compliance (typically 24–48 hours).</li>
                         </ul>
                     </div>
 
@@ -540,7 +540,7 @@ const UpiCashPoint = () => {
                             onClick={() => navigate('/retailer/aeps')}
                             className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
                         >
-                            Go to AEPS / Complete eKYC
+                            Go to AEPS (Daily 2FA / eKYC)
                         </button>
                         <button
                             type="button"
