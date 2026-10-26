@@ -168,14 +168,14 @@ public class FingpayCmsServiceImpl implements FingpayCmsService {
             log.info("Fingpay CMS existing transaction found: {}, internalStatus: {}, incomingStatus: {}",
                     fpTxnId, existing.getInternalStatus(), txnStatus);
 
-            if ("I".equals(txnStatus)) {
-                // Repeated initiation callback: respond with existing acceptance
+            if ("I".equals(txnStatus) || "P".equals(txnStatus) || "PENDING".equals(txnStatus) || "INITIATED".equals(txnStatus)) {
+                // Repeated initiation or pending callback: respond with existing acceptance
                 return FingpayCmsDtos.DebitCallbackResponse.builder()
                         .merchantTransactionId(existing.getMerchantTransactionId())
                         .status("SUCCESS".equals(existing.getInternalStatus()) || "INITIATED".equals(existing.getInternalStatus()))
                         .errorMessage(existing.getErrorMessage() != null ? existing.getErrorMessage() : "Transaction already processed")
                         .build();
-            } else if ("S".equals(txnStatus)) {
+            } else if ("S".equals(txnStatus) || "SUCCESS".equals(txnStatus)) {
                 // Final Success status callback
                 if (!"SUCCESS".equals(existing.getInternalStatus())) {
                     existing.setInternalStatus("SUCCESS");
@@ -199,7 +199,7 @@ public class FingpayCmsServiceImpl implements FingpayCmsService {
                         .errorMessage("received")
                         .build();
 
-            } else if ("F".equals(txnStatus)) {
+            } else if ("F".equals(txnStatus) || "FAILED".equals(txnStatus) || "FAILURE".equals(txnStatus)) {
                 // Final Failure status callback
                 if (!"FAILED".equals(existing.getInternalStatus())) {
                     // Check if wallet was debited and refund if applicable

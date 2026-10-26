@@ -48,7 +48,14 @@ public class FingpayCmsController {
      * Server-to-server POST callback from Fingpay for BC Wallet Debit (Initiated, Success, Failure).
      * Protected by cryptographic SHA-256 header hash validation.
      */
-    @PostMapping(value = {"/api/v1/fingpay-cms/callback/debit", "/api/v1/cms/debit"},
+    @PostMapping(value = {
+            "/api/v1/fingpay-cms/callback/debit",
+            "/api/v1/fingpay-cms/callback/status",
+            "/api/v1/fingpay-cms/callback/transaction-status",
+            "/api/v1/cms/debit",
+            "/api/v1/cms/status",
+            "/api/v1/cms/transaction-status"
+    },
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<FingpayCmsDtos.DebitCallbackResponse> handleDebitCallback(
