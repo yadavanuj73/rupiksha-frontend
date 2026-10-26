@@ -28,5 +28,6 @@ public enum WalletTransactionContext {
     PLAN_UPGRADE,
     WALLET_TRANSFER,
     CMS_REFUND,
-    CMS_DEBIT
+    CMS_DEBIT,
+    UPI_CASH_WITHDRAWAL
 }

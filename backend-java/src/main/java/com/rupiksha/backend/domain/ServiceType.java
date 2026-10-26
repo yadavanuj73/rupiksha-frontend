@@ -9,5 +9,6 @@ public enum ServiceType {
     MATM,
     CMS,
     WALLET_TRANSFER,
-    TICKET_SUPPORT
+    TICKET_SUPPORT,
+    UPI_CASH_POINT
 }

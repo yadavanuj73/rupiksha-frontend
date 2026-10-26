@@ -94,6 +94,12 @@ public class User {
     @Column(name = "cms_merchant_pin", length = 80)
     private String cmsMerchantPin;
 
+    @Column(name = "upicw_merchant_id", length = 80)
+    private String upicwMerchantId;
+
+    @Column(name = "upicw_merchant_pin", length = 80)
+    private String upicwMerchantPin;
+
     @Column(name = "aeps_kyc_refid", length = 255)
     private String aepsKycRefId;
 

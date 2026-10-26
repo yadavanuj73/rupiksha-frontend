@@ -51,6 +51,8 @@ const CMS = lazy(() => import('./retailer/pages/CMS'));
 const AllServices = lazy(() => import('./retailer/pages/AllServices'));
 const Reports = lazy(() => import('./retailer/pages/Reports'));
 const BbpsHistory = lazy(() => import('./retailer/pages/BbpsHistory'));
+const UpiCashPoint = lazy(() => import('./retailer/pages/UpiCashPoint'));
+const UpiCashHistory = lazy(() => import('./retailer/pages/UpiCashHistory'));
 const RetailerCommission = lazy(() => import('./retailer/pages/Commission'));
 const MATM = lazy(() => import('./retailer/pages/MATM'));
 const AddMoneyComponent = lazy(() => import('./retailer/components/banking/AddMoney'));
@@ -269,6 +271,9 @@ function App() {
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/bbps-history" element={<BbpsHistory />} />
                 <Route path="/reports/bbps" element={<BbpsHistory />} />
+                <Route path="/upi-cash-point" element={<UpiCashPoint />} />
+                <Route path="/upi-cash-history" element={<UpiCashHistory />} />
+                <Route path="/reports/upi-cash-history" element={<UpiCashHistory />} />
                 <Route path="/reports/sale-report" element={<SaleReport />} />
                 <Route path="/reports/consolidated-ledger" element={<ConsolidatedLedger />} />
                 <Route path="/reports/daily-ledger" element={<DailyLedger />} />

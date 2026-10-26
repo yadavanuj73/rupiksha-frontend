@@ -146,6 +146,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
                 { id: 'utility', label: 'Recharge & Bill Pay' },
                 { id: 'travel', label: 'Travel Services' },
                 { id: 'payout', label: 'Payout Hub' },
+                { id: 'upi_cash_point', label: 'UPI Cash Point' },
                 { id: 'bharat_connect', label: 'Bharat Connect' }
             ]
         }
@@ -163,6 +164,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
                 { id: 'aeps_2', label: 'Aeps 2' },
                 { id: 'fingpay_cms', label: 'Fingpay Cms' },
                 { id: 'payout_hub', label: 'Payout Hub' },
+                { id: 'upi_cash_history', label: 'UPI Cash Point' },
                 { id: 'wallet', label: 'Wallet' },
                 { id: 'wallet_to_wallet', label: 'Wallet to Wallet' },
                 { id: 'mobile_dth_recharge', label: 'Mobile & DTH Recharge' },

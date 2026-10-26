@@ -278,6 +278,20 @@ fingpay:
     security-key: ${FINGPAY_CMS_SECURITY_KEY:${FINGPAY_SECURITY_KEY:${FINGPAY_API_SECRET:1234567890;}}}
     funding-mode: ${FINGPAY_CMS_FUNDING_MODE:RUPIKSHA_WALLET}
     login-type: ${FINGPAY_CMS_LOGIN_TYPE:2}
+  upicw:
+    initiate-url: ${FINGPAY_UPICW_INITIATE_URL:https://fingpayap.tapits.in/fpaepsservice/api/upicw/partner/initiate/payment}
+    initiate-url-uat: ${FINGPAY_UPICW_INITIATE_URL_UAT:https://fpuat.tapits.in/fpaepsservice/api/upicw/partner/initiate/payment}
+    status-url: ${FINGPAY_UPICW_STATUS_URL:https://fingpayap.tapits.in/fpaepsservice/api/upicw/partner/check/status}
+    status-url-uat: ${FINGPAY_UPICW_STATUS_URL_UAT:https://fpuat.tapits.in/fpaepsservice/api/upicw/partner/check/status}
+    recon-url: ${FINGPAY_UPICW_RECON_URL:https://fpservices.tapits.in/fpcollectservice/api/threeway/v1/partner/upicw}
+    recon-url-uat: ${FINGPAY_UPICW_RECON_URL_UAT:https://fpuat.tapits.in/fpcollectservice/api/threeway/v1/partner/upicw}
+    supermerchant-id: ${FINGPAY_UPICW_SUPERMERCHANT_ID:${FINGPAY_SUPERMERCHANT_ID:1407}}
+    secret-key: ${FINGPAY_UPICW_SECRET_KEY:${FINGPAY_SECURITY_KEY:${FINGPAY_API_SECRET:1234567890;}}}
+    public-key-path: ${FINGPAY_UPICW_PUBLIC_KEY_PATH:${FINGPAY_PUBLIC_KEY_PATH:classpath:fingpay.cer}}
+    use-uat: ${FINGPAY_UPICW_USE_UAT:false}
+    rsa-transformation: ${FINGPAY_UPICW_RSA_TRANSFORMATION:RSA/ECB/OAEPWithMD5AndMGF1Padding}
+    merchant-daily-limit: ${FINGPAY_UPICW_DAILY_LIMIT:30000}
+
 
 
 ---

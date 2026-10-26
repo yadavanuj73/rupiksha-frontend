@@ -32,6 +32,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByPartyCode(String partyCode);
     boolean existsByPartyCode(String partyCode);
     Optional<User> findByCmsMerchantId(String cmsMerchantId);
+    Optional<User> findByUpicwMerchantId(String upicwMerchantId);
     Optional<User> findByAepsMerchantId(String aepsMerchantId);
     Optional<User> findByAepsAgentId(String aepsAgentId);
     List<User> findByKycStatus(KycStatus kycStatus);

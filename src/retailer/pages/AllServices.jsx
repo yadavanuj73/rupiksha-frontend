@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
     ArrowRight, Banknote, Bus, Building2, Cable, Car, CreditCard, Droplets,
     FileText, Fuel, Globe, HeartPulse, Hotel, Landmark, Search, ShieldCheck,
-    Smartphone, Tv, Wallet, Wifi, Zap, Send
+    Smartphone, Tv, Wallet, Wifi, Zap, Send, HandCoins
 } from 'lucide-react';
 import irctcLogo from '../../assets/service-logos/irctc.svg';
 import { BBPS_CATEGORIES } from '../data/bbpsCategories';
@@ -17,6 +17,7 @@ const routeMap = {
     utility: '/utility',
     matm_cash: '/matm',
     payout_hub: '/payout-hub',
+    upi_cash_point: '/upi-cash-point',
     dmt: '/dashboard',
     bharat_connect: '/bharat-connect',
 };
@@ -43,6 +44,7 @@ const SERVICE_SECTIONS = [
             { id: 'cms', title: 'Fingpay Cms', icon: Building2 },
             { id: 'dmt', title: 'Money Transfer', icon: Send },
             { id: 'payout_hub', title: 'Payout Hub', icon: Zap },
+            { id: 'upi_cash_point', title: 'UPI Cash Point', icon: HandCoins },
         ]),
     },
     {
@@ -108,6 +110,7 @@ const serviceColorMap = {
     'CMS Banking': 'from-purple-600 to-violet-700',
     'Money Transfer': 'from-sky-500 to-blue-700',
     'Payout Hub': 'from-indigo-600 to-violet-700',
+    'UPI Cash Point': 'from-blue-600 to-indigo-700',
     'Rail E-Ticketing (IRCTC)': 'from-rose-600 to-red-700',
     'Hotel Booking': 'from-emerald-500 to-teal-700',
     'Bus Ticketing': 'from-cyan-500 to-blue-600',

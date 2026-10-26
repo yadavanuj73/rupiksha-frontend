@@ -829,6 +829,47 @@ export const fingpayCmsService = {
     }),
 };
 
+// ─── FINGPAY UPI CASH POINT (UPI CASH WITHDRAWAL) SERVICE ────────────────
+export const upiCashPointService = {
+  initiate: (data) =>
+    apiFetch('/upicw/initiate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  checkStatus: (data) =>
+    apiFetch('/upicw/status', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  reconcile: (id) =>
+    apiFetch(`/upicw/reconcile/${id}`, {
+      method: 'POST',
+    }),
+  getHistory: (filters = {}) => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') {
+        params.append(k, v);
+      }
+    });
+    return apiFetch(`/upicw/history?${params.toString()}`);
+  },
+  getSummary: () =>
+    apiFetch('/upicw/history/summary'),
+  getExport: (filters = {}) => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') {
+        params.append(k, v);
+      }
+    });
+    return apiFetch(`/upicw/history/export?${params.toString()}`);
+  },
+  getDetails: (id) =>
+    apiFetch(`/upicw/details/${id}`),
+};
+
+
 
 
 

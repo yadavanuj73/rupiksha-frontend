@@ -53,7 +53,10 @@ public class SecurityConfig {
                 "/api/v1/id-payment/**",
                 "/api/v1/bbps/callback",
                 "/api/v1/fingpay-cms/callback/**",
-                "/api/v1/cms/**"
+                "/api/v1/cms/**",
+                "/api/upicw/callback/**",
+                "/api/upicw/v1/callback/**",
+                "/api/v1/upicw/callback/**"
         ));
 
         // Swagger and API docs are only public outside production.
