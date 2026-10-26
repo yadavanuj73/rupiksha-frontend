@@ -8,4 +8,7 @@ public interface AepsKycRepository extends JpaRepository<AepsKyc, Long> {
     Optional<AepsKyc> findByUid(Long uid);
     Optional<AepsKyc> findByOutlet(String outlet);
     Optional<AepsKyc> findByMerchantId(String merchantId);
-}
+    Optional<AepsKyc> findFirstByOutletIgnoreCase(String outlet);
+    Optional<AepsKyc> findFirstByMerchantIdIgnoreCase(String merchantId);
+}
+

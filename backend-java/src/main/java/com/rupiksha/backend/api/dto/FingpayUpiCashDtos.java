@@ -206,10 +206,13 @@ public class FingpayUpiCashDtos {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class MerchantInfoResponse {
         private String bcLoginId;
+        private String outlet;
+        private String merchantId;
         private boolean onboarded;
         private boolean kycDone;
         private boolean bankEkycDone;
         private String source;
     }
 }
+
 

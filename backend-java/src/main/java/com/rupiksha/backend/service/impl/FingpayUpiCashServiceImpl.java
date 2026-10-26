@@ -118,44 +118,25 @@ public class FingpayUpiCashServiceImpl implements FingpayUpiCashService {
         validateCoordinates(request.getLatitude(), request.getLongitude());
         validateDailyLimit(user, amount);
 
-        // 3. Resolve existing Fingpay merchant mapping & PIN
-        String bcLoginId = resolveMerchantId(user);
+        // 3. Resolve candidates and PIN
+        List<String> candidateIds = resolveMerchantCandidates(user);
+        String initialBcLoginId = !candidateIds.isEmpty() ? candidateIds.get(0) : "MERCHANT";
         String rawPin = resolveMerchantPin(user);
         String md5Pin = (rawPin != null && rawPin.matches("^[a-fA-F0-9]{32}$"))
                 ? rawPin.toLowerCase()
                 : cryptoUtil.md5(rawPin);
 
-        log.info("Initiating UPI Cash Withdrawal: user={}, username={}, bcLoginId={}, hasMpin={}, pinLength={}",
-                user.getId(), user.getUsername(), maskString(bcLoginId), rawPin != null && !rawPin.isBlank(), rawPin != null ? rawPin.length() : 0);
+        log.info("Initiating UPI Cash Withdrawal: user={}, username={}, candidates={}, pinLength={}",
+                user.getId(), user.getUsername(), candidateIds, rawPin != null ? rawPin.length() : 0);
 
         // 4. Generate unique partnerRequestId
         String partnerRequestId = "RXUPI" + System.currentTimeMillis() + (int)(Math.random() * 9000 + 1000);
 
-        // 5. Construct plain JSON request payload matching provider contract
-        Map<String, Object> payloadMap = new LinkedHashMap<>();
-        payloadMap.put("bcLoginId", bcLoginId);
-        payloadMap.put("bcLoginPin", md5Pin);
-        payloadMap.put("amount", amount.toPlainString());
-        payloadMap.put("bcLatitude", request.getLatitude());
-        payloadMap.put("bcLongitude", request.getLongitude());
-        payloadMap.put("partnerRequestId", partnerRequestId);
-        payloadMap.put("transactionType", "UPICW");
-        if (request.getRemarks() != null && !request.getRemarks().isBlank()) {
-            payloadMap.put("remarks", request.getRemarks().trim());
-        }
-
-        String plainJson;
-        try {
-            plainJson = objectMapper.writeValueAsString(payloadMap);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to serialize initiate request: " + e.getMessage(), e);
-        }
-
-        // 6. Persist initial transaction record in DB for durability
+        // 5. Persist initial transaction record in DB for durability
         FingpayUpiCashTransaction txn = new FingpayUpiCashTransaction();
         txn.setUser(user);
         txn.setPartnerRequestId(partnerRequestId);
-        txn.setBcLoginId(bcLoginId);
+        txn.setBcLoginId(initialBcLoginId);
         txn.setAmount(amount);
         txn.setTransactionType("UPICW");
         txn.setInternalStatus("INITIATED");
@@ -167,166 +148,196 @@ public class FingpayUpiCashServiceImpl implements FingpayUpiCashService {
         txn.setUpdatedAt(Instant.now());
         upiTransactionRepository.save(txn);
 
-        // 7. Cryptographic preparation
+        // 6. Cryptographic preparation & multi-candidate execution
         String targetUrl = useUat ? initiateUrlUat : initiateUrl;
         log.info("Sending initiate payment to Fingpay endpoint: {} with partnerRequestId: {}", targetUrl, partnerRequestId);
 
+        String successfulBcId = null;
         String rawResponse = null;
-        try {
-            String timestamp = cryptoUtil.currentTimestamp();
-            String hash = cryptoUtil.generateHash(plainJson, secretKey);
-            byte[] sessionKey = cryptoUtil.generateSessionKey();
-            String eskey = cryptoUtil.encryptSessionKey(sessionKey);
-            String encryptedBody = cryptoUtil.encryptPayload(sessionKey, plainJson.getBytes(StandardCharsets.UTF_8));
+        JsonNode successfulData = null;
+        String successfulMessage = "Request Completed";
+        String lastErrorMsg = "Provider rejected initiation";
+        String lastRespCode = "10001";
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.TEXT_PLAIN);
-            headers.set("trnTimestamp", timestamp);
-            headers.set("hash", hash);
-            headers.set("eskey", eskey);
-            headers.set("superMerchantId", superMerchantId);
+        for (int i = 0; i < candidateIds.size(); i++) {
+            String currentBcId = candidateIds.get(i);
+            log.info("Sending Fingpay initiate payment attempt {}/{} with bcLoginId [{}] for partnerRequestId {}",
+                    i + 1, candidateIds.size(), maskString(currentBcId), partnerRequestId);
 
-            HttpEntity<String> entity = new HttpEntity<>(encryptedBody, headers);
-            ResponseEntity<String> responseEntity = restTemplate.exchange(targetUrl, HttpMethod.POST, entity, String.class);
-            rawResponse = responseEntity.getBody();
-            log.info("Fingpay initiation raw response: {}", rawResponse);
+            Map<String, Object> payloadMap = new LinkedHashMap<>();
+            payloadMap.put("bcLoginId", currentBcId);
+            payloadMap.put("bcLoginPin", md5Pin);
+            payloadMap.put("amount", amount.toPlainString());
+            payloadMap.put("bcLatitude", request.getLatitude());
+            payloadMap.put("bcLongitude", request.getLongitude());
+            payloadMap.put("partnerRequestId", partnerRequestId);
+            payloadMap.put("transactionType", "UPICW");
+            if (request.getRemarks() != null && !request.getRemarks().isBlank()) {
+                payloadMap.put("remarks", request.getRemarks().trim());
+            }
 
-        } catch (Exception ex) {
-            log.error("Fingpay initiation request call failed for {}: {}", partnerRequestId, ex.getMessage(), ex);
-            txn.setInternalStatus("FAILED");
-            txn.setProviderStatus("FAILED");
-            txn.setErrorMessage("Provider communication failed: " + ex.getMessage());
-            txn.setUpdatedAt(Instant.now());
-            upiTransactionRepository.save(txn);
+            String plainJson;
+            try {
+                plainJson = objectMapper.writeValueAsString(payloadMap);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to serialize initiate request: " + e.getMessage(), e);
+            }
 
-            return InitiateResponse.builder()
-                    .success(false)
-                    .message("Payment initiation failed: " + ex.getMessage())
-                    .partnerRequestId(partnerRequestId)
-                    .amount(amount)
-                    .build();
-        }
+            try {
+                String timestamp = cryptoUtil.currentTimestamp();
+                String hash = cryptoUtil.generateHash(plainJson, secretKey);
+                byte[] sessionKey = cryptoUtil.generateSessionKey();
+                String eskey = cryptoUtil.encryptSessionKey(sessionKey);
+                String encryptedBody = cryptoUtil.encryptPayload(sessionKey, plainJson.getBytes(StandardCharsets.UTF_8));
 
-        // 8. Parse provider response
-        txn.setRawInitiateResponse(rawResponse);
-        try {
-            JsonNode root = objectMapper.readTree(rawResponse);
-            boolean statusSuccess = root.path("status").asBoolean(false)
-                    || "SUCCESS".equalsIgnoreCase(root.path("status").asText(""));
-            String message = root.path("message").asText("Request Completed");
-            JsonNode data = root.path("data");
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.TEXT_PLAIN);
+                headers.set("trnTimestamp", timestamp);
+                headers.set("hash", hash);
+                headers.set("eskey", eskey);
+                headers.set("superMerchantId", superMerchantId);
 
-            if (statusSuccess && data != null && !data.isMissingNode() && !data.isNull()) {
-                String intentLink = data.path("intentLink").asText(null);
-                String fpTxnId = data.path("fpTxnId").asText(data.path("fpayTxnId").asText(null));
-                String vpa = data.path("vpa").asText(null);
-                String expiryDateStr = data.path("expiryDate").asText(null);
-                String qrExpiryNote = data.path("qrExpiryNote").asText(null);
-                int qrExpiryIn = data.path("qrExpiryIn").asInt(60);
-                int statusCheckAttempts = data.path("statusCheckAttempts").asInt(3);
-                int statusCheckGap = data.path("statusCheckGap").asInt(30);
-                int statusCheckStartIn = data.path("statusCheckStartIn").asInt(60);
-                String responseCode = data.path("responseCode").asText("00");
-                String responseMessage = data.path("responseMessage").asText("SUCCESS");
+                HttpEntity<String> entity = new HttpEntity<>(encryptedBody, headers);
+                ResponseEntity<String> responseEntity = restTemplate.exchange(targetUrl, HttpMethod.POST, entity, String.class);
+                rawResponse = responseEntity.getBody();
+                log.info("Fingpay initiation raw response for candidate [{}]: {}", maskString(currentBcId), rawResponse);
 
-                // Update transaction entity
-                txn.setInternalStatus("QR_GENERATED");
-                txn.setProviderStatus("PENDING");
-                txn.setFpTransactionId(fpTxnId);
-                txn.setIntentLink(intentLink);
-                txn.setVpa(vpa);
-                txn.setQrExpiryIn(qrExpiryIn);
-                txn.setQrExpiryNote(qrExpiryNote);
-                txn.setStatusCheckAttempts(statusCheckAttempts);
-                txn.setStatusCheckGap(statusCheckGap);
-                txn.setStatusCheckStartIn(statusCheckStartIn);
-                txn.setResponseCode(responseCode);
-                txn.setResponseMessage(responseMessage);
-                if (expiryDateStr != null && !expiryDateStr.isBlank()) {
-                    txn.setQrExpiryDate(parseIsoInstant(expiryDateStr, qrExpiryIn));
-                } else {
-                    txn.setQrExpiryDate(Instant.now().plusSeconds(qrExpiryIn));
+                JsonNode root = objectMapper.readTree(rawResponse);
+                boolean statusSuccess = root.path("status").asBoolean(false)
+                        || "SUCCESS".equalsIgnoreCase(root.path("status").asText(""));
+                String message = root.path("message").asText("Request Completed");
+                JsonNode data = root.path("data");
+
+                if (statusSuccess && data != null && !data.isMissingNode() && !data.isNull() && data.has("intentLink")) {
+                    successfulBcId = currentBcId;
+                    successfulData = data;
+                    successfulMessage = message;
+                    break;
                 }
-                txn.setUpdatedAt(Instant.now());
 
-                // Create core ledger record
-                Txn coreTxn = new Txn();
-                coreTxn.setUser(user);
-                coreTxn.setServiceType("UPI_CASH_WITHDRAWAL");
-                coreTxn.setAmount(amount);
-                coreTxn.setStatus(TransactionStatus.INITIATED);
-                coreTxn.setProviderRef(fpTxnId != null ? fpTxnId : partnerRequestId);
-                coreTxn.setIdempotencyKey(partnerRequestId);
-                txnRepository.save(coreTxn);
-                txn.setTxn(coreTxn);
-
-                upiTransactionRepository.save(txn);
-
-                return InitiateResponse.builder()
-                        .success(true)
-                        .status("QR_GENERATED")
-                        .message(message)
-                        .partnerRequestId(partnerRequestId)
-                        .fpTxnId(fpTxnId)
-                        .intentLink(intentLink)
-                        .vpa(vpa)
-                        .amount(amount)
-                        .expiryDate(expiryDateStr)
-                        .qrExpiryNote(qrExpiryNote)
-                        .qrExpiryIn(qrExpiryIn)
-                        .statusCheckAttempts(statusCheckAttempts)
-                        .statusCheckGap(statusCheckGap)
-                        .statusCheckStartIn(statusCheckStartIn)
-                        .responseCode(responseCode)
-                        .responseMessage(responseMessage)
-                        .build();
-
-            } else {
                 String errorMsg = root.path("message").asText("Provider rejected initiation");
                 if (data != null && !data.isMissingNode() && data.path("responseMessage").asText("").length() > 0) {
                     errorMsg = data.path("responseMessage").asText();
                 }
-
-                boolean isAccountValidating = errorMsg.toLowerCase().contains("being validated") 
-                        || errorMsg.toLowerCase().contains("account is being validated");
-
-                if (isAccountValidating) {
-                    log.warn("Fingpay BC Merchant ID [{}] is currently undergoing compliance validation: {}",
-                            maskString(bcLoginId), errorMsg);
+                String respCode = root.path("statusCode").asText("10001");
+                if (data != null && !data.isMissingNode() && data.has("responseCode")) {
+                    respCode = data.path("responseCode").asText(respCode);
                 }
 
-                String respCode = root.path("statusCode").asText("10001");
-                txn.setInternalStatus("FAILED");
-                txn.setProviderStatus("FAILED");
-                txn.setErrorMessage(errorMsg);
-                txn.setResponseCode(respCode);
-                txn.setResponseMessage(errorMsg);
-                txn.setUpdatedAt(Instant.now());
-                upiTransactionRepository.save(txn);
+                lastErrorMsg = errorMsg;
+                lastRespCode = respCode;
 
-                return InitiateResponse.builder()
-                        .success(false)
-                        .message(errorMsg)
-                        .partnerRequestId(partnerRequestId)
-                        .amount(amount)
-                        .responseCode(respCode)
-                        .responseMessage(errorMsg)
-                        .build();
+                boolean shouldTryNext = errorMsg.toLowerCase().contains("being validated")
+                        || errorMsg.toLowerCase().contains("account is being validated")
+                        || "10002".equals(respCode)
+                        || "FI006".equalsIgnoreCase(respCode);
+
+                if (shouldTryNext && i + 1 < candidateIds.size()) {
+                    log.warn("BC candidate [{}] rejected with code [{}] msg [{}]. Automatically attempting candidate [{}]...",
+                            maskString(currentBcId), respCode, errorMsg, maskString(candidateIds.get(i + 1)));
+                    continue;
+                }
+                break;
+            } catch (Exception ex) {
+                log.error("Fingpay initiation call failed for candidate [{}]: {}", maskString(currentBcId), ex.getMessage(), ex);
+                lastErrorMsg = "Provider communication failed: " + ex.getMessage();
+                lastRespCode = "10001";
+                if (i + 1 < candidateIds.size()) {
+                    continue;
+                }
+                break;
+            }
+        }
+
+        txn.setRawInitiateResponse(rawResponse);
+
+        if (successfulBcId != null && successfulData != null) {
+            String intentLink = successfulData.path("intentLink").asText(null);
+            String fpTxnId = successfulData.path("fpTxnId").asText(successfulData.path("fpayTxnId").asText(null));
+            String vpa = successfulData.path("vpa").asText(null);
+            String expiryDateStr = successfulData.path("expiryDate").asText(null);
+            String qrExpiryNote = successfulData.path("qrExpiryNote").asText(null);
+            int qrExpiryIn = successfulData.path("qrExpiryIn").asInt(60);
+            int statusCheckAttempts = successfulData.path("statusCheckAttempts").asInt(3);
+            int statusCheckGap = successfulData.path("statusCheckGap").asInt(30);
+            int statusCheckStartIn = successfulData.path("statusCheckStartIn").asInt(60);
+            String responseCode = successfulData.path("responseCode").asText("00");
+            String responseMessage = successfulData.path("responseMessage").asText("SUCCESS");
+
+            // Update transaction entity with confirmed working BC login ID
+            txn.setBcLoginId(successfulBcId);
+            txn.setInternalStatus("QR_GENERATED");
+            txn.setProviderStatus("PENDING");
+            txn.setFpTransactionId(fpTxnId);
+            txn.setIntentLink(intentLink);
+            txn.setVpa(vpa);
+            txn.setQrExpiryIn(qrExpiryIn);
+            txn.setQrExpiryNote(qrExpiryNote);
+            txn.setStatusCheckAttempts(statusCheckAttempts);
+            txn.setStatusCheckGap(statusCheckGap);
+            txn.setStatusCheckStartIn(statusCheckStartIn);
+            txn.setResponseCode(responseCode);
+            txn.setResponseMessage(responseMessage);
+            if (expiryDateStr != null && !expiryDateStr.isBlank()) {
+                txn.setQrExpiryDate(parseIsoInstant(expiryDateStr, qrExpiryIn));
+            } else {
+                txn.setQrExpiryDate(Instant.now().plusSeconds(qrExpiryIn));
+            }
+            txn.setUpdatedAt(Instant.now());
+
+            // Save authoritative working BC ID to user entity so future calls use it directly
+            if (user.getUpicwMerchantId() == null || user.getUpicwMerchantId().isBlank()) {
+                user.setUpicwMerchantId(successfulBcId);
+                userRepository.save(user);
             }
 
-        } catch (Exception e) {
-            log.error("Failed to parse initiation response for {}: {}", partnerRequestId, e.getMessage(), e);
+            // Create core ledger record
+            Txn coreTxn = new Txn();
+            coreTxn.setUser(user);
+            coreTxn.setServiceType("UPI_CASH_WITHDRAWAL");
+            coreTxn.setAmount(amount);
+            coreTxn.setStatus(TransactionStatus.INITIATED);
+            coreTxn.setProviderRef(fpTxnId != null ? fpTxnId : partnerRequestId);
+            coreTxn.setIdempotencyKey(partnerRequestId);
+            txnRepository.save(coreTxn);
+            txn.setTxn(coreTxn);
+
+            upiTransactionRepository.save(txn);
+
+            return InitiateResponse.builder()
+                    .success(true)
+                    .status("QR_GENERATED")
+                    .message(successfulMessage)
+                    .partnerRequestId(partnerRequestId)
+                    .fpTxnId(fpTxnId)
+                    .intentLink(intentLink)
+                    .vpa(vpa)
+                    .amount(amount)
+                    .expiryDate(expiryDateStr)
+                    .qrExpiryNote(qrExpiryNote)
+                    .qrExpiryIn(qrExpiryIn)
+                    .statusCheckAttempts(statusCheckAttempts)
+                    .statusCheckGap(statusCheckGap)
+                    .statusCheckStartIn(statusCheckStartIn)
+                    .responseCode(responseCode)
+                    .responseMessage(responseMessage)
+                    .build();
+        } else {
             txn.setInternalStatus("FAILED");
             txn.setProviderStatus("FAILED");
-            txn.setErrorMessage("Error parsing provider response: " + e.getMessage());
+            txn.setErrorMessage(lastErrorMsg);
+            txn.setResponseCode(lastRespCode);
+            txn.setResponseMessage(lastErrorMsg);
             txn.setUpdatedAt(Instant.now());
             upiTransactionRepository.save(txn);
 
             return InitiateResponse.builder()
                     .success(false)
-                    .message("Failed to parse provider response: " + e.getMessage())
+                    .message(lastErrorMsg)
                     .partnerRequestId(partnerRequestId)
                     .amount(amount)
+                    .responseCode(lastRespCode)
+                    .responseMessage(lastErrorMsg)
                     .build();
         }
     }
@@ -811,85 +822,170 @@ public class FingpayUpiCashServiceImpl implements FingpayUpiCashService {
                 .build();
     }
 
+    public Optional<com.rupiksha.aeps.entity.User> findAepsUser(User mainUser) {
+        if (aepsUserRepository == null || mainUser == null) return Optional.empty();
+        Optional<com.rupiksha.aeps.entity.User> aepsUserOpt = Optional.empty();
+        if (mainUser.getMobile() != null && !mainUser.getMobile().isBlank()) {
+            aepsUserOpt = aepsUserRepository.findByMobile(mainUser.getMobile().trim());
+        }
+        if (aepsUserOpt.isEmpty() && mainUser.getUsername() != null && !mainUser.getUsername().isBlank()) {
+            aepsUserOpt = aepsUserRepository.findByUsername(mainUser.getUsername().trim());
+        }
+        return aepsUserOpt;
+    }
+
     public Optional<AepsKyc> findFingKyc(User mainUser) {
         if (mainUser == null) return Optional.empty();
         long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
-        return aepsKycRepository.findByUid(uidLong)
-                .or(() -> (mainUser.getPartyCode() != null && !mainUser.getPartyCode().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getPartyCode().trim()) : Optional.empty())
-                .or(() -> (mainUser.getAepsAgentId() != null && !mainUser.getAepsAgentId().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getAepsAgentId().trim()) : Optional.empty())
-                .or(() -> (mainUser.getAepsMerchantId() != null && !mainUser.getAepsMerchantId().isBlank()) ? aepsKycRepository.findByMerchantId(mainUser.getAepsMerchantId().trim()) : Optional.empty())
-                .or(() -> (mainUser.getUsername() != null && !mainUser.getUsername().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getUsername().trim()) : Optional.empty())
-                .or(() -> (mainUser.getUsername() != null && !mainUser.getUsername().isBlank()) ? aepsKycRepository.findByMerchantId(mainUser.getUsername().trim()) : Optional.empty())
-                .or(() -> (mainUser.getMobile() != null && !mainUser.getMobile().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getMobile().trim()) : Optional.empty())
-                .or(() -> (mainUser.getMobile() != null && !mainUser.getMobile().isBlank()) ? aepsKycRepository.findByMerchantId(mainUser.getMobile().trim()) : Optional.empty());
+        long rawMsb = mainUser.getId().getMostSignificantBits();
+
+        // 1. Positive 63-bit UID (standard Rupiksha mapping)
+        Optional<AepsKyc> kyc = aepsKycRepository.findByUid(uidLong);
+        if (kyc.isPresent()) return kyc;
+
+        // 2. Raw 64-bit MSB (in case negative long was stored)
+        kyc = aepsKycRepository.findByUid(rawMsb);
+        if (kyc.isPresent()) return kyc;
+
+        // 3. Via aeps_users table (in case aepskyc.uid holds aepsUser.id or matches agent/merchant ID)
+        Optional<com.rupiksha.aeps.entity.User> aepsUserOpt = findAepsUser(mainUser);
+        if (aepsUserOpt.isPresent()) {
+            com.rupiksha.aeps.entity.User aepsUser = aepsUserOpt.get();
+            if (aepsUser.getId() != null) {
+                kyc = aepsKycRepository.findByUid(aepsUser.getId());
+                if (kyc.isPresent()) return kyc;
+            }
+            if (aepsUser.getAepsAgentId() != null && !aepsUser.getAepsAgentId().isBlank()) {
+                String agent = aepsUser.getAepsAgentId().trim();
+                kyc = aepsKycRepository.findFirstByOutletIgnoreCase(agent)
+                        .or(() -> aepsKycRepository.findFirstByMerchantIdIgnoreCase(agent));
+                if (kyc.isPresent()) return kyc;
+            }
+            if (aepsUser.getAepsMerchantId() != null && !aepsUser.getAepsMerchantId().isBlank()) {
+                String merchant = aepsUser.getAepsMerchantId().trim();
+                kyc = aepsKycRepository.findFirstByMerchantIdIgnoreCase(merchant)
+                        .or(() -> aepsKycRepository.findFirstByOutletIgnoreCase(merchant));
+                if (kyc.isPresent()) return kyc;
+            }
+        }
+
+        // 4. Core user partyCode against outlet and merchantId
+        if (mainUser.getPartyCode() != null && !mainUser.getPartyCode().isBlank()) {
+            String party = mainUser.getPartyCode().trim();
+            kyc = aepsKycRepository.findFirstByOutletIgnoreCase(party)
+                    .or(() -> aepsKycRepository.findFirstByMerchantIdIgnoreCase(party));
+            if (kyc.isPresent()) return kyc;
+        }
+
+        // 5. Core user aepsAgentId / aepsMerchantId
+        if (mainUser.getAepsAgentId() != null && !mainUser.getAepsAgentId().isBlank()) {
+            String agent = mainUser.getAepsAgentId().trim();
+            kyc = aepsKycRepository.findFirstByOutletIgnoreCase(agent)
+                    .or(() -> aepsKycRepository.findFirstByMerchantIdIgnoreCase(agent));
+            if (kyc.isPresent()) return kyc;
+        }
+        if (mainUser.getAepsMerchantId() != null && !mainUser.getAepsMerchantId().isBlank()) {
+            String merchant = mainUser.getAepsMerchantId().trim();
+            kyc = aepsKycRepository.findFirstByMerchantIdIgnoreCase(merchant)
+                    .or(() -> aepsKycRepository.findFirstByOutletIgnoreCase(merchant));
+            if (kyc.isPresent()) return kyc;
+        }
+
+        // 6. Core user mobile
+        if (mainUser.getMobile() != null && !mainUser.getMobile().isBlank()) {
+            String mobile = mainUser.getMobile().trim();
+            kyc = aepsKycRepository.findFirstByOutletIgnoreCase(mobile)
+                    .or(() -> aepsKycRepository.findFirstByMerchantIdIgnoreCase(mobile));
+            if (kyc.isPresent()) return kyc;
+        }
+
+        // 7. Core user username
+        if (mainUser.getUsername() != null && !mainUser.getUsername().isBlank()) {
+            String username = mainUser.getUsername().trim();
+            kyc = aepsKycRepository.findFirstByOutletIgnoreCase(username)
+                    .or(() -> aepsKycRepository.findFirstByMerchantIdIgnoreCase(username));
+            if (kyc.isPresent()) return kyc;
+        }
+
+        return Optional.empty();
     }
 
-    public String resolveMerchantId(User user) {
-        // 1. Explicit UPI Cash Point override on User entity
+    public List<String> resolveMerchantCandidates(User user) {
+        LinkedHashSet<String> candidates = new LinkedHashSet<>();
+
+        // 1. Explicit admin override on User entity
         if (user.getUpicwMerchantId() != null && !user.getUpicwMerchantId().isBlank()) {
-            return user.getUpicwMerchantId().trim();
+            candidates.add(user.getUpicwMerchantId().trim().toUpperCase());
         }
 
-        // 2. Direct user AepsAgentId if already set
-        if (user.getAepsAgentId() != null && !user.getAepsAgentId().isBlank()) {
-            return user.getAepsAgentId().trim();
-        }
-
-        // 3. User partyCode
-        if (user.getPartyCode() != null && !user.getPartyCode().isBlank()) {
-            return user.getPartyCode().trim();
-        }
-
-        // 4. Authoritative Fingpay KYC mapping (outlet or merchantId from aepskyc table)
+        // 2. Authoritative Fingpay KYC mapping from aepskyc table (Highest Priority)
         Optional<AepsKyc> fingKycOpt = findFingKyc(user);
         if (fingKycOpt.isPresent()) {
             AepsKyc kyc = fingKycOpt.get();
-            if (kyc.getOutlet() != null && !kyc.getOutlet().isBlank()) {
-                return kyc.getOutlet().trim();
+            String outlet = kyc.getOutlet() != null ? kyc.getOutlet().trim().toUpperCase() : null;
+            String merchantId = kyc.getMerchantId() != null ? kyc.getMerchantId().trim().toUpperCase() : null;
+
+            // In Fingpay, outlet is the BC Login ID. If outlet is an internal partyCode (starts with RPR/RP),
+            // and merchantId is also present, include both so either can be validated.
+            if (outlet != null && !outlet.isBlank()) {
+                candidates.add(outlet);
             }
-            if (kyc.getMerchantId() != null && !kyc.getMerchantId().isBlank()) {
-                return kyc.getMerchantId().trim();
+            if (merchantId != null && !merchantId.isBlank()) {
+                candidates.add(merchantId);
             }
         }
 
-        // 5. AEPS User profile (aeps_users table)
+        // 3. AEPS User profile (aeps_users table)
         if (aepsUserRepository != null) {
-            Optional<com.rupiksha.aeps.entity.User> aepsUserOpt = Optional.empty();
-            if (user.getMobile() != null && !user.getMobile().isBlank()) {
-                aepsUserOpt = aepsUserRepository.findByMobile(user.getMobile().trim());
-            }
-            if (aepsUserOpt.isEmpty() && user.getUsername() != null && !user.getUsername().isBlank()) {
-                aepsUserOpt = aepsUserRepository.findByUsername(user.getUsername().trim());
-            }
+            Optional<com.rupiksha.aeps.entity.User> aepsUserOpt = findAepsUser(user);
             if (aepsUserOpt.isPresent()) {
                 com.rupiksha.aeps.entity.User aepsUser = aepsUserOpt.get();
                 if (aepsUser.getAepsAgentId() != null && !aepsUser.getAepsAgentId().isBlank()) {
-                    return aepsUser.getAepsAgentId().trim();
+                    candidates.add(aepsUser.getAepsAgentId().trim().toUpperCase());
                 }
                 if (aepsUser.getAepsMerchantId() != null && !aepsUser.getAepsMerchantId().isBlank()) {
-                    return aepsUser.getAepsMerchantId().trim();
+                    candidates.add(aepsUser.getAepsMerchantId().trim().toUpperCase());
                 }
             }
         }
 
-        // 6. AEPS Merchant ID / CMS Merchant ID
+        // 4. Core User aepsMerchantId / aepsAgentId
         if (user.getAepsMerchantId() != null && !user.getAepsMerchantId().isBlank()) {
-            return user.getAepsMerchantId().trim();
+            candidates.add(user.getAepsMerchantId().trim().toUpperCase());
         }
+        if (user.getAepsAgentId() != null && !user.getAepsAgentId().isBlank()) {
+            candidates.add(user.getAepsAgentId().trim().toUpperCase());
+        }
+
+        // 5. User partyCode
+        if (user.getPartyCode() != null && !user.getPartyCode().isBlank()) {
+            candidates.add(user.getPartyCode().trim().toUpperCase());
+        }
+
+        // 6. CMS Merchant ID
         if (user.getCmsMerchantId() != null && !user.getCmsMerchantId().isBlank()) {
-            return user.getCmsMerchantId().trim();
+            candidates.add(user.getCmsMerchantId().trim().toUpperCase());
         }
 
-        // 7. Configured aggregator default BC ID
+        // 7. Aggregator default BC ID
         if (defaultMerchantId != null && !defaultMerchantId.isBlank()) {
-            return defaultMerchantId.trim();
+            candidates.add(defaultMerchantId.trim().toUpperCase());
         }
 
-        // 8. Fallback to username or mobile
+        // 8. Username / Mobile fallback
         if (user.getUsername() != null && !user.getUsername().isBlank()) {
-            return user.getUsername().trim();
+            candidates.add(user.getUsername().trim().toUpperCase());
         }
-        return user.getMobile() != null ? user.getMobile().trim() : "MERCHANT";
+        if (user.getMobile() != null && !user.getMobile().isBlank()) {
+            candidates.add(user.getMobile().trim());
+        }
+
+        return new ArrayList<>(candidates);
+    }
+
+    public String resolveMerchantId(User user) {
+        List<String> candidates = resolveMerchantCandidates(user);
+        return !candidates.isEmpty() ? candidates.get(0) : "MERCHANT";
     }
 
     public String resolveMerchantPin(User user) {
@@ -915,29 +1011,39 @@ public class FingpayUpiCashServiceImpl implements FingpayUpiCashService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
-        String bcLoginId = resolveMerchantId(user);
+        List<String> candidates = resolveMerchantCandidates(user);
+        String bcLoginId = !candidates.isEmpty() ? candidates.get(0) : "MERCHANT";
         Optional<AepsKyc> fingKycOpt = findFingKyc(user);
 
         boolean kycDone = false;
         boolean bankEkycDone = false;
         boolean onboarded = false;
         String source = "FALLBACK";
+        String outlet = null;
+        String merchantId = null;
 
         if (user.getUpicwMerchantId() != null && !user.getUpicwMerchantId().isBlank()) {
             source = "UPICW_CUSTOM";
             onboarded = true;
+        } else if (fingKycOpt.isPresent()) {
+            AepsKyc kyc = fingKycOpt.get();
+            outlet = kyc.getOutlet();
+            merchantId = kyc.getMerchantId();
+            source = "AEPS_KYC";
+            onboarded = (outlet != null && !outlet.isBlank()) || (merchantId != null && !merchantId.isBlank());
+            kycDone = Boolean.TRUE.equals(kyc.getKycDone());
+            bankEkycDone = Boolean.TRUE.equals(kyc.getBankEkycDone());
+        } else if (aepsUserRepository != null && findAepsUser(user).isPresent()) {
+            com.rupiksha.aeps.entity.User aepsUser = findAepsUser(user).get();
+            source = "AEPS_USER";
+            onboarded = (aepsUser.getAepsAgentId() != null && !aepsUser.getAepsAgentId().isBlank())
+                    || (aepsUser.getAepsMerchantId() != null && !aepsUser.getAepsMerchantId().isBlank());
         } else if (user.getAepsAgentId() != null && !user.getAepsAgentId().isBlank()) {
             source = "CORE_USER_AEPS_AGENT";
             onboarded = true;
         } else if (user.getPartyCode() != null && !user.getPartyCode().isBlank()) {
             source = "PARTY_CODE";
             onboarded = true;
-        } else if (fingKycOpt.isPresent()) {
-            AepsKyc kyc = fingKycOpt.get();
-            source = "AEPS_KYC";
-            onboarded = (kyc.getOutlet() != null && !kyc.getOutlet().isBlank()) || (kyc.getMerchantId() != null && !kyc.getMerchantId().isBlank());
-            kycDone = Boolean.TRUE.equals(kyc.getKycDone());
-            bankEkycDone = Boolean.TRUE.equals(kyc.getBankEkycDone());
         } else if (defaultMerchantId != null && !defaultMerchantId.isBlank()) {
             source = "DEFAULT_CONFIG";
             onboarded = true;
@@ -945,12 +1051,16 @@ public class FingpayUpiCashServiceImpl implements FingpayUpiCashService {
 
         if (fingKycOpt.isPresent()) {
             AepsKyc kyc = fingKycOpt.get();
+            if (outlet == null) outlet = kyc.getOutlet();
+            if (merchantId == null) merchantId = kyc.getMerchantId();
             if (Boolean.TRUE.equals(kyc.getKycDone())) kycDone = true;
             if (Boolean.TRUE.equals(kyc.getBankEkycDone())) bankEkycDone = true;
         }
 
         return MerchantInfoResponse.builder()
                 .bcLoginId(bcLoginId)
+                .outlet(outlet)
+                .merchantId(merchantId)
                 .onboarded(onboarded)
                 .kycDone(kycDone)
                 .bankEkycDone(bankEkycDone)

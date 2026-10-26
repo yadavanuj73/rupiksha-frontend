@@ -92,32 +92,35 @@ public class FingpayUpiCashServiceImplTest {
     }
 
     @Test
-    @DisplayName("Verify merchant login ID resolution reuses existing Fingpay onboarding")
+    @DisplayName("Verify merchant login ID resolution reuses existing Fingpay onboarding from aepskyc")
     void testMerchantIdResolution() {
-        // 1. Should use aepsAgentId if available
-        String id1 = upiCashService.resolveMerchantId(testUser);
-        assertEquals("AGENT123", id1);
-
-        // 2. Should fallback to partyCode if agentId is missing
-        testUser.setAepsAgentId(null);
-        String id2 = upiCashService.resolveMerchantId(testUser);
-        assertEquals("PC123", id2);
-
-        // 3. Should fallback to AepsKyc outlet if partyCode and aepsAgentId are missing
-        testUser.setPartyCode(null);
+        // 1. Authoritative Fingpay KYC outlet takes highest precedence over core partyCode/agentId
         long uidLong = testUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
         AepsKyc kyc = new AepsKyc();
         kyc.setUid(uidLong);
         kyc.setOutlet("FP_OUTLET_99");
         when(aepsKycRepository.findByUid(uidLong)).thenReturn(Optional.of(kyc));
-        String id3 = upiCashService.resolveMerchantId(testUser);
-        assertEquals("FP_OUTLET_99", id3);
 
-        // 4. Custom UPICW override takes precedence if set
+        String id1 = upiCashService.resolveMerchantId(testUser);
+        assertEquals("FP_OUTLET_99", id1);
+
+        // 2. Custom UPICW override takes precedence over everything if set
         testUser.setUpicwMerchantId("CUSTOM_UPI_ID");
+        String id2 = upiCashService.resolveMerchantId(testUser);
+        assertEquals("CUSTOM_UPI_ID", id2);
+
+        // 3. When no UPICW override and no AepsKyc, fallback to aepsAgentId
+        testUser.setUpicwMerchantId(null);
+        when(aepsKycRepository.findByUid(uidLong)).thenReturn(Optional.empty());
+        String id3 = upiCashService.resolveMerchantId(testUser);
+        assertEquals("AGENT123", id3);
+
+        // 4. Fallback to partyCode if aepsAgentId is missing
+        testUser.setAepsAgentId(null);
         String id4 = upiCashService.resolveMerchantId(testUser);
-        assertEquals("CUSTOM_UPI_ID", id4);
+        assertEquals("PC123", id4);
     }
+
 
 
     @Test
