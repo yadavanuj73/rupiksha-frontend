@@ -9,7 +9,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
-import { upiCashPointService, userService } from '../../services/apiService';
+import { upiCashPointService, userService, aepsService } from '../../services/apiService';
 import DisabledServiceBanner from '../../components/shared/DisabledServiceBanner';
 import jsPDF from 'jspdf';
 
@@ -35,6 +35,8 @@ const UpiCashPoint = () => {
 
     // Service state
     const [serviceDisabled, setServiceDisabled] = useState(false);
+    const [checkingOnboarding, setCheckingOnboarding] = useState(true);
+    const [isOnboarded, setIsOnboarded] = useState(true);
     const [initLoading, setInitLoading] = useState(false);
     const [statusLoading, setStatusLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
@@ -110,6 +112,37 @@ const UpiCashPoint = () => {
             }
         };
         checkService();
+
+        const verifyFingpayOnboarding = async () => {
+            try {
+                const rawUser = localStorage.getItem('rupiksha_imp_user') || localStorage.getItem('rupiksha_user');
+                let mobile = currentUser?.mobile;
+                if (!mobile && rawUser) {
+                    try {
+                        const parsed = JSON.parse(rawUser);
+                        mobile = parsed.mobile || parsed.username;
+                    } catch (_) {}
+                }
+                if (!mobile) {
+                    setCheckingOnboarding(false);
+                    return;
+                }
+
+                const res = await aepsService.getStatus(mobile, 'fingpay');
+                if (res && res.onboarded === false) {
+                    setIsOnboarded(false);
+                    navigate('/aeps-onboarding?provider=fingpay', { replace: true });
+                    return;
+                } else {
+                    setIsOnboarded(true);
+                }
+            } catch (err) {
+                console.warn('Could not check Fingpay onboarding status for UPI Cash Point:', err);
+            } finally {
+                setCheckingOnboarding(false);
+            }
+        };
+        verifyFingpayOnboarding();
 
         return () => {
             clearInterval(pollingTimerRef.current);
@@ -403,8 +436,55 @@ const UpiCashPoint = () => {
         }
     };
 
+    if (checkingOnboarding) {
+        return (
+            <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-4 font-['Inter',sans-serif]">
+                <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-600 rounded-full animate-spin mb-4" />
+                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Checking registration status...</p>
+            </div>
+        );
+    }
+
     if (serviceDisabled) {
         return <DisabledServiceBanner serviceName="UPI Cash Point" />;
+    }
+
+    if (!isOnboarded) {
+        return (
+            <div className="w-full h-full min-h-[calc(100vh-80px)] bg-slate-50/60 flex flex-col items-center justify-center py-2 px-3 font-['Inter',sans-serif]">
+                <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-300 shadow-lg max-w-md w-full text-center relative overflow-hidden">
+                    <div className="flex justify-center mb-6">
+                        <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
+                            <HandCoins size={32} />
+                        </div>
+                    </div>
+                    <span className="inline-block px-3 py-1 bg-amber-50 text-amber-700 text-[10px] font-black uppercase tracking-wider rounded-full mb-3">
+                        Onboarding Required
+                    </span>
+                    <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight mb-3">
+                        Onboarding Required
+                    </h2>
+                    <p className="text-slate-500 text-sm leading-relaxed mb-6">
+                        To use UPI Cash Withdrawal (QR Cash Point), you must first complete your Fingpay merchant onboarding.
+                    </p>
+                    <div className="flex gap-4">
+                        <button
+                            onClick={() => navigate('/dashboard')}
+                            className="flex-1 py-3.5 border border-slate-200 text-slate-600 rounded-2xl font-bold uppercase tracking-wider text-xs hover:bg-slate-50 transition"
+                        >
+                            Back
+                        </button>
+                        <button
+                            onClick={() => navigate('/aeps-onboarding?provider=fingpay')}
+                            className="flex-1 py-3.5 bg-blue-600 text-white rounded-2xl font-bold uppercase tracking-wider text-xs hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition flex items-center justify-center gap-1.5"
+                        >
+                            Start Onboarding
+                            <ArrowRight size={14} />
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -537,7 +617,7 @@ const UpiCashPoint = () => {
                     <div className="flex items-center gap-2 pt-1">
                         <button
                             type="button"
-                            onClick={() => navigate('/retailer/aeps')}
+                            onClick={() => navigate('/aeps-1')}
                             className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
                         >
                             Go to AEPS (Daily 2FA / eKYC)

@@ -60,6 +60,10 @@ export default function AEPS() {
                     window.history.replaceState({}, '');
                 }
                 setStatus(res);
+                if (provider === 'fingpay' && !res.onboarded) {
+                    navigate(`/aeps-onboarding?provider=${provider}`, { replace: true });
+                    return;
+                }
             } catch (e) {
                 console.error("Failed to fetch AEPS status", e);
                 setError("Unable to sync AEPS registration status. Check network.");
