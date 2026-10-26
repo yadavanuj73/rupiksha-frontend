@@ -22,7 +22,7 @@ import java.util.UUID;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/upicw")
+@RequestMapping({"/api/v1/upicw", "/api/upicw"})
 @RequiredArgsConstructor
 public class FingpayUpiCashController {
 

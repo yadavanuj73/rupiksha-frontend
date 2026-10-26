@@ -521,10 +521,10 @@ const UpiCashPoint = () => {
                     <motion.div
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="grid grid-cols-1 lg:grid-cols-12 gap-6"
+                        className="max-w-2xl mx-auto"
                     >
-                        {/* Left Form (7 cols) */}
-                        <div className="lg:col-span-7 bg-white p-6 md:p-8 rounded-3xl border border-slate-200/80 shadow-sm space-y-6">
+                        {/* Form Card */}
+                        <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200/80 shadow-sm space-y-6">
                             <div>
                                 <h2 className="text-base font-black text-slate-800 uppercase tracking-wide">
                                     Initiate Cash Withdrawal
@@ -627,73 +627,6 @@ const UpiCashPoint = () => {
                                     </>
                                 )}
                             </button>
-                        </div>
-
-                        {/* Right Guide (5 cols) */}
-                        <div className="lg:col-span-5 space-y-4">
-                            <div className="bg-gradient-to-br from-indigo-900 via-slate-900 to-purple-950 text-white p-6 rounded-3xl shadow-xl space-y-4">
-                                <div className="flex items-center gap-2.5">
-                                    <Sparkles size={20} className="text-amber-400" />
-                                    <h3 className="text-sm font-black uppercase tracking-wider">
-                                        How It Works
-                                    </h3>
-                                </div>
-
-                                <div className="space-y-3.5 text-xs text-slate-300">
-                                    <div className="flex items-start gap-3">
-                                        <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-[11px] font-black text-white flex-shrink-0 mt-0.5">
-                                            1
-                                        </div>
-                                        <p>Enter the cash amount the customer wishes to withdraw at your counter.</p>
-                                    </div>
-                                    <div className="flex items-start gap-3">
-                                        <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-[11px] font-black text-white flex-shrink-0 mt-0.5">
-                                            2
-                                        </div>
-                                        <p>A certified NPCI dynamic UPI QR code is generated instantly via Fingpay.</p>
-                                    </div>
-                                    <div className="flex items-start gap-3">
-                                        <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-[11px] font-black text-white flex-shrink-0 mt-0.5">
-                                            3
-                                        </div>
-                                        <p>Customer scans with any UPI app (GPay, PhonePe, Paytm, BHIM, etc.) & approves payment.</p>
-                                    </div>
-                                    <div className="flex items-start gap-3">
-                                        <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-[11px] font-black text-white flex-shrink-0 mt-0.5">
-                                            4
-                                        </div>
-                                        <p>Upon real-time SUCCESS confirmation, your digital wallet is credited automatically. You hand physical cash to the customer.</p>
-                                    </div>
-                                </div>
-
-                                <div className="p-3 rounded-2xl bg-white/10 border border-white/15 text-[11px] text-amber-200 flex items-start gap-2">
-                                    <ShieldCheck size={16} className="text-amber-300 flex-shrink-0 mt-0.5" />
-                                    <span>
-                                        <strong>Important:</strong> Only hand cash to customer when the screen displays <strong>TRANSACTION SUCCESSFUL</strong> with a green checkmark.
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* Limits Card */}
-                            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm space-y-2 text-xs">
-                                <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-400">
-                                    NPCI Regulatory Guidelines
-                                </h4>
-                                <ul className="space-y-1.5 text-slate-600">
-                                    <li className="flex justify-between">
-                                        <span>Per-Txn Limit:</span>
-                                        <span className="font-black text-slate-800">₹100 – ₹5,000</span>
-                                    </li>
-                                    <li className="flex justify-between">
-                                        <span>Allowed Denominations:</span>
-                                        <span className="font-black text-slate-800">Multiples of ₹100</span>
-                                    </li>
-                                    <li className="flex justify-between">
-                                        <span>Daily Limit:</span>
-                                        <span className="font-black text-slate-800">₹10,000 / ₹30,000</span>
-                                    </li>
-                                </ul>
-                            </div>
                         </div>
                     </motion.div>
                 )}
