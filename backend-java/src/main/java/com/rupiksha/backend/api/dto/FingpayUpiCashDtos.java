@@ -197,4 +197,19 @@ public class FingpayUpiCashDtos {
         private Instant createdAt;
         private Instant updatedAt;
     }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public static class MerchantInfoResponse {
+        private String bcLoginId;
+        private boolean onboarded;
+        private boolean kycDone;
+        private boolean bankEkycDone;
+        private String source;
+    }
 }
+

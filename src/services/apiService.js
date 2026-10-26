@@ -867,7 +867,10 @@ export const upiCashPointService = {
   },
   getDetails: (id) =>
     apiFetch(`/upicw/details/${id}`),
+  getMerchantInfo: () =>
+    apiFetch('/upicw/merchant-info'),
 };
+
 
 
 

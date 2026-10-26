@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rupiksha.aeps.provider.fingpay.entity.AepsKyc;
 import com.rupiksha.aeps.provider.fingpay.repository.AepsKycRepository;
+import com.rupiksha.aeps.repository.AepsUserRepository;
 import com.rupiksha.backend.api.dto.FingpayUpiCashDtos.*;
 import com.rupiksha.backend.api.dto.WalletDtos;
 import com.rupiksha.backend.domain.*;
@@ -46,6 +47,7 @@ public class FingpayUpiCashServiceImpl implements FingpayUpiCashService {
     private final UserRepository userRepository;
     private final UserServiceRepository userServiceRepository;
     private final AepsKycRepository aepsKycRepository;
+    private final AepsUserRepository aepsUserRepository;
     private final TxnRepository txnRepository;
     private final FingpayUpiCashTransactionRepository upiTransactionRepository;
     private final WalletService walletService;
@@ -83,6 +85,13 @@ public class FingpayUpiCashServiceImpl implements FingpayUpiCashService {
     @Value("${fingpay.upicw.merchant-daily-limit:30000}")
     private BigDecimal configuredDailyLimit;
 
+    @Value("${fingpay.upicw.default-merchant-id:}")
+    private String defaultMerchantId;
+
+    @Value("${fingpay.upicw.default-merchant-pin:}")
+    private String defaultMerchantPin;
+
+
     @Override
     @Transactional
     public InitiateResponse initiatePayment(UUID userId, InitiateRequest request, String ipAddress) {
@@ -112,7 +121,12 @@ public class FingpayUpiCashServiceImpl implements FingpayUpiCashService {
         // 3. Resolve existing Fingpay merchant mapping & PIN
         String bcLoginId = resolveMerchantId(user);
         String rawPin = resolveMerchantPin(user);
-        String md5Pin = cryptoUtil.md5(rawPin);
+        String md5Pin = (rawPin != null && rawPin.matches("^[a-fA-F0-9]{32}$"))
+                ? rawPin.toLowerCase()
+                : cryptoUtil.md5(rawPin);
+
+        log.info("Initiating UPI Cash Withdrawal: user={}, username={}, bcLoginId={}, hasMpin={}, pinLength={}",
+                user.getId(), user.getUsername(), maskString(bcLoginId), rawPin != null && !rawPin.isBlank(), rawPin != null ? rawPin.length() : 0);
 
         // 4. Generate unique partnerRequestId
         String partnerRequestId = "RXUPI" + System.currentTimeMillis() + (int)(Math.random() * 9000 + 1000);
@@ -272,10 +286,21 @@ public class FingpayUpiCashServiceImpl implements FingpayUpiCashService {
                 if (data != null && !data.isMissingNode() && data.path("responseMessage").asText("").length() > 0) {
                     errorMsg = data.path("responseMessage").asText();
                 }
+
+                boolean isAccountValidating = errorMsg.toLowerCase().contains("being validated") 
+                        || errorMsg.toLowerCase().contains("account is being validated");
+
+                if (isAccountValidating) {
+                    log.warn("Fingpay BC Merchant ID [{}] is currently undergoing compliance validation: {}",
+                            maskString(bcLoginId), errorMsg);
+                }
+
+                String respCode = root.path("statusCode").asText("10001");
                 txn.setInternalStatus("FAILED");
                 txn.setProviderStatus("FAILED");
                 txn.setErrorMessage(errorMsg);
-                txn.setResponseCode(root.path("statusCode").asText("10001"));
+                txn.setResponseCode(respCode);
+                txn.setResponseMessage(errorMsg);
                 txn.setUpdatedAt(Instant.now());
                 upiTransactionRepository.save(txn);
 
@@ -284,6 +309,8 @@ public class FingpayUpiCashServiceImpl implements FingpayUpiCashService {
                         .message(errorMsg)
                         .partnerRequestId(partnerRequestId)
                         .amount(amount)
+                        .responseCode(respCode)
+                        .responseMessage(errorMsg)
                         .build();
             }
 
@@ -784,22 +811,81 @@ public class FingpayUpiCashServiceImpl implements FingpayUpiCashService {
                 .build();
     }
 
+    public Optional<AepsKyc> findFingKyc(User mainUser) {
+        if (mainUser == null) return Optional.empty();
+        long uidLong = mainUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
+        return aepsKycRepository.findByUid(uidLong)
+                .or(() -> (mainUser.getPartyCode() != null && !mainUser.getPartyCode().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getPartyCode().trim()) : Optional.empty())
+                .or(() -> (mainUser.getAepsAgentId() != null && !mainUser.getAepsAgentId().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getAepsAgentId().trim()) : Optional.empty())
+                .or(() -> (mainUser.getAepsMerchantId() != null && !mainUser.getAepsMerchantId().isBlank()) ? aepsKycRepository.findByMerchantId(mainUser.getAepsMerchantId().trim()) : Optional.empty())
+                .or(() -> (mainUser.getUsername() != null && !mainUser.getUsername().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getUsername().trim()) : Optional.empty())
+                .or(() -> (mainUser.getUsername() != null && !mainUser.getUsername().isBlank()) ? aepsKycRepository.findByMerchantId(mainUser.getUsername().trim()) : Optional.empty())
+                .or(() -> (mainUser.getMobile() != null && !mainUser.getMobile().isBlank()) ? aepsKycRepository.findByOutlet(mainUser.getMobile().trim()) : Optional.empty())
+                .or(() -> (mainUser.getMobile() != null && !mainUser.getMobile().isBlank()) ? aepsKycRepository.findByMerchantId(mainUser.getMobile().trim()) : Optional.empty());
+    }
+
     public String resolveMerchantId(User user) {
+        // 1. Explicit UPI Cash Point override on User entity
         if (user.getUpicwMerchantId() != null && !user.getUpicwMerchantId().isBlank()) {
             return user.getUpicwMerchantId().trim();
         }
+
+        // 2. Direct user AepsAgentId if already set
         if (user.getAepsAgentId() != null && !user.getAepsAgentId().isBlank()) {
             return user.getAepsAgentId().trim();
         }
+
+        // 3. User partyCode
         if (user.getPartyCode() != null && !user.getPartyCode().isBlank()) {
             return user.getPartyCode().trim();
         }
+
+        // 4. Authoritative Fingpay KYC mapping (outlet or merchantId from aepskyc table)
+        Optional<AepsKyc> fingKycOpt = findFingKyc(user);
+        if (fingKycOpt.isPresent()) {
+            AepsKyc kyc = fingKycOpt.get();
+            if (kyc.getOutlet() != null && !kyc.getOutlet().isBlank()) {
+                return kyc.getOutlet().trim();
+            }
+            if (kyc.getMerchantId() != null && !kyc.getMerchantId().isBlank()) {
+                return kyc.getMerchantId().trim();
+            }
+        }
+
+        // 5. AEPS User profile (aeps_users table)
+        if (aepsUserRepository != null) {
+            Optional<com.rupiksha.aeps.entity.User> aepsUserOpt = Optional.empty();
+            if (user.getMobile() != null && !user.getMobile().isBlank()) {
+                aepsUserOpt = aepsUserRepository.findByMobile(user.getMobile().trim());
+            }
+            if (aepsUserOpt.isEmpty() && user.getUsername() != null && !user.getUsername().isBlank()) {
+                aepsUserOpt = aepsUserRepository.findByUsername(user.getUsername().trim());
+            }
+            if (aepsUserOpt.isPresent()) {
+                com.rupiksha.aeps.entity.User aepsUser = aepsUserOpt.get();
+                if (aepsUser.getAepsAgentId() != null && !aepsUser.getAepsAgentId().isBlank()) {
+                    return aepsUser.getAepsAgentId().trim();
+                }
+                if (aepsUser.getAepsMerchantId() != null && !aepsUser.getAepsMerchantId().isBlank()) {
+                    return aepsUser.getAepsMerchantId().trim();
+                }
+            }
+        }
+
+        // 6. AEPS Merchant ID / CMS Merchant ID
         if (user.getAepsMerchantId() != null && !user.getAepsMerchantId().isBlank()) {
             return user.getAepsMerchantId().trim();
         }
         if (user.getCmsMerchantId() != null && !user.getCmsMerchantId().isBlank()) {
             return user.getCmsMerchantId().trim();
         }
+
+        // 7. Configured aggregator default BC ID
+        if (defaultMerchantId != null && !defaultMerchantId.isBlank()) {
+            return defaultMerchantId.trim();
+        }
+
+        // 8. Fallback to username or mobile
         if (user.getUsername() != null && !user.getUsername().isBlank()) {
             return user.getUsername().trim();
         }
@@ -810,16 +896,75 @@ public class FingpayUpiCashServiceImpl implements FingpayUpiCashService {
         if (user.getUpicwMerchantPin() != null && !user.getUpicwMerchantPin().isBlank()) {
             return user.getUpicwMerchantPin().trim();
         }
-        long uidLong = user.getId().getMostSignificantBits() & Long.MAX_VALUE;
-        Optional<AepsKyc> kycExisting = aepsKycRepository.findByUid(uidLong);
+        Optional<AepsKyc> kycExisting = findFingKyc(user);
         if (kycExisting.isPresent() && kycExisting.get().getMpin() != null && !kycExisting.get().getMpin().isBlank()) {
             return kycExisting.get().getMpin().trim();
         }
         if (user.getCmsMerchantPin() != null && !user.getCmsMerchantPin().isBlank()) {
             return user.getCmsMerchantPin().trim();
         }
+        if (defaultMerchantPin != null && !defaultMerchantPin.isBlank()) {
+            return defaultMerchantPin.trim();
+        }
         return "1234";
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MerchantInfoResponse getMerchantInfo(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+
+        String bcLoginId = resolveMerchantId(user);
+        Optional<AepsKyc> fingKycOpt = findFingKyc(user);
+
+        boolean kycDone = false;
+        boolean bankEkycDone = false;
+        boolean onboarded = false;
+        String source = "FALLBACK";
+
+        if (user.getUpicwMerchantId() != null && !user.getUpicwMerchantId().isBlank()) {
+            source = "UPICW_CUSTOM";
+            onboarded = true;
+        } else if (user.getAepsAgentId() != null && !user.getAepsAgentId().isBlank()) {
+            source = "CORE_USER_AEPS_AGENT";
+            onboarded = true;
+        } else if (user.getPartyCode() != null && !user.getPartyCode().isBlank()) {
+            source = "PARTY_CODE";
+            onboarded = true;
+        } else if (fingKycOpt.isPresent()) {
+            AepsKyc kyc = fingKycOpt.get();
+            source = "AEPS_KYC";
+            onboarded = (kyc.getOutlet() != null && !kyc.getOutlet().isBlank()) || (kyc.getMerchantId() != null && !kyc.getMerchantId().isBlank());
+            kycDone = Boolean.TRUE.equals(kyc.getKycDone());
+            bankEkycDone = Boolean.TRUE.equals(kyc.getBankEkycDone());
+        } else if (defaultMerchantId != null && !defaultMerchantId.isBlank()) {
+            source = "DEFAULT_CONFIG";
+            onboarded = true;
+        }
+
+        if (fingKycOpt.isPresent()) {
+            AepsKyc kyc = fingKycOpt.get();
+            if (Boolean.TRUE.equals(kyc.getKycDone())) kycDone = true;
+            if (Boolean.TRUE.equals(kyc.getBankEkycDone())) bankEkycDone = true;
+        }
+
+        return MerchantInfoResponse.builder()
+                .bcLoginId(bcLoginId)
+                .onboarded(onboarded)
+                .kycDone(kycDone)
+                .bankEkycDone(bankEkycDone)
+                .source(source)
+                .build();
+    }
+
+    private String maskString(String val) {
+        if (val == null || val.isBlank()) return "N/A";
+        String trimmed = val.trim();
+        if (trimmed.length() <= 4) return "****";
+        return trimmed.substring(0, 2) + "****" + trimmed.substring(trimmed.length() - 2);
+    }
+
 
     private void validateAmount(BigDecimal amount) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {

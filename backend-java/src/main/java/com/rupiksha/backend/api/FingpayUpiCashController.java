@@ -170,6 +170,20 @@ public class FingpayUpiCashController {
         return ResponseEntity.ok(detail);
     }
 
+    /**
+     * Retrieves the merchant's resolved Fingpay BC credentials & onboarding status.
+     */
+    @GetMapping("/merchant-info")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MerchantInfoResponse> getMerchantInfo(
+            @AuthenticationPrincipal JwtPrincipal principal) {
+
+        UUID userId = UUID.fromString(principal.userId());
+        MerchantInfoResponse response = upiCashService.getMerchantInfo(userId);
+        return ResponseEntity.ok(response);
+    }
+
+
     private String resolveClientIp(HttpServletRequest request) {
         String xForwardedFor = request.getHeader("X-Forwarded-For");
         if (xForwardedFor != null && !xForwardedFor.isBlank()) {

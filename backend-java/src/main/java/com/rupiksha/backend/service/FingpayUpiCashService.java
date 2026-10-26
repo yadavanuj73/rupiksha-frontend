@@ -25,4 +25,7 @@ public interface FingpayUpiCashService {
     HistorySummaryResponse getHistorySummary(UUID userId);
 
     TransactionDetailResponse getTransactionDetail(UUID userId, UUID transactionId);
+
+    MerchantInfoResponse getMerchantInfo(UUID userId);
 }
+

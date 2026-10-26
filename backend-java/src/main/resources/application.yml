@@ -291,6 +291,8 @@ fingpay:
     use-uat: ${FINGPAY_UPICW_USE_UAT:false}
     rsa-transformation: ${FINGPAY_UPICW_RSA_TRANSFORMATION:RSA/ECB/OAEPWithMD5AndMGF1Padding}
     merchant-daily-limit: ${FINGPAY_UPICW_DAILY_LIMIT:30000}
+    default-merchant-id: ${FINGPAY_UPICW_DEFAULT_MERCHANT_ID:}
+    default-merchant-pin: ${FINGPAY_UPICW_DEFAULT_MERCHANT_PIN:}
 
 
 

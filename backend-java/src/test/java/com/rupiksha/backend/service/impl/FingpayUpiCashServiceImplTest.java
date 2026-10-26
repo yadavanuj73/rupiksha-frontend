@@ -3,6 +3,7 @@ package com.rupiksha.backend.service.impl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rupiksha.aeps.provider.fingpay.entity.AepsKyc;
 import com.rupiksha.aeps.provider.fingpay.repository.AepsKycRepository;
+import com.rupiksha.aeps.repository.AepsUserRepository;
 import com.rupiksha.backend.api.dto.FingpayUpiCashDtos.*;
 import com.rupiksha.backend.api.dto.WalletDtos;
 import com.rupiksha.backend.domain.*;
@@ -42,6 +43,9 @@ public class FingpayUpiCashServiceImplTest {
 
     @Mock
     private AepsKycRepository aepsKycRepository;
+
+    @Mock
+    private AepsUserRepository aepsUserRepository;
 
     @Mock
     private TxnRepository txnRepository;
@@ -99,11 +103,22 @@ public class FingpayUpiCashServiceImplTest {
         String id2 = upiCashService.resolveMerchantId(testUser);
         assertEquals("PC123", id2);
 
-        // 3. Custom UPICW override if set
-        testUser.setUpicwMerchantId("CUSTOM_UPI_ID");
+        // 3. Should fallback to AepsKyc outlet if partyCode and aepsAgentId are missing
+        testUser.setPartyCode(null);
+        long uidLong = testUser.getId().getMostSignificantBits() & Long.MAX_VALUE;
+        AepsKyc kyc = new AepsKyc();
+        kyc.setUid(uidLong);
+        kyc.setOutlet("FP_OUTLET_99");
+        when(aepsKycRepository.findByUid(uidLong)).thenReturn(Optional.of(kyc));
         String id3 = upiCashService.resolveMerchantId(testUser);
-        assertEquals("CUSTOM_UPI_ID", id3);
+        assertEquals("FP_OUTLET_99", id3);
+
+        // 4. Custom UPICW override takes precedence if set
+        testUser.setUpicwMerchantId("CUSTOM_UPI_ID");
+        String id4 = upiCashService.resolveMerchantId(testUser);
+        assertEquals("CUSTOM_UPI_ID", id4);
     }
+
 
     @Test
     @DisplayName("Verify merchant PIN resolution reuses existing Fingpay MPIN from aepskyc")

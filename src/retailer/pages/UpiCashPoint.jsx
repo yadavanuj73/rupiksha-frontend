@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     HandCoins, ShieldCheck, MapPin, AlertTriangle, CheckCircle2,
     Clock, RefreshCw, XCircle, ArrowRight, Printer, Download,
-    Info, Copy, Check, Smartphone, Landmark, AlertCircle, Sparkles
+    Info, Copy, Check, Smartphone, Landmark, AlertCircle, Sparkles, ShieldAlert
 } from 'lucide-react';
+
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
@@ -498,9 +499,63 @@ const UpiCashPoint = () => {
                 </div>
             </div>
 
-            {/* Error banner */}
-            {errorMsg && (
-                <div className="max-w-5xl mx-auto p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between gap-3">
+            {/* Error & Account Validation Notice */}
+            {errorMsg && (errorMsg.toLowerCase().includes('validated') || errorMsg.toLowerCase().includes('validation')) ? (
+                <div className="max-w-2xl mx-auto p-5 rounded-3xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 text-amber-900 shadow-sm space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                            <div className="p-2 bg-amber-100 text-amber-700 rounded-2xl flex-shrink-0 mt-0.5">
+                                <ShieldAlert size={20} />
+                            </div>
+                            <div className="space-y-1">
+                                <h3 className="text-sm font-black uppercase tracking-wide text-amber-900">
+                                    Merchant Account Under Fingpay Validation
+                                </h3>
+                                <p className="text-xs text-amber-800 leading-relaxed font-medium">
+                                    {errorMsg}
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setErrorMsg('')}
+                            className="text-amber-600 hover:text-amber-800 text-xs font-bold px-2 py-1"
+                        >
+                            Dismiss
+                        </button>
+                    </div>
+
+                    <div className="p-3 bg-white/80 rounded-2xl border border-amber-200/60 text-[11px] text-amber-800 space-y-1.5">
+                        <p className="font-semibold text-slate-700">What does this mean?</p>
+                        <ul className="list-disc list-inside space-y-1 text-slate-600">
+                            <li>Fingpay (Tapits Technologies) is currently verifying your Business Correspondent (BC) credentials for cash withdrawal compliance mandated by NPCI.</li>
+                            <li>Validation typically completes in 24–48 working hours. Once verified, QR generation and withdrawals activate automatically.</li>
+                            <li>If you have not completed your AEPS Bank eKYC (biometric authentication), doing so expedites your approval.</li>
+                        </ul>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                        <button
+                            type="button"
+                            onClick={() => navigate('/retailer/aeps')}
+                            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+                        >
+                            Go to AEPS / Complete eKYC
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setErrorMsg('');
+                                handleInitiate();
+                            }}
+                            className="px-4 py-2 bg-white hover:bg-amber-50 border border-amber-300 text-amber-900 rounded-xl text-xs font-bold transition-all"
+                        >
+                            Retry Initiation
+                        </button>
+                    </div>
+                </div>
+            ) : errorMsg ? (
+                <div className="max-w-2xl mx-auto p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
                         <AlertCircle size={18} className="text-rose-600 flex-shrink-0" />
                         <span>{errorMsg}</span>
@@ -513,7 +568,8 @@ const UpiCashPoint = () => {
                         Dismiss
                     </button>
                 </div>
-            )}
+            ) : null}
+
 
             {/* Main Interactive Container */}
             <div className="max-w-5xl mx-auto">
