@@ -946,87 +946,125 @@ const UpiCashPoint = () => {
                     <motion.div
                         initial={{ opacity: 0, scale: 0.98 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="max-w-xl mx-auto w-full bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-md text-center space-y-3"
+                        className="max-w-[460px] mx-auto w-full bg-white p-3 sm:p-3.5 rounded-2xl border border-slate-200/90 shadow-sm text-center flex flex-col gap-2 sm:gap-2.5 shrink-0"
                     >
-                        {/* Countdown Header */}
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                        {/* 1. Countdown Header */}
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                             <div className="text-left">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Transaction Status</p>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Transaction Status</p>
                                 <div className="flex items-center gap-1.5 mt-0.5">
                                     <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
-                                    <span className="text-xs font-black text-blue-700 uppercase tracking-wider">Awaiting UPI Payment</span>
+                                    <span className="text-xs font-black text-blue-600 uppercase tracking-wide">Awaiting UPI Payment</span>
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-50 border border-amber-200 text-amber-800">
-                                <Clock size={14} className="animate-spin text-amber-600" />
-                                <span className="text-xs font-black tracking-wider">
+                            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800">
+                                <Clock size={12} className="animate-spin text-amber-600" />
+                                <span className="text-[11px] font-bold tracking-wide">
                                     Expires in {timeLeft}s
                                 </span>
                             </div>
                         </div>
 
-                        {/* Amount Highlight */}
+                        {/* 2. Amount Highlight */}
                         <div className="space-y-0.5">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Withdrawal Amount</p>
-                            <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                            <p className="text-[9.5px] font-bold text-slate-400 uppercase tracking-widest leading-none">WITHDRAWAL AMOUNT</p>
+                            <p className="text-2xl sm:text-[26px] font-black text-slate-900 tracking-tight leading-none mt-1">
                                 ₹{parseFloat(activeTxn.amount || amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                             </p>
                         </div>
 
-                        {/* Dynamic QR Display */}
-                        <div className="flex flex-col items-center justify-center p-3.5 bg-[#F8FAFC] border border-slate-200/80 rounded-2xl max-w-xs mx-auto shadow-inner">
-                            <div className="bg-white p-3 rounded-xl shadow-xs border border-slate-200/80">
+                        {/* 3. Dynamic QR Container with Authentic UPI Logos underneath */}
+                        <div className="flex flex-col items-center justify-center p-2.5 bg-[#F8FAFC] border border-slate-100 rounded-2xl max-w-[240px] mx-auto shadow-inner">
+                            <div className="bg-white p-2 rounded-xl shadow-2xs border border-slate-200/80">
                                 <img
                                     src={activeTxn.intentLink?.startsWith('data:') ? activeTxn.intentLink : `data:image/png;base64,${activeTxn.intentLink}`}
                                     alt="UPI Cash Withdrawal QR"
-                                    className="w-48 h-48 sm:w-52 sm:h-52 object-contain"
+                                    className="w-32 h-32 sm:w-36 sm:h-36 object-contain"
                                 />
                             </div>
 
-                            <div className="mt-2.5 flex items-center gap-1.5 text-[11px] font-semibold text-slate-600">
-                                <Smartphone size={14} className="text-blue-600" />
-                                <span>Scan with PhonePe, Google Pay, Paytm, or BHIM</span>
+                            {/* 4 UPI Logos in a compact row: PhonePe, Google Pay, Paytm, BHIM without any captions */}
+                            <div className="flex items-center justify-center gap-1.5 pt-2">
+                                <div className="h-7 w-11 bg-white rounded-lg border border-slate-200/80 shadow-2xs flex items-center justify-center p-1">
+                                    <PhonePeLogo className="h-5 w-auto" />
+                                </div>
+                                <div className="h-7 w-11 bg-white rounded-lg border border-slate-200/80 shadow-2xs flex items-center justify-center p-1">
+                                    <GooglePayLogo className="h-4 w-auto" />
+                                </div>
+                                <div className="h-7 w-11 bg-white rounded-lg border border-slate-200/80 shadow-2xs flex items-center justify-center p-1">
+                                    <PaytmLogo className="h-3.5 w-auto" />
+                                </div>
+                                <div className="h-7 w-11 bg-white rounded-lg border border-slate-200/80 shadow-2xs flex items-center justify-center p-1">
+                                    <BhimLogo className="h-3 w-auto" />
+                                </div>
                             </div>
                         </div>
 
-                        {/* QR Note from provider */}
-                        {activeTxn.qrExpiryNote && (
-                            <p className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-xl border border-amber-200">
-                                {activeTxn.qrExpiryNote}
+                        {/* 4. Amber Warning Message Card */}
+                        <div className="p-2 sm:p-2.5 rounded-xl bg-[#FEFCE8] border border-[#FEF08A] text-left flex items-start gap-2">
+                            <div className="w-4 h-4 rounded-full bg-amber-400 text-white flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">
+                                !
+                            </div>
+                            <p className="text-[10px] sm:text-[10.5px] text-amber-900 leading-tight">
+                                {activeTxn.qrExpiryNote || `Please ask the customer to keep their UPI scanner open and ready before generating the QR code. The code will expire in ${activeTxn.qrExpiryIn || 60} seconds.`}
                             </p>
-                        )}
+                        </div>
 
-                        {/* Transaction References without Fingpay */}
-                        <div className="grid grid-cols-2 gap-2 text-left text-xs bg-[#F8FAFC] p-2.5 rounded-xl border border-slate-200/70">
-                            <div>
-                                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Partner Request ID</span>
-                                <span className="font-mono text-xs font-bold text-slate-700 truncate block">{activeTxn.partnerRequestId}</span>
+                        {/* 5. Transaction References with Copy Buttons (No Fingpay name) */}
+                        <div className="grid grid-cols-2 gap-2 text-left bg-[#F8FAFC] p-2 rounded-xl border border-slate-200/80">
+                            <div className="min-w-0">
+                                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block truncate">PARTNER REQUEST ID</span>
+                                <div className="flex items-center justify-between gap-1 mt-0.5">
+                                    <span className="font-mono text-[11px] font-bold text-slate-800 truncate block">
+                                        {activeTxn.partnerRequestId}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleCopy(activeTxn.partnerRequestId, 'partnerRequestId')}
+                                        className="text-slate-400 hover:text-slate-600 transition-colors shrink-0 p-0.5"
+                                        title="Copy Partner Request ID"
+                                    >
+                                        {copiedField === 'partnerRequestId' ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                                    </button>
+                                </div>
                             </div>
-                            <div>
-                                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Gateway Txn ID</span>
-                                <span className="font-mono text-xs font-bold text-slate-700 truncate block">{activeTxn.fpTxnId || 'Pending'}</span>
+                            <div className="min-w-0">
+                                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block truncate">EXTERNAL TXN ID</span>
+                                <div className="flex items-center justify-between gap-1 mt-0.5">
+                                    <span className="font-mono text-[11px] font-bold text-slate-800 truncate block">
+                                        {activeTxn.fpTxnId || activeTxn.fingpayTransactionId || 'Pending'}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleCopy(activeTxn.fpTxnId || activeTxn.fingpayTransactionId, 'txnId')}
+                                        className="text-slate-400 hover:text-slate-600 transition-colors shrink-0 p-0.5"
+                                        title="Copy External Transaction ID"
+                                    >
+                                        {copiedField === 'txnId' ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Action buttons */}
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
+                        {/* 6. Action Buttons */}
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-0.5">
                             <button
                                 type="button"
                                 disabled={statusLoading}
                                 onClick={() => checkTransactionStatus(true)}
-                                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-1.5"
+                                className="w-full sm:w-auto flex-1 py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-xs flex items-center justify-center gap-1.5"
                             >
-                                <RefreshCw size={13} className={statusLoading ? 'animate-spin' : ''} />
-                                <span>{statusLoading ? 'Verifying...' : 'Check Status Now'}</span>
+                                <RefreshCw size={12} className={statusLoading ? 'animate-spin' : ''} />
+                                <span>{statusLoading ? 'Checking...' : 'CHECK STATUS NOW'}</span>
                             </button>
 
                             <button
                                 type="button"
                                 onClick={handleReset}
-                                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs uppercase tracking-wider transition-all"
+                                className="w-full sm:w-auto flex-1 py-2 px-4 rounded-xl bg-[#F8FAFC] hover:bg-slate-100 text-slate-700 border border-slate-200/90 font-bold text-xs uppercase tracking-wider transition-all"
                             >
-                                Cancel / New Transaction
+                                CANCEL / NEW TRANSACTION
                             </button>
                         </div>
                     </motion.div>
