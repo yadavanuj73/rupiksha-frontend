@@ -77,6 +77,7 @@ public class FingpayUpiCashDtos {
     public static class StatusCheckResponse {
         private boolean success;
         private String status; // "SUCCESS", "FAILED", "PENDING"
+        private String txnStatus; // Alias to match frontend expectations
         private String message;
         private String partnerRequestId;
         private String fingpayTxnId;
@@ -89,6 +90,10 @@ public class FingpayUpiCashDtos {
         private String responseMessage;
         private boolean walletCredited;
         private BigDecimal walletBalance;
+
+        public String getTxnStatus() {
+            return txnStatus != null ? txnStatus : status;
+        }
     }
 
     @Getter
@@ -180,6 +185,8 @@ public class FingpayUpiCashDtos {
         private String transactionType;
         private String providerStatus;
         private String internalStatus;
+        private String status;
+        private String txnStatus;
         private String bankRrn;
         private String payerName;
         private String payerVpa;
@@ -196,6 +203,14 @@ public class FingpayUpiCashDtos {
         private String reconMessage;
         private Instant createdAt;
         private Instant updatedAt;
+
+        public String getStatus() {
+            return status != null ? status : (internalStatus != null ? internalStatus : providerStatus);
+        }
+
+        public String getTxnStatus() {
+            return getStatus();
+        }
     }
 
     @Getter

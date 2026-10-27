@@ -763,6 +763,7 @@ public class FingpayUpiCashServiceImpl implements FingpayUpiCashService {
         return StatusCheckResponse.builder()
                 .success(true)
                 .status("SUCCESS")
+                .txnStatus("SUCCESS")
                 .message("Payment successful. Amount credited to wallet.")
                 .partnerRequestId(txn.getPartnerRequestId())
                 .fingpayTxnId(txn.getFpTransactionId())
@@ -778,9 +779,11 @@ public class FingpayUpiCashServiceImpl implements FingpayUpiCashService {
     }
 
     private StatusCheckResponse buildStatusResponse(FingpayUpiCashTransaction txn, boolean success, boolean credited, String msg) {
+        String st = txn.getInternalStatus() != null ? txn.getInternalStatus() : txn.getProviderStatus();
         return StatusCheckResponse.builder()
                 .success(success)
-                .status(txn.getInternalStatus())
+                .status(st)
+                .txnStatus(st)
                 .message(msg)
                 .partnerRequestId(txn.getPartnerRequestId())
                 .fingpayTxnId(txn.getFpTransactionId())
@@ -795,6 +798,7 @@ public class FingpayUpiCashServiceImpl implements FingpayUpiCashService {
     }
 
     private TransactionDetailResponse mapToDetailDto(FingpayUpiCashTransaction t) {
+        String status = t.getInternalStatus() != null ? t.getInternalStatus() : t.getProviderStatus();
         return TransactionDetailResponse.builder()
                 .id(t.getId())
                 .partnerRequestId(t.getPartnerRequestId())
@@ -804,6 +808,8 @@ public class FingpayUpiCashServiceImpl implements FingpayUpiCashService {
                 .transactionType(t.getTransactionType())
                 .providerStatus(t.getProviderStatus())
                 .internalStatus(t.getInternalStatus())
+                .status(status)
+                .txnStatus(status)
                 .bankRrn(t.getBankRrn())
                 .payerName(t.getPayerName())
                 .payerVpa(t.getPayerVpa())

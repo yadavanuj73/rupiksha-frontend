@@ -189,11 +189,24 @@ const UpiCashPoint = () => {
             });
 
             if (res && res.success) {
-                const st = (res.txnStatus || '').toUpperCase();
-                if (st === 'SUCCESS') {
+                const st = (res.status || res.txnStatus || res.internalStatus || '').toUpperCase();
+                const isPaid = st === 'SUCCESS' || res.walletCredited || (res.bankRrn && res.responseCode === '00');
+                const isFailed = st === 'FAILED' || st === 'FAILURE';
+
+                if (isPaid) {
                     setTxnState('SUCCESS');
-                    setActiveTxn(prev => ({ ...prev, ...res }));
+                    setActiveTxn(prev => ({ 
+                        ...prev, 
+                        ...res, 
+                        status: 'SUCCESS', 
+                        txnStatus: 'SUCCESS', 
+                        internalStatus: 'SUCCESS' 
+                    }));
                     stopPolling();
+                    if (countdownTimerRef.current) {
+                        clearInterval(countdownTimerRef.current);
+                        countdownTimerRef.current = null;
+                    }
                     if (refreshWallet) refreshWallet();
 
                     // Trigger celebration confetti
@@ -208,12 +221,22 @@ const UpiCashPoint = () => {
                     } catch (err) {
                         // ignore confetti error
                     }
-                } else if (st === 'FAILED') {
+                } else if (isFailed) {
                     setTxnState('FAILED');
-                    setActiveTxn(prev => ({ ...prev, ...res }));
+                    setActiveTxn(prev => ({ 
+                        ...prev, 
+                        ...res, 
+                        status: 'FAILED', 
+                        txnStatus: 'FAILED', 
+                        internalStatus: 'FAILED' 
+                    }));
                     stopPolling();
+                    if (countdownTimerRef.current) {
+                        clearInterval(countdownTimerRef.current);
+                        countdownTimerRef.current = null;
+                    }
                 } else {
-                    // Still pending
+                    // Still pending customer scan
                     setActiveTxn(prev => ({ ...prev, ...res }));
                 }
             }
@@ -232,15 +255,14 @@ const UpiCashPoint = () => {
         stopPolling();
         pollingActiveRef.current = true;
 
+        // Prompt polling: start in 3s, poll every 3s, up to 25 attempts (~75s) to ensure fast detection
         const startDelaySec = initData.statusCheckStartIn && initData.statusCheckStartIn > 0 
-            ? Math.min(initData.statusCheckStartIn, 15) 
-            : 5;
+            ? Math.min(initData.statusCheckStartIn, 3) 
+            : 3;
         const gapSec = initData.statusCheckGap && initData.statusCheckGap > 0 
-            ? Math.max(initData.statusCheckGap, 3) 
-            : 4;
-        const maxAttempts = initData.statusCheckAttempts && initData.statusCheckAttempts > 0 
-            ? initData.statusCheckAttempts 
-            : 15;
+            ? Math.min(Math.max(initData.statusCheckGap, 2), 4) 
+            : 3;
+        const maxAttempts = Math.max(initData.statusCheckAttempts || 15, 25);
 
         let attempts = 0;
 
@@ -370,7 +392,7 @@ const UpiCashPoint = () => {
             doc.text('UPI Cash Point (Cash-at-POS)', w / 2, 16, { align: 'center' });
 
             // Status Badge
-            const isSuccess = activeTxn.txnStatus === 'SUCCESS';
+            const isSuccess = (activeTxn.status || activeTxn.txnStatus || activeTxn.internalStatus) === 'SUCCESS' || txnState === 'SUCCESS';
             doc.setFillColor(isSuccess ? 220 : 254, isSuccess ? 252 : 226, isSuccess ? 231 : 226);
             doc.roundedRect(12, 28, w - 24, 10, 2, 2, 'F');
             doc.setTextColor(isSuccess ? 21 : 225, isSuccess ? 128 : 29, isSuccess ? 61 : 72);

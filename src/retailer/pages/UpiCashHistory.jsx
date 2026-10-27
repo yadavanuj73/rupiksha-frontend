@@ -200,6 +200,16 @@ const UpiCashHistory = () => {
         setTimeout(() => setCopiedField(null), 2000);
     };
 
+// Helper to resolve transaction status with complete fallback tolerance
+const getTxnStatus = (t) => {
+    if (!t) return 'PENDING';
+    const s = String(t.status || t.internalStatus || t.providerStatus || '').toUpperCase();
+    if (s === 'SUCCESS') return 'SUCCESS';
+    if (s === 'FAILED' || s === 'FAILURE') return 'FAILED';
+    if (t.bankRrn && (t.responseCode === '00' || t.responseMessage?.toLowerCase().includes('success'))) return 'SUCCESS';
+    return s || 'PENDING';
+};
+
     // Export to Excel
     const handleExportExcel = async () => {
         try {
@@ -225,7 +235,7 @@ const UpiCashHistory = () => {
                 'Fingpay Txn ID': t.fpTxnId || '',
                 'Bank RRN': t.bankRrn || '',
                 'Amount (INR)': parseFloat(t.amount || 0),
-                'Status': t.status || '',
+                'Status': getTxnStatus(t),
                 'Response Message': t.responseMessage || '',
                 'Payer Name': t.payerName || '',
                 'Payer VPA': t.payerVpa || '',
@@ -276,7 +286,7 @@ const UpiCashHistory = () => {
                 sanitizeCsvCell(t.fpTxnId),
                 sanitizeCsvCell(t.bankRrn),
                 sanitizeCsvCell(t.amount),
-                sanitizeCsvCell(t.status),
+                sanitizeCsvCell(getTxnStatus(t)),
                 sanitizeCsvCell(t.responseMessage),
                 sanitizeCsvCell(t.payerName),
                 sanitizeCsvCell(t.payerVpa),
@@ -376,10 +386,11 @@ const UpiCashHistory = () => {
                 doc.text(`INR ${parseFloat(row.amount || 0).toFixed(2)}`, 160, y);
 
                 // Status text color
-                if (row.status === 'SUCCESS') doc.setTextColor(16, 185, 129);
-                else if (row.status === 'PENDING') doc.setTextColor(245, 158, 11);
+                const rowStatus = getTxnStatus(row);
+                if (rowStatus === 'SUCCESS') doc.setTextColor(16, 185, 129);
+                else if (rowStatus === 'PENDING') doc.setTextColor(245, 158, 11);
                 else doc.setTextColor(239, 68, 68);
-                doc.text(String(row.status || ''), 188, y);
+                doc.text(String(rowStatus || ''), 188, y);
 
                 doc.setTextColor(71, 85, 105);
                 doc.text(`${String(row.payerName || '').slice(0, 12)} (${String(row.payerVpa || '').slice(0, 12)})`, 214, y);
@@ -664,7 +675,8 @@ const UpiCashHistory = () => {
                                 </tr>
                             ) : (
                                 transactions.map((txn) => {
-                                    const badge = STATUS_BADGES[txn.status] || STATUS_BADGES.PENDING;
+                                    const status = getTxnStatus(txn);
+                                    const badge = STATUS_BADGES[status] || STATUS_BADGES.PENDING;
                                     return (
                                         <tr key={txn.id} className="hover:bg-slate-50/70 transition-colors">
                                             {/* Date */}
@@ -730,7 +742,7 @@ const UpiCashHistory = () => {
                                             {/* Actions */}
                                             <td className="p-4 pr-6 text-right whitespace-nowrap">
                                                 <div className="flex items-center justify-end gap-1.5">
-                                                    {txn.status === 'PENDING' && (
+                                                    {status === 'PENDING' && (
                                                         <button
                                                             type="button"
                                                             disabled={reconcilingId === txn.id}
@@ -837,11 +849,16 @@ const UpiCashHistory = () => {
                             {/* Modal Content */}
                             <div className="p-6 space-y-4 text-xs">
                                 <div className="text-center py-2 border-b border-dashed border-slate-200">
-                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-wider ${
-                                        STATUS_BADGES[selectedTxn.status]?.bg || 'bg-slate-100 text-slate-700 border-slate-200'
-                                    }`}>
-                                        {selectedTxn.status}
-                                    </span>
+                                    {(() => {
+                                        const modalStatus = getTxnStatus(selectedTxn);
+                                        const badge = STATUS_BADGES[modalStatus] || STATUS_BADGES.PENDING;
+                                        return (
+                                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-wider ${badge.bg}`}>
+                                                <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
+                                                {badge.label}
+                                            </span>
+                                        );
+                                    })()}
                                     <p className="text-3xl font-black text-slate-900 mt-2">
                                         ₹{parseFloat(selectedTxn.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                     </p>
