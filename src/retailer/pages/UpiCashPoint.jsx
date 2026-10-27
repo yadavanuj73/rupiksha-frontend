@@ -946,10 +946,10 @@ const UpiCashPoint = () => {
                     <motion.div
                         initial={{ opacity: 0, scale: 0.98 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="w-full max-w-4xl mx-auto bg-white p-3.5 sm:p-4 md:p-5 rounded-2xl md:rounded-3xl border border-slate-200/90 shadow-sm flex flex-col md:flex-row gap-3.5 md:gap-5 items-stretch shrink-0"
+                        className="w-full max-w-[820px] mx-auto bg-white p-3.5 sm:p-4 rounded-2xl md:rounded-3xl border border-slate-200/90 shadow-sm flex flex-col md:flex-row gap-3.5 md:gap-4 items-stretch shrink-0"
                     >
-                        {/* LEFT PART: Status, Amount, Warning, IDs, Action Buttons */}
-                        <div className="flex-1 min-w-0 flex flex-col justify-between gap-2.5 sm:gap-3">
+                        {/* LEFT PART: Status, Amount, Warning, IDs, Action Buttons (Width reduced by ~30% from original) */}
+                        <div className="w-full md:w-[380px] lg:w-[410px] md:max-w-[420px] min-w-0 flex flex-col justify-between gap-2.5 shrink-0">
                             
                             {/* 1. Countdown Header */}
                             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
@@ -972,7 +972,7 @@ const UpiCashPoint = () => {
                             {/* 2. Amount Highlight */}
                             <div className="space-y-0.5">
                                 <p className="text-[9.5px] font-bold text-slate-400 uppercase tracking-widest leading-none">WITHDRAWAL AMOUNT</p>
-                                <p className="text-2xl sm:text-[28px] font-black text-slate-900 tracking-tight leading-none mt-1">
+                                <p className="text-2xl sm:text-[26px] font-black text-slate-900 tracking-tight leading-none mt-1">
                                     ₹{parseFloat(activeTxn.amount || amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                 </p>
                             </div>
@@ -1029,7 +1029,7 @@ const UpiCashPoint = () => {
                                     type="button"
                                     disabled={statusLoading}
                                     onClick={() => checkTransactionStatus(true)}
-                                    className="w-full sm:w-auto flex-1 py-2 sm:py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-xs flex items-center justify-center gap-1.5"
+                                    className="w-full sm:w-auto flex-1 py-2 sm:py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-xs flex items-center justify-center gap-1.5"
                                 >
                                     <RefreshCw size={12} className={statusLoading ? 'animate-spin' : ''} />
                                     <span>{statusLoading ? 'Checking...' : 'CHECK STATUS NOW'}</span>
@@ -1038,40 +1038,40 @@ const UpiCashPoint = () => {
                                 <button
                                     type="button"
                                     onClick={handleReset}
-                                    className="w-full sm:w-auto flex-1 py-2 sm:py-2.5 px-4 rounded-xl bg-[#F8FAFC] hover:bg-slate-100 text-slate-700 border border-slate-200/90 font-bold text-xs uppercase tracking-wider transition-all"
+                                    className="w-full sm:w-auto flex-1 py-2 sm:py-2.5 px-3 rounded-xl bg-[#F8FAFC] hover:bg-slate-100 text-slate-700 border border-slate-200/90 font-bold text-xs uppercase tracking-wider transition-all"
                                 >
                                     CANCEL / NEW TRANSACTION
                                 </button>
                             </div>
                         </div>
 
-                        {/* RIGHT PART: QR Code Container & 4 Authentic UPI Logos */}
-                        <div className="w-full md:w-[260px] lg:w-[280px] shrink-0 flex flex-col items-center justify-center p-3 sm:p-4 bg-[#F8FAFC] rounded-2xl border border-slate-100 gap-2 sm:gap-2.5">
-                            <div className="bg-white p-2.5 rounded-xl shadow-2xs border border-slate-200/80">
+                        {/* RIGHT PART: QR Code Container (Increased size by +30%) & 4 Authentic UPI Logos */}
+                        <div className="w-full md:flex-1 md:min-w-[320px] md:max-w-[370px] shrink-0 flex flex-col items-center justify-center p-3 sm:p-3.5 bg-[#F8FAFC] rounded-2xl border border-slate-100 gap-2 sm:gap-2.5 mx-auto">
+                            <div className="bg-white p-2.5 rounded-xl shadow-2xs border border-slate-200/80 flex items-center justify-center">
                                 <img
                                     src={activeTxn.intentLink?.startsWith('data:') ? activeTxn.intentLink : `data:image/png;base64,${activeTxn.intentLink}`}
                                     alt="UPI Cash Withdrawal QR"
-                                    className="w-36 h-36 sm:w-40 sm:h-40 md:w-44 md:h-44 object-contain"
+                                    className="w-48 h-48 sm:w-52 sm:h-52 md:w-[228px] md:h-[228px] object-contain"
                                 />
                             </div>
 
                             {/* 4 UPI Logos in a compact row: PhonePe, Google Pay, Paytm, BHIM without any captions */}
-                            <div className="flex items-center justify-center gap-1.5 w-full pt-0.5">
-                                <div className="h-7 flex-1 bg-white rounded-lg border border-slate-200/80 shadow-2xs flex items-center justify-center p-1">
-                                    <PhonePeLogo className="h-5 w-auto" />
+                            <div className="flex items-center justify-center gap-1.5 w-full max-w-[260px] pt-0.5">
+                                <div className="h-7.5 flex-1 bg-white rounded-lg border border-slate-200/80 shadow-2xs flex items-center justify-center p-1">
+                                    <PhonePeLogo className="h-5.5 w-auto" />
                                 </div>
-                                <div className="h-7 flex-1 bg-white rounded-lg border border-slate-200/80 shadow-2xs flex items-center justify-center p-1">
-                                    <GooglePayLogo className="h-4 w-auto" />
+                                <div className="h-7.5 flex-1 bg-white rounded-lg border border-slate-200/80 shadow-2xs flex items-center justify-center p-1">
+                                    <GooglePayLogo className="h-4.5 w-auto" />
                                 </div>
-                                <div className="h-7 flex-1 bg-white rounded-lg border border-slate-200/80 shadow-2xs flex items-center justify-center p-1">
-                                    <PaytmLogo className="h-3.5 w-auto" />
+                                <div className="h-7.5 flex-1 bg-white rounded-lg border border-slate-200/80 shadow-2xs flex items-center justify-center p-1">
+                                    <PaytmLogo className="h-4 w-auto" />
                                 </div>
-                                <div className="h-7 flex-1 bg-white rounded-lg border border-slate-200/80 shadow-2xs flex items-center justify-center p-1">
-                                    <BhimLogo className="h-3 w-auto" />
+                                <div className="h-7.5 flex-1 bg-white rounded-lg border border-slate-200/80 shadow-2xs flex items-center justify-center p-1">
+                                    <BhimLogo className="h-3.5 w-auto" />
                                 </div>
                             </div>
 
-                            <p className="text-[10.5px] font-semibold text-slate-500 leading-tight">
+                            <p className="text-[10px] sm:text-[10.5px] font-semibold text-slate-500 leading-tight">
                                 Scan with any UPI payment app
                             </p>
                         </div>
