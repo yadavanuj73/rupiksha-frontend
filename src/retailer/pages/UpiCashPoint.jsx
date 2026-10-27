@@ -53,7 +53,14 @@ const UpiCashPoint = () => {
     // Active Transaction State Machine: 'IDLE' | 'GENERATED' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'EXPIRED'
     const [txnState, setTxnState] = useState('IDLE');
     const [activeTxn, setActiveTxn] = useState(null); // stores backend initiate or status response
+    const activeTxnRef = useRef(null);
+    const isCheckingRef = useRef(false);
     const [timeLeft, setTimeLeft] = useState(0);
+
+    // Keep activeTxnRef in sync with state across renders
+    useEffect(() => {
+        activeTxnRef.current = activeTxn;
+    }, [activeTxn]);
 
     // Polling controller
     const pollingTimerRef = useRef(null);
@@ -178,30 +185,38 @@ const UpiCashPoint = () => {
     }, []);
 
     // Perform single status check
-    const checkTransactionStatus = useCallback(async (isManual = false) => {
-        if (!activeTxn || !activeTxn.partnerRequestId) return;
+    const checkTransactionStatus = useCallback(async (isManual = false, overrideTxn = null) => {
+        const txn = overrideTxn || activeTxnRef.current || activeTxn;
+        if (!txn || !txn.partnerRequestId) return;
+
+        // Prevent concurrent overlapping polling requests
+        if (isCheckingRef.current && !isManual) return;
         if (isManual) setStatusLoading(true);
+        isCheckingRef.current = true;
 
         try {
             const res = await upiCashPointService.checkStatus({
-                partnerRequestId: activeTxn.partnerRequestId,
-                fingpayTxnId: activeTxn.fpTxnId || activeTxn.fingpayTransactionId
+                partnerRequestId: txn.partnerRequestId,
+                fingpayTxnId: txn.fpTxnId || txn.fingpayTransactionId
             });
 
-            if (res && res.success) {
+            if (res) {
                 const st = (res.status || res.txnStatus || res.internalStatus || '').toUpperCase();
                 const isPaid = st === 'SUCCESS' || res.walletCredited || (res.bankRrn && res.responseCode === '00');
-                const isFailed = st === 'FAILED' || st === 'FAILURE';
+                const isFailed = st === 'FAILED' || st === 'FAILURE' || res.responseCode === 'FI006' ||
+                                 (!res.success && res.message && (res.message.toLowerCase().includes('fail') || res.message.toLowerCase().includes('debit')));
 
                 if (isPaid) {
                     setTxnState('SUCCESS');
-                    setActiveTxn(prev => ({ 
-                        ...prev, 
+                    const updated = { 
+                        ...txn, 
                         ...res, 
                         status: 'SUCCESS', 
                         txnStatus: 'SUCCESS', 
                         internalStatus: 'SUCCESS' 
-                    }));
+                    };
+                    setActiveTxn(updated);
+                    activeTxnRef.current = updated;
                     stopPolling();
                     if (countdownTimerRef.current) {
                         clearInterval(countdownTimerRef.current);
@@ -223,13 +238,15 @@ const UpiCashPoint = () => {
                     }
                 } else if (isFailed) {
                     setTxnState('FAILED');
-                    setActiveTxn(prev => ({ 
-                        ...prev, 
+                    const updated = { 
+                        ...txn, 
                         ...res, 
                         status: 'FAILED', 
                         txnStatus: 'FAILED', 
                         internalStatus: 'FAILED' 
-                    }));
+                    };
+                    setActiveTxn(updated);
+                    activeTxnRef.current = updated;
                     stopPolling();
                     if (countdownTimerRef.current) {
                         clearInterval(countdownTimerRef.current);
@@ -237,7 +254,9 @@ const UpiCashPoint = () => {
                     }
                 } else {
                     // Still pending customer scan
-                    setActiveTxn(prev => ({ ...prev, ...res }));
+                    const updated = { ...txn, ...res };
+                    setActiveTxn(updated);
+                    activeTxnRef.current = updated;
                 }
             }
         } catch (err) {
@@ -246,6 +265,7 @@ const UpiCashPoint = () => {
                 setErrorMsg(err.response?.data?.message || err.message || 'Failed to check status');
             }
         } finally {
+            isCheckingRef.current = false;
             if (isManual) setStatusLoading(false);
         }
     }, [activeTxn, stopPolling, refreshWallet]);
@@ -254,15 +274,18 @@ const UpiCashPoint = () => {
     const startPolling = useCallback((initData) => {
         stopPolling();
         pollingActiveRef.current = true;
+        if (initData) {
+            activeTxnRef.current = initData;
+        }
 
-        // Prompt polling: start in 3s, poll every 3s, up to 25 attempts (~75s) to ensure fast detection
-        const startDelaySec = initData.statusCheckStartIn && initData.statusCheckStartIn > 0 
-            ? Math.min(initData.statusCheckStartIn, 3) 
-            : 3;
-        const gapSec = initData.statusCheckGap && initData.statusCheckGap > 0 
-            ? Math.min(Math.max(initData.statusCheckGap, 2), 4) 
-            : 3;
-        const maxAttempts = Math.max(initData.statusCheckAttempts || 15, 25);
+        // Fast auto-detection: start check after 2 seconds, poll every 2.5 seconds
+        const startDelaySec = initData?.statusCheckStartIn && initData.statusCheckStartIn > 0 
+            ? Math.min(initData.statusCheckStartIn, 2) 
+            : 2;
+        const gapSec = initData?.statusCheckGap && initData.statusCheckGap > 0 
+            ? Math.min(Math.max(initData.statusCheckGap, 2), 3) 
+            : 2.5;
+        const maxAttempts = 30;
 
         let attempts = 0;
 
@@ -270,7 +293,7 @@ const UpiCashPoint = () => {
             if (!pollingActiveRef.current) return;
 
             // Initial poll
-            checkTransactionStatus();
+            checkTransactionStatus(false, activeTxnRef.current || initData);
 
             pollingTimerRef.current = setInterval(() => {
                 attempts += 1;
@@ -278,7 +301,7 @@ const UpiCashPoint = () => {
                     stopPolling();
                     return;
                 }
-                checkTransactionStatus();
+                checkTransactionStatus(false, activeTxnRef.current || initData);
             }, gapSec * 1000);
         }, startDelaySec * 1000);
 
@@ -337,6 +360,7 @@ const UpiCashPoint = () => {
             const res = await upiCashPointService.initiate(payload);
 
             if (res && res.success && res.intentLink) {
+                activeTxnRef.current = res;
                 setActiveTxn(res);
                 setTxnState('GENERATED');
 
@@ -364,6 +388,7 @@ const UpiCashPoint = () => {
         if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
         setTxnState('IDLE');
         setActiveTxn(null);
+        activeTxnRef.current = null;
         setErrorMsg('');
         setAmount('');
         setRemarks('');
