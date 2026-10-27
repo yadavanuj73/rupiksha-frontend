@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     HandCoins, ShieldCheck, MapPin, AlertTriangle, CheckCircle2,
     Clock, RefreshCw, XCircle, ArrowRight, Printer, Download,
-    Info, Copy, Check, Smartphone, Landmark, AlertCircle, Sparkles, ShieldAlert
+    Info, Copy, Check, Smartphone, Landmark, AlertCircle, Sparkles,
+    ShieldAlert, QrCode, Wallet, FileText, HelpCircle, CheckCircle
 } from 'lucide-react';
 
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +12,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
 import { upiCashPointService, userService, aepsService } from '../../services/apiService';
 import DisabledServiceBanner from '../../components/shared/DisabledServiceBanner';
+import { PhonePeLogo, GooglePayLogo, PaytmLogo, BhimLogo } from '../components/upi/UpiBrandLogos';
 import jsPDF from 'jspdf';
 
 const PRESET_AMOUNTS = [100, 500, 1000, 2000, 3000, 5000];
@@ -43,7 +45,7 @@ const UpiCashPoint = () => {
     const [copiedField, setCopiedField] = useState(null);
 
     // Form inputs
-    const [amount, setAmount] = useState('');
+    const [amount, setAmount] = useState('500');
     const [remarks, setRemarks] = useState('');
 
     // Geolocation
@@ -120,7 +122,7 @@ const UpiCashPoint = () => {
         };
         checkService();
 
-        const verifyFingpayOnboarding = async () => {
+        const verifyMerchantOnboarding = async () => {
             try {
                 const rawUser = localStorage.getItem('rupiksha_imp_user') || localStorage.getItem('rupiksha_user');
                 let mobile = currentUser?.mobile;
@@ -144,18 +146,18 @@ const UpiCashPoint = () => {
                     setIsOnboarded(true);
                 }
             } catch (err) {
-                console.warn('Could not check Fingpay onboarding status for UPI Cash Point:', err);
+                console.warn('Could not check onboarding status for UPI Cash Point:', err);
             } finally {
                 setCheckingOnboarding(false);
             }
         };
-        verifyFingpayOnboarding();
+        verifyMerchantOnboarding();
 
         return () => {
             clearInterval(pollingTimerRef.current);
             clearInterval(countdownTimerRef.current);
         };
-    }, [acquireLocation]);
+    }, [acquireLocation, currentUser?.mobile, navigate]);
 
     // Handle Amount validation
     const validateAmount = (val) => {
@@ -231,7 +233,7 @@ const UpiCashPoint = () => {
                             particleCount: 100,
                             spread: 70,
                             origin: { y: 0.6 },
-                            colors: ['#10b981', '#4f46e5', '#3b82f6', '#fbbf24']
+                            colors: ['#10b981', '#2563eb', '#3b82f6', '#fbbf24']
                         });
                     } catch (err) {
                         // ignore confetti error
@@ -390,7 +392,7 @@ const UpiCashPoint = () => {
         setActiveTxn(null);
         activeTxnRef.current = null;
         setErrorMsg('');
-        setAmount('');
+        setAmount('500');
         setRemarks('');
         setTimeLeft(0);
     };
@@ -439,7 +441,7 @@ const UpiCashPoint = () => {
             const rows = [
                 ['Date & Time', activeTxn.transactionDate || new Date().toLocaleString('en-IN')],
                 ['Partner Request ID', activeTxn.partnerRequestId || 'N/A'],
-                ['Fingpay Txn ID', activeTxn.fpTxnId || activeTxn.fingpayTransactionId || 'N/A'],
+                ['Gateway Txn ID', activeTxn.fpTxnId || activeTxn.fingpayTransactionId || 'N/A'],
                 ['Bank RRN', activeTxn.bankRrn || 'N/A'],
                 ['Payer Name', activeTxn.payerName || 'UPI Customer'],
                 ['Payer VPA', activeTxn.payerVpa || 'N/A'],
@@ -485,9 +487,9 @@ const UpiCashPoint = () => {
 
     if (checkingOnboarding) {
         return (
-            <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-4 font-['Inter',sans-serif]">
-                <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-600 rounded-full animate-spin mb-4" />
-                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Checking registration status...</p>
+            <div className="h-full min-h-[400px] bg-[#F4F7FC] flex flex-col items-center justify-center p-4 font-['Inter',sans-serif]">
+                <div className="w-10 h-10 border-4 border-blue-500/20 border-t-blue-600 rounded-full animate-spin mb-3" />
+                <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Checking registration status...</p>
             </div>
         );
     }
@@ -498,32 +500,32 @@ const UpiCashPoint = () => {
 
     if (!isOnboarded) {
         return (
-            <div className="w-full h-full min-h-[calc(100vh-80px)] bg-slate-50/60 flex flex-col items-center justify-center py-2 px-3 font-['Inter',sans-serif]">
-                <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-300 shadow-lg max-w-md w-full text-center relative overflow-hidden">
-                    <div className="flex justify-center mb-6">
-                        <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
-                            <HandCoins size={32} />
+            <div className="w-full h-full min-h-[calc(100vh-80px)] bg-[#F4F7FC] flex flex-col items-center justify-center py-4 px-3 font-['Inter',sans-serif]">
+                <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-md max-w-md w-full text-center relative overflow-hidden">
+                    <div className="flex justify-center mb-5">
+                        <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
+                            <HandCoins size={28} />
                         </div>
                     </div>
-                    <span className="inline-block px-3 py-1 bg-amber-50 text-amber-700 text-[10px] font-black uppercase tracking-wider rounded-full mb-3">
+                    <span className="inline-block px-3 py-1 bg-amber-50 text-amber-700 text-[10px] font-black uppercase tracking-wider rounded-full mb-3 border border-amber-200">
                         Onboarding Required
                     </span>
-                    <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight mb-3">
+                    <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight mb-2">
                         Onboarding Required
                     </h2>
-                    <p className="text-slate-500 text-sm leading-relaxed mb-6">
-                        To use UPI Cash Withdrawal (QR Cash Point), you must first complete your Fingpay merchant onboarding.
+                    <p className="text-slate-500 text-xs leading-relaxed mb-6">
+                        To use UPI Cash Withdrawal (QR Cash Point), you must first complete your merchant onboarding.
                     </p>
-                    <div className="flex gap-4">
+                    <div className="flex gap-3">
                         <button
                             onClick={() => navigate('/dashboard')}
-                            className="flex-1 py-3.5 border border-slate-200 text-slate-600 rounded-2xl font-bold uppercase tracking-wider text-xs hover:bg-slate-50 transition"
+                            className="flex-1 py-3 border border-slate-200 text-slate-600 rounded-xl font-bold uppercase tracking-wider text-xs hover:bg-slate-50 transition"
                         >
                             Back
                         </button>
                         <button
                             onClick={() => navigate('/aeps-onboarding?provider=fingpay')}
-                            className="flex-1 py-3.5 bg-blue-600 text-white rounded-2xl font-bold uppercase tracking-wider text-xs hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition flex items-center justify-center gap-1.5"
+                            className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold uppercase tracking-wider text-xs hover:bg-blue-700 shadow-md shadow-blue-500/20 transition flex items-center justify-center gap-1.5"
                         >
                             Start Onboarding
                             <ArrowRight size={14} />
@@ -535,110 +537,121 @@ const UpiCashPoint = () => {
     }
 
     return (
-        <div className="min-h-screen bg-[#f8fafc] p-3 md:p-6 lg:p-8 font-['Inter',sans-serif] space-y-6">
-            {/* Header section */}
-            <div className="max-w-5xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 md:p-6 rounded-3xl border border-slate-200/80 shadow-sm">
-                <div className="flex items-center gap-4">
-                    <div className="h-14 w-14 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/25">
-                        <HandCoins size={28} />
+        <div className="w-full h-auto lg:h-full max-w-[1280px] mx-auto p-2.5 sm:p-3 lg:p-3 xl:p-3.5 font-['Inter',sans-serif] flex flex-col justify-start lg:justify-between gap-2 lg:gap-2.5 box-border">
+            
+            {/* 1. UPI Cash Point Heading Card */}
+            <div className="bg-white px-3.5 py-2.5 sm:px-4 sm:py-3 lg:py-2.5 xl:py-3 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+                <div className="flex items-center gap-3">
+                    <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/25 shrink-0">
+                        <HandCoins size={24} />
                     </div>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <h1 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
                                 UPI Cash Point
                             </h1>
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                Cash-at-POS (UPICW)
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-blue-50 text-blue-600 border border-blue-200/80">
+                                CASH-AT-POS (UPICW)
                             </span>
                         </div>
-                        <p className="text-xs text-slate-500 mt-0.5">
+                        <p className="text-[11px] sm:text-xs text-slate-500 truncate mt-0.5 max-w-xl">
                             Customer scans dynamic UPI QR, pays instantly, and receives cash at your counter.
                         </p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <div className="text-right px-4 py-2 bg-slate-50 border border-slate-200/70 rounded-2xl">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Digital Wallet Balance</p>
-                        <p className="text-base md:text-lg font-black text-slate-800 tracking-tight">
-                            ₹{parseFloat(balance || '0').toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                        </p>
+                <div className="flex items-center gap-2.5 self-end sm:self-auto shrink-0">
+                    <div className="flex items-center gap-2.5 px-3 py-1.5 bg-[#F8FAFC] border border-slate-200/80 rounded-xl">
+                        <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                            <Wallet size={16} />
+                        </div>
+                        <div className="text-left">
+                            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 leading-none mb-1">
+                                DIGITAL WALLET BALANCE
+                            </p>
+                            <p className="text-base sm:text-lg font-black text-slate-800 leading-none tracking-tight">
+                                ₹{parseFloat(balance || '0').toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </p>
+                        </div>
                     </div>
 
                     <button
                         type="button"
                         onClick={() => navigate('/upi-cash-history')}
-                        className="px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-all flex items-center gap-2"
+                        className="px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-wider text-blue-600 bg-white hover:bg-blue-50/60 border border-blue-200/90 hover:border-blue-300 transition-all flex items-center gap-1.5 shadow-2xs"
                     >
-                        <span>History</span>
-                        <ArrowRight size={14} />
+                        <span>HISTORY</span>
+                        <ArrowRight size={13} />
                     </button>
                 </div>
             </div>
 
             {/* Restricted window alert */}
             {isRestrictedWindow() && (
-                <div className="max-w-5xl mx-auto p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-center gap-3 text-amber-800 text-xs font-medium">
-                    <AlertTriangle size={18} className="text-amber-600 flex-shrink-0" />
+                <div className="p-2 sm:p-2.5 rounded-xl bg-amber-50 border border-amber-200 flex items-center gap-2.5 text-amber-800 text-xs font-medium shrink-0">
+                    <AlertTriangle size={16} className="text-amber-600 shrink-0" />
                     <span>
                         <strong>NPCI Maintenance Window:</strong> UPI Cash Withdrawal transactions are restricted daily between 23:30 and 00:05 IST.
                     </span>
                 </div>
             )}
 
-            {/* Location status strip */}
-            <div className="max-w-5xl mx-auto">
-                <div className={`p-3.5 rounded-2xl border text-xs flex flex-wrap items-center justify-between gap-3 ${
-                    coords.acquired
-                        ? 'bg-emerald-50/70 border-emerald-200 text-emerald-800'
-                        : coords.error
-                            ? 'bg-rose-50 border-rose-200 text-rose-800'
-                            : 'bg-blue-50/70 border-blue-200 text-blue-800'
-                }`}>
-                    <div className="flex items-center gap-2.5">
-                        <MapPin size={16} className={coords.acquired ? 'text-emerald-600' : 'text-blue-600'} />
-                        <span>
-                            {coords.acquired ? (
-                                <span>
-                                    <strong>GPS Acquired:</strong> Lat: {coords.latitude}, Lng: {coords.longitude} (Mandated by NPCI & Fingpay)
-                                </span>
-                            ) : locating ? (
-                                <span>Acquiring high-accuracy GPS coordinates...</span>
-                            ) : coords.error ? (
-                                <span>{coords.error}</span>
-                            ) : (
-                                <span>GPS coordinates required for UPI Cash Point transactions.</span>
-                            )}
-                        </span>
-                    </div>
-
-                    {!coords.acquired && (
-                        <button
-                            type="button"
-                            onClick={acquireLocation}
-                            disabled={locating}
-                            className="px-3 py-1 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition-colors flex items-center gap-1.5"
-                        >
-                            <RefreshCw size={12} className={locating ? 'animate-spin' : ''} />
-                            <span>{locating ? 'Acquiring...' : 'Allow GPS'}</span>
-                        </button>
-                    )}
+            {/* 2. GPS Status Banner */}
+            <div className={`px-3 py-1.5 sm:py-2 rounded-xl border text-xs flex flex-wrap items-center justify-between gap-2 shrink-0 ${
+                coords.acquired
+                    ? 'bg-emerald-50/70 border-emerald-200/80 text-emerald-800'
+                    : coords.error
+                        ? 'bg-rose-50 border-rose-200 text-rose-800'
+                        : 'bg-blue-50/70 border-blue-200 text-blue-800'
+            }`}>
+                <div className="flex items-center gap-2 min-w-0">
+                    <MapPin size={15} className={`shrink-0 ${coords.acquired ? 'text-emerald-600' : 'text-blue-600'}`} />
+                    <span className="truncate text-[11px] sm:text-xs">
+                        {coords.acquired ? (
+                            <span>
+                                <strong>GPS Acquired:</strong> Lat: {coords.latitude}, Lng: {coords.longitude} (Mandated by NPCI)
+                            </span>
+                        ) : locating ? (
+                            <span>Acquiring high-accuracy GPS coordinates...</span>
+                        ) : coords.error ? (
+                            <span>{coords.error}</span>
+                        ) : (
+                            <span>GPS coordinates required for UPI Cash Point transactions.</span>
+                        )}
+                    </span>
                 </div>
+
+                {coords.acquired ? (
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100/90 text-emerald-800 text-[11px] font-bold shrink-0">
+                        <CheckCircle2 size={13} className="text-emerald-700" />
+                        <span>Location Verified</span>
+                    </div>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={acquireLocation}
+                        disabled={locating}
+                        className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors flex items-center gap-1 shrink-0"
+                    >
+                        <RefreshCw size={11} className={locating ? 'animate-spin' : ''} />
+                        <span>{locating ? 'Acquiring...' : 'Allow GPS'}</span>
+                    </button>
+                )}
             </div>
 
             {/* Error & Account Validation Notice */}
             {errorMsg && (errorMsg.toLowerCase().includes('validated') || errorMsg.toLowerCase().includes('validation')) ? (
-                <div className="max-w-2xl mx-auto p-5 rounded-3xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 text-amber-900 shadow-sm space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-3">
-                            <div className="p-2 bg-amber-100 text-amber-700 rounded-2xl flex-shrink-0 mt-0.5">
-                                <ShieldAlert size={20} />
+                <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 shadow-2xs space-y-2 shrink-0">
+                    <div className="flex items-start justify-between gap-2.5">
+                        <div className="flex items-start gap-2.5">
+                            <div className="p-1.5 bg-amber-100 text-amber-700 rounded-xl shrink-0 mt-0.5">
+                                <ShieldAlert size={18} />
                             </div>
-                            <div className="space-y-1">
-                                <h3 className="text-sm font-black uppercase tracking-wide text-amber-900">
-                                    Merchant Account Under Fingpay Validation
+                            <div className="space-y-0.5">
+                                <h3 className="text-xs font-black uppercase tracking-wide text-amber-900">
+                                    Merchant Account Under Validation
                                 </h3>
-                                <p className="text-xs text-amber-800 leading-relaxed font-medium">
+                                <p className="text-[11px] text-amber-800 leading-relaxed font-medium">
                                     {errorMsg}
                                 </p>
                             </div>
@@ -646,26 +659,26 @@ const UpiCashPoint = () => {
                         <button
                             type="button"
                             onClick={() => setErrorMsg('')}
-                            className="text-amber-600 hover:text-amber-800 text-xs font-bold px-2 py-1"
+                            className="text-amber-600 hover:text-amber-800 text-xs font-bold px-2 py-0.5"
                         >
                             Dismiss
                         </button>
                     </div>
 
-                    <div className="p-3 bg-white/80 rounded-2xl border border-amber-200/60 text-[11px] text-amber-800 space-y-1.5">
-                        <p className="font-semibold text-slate-700">Why are you seeing this?</p>
-                        <ul className="list-disc list-inside space-y-1 text-slate-600">
-                            <li><strong className="text-slate-800">Mandatory Daily 2FA:</strong> NPCI mandates daily biometric authentication for every Business Correspondent (BC). If you haven't scanned your fingerprint in AEPS today, Fingpay holds your account in validation until today's 2FA session is active.</li>
-                            <li><strong className="text-slate-800">Bank eKYC (BeKYC):</strong> If you recently registered, complete your Aadhaar Biometric Bank eKYC in AEPS to activate cash withdrawal permissions.</li>
-                            <li><strong className="text-slate-800">Terminal Activation:</strong> If Daily 2FA and eKYC are already done, your BC UPI terminal is awaiting activation by Fingpay compliance (typically 24–48 hours).</li>
+                    <div className="p-2.5 bg-white/80 rounded-xl border border-amber-200/60 text-[11px] text-amber-800 space-y-1">
+                        <p className="font-bold text-slate-700">Notice:</p>
+                        <ul className="list-disc list-inside space-y-0.5 text-slate-600 text-[10.5px]">
+                            <li><strong>Mandatory Daily 2FA:</strong> NPCI mandates daily biometric authentication. If you haven't scanned your fingerprint in AEPS today, our banking switch holds your account in validation until today's 2FA session is active.</li>
+                            <li><strong>Bank eKYC (BeKYC):</strong> If you recently registered, complete your Aadhaar Biometric Bank eKYC in AEPS to activate cash withdrawal permissions.</li>
+                            <li><strong>Terminal Activation:</strong> If Daily 2FA and eKYC are already done, your BC UPI terminal is awaiting activation by banking compliance (typically 24–48 hours).</li>
                         </ul>
                     </div>
 
-                    <div className="flex items-center gap-2 pt-1">
+                    <div className="flex items-center gap-2 pt-0.5">
                         <button
                             type="button"
                             onClick={() => navigate('/aeps-1')}
-                            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+                            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-all shadow-2xs"
                         >
                             Go to AEPS (Daily 2FA / eKYC)
                         </button>
@@ -675,81 +688,94 @@ const UpiCashPoint = () => {
                                 setErrorMsg('');
                                 handleInitiate();
                             }}
-                            className="px-4 py-2 bg-white hover:bg-amber-50 border border-amber-300 text-amber-900 rounded-xl text-xs font-bold transition-all"
+                            className="px-3 py-1.5 bg-white hover:bg-amber-50 border border-amber-300 text-amber-900 rounded-lg text-xs font-bold transition-all"
                         >
                             Retry Initiation
                         </button>
                     </div>
                 </div>
             ) : errorMsg ? (
-                <div className="max-w-2xl mx-auto p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5">
-                        <AlertCircle size={18} className="text-rose-600 flex-shrink-0" />
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between gap-2 shrink-0">
+                    <div className="flex items-center gap-2">
+                        <AlertCircle size={16} className="text-rose-600 shrink-0" />
                         <span>{errorMsg}</span>
                     </div>
                     <button
                         type="button"
                         onClick={() => setErrorMsg('')}
-                        className="text-rose-500 hover:text-rose-700 font-bold"
+                        className="text-rose-500 hover:text-rose-700 font-bold text-xs"
                     >
                         Dismiss
                     </button>
                 </div>
             ) : null}
 
-
-            {/* Main Interactive Container */}
-            <div className="max-w-5xl mx-auto">
+            {/* 3. Main Content: Form & Supporting Panel (or other states) */}
+            <div className="flex-1 min-h-0 flex flex-col justify-start lg:justify-center">
                 {txnState === 'IDLE' && (
                     <motion.div
-                        initial={{ opacity: 0, y: 12 }}
+                        initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="max-w-2xl mx-auto"
+                        className="w-full grid grid-cols-1 lg:grid-cols-12 gap-2.5 sm:gap-3 xl:gap-3.5 items-stretch"
                     >
-                        {/* Form Card */}
-                        <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200/80 shadow-sm space-y-6">
-                            <div>
-                                <h2 className="text-base font-black text-slate-800 uppercase tracking-wide">
-                                    Initiate Cash Withdrawal
-                                </h2>
-                                <p className="text-xs text-slate-500 mt-1">
-                                    Enter withdrawal amount (₹100 to ₹5,000, multiples of ₹100).
-                                </p>
-                            </div>
-
-                            {/* Preset chips */}
-                            <div>
-                                <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">
-                                    Quick Amount Selection
-                                </label>
-                                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                                    {PRESET_AMOUNTS.map(preset => (
-                                        <button
-                                            key={preset}
-                                            type="button"
-                                            onClick={() => {
-                                                setAmount(String(preset));
-                                                setErrorMsg('');
-                                            }}
-                                            className={`py-2 px-3 rounded-2xl text-xs font-black tracking-tight transition-all border ${
-                                                Number(amount) === preset
-                                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/25 scale-[1.03]'
-                                                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                                            }`}
-                                        >
-                                            ₹{preset.toLocaleString('en-IN')}
-                                        </button>
-                                    ))}
+                        {/* LEFT COLUMN: INITIATE CASH WITHDRAWAL FORM */}
+                        <div className="lg:col-span-7 bg-white p-3.5 sm:p-4 xl:p-4.5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col justify-between gap-2.5 sm:gap-3">
+                            
+                            {/* Form Header */}
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-blue-500/25">
+                                    <FileText size={18} />
+                                </div>
+                                <div>
+                                    <h2 className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-wide">
+                                        INITIATE CASH WITHDRAWAL
+                                    </h2>
+                                    <p className="text-[11px] text-slate-500 mt-0.5">
+                                        Enter withdrawal amount (₹100 to ₹5,000, multiples of ₹100).
+                                    </p>
                                 </div>
                             </div>
 
-                            {/* Custom Amount Input */}
+                            {/* Quick Amount Selection */}
                             <div>
-                                <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">
-                                    Or Enter Amount (₹)
+                                <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5">
+                                    QUICK AMOUNT SELECTION
                                 </label>
-                                <div className="relative">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black text-lg">
+                                <div className="grid grid-cols-3 gap-2">
+                                    {PRESET_AMOUNTS.map(preset => {
+                                        const isSelected = Number(amount) === preset;
+                                        return (
+                                            <button
+                                                key={preset}
+                                                type="button"
+                                                onClick={() => {
+                                                    setAmount(String(preset));
+                                                    setErrorMsg('');
+                                                }}
+                                                className={`py-2 px-2.5 rounded-xl text-xs font-black tracking-tight transition-all border ${
+                                                    isSelected
+                                                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-500/25'
+                                                        : 'bg-[#F8FAFC] hover:bg-slate-100 text-slate-800 border-slate-200'
+                                                }`}
+                                            >
+                                                ₹{preset.toLocaleString('en-IN')}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Custom Amount Input with Divider */}
+                            <div>
+                                <div className="relative flex items-center justify-center my-1">
+                                    <div className="w-full border-t border-slate-200" />
+                                    <span className="absolute bg-white px-3 text-[9.5px] font-black uppercase tracking-wider text-slate-400">
+                                        OR ENTER AMOUNT (₹)
+                                    </span>
+                                </div>
+
+                                <div className="relative mt-2">
+                                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-base">
                                         ₹
                                     </span>
                                     <input
@@ -763,28 +789,33 @@ const UpiCashPoint = () => {
                                             setErrorMsg('');
                                         }}
                                         placeholder="e.g. 500"
-                                        className="w-full pl-10 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-lg font-black text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
+                                        className="w-full pl-8 pr-3 py-2.5 bg-[#F8FAFC] border border-slate-200 rounded-xl text-base font-black text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
                                     />
                                 </div>
-                                <p className="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1">
-                                    <Info size={12} />
+                                <p className="text-[10.5px] text-slate-400 mt-1 flex items-center gap-1">
+                                    <Info size={12} className="shrink-0 text-slate-400" />
                                     <span>Min ₹100 • Max ₹5,000 per transaction • Multiples of ₹100 only</span>
                                 </p>
                             </div>
 
-                            {/* Optional Remarks */}
+                            {/* Remarks Field */}
                             <div>
-                                <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">
-                                    Remarks (Optional)
+                                <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                                    REMARKS (OPTIONAL)
                                 </label>
-                                <input
-                                    type="text"
-                                    maxLength={50}
-                                    value={remarks}
-                                    onChange={(e) => setRemarks(e.target.value)}
-                                    placeholder="Customer note or counter reference"
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
-                                />
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                                        <FileText size={14} />
+                                    </span>
+                                    <input
+                                        type="text"
+                                        maxLength={50}
+                                        value={remarks}
+                                        onChange={(e) => setRemarks(e.target.value)}
+                                        placeholder="Customer note or counter reference"
+                                        className="w-full pl-8 pr-3 py-2 bg-[#F8FAFC] border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
+                                    />
+                                </div>
                             </div>
 
                             {/* Submit Button */}
@@ -792,24 +823,120 @@ const UpiCashPoint = () => {
                                 type="button"
                                 disabled={initLoading || !amount}
                                 onClick={handleInitiate}
-                                className={`w-full py-4 rounded-2xl font-black uppercase tracking-wider text-sm transition-all shadow-lg flex items-center justify-center gap-2 ${
+                                className={`w-full py-2.5 sm:py-3 rounded-xl font-bold uppercase tracking-wider text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-2 ${
                                     initLoading || !amount
                                         ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
-                                        : 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:scale-[1.01] active:scale-[0.99]'
+                                        : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-blue-500/25 active:scale-[0.99]'
                                 }`}
                             >
                                 {initLoading ? (
                                     <>
-                                        <RefreshCw size={18} className="animate-spin" />
+                                        <RefreshCw size={16} className="animate-spin" />
                                         <span>Generating Official Dynamic QR...</span>
                                     </>
                                 ) : (
                                     <>
-                                        <span>Generate Customer UPI QR</span>
-                                        <ArrowRight size={18} />
+                                        <QrCode size={17} />
+                                        <span>GENERATE CUSTOMER UPI QR</span>
+                                        <ArrowRight size={17} />
                                     </>
                                 )}
                             </button>
+                        </div>
+
+                        {/* RIGHT COLUMN: SUPPORTING PANEL */}
+                        <div className="lg:col-span-5 bg-white p-3.5 sm:p-4 xl:p-4.5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col justify-between gap-3">
+                            
+                            {/* How It Works? Section */}
+                            <div className="space-y-2.5">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+                                        <HelpCircle size={17} />
+                                    </div>
+                                    <h3 className="text-xs sm:text-sm font-black text-slate-800">
+                                        How It Works?
+                                    </h3>
+                                </div>
+
+                                <div className="space-y-2 pt-0.5">
+                                    {/* Step 1 */}
+                                    <div className="flex items-start gap-2.5">
+                                        <div className="w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-black flex items-center justify-center shrink-0 shadow-2xs">
+                                            1
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-black text-slate-800 leading-tight">Enter Amount</p>
+                                            <p className="text-[11px] text-slate-500 leading-tight">Select or enter withdrawal amount</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Step 2 */}
+                                    <div className="flex items-start gap-2.5">
+                                        <div className="w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-black flex items-center justify-center shrink-0 shadow-2xs">
+                                            2
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-black text-slate-800 leading-tight">Generate UPI QR</p>
+                                            <p className="text-[11px] text-slate-500 leading-tight">System creates dynamic UPI QR</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Step 3 */}
+                                    <div className="flex items-start gap-2.5">
+                                        <div className="w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-black flex items-center justify-center shrink-0 shadow-2xs">
+                                            3
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-black text-slate-800 leading-tight">Customer Pays</p>
+                                            <p className="text-[11px] text-slate-500 leading-tight">Customer scans QR and pays via any UPI app</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Step 4 */}
+                                    <div className="flex items-start gap-2.5">
+                                        <div className="w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-black flex items-center justify-center shrink-0 shadow-2xs">
+                                            4
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-black text-slate-800 leading-tight">Disburse Cash</p>
+                                            <p className="text-[11px] text-slate-500 leading-tight">Receive payment and give cash to customer</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Pay Using Any UPI App Section */}
+                            <div className="pt-2 border-t border-slate-100 space-y-2">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 text-xs font-black shadow-2xs">
+                                        ₹
+                                    </div>
+                                    <div>
+                                        <h4 className="text-xs font-black text-slate-800 leading-tight">
+                                            Pay Using Any UPI App
+                                        </h4>
+                                        <p className="text-[11px] text-slate-500 leading-tight">
+                                            Customer can pay using any UPI app below.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* UPI Payment Logos Row: Strictly PhonePe, Google Pay, Paytm, BHIM without any captions */}
+                                <div className="grid grid-cols-4 gap-2 pt-1">
+                                    <div className="h-11 sm:h-12 bg-white rounded-xl border border-slate-200/90 shadow-2xs flex items-center justify-center p-1.5 hover:border-blue-300 transition-colors">
+                                        <PhonePeLogo className="h-7 w-auto" />
+                                    </div>
+                                    <div className="h-11 sm:h-12 bg-white rounded-xl border border-slate-200/90 shadow-2xs flex items-center justify-center p-1.5 hover:border-blue-300 transition-colors">
+                                        <GooglePayLogo className="h-6 w-auto" />
+                                    </div>
+                                    <div className="h-11 sm:h-12 bg-white rounded-xl border border-slate-200/90 shadow-2xs flex items-center justify-center p-1.5 hover:border-blue-300 transition-colors">
+                                        <PaytmLogo className="h-5 w-auto" />
+                                    </div>
+                                    <div className="h-11 sm:h-12 bg-white rounded-xl border border-slate-200/90 shadow-2xs flex items-center justify-center p-1.5 hover:border-blue-300 transition-colors">
+                                        <BhimLogo className="h-4.5 w-auto" />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </motion.div>
                 )}
@@ -819,20 +946,20 @@ const UpiCashPoint = () => {
                     <motion.div
                         initial={{ opacity: 0, scale: 0.98 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="max-w-2xl mx-auto bg-white p-6 md:p-8 rounded-3xl border border-slate-200/80 shadow-lg text-center space-y-6"
+                        className="max-w-xl mx-auto w-full bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-md text-center space-y-3"
                     >
                         {/* Countdown Header */}
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                             <div className="text-left">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Transaction Status</p>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-ping" />
-                                    <span className="text-sm font-black text-blue-700 uppercase tracking-wider">Awaiting UPI Payment</span>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                    <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
+                                    <span className="text-xs font-black text-blue-700 uppercase tracking-wider">Awaiting UPI Payment</span>
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800">
-                                <Clock size={16} className="animate-spin text-amber-600" />
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-50 border border-amber-200 text-amber-800">
+                                <Clock size={14} className="animate-spin text-amber-600" />
                                 <span className="text-xs font-black tracking-wider">
                                     Expires in {timeLeft}s
                                 </span>
@@ -840,64 +967,64 @@ const UpiCashPoint = () => {
                         </div>
 
                         {/* Amount Highlight */}
-                        <div className="space-y-1">
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Withdrawal Amount</p>
-                            <p className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
+                        <div className="space-y-0.5">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Withdrawal Amount</p>
+                            <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
                                 ₹{parseFloat(activeTxn.amount || amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                             </p>
                         </div>
 
                         {/* Dynamic QR Display */}
-                        <div className="flex flex-col items-center justify-center p-6 bg-slate-50 border border-slate-200/80 rounded-3xl max-w-sm mx-auto shadow-inner">
-                            <div className="bg-white p-4 rounded-2xl shadow-md border border-slate-200/80">
+                        <div className="flex flex-col items-center justify-center p-3.5 bg-[#F8FAFC] border border-slate-200/80 rounded-2xl max-w-xs mx-auto shadow-inner">
+                            <div className="bg-white p-3 rounded-xl shadow-xs border border-slate-200/80">
                                 <img
                                     src={activeTxn.intentLink?.startsWith('data:') ? activeTxn.intentLink : `data:image/png;base64,${activeTxn.intentLink}`}
                                     alt="UPI Cash Withdrawal QR"
-                                    className="w-56 h-56 md:w-64 md:h-64 object-contain"
+                                    className="w-48 h-48 sm:w-52 sm:h-52 object-contain"
                                 />
                             </div>
 
-                            <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-slate-600">
-                                <Smartphone size={16} className="text-indigo-600" />
-                                <span>Scan with GPay, PhonePe, Paytm, or any BHIM UPI app</span>
+                            <div className="mt-2.5 flex items-center gap-1.5 text-[11px] font-semibold text-slate-600">
+                                <Smartphone size={14} className="text-blue-600" />
+                                <span>Scan with PhonePe, Google Pay, Paytm, or BHIM</span>
                             </div>
                         </div>
 
                         {/* QR Note from provider */}
                         {activeTxn.qrExpiryNote && (
-                            <p className="text-xs text-amber-800 bg-amber-50 p-3 rounded-2xl border border-amber-200">
+                            <p className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-xl border border-amber-200">
                                 {activeTxn.qrExpiryNote}
                             </p>
                         )}
 
-                        {/* Transaction References */}
-                        <div className="grid grid-cols-2 gap-3 text-left text-xs bg-slate-50 p-4 rounded-2xl border border-slate-200/70">
+                        {/* Transaction References without Fingpay */}
+                        <div className="grid grid-cols-2 gap-2 text-left text-xs bg-[#F8FAFC] p-2.5 rounded-xl border border-slate-200/70">
                             <div>
-                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Partner Request ID</span>
-                                <span className="font-mono font-bold text-slate-700 truncate block">{activeTxn.partnerRequestId}</span>
+                                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Partner Request ID</span>
+                                <span className="font-mono text-xs font-bold text-slate-700 truncate block">{activeTxn.partnerRequestId}</span>
                             </div>
                             <div>
-                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Fingpay Txn ID</span>
-                                <span className="font-mono font-bold text-slate-700 truncate block">{activeTxn.fpTxnId || 'Pending'}</span>
+                                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Gateway Txn ID</span>
+                                <span className="font-mono text-xs font-bold text-slate-700 truncate block">{activeTxn.fpTxnId || 'Pending'}</span>
                             </div>
                         </div>
 
                         {/* Action buttons */}
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
                             <button
                                 type="button"
                                 disabled={statusLoading}
                                 onClick={() => checkTransactionStatus(true)}
-                                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-2"
+                                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-1.5"
                             >
-                                <RefreshCw size={14} className={statusLoading ? 'animate-spin' : ''} />
+                                <RefreshCw size={13} className={statusLoading ? 'animate-spin' : ''} />
                                 <span>{statusLoading ? 'Verifying...' : 'Check Status Now'}</span>
                             </button>
 
                             <button
                                 type="button"
                                 onClick={handleReset}
-                                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs uppercase tracking-wider transition-all"
+                                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs uppercase tracking-wider transition-all"
                             >
                                 Cancel / New Transaction
                             </button>
@@ -910,83 +1037,83 @@ const UpiCashPoint = () => {
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="max-w-2xl mx-auto bg-white p-6 md:p-8 rounded-3xl border border-emerald-200 shadow-xl text-center space-y-6"
+                        className="max-w-xl mx-auto w-full bg-white p-4 sm:p-5 rounded-2xl border border-emerald-200 shadow-lg text-center space-y-3"
                     >
-                        <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-3xl mx-auto flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                            <CheckCircle2 size={44} />
+                        <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl mx-auto flex items-center justify-center shadow-md shadow-emerald-500/20">
+                            <CheckCircle2 size={32} />
                         </div>
 
-                        <div className="space-y-1">
-                            <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <div className="space-y-0.5">
+                            <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-700 border border-emerald-200">
                                 Payment Successful
                             </span>
-                            <h2 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight mt-2">
+                            <h2 className="text-lg sm:text-xl font-black text-slate-800 tracking-tight mt-1">
                                 Transaction Successful!
                             </h2>
-                            <p className="text-xs text-slate-500">
+                            <p className="text-[11px] text-slate-500">
                                 The UPI customer payment is confirmed. Please hand over cash now.
                             </p>
                         </div>
 
                         {/* Amount Banner */}
-                        <div className="p-5 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-emerald-500/10 border border-emerald-200 rounded-3xl">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-800">Cash Amount to Hand Over</p>
-                            <p className="text-3xl md:text-4xl font-black text-emerald-700 tracking-tight mt-1">
+                        <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-2xl">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-emerald-800">Cash Amount to Hand Over</p>
+                            <p className="text-2xl sm:text-3xl font-black text-emerald-700 tracking-tight mt-0.5">
                                 ₹{parseFloat(activeTxn.payerAmount || activeTxn.amount || amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                             </p>
-                            <p className="text-[11px] font-bold text-emerald-700 mt-1">
+                            <p className="text-[10px] font-bold text-emerald-700 mt-0.5">
                                 ✓ Amount has been credited to your Rupiksha digital wallet.
                             </p>
                         </div>
 
                         {/* Transaction Details Table */}
-                        <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/70 text-left space-y-2.5 text-xs">
-                            <div className="flex justify-between items-center py-1 border-b border-slate-200/50">
+                        <div className="bg-[#F8FAFC] rounded-xl p-3 border border-slate-200/70 text-left space-y-1.5 text-xs">
+                            <div className="flex justify-between items-center py-0.5 border-b border-slate-200/50">
                                 <span className="text-slate-500 font-semibold">Bank RRN (UTR):</span>
                                 <span className="font-mono font-black text-slate-800">{activeTxn.bankRrn || 'N/A'}</span>
                             </div>
-                            <div className="flex justify-between items-center py-1 border-b border-slate-200/50">
+                            <div className="flex justify-between items-center py-0.5 border-b border-slate-200/50">
                                 <span className="text-slate-500 font-semibold">Payer Name:</span>
                                 <span className="font-black text-slate-800">{activeTxn.payerName || 'UPI Customer'}</span>
                             </div>
-                            <div className="flex justify-between items-center py-1 border-b border-slate-200/50">
+                            <div className="flex justify-between items-center py-0.5 border-b border-slate-200/50">
                                 <span className="text-slate-500 font-semibold">Payer VPA:</span>
                                 <span className="font-mono text-slate-700">{activeTxn.payerVpa || 'N/A'}</span>
                             </div>
-                            <div className="flex justify-between items-center py-1 border-b border-slate-200/50">
+                            <div className="flex justify-between items-center py-0.5 border-b border-slate-200/50">
                                 <span className="text-slate-500 font-semibold">Partner Request ID:</span>
                                 <span className="font-mono text-slate-700">{activeTxn.partnerRequestId}</span>
                             </div>
-                            <div className="flex justify-between items-center py-1">
+                            <div className="flex justify-between items-center py-0.5">
                                 <span className="text-slate-500 font-semibold">Date & Time:</span>
                                 <span className="text-slate-700 font-medium">{activeTxn.transactionDate || new Date().toLocaleString('en-IN')}</span>
                             </div>
                         </div>
 
                         {/* Actions */}
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
                             <button
                                 type="button"
                                 onClick={() => setShowReceipt(true)}
-                                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-2"
+                                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-1.5"
                             >
-                                <Printer size={15} />
-                                <span>View / Print Receipt</span>
+                                <Printer size={14} />
+                                <span>View Receipt</span>
                             </button>
 
                             <button
                                 type="button"
                                 onClick={downloadPdfReceipt}
-                                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-slate-800 hover:bg-slate-900 text-white font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2"
+                                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5"
                             >
-                                <Download size={15} />
+                                <Download size={14} />
                                 <span>Download PDF</span>
                             </button>
 
                             <button
                                 type="button"
                                 onClick={handleReset}
-                                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs uppercase tracking-wider transition-all"
+                                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs uppercase tracking-wider transition-all"
                             >
                                 New Withdrawal
                             </button>
@@ -999,17 +1126,17 @@ const UpiCashPoint = () => {
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="max-w-xl mx-auto bg-white p-6 md:p-8 rounded-3xl border border-rose-200 shadow-xl text-center space-y-6"
+                        className="max-w-md mx-auto w-full bg-white p-4 sm:p-5 rounded-2xl border border-rose-200 shadow-lg text-center space-y-3"
                     >
-                        <div className="w-20 h-20 bg-rose-100 text-rose-600 rounded-3xl mx-auto flex items-center justify-center shadow-lg shadow-rose-500/20">
-                            <XCircle size={44} />
+                        <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-2xl mx-auto flex items-center justify-center shadow-md shadow-rose-500/20">
+                            <XCircle size={32} />
                         </div>
 
-                        <div className="space-y-1">
-                            <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-rose-50 text-rose-700 border border-rose-200">
+                        <div className="space-y-0.5">
+                            <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-rose-50 text-rose-700 border border-rose-200">
                                 Payment Failed
                             </span>
-                            <h2 className="text-2xl font-black text-slate-800 tracking-tight mt-2">
+                            <h2 className="text-lg sm:text-xl font-black text-slate-800 tracking-tight mt-1">
                                 Transaction Failed
                             </h2>
                             <p className="text-xs text-rose-600 font-semibold">
@@ -1017,18 +1144,18 @@ const UpiCashPoint = () => {
                             </p>
                         </div>
 
-                        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-800 text-left flex items-start gap-3">
-                            <AlertTriangle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                        <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 text-left flex items-start gap-2">
+                            <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
                             <span>
                                 <strong>Do NOT hand over physical cash!</strong> The customer has not been successfully debited or payment failed at the acquiring switch.
                             </span>
                         </div>
 
-                        <div className="flex items-center justify-center gap-3 pt-2">
+                        <div className="flex items-center justify-center gap-2 pt-1">
                             <button
                                 type="button"
                                 onClick={handleReset}
-                                className="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md"
+                                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md"
                             >
                                 Try Again
                             </button>
@@ -1041,17 +1168,17 @@ const UpiCashPoint = () => {
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="max-w-xl mx-auto bg-white p-6 md:p-8 rounded-3xl border border-amber-200 shadow-xl text-center space-y-6"
+                        className="max-w-md mx-auto w-full bg-white p-4 sm:p-5 rounded-2xl border border-amber-200 shadow-lg text-center space-y-3"
                     >
-                        <div className="w-20 h-20 bg-amber-100 text-amber-600 rounded-3xl mx-auto flex items-center justify-center shadow-lg shadow-amber-500/20">
-                            <Clock size={44} />
+                        <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl mx-auto flex items-center justify-center shadow-md shadow-amber-500/20">
+                            <Clock size={32} />
                         </div>
 
-                        <div className="space-y-1">
-                            <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-50 text-amber-700 border border-amber-200">
+                        <div className="space-y-0.5">
+                            <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-amber-50 text-amber-700 border border-amber-200">
                                 QR Expired
                             </span>
-                            <h2 className="text-2xl font-black text-slate-800 tracking-tight mt-2">
+                            <h2 className="text-lg sm:text-xl font-black text-slate-800 tracking-tight mt-1">
                                 QR Code Timed Out
                             </h2>
                             <p className="text-xs text-slate-500">
@@ -1059,28 +1186,28 @@ const UpiCashPoint = () => {
                             </p>
                         </div>
 
-                        <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 text-xs text-blue-800 text-left flex items-start gap-3">
-                            <Info size={18} className="text-blue-600 flex-shrink-0 mt-0.5" />
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-800 text-left flex items-start gap-2">
+                            <Info size={16} className="text-blue-600 shrink-0 mt-0.5" />
                             <span>
-                                Did the customer approve the payment just before expiry? Click <strong>Check Final Status</strong> to verify before generating a new QR or taking any action.
+                                Did the customer approve the payment just before expiry? Click <strong>Check Final Status</strong> to verify before generating a new QR.
                             </span>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
                             <button
                                 type="button"
                                 disabled={statusLoading}
                                 onClick={() => checkTransactionStatus(true)}
-                                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-2"
+                                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-1.5"
                             >
-                                <RefreshCw size={14} className={statusLoading ? 'animate-spin' : ''} />
+                                <RefreshCw size={13} className={statusLoading ? 'animate-spin' : ''} />
                                 <span>{statusLoading ? 'Checking...' : 'Check Final Status'}</span>
                             </button>
 
                             <button
                                 type="button"
                                 onClick={handleReset}
-                                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs uppercase tracking-wider transition-all"
+                                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs uppercase tracking-wider transition-all"
                             >
                                 Generate New QR
                             </button>
@@ -1097,36 +1224,36 @@ const UpiCashPoint = () => {
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-200"
+                            className="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-200"
                         >
                             {/* Receipt Header */}
-                            <div className="bg-slate-900 text-white p-5 text-center relative">
+                            <div className="bg-slate-900 text-white p-4 text-center relative">
                                 <button
                                     type="button"
                                     onClick={() => setShowReceipt(false)}
-                                    className="absolute right-4 top-4 text-slate-400 hover:text-white"
+                                    className="absolute right-3.5 top-3.5 text-slate-400 hover:text-white"
                                 >
                                     ✕
                                 </button>
-                                <h3 className="text-base font-black tracking-wider uppercase">RUPIKSHA FINTECH</h3>
-                                <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-widest mt-0.5">
+                                <h3 className="text-sm font-black tracking-wider uppercase">RUPIKSHA FINTECH</h3>
+                                <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-widest mt-0.5">
                                     Official UPI Cash Point Receipt
                                 </p>
                             </div>
 
                             {/* Receipt Body */}
-                            <div className="p-6 space-y-4 text-xs">
-                                <div className="text-center py-2 border-b border-dashed border-slate-200">
-                                    <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <div className="p-5 space-y-3 text-xs">
+                                <div className="text-center py-1.5 border-b border-dashed border-slate-200">
+                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
                                         TRANSACTION SUCCESSFUL
                                     </span>
-                                    <p className="text-2xl font-black text-slate-900 mt-2">
+                                    <p className="text-xl font-black text-slate-900 mt-1.5">
                                         ₹{parseFloat(activeTxn.payerAmount || activeTxn.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                     </p>
                                     <p className="text-[10px] text-slate-400 font-medium">Physical Cash Handed to Customer</p>
                                 </div>
 
-                                <div className="space-y-2 text-slate-600">
+                                <div className="space-y-1.5 text-slate-600">
                                     <div className="flex justify-between">
                                         <span className="text-slate-400">Date & Time:</span>
                                         <span className="font-semibold text-slate-800">{activeTxn.transactionDate || new Date().toLocaleString('en-IN')}</span>
@@ -1136,7 +1263,7 @@ const UpiCashPoint = () => {
                                         <span className="font-mono font-bold text-slate-800">{activeTxn.bankRrn || 'N/A'}</span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span className="text-slate-400">Fingpay Txn ID:</span>
+                                        <span className="text-slate-400">Gateway Txn ID:</span>
                                         <span className="font-mono font-bold text-slate-800">{activeTxn.fpTxnId || activeTxn.fingpayTransactionId || 'N/A'}</span>
                                     </div>
                                     <div className="flex justify-between">
@@ -1157,27 +1284,27 @@ const UpiCashPoint = () => {
                                     </div>
                                 </div>
 
-                                <div className="p-3 bg-slate-50 rounded-xl text-[10px] text-slate-500 text-center">
+                                <div className="p-2.5 bg-slate-50 rounded-xl text-[10px] text-slate-500 text-center">
                                     This is a computer-generated cash withdrawal slip. Authenticated via NPCI UPI Cash Point.
                                 </div>
                             </div>
 
                             {/* Receipt Footer Actions */}
-                            <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-2">
+                            <div className="p-3.5 bg-slate-50 border-t border-slate-100 flex gap-2">
                                 <button
                                     type="button"
                                     onClick={() => window.print()}
-                                    className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-xs uppercase tracking-wider hover:bg-indigo-700 transition-colors flex items-center justify-center gap-1.5"
+                                    className="flex-1 py-2 rounded-xl bg-blue-600 text-white font-bold text-xs uppercase tracking-wider hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5"
                                 >
-                                    <Printer size={14} />
+                                    <Printer size={13} />
                                     <span>Print</span>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={downloadPdfReceipt}
-                                    className="flex-1 py-2.5 rounded-xl bg-slate-800 text-white font-bold text-xs uppercase tracking-wider hover:bg-slate-900 transition-colors flex items-center justify-center gap-1.5"
+                                    className="flex-1 py-2 rounded-xl bg-slate-800 text-white font-bold text-xs uppercase tracking-wider hover:bg-slate-900 transition-colors flex items-center justify-center gap-1.5"
                                 >
-                                    <Download size={14} />
+                                    <Download size={13} />
                                     <span>Download PDF</span>
                                 </button>
                             </div>
