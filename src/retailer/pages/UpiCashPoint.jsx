@@ -537,7 +537,7 @@ const UpiCashPoint = () => {
     }
 
     return (
-        <div className="w-full h-auto lg:h-full max-w-[1280px] mx-auto p-2.5 sm:p-3 lg:p-3 xl:p-3.5 font-['Inter',sans-serif] flex flex-col justify-start lg:justify-between gap-2 lg:gap-2.5 box-border">
+        <div className="w-full min-h-full max-w-[1280px] mx-auto p-2.5 sm:p-3 lg:p-3 xl:p-3.5 font-['Inter',sans-serif] flex flex-col justify-start gap-2.5 lg:gap-3 box-border pb-8">
             
             {/* 1. UPI Cash Point Heading Card */}
             <div className="bg-white px-3.5 py-2.5 sm:px-4 sm:py-3 lg:py-2.5 xl:py-3 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
@@ -711,7 +711,7 @@ const UpiCashPoint = () => {
             ) : null}
 
             {/* 3. Main Content: Form & Supporting Panel (or other states) */}
-            <div className="flex-1 min-h-0 flex flex-col justify-start lg:justify-center">
+            <div className="flex-1 flex flex-col justify-start">
                 {txnState === 'IDLE' && (
                     <motion.div
                         initial={{ opacity: 0, y: 8 }}
