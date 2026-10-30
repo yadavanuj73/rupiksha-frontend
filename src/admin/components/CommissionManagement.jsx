@@ -1177,10 +1177,12 @@ export default function CommissionManagement() {
                                         </div>
 
                                         {/* Footer Action Bar */}
-                                        <div className="p-4 sm:p-6 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-4">
-                                            <span className="text-xs font-black text-slate-800">
-                                                {hasAepsChanges ? 'You have unsaved changes in slab rates.' : 'All slab changes are saved in PostgreSQL.'}
-                                            </span>
+                                        <div className="p-4 sm:p-6 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-center justify-end gap-4">
+                                            {hasAepsChanges && (
+                                                <span className="text-xs font-black text-amber-700 mr-auto">
+                                                    You have unsaved changes in slab rates.
+                                                </span>
+                                            )}
                                             <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
                                                 {hasAepsChanges && (
                                                     <button
@@ -1437,10 +1439,12 @@ export default function CommissionManagement() {
                                     </div>
 
                                     {/* Action Bar */}
-                                    <div className="p-4 sm:p-6 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-4">
-                                        <span className="text-xs font-black text-slate-800">
-                                            {hasBbpsChanges ? 'You have unsaved percentage changes.' : 'All BBPS settings are persisted in PostgreSQL.'}
-                                        </span>
+                                    <div className="p-4 sm:p-6 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-center justify-end gap-4">
+                                        {hasBbpsChanges && (
+                                            <span className="text-xs font-black text-amber-700 mr-auto">
+                                                You have unsaved percentage changes.
+                                            </span>
+                                        )}
                                         <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
                                             {hasBbpsChanges && (
                                                 <button
