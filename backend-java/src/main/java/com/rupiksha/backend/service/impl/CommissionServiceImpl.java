@@ -828,12 +828,16 @@ public class CommissionServiceImpl implements CommissionService {
         }
 
         String category = bbpsTxn.getCategory() != null ? bbpsTxn.getCategory().trim() : "";
-        String serviceId = "loan-repayment";
-        // Check if category matches Loan Repayment (case-insensitive)
-        if (!category.equalsIgnoreCase("Loan Repayment") && !category.equalsIgnoreCase("loan-repayment")) {
-            log.debug("Commission only enabled for BBPS Loan Repayment in this phase. Txn category: {}", category);
+        String serviceId = resolveBbpsServiceId(category);
+        if (serviceId == null) {
+            log.debug("Commission not configured or enabled for BBPS category: {}. Skipping. Txn ID: {}", category, bbpsTxn.getId());
             return;
         }
+
+        String serviceDisplayName = "loan-repayment".equalsIgnoreCase(serviceId) ? "Loan Repayment" : "Electricity";
+        String serviceType = "loan-repayment".equalsIgnoreCase(serviceId) ? "BBPS_LOAN_REPAYMENT" : "BBPS_ELECTRICITY";
+        String bbpsCategory = "loan-repayment".equalsIgnoreCase(serviceId) ? "Loan Repayment" : "Electricity";
+        String walletServiceName = "BBPS " + serviceDisplayName;
 
         String originalTxnId = bbpsTxn.getMerchantRefNo() != null ? bbpsTxn.getMerchantRefNo() : bbpsTxn.getId().toString();
         BigDecimal txnAmount = bbpsTxn.getAmount();
@@ -849,7 +853,7 @@ public class CommissionServiceImpl implements CommissionService {
             return;
         }
 
-        log.info("Processing percentage commission for successful BBPS Loan Repayment transaction: txnId={}, amount={}", originalTxnId, txnAmount);
+        log.info("Processing percentage commission for successful BBPS {} transaction: txnId={}, amount={}", serviceDisplayName, originalTxnId, txnAmount);
 
         // 1. Resolve Retailer
         User retailer = bbpsTxn.getUser();
@@ -949,7 +953,10 @@ public class CommissionServiceImpl implements CommissionService {
                     retComm,
                     retPct,
                     ip,
-                    "BBPS Loan Repayment Commission - ₹" + txnAmount + " (" + retPct + "%)"
+                    "BBPS " + serviceDisplayName + " Commission - ₹" + txnAmount + " (" + retPct + "%)",
+                    serviceType,
+                    bbpsCategory,
+                    walletServiceName
             );
         }
 
@@ -966,7 +973,10 @@ public class CommissionServiceImpl implements CommissionService {
                     distComm,
                     distPct,
                     ip,
-                    "BBPS Loan Repayment Commission (Distributor) - ₹" + txnAmount + " (" + distPct + "%)"
+                    "BBPS " + serviceDisplayName + " Commission (Distributor) - ₹" + txnAmount + " (" + distPct + "%)",
+                    serviceType,
+                    bbpsCategory,
+                    walletServiceName
             );
         }
 
@@ -983,12 +993,27 @@ public class CommissionServiceImpl implements CommissionService {
                     sdComm,
                     sdPct,
                     ip,
-                    "BBPS Loan Repayment Commission (Super Distributor) - ₹" + txnAmount + " (" + sdPct + "%)"
+                    "BBPS " + serviceDisplayName + " Commission (Super Distributor) - ₹" + txnAmount + " (" + sdPct + "%)",
+                    serviceType,
+                    bbpsCategory,
+                    walletServiceName
             );
         }
 
-        log.info("BBPS commission distribution completed for txn {}: Retailer(₹{}), Distributor(₹{}), SuperDistributor(₹{})",
-                originalTxnId, retComm, (distributor != null ? distComm : BigDecimal.ZERO), (superDistributor != null ? sdComm : BigDecimal.ZERO));
+        log.info("BBPS commission distribution completed for txn {} ({}): Retailer(₹{}), Distributor(₹{}), SuperDistributor(₹{})",
+                originalTxnId, serviceDisplayName, retComm, (distributor != null ? distComm : BigDecimal.ZERO), (superDistributor != null ? sdComm : BigDecimal.ZERO));
+    }
+
+    private String resolveBbpsServiceId(String category) {
+        if (category == null || category.isBlank()) return null;
+        String cat = category.trim().toLowerCase();
+        if (cat.equals("loan repayment") || cat.equals("loan-repayment") || cat.equals("loans")) {
+            return "loan-repayment";
+        }
+        if (cat.equals("electricity") || cat.equals("prepaid meter") || cat.equals("prepaid-meter")) {
+            return "electricity";
+        }
+        return null;
     }
 
     private void creditBbpsBeneficiary(
@@ -1002,7 +1027,10 @@ public class CommissionServiceImpl implements CommissionService {
             BigDecimal commAmount,
             BigDecimal appliedPercentage,
             String ip,
-            String narration
+            String narration,
+            String serviceType,
+            String bbpsCategory,
+            String walletServiceName
     ) {
         String originalTxnId = bbpsTxn.getMerchantRefNo() != null ? bbpsTxn.getMerchantRefNo() : bbpsTxn.getId().toString();
         String commRef = generateCommissionReference();
@@ -1015,7 +1043,7 @@ public class CommissionServiceImpl implements CommissionService {
                     commAmount,
                     narration,
                     WalletTransactionContext.COMMISSION,
-                    "BBPS Loan Repayment",
+                    walletServiceName,
                     ip,
                     idempotencyKey
             );
@@ -1024,8 +1052,8 @@ public class CommissionServiceImpl implements CommissionService {
             CommissionTransaction commTxn = CommissionTransaction.builder()
                     .commissionReference(commRef)
                     .originalTransactionId(originalTxnId)
-                    .serviceType("BBPS_LOAN_REPAYMENT")
-                    .bbpsCategory("Loan Repayment")
+                    .serviceType(serviceType)
+                    .bbpsCategory(bbpsCategory)
                     .plan(plan)
                     .planCode(plan != null ? plan.getPlanCode() : null)
                     .slab(null)
@@ -1131,12 +1159,12 @@ public class CommissionServiceImpl implements CommissionService {
                         .findFirst()
                         .orElse(sId);
 
-                boolean isLoanRepayment = "loan-repayment".equalsIgnoreCase(sId);
+                boolean isPreSeeded = "loan-repayment".equalsIgnoreCase(sId) || "electricity".equalsIgnoreCase(sId);
 
                 for (CommissionPlan plan : plans) {
-                    BigDecimal ret = isLoanRepayment ? getDefaultPercentage(plan.getPlanCode(), "RETAILER") : BigDecimal.ZERO;
-                    BigDecimal dist = isLoanRepayment ? getDefaultPercentage(plan.getPlanCode(), "DISTRIBUTOR") : BigDecimal.ZERO;
-                    BigDecimal sd = isLoanRepayment ? getDefaultPercentage(plan.getPlanCode(), "SUPER_DISTRIBUTOR") : BigDecimal.ZERO;
+                    BigDecimal ret = isPreSeeded ? getDefaultPercentage(plan.getPlanCode(), "RETAILER") : BigDecimal.ZERO;
+                    BigDecimal dist = isPreSeeded ? getDefaultPercentage(plan.getPlanCode(), "DISTRIBUTOR") : BigDecimal.ZERO;
+                    BigDecimal sd = isPreSeeded ? getDefaultPercentage(plan.getPlanCode(), "SUPER_DISTRIBUTOR") : BigDecimal.ZERO;
 
                     BbpsCommissionConfig newConfig = BbpsCommissionConfig.builder()
                             .serviceId(sId)
@@ -1147,7 +1175,7 @@ public class CommissionServiceImpl implements CommissionService {
                             .retailerPercentage(ret)
                             .distributorPercentage(dist)
                             .superDistributorPercentage(sd)
-                            .enabled(isLoanRepayment)
+                            .enabled(isPreSeeded)
                             .build();
 
                     bbpsCommissionConfigRepository.save(newConfig);

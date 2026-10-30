@@ -464,13 +464,13 @@ export default function CommissionManagement() {
         return (
             <div className="space-y-1.5 relative" ref={modelDropdownRef}>
                 <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">
+                    <label className="text-[11px] font-black text-black uppercase tracking-wider block">
                         Commission Model
                     </label>
                     <span className={`text-[9.5px] font-black uppercase px-2 py-0.5 rounded-md border ${
                         isBbps 
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                            : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                            ? 'bg-emerald-50 text-emerald-950 border-emerald-300' 
+                            : 'bg-indigo-50 text-indigo-950 border-indigo-300'
                     }`}>
                         {currentModel.badge}
                     </span>
@@ -480,10 +480,10 @@ export default function CommissionManagement() {
                     <button
                         type="button"
                         onClick={() => setIsModelDropdownOpen(prev => !prev)}
-                        className={`w-full bg-slate-50 border rounded-2xl px-3.5 py-2.5 text-xs font-bold text-slate-800 transition-all flex items-center justify-between cursor-pointer shadow-xs outline-none ${
+                        className={`w-full bg-slate-50 border rounded-2xl px-3.5 py-2.5 text-xs font-black text-black transition-all flex items-center justify-between cursor-pointer shadow-xs outline-none ${
                             isModelDropdownOpen
-                                ? isBbps ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-white' : 'border-indigo-500 ring-2 ring-indigo-500/20 bg-white'
-                                : 'border-slate-200 hover:border-slate-300 hover:bg-white'
+                                ? isBbps ? 'border-emerald-600 ring-2 ring-emerald-500/20 bg-white' : 'border-indigo-600 ring-2 ring-indigo-500/20 bg-white'
+                                : 'border-slate-300 hover:border-slate-400 hover:bg-white'
                         }`}
                         aria-expanded={isModelDropdownOpen}
                     >
@@ -495,19 +495,19 @@ export default function CommissionManagement() {
                             </div>
                             <div className="text-left min-w-0">
                                 <div className="flex items-center gap-1.5">
-                                    <span className="font-black text-slate-800 text-xs block truncate">
+                                    <span className="font-black text-black text-xs block truncate">
                                         {currentModel.label}
                                     </span>
                                     {isBbps && (
                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                                     )}
                                 </div>
-                                <span className="text-[10px] font-bold text-slate-400 block truncate">
+                                <span className="text-[10px] font-bold text-slate-800 block truncate">
                                     {currentModel.sublabel}
                                 </span>
                             </div>
                         </div>
-                        <ChevronDown size={15} className={`text-slate-400 transition-transform duration-200 shrink-0 ml-2 ${isModelDropdownOpen ? 'rotate-180' : ''}`} />
+                        <ChevronDown size={15} className={`text-black transition-transform duration-200 shrink-0 ml-2 ${isModelDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
 
                     <AnimatePresence>
@@ -517,7 +517,7 @@ export default function CommissionManagement() {
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 exit={{ opacity: 0, y: -4, scale: 0.98 }}
                                 transition={{ duration: 0.15 }}
-                                className="absolute z-50 left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl p-1.5 space-y-1"
+                                className="absolute z-50 left-0 right-0 mt-1.5 bg-white border border-slate-300 rounded-2xl shadow-xl p-1.5 space-y-1"
                             >
                                 {COMMISSION_MODELS.map(m => {
                                     const isSelected = commissionModel === m.id;
@@ -535,14 +535,14 @@ export default function CommissionManagement() {
                                             className={`w-full p-2.5 rounded-xl text-left transition-all flex items-center justify-between gap-2 cursor-pointer ${
                                                 isSelected
                                                     ? 'bg-slate-900 text-white shadow-xs'
-                                                    : 'hover:bg-slate-50 text-slate-700'
+                                                    : 'hover:bg-slate-100 text-black'
                                             }`}
                                         >
                                             <div className="flex items-center gap-2.5 min-w-0">
                                                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
                                                     isSelected 
                                                         ? 'bg-white/20 text-white' 
-                                                        : isMbbps ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'
+                                                        : isMbbps ? 'bg-emerald-50 text-emerald-800' : 'bg-indigo-50 text-indigo-800'
                                                 }`}>
                                                     <IconComp size={14} />
                                                 </div>
@@ -553,7 +553,7 @@ export default function CommissionManagement() {
                                                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                                                         )}
                                                     </div>
-                                                    <p className={`text-[10px] font-medium truncate ${isSelected ? 'text-slate-300' : 'text-slate-400'}`}>
+                                                    <p className={`text-[10px] font-bold truncate ${isSelected ? 'text-slate-200' : 'text-slate-700'}`}>
                                                         {m.sublabel}
                                                     </p>
                                                 </div>
@@ -573,34 +573,34 @@ export default function CommissionManagement() {
     return (
         <div className="space-y-6 max-w-7xl mx-auto font-['Inter',sans-serif]">
             {/* ── TOP HEADER & TAB BAR ────────────────────────────────────────── */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
                 <div className="flex items-center gap-3.5">
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 via-blue-600 to-sky-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 shrink-0">
                         <IndianRupee size={24} strokeWidth={2.5} />
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
+                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-black bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-300">
                                 Operations &bull; Master
                             </span>
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
+                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-black bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-300">
                                 Multi-Model Architecture
                             </span>
                         </div>
-                        <h1 className="text-xl font-black text-slate-800 tracking-tight mt-0.5">
+                        <h1 className="text-xl md:text-2xl font-black text-black tracking-tight mt-0.5">
                             Commission Management
                         </h1>
                     </div>
                 </div>
 
                 {/* Main View Tabs (Config vs History) */}
-                <div className="inline-flex items-center bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200/80 self-start sm:self-center">
+                <div className="inline-flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-300 self-start sm:self-center">
                     <button
                         onClick={() => setActiveTab('config')}
                         className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
                             activeTab === 'config'
-                                ? 'bg-white text-indigo-600 shadow-sm shadow-slate-200 ring-1 ring-slate-200/60'
-                                : 'text-slate-500 hover:text-slate-800'
+                                ? 'bg-black text-white shadow-md'
+                                : 'text-black hover:text-blue-700'
                         }`}
                     >
                         <Layers size={14} />
@@ -610,8 +610,8 @@ export default function CommissionManagement() {
                         onClick={() => setActiveTab('history')}
                         className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
                             activeTab === 'history'
-                                ? 'bg-white text-indigo-600 shadow-sm shadow-slate-200 ring-1 ring-slate-200/60'
-                                : 'text-slate-500 hover:text-slate-800'
+                                ? 'bg-black text-white shadow-md'
+                                : 'text-black hover:text-blue-700'
                         }`}
                     >
                         <History size={14} />
@@ -656,148 +656,176 @@ export default function CommissionManagement() {
                 commissionModel === 'BBPS' && bbpsStep === 'select-service' ? (
                     /* ── STEP 1: SELECT BBPS SERVICE SCREEN ───────────────────── */
                     <div className="space-y-6">
-                        {/* Top Bar with Model Switcher Dropdown */}
-                        <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                <div className="max-w-xs w-full">
-                                    {renderCommissionModelDropdown()}
-                                </div>
-                                <div className="flex items-center gap-2 self-start sm:self-center">
-                                    <span className="text-[11px] font-bold text-slate-500">
-                                        Active Architecture:
-                                    </span>
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200">
-                                        BBPS &bull; Percentage Commission
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
                         {/* BBPS Service Search & Selection Panel */}
-                        <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-6">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+                        <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-sm space-y-6">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
                                 <div>
-                                    <div className="flex items-center gap-2">
-                                        <h2 className="text-lg font-black text-slate-800">
+                                    <div className="flex items-center gap-3">
+                                        <h2 className="text-xl md:text-2xl font-black text-black tracking-tight">
                                             Select BBPS Service
                                         </h2>
-                                        <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                        <span className="text-[10px] font-black uppercase tracking-wider text-black bg-slate-100 px-3 py-1 rounded-full border border-slate-300 shadow-2xs">
                                             35 Registered Services
                                         </span>
                                     </div>
-                                    <p className="text-xs font-medium text-slate-400 mt-1">
+                                    <p className="text-xs font-bold text-slate-800 mt-1">
                                         Select any Bharat Connect / BBPS service below to configure its percentage commission rates across membership plans.
                                     </p>
                                 </div>
 
-                                {/* Quick select dropdown */}
-                                <div className="w-full md:w-72 shrink-0">
-                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider block mb-1.5">
-                                        Quick Select Service
-                                    </label>
-                                    <div className="relative">
-                                        <select
-                                            value={selectedBbpsServiceId}
-                                            onChange={(e) => handleSelectBbpsService(e.target.value)}
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-xs font-bold text-slate-800 focus:bg-white focus:outline-none focus:border-emerald-500 transition-all appearance-none cursor-pointer pr-9"
-                                        >
-                                            <option value="" disabled>-- Choose BBPS Service --</option>
-                                            {BBPS_CATEGORIES.map(cat => (
-                                                <option key={cat.id} value={cat.id}>
-                                                    {cat.name} {cat.id === 'loan-repayment' ? '(Active)' : ''}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                {/* Controls: Model Switcher + Quick Select Service */}
+                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+                                    {/* Commission Model Selector */}
+                                    <div className="w-full sm:w-56">
+                                        <label className="text-[10px] font-black uppercase text-black tracking-wider block mb-1">
+                                            Commission Model
+                                        </label>
+                                        <div className="relative">
+                                            <select
+                                                value={commissionModel}
+                                                onChange={(e) => handleModelChange(e.target.value)}
+                                                className="w-full bg-slate-50 border border-slate-300 rounded-2xl px-3.5 py-2.5 text-xs font-black text-black focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all appearance-none cursor-pointer pr-9 shadow-2xs"
+                                            >
+                                                {COMMISSION_MODELS.map(m => (
+                                                    <option key={m.id} value={m.id}>
+                                                        {m.label} ({m.sublabel})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-black pointer-events-none" />
+                                        </div>
+                                    </div>
+
+                                    {/* Quick select service */}
+                                    <div className="w-full sm:w-60">
+                                        <label className="text-[10px] font-black uppercase text-black tracking-wider block mb-1">
+                                            Quick Select Service
+                                        </label>
+                                        <div className="relative">
+                                            <select
+                                                value={selectedBbpsServiceId}
+                                                onChange={(e) => handleSelectBbpsService(e.target.value)}
+                                                className="w-full bg-slate-50 border border-slate-300 rounded-2xl px-3.5 py-2.5 text-xs font-black text-black focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all appearance-none cursor-pointer pr-9 shadow-2xs"
+                                            >
+                                                <option value="" disabled>-- Choose BBPS Service --</option>
+                                                {BBPS_CATEGORIES.map(cat => (
+                                                    <option key={cat.id} value={cat.id}>
+                                                        {cat.name} {cat.id === 'loan-repayment' ? '(Active)' : ''}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-black pointer-events-none" />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Search input */}
                             <div className="relative">
-                                <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-700" />
                                 <input
                                     type="text"
                                     placeholder="Search BBPS services by name, category, or keyword (e.g. Loan Repayment, Fastag, DTH, Electricity)..."
                                     value={bbpsSearch}
                                     onChange={(e) => setBbpsSearch(e.target.value)}
-                                    className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm font-bold text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:border-emerald-500 transition-all shadow-inner"
+                                    className="w-full pl-11 pr-10 py-3.5 bg-slate-50/80 border border-slate-300 rounded-2xl text-xs sm:text-sm font-bold text-black placeholder:text-slate-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all shadow-2xs"
                                 />
                                 {bbpsSearch && (
                                     <button
                                         type="button"
                                         onClick={() => setBbpsSearch('')}
-                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-600 hover:text-black cursor-pointer p-1"
                                     >
-                                        <X size={15} />
+                                        <X size={16} />
                                     </button>
                                 )}
                             </div>
 
-                            {/* Grid of services */}
+                            {/* Category Grid Section - Retailer Panel Style */}
                             {filteredBbpsCategories.length === 0 ? (
-                                <div className="p-12 text-center text-slate-400 border border-dashed border-slate-200 rounded-3xl">
-                                    <Search size={28} className="mx-auto text-slate-300 mb-2" />
-                                    <p className="text-sm font-bold text-slate-600">No BBPS services found matching "{bbpsSearch}"</p>
+                                <div className="p-12 text-center text-slate-800 border border-dashed border-slate-300 rounded-3xl space-y-2">
+                                    <Search size={32} className="mx-auto text-slate-600 mb-2" />
+                                    <p className="text-base font-black text-black">No BBPS services found matching &ldquo;{bbpsSearch}&rdquo;</p>
+                                    <p className="text-xs font-bold text-slate-800">Try searching for Fastag, Electricity, Water, Gas, or Loan Repayment.</p>
                                     <button
                                         type="button"
                                         onClick={() => setBbpsSearch('')}
-                                        className="mt-3 px-4 py-2 text-xs font-black uppercase text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-all cursor-pointer"
+                                        className="mt-3 px-4 py-2 text-xs font-black uppercase text-white bg-black hover:bg-slate-800 rounded-xl transition-all cursor-pointer"
                                     >
                                         Clear Search
                                     </button>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
-                                    {filteredBbpsCategories.map(cat => {
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+                                    {filteredBbpsCategories.map((cat, index) => {
                                         const isServiceReady = cat.id === 'loan-repayment';
                                         const isSelected = cat.id === selectedBbpsServiceId;
                                         const IconComp = cat.icon || HandCoins;
+                                        const gradient = cat.gradient || 'from-indigo-500 to-blue-600';
 
                                         return (
-                                            <button
+                                            <motion.button
                                                 key={cat.id}
                                                 type="button"
+                                                initial={{ opacity: 0, y: 16 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ duration: 0.3, delay: Math.min(index * 0.015, 0.3) }}
+                                                whileHover={{ y: -6, scale: 1.02 }}
+                                                whileTap={{ scale: 0.97 }}
                                                 onClick={() => handleSelectBbpsService(cat.id)}
-                                                className={`p-4 rounded-2xl border text-left transition-all group flex flex-col justify-between gap-3 cursor-pointer ${
-                                                    isSelected
-                                                        ? 'bg-emerald-50/70 border-emerald-400 ring-2 ring-emerald-500/30 shadow-sm'
-                                                        : 'bg-white hover:bg-slate-50 border-slate-200/80 hover:border-emerald-300 hover:shadow-md'
+                                                className={`group relative overflow-hidden text-left rounded-3xl border p-5 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)] hover:border-blue-400 hover:shadow-[0_20px_40px_rgba(59,130,246,0.18)] transition-all duration-300 cursor-pointer flex flex-col justify-between w-full ${
+                                                    isSelected ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-slate-200'
                                                 }`}
                                             >
-                                                <div className="flex items-start justify-between gap-2">
-                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 ${
-                                                        isServiceReady 
-                                                            ? 'bg-gradient-to-tr from-emerald-600 to-teal-600 text-white shadow-sm' 
-                                                            : 'bg-slate-100 group-hover:bg-emerald-100 text-slate-700 group-hover:text-emerald-700'
-                                                    }`}>
-                                                        <IconComp size={18} />
-                                                    </div>
-                                                    {isServiceReady ? (
-                                                        <span className="text-[9px] font-black uppercase bg-emerald-600 text-white px-2 py-0.5 rounded-md shadow-2xs">
-                                                            Active
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
-                                                            Configurable
-                                                        </span>
-                                                    )}
-                                                </div>
+                                                {/* Animated Liquid Background Bubble on Hover */}
+                                                <div
+                                                    className={`pointer-events-none absolute -bottom-12 -right-12 w-44 h-44 rounded-full bg-gradient-to-tr ${gradient} opacity-0 group-hover:opacity-15 group-hover:scale-[3.2] transition-all duration-700 ease-out blur-xl`}
+                                                />
+
+                                                {/* Subtle Floating Bubble Particle */}
+                                                <div
+                                                    className={`pointer-events-none absolute top-3 right-8 w-6 h-6 rounded-full bg-gradient-to-br ${gradient} opacity-20 blur-[1px] group-hover:scale-150 group-hover:opacity-35 transition-all duration-500`}
+                                                />
+
+                                                {/* Interactive Ring Highlight */}
+                                                <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-blue-500/0 group-hover:ring-blue-500/30 transition-all duration-500" />
 
                                                 <div>
-                                                    <h3 className="text-xs font-black text-slate-800 group-hover:text-emerald-700 transition-colors truncate">
+                                                    {/* Header: Icon + Badge */}
+                                                    <div className="relative z-10 flex items-start justify-between gap-3">
+                                                        <div
+                                                            className={`relative z-10 h-14 w-14 rounded-2xl bg-gradient-to-br ${gradient} text-white shadow-lg flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shrink-0`}
+                                                        >
+                                                            <IconComp className="h-7 w-7 drop-shadow-sm text-white" strokeWidth={2.3} />
+                                                        </div>
+                                                        {isServiceReady ? (
+                                                            <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border bg-emerald-50 text-emerald-900 border-emerald-300 shadow-2xs">
+                                                                Active
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border bg-slate-100 text-black border-slate-300 shadow-2xs">
+                                                                Configurable
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Category Title - High Contrast Dark Black */}
+                                                    <h3 className="relative z-10 mt-4 text-[15px] font-black text-black group-hover:text-blue-700 transition-colors leading-snug">
                                                         {cat.name}
                                                     </h3>
-                                                    <p className="text-[10px] font-medium text-slate-400 line-clamp-1 mt-0.5">
+
+                                                    {/* Short Category Description - Dark and Clearly Readable */}
+                                                    <p className="relative z-10 mt-1.5 text-[12px] font-bold text-slate-800 line-clamp-2 leading-relaxed">
                                                         {cat.description || `Configure percentage commission for ${cat.name}`}
                                                     </p>
                                                 </div>
 
-                                                <div className="flex items-center justify-between text-[10px] font-black text-emerald-600 pt-2 border-t border-slate-100 group-hover:border-emerald-100">
+                                                {/* Footer Action */}
+                                                <div className="relative z-10 mt-4 pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-blue-700 group-hover:text-blue-800 transition-colors">
                                                     <span>Configure Plans</span>
-                                                    <ArrowRight size={13} className="transition-transform group-hover:translate-x-1" />
+                                                    <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1.5" />
                                                 </div>
-                                            </button>
+                                            </motion.button>
                                         );
                                     })}
                                 </div>
@@ -817,26 +845,26 @@ export default function CommissionManagement() {
                                 {commissionModel === 'AEPS_1' && (
                                     <>
                                         <div className="space-y-2">
-                                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">
+                                            <label className="text-[11px] font-black text-black uppercase tracking-wider block">
                                                 Select Target Service
                                             </label>
                                             <div className="relative">
                                                 <select
                                                     value={selectedService}
                                                     onChange={(e) => setSelectedService(e.target.value)}
-                                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-xs font-bold text-slate-800 focus:bg-white focus:outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer pr-9"
+                                                    className="w-full bg-slate-50 border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-black text-black focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all appearance-none cursor-pointer pr-9 shadow-2xs"
                                                 >
                                                     {services.map(s => (
                                                         <option key={s.id} value={s.id}>{s.label}</option>
                                                     ))}
                                                 </select>
-                                                <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                                <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-black pointer-events-none" />
                                             </div>
                                         </div>
 
                                         {/* AEPS Plan Selector */}
                                         <div className="space-y-2">
-                                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">
+                                            <label className="text-[11px] font-black text-black uppercase tracking-wider block">
                                                 Select Commission Plan
                                             </label>
                                             <div className="flex flex-col gap-2">
@@ -850,8 +878,8 @@ export default function CommissionManagement() {
                                                             onClick={() => handleSelectPlan(p)}
                                                             className={`w-full px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-between gap-2 text-left cursor-pointer ${
                                                                 isSelected
-                                                                    ? 'bg-slate-900 text-white shadow-md shadow-slate-900/20 ring-2 ring-slate-900'
-                                                                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/80'
+                                                                    ? 'bg-black text-white shadow-md shadow-slate-900/20 ring-2 ring-black'
+                                                                    : 'bg-slate-50 text-black hover:bg-slate-100 border border-slate-300'
                                                             }`}
                                                         >
                                                             <div className="flex items-center gap-2 min-w-0">
@@ -859,14 +887,14 @@ export default function CommissionManagement() {
                                                                 <span className="truncate">{displayName}</span>
                                                             </div>
                                                             {p.price > 0 ? (
-                                                                <span className={`text-[10.5px] font-bold px-2 py-0.5 rounded-lg shrink-0 ${
-                                                                    isSelected ? 'bg-slate-800 text-indigo-200' : 'bg-slate-200/70 text-slate-600'
+                                                                <span className={`text-[10.5px] font-black px-2 py-0.5 rounded-lg shrink-0 ${
+                                                                    isSelected ? 'bg-slate-800 text-indigo-200' : 'bg-slate-200 text-black'
                                                                 }`}>
                                                                     &#8377;{Number(p.price).toLocaleString('en-IN')}
                                                                 </span>
                                                             ) : (
                                                                 <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg shrink-0 ${
-                                                                    isSelected ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                                                    isSelected ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-950 border border-emerald-300'
                                                                 }`}>
                                                                     FREE
                                                                 </span>
@@ -885,13 +913,13 @@ export default function CommissionManagement() {
                                         {/* Target Service Bar with Change Action */}
                                         <div className="space-y-2">
                                             <div className="flex items-center justify-between">
-                                                <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">
+                                                <label className="text-[11px] font-black text-black uppercase tracking-wider block">
                                                     Target BBPS Service
                                                 </label>
                                                 <button
                                                     type="button"
                                                     onClick={() => setBbpsStep('select-service')}
-                                                    className="text-[10px] font-black uppercase text-emerald-600 hover:text-emerald-700 flex items-center gap-1 cursor-pointer transition-colors"
+                                                    className="text-[10px] font-black uppercase text-blue-700 hover:text-blue-900 flex items-center gap-1 cursor-pointer transition-colors"
                                                     title="Select another BBPS service"
                                                 >
                                                     <RotateCcw size={11} />
@@ -900,16 +928,16 @@ export default function CommissionManagement() {
                                             </div>
 
                                             {/* Compact active service card */}
-                                            <div className="p-3 bg-emerald-50/60 border border-emerald-200/80 rounded-2xl flex items-center justify-between gap-3">
+                                            <div className="p-3 bg-slate-50 border border-slate-300 rounded-2xl flex items-center justify-between gap-3 shadow-2xs">
                                                 <div className="flex items-center gap-2.5 min-w-0">
-                                                    <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-600 flex items-center justify-center text-white shadow-xs shrink-0">
+                                                    <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-600 flex items-center justify-center text-white shadow-xs shrink-0">
                                                         {React.createElement(selectedBbpsCategory.icon || HandCoins, { size: 16 })}
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <h3 className="text-xs font-black text-slate-800 truncate">
+                                                        <h3 className="text-xs font-black text-black truncate">
                                                             {selectedBbpsCategory.name}
                                                         </h3>
-                                                        <span className="text-[9.5px] font-bold text-slate-400 font-mono">
+                                                        <span className="text-[9.5px] font-bold text-slate-700 font-mono">
                                                             id: {selectedBbpsCategory.id}
                                                         </span>
                                                     </div>
@@ -919,7 +947,7 @@ export default function CommissionManagement() {
                                                         Active
                                                     </span>
                                                 ) : (
-                                                    <span className="text-[9px] font-black uppercase bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full shrink-0">
+                                                    <span className="text-[9px] font-black uppercase bg-slate-200 text-black px-2 py-0.5 rounded-full shrink-0 border border-slate-300">
                                                         Configurable
                                                     </span>
                                                 )}
@@ -930,7 +958,7 @@ export default function CommissionManagement() {
                                                 <select
                                                     value={selectedBbpsServiceId}
                                                     onChange={(e) => handleSelectBbpsService(e.target.value)}
-                                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-2 text-xs font-bold text-slate-800 focus:bg-white focus:outline-none focus:border-emerald-500 transition-all appearance-none cursor-pointer pr-8"
+                                                    className="w-full bg-slate-50 border border-slate-300 rounded-2xl px-3.5 py-2 text-xs font-black text-black focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all appearance-none cursor-pointer pr-8 shadow-2xs"
                                                 >
                                                     {BBPS_CATEGORIES.map(cat => (
                                                         <option key={cat.id} value={cat.id}>
@@ -938,25 +966,25 @@ export default function CommissionManagement() {
                                                         </option>
                                                     ))}
                                                 </select>
-                                                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-black pointer-events-none" />
                                             </div>
                                         </div>
 
                                         {/* 4 Plans Selector for BBPS */}
                                         <div className="space-y-2">
                                             <div className="flex items-center justify-between">
-                                                <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">
+                                                <label className="text-[11px] font-black text-black uppercase tracking-wider block">
                                                     Select Commission Plan
                                                 </label>
-                                                <span className="text-[10px] font-bold text-slate-400">
+                                                <span className="text-[10px] font-black text-black">
                                                     {bbpsConfigs.length} Plans
                                                 </span>
                                             </div>
 
                                             {loadingBbpsConfigs ? (
-                                                <div className="p-8 text-center text-slate-400 flex flex-col items-center justify-center gap-2 bg-slate-50 rounded-2xl border border-slate-100">
-                                                    <RefreshCw className="animate-spin text-emerald-600" size={20} />
-                                                    <span className="text-xs font-bold">Loading plans...</span>
+                                                <div className="p-8 text-center text-black flex flex-col items-center justify-center gap-2 bg-slate-50 rounded-2xl border border-slate-200">
+                                                    <RefreshCw className="animate-spin text-blue-600" size={20} />
+                                                    <span className="text-xs font-bold text-black">Loading plans...</span>
                                                 </div>
                                             ) : (
                                                 <div className="flex flex-col gap-2">
@@ -971,8 +999,8 @@ export default function CommissionManagement() {
                                                                 onClick={() => handleSelectBbpsPlan(cfg.planCode)}
                                                                 className={`w-full px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-between gap-2 text-left cursor-pointer ${
                                                                     isSelected
-                                                                        ? 'bg-slate-900 text-white shadow-md shadow-slate-900/20 ring-2 ring-slate-900'
-                                                                        : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/80'
+                                                                        ? 'bg-black text-white shadow-md shadow-slate-900/20 ring-2 ring-black'
+                                                                        : 'bg-slate-50 text-black hover:bg-slate-100 border border-slate-300'
                                                                 }`}
                                                             >
                                                                 <div className="flex items-center gap-2 min-w-0">
@@ -983,14 +1011,14 @@ export default function CommissionManagement() {
                                                                 </div>
                                                                 <div className="flex items-center gap-2 shrink-0">
                                                                     {cfg.planPrice > 0 ? (
-                                                                        <span className={`text-[10.5px] font-bold px-2 py-0.5 rounded-lg ${
-                                                                            isSelected ? 'bg-slate-800 text-emerald-300' : 'bg-slate-200/70 text-slate-600'
+                                                                        <span className={`text-[10.5px] font-black px-2 py-0.5 rounded-lg ${
+                                                                            isSelected ? 'bg-slate-800 text-emerald-300' : 'bg-slate-200 text-black'
                                                                         }`}>
                                                                             &#8377;{Number(cfg.planPrice).toLocaleString('en-IN')}
                                                                         </span>
                                                                     ) : (
                                                                         <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg ${
-                                                                            isSelected ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                                                            isSelected ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-950 border border-emerald-300'
                                                                         }`}>
                                                                             FREE
                                                                         </span>
@@ -998,7 +1026,7 @@ export default function CommissionManagement() {
                                                                     <span className={`text-[9.5px] font-mono font-black px-1.5 py-0.5 rounded ${
                                                                         isSelected
                                                                             ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'
-                                                                            : cfg.enabled ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                                                                            : cfg.enabled ? 'bg-emerald-100 text-emerald-950 border border-emerald-300' : 'bg-rose-100 text-rose-950 border border-rose-300'
                                                                     }`}>
                                                                         {cfg.totalPercentage}%
                                                                     </span>
@@ -1019,31 +1047,31 @@ export default function CommissionManagement() {
                         {/* ── CASE 1: AEPS 1 SLAB EDITOR TABLE ── */}
                         {commissionModel === 'AEPS_1' && (
                             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-                                <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div className="p-6 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <h2 className="text-lg font-black text-slate-800">
+                                            <h2 className="text-lg font-black text-black">
                                                 {activePlan ? `${getAdminPlanDisplayName(activePlan)} Slabs` : 'Commission Slabs'}
                                             </h2>
                                             {activePlan?.isDefault && (
-                                                <span className="bg-emerald-50 text-emerald-700 text-[10px] font-black px-2 py-0.5 rounded-full border border-emerald-200">
+                                                <span className="bg-emerald-100 text-emerald-950 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-emerald-300">
                                                     Default System Plan
                                                 </span>
                                             )}
                                         </div>
-                                        <p className="text-xs font-medium text-slate-400 mt-0.5">
+                                        <p className="text-xs font-bold text-slate-800 mt-0.5">
                                             Commission is a fixed rupee amount granted per successful transaction slab.
                                         </p>
                                     </div>
                                 </div>
 
                                 {loadingPlans ? (
-                                    <div className="p-12 text-center text-slate-400 flex flex-col items-center gap-2">
-                                        <RefreshCw className="animate-spin text-indigo-500" size={24} />
-                                        <span className="text-xs font-bold">Loading plans & slabs...</span>
+                                    <div className="p-12 text-center text-black flex flex-col items-center gap-2">
+                                        <RefreshCw className="animate-spin text-blue-600" size={24} />
+                                        <span className="text-xs font-bold text-black">Loading plans & slabs...</span>
                                     </div>
                                 ) : slabs.length === 0 ? (
-                                    <div className="p-12 text-center text-slate-400">
+                                    <div className="p-12 text-center text-black">
                                         <p className="text-sm font-bold">No slabs configured for this plan.</p>
                                     </div>
                                 ) : (
@@ -1051,7 +1079,7 @@ export default function CommissionManagement() {
                                         <div className="overflow-x-auto">
                                             <table className="w-full text-left border-collapse">
                                                 <thead>
-                                                    <tr className="bg-slate-50/75 border-b border-slate-100 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                                    <tr className="bg-slate-100 border-b border-slate-300 text-[10px] font-black text-black uppercase tracking-widest">
                                                         <th className="py-4 px-5">Slab Range (&#8377;)</th>
                                                         <th className="py-4 px-3 text-center">Retailer (&#8377;)</th>
                                                         <th className="py-4 px-3 text-center">Distributor (&#8377;)</th>
@@ -1060,7 +1088,7 @@ export default function CommissionManagement() {
                                                         <th className="py-4 px-5 text-right">Status</th>
                                                     </tr>
                                                 </thead>
-                                                <tbody className="divide-y divide-slate-100 text-xs font-bold text-slate-700">
+                                                <tbody className="divide-y divide-slate-200 text-xs font-bold text-black">
                                                     {slabs.map((slab, idx) => {
                                                         const ret = parseFloat(slab.retailerCommission) || 0;
                                                         const dist = parseFloat(slab.distributorCommission) || 0;
@@ -1069,54 +1097,54 @@ export default function CommissionManagement() {
                                                         const isHighTotal = total > 20;
 
                                                         return (
-                                                            <tr key={slab.id || idx} className="hover:bg-slate-50/50 transition-colors">
+                                                            <tr key={slab.id || idx} className="hover:bg-slate-50 transition-colors">
                                                                 <td className="py-4 px-5">
-                                                                    <span className="font-mono text-sm font-black text-slate-800">
+                                                                    <span className="font-mono text-sm font-black text-black">
                                                                         &#8377;{Number(slab.minAmount).toLocaleString()} &ndash; &#8377;{Number(slab.maxAmount).toLocaleString()}
                                                                     </span>
                                                                 </td>
 
                                                                 {/* Retailer Edit */}
                                                                 <td className="py-3 px-3 text-center">
-                                                                    <div className="inline-flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-indigo-500 focus-within:bg-white transition-all shadow-inner">
-                                                                        <span className="text-slate-400 mr-1 text-xs">&#8377;</span>
+                                                                    <div className="inline-flex items-center bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-inner">
+                                                                        <span className="text-black font-black mr-1 text-xs">&#8377;</span>
                                                                         <input
                                                                             type="number"
                                                                             step="0.25"
                                                                             min="0"
                                                                             value={slab.retailerCommission}
                                                                             onChange={(e) => handleSlabChange(idx, 'retailerCommission', e.target.value)}
-                                                                            className="w-16 bg-transparent text-sm font-black text-slate-800 text-center focus:outline-none"
+                                                                            className="w-16 bg-transparent text-sm font-black text-black text-center focus:outline-none"
                                                                         />
                                                                     </div>
                                                                 </td>
 
                                                                 {/* Distributor Edit */}
                                                                 <td className="py-3 px-3 text-center">
-                                                                    <div className="inline-flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-indigo-500 focus-within:bg-white transition-all shadow-inner">
-                                                                        <span className="text-slate-400 mr-1 text-xs">&#8377;</span>
+                                                                    <div className="inline-flex items-center bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-inner">
+                                                                        <span className="text-black font-black mr-1 text-xs">&#8377;</span>
                                                                         <input
                                                                             type="number"
                                                                             step="0.25"
                                                                             min="0"
                                                                             value={slab.distributorCommission}
                                                                             onChange={(e) => handleSlabChange(idx, 'distributorCommission', e.target.value)}
-                                                                            className="w-16 bg-transparent text-sm font-black text-slate-800 text-center focus:outline-none"
+                                                                            className="w-16 bg-transparent text-sm font-black text-black text-center focus:outline-none"
                                                                         />
                                                                     </div>
                                                                 </td>
 
                                                                 {/* Super Distributor Edit */}
                                                                 <td className="py-3 px-3 text-center">
-                                                                    <div className="inline-flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-indigo-500 focus-within:bg-white transition-all shadow-inner">
-                                                                        <span className="text-slate-400 mr-1 text-xs">&#8377;</span>
+                                                                    <div className="inline-flex items-center bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-inner">
+                                                                        <span className="text-black font-black mr-1 text-xs">&#8377;</span>
                                                                         <input
                                                                             type="number"
                                                                             step="0.25"
                                                                             min="0"
                                                                             value={slab.superDistributorCommission}
                                                                             onChange={(e) => handleSlabChange(idx, 'superDistributorCommission', e.target.value)}
-                                                                            className="w-16 bg-transparent text-sm font-black text-slate-800 text-center focus:outline-none"
+                                                                            className="w-16 bg-transparent text-sm font-black text-black text-center focus:outline-none"
                                                                         />
                                                                     </div>
                                                                 </td>
@@ -1124,7 +1152,7 @@ export default function CommissionManagement() {
                                                                 {/* Total Commission */}
                                                                 <td className="py-4 px-3 text-center">
                                                                     <div className="flex items-center justify-center gap-1.5">
-                                                                        <span className="font-mono text-xs font-black text-indigo-600 bg-indigo-50/70 px-2.5 py-1 rounded-xl border border-indigo-100">
+                                                                        <span className="font-mono text-xs font-black text-black bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-300">
                                                                             &#8377;{total.toFixed(2)}
                                                                         </span>
                                                                         {isHighTotal && (
@@ -1137,7 +1165,7 @@ export default function CommissionManagement() {
 
                                                                 {/* Active / Enabled */}
                                                                 <td className="py-4 px-5 text-right">
-                                                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-950 border border-emerald-300">
                                                                         Active
                                                                     </span>
                                                                 </td>
@@ -1149,8 +1177,8 @@ export default function CommissionManagement() {
                                         </div>
 
                                         {/* Footer Action Bar */}
-                                        <div className="p-4 sm:p-6 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
-                                            <span className="text-xs font-bold text-slate-400">
+                                        <div className="p-4 sm:p-6 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                            <span className="text-xs font-black text-slate-800">
                                                 {hasAepsChanges ? 'You have unsaved changes in slab rates.' : 'All slab changes are saved in PostgreSQL.'}
                                             </span>
                                             <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
@@ -1158,7 +1186,7 @@ export default function CommissionManagement() {
                                                     <button
                                                         onClick={handleResetAeps}
                                                         disabled={saving}
-                                                        className="px-4 py-2.5 rounded-2xl border border-slate-200 text-slate-600 text-xs font-black uppercase tracking-wider hover:bg-slate-100 transition-all flex items-center gap-2 cursor-pointer"
+                                                        className="px-4 py-2.5 rounded-2xl border border-slate-300 text-black text-xs font-black uppercase tracking-wider hover:bg-slate-200 transition-all flex items-center gap-2 cursor-pointer"
                                                     >
                                                         <RotateCcw size={14} />
                                                         Reset
@@ -1169,7 +1197,7 @@ export default function CommissionManagement() {
                                                     disabled={saving || !hasAepsChanges}
                                                     className={`px-6 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 text-white shadow-lg cursor-pointer ${
                                                         saving || !hasAepsChanges
-                                                            ? 'bg-slate-300 shadow-none cursor-not-allowed text-slate-500'
+                                                            ? 'bg-slate-300 shadow-none cursor-not-allowed text-slate-600'
                                                             : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30'
                                                     }`}
                                                 >
@@ -1187,47 +1215,47 @@ export default function CommissionManagement() {
                         {commissionModel === 'BBPS' && (
                             <div className="space-y-6">
                                 {/* Percentage Configuration Card */}
-                                <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                                <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
                                     {/* Header */}
-                                    <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div className="p-6 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                         <div>
                                             <div className="flex items-center gap-2">
-                                                <h2 className="text-lg font-black text-slate-800">
+                                                <h2 className="text-lg font-black text-black">
                                                     {activeBbpsConfig ? `${getBbpsPlanDisplayName(activeBbpsConfig)} &bull; ${activeBbpsConfig.serviceName}` : 'BBPS Percentage Commission'}
                                                 </h2>
                                                 {activeBbpsConfig?.planCode === 'FREE' && (
-                                                    <span className="bg-emerald-50 text-emerald-700 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                                    <span className="bg-emerald-100 text-emerald-950 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-emerald-300">
                                                         Default Plan
                                                     </span>
                                                 )}
                                             </div>
-                                            <p className="text-xs font-medium text-slate-400 mt-0.5">
+                                            <p className="text-xs font-bold text-slate-800 mt-0.5">
                                                 Calculated as percentage (%) of the eligible BBPS transaction amount. No transaction slabs.
                                             </p>
                                         </div>
 
                                         {/* Status Toggle Switch */}
                                         <div className="flex items-center gap-3">
-                                            <span className="text-xs font-bold text-slate-500">
+                                            <span className="text-xs font-black text-black">
                                                 Commission Status:
                                             </span>
                                             <button
                                                 type="button"
                                                 onClick={() => setBbpsFormData(prev => ({ ...prev, enabled: !prev.enabled }))}
-                                                className={`px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${
+                                                className={`px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${
                                                     bbpsFormData.enabled
-                                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs'
-                                                        : 'bg-rose-50 text-rose-700 border border-rose-200'
+                                                        ? 'bg-emerald-100 text-emerald-950 border border-emerald-300 shadow-xs'
+                                                        : 'bg-rose-100 text-rose-950 border border-rose-300'
                                                 }`}
                                             >
                                                 {bbpsFormData.enabled ? (
                                                     <>
-                                                        <CheckCircle2 size={14} className="text-emerald-600" />
+                                                        <CheckCircle2 size={14} className="text-emerald-700" />
                                                         Active
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <ShieldAlert size={14} className="text-rose-600" />
+                                                        <ShieldAlert size={14} className="text-rose-700" />
                                                         Disabled
                                                     </>
                                                 )}
@@ -1239,16 +1267,16 @@ export default function CommissionManagement() {
                                     <div className="p-6 space-y-6">
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                             {/* 1. Retailer Percentage */}
-                                            <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-2 flex flex-col justify-between">
+                                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-300 space-y-2 flex flex-col justify-between">
                                                 <div className="flex items-center justify-between gap-1">
-                                                    <label className="text-[11px] font-black text-slate-700 uppercase tracking-wider truncate">
+                                                    <label className="text-[11px] font-black text-black uppercase tracking-wider truncate">
                                                         Retailer (%)
                                                     </label>
-                                                    <span className="text-[9px] font-black uppercase bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100 shrink-0">
+                                                    <span className="text-[9px] font-black uppercase bg-blue-100 text-blue-950 px-2 py-0.5 rounded border border-blue-300 shrink-0">
                                                         Direct
                                                     </span>
                                                 </div>
-                                                <div className="flex items-center bg-white border border-slate-200 rounded-xl px-3 py-2 focus-within:border-emerald-500 transition-all shadow-inner">
+                                                <div className="flex items-center bg-white border border-slate-300 rounded-xl px-3 py-2 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-inner">
                                                     <input
                                                         type="number"
                                                         step="0.05"
@@ -1256,26 +1284,26 @@ export default function CommissionManagement() {
                                                         max="100"
                                                         value={bbpsFormData.retailerPercentage}
                                                         onChange={(e) => setBbpsFormData(prev => ({ ...prev, retailerPercentage: e.target.value }))}
-                                                        className="w-full bg-transparent text-sm sm:text-base font-black text-slate-800 focus:outline-none min-w-0"
+                                                        className="w-full bg-transparent text-sm sm:text-base font-black text-black focus:outline-none min-w-0"
                                                     />
-                                                    <Percent size={14} className="text-slate-400 shrink-0 ml-1" />
+                                                    <Percent size={14} className="text-black shrink-0 ml-1 font-black" />
                                                 </div>
-                                                <p className="text-[9.5px] sm:text-[10px] font-bold text-slate-400 leading-tight">
+                                                <p className="text-[9.5px] sm:text-[10px] font-bold text-slate-800 leading-tight">
                                                     Granted to the transaction-initiating retailer.
                                                 </p>
                                             </div>
 
                                             {/* 2. Distributor Percentage */}
-                                            <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-2 flex flex-col justify-between">
+                                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-300 space-y-2 flex flex-col justify-between">
                                                 <div className="flex items-center justify-between gap-1">
-                                                    <label className="text-[11px] font-black text-slate-700 uppercase tracking-wider truncate">
+                                                    <label className="text-[11px] font-black text-black uppercase tracking-wider truncate">
                                                         Distributor (%)
                                                     </label>
-                                                    <span className="text-[9px] font-black uppercase bg-amber-50 text-amber-700 px-2 py-0.5 rounded border border-amber-100 shrink-0">
+                                                    <span className="text-[9px] font-black uppercase bg-amber-100 text-amber-950 px-2 py-0.5 rounded border border-amber-300 shrink-0">
                                                         Upline 1
                                                     </span>
                                                 </div>
-                                                <div className="flex items-center bg-white border border-slate-200 rounded-xl px-3 py-2 focus-within:border-emerald-500 transition-all shadow-inner">
+                                                <div className="flex items-center bg-white border border-slate-300 rounded-xl px-3 py-2 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-inner">
                                                     <input
                                                         type="number"
                                                         step="0.05"
@@ -1283,26 +1311,26 @@ export default function CommissionManagement() {
                                                         max="100"
                                                         value={bbpsFormData.distributorPercentage}
                                                         onChange={(e) => setBbpsFormData(prev => ({ ...prev, distributorPercentage: e.target.value }))}
-                                                        className="w-full bg-transparent text-sm sm:text-base font-black text-slate-800 focus:outline-none min-w-0"
+                                                        className="w-full bg-transparent text-sm sm:text-base font-black text-black focus:outline-none min-w-0"
                                                     />
-                                                    <Percent size={14} className="text-slate-400 shrink-0 ml-1" />
+                                                    <Percent size={14} className="text-black shrink-0 ml-1 font-black" />
                                                 </div>
-                                                <p className="text-[9.5px] sm:text-[10px] font-bold text-slate-400 leading-tight">
+                                                <p className="text-[9.5px] sm:text-[10px] font-bold text-slate-800 leading-tight">
                                                     Credited to immediate parent distributor if mapped.
                                                 </p>
                                             </div>
 
                                             {/* 3. Super Distributor Percentage */}
-                                            <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-2 flex flex-col justify-between">
+                                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-300 space-y-2 flex flex-col justify-between">
                                                 <div className="flex items-center justify-between gap-1">
-                                                    <label className="text-[11px] font-black text-slate-700 uppercase tracking-wider truncate">
+                                                    <label className="text-[11px] font-black text-black uppercase tracking-wider truncate">
                                                         Super Dist. (%)
                                                     </label>
-                                                    <span className="text-[9px] font-black uppercase bg-purple-50 text-purple-700 px-2 py-0.5 rounded border border-purple-100 shrink-0">
+                                                    <span className="text-[9px] font-black uppercase bg-purple-100 text-purple-950 px-2 py-0.5 rounded border border-purple-300 shrink-0">
                                                         Upline 2
                                                     </span>
                                                 </div>
-                                                <div className="flex items-center bg-white border border-slate-200 rounded-xl px-3 py-2 focus-within:border-emerald-500 transition-all shadow-inner">
+                                                <div className="flex items-center bg-white border border-slate-300 rounded-xl px-3 py-2 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-inner">
                                                     <input
                                                         type="number"
                                                         step="0.05"
@@ -1310,17 +1338,17 @@ export default function CommissionManagement() {
                                                         max="100"
                                                         value={bbpsFormData.superDistributorPercentage}
                                                         onChange={(e) => setBbpsFormData(prev => ({ ...prev, superDistributorPercentage: e.target.value }))}
-                                                        className="w-full bg-transparent text-sm sm:text-base font-black text-slate-800 focus:outline-none min-w-0"
+                                                        className="w-full bg-transparent text-sm sm:text-base font-black text-black focus:outline-none min-w-0"
                                                     />
-                                                    <Percent size={14} className="text-slate-400 shrink-0 ml-1" />
+                                                    <Percent size={14} className="text-black shrink-0 ml-1 font-black" />
                                                 </div>
-                                                <p className="text-[9.5px] sm:text-[10px] font-bold text-slate-400 leading-tight">
+                                                <p className="text-[9.5px] sm:text-[10px] font-bold text-slate-800 leading-tight">
                                                     Credited to super distributor in hierarchy branch.
                                                 </p>
                                             </div>
 
                                             {/* 4. Total Calculation Div (Combined Commission Payout) */}
-                                            <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white space-y-2 flex flex-col justify-between shadow-md border border-slate-800">
+                                            <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-black text-white space-y-2 flex flex-col justify-between shadow-md border border-slate-800">
                                                 <div className="flex items-center justify-between gap-1">
                                                     <span className="text-[11px] font-black uppercase text-indigo-200 tracking-wider truncate">
                                                         Combined Payout
@@ -1340,32 +1368,32 @@ export default function CommissionManagement() {
                                                         </span>
                                                     )}
                                                 </div>
-                                                <p className="text-[9.5px] sm:text-[10px] font-medium text-slate-300 leading-tight">
+                                                <p className="text-[9.5px] sm:text-[10px] font-bold text-slate-300 leading-tight">
                                                     Total distributed percentage across all hierarchy levels.
                                                 </p>
                                             </div>
                                         </div>
 
                                         {/* ── LIVE INTERACTIVE CALCULATOR / SIMULATOR ── */}
-                                        <div className="p-5 bg-emerald-50/40 rounded-2xl border border-emerald-100 space-y-4">
-                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-100/70 pb-3">
+                                        <div className="p-5 bg-slate-50 rounded-2xl border border-slate-300 space-y-4">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
                                                 <div className="flex items-center gap-2">
-                                                    <Calculator size={16} className="text-emerald-600" />
-                                                    <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                                                    <Calculator size={16} className="text-blue-700" />
+                                                    <h3 className="text-xs font-black text-black uppercase tracking-wider">
                                                         Live Percentage Calculation Simulator
                                                     </h3>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-[11px] font-bold text-slate-500">Sample Amount:</span>
-                                                    <div className="inline-flex items-center bg-white border border-emerald-200 rounded-lg px-2.5 py-1 text-xs font-mono font-black text-slate-800">
-                                                        <span className="text-slate-400 mr-1">&#8377;</span>
+                                                    <span className="text-[11px] font-black text-black">Sample Amount:</span>
+                                                    <div className="inline-flex items-center bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-mono font-black text-black">
+                                                        <span className="text-black font-black mr-1">&#8377;</span>
                                                         <input
                                                             type="number"
                                                             step="100"
                                                             min="1"
                                                             value={simulatedAmount}
                                                             onChange={(e) => setSimulatedAmount(e.target.value)}
-                                                            className="w-20 bg-transparent text-right focus:outline-none"
+                                                            className="w-20 bg-transparent text-right font-black text-black focus:outline-none"
                                                         />
                                                     </div>
                                                 </div>
@@ -1373,44 +1401,44 @@ export default function CommissionManagement() {
 
                                             {/* Calculated outputs */}
                                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                                                <div className="bg-white p-3 rounded-xl border border-emerald-100/80 shadow-2xs">
-                                                    <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Retailer Earns</span>
-                                                    <p className="text-sm font-black text-slate-800 font-mono mt-1">
+                                                <div className="bg-white p-3 rounded-xl border border-slate-300 shadow-2xs">
+                                                    <span className="text-[9.5px] font-black text-slate-800 uppercase tracking-wider block">Retailer Earns</span>
+                                                    <p className="text-sm font-black text-black font-mono mt-1">
                                                         &#8377;{simRetCommission.toFixed(2)}
                                                     </p>
-                                                    <span className="text-[9px] font-bold text-blue-600">({bbpsFormData.retailerPercentage}%)</span>
+                                                    <span className="text-[9px] font-black text-blue-700">({bbpsFormData.retailerPercentage}%)</span>
                                                 </div>
 
-                                                <div className="bg-white p-3 rounded-xl border border-emerald-100/80 shadow-2xs">
-                                                    <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Distributor Earns</span>
-                                                    <p className="text-sm font-black text-slate-800 font-mono mt-1">
+                                                <div className="bg-white p-3 rounded-xl border border-slate-300 shadow-2xs">
+                                                    <span className="text-[9.5px] font-black text-slate-800 uppercase tracking-wider block">Distributor Earns</span>
+                                                    <p className="text-sm font-black text-black font-mono mt-1">
                                                         &#8377;{simDistCommission.toFixed(2)}
                                                     </p>
-                                                    <span className="text-[9px] font-bold text-amber-600">({bbpsFormData.distributorPercentage}%)</span>
+                                                    <span className="text-[9px] font-black text-amber-800">({bbpsFormData.distributorPercentage}%)</span>
                                                 </div>
 
-                                                <div className="bg-white p-3 rounded-xl border border-emerald-100/80 shadow-2xs">
-                                                    <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Super Dist. Earns</span>
-                                                    <p className="text-sm font-black text-slate-800 font-mono mt-1">
+                                                <div className="bg-white p-3 rounded-xl border border-slate-300 shadow-2xs">
+                                                    <span className="text-[9.5px] font-black text-slate-800 uppercase tracking-wider block">Super Dist. Earns</span>
+                                                    <p className="text-sm font-black text-black font-mono mt-1">
                                                         &#8377;{simSdCommission.toFixed(2)}
                                                     </p>
-                                                    <span className="text-[9px] font-bold text-purple-600">({bbpsFormData.superDistributorPercentage}%)</span>
+                                                    <span className="text-[9px] font-black text-purple-800">({bbpsFormData.superDistributorPercentage}%)</span>
                                                 </div>
 
-                                                <div className="bg-emerald-600 text-white p-3 rounded-xl shadow-xs">
-                                                    <span className="text-[9.5px] font-bold text-emerald-100 uppercase tracking-wider block">Total Disbursed</span>
-                                                    <p className="text-sm font-black font-mono mt-1">
+                                                <div className="bg-black text-white p-3 rounded-xl shadow-xs">
+                                                    <span className="text-[9.5px] font-bold text-slate-200 uppercase tracking-wider block">Total Disbursed</span>
+                                                    <p className="text-sm font-black font-mono mt-1 text-emerald-400">
                                                         &#8377;{simTotalCommission.toFixed(2)}
                                                     </p>
-                                                    <span className="text-[9px] font-bold text-emerald-200">({bbpsTotalPercentage.toFixed(2)}%)</span>
+                                                    <span className="text-[9px] font-bold text-emerald-300">({bbpsTotalPercentage.toFixed(2)}%)</span>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Action Bar */}
-                                    <div className="p-4 sm:p-6 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
-                                        <span className="text-xs font-bold text-slate-400">
+                                    <div className="p-4 sm:p-6 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                        <span className="text-xs font-black text-slate-800">
                                             {hasBbpsChanges ? 'You have unsaved percentage changes.' : 'All BBPS settings are persisted in PostgreSQL.'}
                                         </span>
                                         <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
@@ -1418,7 +1446,7 @@ export default function CommissionManagement() {
                                                 <button
                                                     onClick={handleResetBbps}
                                                     disabled={saving}
-                                                    className="px-4 py-2.5 rounded-2xl border border-slate-200 text-slate-600 text-xs font-black uppercase tracking-wider hover:bg-slate-100 transition-all flex items-center gap-2 cursor-pointer"
+                                                    className="px-4 py-2.5 rounded-2xl border border-slate-300 text-black text-xs font-black uppercase tracking-wider hover:bg-slate-200 transition-all flex items-center gap-2 cursor-pointer"
                                                 >
                                                     <RotateCcw size={14} />
                                                     Reset
@@ -1429,7 +1457,7 @@ export default function CommissionManagement() {
                                                 disabled={saving || !hasBbpsChanges}
                                                 className={`px-6 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 text-white shadow-lg cursor-pointer ${
                                                     saving || !hasBbpsChanges
-                                                        ? 'bg-slate-300 shadow-none cursor-not-allowed text-slate-500'
+                                                        ? 'bg-slate-300 shadow-none cursor-not-allowed text-slate-600'
                                                         : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30'
                                                 }`}
                                             >
@@ -1445,11 +1473,11 @@ export default function CommissionManagement() {
                 </div>
             )) : (
                 /* ── AUDIT LEDGER TAB (AEPS & BBPS TRANSACTIONS) ───────────────────── */
-                <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-6">
+                <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-6">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
-                            <h2 className="text-lg font-black text-slate-800">Commission Distribution Audit Ledger</h2>
-                            <p className="text-xs font-medium text-slate-400 mt-0.5">
+                            <h2 className="text-lg font-black text-black">Commission Distribution Audit Ledger</h2>
+                            <p className="text-xs font-bold text-slate-800 mt-0.5">
                                 Permanent record of all distributed commissions, mapped transactions, beneficiaries, and role credits.
                             </p>
                         </div>
@@ -1457,14 +1485,14 @@ export default function CommissionManagement() {
                         {/* Search and filters */}
                         <div className="flex flex-wrap items-center gap-3">
                             <div className="relative">
-                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-black" />
                                 <input
                                     type="text"
                                     placeholder="Search Txn ID / Ref..."
                                     value={historySearch}
                                     onChange={(e) => setHistorySearch(e.target.value)}
                                     onKeyDown={(e) => { if (e.key === 'Enter') fetchHistory(); }}
-                                    className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:outline-none focus:border-indigo-500 w-48"
+                                    className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-black text-black placeholder:text-slate-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 w-48 shadow-2xs"
                                 />
                             </div>
 
@@ -1472,7 +1500,7 @@ export default function CommissionManagement() {
                             <select
                                 value={historyServiceFilter}
                                 onChange={(e) => setHistoryServiceFilter(e.target.value)}
-                                className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
+                                className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-black text-black focus:outline-none cursor-pointer shadow-2xs"
                             >
                                 <option value="ALL">All Services</option>
                                 <option value="AEPS_1">AEPS 1 (Cash Withdrawal)</option>
@@ -1482,7 +1510,7 @@ export default function CommissionManagement() {
                             <select
                                 value={historyStatus}
                                 onChange={(e) => setHistoryStatus(e.target.value)}
-                                className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
+                                className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-black text-black focus:outline-none cursor-pointer shadow-2xs"
                             >
                                 <option value="ALL">All Status</option>
                                 <option value="SUCCESS">Success</option>
@@ -1491,7 +1519,7 @@ export default function CommissionManagement() {
 
                             <button
                                 onClick={fetchHistory}
-                                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
+                                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-black border border-slate-300 transition-colors cursor-pointer"
                                 title="Refresh"
                             >
                                 <RefreshCw size={14} className={historyLoading ? 'animate-spin' : ''} />
@@ -1503,7 +1531,7 @@ export default function CommissionManagement() {
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
-                                <tr className="bg-slate-50/75 border-b border-slate-100 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                <tr className="bg-slate-100 border-b border-slate-300 text-[10px] font-black text-black uppercase tracking-widest">
                                     <th className="py-3 px-4">Date & Time</th>
                                     <th className="py-3 px-4">Commission Ref</th>
                                     <th className="py-3 px-4">Original Txn ID</th>
@@ -1516,17 +1544,17 @@ export default function CommissionManagement() {
                                     <th className="py-3 px-4 text-center">Status</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+                            <tbody className="divide-y divide-slate-200 text-xs font-bold text-black">
                                 {historyLoading ? (
                                     <tr>
-                                        <td colSpan={10} className="py-12 text-center text-slate-400">
-                                            <RefreshCw className="animate-spin mx-auto mb-2 text-indigo-500" size={20} />
+                                        <td colSpan={10} className="py-12 text-center text-black">
+                                            <RefreshCw className="animate-spin mx-auto mb-2 text-blue-600" size={20} />
                                             Loading commission transactions...
                                         </td>
                                     </tr>
                                 ) : historyList.length === 0 ? (
                                     <tr>
-                                        <td colSpan={10} className="py-12 text-center text-slate-400 font-bold">
+                                        <td colSpan={10} className="py-12 text-center text-black font-black">
                                             No commission transactions found for the selected filters.
                                         </td>
                                     </tr>
@@ -1534,58 +1562,58 @@ export default function CommissionManagement() {
                                     historyList.map(item => {
                                         const isBbps = String(item.serviceType || '').includes('BBPS');
                                         return (
-                                            <tr key={item.id} className="hover:bg-slate-50/50">
-                                                <td className="py-3 px-4 text-slate-500 font-mono text-[11px] whitespace-nowrap">
+                                            <tr key={item.id} className="hover:bg-slate-50">
+                                                <td className="py-3 px-4 text-slate-800 font-mono text-[11px] whitespace-nowrap">
                                                     {new Date(item.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
                                                 </td>
-                                                <td className="py-3 px-4 font-mono font-bold text-slate-800">
+                                                <td className="py-3 px-4 font-mono font-black text-black">
                                                     {item.commissionReference}
                                                 </td>
-                                                <td className="py-3 px-4 font-mono text-slate-600">
+                                                <td className="py-3 px-4 font-mono font-bold text-slate-800">
                                                     {item.originalTransactionId}
                                                 </td>
                                                 <td className="py-3 px-4">
                                                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase ${
                                                         isBbps
-                                                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                                                            : 'bg-indigo-50 text-indigo-700 border border-indigo-100'
+                                                            ? 'bg-emerald-100 text-emerald-950 border border-emerald-300'
+                                                            : 'bg-indigo-100 text-indigo-950 border border-indigo-300'
                                                     }`}>
                                                         {isBbps ? 'BBPS Loan' : 'AEPS 1'}
                                                     </span>
                                                 </td>
-                                                <td className="py-3 px-4 font-bold text-slate-800">
-                                                    {item.beneficiaryName} <span className="text-slate-400 text-[10px]">({item.beneficiaryUsername})</span>
+                                                <td className="py-3 px-4 font-black text-black">
+                                                    {item.beneficiaryName} <span className="text-slate-600 font-bold text-[10px]">({item.beneficiaryUsername})</span>
                                                 </td>
                                                 <td className="py-3 px-4">
                                                     <span className={`inline-flex px-2 py-0.5 rounded-md text-[9px] font-black uppercase ${
                                                         item.beneficiaryRole === 'RETAILER'
-                                                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                                            ? 'bg-blue-100 text-blue-950 border border-blue-300'
                                                             : item.beneficiaryRole === 'DISTRIBUTOR'
-                                                            ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                                            : 'bg-purple-50 text-purple-700 border border-purple-200'
+                                                            ? 'bg-amber-100 text-amber-950 border border-amber-300'
+                                                            : 'bg-purple-100 text-purple-950 border border-purple-300'
                                                     }`}>
                                                         {item.beneficiaryRole}
                                                     </span>
                                                 </td>
-                                                <td className="py-3 px-4 text-right font-mono font-bold text-slate-800">
+                                                <td className="py-3 px-4 text-right font-mono font-black text-black">
                                                     &#8377;{Number(item.transactionAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                                 </td>
                                                 <td className="py-3 px-4 text-center font-mono text-[11px]">
                                                     {isBbps ? (
-                                                        <span className="inline-block bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded font-black">
+                                                        <span className="inline-block bg-emerald-100 text-emerald-950 border border-emerald-300 px-2 py-0.5 rounded font-black">
                                                             {item.appliedPercentage ? `${item.appliedPercentage}%` : item.slabRange}
                                                         </span>
                                                     ) : (
-                                                        <span className="text-slate-600">
+                                                        <span className="text-black font-bold">
                                                             {item.slabRange}
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className="py-3 px-4 text-right font-mono font-black text-emerald-600">
+                                                <td className="py-3 px-4 text-right font-mono font-black text-emerald-700">
                                                     +&#8377;{Number(item.commissionAmount).toFixed(2)}
                                                 </td>
                                                 <td className="py-3 px-4 text-center">
-                                                    <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                    <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-100 text-emerald-950 border border-emerald-300">
                                                         {item.status}
                                                     </span>
                                                 </td>
@@ -1599,23 +1627,23 @@ export default function CommissionManagement() {
 
                     {/* Pagination */}
                     {historyTotal > historySize && (
-                        <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                            <span className="text-xs text-slate-400 font-bold">
+                        <div className="flex items-center justify-between pt-4 border-t border-slate-200">
+                            <span className="text-xs text-slate-800 font-bold">
                                 Showing {historyPage * historySize + 1} to {Math.min((historyPage + 1) * historySize, historyTotal)} of {historyTotal} records
                             </span>
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => setHistoryPage(p => Math.max(0, p - 1))}
                                     disabled={historyPage === 0}
-                                    className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                                    className="p-2 rounded-xl border border-slate-300 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer text-black"
                                 >
                                     <ChevronLeft size={16} />
                                 </button>
-                                <span className="text-xs font-black text-slate-700 px-2">Page {historyPage + 1}</span>
+                                <span className="text-xs font-black text-black px-2">Page {historyPage + 1}</span>
                                 <button
                                     onClick={() => setHistoryPage(p => p + 1)}
                                     disabled={(historyPage + 1) * historySize >= historyTotal}
-                                    className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                                    className="p-2 rounded-xl border border-slate-300 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer text-black"
                                 >
                                     <ChevronRight size={16} />
                                 </button>
