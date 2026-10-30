@@ -8,12 +8,65 @@ import {
     Percent, ToggleLeft, ToggleRight, Check, X, ShieldCheck, ArrowRight,
     Calculator, Building2, Coins, ArrowUpRight
 } from 'lucide-react';
+import { ChevronDown, ArrowLeft } from 'lucide-react';
 import { commissionService } from '../../services/commissionService';
 import { BBPS_CATEGORIES } from '../../retailer/data/bbpsCategories';
 
 export default function CommissionManagement() {
-    // ── MODEL SWITCHER: 'AEPS_1' or 'BBPS' ──────────────────────────────────────
+    // ── MODEL SWITCHER: 'AEPS_1' or 'BBPS'
     const [commissionModel, setCommissionModel] = useState('AEPS_1'); // 'AEPS_1' | 'BBPS'
+    const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
+    const modelDropdownRef = React.useRef(null);
+
+    // ── BBPS STEP FLOW: 'select-service' or 'configure'
+    const [bbpsStep, setBbpsStep] = useState('select-service');
+
+    const COMMISSION_MODELS = [
+        {
+            id: 'AEPS_1',
+            label: 'AEPS 1',
+            sublabel: 'Fixed Slabs',
+            description: 'Cash Withdrawal & Biometric Banking',
+            badge: 'Slab Based',
+            icon: Layers,
+            accent: 'indigo'
+        },
+        {
+            id: 'BBPS',
+            label: 'BBPS',
+            sublabel: 'Percentage %',
+            description: 'Bharat Connect Bill Payment System',
+            badge: 'Percentage',
+            icon: Percent,
+            accent: 'emerald'
+        }
+    ];
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (modelDropdownRef.current && !modelDropdownRef.current.contains(event.target)) {
+                setIsModelDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleModelChange = (modelId) => {
+        if (modelId === commissionModel) return;
+        setCommissionModel(modelId);
+        setNotification(null);
+        if (modelId === 'BBPS') {
+            setBbpsStep('select-service');
+        }
+    };
+
+    const handleSelectBbpsService = (serviceId) => {
+        setSelectedBbpsServiceId(serviceId);
+        setBbpsStep('configure');
+        setBbpsSearch('');
+        setNotification(null);
+    };
 
     // ── AEPS 1 STATE ────────────────────────────────────────────────────────────
     const [services] = useState([
@@ -404,6 +457,119 @@ export default function CommissionManagement() {
 
     const isLoanRepayment = selectedBbpsServiceId === 'loan-repayment';
 
+    const renderCommissionModelDropdown = () => {
+        const currentModel = COMMISSION_MODELS.find(m => m.id === commissionModel) || COMMISSION_MODELS[0];
+        const isBbps = commissionModel === 'BBPS';
+
+        return (
+            <div className="space-y-1.5 relative" ref={modelDropdownRef}>
+                <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">
+                        Commission Model
+                    </label>
+                    <span className={`text-[9.5px] font-black uppercase px-2 py-0.5 rounded-md border ${
+                        isBbps 
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                            : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                    }`}>
+                        {currentModel.badge}
+                    </span>
+                </div>
+
+                <div className="relative">
+                    <button
+                        type="button"
+                        onClick={() => setIsModelDropdownOpen(prev => !prev)}
+                        className={`w-full bg-slate-50 border rounded-2xl px-3.5 py-2.5 text-xs font-bold text-slate-800 transition-all flex items-center justify-between cursor-pointer shadow-xs outline-none ${
+                            isModelDropdownOpen
+                                ? isBbps ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-white' : 'border-indigo-500 ring-2 ring-indigo-500/20 bg-white'
+                                : 'border-slate-200 hover:border-slate-300 hover:bg-white'
+                        }`}
+                        aria-expanded={isModelDropdownOpen}
+                    >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                                isBbps ? 'bg-emerald-600 text-white shadow-xs' : 'bg-indigo-600 text-white shadow-xs'
+                            }`}>
+                                {isBbps ? <Percent size={15} /> : <Layers size={15} />}
+                            </div>
+                            <div className="text-left min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="font-black text-slate-800 text-xs block truncate">
+                                        {currentModel.label}
+                                    </span>
+                                    {isBbps && (
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    )}
+                                </div>
+                                <span className="text-[10px] font-bold text-slate-400 block truncate">
+                                    {currentModel.sublabel}
+                                </span>
+                            </div>
+                        </div>
+                        <ChevronDown size={15} className={`text-slate-400 transition-transform duration-200 shrink-0 ml-2 ${isModelDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    <AnimatePresence>
+                        {isModelDropdownOpen && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -4, scale: 0.98 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                                transition={{ duration: 0.15 }}
+                                className="absolute z-50 left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl p-1.5 space-y-1"
+                            >
+                                {COMMISSION_MODELS.map(m => {
+                                    const isSelected = commissionModel === m.id;
+                                    const IconComp = m.icon;
+                                    const isMbbps = m.id === 'BBPS';
+
+                                    return (
+                                        <button
+                                            key={m.id}
+                                            type="button"
+                                            onClick={() => {
+                                                handleModelChange(m.id);
+                                                setIsModelDropdownOpen(false);
+                                            }}
+                                            className={`w-full p-2.5 rounded-xl text-left transition-all flex items-center justify-between gap-2 cursor-pointer ${
+                                                isSelected
+                                                    ? 'bg-slate-900 text-white shadow-xs'
+                                                    : 'hover:bg-slate-50 text-slate-700'
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                                                    isSelected 
+                                                        ? 'bg-white/20 text-white' 
+                                                        : isMbbps ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'
+                                                }`}>
+                                                    <IconComp size={14} />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <p className="text-xs font-black truncate">{m.label}</p>
+                                                        {isMbbps && (
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                        )}
+                                                    </div>
+                                                    <p className={`text-[10px] font-medium truncate ${isSelected ? 'text-slate-300' : 'text-slate-400'}`}>
+                                                        {m.sublabel}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            {isSelected && <Check size={14} className="text-emerald-400 shrink-0" />}
+                                        </button>
+                                    );
+                                })}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="space-y-6 max-w-7xl mx-auto font-['Inter',sans-serif]">
             {/* ── TOP HEADER & TAB BAR ────────────────────────────────────────── */}
@@ -487,283 +653,368 @@ export default function CommissionManagement() {
 
             {/* ── MAIN TAB: CONFIGURATION ──────────────────────────────────────── */}
             {activeTab === 'config' ? (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                    {/* ── LEFT COLUMN: Model Switcher & Service / Plan Selectors ── */}
-                    <div className="lg:col-span-4 space-y-6">
-                        <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-6">
-                            {/* Commission Model Switcher */}
-                            <div className="space-y-2">
-                                <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">
-                                    Commission Model
-                                </label>
-                                <div className="grid grid-cols-2 gap-2 bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setCommissionModel('AEPS_1');
-                                            setNotification(null);
-                                        }}
-                                        className={`py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all text-center flex flex-col items-center gap-0.5 cursor-pointer ${
-                                            commissionModel === 'AEPS_1'
-                                                ? 'bg-white text-indigo-600 shadow-md ring-1 ring-slate-200/80'
-                                                : 'text-slate-500 hover:text-slate-800'
-                                        }`}
-                                    >
-                                        <span>AEPS 1</span>
-                                        <span className="text-[9px] font-bold text-slate-400 lowercase">fixed slabs</span>
-                                    </button>
+                commissionModel === 'BBPS' && bbpsStep === 'select-service' ? (
+                    /* ── STEP 1: SELECT BBPS SERVICE SCREEN ───────────────────── */
+                    <div className="space-y-6">
+                        {/* Top Bar with Model Switcher Dropdown */}
+                        <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div className="max-w-xs w-full">
+                                    {renderCommissionModelDropdown()}
+                                </div>
+                                <div className="flex items-center gap-2 self-start sm:self-center">
+                                    <span className="text-[11px] font-bold text-slate-500">
+                                        Active Architecture:
+                                    </span>
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200">
+                                        BBPS &bull; Percentage Commission
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
 
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setCommissionModel('BBPS');
-                                            setNotification(null);
-                                        }}
-                                        className={`py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all text-center flex flex-col items-center gap-0.5 cursor-pointer ${
-                                            commissionModel === 'BBPS'
-                                                ? 'bg-white text-emerald-600 shadow-md ring-1 ring-slate-200/80'
-                                                : 'text-slate-500 hover:text-slate-800'
-                                        }`}
-                                    >
-                                        <div className="flex items-center gap-1">
-                                            <span>BBPS</span>
-                                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                        </div>
-                                        <span className="text-[9px] font-bold text-slate-400 lowercase">percentage %</span>
-                                    </button>
+                        {/* BBPS Service Search & Selection Panel */}
+                        <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-6">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h2 className="text-lg font-black text-slate-800">
+                                            Select BBPS Service
+                                        </h2>
+                                        <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                            35 Registered Services
+                                        </span>
+                                    </div>
+                                    <p className="text-xs font-medium text-slate-400 mt-1">
+                                        Select any Bharat Connect / BBPS service below to configure its percentage commission rates across membership plans.
+                                    </p>
+                                </div>
+
+                                {/* Quick select dropdown */}
+                                <div className="w-full md:w-72 shrink-0">
+                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider block mb-1.5">
+                                        Quick Select Service
+                                    </label>
+                                    <div className="relative">
+                                        <select
+                                            value={selectedBbpsServiceId}
+                                            onChange={(e) => handleSelectBbpsService(e.target.value)}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-xs font-bold text-slate-800 focus:bg-white focus:outline-none focus:border-emerald-500 transition-all appearance-none cursor-pointer pr-9"
+                                        >
+                                            <option value="" disabled>-- Choose BBPS Service --</option>
+                                            {BBPS_CATEGORIES.map(cat => (
+                                                <option key={cat.id} value={cat.id}>
+                                                    {cat.name} {cat.id === 'loan-repayment' ? '(Active)' : ''}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* ── CASE 1: AEPS 1 SELECTOR ── */}
-                            {commissionModel === 'AEPS_1' && (
-                                <>
-                                    <div className="space-y-2">
-                                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">
-                                            Select Target Service
-                                        </label>
-                                        <div className="relative">
-                                            <select
-                                                value={selectedService}
-                                                onChange={(e) => setSelectedService(e.target.value)}
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-xs font-bold text-slate-800 focus:bg-white focus:outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer"
+                            {/* Search input */}
+                            <div className="relative">
+                                <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search BBPS services by name, category, or keyword (e.g. Loan Repayment, Fastag, DTH, Electricity)..."
+                                    value={bbpsSearch}
+                                    onChange={(e) => setBbpsSearch(e.target.value)}
+                                    className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm font-bold text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:border-emerald-500 transition-all shadow-inner"
+                                />
+                                {bbpsSearch && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setBbpsSearch('')}
+                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+                                    >
+                                        <X size={15} />
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Grid of services */}
+                            {filteredBbpsCategories.length === 0 ? (
+                                <div className="p-12 text-center text-slate-400 border border-dashed border-slate-200 rounded-3xl">
+                                    <Search size={28} className="mx-auto text-slate-300 mb-2" />
+                                    <p className="text-sm font-bold text-slate-600">No BBPS services found matching "{bbpsSearch}"</p>
+                                    <button
+                                        type="button"
+                                        onClick={() => setBbpsSearch('')}
+                                        className="mt-3 px-4 py-2 text-xs font-black uppercase text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-all cursor-pointer"
+                                    >
+                                        Clear Search
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
+                                    {filteredBbpsCategories.map(cat => {
+                                        const isServiceReady = cat.id === 'loan-repayment';
+                                        const isSelected = cat.id === selectedBbpsServiceId;
+                                        const IconComp = cat.icon || HandCoins;
+
+                                        return (
+                                            <button
+                                                key={cat.id}
+                                                type="button"
+                                                onClick={() => handleSelectBbpsService(cat.id)}
+                                                className={`p-4 rounded-2xl border text-left transition-all group flex flex-col justify-between gap-3 cursor-pointer ${
+                                                    isSelected
+                                                        ? 'bg-emerald-50/70 border-emerald-400 ring-2 ring-emerald-500/30 shadow-sm'
+                                                        : 'bg-white hover:bg-slate-50 border-slate-200/80 hover:border-emerald-300 hover:shadow-md'
+                                                }`}
                                             >
-                                                {services.map(s => (
-                                                    <option key={s.id} value={s.id}>{s.label}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    {/* AEPS Plan Selector */}
-                                    <div className="space-y-2">
-                                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">
-                                            Select Commission Plan
-                                        </label>
-                                        <div className="flex flex-col gap-2">
-                                            {plans.map(p => {
-                                                const isSelected = p.id === selectedPlanId;
-                                                const displayName = getAdminPlanDisplayName(p);
-                                                return (
-                                                    <button
-                                                        key={p.id}
-                                                        onClick={() => handleSelectPlan(p)}
-                                                        className={`w-full px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-between gap-2 text-left cursor-pointer ${
-                                                            isSelected
-                                                                ? 'bg-slate-900 text-white shadow-md shadow-slate-900/20 ring-2 ring-slate-900'
-                                                                : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/80'
-                                                        }`}
-                                                    >
-                                                        <div className="flex items-center gap-2 min-w-0">
-                                                            {p.isDefault && <Sparkles size={13} className={isSelected ? 'text-amber-400' : 'text-amber-500'} />}
-                                                            <span className="truncate">{displayName}</span>
-                                                        </div>
-                                                        {p.price > 0 ? (
-                                                            <span className={`text-[10.5px] font-bold px-2 py-0.5 rounded-lg shrink-0 ${
-                                                                isSelected ? 'bg-slate-800 text-indigo-200' : 'bg-slate-200/70 text-slate-600'
-                                                            }`}>
-                                                                &#8377;{Number(p.price).toLocaleString('en-IN')}
-                                                            </span>
-                                                        ) : (
-                                                            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg shrink-0 ${
-                                                                isSelected ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                                            }`}>
-                                                                FREE
-                                                            </span>
-                                                        )}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                </>
-                            )}
-
-                            {/* ── CASE 2: BBPS SERVICE SELECTION & PLANS ── */}
-                            {commissionModel === 'BBPS' && (
-                                <div className="space-y-5">
-                                    {/* BBPS Service Search & Selection */}
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">
-                                                Search BBPS Services
-                                            </label>
-                                            <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
-                                                35 Registered
-                                            </span>
-                                        </div>
-
-                                        <div className="relative">
-                                            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                                            <input
-                                                type="text"
-                                                placeholder="e.g. Loan Repayment, Fastag, DTH..."
-                                                value={bbpsSearch}
-                                                onChange={(e) => setBbpsSearch(e.target.value)}
-                                                className="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:border-emerald-500 transition-all"
-                                            />
-                                            {bbpsSearch && (
-                                                <button
-                                                    onClick={() => setBbpsSearch('')}
-                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                                                >
-                                                    <X size={14} />
-                                                </button>
-                                            )}
-                                        </div>
-
-                                        {/* Filtered BBPS Service List */}
-                                        <div className="max-h-48 overflow-y-auto space-y-1.5 p-1 border border-slate-100 rounded-2xl bg-slate-50/50">
-                                            {filteredBbpsCategories.map(cat => {
-                                                const isSelected = cat.id === selectedBbpsServiceId;
-                                                const isServiceReady = cat.id === 'loan-repayment';
-                                                const IconComp = cat.icon || HandCoins;
-
-                                                return (
-                                                    <button
-                                                        key={cat.id}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setSelectedBbpsServiceId(cat.id);
-                                                            setBbpsSearch('');
-                                                        }}
-                                                        className={`w-full p-2.5 rounded-xl text-left transition-all flex items-center justify-between gap-2 cursor-pointer ${
-                                                            isSelected
-                                                                ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-600'
-                                                                : 'bg-white hover:bg-slate-100/80 text-slate-700 border border-slate-200/60'
-                                                        }`}
-                                                    >
-                                                        <div className="flex items-center gap-2.5 min-w-0">
-                                                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                                                                isSelected ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-600'
-                                                            }`}>
-                                                                <IconComp size={14} />
-                                                            </div>
-                                                            <div className="min-w-0">
-                                                                <p className="text-xs font-black truncate">{cat.name}</p>
-                                                            </div>
-                                                        </div>
-                                                        {isServiceReady ? (
-                                                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md shrink-0 ${
-                                                                isSelected ? 'bg-white text-emerald-700' : 'bg-emerald-100/80 text-emerald-800'
-                                                            }`}>
-                                                                Active
-                                                            </span>
-                                                        ) : (
-                                                            <span className={`text-[8.5px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                                                                isSelected ? 'bg-white/20 text-emerald-100' : 'bg-slate-100 text-slate-400'
-                                                            }`}>
-                                                                Inactive
-                                                            </span>
-                                                        )}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    {/* Selected Service Card */}
-                                    <div className="p-3.5 bg-gradient-to-br from-emerald-50/80 to-teal-50/50 border border-emerald-200/80 rounded-2xl space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-600 flex items-center justify-center text-white shadow-sm">
-                                                    {React.createElement(selectedBbpsCategory.icon || HandCoins, { size: 16 })}
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 ${
+                                                        isServiceReady 
+                                                            ? 'bg-gradient-to-tr from-emerald-600 to-teal-600 text-white shadow-sm' 
+                                                            : 'bg-slate-100 group-hover:bg-emerald-100 text-slate-700 group-hover:text-emerald-700'
+                                                    }`}>
+                                                        <IconComp size={18} />
+                                                    </div>
+                                                    {isServiceReady ? (
+                                                        <span className="text-[9px] font-black uppercase bg-emerald-600 text-white px-2 py-0.5 rounded-md shadow-2xs">
+                                                            Active
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
+                                                            Configurable
+                                                        </span>
+                                                    )}
                                                 </div>
+
                                                 <div>
-                                                    <h3 className="text-xs font-black text-slate-800">{selectedBbpsCategory.name}</h3>
-                                                    <span className="text-[9.5px] font-bold text-slate-400 font-mono">id: {selectedBbpsCategory.id}</span>
+                                                    <h3 className="text-xs font-black text-slate-800 group-hover:text-emerald-700 transition-colors truncate">
+                                                        {cat.name}
+                                                    </h3>
+                                                    <p className="text-[10px] font-medium text-slate-400 line-clamp-1 mt-0.5">
+                                                        {cat.description || `Configure percentage commission for ${cat.name}`}
+                                                    </p>
                                                 </div>
+
+                                                <div className="flex items-center justify-between text-[10px] font-black text-emerald-600 pt-2 border-t border-slate-100 group-hover:border-emerald-100">
+                                                    <span>Configure Plans</span>
+                                                    <ArrowRight size={13} className="transition-transform group-hover:translate-x-1" />
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ) : (
+                    /* ── STEP 2 (OR AEPS 1): 2-COLUMN VIEW ─────────────────────── */
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                        {/* ── LEFT COLUMN: Model Switcher & Service / Plan Selectors ── */}
+                        <div className="lg:col-span-4 space-y-6">
+                            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-6">
+                                {/* Commission Model Dropdown (Change 1) */}
+                                {renderCommissionModelDropdown()}
+
+                                {/* ── CASE 1: AEPS 1 SELECTOR ── */}
+                                {commissionModel === 'AEPS_1' && (
+                                    <>
+                                        <div className="space-y-2">
+                                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">
+                                                Select Target Service
+                                            </label>
+                                            <div className="relative">
+                                                <select
+                                                    value={selectedService}
+                                                    onChange={(e) => setSelectedService(e.target.value)}
+                                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-xs font-bold text-slate-800 focus:bg-white focus:outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer pr-9"
+                                                >
+                                                    {services.map(s => (
+                                                        <option key={s.id} value={s.id}>{s.label}</option>
+                                                    ))}
+                                                </select>
+                                                <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                             </div>
-                                            {isLoanRepayment ? (
-                                                <span className="text-[9px] font-black uppercase bg-emerald-600 text-white px-2 py-0.5 rounded-full shadow-xs">
-                                                    Live In Prod
-                                                </span>
-                                            ) : (
-                                                <span className="text-[9px] font-black uppercase bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
-                                                    Configurable
-                                                </span>
-                                            )}
                                         </div>
-                                        <p className="text-[10px] font-medium text-slate-500 leading-relaxed">
-                                            {selectedBbpsCategory.description}
-                                        </p>
-                                    </div>
 
-                                    {/* 4 Plans Selector for BBPS */}
-                                    <div className="space-y-2">
-                                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">
-                                            Select Commission Plan
-                                        </label>
-                                        <div className="flex flex-col gap-2">
-                                            {bbpsConfigs.map(cfg => {
-                                                const isSelected = cfg.planCode === selectedBbpsPlanCode;
-                                                const displayName = getBbpsPlanDisplayName(cfg);
-
-                                                return (
-                                                    <button
-                                                        key={cfg.id || cfg.planCode}
-                                                        type="button"
-                                                        onClick={() => handleSelectBbpsPlan(cfg.planCode)}
-                                                        className={`w-full px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-between gap-2 text-left cursor-pointer ${
-                                                            isSelected
-                                                                ? 'bg-slate-900 text-white shadow-md shadow-slate-900/20 ring-2 ring-slate-900'
-                                                                : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/80'
-                                                        }`}
-                                                    >
-                                                        <div className="flex items-center gap-2 min-w-0">
-                                                            {cfg.planCode === 'FREE' && <Sparkles size={13} className={isSelected ? 'text-amber-400' : 'text-amber-500'} />}
-                                                            <span className="truncate">{displayName}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2 shrink-0">
-                                                            {cfg.planPrice > 0 ? (
-                                                                <span className={`text-[10.5px] font-bold px-2 py-0.5 rounded-lg ${
-                                                                    isSelected ? 'bg-slate-800 text-emerald-300' : 'bg-slate-200/70 text-slate-600'
+                                        {/* AEPS Plan Selector */}
+                                        <div className="space-y-2">
+                                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">
+                                                Select Commission Plan
+                                            </label>
+                                            <div className="flex flex-col gap-2">
+                                                {plans.map(p => {
+                                                    const isSelected = p.id === selectedPlanId;
+                                                    const displayName = getAdminPlanDisplayName(p);
+                                                    return (
+                                                        <button
+                                                            key={p.id}
+                                                            type="button"
+                                                            onClick={() => handleSelectPlan(p)}
+                                                            className={`w-full px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-between gap-2 text-left cursor-pointer ${
+                                                                isSelected
+                                                                    ? 'bg-slate-900 text-white shadow-md shadow-slate-900/20 ring-2 ring-slate-900'
+                                                                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/80'
+                                                            }`}
+                                                        >
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                {p.isDefault && <Sparkles size={13} className={isSelected ? 'text-amber-400' : 'text-amber-500'} />}
+                                                                <span className="truncate">{displayName}</span>
+                                                            </div>
+                                                            {p.price > 0 ? (
+                                                                <span className={`text-[10.5px] font-bold px-2 py-0.5 rounded-lg shrink-0 ${
+                                                                    isSelected ? 'bg-slate-800 text-indigo-200' : 'bg-slate-200/70 text-slate-600'
                                                                 }`}>
-                                                                    &#8377;{Number(cfg.planPrice).toLocaleString('en-IN')}
+                                                                    &#8377;{Number(p.price).toLocaleString('en-IN')}
                                                                 </span>
                                                             ) : (
-                                                                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg ${
+                                                                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg shrink-0 ${
                                                                     isSelected ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                                                 }`}>
                                                                     FREE
                                                                 </span>
                                                             )}
-                                                            <span className={`text-[9px] font-mono font-black px-1.5 py-0.5 rounded ${
-                                                                cfg.enabled ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                                                            }`}>
-                                                                {cfg.totalPercentage}%
-                                                            </span>
-                                                        </div>
-                                                    </button>
-                                                );
-                                            })}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* ── CASE 2: BBPS CONFIGURE SCREEN (Change 2) ── */}
+                                {commissionModel === 'BBPS' && (
+                                    <div className="space-y-5">
+                                        {/* Target Service Bar with Change Action */}
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">
+                                                    Target BBPS Service
+                                                </label>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setBbpsStep('select-service')}
+                                                    className="text-[10px] font-black uppercase text-emerald-600 hover:text-emerald-700 flex items-center gap-1 cursor-pointer transition-colors"
+                                                    title="Select another BBPS service"
+                                                >
+                                                    <RotateCcw size={11} />
+                                                    Change Service
+                                                </button>
+                                            </div>
+
+                                            {/* Compact active service card */}
+                                            <div className="p-3 bg-emerald-50/60 border border-emerald-200/80 rounded-2xl flex items-center justify-between gap-3">
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-600 flex items-center justify-center text-white shadow-xs shrink-0">
+                                                        {React.createElement(selectedBbpsCategory.icon || HandCoins, { size: 16 })}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <h3 className="text-xs font-black text-slate-800 truncate">
+                                                            {selectedBbpsCategory.name}
+                                                        </h3>
+                                                        <span className="text-[9.5px] font-bold text-slate-400 font-mono">
+                                                            id: {selectedBbpsCategory.id}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                {isLoanRepayment ? (
+                                                    <span className="text-[9px] font-black uppercase bg-emerald-600 text-white px-2 py-0.5 rounded-full shadow-2xs shrink-0">
+                                                        Active
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[9px] font-black uppercase bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full shrink-0">
+                                                        Configurable
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {/* Quick Service Switcher Dropdown */}
+                                            <div className="relative">
+                                                <select
+                                                    value={selectedBbpsServiceId}
+                                                    onChange={(e) => handleSelectBbpsService(e.target.value)}
+                                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-2 text-xs font-bold text-slate-800 focus:bg-white focus:outline-none focus:border-emerald-500 transition-all appearance-none cursor-pointer pr-8"
+                                                >
+                                                    {BBPS_CATEGORIES.map(cat => (
+                                                        <option key={cat.id} value={cat.id}>
+                                                            Switch to: {cat.name} {cat.id === 'loan-repayment' ? '(Active)' : ''}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                            </div>
+                                        </div>
+
+                                        {/* 4 Plans Selector for BBPS */}
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">
+                                                    Select Commission Plan
+                                                </label>
+                                                <span className="text-[10px] font-bold text-slate-400">
+                                                    {bbpsConfigs.length} Plans
+                                                </span>
+                                            </div>
+
+                                            {loadingBbpsConfigs ? (
+                                                <div className="p-8 text-center text-slate-400 flex flex-col items-center justify-center gap-2 bg-slate-50 rounded-2xl border border-slate-100">
+                                                    <RefreshCw className="animate-spin text-emerald-600" size={20} />
+                                                    <span className="text-xs font-bold">Loading plans...</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col gap-2">
+                                                    {bbpsConfigs.map(cfg => {
+                                                        const isSelected = cfg.planCode === selectedBbpsPlanCode;
+                                                        const displayName = getBbpsPlanDisplayName(cfg);
+
+                                                        return (
+                                                            <button
+                                                                key={cfg.id || cfg.planCode}
+                                                                type="button"
+                                                                onClick={() => handleSelectBbpsPlan(cfg.planCode)}
+                                                                className={`w-full px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-between gap-2 text-left cursor-pointer ${
+                                                                    isSelected
+                                                                        ? 'bg-slate-900 text-white shadow-md shadow-slate-900/20 ring-2 ring-slate-900'
+                                                                        : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/80'
+                                                                }`}
+                                                            >
+                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                    {cfg.planCode === 'FREE' && (
+                                                                        <Sparkles size={13} className={isSelected ? 'text-amber-400' : 'text-amber-500'} />
+                                                                    )}
+                                                                    <span className="truncate">{displayName}</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-2 shrink-0">
+                                                                    {cfg.planPrice > 0 ? (
+                                                                        <span className={`text-[10.5px] font-bold px-2 py-0.5 rounded-lg ${
+                                                                            isSelected ? 'bg-slate-800 text-emerald-300' : 'bg-slate-200/70 text-slate-600'
+                                                                        }`}>
+                                                                            &#8377;{Number(cfg.planPrice).toLocaleString('en-IN')}
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg ${
+                                                                            isSelected ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                                                        }`}>
+                                                                            FREE
+                                                                        </span>
+                                                                    )}
+                                                                    <span className={`text-[9.5px] font-mono font-black px-1.5 py-0.5 rounded ${
+                                                                        isSelected
+                                                                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'
+                                                                            : cfg.enabled ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                                                                    }`}>
+                                                                        {cfg.totalPercentage}%
+                                                                    </span>
+                                                                </div>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
-                    </div>
 
-                    {/* ── RIGHT COLUMN: Configuration Editor ── */}
+                        {/* ── RIGHT COLUMN: Configuration Editor ── */}
                     <div className="lg:col-span-8 space-y-6">
                         {/* ── CASE 1: AEPS 1 SLAB EDITOR TABLE ── */}
                         {commissionModel === 'AEPS_1' && (
@@ -1193,7 +1444,7 @@ export default function CommissionManagement() {
                         )}
                     </div>
                 </div>
-            ) : (
+            )) : (
                 /* ── AUDIT LEDGER TAB (AEPS & BBPS TRANSACTIONS) ───────────────────── */
                 <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-6">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
