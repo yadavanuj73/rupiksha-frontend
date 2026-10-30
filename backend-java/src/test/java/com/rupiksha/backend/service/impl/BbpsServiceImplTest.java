@@ -50,6 +50,9 @@ class BbpsServiceImplTest {
     @Mock
     private WalletService walletService;
 
+    @Mock
+    private com.rupiksha.backend.service.CommissionService commissionService;
+
     @org.mockito.Spy
     private com.rupiksha.backend.integration.bbps.ElectricityBillerRegistry electricityBillerRegistry =
             new com.rupiksha.backend.integration.bbps.ElectricityBillerRegistry();
@@ -490,6 +493,7 @@ class BbpsServiceImplTest {
 
         verify(walletService, times(1)).debitForService(eq(userId), eq(new BigDecimal("1577.00")), anyString(), any(), anyString(), anyString(), anyString());
         verify(walletService, never()).refundForService(any(), any(), any(), any(), any(), any(), any(), any());
+        verify(commissionService, times(1)).processBbpsCommission(any(BbpsTransaction.class));
     }
 
     @Test

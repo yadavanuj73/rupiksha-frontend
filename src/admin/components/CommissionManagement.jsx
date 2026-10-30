@@ -455,7 +455,7 @@ export default function CommissionManagement() {
         };
     }, [selectedBbpsServiceId]);
 
-    const isLoanRepayment = selectedBbpsServiceId === 'loan-repayment';
+    const isServiceActive = selectedBbpsServiceId === 'loan-repayment' || selectedBbpsServiceId === 'electricity';
 
     const renderCommissionModelDropdown = () => {
         const currentModel = COMMISSION_MODELS.find(m => m.id === commissionModel) || COMMISSION_MODELS[0];
@@ -710,7 +710,7 @@ export default function CommissionManagement() {
                                                 <option value="" disabled>-- Choose BBPS Service --</option>
                                                 {BBPS_CATEGORIES.map(cat => (
                                                     <option key={cat.id} value={cat.id}>
-                                                        {cat.name} {cat.id === 'loan-repayment' ? '(Active)' : ''}
+                                                        {cat.name} {(cat.id === 'loan-repayment' || cat.id === 'electricity') ? '(Active)' : ''}
                                                     </option>
                                                 ))}
                                             </select>
@@ -758,7 +758,7 @@ export default function CommissionManagement() {
                             ) : (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
                                     {filteredBbpsCategories.map((cat, index) => {
-                                        const isServiceReady = cat.id === 'loan-repayment';
+                                        const isServiceReady = cat.id === 'loan-repayment' || cat.id === 'electricity';
                                         const isSelected = cat.id === selectedBbpsServiceId;
                                         const IconComp = cat.icon || HandCoins;
                                         const gradient = cat.gradient || 'from-indigo-500 to-blue-600';
@@ -942,7 +942,7 @@ export default function CommissionManagement() {
                                                         </span>
                                                     </div>
                                                 </div>
-                                                {isLoanRepayment ? (
+                                                {isServiceActive ? (
                                                     <span className="text-[9px] font-black uppercase bg-emerald-600 text-white px-2 py-0.5 rounded-full shadow-2xs shrink-0">
                                                         Active
                                                     </span>
@@ -962,7 +962,7 @@ export default function CommissionManagement() {
                                                 >
                                                     {BBPS_CATEGORIES.map(cat => (
                                                         <option key={cat.id} value={cat.id}>
-                                                            Switch to: {cat.name} {cat.id === 'loan-repayment' ? '(Active)' : ''}
+                                                            Switch to: {cat.name} {(cat.id === 'loan-repayment' || cat.id === 'electricity') ? '(Active)' : ''}
                                                         </option>
                                                     ))}
                                                 </select>
@@ -1505,6 +1505,7 @@ export default function CommissionManagement() {
                                 <option value="ALL">All Services</option>
                                 <option value="AEPS_1">AEPS 1 (Cash Withdrawal)</option>
                                 <option value="BBPS_LOAN_REPAYMENT">BBPS (Loan Repayment)</option>
+                                <option value="BBPS_ELECTRICITY">BBPS (Electricity)</option>
                             </select>
 
                             <select
@@ -1578,7 +1579,7 @@ export default function CommissionManagement() {
                                                             ? 'bg-emerald-100 text-emerald-950 border border-emerald-300'
                                                             : 'bg-indigo-100 text-indigo-950 border border-indigo-300'
                                                     }`}>
-                                                        {isBbps ? 'BBPS Loan' : 'AEPS 1'}
+                                                        {isBbps ? (item.bbpsCategory ? `BBPS ${item.bbpsCategory}` : (String(item.serviceType).includes('ELECTRICITY') ? 'BBPS Electricity' : 'BBPS Loan')) : 'AEPS 1'}
                                                     </span>
                                                 </td>
                                                 <td className="py-3 px-4 font-black text-black">

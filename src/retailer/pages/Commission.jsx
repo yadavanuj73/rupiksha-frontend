@@ -710,7 +710,7 @@ export default function RetailerCommission() {
                                             {String(item.serviceType || '').includes('BBPS') ? (
                                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-100">
                                                     <Coins size={12} />
-                                                    BBPS Loan
+                                                    {item.bbpsCategory ? `BBPS ${item.bbpsCategory}` : (String(item.serviceType).includes('ELECTRICITY') ? 'BBPS Electricity' : 'BBPS Loan')}
                                                 </span>
                                             ) : (
                                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-black uppercase bg-indigo-50 text-indigo-700 border border-indigo-100">

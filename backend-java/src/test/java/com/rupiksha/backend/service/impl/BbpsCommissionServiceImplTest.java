@@ -453,5 +453,274 @@ public class BbpsCommissionServiceImplTest {
                 commissionService.updateBbpsConfig(loanRepaymentFreeConfig.getId(), updateReq, retailer.getId(), "127.0.0.1")
         );
     }
-}
 
+    @Test
+    @DisplayName("Electricity Commission: ₹2,000 at 0.50% / 0.25% / 0.25% yields exact ₹10.00 / ₹5.00 / ₹5.00")
+    void testElectricityPercentageCommissionCalculation() {
+        // Arrange
+        BbpsTransaction bbpsTxn = new BbpsTransaction();
+        bbpsTxn.setId(UUID.randomUUID());
+        bbpsTxn.setUser(retailer);
+        bbpsTxn.setCategory("Electricity");
+        bbpsTxn.setAmount(new BigDecimal("2000.00"));
+        bbpsTxn.setStatus("SUCCESS");
+        bbpsTxn.setMerchantRefNo("BBPSEL2000001");
+
+        retailer.setAepsCommissionPlan(freePlan);
+
+        BbpsCommissionConfig elecConfig = BbpsCommissionConfig.builder()
+                .id(UUID.randomUUID())
+                .serviceId("electricity")
+                .serviceName("Electricity")
+                .commissionModel("PERCENTAGE")
+                .plan(freePlan)
+                .planCode("FREE")
+                .retailerPercentage(new BigDecimal("0.5000"))
+                .distributorPercentage(new BigDecimal("0.2500"))
+                .superDistributorPercentage(new BigDecimal("0.2500"))
+                .enabled(true)
+                .build();
+
+        when(commissionTransactionRepository.existsByOriginalTransactionId("BBPSEL2000001")).thenReturn(false);
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+        when(bbpsCommissionConfigRepository.findByServiceIdAndPlan_PlanCode("electricity", "FREE"))
+                .thenReturn(Optional.of(elecConfig));
+
+        // Act
+        commissionService.processBbpsCommission(bbpsTxn);
+
+        // Assert - Wallet Credits
+        verify(walletService, times(1)).creditForService(
+                eq(retailer.getId()),
+                eq(new BigDecimal("10.00")),
+                contains("BBPS Electricity Commission"),
+                eq(WalletTransactionContext.COMMISSION),
+                eq("BBPS Electricity"),
+                anyString(),
+                contains("COMM-BBPS-BBPSEL2000001-RETAILER")
+        );
+
+        verify(walletService, times(1)).creditForService(
+                eq(distributor.getId()),
+                eq(new BigDecimal("5.00")),
+                contains("BBPS Electricity Commission (Distributor)"),
+                eq(WalletTransactionContext.COMMISSION),
+                eq("BBPS Electricity"),
+                anyString(),
+                contains("COMM-BBPS-BBPSEL2000001-DISTRIBUTOR")
+        );
+
+        verify(walletService, times(1)).creditForService(
+                eq(superDistributor.getId()),
+                eq(new BigDecimal("5.00")),
+                contains("BBPS Electricity Commission (Super Distributor)"),
+                eq(WalletTransactionContext.COMMISSION),
+                eq("BBPS Electricity"),
+                anyString(),
+                contains("COMM-BBPS-BBPSEL2000001-SUPER_DISTRIBUTOR")
+        );
+
+        // Assert - Commission Transaction Ledger
+        ArgumentCaptor<CommissionTransaction> txnCaptor = ArgumentCaptor.forClass(CommissionTransaction.class);
+        verify(commissionTransactionRepository, times(3)).save(txnCaptor.capture());
+
+        List<CommissionTransaction> saved = txnCaptor.getAllValues();
+        assertEquals(3, saved.size());
+
+        CommissionTransaction retEntry = saved.stream()
+                .filter(t -> "RETAILER".equals(t.getBeneficiaryRole()))
+                .findFirst().orElseThrow();
+        assertEquals(new BigDecimal("10.00"), retEntry.getCommissionAmount());
+        assertEquals(new BigDecimal("0.5000"), retEntry.getAppliedPercentage());
+        assertEquals("BBPS_ELECTRICITY", retEntry.getServiceType());
+        assertEquals("Electricity", retEntry.getBbpsCategory());
+
+        CommissionTransaction distEntry = saved.stream()
+                .filter(t -> "DISTRIBUTOR".equals(t.getBeneficiaryRole()))
+                .findFirst().orElseThrow();
+        assertEquals(new BigDecimal("5.00"), distEntry.getCommissionAmount());
+        assertEquals(new BigDecimal("0.2500"), distEntry.getAppliedPercentage());
+        assertEquals("BBPS_ELECTRICITY", distEntry.getServiceType());
+        assertEquals("Electricity", distEntry.getBbpsCategory());
+
+        CommissionTransaction sdEntry = saved.stream()
+                .filter(t -> "SUPER_DISTRIBUTOR".equals(t.getBeneficiaryRole()))
+                .findFirst().orElseThrow();
+        assertEquals(new BigDecimal("5.00"), sdEntry.getCommissionAmount());
+        assertEquals(new BigDecimal("0.2500"), sdEntry.getAppliedPercentage());
+        assertEquals("BBPS_ELECTRICITY", sdEntry.getServiceType());
+        assertEquals("Electricity", sdEntry.getBbpsCategory());
+    }
+
+    @Test
+    @DisplayName("Electricity Commission: Direct retailer without upline receives only retailer commission")
+    void testElectricityCommissionDirectRetailer() {
+        retailer.setParentUser(null);
+        retailer.setAepsCommissionPlan(freePlan);
+
+        BbpsTransaction bbpsTxn = new BbpsTransaction();
+        bbpsTxn.setId(UUID.randomUUID());
+        bbpsTxn.setUser(retailer);
+        bbpsTxn.setCategory("Electricity");
+        bbpsTxn.setAmount(new BigDecimal("3000.00"));
+        bbpsTxn.setStatus("SUCCESS");
+        bbpsTxn.setMerchantRefNo("BBPSEL_DIRECT_01");
+
+        BbpsCommissionConfig elecConfig = BbpsCommissionConfig.builder()
+                .id(UUID.randomUUID())
+                .serviceId("electricity")
+                .serviceName("Electricity")
+                .commissionModel("PERCENTAGE")
+                .plan(freePlan)
+                .planCode("FREE")
+                .retailerPercentage(new BigDecimal("0.5000"))
+                .distributorPercentage(new BigDecimal("0.2500"))
+                .superDistributorPercentage(new BigDecimal("0.2500"))
+                .enabled(true)
+                .build();
+
+        when(commissionTransactionRepository.existsByOriginalTransactionId("BBPSEL_DIRECT_01")).thenReturn(false);
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+        when(bbpsCommissionConfigRepository.findByServiceIdAndPlan_PlanCode("electricity", "FREE"))
+                .thenReturn(Optional.of(elecConfig));
+
+        commissionService.processBbpsCommission(bbpsTxn);
+
+        // Retailer receives 0.50% of 3000 = 15.00
+        verify(walletService, times(1)).creditForService(
+                eq(retailer.getId()),
+                eq(new BigDecimal("15.00")),
+                anyString(),
+                any(),
+                eq("BBPS Electricity"),
+                anyString(),
+                anyString()
+        );
+
+        // Distributor & Super Distributor receive nothing
+        verify(walletService, never()).creditForService(eq(distributor.getId()), any(), any(), any(), any(), any(), any());
+        verify(walletService, never()).creditForService(eq(superDistributor.getId()), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Electricity Commission: Prepaid Meter category maps to electricity and processes correctly")
+    void testElectricityPrepaidMeterCategory() {
+        retailer.setAepsCommissionPlan(freePlan);
+
+        BbpsTransaction bbpsTxn = new BbpsTransaction();
+        bbpsTxn.setId(UUID.randomUUID());
+        bbpsTxn.setUser(retailer);
+        bbpsTxn.setCategory("Prepaid Meter");
+        bbpsTxn.setAmount(new BigDecimal("1000.00"));
+        bbpsTxn.setStatus("SUCCESS");
+        bbpsTxn.setMerchantRefNo("BBPSEL_PREPAID_01");
+
+        BbpsCommissionConfig elecConfig = BbpsCommissionConfig.builder()
+                .id(UUID.randomUUID())
+                .serviceId("electricity")
+                .serviceName("Electricity")
+                .commissionModel("PERCENTAGE")
+                .plan(freePlan)
+                .planCode("FREE")
+                .retailerPercentage(new BigDecimal("0.5000"))
+                .distributorPercentage(new BigDecimal("0.2500"))
+                .superDistributorPercentage(new BigDecimal("0.2500"))
+                .enabled(true)
+                .build();
+
+        when(commissionTransactionRepository.existsByOriginalTransactionId("BBPSEL_PREPAID_01")).thenReturn(false);
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+        when(bbpsCommissionConfigRepository.findByServiceIdAndPlan_PlanCode("electricity", "FREE"))
+                .thenReturn(Optional.of(elecConfig));
+
+        commissionService.processBbpsCommission(bbpsTxn);
+
+        // 0.50% of 1000 = 5.00
+        verify(walletService, times(1)).creditForService(
+                eq(retailer.getId()),
+                eq(new BigDecimal("5.00")),
+                anyString(),
+                any(),
+                eq("BBPS Electricity"),
+                anyString(),
+                anyString()
+        );
+    }
+
+    @Test
+    @DisplayName("Electricity Commission: Disabled configuration suppresses commission distribution")
+    void testElectricityCommissionDisabledConfig() {
+        retailer.setAepsCommissionPlan(freePlan);
+
+        BbpsTransaction bbpsTxn = new BbpsTransaction();
+        bbpsTxn.setId(UUID.randomUUID());
+        bbpsTxn.setUser(retailer);
+        bbpsTxn.setCategory("Electricity");
+        bbpsTxn.setAmount(new BigDecimal("2000.00"));
+        bbpsTxn.setStatus("SUCCESS");
+        bbpsTxn.setMerchantRefNo("BBPSEL_DISABLED");
+
+        BbpsCommissionConfig disabledConfig = BbpsCommissionConfig.builder()
+                .id(UUID.randomUUID())
+                .serviceId("electricity")
+                .serviceName("Electricity")
+                .commissionModel("PERCENTAGE")
+                .plan(freePlan)
+                .planCode("FREE")
+                .retailerPercentage(new BigDecimal("0.5000"))
+                .distributorPercentage(new BigDecimal("0.2500"))
+                .superDistributorPercentage(new BigDecimal("0.2500"))
+                .enabled(false) // Disabled!
+                .build();
+
+        when(commissionTransactionRepository.existsByOriginalTransactionId("BBPSEL_DISABLED")).thenReturn(false);
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+        when(bbpsCommissionConfigRepository.findByServiceIdAndPlan_PlanCode("electricity", "FREE"))
+                .thenReturn(Optional.of(disabledConfig));
+
+        commissionService.processBbpsCommission(bbpsTxn);
+
+        verify(walletService, never()).creditForService(any(), any(), any(), any(), any(), any(), any());
+        verify(commissionTransactionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Electricity Commission: Idempotency safeguard prevents duplicate credits")
+    void testElectricityCommissionIdempotency() {
+        BbpsTransaction bbpsTxn = new BbpsTransaction();
+        bbpsTxn.setId(UUID.randomUUID());
+        bbpsTxn.setMerchantRefNo("BBPSEL_DUP_001");
+        bbpsTxn.setCategory("Electricity");
+        bbpsTxn.setAmount(new BigDecimal("1000.00"));
+        bbpsTxn.setStatus("SUCCESS");
+
+        when(commissionTransactionRepository.existsByOriginalTransactionId("BBPSEL_DUP_001")).thenReturn(true);
+
+        commissionService.processBbpsCommission(bbpsTxn);
+
+        verify(walletService, never()).creditForService(any(), any(), any(), any(), any(), any(), any());
+        verify(commissionTransactionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Electricity Commission: Non-SUCCESS transactions (FAILED, PENDING) generate zero commission")
+    void testElectricityNonSuccessTransactionsExcluded() {
+        BbpsTransaction failedTxn = new BbpsTransaction();
+        failedTxn.setId(UUID.randomUUID());
+        failedTxn.setCategory("Electricity");
+        failedTxn.setStatus("FAILED");
+        failedTxn.setAmount(new BigDecimal("5000.00"));
+
+        BbpsTransaction pendingTxn = new BbpsTransaction();
+        pendingTxn.setId(UUID.randomUUID());
+        pendingTxn.setCategory("Electricity");
+        pendingTxn.setStatus("PENDING");
+        pendingTxn.setAmount(new BigDecimal("5000.00"));
+
+        commissionService.processBbpsCommission(failedTxn);
+        commissionService.processBbpsCommission(pendingTxn);
+
+        verify(walletService, never()).creditForService(any(), any(), any(), any(), any(), any(), any());
+        verify(commissionTransactionRepository, never()).save(any());
+    }
+}
