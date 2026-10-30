@@ -1237,14 +1237,14 @@ export default function CommissionManagement() {
 
                                     {/* Form Inputs Grid */}
                                     <div className="p-6 space-y-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                             {/* 1. Retailer Percentage */}
-                                            <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-2">
-                                                <div className="flex items-center justify-between">
-                                                    <label className="text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                                            <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-2 flex flex-col justify-between">
+                                                <div className="flex items-center justify-between gap-1">
+                                                    <label className="text-[11px] font-black text-slate-700 uppercase tracking-wider truncate">
                                                         Retailer (%)
                                                     </label>
-                                                    <span className="text-[9px] font-black uppercase bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100">
+                                                    <span className="text-[9px] font-black uppercase bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100 shrink-0">
                                                         Direct
                                                     </span>
                                                 </div>
@@ -1256,22 +1256,22 @@ export default function CommissionManagement() {
                                                         max="100"
                                                         value={bbpsFormData.retailerPercentage}
                                                         onChange={(e) => setBbpsFormData(prev => ({ ...prev, retailerPercentage: e.target.value }))}
-                                                        className="w-full bg-transparent text-base font-black text-slate-800 focus:outline-none"
+                                                        className="w-full bg-transparent text-sm sm:text-base font-black text-slate-800 focus:outline-none min-w-0"
                                                     />
-                                                    <Percent size={14} className="text-slate-400 shrink-0" />
+                                                    <Percent size={14} className="text-slate-400 shrink-0 ml-1" />
                                                 </div>
-                                                <p className="text-[10px] font-bold text-slate-400">
+                                                <p className="text-[9.5px] sm:text-[10px] font-bold text-slate-400 leading-tight">
                                                     Granted to the transaction-initiating retailer.
                                                 </p>
                                             </div>
 
                                             {/* 2. Distributor Percentage */}
-                                            <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-2">
-                                                <div className="flex items-center justify-between">
-                                                    <label className="text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                                            <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-2 flex flex-col justify-between">
+                                                <div className="flex items-center justify-between gap-1">
+                                                    <label className="text-[11px] font-black text-slate-700 uppercase tracking-wider truncate">
                                                         Distributor (%)
                                                     </label>
-                                                    <span className="text-[9px] font-black uppercase bg-amber-50 text-amber-700 px-2 py-0.5 rounded border border-amber-100">
+                                                    <span className="text-[9px] font-black uppercase bg-amber-50 text-amber-700 px-2 py-0.5 rounded border border-amber-100 shrink-0">
                                                         Upline 1
                                                     </span>
                                                 </div>
@@ -1283,22 +1283,22 @@ export default function CommissionManagement() {
                                                         max="100"
                                                         value={bbpsFormData.distributorPercentage}
                                                         onChange={(e) => setBbpsFormData(prev => ({ ...prev, distributorPercentage: e.target.value }))}
-                                                        className="w-full bg-transparent text-base font-black text-slate-800 focus:outline-none"
+                                                        className="w-full bg-transparent text-sm sm:text-base font-black text-slate-800 focus:outline-none min-w-0"
                                                     />
-                                                    <Percent size={14} className="text-slate-400 shrink-0" />
+                                                    <Percent size={14} className="text-slate-400 shrink-0 ml-1" />
                                                 </div>
-                                                <p className="text-[10px] font-bold text-slate-400">
+                                                <p className="text-[9.5px] sm:text-[10px] font-bold text-slate-400 leading-tight">
                                                     Credited to immediate parent distributor if mapped.
                                                 </p>
                                             </div>
 
                                             {/* 3. Super Distributor Percentage */}
-                                            <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-2">
-                                                <div className="flex items-center justify-between">
-                                                    <label className="text-[11px] font-black text-slate-700 uppercase tracking-wider">
-                                                        Super Distributor (%)
+                                            <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-2 flex flex-col justify-between">
+                                                <div className="flex items-center justify-between gap-1">
+                                                    <label className="text-[11px] font-black text-slate-700 uppercase tracking-wider truncate">
+                                                        Super Dist. (%)
                                                     </label>
-                                                    <span className="text-[9px] font-black uppercase bg-purple-50 text-purple-700 px-2 py-0.5 rounded border border-purple-100">
+                                                    <span className="text-[9px] font-black uppercase bg-purple-50 text-purple-700 px-2 py-0.5 rounded border border-purple-100 shrink-0">
                                                         Upline 2
                                                     </span>
                                                 </div>
@@ -1310,40 +1310,39 @@ export default function CommissionManagement() {
                                                         max="100"
                                                         value={bbpsFormData.superDistributorPercentage}
                                                         onChange={(e) => setBbpsFormData(prev => ({ ...prev, superDistributorPercentage: e.target.value }))}
-                                                        className="w-full bg-transparent text-base font-black text-slate-800 focus:outline-none"
+                                                        className="w-full bg-transparent text-sm sm:text-base font-black text-slate-800 focus:outline-none min-w-0"
                                                     />
-                                                    <Percent size={14} className="text-slate-400 shrink-0" />
+                                                    <Percent size={14} className="text-slate-400 shrink-0 ml-1" />
                                                 </div>
-                                                <p className="text-[10px] font-bold text-slate-400">
+                                                <p className="text-[9.5px] sm:text-[10px] font-bold text-slate-400 leading-tight">
                                                     Credited to super distributor in hierarchy branch.
                                                 </p>
                                             </div>
-                                        </div>
 
-                                        {/* Total Percentage & Combined Safeguard */}
-                                        <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 to-indigo-950 text-white flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-emerald-400">
-                                                    <TrendingUp size={20} />
-                                                </div>
-                                                <div>
-                                                    <span className="text-[10px] font-black text-indigo-200 uppercase tracking-widest block">
-                                                        Combined Commission Payout
+                                            {/* 4. Total Calculation Div (Combined Commission Payout) */}
+                                            <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white space-y-2 flex flex-col justify-between shadow-md border border-slate-800">
+                                                <div className="flex items-center justify-between gap-1">
+                                                    <span className="text-[11px] font-black uppercase text-indigo-200 tracking-wider truncate">
+                                                        Combined Payout
                                                     </span>
-                                                    <p className="text-xs font-medium text-slate-300">
-                                                        Total distributed percentage across all hierarchy levels.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-2xl font-black font-mono text-emerald-400">
-                                                    {bbpsTotalPercentage.toFixed(2)}%
-                                                </span>
-                                                {bbpsTotalPercentage > 5 && (
-                                                    <span title="High total payout warning" className="text-amber-400">
-                                                        <AlertTriangle size={18} />
+                                                    <span className="text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-400/30 shrink-0 flex items-center gap-1">
+                                                        <TrendingUp size={10} />
+                                                        Total
                                                     </span>
-                                                )}
+                                                </div>
+                                                <div className="flex items-center justify-between bg-white/10 rounded-xl px-3 py-2 border border-white/10">
+                                                    <span className="text-sm sm:text-base font-black font-mono text-emerald-400 truncate">
+                                                        {bbpsTotalPercentage.toFixed(2)}%
+                                                    </span>
+                                                    {bbpsTotalPercentage > 5 && (
+                                                        <span title="High total payout warning" className="text-amber-400 shrink-0">
+                                                            <AlertTriangle size={15} />
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p className="text-[9.5px] sm:text-[10px] font-medium text-slate-300 leading-tight">
+                                                    Total distributed percentage across all hierarchy levels.
+                                                </p>
                                             </div>
                                         </div>
 
