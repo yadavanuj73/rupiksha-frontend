@@ -97,4 +97,9 @@ public interface CommissionService {
      * Retrieves audit history for a BBPS service.
      */
     List<CommissionDtos.BbpsAuditDto> getBbpsAudits(String serviceId);
+
+    /**
+     * Reconciles and credits commission for any confirmed BBPS transactions that were not yet processed.
+     */
+    int reconcileUncreditedBbpsCommissions();
 }

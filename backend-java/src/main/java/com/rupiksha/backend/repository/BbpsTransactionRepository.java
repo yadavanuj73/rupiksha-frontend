@@ -16,6 +16,7 @@ public interface BbpsTransactionRepository extends JpaRepository<BbpsTransaction
     Optional<BbpsTransaction> findByMerchantRefNo(String merchantRefNo);
     Optional<BbpsTransaction> findByProviderTxnId(String providerTxnId);
     Optional<BbpsTransaction> findByRequestId(String requestId);
+    java.util.List<BbpsTransaction> findByStatus(String status);
 
     @Query("SELECT b FROM BbpsTransaction b WHERE (:userId IS NULL OR b.user.id = :userId) " +
            "AND (:status IS NULL OR b.status = :status) " +

@@ -97,6 +97,15 @@ export const commissionService = {
         return apiFetch(`/admin/commissions/bbps/audits?serviceId=${encodeURIComponent(serviceId)}`);
     },
 
+    /**
+     * Reconcile past uncredited BBPS transactions and grant their commissions
+     */
+    async reconcileBbpsCommissions() {
+        return apiFetch('/admin/commissions/bbps/reconcile', {
+            method: 'POST',
+        });
+    },
+
     // ─── RETAILER METHODS ─────────────────────────────────────────────────────
     /**
      * Get retailer's own commission summary

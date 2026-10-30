@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
+import com.rupiksha.backend.repository.BbpsTransactionRepository;
 
 @Slf4j
 @Service
@@ -38,6 +39,7 @@ public class CommissionServiceImpl implements CommissionService {
     private final WalletService walletService;
     private final BbpsCommissionConfigRepository bbpsCommissionConfigRepository;
     private final BbpsCommissionConfigAuditRepository bbpsCommissionConfigAuditRepository;
+    private final BbpsTransactionRepository bbpsTransactionRepository;
 
     private static final ZoneId IST_ZONE = ZoneId.of("Asia/Kolkata");
 
@@ -885,20 +887,44 @@ public class CommissionServiceImpl implements CommissionService {
             return;
         }
 
-        // 3. Find matching BBPS Commission Config for service and plan
+        // 3. Find matching BBPS Commission Config for service and plan with intelligent fallback
         Optional<BbpsCommissionConfig> configOpt = bbpsCommissionConfigRepository.findByServiceIdAndPlan_PlanCode(serviceId, plan.getPlanCode());
         if (configOpt.isEmpty()) {
             configOpt = bbpsCommissionConfigRepository.findByServiceIdAndPlan_Id(serviceId, plan.getId());
         }
 
-        if (configOpt.isEmpty()) {
-            log.warn("No BBPS commission config found for service: {} and plan: {}. Transaction: {}", serviceId, plan.getPlanCode(), originalTxnId);
-            return;
+        BbpsCommissionConfig config = null;
+        if (configOpt.isPresent() && Boolean.TRUE.equals(configOpt.get().getEnabled()) 
+                && configOpt.get().getRetailerPercentage() != null 
+                && configOpt.get().getRetailerPercentage().compareTo(BigDecimal.ZERO) > 0) {
+            config = configOpt.get();
+        } else {
+            // Intelligent fallback 1: If retailer plan config is missing, disabled, or 0%, check FREE plan for this service
+            Optional<BbpsCommissionConfig> freeOpt = bbpsCommissionConfigRepository.findByServiceIdAndPlan_PlanCode(serviceId, "FREE");
+            if (freeOpt.isPresent() && Boolean.TRUE.equals(freeOpt.get().getEnabled()) 
+                    && freeOpt.get().getRetailerPercentage() != null 
+                    && freeOpt.get().getRetailerPercentage().compareTo(BigDecimal.ZERO) > 0) {
+                config = freeOpt.get();
+                log.info("Retailer {} plan {} config missing/zero for {}. Falling back to active FREE plan config ({}%)",
+                        retailer.getUsername(), plan.getPlanCode(), serviceId, config.getRetailerPercentage());
+            } else {
+                // Intelligent fallback 2: Check any active config for this service
+                List<BbpsCommissionConfig> allConfigs = bbpsCommissionConfigRepository.findByServiceId(serviceId);
+                Optional<BbpsCommissionConfig> anyActive = allConfigs.stream()
+                        .filter(c -> Boolean.TRUE.equals(c.getEnabled()) && c.getRetailerPercentage() != null && c.getRetailerPercentage().compareTo(BigDecimal.ZERO) > 0)
+                        .findFirst();
+                if (anyActive.isPresent()) {
+                    config = anyActive.get();
+                    log.info("Using active fallback config from plan {} for service {} ({}%)",
+                            config.getPlanCode(), serviceId, config.getRetailerPercentage());
+                } else if (configOpt.isPresent() && Boolean.TRUE.equals(configOpt.get().getEnabled())) {
+                    config = configOpt.get();
+                }
+            }
         }
 
-        BbpsCommissionConfig config = configOpt.get();
-        if (!Boolean.TRUE.equals(config.getEnabled())) {
-            log.info("BBPS commission is disabled for service: {} and plan: {}. Skipping distribution for txn: {}",
+        if (config == null || !Boolean.TRUE.equals(config.getEnabled())) {
+            log.info("BBPS commission is disabled or not configured for service: {} and plan: {}. Skipping distribution for txn: {}",
                     serviceId, plan.getPlanCode(), originalTxnId);
             return;
         }
@@ -1261,13 +1287,18 @@ public class CommissionServiceImpl implements CommissionService {
                 .build();
         bbpsCommissionConfigAuditRepository.save(audit);
 
+        boolean effectiveEnabled = Boolean.TRUE.equals(request.enabled());
+        if (request.enabled() == null) {
+            effectiveEnabled = (ret.compareTo(BigDecimal.ZERO) > 0 || dist.compareTo(BigDecimal.ZERO) > 0 || sd.compareTo(BigDecimal.ZERO) > 0)
+                    || Boolean.TRUE.equals(config.getEnabled());
+        }
+
         // Update Configuration
         config.setRetailerPercentage(ret);
         config.setDistributorPercentage(dist);
         config.setSuperDistributorPercentage(sd);
-        if (request.enabled() != null) {
-            config.setEnabled(request.enabled());
-        }
+        config.setEnabled(effectiveEnabled);
+        audit.setNewEnabled(effectiveEnabled);
         config.setUpdatedBy(admin);
         config.setUpdatedAt(Instant.now());
 
@@ -1360,5 +1391,38 @@ public class CommissionServiceImpl implements CommissionService {
                 txn.getCommissionBaseAmount(),
                 txn.getBbpsCategory()
         );
+    }
+
+    @Override
+    @Transactional
+    public int reconcileUncreditedBbpsCommissions() {
+        log.info("Running automated reconciliation for uncredited BBPS transactions...");
+        List<BbpsTransaction> successTxns = bbpsTransactionRepository.findByStatus("SUCCESS");
+        int creditedCount = 0;
+        for (BbpsTransaction txn : successTxns) {
+            String ref = txn.getMerchantRefNo() != null ? txn.getMerchantRefNo() : txn.getId().toString();
+            if (!commissionTransactionRepository.existsByOriginalTransactionId(ref)) {
+                try {
+                    processBbpsCommission(txn);
+                    if (commissionTransactionRepository.existsByOriginalTransactionId(ref)) {
+                        creditedCount++;
+                        log.info("Successfully reconciled and credited missing commission for BBPS txn: {}", ref);
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to reconcile commission for BBPS txn {}: {}", ref, e.getMessage());
+                }
+            }
+        }
+        log.info("Completed BBPS commission reconciliation. Credited {} uncredited transactions.", creditedCount);
+        return creditedCount;
+    }
+
+    @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
+    public void onApplicationReady() {
+        try {
+            reconcileUncreditedBbpsCommissions();
+        } catch (Exception e) {
+            log.error("Error running startup BBPS commission reconciliation: {}", e.getMessage(), e);
+        }
     }
 }

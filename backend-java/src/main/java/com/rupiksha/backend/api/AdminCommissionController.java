@@ -140,4 +140,10 @@ public class AdminCommissionController {
     ) {
         return ResponseEntity.ok(commissionService.getBbpsAudits(serviceId));
     }
+
+    @PostMapping("/bbps/reconcile")
+    public ResponseEntity<java.util.Map<String, Object>> reconcileBbpsCommissions() {
+        int count = commissionService.reconcileUncreditedBbpsCommissions();
+        return ResponseEntity.ok(java.util.Map.of("success", true, "reconciledCount", count));
+    }
 }

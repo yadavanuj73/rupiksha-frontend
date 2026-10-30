@@ -41,6 +41,9 @@ public class BbpsCommissionServiceImplTest {
     private WalletService walletService;
 
     @Mock
+    private com.rupiksha.backend.repository.BbpsTransactionRepository bbpsTransactionRepository;
+
+    @Mock
     private BbpsCommissionConfigRepository bbpsCommissionConfigRepository;
 
     @Mock

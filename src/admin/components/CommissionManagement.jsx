@@ -96,6 +96,7 @@ export default function CommissionManagement() {
 
     // ── COMMON STATE ────────────────────────────────────────────────────────────
     const [saving, setSaving] = useState(false);
+    const [reconciling, setReconciling] = useState(false);
     const [notification, setNotification] = useState(null); // { type: 'success' | 'error' | 'info', message: '' }
     const [activeTab, setActiveTab] = useState('config'); // 'config' | 'history'
 
@@ -353,6 +354,34 @@ export default function CommissionManagement() {
         }
     };
 
+        const handleReconcileBbps = async () => {
+        setReconciling(true);
+        try {
+            const res = await commissionService.reconcileBbpsCommissions();
+            const count = res?.reconciledCount ?? 0;
+            if (count > 0) {
+                setNotification({
+                    type: 'success',
+                    message: `Successfully reconciled and credited commissions for ${count} BBPS transaction(s)!`
+                });
+                triggerConfetti();
+            } else {
+                setNotification({
+                    type: 'info',
+                    message: 'All BBPS transactions are already up to date with full commission credits.'
+                });
+            }
+            fetchHistory();
+        } catch (err) {
+            setNotification({
+                type: 'error',
+                message: err.message || 'Failed to reconcile BBPS commissions.'
+            });
+        } finally {
+            setReconciling(false);
+        }
+    };
+
     const handleSaveBbps = async () => {
         if (!activeBbpsConfig) return;
         if (bbpsValidationError) {
@@ -363,11 +392,16 @@ export default function CommissionManagement() {
         setSaving(true);
         setNotification(null);
         try {
+            const ret = parseFloat(bbpsFormData.retailerPercentage) || 0;
+            const dist = parseFloat(bbpsFormData.distributorPercentage) || 0;
+            const sd = parseFloat(bbpsFormData.superDistributorPercentage) || 0;
+            const isAnyConfigured = (ret > 0 || dist > 0 || sd > 0);
+
             const req = {
-                retailerPercentage: parseFloat(bbpsFormData.retailerPercentage) || 0,
-                distributorPercentage: parseFloat(bbpsFormData.distributorPercentage) || 0,
-                superDistributorPercentage: parseFloat(bbpsFormData.superDistributorPercentage) || 0,
-                enabled: bbpsFormData.enabled
+                retailerPercentage: ret,
+                distributorPercentage: dist,
+                superDistributorPercentage: sd,
+                enabled: bbpsFormData.enabled || isAnyConfigured
             };
 
             const updated = await commissionService.updateBbpsConfig(activeBbpsConfig.id, req);
@@ -1223,7 +1257,7 @@ export default function CommissionManagement() {
                                         <div>
                                             <div className="flex items-center gap-2">
                                                 <h2 className="text-lg font-black text-black">
-                                                    {activeBbpsConfig ? `${getBbpsPlanDisplayName(activeBbpsConfig)} &bull; ${activeBbpsConfig.serviceName}` : 'BBPS Percentage Commission'}
+                                                    {activeBbpsConfig ? `${getBbpsPlanDisplayName(activeBbpsConfig)} • ${activeBbpsConfig.serviceName}` : 'BBPS Percentage Commission'}
                                                 </h2>
                                                 {activeBbpsConfig?.planCode === 'FREE' && (
                                                     <span className="bg-emerald-100 text-emerald-950 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-emerald-300">
@@ -1285,7 +1319,7 @@ export default function CommissionManagement() {
                                                         min="0"
                                                         max="100"
                                                         value={bbpsFormData.retailerPercentage}
-                                                        onChange={(e) => setBbpsFormData(prev => ({ ...prev, retailerPercentage: e.target.value }))}
+                                                        onChange={(e) => { const v = e.target.value; const num = parseFloat(v) || 0; setBbpsFormData(prev => ({ ...prev, retailerPercentage: v, enabled: num > 0 ? true : prev.enabled })); }}
                                                         className="w-full bg-transparent text-sm sm:text-base font-black text-black focus:outline-none min-w-0"
                                                     />
                                                     <Percent size={14} className="text-black shrink-0 ml-1 font-black" />
@@ -1312,7 +1346,7 @@ export default function CommissionManagement() {
                                                         min="0"
                                                         max="100"
                                                         value={bbpsFormData.distributorPercentage}
-                                                        onChange={(e) => setBbpsFormData(prev => ({ ...prev, distributorPercentage: e.target.value }))}
+                                                        onChange={(e) => { const v = e.target.value; const num = parseFloat(v) || 0; setBbpsFormData(prev => ({ ...prev, distributorPercentage: v, enabled: num > 0 ? true : prev.enabled })); }}
                                                         className="w-full bg-transparent text-sm sm:text-base font-black text-black focus:outline-none min-w-0"
                                                     />
                                                     <Percent size={14} className="text-black shrink-0 ml-1 font-black" />
@@ -1339,7 +1373,7 @@ export default function CommissionManagement() {
                                                         min="0"
                                                         max="100"
                                                         value={bbpsFormData.superDistributorPercentage}
-                                                        onChange={(e) => setBbpsFormData(prev => ({ ...prev, superDistributorPercentage: e.target.value }))}
+                                                        onChange={(e) => { const v = e.target.value; const num = parseFloat(v) || 0; setBbpsFormData(prev => ({ ...prev, superDistributorPercentage: v, enabled: num > 0 ? true : prev.enabled })); }}
                                                         className="w-full bg-transparent text-sm sm:text-base font-black text-black focus:outline-none min-w-0"
                                                     />
                                                     <Percent size={14} className="text-black shrink-0 ml-1 font-black" />
@@ -1528,6 +1562,16 @@ export default function CommissionManagement() {
                                 title="Refresh"
                             >
                                 <RefreshCw size={14} className={historyLoading ? 'animate-spin' : ''} />
+                            </button>
+
+                            <button
+                                onClick={handleReconcileBbps}
+                                disabled={reconciling}
+                                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 text-xs font-black transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+                                title="Scan and credit missing commissions for successful BBPS transactions"
+                            >
+                                <Sparkles size={14} className={reconciling ? 'animate-spin text-blue-600' : 'text-blue-600'} />
+                                <span>{reconciling ? 'Reconciling...' : 'Reconcile Commissions'}</span>
                             </button>
                         </div>
                     </div>
