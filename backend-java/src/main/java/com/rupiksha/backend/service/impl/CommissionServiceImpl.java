@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -35,6 +36,8 @@ public class CommissionServiceImpl implements CommissionService {
     private final CommissionTransactionRepository commissionTransactionRepository;
     private final UserRepository userRepository;
     private final WalletService walletService;
+    private final BbpsCommissionConfigRepository bbpsCommissionConfigRepository;
+    private final BbpsCommissionConfigAuditRepository bbpsCommissionConfigAuditRepository;
 
     private static final ZoneId IST_ZONE = ZoneId.of("Asia/Kolkata");
 
@@ -810,8 +813,498 @@ public class CommissionServiceImpl implements CommissionService {
         );
     }
 
+    @Override
+    @Transactional
+    public void processBbpsCommission(BbpsTransaction bbpsTxn) {
+        if (bbpsTxn == null || bbpsTxn.getId() == null) {
+            log.warn("Cannot process BBPS commission: payload or ID is null.");
+            return;
+        }
+
+        String status = bbpsTxn.getStatus();
+        if (!"SUCCESS".equalsIgnoreCase(status)) {
+            log.info("Skipping BBPS commission for non-successful transaction: ID={}, status={}", bbpsTxn.getId(), status);
+            return;
+        }
+
+        String category = bbpsTxn.getCategory() != null ? bbpsTxn.getCategory().trim() : "";
+        String serviceId = "loan-repayment";
+        // Check if category matches Loan Repayment (case-insensitive)
+        if (!category.equalsIgnoreCase("Loan Repayment") && !category.equalsIgnoreCase("loan-repayment")) {
+            log.debug("Commission only enabled for BBPS Loan Repayment in this phase. Txn category: {}", category);
+            return;
+        }
+
+        String originalTxnId = bbpsTxn.getMerchantRefNo() != null ? bbpsTxn.getMerchantRefNo() : bbpsTxn.getId().toString();
+        BigDecimal txnAmount = bbpsTxn.getAmount();
+
+        if (txnAmount == null || txnAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            log.warn("Cannot process BBPS commission for transaction {}: invalid amount {}", originalTxnId, txnAmount);
+            return;
+        }
+
+        // Idempotency check: verify if already processed
+        if (commissionTransactionRepository.existsByOriginalTransactionId(originalTxnId)) {
+            log.warn("Idempotency safeguard: Commission already processed for BBPS transaction ID: {}", originalTxnId);
+            return;
+        }
+
+        log.info("Processing percentage commission for successful BBPS Loan Repayment transaction: txnId={}, amount={}", originalTxnId, txnAmount);
+
+        // 1. Resolve Retailer
+        User retailer = bbpsTxn.getUser();
+        if (retailer == null || retailer.getId() == null) {
+            log.error("BBPS Commission calculation failed: Retailer user not found on transaction {}", originalTxnId);
+            return;
+        }
+        retailer = userRepository.findById(retailer.getId()).orElse(null);
+        if (retailer == null) {
+            log.error("BBPS Commission calculation failed: Retailer user not found in DB for ID: {}", bbpsTxn.getUser().getId());
+            return;
+        }
+
+        // 2. Resolve Retailer Plan
+        CommissionPlan plan = retailer.getAepsCommissionPlan();
+        if (isPaidPlanExpired(retailer)) {
+            log.info("Retailer {} paid commission plan {} expired on {}. Falling back to default Free plan.",
+                    retailer.getUsername(), plan != null ? plan.getPlanName() : "", retailer.getAepsCommissionPlanExpiresAt());
+            plan = null;
+        }
+        if (plan == null || !Boolean.TRUE.equals(plan.getEnabled())) {
+            plan = commissionPlanRepository.findByServiceTypeAndIsDefaultTrue("AEPS_1")
+                    .or(() -> commissionPlanRepository.findByServiceTypeAndPlanCode("AEPS_1", "FREE"))
+                    .orElse(null);
+        }
+
+        if (plan == null) {
+            log.warn("Active commission plan not found for retailer {}. Skipping BBPS commission for txn {}", retailer.getUsername(), originalTxnId);
+            return;
+        }
+
+        // 3. Find matching BBPS Commission Config for service and plan
+        Optional<BbpsCommissionConfig> configOpt = bbpsCommissionConfigRepository.findByServiceIdAndPlan_PlanCode(serviceId, plan.getPlanCode());
+        if (configOpt.isEmpty()) {
+            configOpt = bbpsCommissionConfigRepository.findByServiceIdAndPlan_Id(serviceId, plan.getId());
+        }
+
+        if (configOpt.isEmpty()) {
+            log.warn("No BBPS commission config found for service: {} and plan: {}. Transaction: {}", serviceId, plan.getPlanCode(), originalTxnId);
+            return;
+        }
+
+        BbpsCommissionConfig config = configOpt.get();
+        if (!Boolean.TRUE.equals(config.getEnabled())) {
+            log.info("BBPS commission is disabled for service: {} and plan: {}. Skipping distribution for txn: {}",
+                    serviceId, plan.getPlanCode(), originalTxnId);
+            return;
+        }
+
+        BigDecimal retPct = config.getRetailerPercentage() != null ? config.getRetailerPercentage() : BigDecimal.ZERO;
+        BigDecimal distPct = config.getDistributorPercentage() != null ? config.getDistributorPercentage() : BigDecimal.ZERO;
+        BigDecimal sdPct = config.getSuperDistributorPercentage() != null ? config.getSuperDistributorPercentage() : BigDecimal.ZERO;
+
+        // 4. Calculate Percentage Commissions: Commission = Eligible Amount * Percentage / 100
+        BigDecimal hundred = new BigDecimal("100");
+        BigDecimal retComm = txnAmount.multiply(retPct).divide(hundred, 2, RoundingMode.HALF_UP);
+        BigDecimal distComm = txnAmount.multiply(distPct).divide(hundred, 2, RoundingMode.HALF_UP);
+        BigDecimal sdComm = txnAmount.multiply(sdPct).divide(hundred, 2, RoundingMode.HALF_UP);
+
+        log.info("Calculated BBPS percentages for txn {}: Ret({}% = ₹{}), Dist({}% = ₹{}), SD({}% = ₹{})",
+                originalTxnId, retPct, retComm, distPct, distComm, sdPct, sdComm);
+
+        // 5. Resolve Hierarchy with resilient multi-factor fallback
+        User distributor = null;
+        User superDistributor = null;
+
+        User parent = resolveParentUser(retailer);
+        if (parent != null) {
+            boolean isDist = parent.getRoles().stream()
+                    .anyMatch(r -> r.getName() == RoleName.DISTRIBUTOR);
+            boolean isSuperDist = parent.getRoles().stream()
+                    .anyMatch(r -> r.getName() == RoleName.SUPER_DISTRIBUTOR);
+
+            if (isDist) {
+                distributor = parent;
+                User grandParent = resolveParentUser(distributor);
+                if (grandParent != null && grandParent.getRoles().stream().anyMatch(r -> r.getName() == RoleName.SUPER_DISTRIBUTOR)) {
+                    superDistributor = grandParent;
+                }
+            } else if (isSuperDist) {
+                superDistributor = parent;
+            }
+        }
+
+        String ip = "127.0.0.1";
+
+        // 6. Credit Retailer
+        if (retComm.compareTo(BigDecimal.ZERO) > 0) {
+            creditBbpsBeneficiary(
+                    retailer,
+                    "RETAILER",
+                    retailer,
+                    plan,
+                    config,
+                    bbpsTxn,
+                    txnAmount,
+                    retComm,
+                    retPct,
+                    ip,
+                    "BBPS Loan Repayment Commission - ₹" + txnAmount + " (" + retPct + "%)"
+            );
+        }
+
+        // 7. Credit Distributor (if mapped in hierarchy)
+        if (distributor != null && distComm.compareTo(BigDecimal.ZERO) > 0) {
+            creditBbpsBeneficiary(
+                    distributor,
+                    "DISTRIBUTOR",
+                    retailer,
+                    plan,
+                    config,
+                    bbpsTxn,
+                    txnAmount,
+                    distComm,
+                    distPct,
+                    ip,
+                    "BBPS Loan Repayment Commission (Distributor) - ₹" + txnAmount + " (" + distPct + "%)"
+            );
+        }
+
+        // 8. Credit Super Distributor (if mapped in hierarchy)
+        if (superDistributor != null && sdComm.compareTo(BigDecimal.ZERO) > 0) {
+            creditBbpsBeneficiary(
+                    superDistributor,
+                    "SUPER_DISTRIBUTOR",
+                    retailer,
+                    plan,
+                    config,
+                    bbpsTxn,
+                    txnAmount,
+                    sdComm,
+                    sdPct,
+                    ip,
+                    "BBPS Loan Repayment Commission (Super Distributor) - ₹" + txnAmount + " (" + sdPct + "%)"
+            );
+        }
+
+        log.info("BBPS commission distribution completed for txn {}: Retailer(₹{}), Distributor(₹{}), SuperDistributor(₹{})",
+                originalTxnId, retComm, (distributor != null ? distComm : BigDecimal.ZERO), (superDistributor != null ? sdComm : BigDecimal.ZERO));
+    }
+
+    private void creditBbpsBeneficiary(
+            User beneficiary,
+            String role,
+            User retailer,
+            CommissionPlan plan,
+            BbpsCommissionConfig config,
+            BbpsTransaction bbpsTxn,
+            BigDecimal txnAmount,
+            BigDecimal commAmount,
+            BigDecimal appliedPercentage,
+            String ip,
+            String narration
+    ) {
+        String originalTxnId = bbpsTxn.getMerchantRefNo() != null ? bbpsTxn.getMerchantRefNo() : bbpsTxn.getId().toString();
+        String commRef = generateCommissionReference();
+        String idempotencyKey = "COMM-BBPS-" + originalTxnId + "-" + role + "-" + beneficiary.getId();
+
+        try {
+            // Credit wallet using existing enterprise wallet engine
+            walletService.creditForService(
+                    beneficiary.getId(),
+                    commAmount,
+                    narration,
+                    WalletTransactionContext.COMMISSION,
+                    "BBPS Loan Repayment",
+                    ip,
+                    idempotencyKey
+            );
+
+            // Record in immutable commission audit ledger
+            CommissionTransaction commTxn = CommissionTransaction.builder()
+                    .commissionReference(commRef)
+                    .originalTransactionId(originalTxnId)
+                    .serviceType("BBPS_LOAN_REPAYMENT")
+                    .bbpsCategory("Loan Repayment")
+                    .plan(plan)
+                    .planCode(plan != null ? plan.getPlanCode() : null)
+                    .slab(null)
+                    .slabMin(null)
+                    .slabMax(null)
+                    .appliedPercentage(appliedPercentage)
+                    .commissionBaseAmount(txnAmount)
+                    .transactionAmount(txnAmount)
+                    .beneficiaryUser(beneficiary)
+                    .beneficiaryRole(role)
+                    .retailerUser(retailer)
+                    .commissionAmount(commAmount)
+                    .status("SUCCESS")
+                    .remarks(narration)
+                    .createdAt(Instant.now())
+                    .build();
+
+            commissionTransactionRepository.save(commTxn);
+            log.info("Created BBPS commission ledger entry: ref={}, beneficiary={}, role={}, amount=₹{}, rate={}%",
+                    commRef, beneficiary.getUsername(), role, commAmount, appliedPercentage);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            log.warn("BBPS commission entry already exists for txn {}, role {}, user {}. Skipping duplicate.",
+                    originalTxnId, role, beneficiary.getId());
+        } catch (Exception e) {
+            log.error("Failed to credit BBPS commission for txn {}, user {}: {}", originalTxnId, beneficiary.getId(), e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    // ─── BBPS PERCENTAGE CONFIGURATION MANAGEMENT ──────────────────────────────
+
+    private static final List<String[]> REGISTERED_BBPS_SERVICES = List.of(
+            new String[]{"loan-repayment", "Loan Repayment"},
+            new String[]{"fastag", "Fastag"},
+            new String[]{"dth", "DTH"},
+            new String[]{"mobile-prepaid", "Mobile Prepaid"},
+            new String[]{"housing-society", "Housing Society"},
+            new String[]{"motor-insurance", "Motor Insurance"},
+            new String[]{"municipal-taxes", "Municipal Taxes"},
+            new String[]{"electricity", "Electricity"},
+            new String[]{"credit-card", "Credit Card"},
+            new String[]{"water", "Water"},
+            new String[]{"piped-gas", "Piped Gas"},
+            new String[]{"lpg-gas", "LPG Gas"},
+            new String[]{"broadband", "Broadband Postpaid"},
+            new String[]{"landline", "Landline Postpaid"},
+            new String[]{"life-insurance", "Life Insurance"},
+            new String[]{"agent-collection", "Agent Collection"},
+            new String[]{"education-fees", "Education Fees"},
+            new String[]{"cable-tv", "Cable TV"},
+            new String[]{"health-insurance", "Health Insurance"},
+            new String[]{"hospital", "Hospital & Pathology"},
+            new String[]{"rental", "Rental"},
+            new String[]{"recurring-deposit", "Recurring Deposit"},
+            new String[]{"clubs-associations", "Clubs and Associations"},
+            new String[]{"prepaid-meter", "Prepaid Meter"},
+            new String[]{"nps", "National Pension System"},
+            new String[]{"metro", "Metro Card Recharge"},
+            new String[]{"donations", "Donations & Temple"},
+            new String[]{"toll", "Toll Plaza"},
+            new String[]{"traffic-challan", "Traffic Challan"},
+            new String[]{"gas-cylinder", "Gas Cylinder Booking"},
+            new String[]{"subscription", "Subscription Fees"},
+            new String[]{"mfi-emi", "MFI Loan Repayment"},
+            new String[]{"general-insurance", "General Insurance"},
+            new String[]{"other", "Other Services"}
+    );
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CommissionDtos.BbpsServiceStatusDto> getBbpsServiceStatuses() {
+        List<CommissionDtos.BbpsServiceStatusDto> result = new ArrayList<>();
+
+        for (String[] svc : REGISTERED_BBPS_SERVICES) {
+            String sId = svc[0];
+            String sName = svc[1];
+
+            List<BbpsCommissionConfig> configs = bbpsCommissionConfigRepository.findByServiceId(sId);
+            boolean configured = !configs.isEmpty();
+            boolean enabled = configured && configs.stream().anyMatch(c -> Boolean.TRUE.equals(c.getEnabled()));
+            int activeCount = configured ? (int) configs.stream().filter(c -> Boolean.TRUE.equals(c.getEnabled())).count() : 0;
+
+            result.add(new CommissionDtos.BbpsServiceStatusDto(sId, sName, configured, enabled, activeCount));
+        }
+
+        return result;
+    }
+
+    @Override
+    @Transactional
+    public List<CommissionDtos.BbpsCommissionConfigDto> getBbpsConfigs(String serviceId) {
+        String sId = (serviceId != null && !serviceId.isBlank()) ? serviceId.trim().toLowerCase() : "loan-repayment";
+
+        List<BbpsCommissionConfig> configs = bbpsCommissionConfigRepository.findByServiceIdWithPlan(sId);
+
+        // Auto-initialize configs from existing AEPS_1 membership plans if not yet seeded for this service
+        if (configs.isEmpty()) {
+            List<CommissionPlan> plans = commissionPlanRepository.findByServiceTypeWithSlabs("AEPS_1");
+            if (!plans.isEmpty()) {
+                String serviceName = REGISTERED_BBPS_SERVICES.stream()
+                        .filter(s -> s[0].equalsIgnoreCase(sId))
+                        .map(s -> s[1])
+                        .findFirst()
+                        .orElse(sId);
+
+                boolean isLoanRepayment = "loan-repayment".equalsIgnoreCase(sId);
+
+                for (CommissionPlan plan : plans) {
+                    BigDecimal ret = isLoanRepayment ? getDefaultPercentage(plan.getPlanCode(), "RETAILER") : BigDecimal.ZERO;
+                    BigDecimal dist = isLoanRepayment ? getDefaultPercentage(plan.getPlanCode(), "DISTRIBUTOR") : BigDecimal.ZERO;
+                    BigDecimal sd = isLoanRepayment ? getDefaultPercentage(plan.getPlanCode(), "SUPER_DISTRIBUTOR") : BigDecimal.ZERO;
+
+                    BbpsCommissionConfig newConfig = BbpsCommissionConfig.builder()
+                            .serviceId(sId)
+                            .serviceName(serviceName)
+                            .commissionModel("PERCENTAGE")
+                            .plan(plan)
+                            .planCode(plan.getPlanCode())
+                            .retailerPercentage(ret)
+                            .distributorPercentage(dist)
+                            .superDistributorPercentage(sd)
+                            .enabled(isLoanRepayment)
+                            .build();
+
+                    bbpsCommissionConfigRepository.save(newConfig);
+                }
+                configs = bbpsCommissionConfigRepository.findByServiceIdWithPlan(sId);
+            }
+        }
+
+        return configs.stream().map(this::mapBbpsConfigToDto).collect(Collectors.toList());
+    }
+
+    private BigDecimal getDefaultPercentage(String planCode, String role) {
+        if ("FREE".equalsIgnoreCase(planCode)) {
+            if ("RETAILER".equals(role)) return new BigDecimal("0.2000");
+            if ("DISTRIBUTOR".equals(role)) return new BigDecimal("0.1000");
+            return new BigDecimal("0.0500");
+        } else if ("PLAN_2999".equalsIgnoreCase(planCode)) {
+            if ("RETAILER".equals(role)) return new BigDecimal("0.3500");
+            if ("DISTRIBUTOR".equals(role)) return new BigDecimal("0.1500");
+            return new BigDecimal("0.1000");
+        } else if ("PLAN_4999".equalsIgnoreCase(planCode)) {
+            if ("RETAILER".equals(role)) return new BigDecimal("0.4500");
+            if ("DISTRIBUTOR".equals(role)) return new BigDecimal("0.2000");
+            return new BigDecimal("0.1500");
+        } else if ("PLAN_7999".equalsIgnoreCase(planCode)) {
+            if ("RETAILER".equals(role)) return new BigDecimal("0.6000");
+            if ("DISTRIBUTOR".equals(role)) return new BigDecimal("0.2500");
+            return new BigDecimal("0.1500");
+        }
+        return BigDecimal.ZERO;
+    }
+
+    @Override
+    @Transactional
+    public CommissionDtos.BbpsCommissionConfigDto updateBbpsConfig(
+            UUID configId,
+            CommissionDtos.UpdateBbpsConfigRequest request,
+            UUID adminId,
+            String ipAddress
+    ) {
+        enforceAdmin(adminId);
+        User admin = userRepository.findById(adminId)
+                .orElseThrow(() -> new IllegalArgumentException("Admin user not found"));
+
+        BbpsCommissionConfig config = bbpsCommissionConfigRepository.findById(configId)
+                .orElseThrow(() -> new IllegalArgumentException("BBPS commission config not found: " + configId));
+
+        BigDecimal ret = request.retailerPercentage() != null ? request.retailerPercentage() : BigDecimal.ZERO;
+        BigDecimal dist = request.distributorPercentage() != null ? request.distributorPercentage() : BigDecimal.ZERO;
+        BigDecimal sd = request.superDistributorPercentage() != null ? request.superDistributorPercentage() : BigDecimal.ZERO;
+
+        if (ret.compareTo(BigDecimal.ZERO) < 0 || dist.compareTo(BigDecimal.ZERO) < 0 || sd.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Commission percentages cannot be negative.");
+        }
+
+        BigDecimal hundred = new BigDecimal("100.0000");
+        if (ret.compareTo(hundred) > 0 || dist.compareTo(hundred) > 0 || sd.compareTo(hundred) > 0) {
+            throw new IllegalArgumentException("Commission percentage cannot exceed 100%.");
+        }
+
+        BigDecimal total = ret.add(dist).add(sd);
+        if (total.compareTo(hundred) > 0) {
+            throw new IllegalArgumentException("Total combined commission percentage (" + total + "%) cannot exceed 100%.");
+        }
+
+        // Record Audit Trail
+        BbpsCommissionConfigAudit audit = BbpsCommissionConfigAudit.builder()
+                .config(config)
+                .serviceId(config.getServiceId())
+                .planCode(config.getPlanCode())
+                .adminUser(admin)
+                .adminUsername(admin.getUsername())
+                .prevRetailerPercentage(config.getRetailerPercentage())
+                .prevDistributorPercentage(config.getDistributorPercentage())
+                .prevSuperDistributorPercentage(config.getSuperDistributorPercentage())
+                .prevEnabled(config.getEnabled())
+                .newRetailerPercentage(ret)
+                .newDistributorPercentage(dist)
+                .newSuperDistributorPercentage(sd)
+                .newEnabled(request.enabled() != null ? request.enabled() : config.getEnabled())
+                .ipAddress(ipAddress != null ? ipAddress : "127.0.0.1")
+                .createdAt(Instant.now())
+                .build();
+        bbpsCommissionConfigAuditRepository.save(audit);
+
+        // Update Configuration
+        config.setRetailerPercentage(ret);
+        config.setDistributorPercentage(dist);
+        config.setSuperDistributorPercentage(sd);
+        if (request.enabled() != null) {
+            config.setEnabled(request.enabled());
+        }
+        config.setUpdatedBy(admin);
+        config.setUpdatedAt(Instant.now());
+
+        BbpsCommissionConfig saved = bbpsCommissionConfigRepository.save(config);
+        log.info("Admin {} updated BBPS commission config for service: {}, plan: {} (Ret: {}%, Dist: {}%, SD: {}%, Enabled: {})",
+                admin.getUsername(), config.getServiceId(), config.getPlanCode(), ret, dist, sd, config.getEnabled());
+
+        return mapBbpsConfigToDto(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CommissionDtos.BbpsAuditDto> getBbpsAudits(String serviceId) {
+        String sId = (serviceId != null && !serviceId.isBlank()) ? serviceId.trim().toLowerCase() : "loan-repayment";
+        List<BbpsCommissionConfigAudit> audits = bbpsCommissionConfigAuditRepository.findByServiceIdOrderByCreatedAtDesc(sId);
+        return audits.stream().map(a -> new CommissionDtos.BbpsAuditDto(
+                a.getId(),
+                a.getServiceId(),
+                a.getPlanCode(),
+                a.getAdminUsername(),
+                a.getPrevRetailerPercentage(),
+                a.getPrevDistributorPercentage(),
+                a.getPrevSuperDistributorPercentage(),
+                a.getPrevEnabled(),
+                a.getNewRetailerPercentage(),
+                a.getNewDistributorPercentage(),
+                a.getNewSuperDistributorPercentage(),
+                a.getNewEnabled(),
+                a.getIpAddress(),
+                a.getCreatedAt()
+        )).collect(Collectors.toList());
+    }
+
+    private CommissionDtos.BbpsCommissionConfigDto mapBbpsConfigToDto(BbpsCommissionConfig config) {
+        CommissionPlan plan = config.getPlan();
+        String planName = plan != null ? plan.getPlanName() : config.getPlanCode();
+        BigDecimal price = plan != null && plan.getPrice() != null ? plan.getPrice() : BigDecimal.ZERO;
+
+        return new CommissionDtos.BbpsCommissionConfigDto(
+                config.getId(),
+                config.getServiceId(),
+                config.getServiceName(),
+                config.getCommissionModel(),
+                plan != null ? plan.getId() : null,
+                config.getPlanCode(),
+                planName,
+                price,
+                config.getRetailerPercentage(),
+                config.getDistributorPercentage(),
+                config.getSuperDistributorPercentage(),
+                config.getTotalPercentage(),
+                config.getEnabled(),
+                config.getUpdatedAt()
+        );
+    }
+
     private CommissionDtos.CommissionTransactionDto mapTransactionToDto(CommissionTransaction txn) {
-        String slabRange = "₹" + txn.getSlabMin() + " - ₹" + txn.getSlabMax();
+        String slabRange;
+        if (txn.getAppliedPercentage() != null) {
+            slabRange = txn.getAppliedPercentage() + "%";
+        } else if (txn.getSlabMin() != null && txn.getSlabMax() != null) {
+            slabRange = "₹" + txn.getSlabMin() + " - ₹" + txn.getSlabMax();
+        } else {
+            slabRange = "Percentage";
+        }
 
         User beneficiary = txn.getBeneficiaryUser();
         User retailer = txn.getRetailerUser();
@@ -834,7 +1327,10 @@ public class CommissionServiceImpl implements CommissionService {
                 txn.getCommissionAmount(),
                 txn.getStatus(),
                 txn.getRemarks(),
-                txn.getCreatedAt()
+                txn.getCreatedAt(),
+                txn.getAppliedPercentage(),
+                txn.getCommissionBaseAmount(),
+                txn.getBbpsCategory()
         );
     }
 }

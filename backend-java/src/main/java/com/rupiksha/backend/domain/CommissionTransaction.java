@@ -44,11 +44,20 @@ public class CommissionTransaction {
     @JoinColumn(name = "slab_id")
     private CommissionSlab slab;
 
-    @Column(name = "slab_min", nullable = false, precision = 18, scale = 2)
+    @Column(name = "slab_min", precision = 18, scale = 2)
     private BigDecimal slabMin;
 
-    @Column(name = "slab_max", nullable = false, precision = 18, scale = 2)
+    @Column(name = "slab_max", precision = 18, scale = 2)
     private BigDecimal slabMax;
+
+    @Column(name = "applied_percentage", precision = 6, scale = 4)
+    private BigDecimal appliedPercentage;
+
+    @Column(name = "commission_base_amount", precision = 18, scale = 2)
+    private BigDecimal commissionBaseAmount;
+
+    @Column(name = "bbps_category", length = 50)
+    private String bbpsCategory;
 
     @Column(name = "transaction_amount", nullable = false, precision = 18, scale = 2)
     private BigDecimal transactionAmount;

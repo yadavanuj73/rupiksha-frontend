@@ -2,6 +2,7 @@ package com.rupiksha.backend.service;
 
 import com.rupiksha.aeps.entity.AepsTransactionEngine;
 import com.rupiksha.backend.api.dto.CommissionDtos;
+import com.rupiksha.backend.domain.BbpsTransaction;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -14,6 +15,11 @@ public interface CommissionService {
      * Idempotently calculates and distributes commission for a successfully completed AEPS transaction.
      */
     void processAepsCommission(AepsTransactionEngine txn);
+
+    /**
+     * Idempotently calculates and distributes percentage-based commission for a confirmed BBPS transaction.
+     */
+    void processBbpsCommission(BbpsTransaction bbpsTxn);
 
     /**
      * Lists all commission plans for a service.
@@ -69,4 +75,26 @@ public interface CommissionService {
      * Upgrades/changes a retailer's commission plan with wallet payment deduction if applicable.
      */
     CommissionDtos.CommissionPlanDto upgradeRetailerPlan(UUID retailerId, UUID planId, String ipAddress);
+
+    // ─── BBPS PERCENTAGE COMMISSION METHODS ────────────────────────────────────
+
+    /**
+     * Lists BBPS services with their commission configuration status.
+     */
+    List<CommissionDtos.BbpsServiceStatusDto> getBbpsServiceStatuses();
+
+    /**
+     * Retrieves percentage commission configs for all plans under a BBPS service.
+     */
+    List<CommissionDtos.BbpsCommissionConfigDto> getBbpsConfigs(String serviceId);
+
+    /**
+     * Updates percentages and enabled status for a BBPS service plan config.
+     */
+    CommissionDtos.BbpsCommissionConfigDto updateBbpsConfig(UUID configId, CommissionDtos.UpdateBbpsConfigRequest request, UUID adminId, String ipAddress);
+
+    /**
+     * Retrieves audit history for a BBPS service.
+     */
+    List<CommissionDtos.BbpsAuditDto> getBbpsAudits(String serviceId);
 }

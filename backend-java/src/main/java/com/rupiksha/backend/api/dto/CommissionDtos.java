@@ -1,6 +1,7 @@
 package com.rupiksha.backend.api.dto;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -110,8 +111,37 @@ public class CommissionDtos {
             BigDecimal commissionAmount,
             String status,
             String remarks,
-            Instant createdAt
-    ) {}
+            Instant createdAt,
+            BigDecimal appliedPercentage,
+            BigDecimal commissionBaseAmount,
+            String bbpsCategory
+    ) {
+        public CommissionTransactionDto(
+                UUID id,
+                String commissionReference,
+                String originalTransactionId,
+                String serviceType,
+                String planCode,
+                String slabRange,
+                BigDecimal transactionAmount,
+                String beneficiaryId,
+                String beneficiaryName,
+                String beneficiaryUsername,
+                String beneficiaryRole,
+                String retailerId,
+                String retailerName,
+                String retailerUsername,
+                BigDecimal commissionAmount,
+                String status,
+                String remarks,
+                Instant createdAt
+        ) {
+            this(id, commissionReference, originalTransactionId, serviceType, planCode, slabRange,
+                    transactionAmount, beneficiaryId, beneficiaryName, beneficiaryUsername,
+                    beneficiaryRole, retailerId, retailerName, retailerUsername,
+                    commissionAmount, status, remarks, createdAt, null, null, null);
+        }
+    }
 
     public record CommissionSummaryDto(
             BigDecimal totalCommission,
@@ -149,5 +179,132 @@ public class CommissionDtos {
     public record UpgradePlanRequest(
             @NotNull(message = "Plan ID is required")
             UUID planId
+    ) {}
+
+    // ─── BBPS PERCENTAGE COMMISSION DTOS ───────────────────────────────────────
+
+    public record BbpsCommissionConfigDto(
+            UUID id,
+            String serviceId,
+            String serviceName,
+            String commissionModel,
+            UUID planId,
+            String planCode,
+            String planName,
+            BigDecimal planPrice,
+            BigDecimal retailerPercentage,
+            BigDecimal distributorPercentage,
+            BigDecimal superDistributorPercentage,
+            BigDecimal totalPercentage,
+            Boolean enabled,
+            Instant updatedAt
+    ) {}
+
+    public record UpdateBbpsConfigRequest(
+            @NotNull(message = "Retailer percentage is required")
+            @DecimalMin(value = "0.0000", inclusive = true, message = "Retailer percentage cannot be negative")
+            @DecimalMax(value = "100.0000", inclusive = true, message = "Retailer percentage cannot exceed 100%")
+            BigDecimal retailerPercentage,
+
+            @NotNull(message = "Distributor percentage is required")
+            @DecimalMin(value = "0.0000", inclusive = true, message = "Distributor percentage cannot be negative")
+            @DecimalMax(value = "100.0000", inclusive = true, message = "Distributor percentage cannot exceed 100%")
+            BigDecimal distributorPercentage,
+
+        
+            @NotNull(message = "Super Distributor percentage is required")
+            @DecimalMin(value = "0.0000", inclusive = true, message = "Super Distributor percentage cannot be negative")
+            @DecimalMax(value = "100.0000", inclusive = true, message = "Super Distributor percentage cannot exceed 100%")
+            BigDecimal superDistributorPercentage,
+
+            Boolean enabled
+    ) {}
+
+    public record BbpsServiceStatusDto(
+            String serviceId,
+            String serviceName,
+            boolean configured,
+            boolean enabled,
+            int activePlansCount
+    ) {}
+
+    public record BbpsAuditDto(
+            UUID id,
+            String serviceId,
+            String planCode,
+            String adminUsername,
+            BigDecimal prevRetailerPercentage,
+            BigDecimal prevDistributorPercentage,
+            BigDecimal prevSuperDistributorPercentage,
+            Boolean prevEnabled,
+            BigDecimal newRetailerPercentage,
+            BigDecimal newDistributorPercentage,
+            BigDecimal newSuperDistributorPercentage,
+            Boolean newEnabled,
+            String ipAddress,
+            Instant createdAt
+    ) {}
+
+    // ─── BBPS PERCENTAGE COMMISSION DTOS ───────────────────────────────────────
+
+    public record BbpsCommissionConfigDto(
+            UUID id,
+            String serviceId,
+            String serviceName,
+            String commissionModel,
+            UUID planId,
+            String planCode,
+            String planName,
+            BigDecimal planPrice,
+            BigDecimal retailerPercentage,
+            BigDecimal distributorPercentage,
+            BigDecimal superDistributorPercentage,
+            BigDecimal totalPercentage,
+            Boolean enabled,
+            Instant updatedAt
+    ) {}
+
+    public record UpdateBbpsConfigRequest(
+            @NotNull(message = "Retailer percentage is required")
+            @DecimalMin(value = "0.0000", inclusive = true, message = "Retailer percentage cannot be negative")
+            @DecimalMax(value = "100.0000", inclusive = true, message = "Retailer percentage cannot exceed 100%")
+            BigDecimal retailerPercentage,
+
+            @NotNull(message = "Distributor percentage is required")
+            @DecimalMin(value = "0.0000", inclusive = true, message = "Distributor percentage cannot be negative")
+            @DecimalMax(value = "100.0000", inclusive = true, message = "Distributor percentage cannot exceed 100%")
+            BigDecimal distributorPercentage,
+
+            @NotNull(message = "Super Distributor percentage is required")
+            @DecimalMin(value = "0.0000", inclusive = true, message = "Super Distributor percentage cannot be negative")
+            @DecimalMax(value = "100.0000", inclusive = true, message = "Super Distributor percentage cannot exceed 100%")
+            BigDecimal superDistributorPercentage,
+
+            Boolean enabled
+    ) {}
+
+    public record BbpsServiceStatusDto(
+            String serviceId,
+            String serviceName,
+            boolean configured,
+            boolean enabled,
+            int activePlansCount
+    ) {}
+
+    public record BbpsAuditDto(
+            UUID id,
+            String serviceId,
+            String planCode,
+            String adminUsername,
+            BigDecimal prevRetailerPercentage,
+            BigDecimal prevDistributorPercentage,
+            BigDecimal prevSuperDistributorPercentage,
+            Boolean prevEnabled,
+            BigDecimal newRetailerPercentage,
+            BigDecimal newDistributorPercentage,
+            BigDecimal newSuperDistributorPercentage,
+            Boolean newEnabled,
+            String ipAddress,
+            Instant createdAt
     ) {}
 }

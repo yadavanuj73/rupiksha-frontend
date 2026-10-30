@@ -65,6 +65,38 @@ export const commissionService = {
         });
     },
 
+    // ─── BBPS PERCENTAGE COMMISSION METHODS ────────────────────────────────────
+    /**
+     * Get registered BBPS services and their commission configuration status
+     */
+    async getBbpsServices() {
+        return apiFetch('/admin/commissions/bbps/services');
+    },
+
+    /**
+     * Get percentage commission configs for all plans under a BBPS service
+     */
+    async getBbpsConfigs(serviceId = 'loan-repayment') {
+        return apiFetch(`/admin/commissions/bbps/configs?serviceId=${encodeURIComponent(serviceId)}`);
+    },
+
+    /**
+     * Update percentage commission configuration for a plan
+     */
+    async updateBbpsConfig(configId, configData) {
+        return apiFetch(`/admin/commissions/bbps/configs/${configId}`, {
+            method: 'PUT',
+            body: JSON.stringify(configData),
+        });
+    },
+
+    /**
+     * Get audit trail of commission changes for a BBPS service
+     */
+    async getBbpsAudits(serviceId = 'loan-repayment') {
+        return apiFetch(`/admin/commissions/bbps/audits?serviceId=${encodeURIComponent(serviceId)}`);
+    },
+
     // ─── RETAILER METHODS ─────────────────────────────────────────────────────
     /**
      * Get retailer's own commission summary

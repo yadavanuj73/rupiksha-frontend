@@ -45,6 +45,7 @@ public class BbpsServiceImpl implements BbpsService {
     private final ElectricityBillerRegistry electricityBillerRegistry;
     private final LoanBillerRegistry loanBillerRegistry;
     private final CreditCardBillerRegistry creditCardBillerRegistry;
+    private final com.rupiksha.backend.service.CommissionService commissionService;
     private final ObjectMapper objectMapper;
     private final Map<String, BillAvenueDtos.BillFetchResponse> fetchCache = new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -517,9 +518,6 @@ public class BbpsServiceImpl implements BbpsService {
             bbpsTxn.setApprovalRefNo(payResp.getApprovalRefNumber());
             bbpsTxn.setProviderResponseCode(payResp.getResponseCode());
             bbpsTxn.setProviderMessage("Recharge completed successfully");
-            bbpsTxn.setCompletedAt(Instant.now());
-            bbpsTransactionRepository.save(bbpsTxn);
-
             WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
             return BbpsDtos.RechargeResponse.builder()
                     .success(true)
@@ -649,7 +647,8 @@ public class BbpsServiceImpl implements BbpsService {
                 bbpsTxn.setApprovalRefNo(item.getApprovalRefNumber());
                 bbpsTxn.setProviderMessage("Recharge confirmed successful by provider status reconciliation");
                 bbpsTxn.setCompletedAt(Instant.now());
-                bbpsTransactionRepository.save(bbpsTxn);
+                bbpsTxn = bbpsTransactionRepository.save(bbpsTxn);
+                try { commissionService.processBbpsCommission(bbpsTxn); } catch (Exception ce) { log.error("Reconciliation BBPS commission error for txn {}: {}", bbpsTxn.getMerchantRefNo(), ce.getMessage(), ce); }
             } else if ("FAILURE".equalsIgnoreCase(providerStatus) || "FAILED".equalsIgnoreCase(providerStatus)) {
                 if (txn != null) {
                     txn.setStatus(TransactionStatus.FAILED);
@@ -1262,9 +1261,6 @@ public class BbpsServiceImpl implements BbpsService {
             bbpsTxn.setApprovalRefNo(payResp.getApprovalRefNumber());
             bbpsTxn.setProviderResponseCode(payResp.getResponseCode());
             bbpsTxn.setProviderMessage("Electricity bill payment completed successfully");
-            bbpsTxn.setCompletedAt(Instant.now());
-            bbpsTransactionRepository.save(bbpsTxn);
-
             WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
             return BbpsDtos.ElectricityPayResponse.builder()
                     .success(true)
@@ -1995,8 +1991,14 @@ public class BbpsServiceImpl implements BbpsService {
             bbpsTxn.setProviderResponseCode(payResp.getResponseCode());
             bbpsTxn.setProviderMessage("Loan repayment completed successfully");
             bbpsTxn.setCompletedAt(Instant.now());
-            bbpsTransactionRepository.save(bbpsTxn);
+            bbpsTxn = bbpsTransactionRepository.save(bbpsTxn);
 
+            // Trigger BBPS Loan Repayment percentage commission
+            try {
+                commissionService.processBbpsCommission(bbpsTxn);
+            } catch (Exception ce) {
+                log.error("BBPS Loan Repayment commission error for {}: {}", merchantRefNo, ce.getMessage(), ce);
+            }
             WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
             return BbpsDtos.LoanPayResponse.builder()
                     .success(true)
@@ -2667,9 +2669,6 @@ public class BbpsServiceImpl implements BbpsService {
             bbpsTxn.setValidationRefNo(payResp.getApprovalRefNumber());
             bbpsTxn.setProviderResponseCode(payResp.getResponseCode());
             bbpsTxn.setProviderMessage("Credit card bill payment completed successfully");
-            bbpsTxn.setCompletedAt(Instant.now());
-            bbpsTransactionRepository.save(bbpsTxn);
-
             WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
             return BbpsDtos.CreditCardPayResponse.builder()
                     .success(true)

@@ -106,4 +106,38 @@ public class AdminCommissionController {
         commissionService.assignPlanToUser(request.userId(), request.planId(), adminId, ip);
         return ResponseEntity.ok().build();
     }
+
+    // ─── BBPS PERCENTAGE COMMISSION ENDPOINTS ──────────────────────────────────
+
+    @GetMapping("/bbps/services")
+    public ResponseEntity<List<CommissionDtos.BbpsServiceStatusDto>> getBbpsServices() {
+        return ResponseEntity.ok(commissionService.getBbpsServiceStatuses());
+    }
+
+    @GetMapping("/bbps/configs")
+    public ResponseEntity<List<CommissionDtos.BbpsCommissionConfigDto>> getBbpsConfigs(
+            @RequestParam(required = false, defaultValue = "loan-repayment") String serviceId
+    ) {
+        return ResponseEntity.ok(commissionService.getBbpsConfigs(serviceId));
+    }
+
+    @PutMapping("/bbps/configs/{configId}")
+    public ResponseEntity<CommissionDtos.BbpsCommissionConfigDto> updateBbpsConfig(
+            @PathVariable UUID configId,
+            @Valid @RequestBody CommissionDtos.UpdateBbpsConfigRequest request,
+            @AuthenticationPrincipal JwtPrincipal principal,
+            HttpServletRequest httpRequest
+    ) {
+        UUID adminId = UUID.fromString(principal.userId());
+        String ip = getClientIp(httpRequest);
+        CommissionDtos.BbpsCommissionConfigDto updated = commissionService.updateBbpsConfig(configId, request, adminId, ip);
+        return ResponseEntity.ok(updated);
+    }
+
+    @GetMapping("/bbps/audits")
+    public ResponseEntity<List<CommissionDtos.BbpsAuditDto>> getBbpsAudits(
+            @RequestParam(required = false, defaultValue = "loan-repayment") String serviceId
+    ) {
+        return ResponseEntity.ok(commissionService.getBbpsAudits(serviceId));
+    }
 }

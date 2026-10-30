@@ -658,7 +658,7 @@ export default function RetailerCommission() {
                                 <th className="py-4 px-5">Service</th>
                                 <th className="py-4 px-5">Original Txn ID</th>
                                 <th className="py-4 px-5 text-right">Customer Amount</th>
-                                <th className="py-4 px-5 text-center">Matched Slab</th>
+                                <th className="py-4 px-5 text-center">Slab / Rate</th>
                                 <th className="py-4 px-5 text-right">Commission Earned</th>
                                 <th className="py-4 px-5 text-center">Status</th>
                             </tr>
@@ -707,10 +707,17 @@ export default function RetailerCommission() {
 
                                         {/* Service */}
                                         <td className="py-4 px-5">
-                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-black uppercase bg-indigo-50 text-indigo-700 border border-indigo-100">
-                                                <Fingerprint size={12} />
-                                                {item.serviceType || 'AEPS 1'}
-                                            </span>
+                                            {String(item.serviceType || '').includes('BBPS') ? (
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                                    <Coins size={12} />
+                                                    BBPS Loan
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-black uppercase bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                                    <Fingerprint size={12} />
+                                                    {item.serviceType || 'AEPS 1'}
+                                                </span>
+                                            )}
                                         </td>
 
                                         {/* Original Txn ID */}
