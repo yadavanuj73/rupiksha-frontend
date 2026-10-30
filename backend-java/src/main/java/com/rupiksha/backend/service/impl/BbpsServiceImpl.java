@@ -1261,6 +1261,15 @@ public class BbpsServiceImpl implements BbpsService {
             bbpsTxn.setApprovalRefNo(payResp.getApprovalRefNumber());
             bbpsTxn.setProviderResponseCode(payResp.getResponseCode());
             bbpsTxn.setProviderMessage("Electricity bill payment completed successfully");
+            bbpsTxn.setCompletedAt(Instant.now());
+            bbpsTxn = bbpsTransactionRepository.save(bbpsTxn);
+
+            // Trigger BBPS Electricity percentage commission
+            try {
+                commissionService.processBbpsCommission(bbpsTxn);
+            } catch (Exception ce) {
+                log.error("BBPS Electricity commission error for {}: {}", merchantRefNo, ce.getMessage(), ce);
+            }
             WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
             return BbpsDtos.ElectricityPayResponse.builder()
                     .success(true)
