@@ -335,7 +335,7 @@ public class BbpsController {
             @Valid @RequestBody RetailerServiceDtos.BbpsFetchRequest request
     ) {
         validateUser(principal, request.userId());
-        if (!appProperties.services().bbpsEnabled()) {
+        if (appProperties.services() != null && !appProperties.services().bbpsEnabled()) {
             return new RetailerServiceDtos.BillFetchResponse(false, "BBPS service disabled by configuration", Map.of());
         }
         var providerResponse = providerRouter.current()
@@ -349,7 +349,7 @@ public class BbpsController {
             @Valid @RequestBody RetailerServiceDtos.BbpsPayRequest request
     ) {
         validateUser(principal, request.userId());
-        if (!appProperties.services().bbpsEnabled()) {
+        if (appProperties.services() != null && !appProperties.services().bbpsEnabled()) {
             return new RetailerServiceDtos.GenericTxnResponse(false, null, "BBPS service disabled by configuration", null, Map.of());
         }
         var providerResponse = providerRouter.current()

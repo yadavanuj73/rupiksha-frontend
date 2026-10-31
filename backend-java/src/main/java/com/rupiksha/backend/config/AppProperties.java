@@ -16,6 +16,12 @@ public record AppProperties(
         String publicBaseUrl,
         Wallet wallet
 ) {
+    public AppProperties {
+        if (services == null) {
+            services = new Services(true, true, true, true, true);
+        }
+    }
+
     public record Jwt(String issuer, String secret, long accessTokenMinutes, long refreshTokenDays) {}
     public record Otp(long ttlSeconds, int maxAttempts) {}
     public record Cors(String allowedOrigins) {}

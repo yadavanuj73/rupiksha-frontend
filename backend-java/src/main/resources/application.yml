@@ -134,6 +134,13 @@ app:
     base-url: ${BBPS_BASE_URL:https://stgapi.billavenue.com/billpay}
     api-key: ${BBPS_API_KEY:}
     api-secret: ${BBPS_API_SECRET:}
+  services:
+    # Note: Legacy AEPS provider config removed. Using Levin AEPS only.
+    aeps-enabled: ${SERVICE_AEPS_ENABLED:true}
+    bbps-enabled: ${SERVICE_BBPS_ENABLED:true}
+    tickets-enabled: ${SERVICE_TICKETS_ENABLED:true}
+    recharge-enabled: ${SERVICE_RECHARGE_ENABLED:true}
+    payout-enabled: ${SERVICE_PAYOUT_ENABLED:true}
 
 billavenue:
   base-url: ${BILLAVENUE_BASE_URL:https://stgapi.billavenue.com/billpay}
@@ -151,14 +158,6 @@ billavenue:
     vi: ${BILLAVENUE_BILLER_VI:VODA00000NAT01}
     bsnl: ${BILLAVENUE_BILLER_BSNL:BSNL00000NATHL}
     mtnl: ${BILLAVENUE_BILLER_MTNL:MTNL00000DEL01}
-
-  services:
-    # Note: Legacy AEPS provider config removed. Using Levin AEPS only.
-    aeps-enabled: ${SERVICE_AEPS_ENABLED:true}
-    bbps-enabled: ${SERVICE_BBPS_ENABLED:true}
-    tickets-enabled: ${SERVICE_TICKETS_ENABLED:true}
-    recharge-enabled: ${SERVICE_RECHARGE_ENABLED:true}
-    payout-enabled: ${SERVICE_PAYOUT_ENABLED:true}
 
 dovesoft:
   base-url: ${DOVESOFT_BASE_URL:https://api.dovesoft.io}

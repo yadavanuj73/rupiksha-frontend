@@ -52,7 +52,7 @@ public class ProviderTxnController {
         if (principal == null || !principal.userId().equals(request.userId())) {
             throw new IllegalArgumentException("Invalid user context");
         }
-        if (!appProperties.services().rechargeEnabled()) {
+        if (appProperties.services() != null && !appProperties.services().rechargeEnabled()) {
             return new ProviderTxnDtos.TxnResponse(false, null, "Recharge disabled by configuration", java.util.Map.of());
         }
         return rechargeTransferService.recharge(request);
@@ -66,7 +66,7 @@ public class ProviderTxnController {
         if (principal == null || !principal.userId().equals(request.userId())) {
             throw new IllegalArgumentException("Invalid user context");
         }
-        if (!appProperties.services().payoutEnabled()) {
+        if (appProperties.services() != null && !appProperties.services().payoutEnabled()) {
             return new ProviderTxnDtos.TxnResponse(false, null, "Payout disabled by configuration", java.util.Map.of());
         }
         return rechargeTransferService.transfer(request);

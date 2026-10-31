@@ -29,7 +29,7 @@ public class TicketController {
             @Valid @RequestBody RetailerServiceDtos.TicketCreateRequest request
     ) {
         validateUser(principal, request.userId());
-        if (!appProperties.services().ticketsEnabled()) {
+        if (appProperties.services() != null && !appProperties.services().ticketsEnabled()) {
             return Map.of("success", false, "message", "Ticket service disabled by configuration");
         }
         Ticket ticket = new Ticket();
@@ -49,7 +49,7 @@ public class TicketController {
             @RequestParam String userId
     ) {
         validateUser(principal, userId);
-        if (!appProperties.services().ticketsEnabled()) {
+        if (appProperties.services() != null && !appProperties.services().ticketsEnabled()) {
             return new RetailerServiceDtos.TicketListResponse(false, List.of());
         }
         List<RetailerServiceDtos.TicketResponse> tickets = ticketRepository.findByUserIdOrderByCreatedAtDesc(UUID.fromString(userId))
