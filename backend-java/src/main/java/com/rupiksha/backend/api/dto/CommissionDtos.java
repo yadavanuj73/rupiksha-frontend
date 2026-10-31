@@ -114,8 +114,43 @@ public class CommissionDtos {
             Instant createdAt,
             BigDecimal appliedPercentage,
             BigDecimal commissionBaseAmount,
-            String bbpsCategory
+            String bbpsCategory,
+            String commissionMode,
+            String operatorCode,
+            String operatorName,
+            BigDecimal appliedCommissionValue,
+            String mobileNo
     ) {
+        public CommissionTransactionDto(
+                UUID id,
+                String commissionReference,
+                String originalTransactionId,
+                String serviceType,
+                String planCode,
+                String slabRange,
+                BigDecimal transactionAmount,
+                String beneficiaryId,
+                String beneficiaryName,
+                String beneficiaryUsername,
+                String beneficiaryRole,
+                String retailerId,
+                String retailerName,
+                String retailerUsername,
+                BigDecimal commissionAmount,
+                String status,
+                String remarks,
+                Instant createdAt,
+                BigDecimal appliedPercentage,
+                BigDecimal commissionBaseAmount,
+                String bbpsCategory
+        ) {
+            this(id, commissionReference, originalTransactionId, serviceType, planCode, slabRange,
+                    transactionAmount, beneficiaryId, beneficiaryName, beneficiaryUsername,
+                    beneficiaryRole, retailerId, retailerName, retailerUsername,
+                    commissionAmount, status, remarks, createdAt, appliedPercentage, commissionBaseAmount, bbpsCategory,
+                    null, null, null, null, null);
+        }
+
         public CommissionTransactionDto(
                 UUID id,
                 String commissionReference,
@@ -139,7 +174,7 @@ public class CommissionDtos {
             this(id, commissionReference, originalTransactionId, serviceType, planCode, slabRange,
                     transactionAmount, beneficiaryId, beneficiaryName, beneficiaryUsername,
                     beneficiaryRole, retailerId, retailerName, retailerUsername,
-                    commissionAmount, status, remarks, createdAt, null, null, null);
+                    commissionAmount, status, remarks, createdAt, null, null, null, null, null, null, null, null);
         }
     }
 
@@ -240,6 +275,75 @@ public class CommissionDtos {
             BigDecimal newRetailerPercentage,
             BigDecimal newDistributorPercentage,
             BigDecimal newSuperDistributorPercentage,
+            Boolean newEnabled,
+            String ipAddress,
+            Instant createdAt
+    ) {}
+
+    // ─── MOBILE & DTH RECHARGE COMMISSION DTOS ──────────────────────────────────
+
+    public record RechargeOperatorDto(
+            String operatorCode,
+            String operatorName,
+            String serviceCategory, // "MOBILE" or "DTH"
+            boolean configured,
+            boolean enabled,
+            String commissionMode, // "PERCENTAGE" or "FIXED"
+            int activePlansCount
+    ) {}
+
+    public record RechargeCommissionConfigDto(
+            UUID id,
+            String serviceType,
+            String operatorCode,
+            String operatorName,
+            String commissionMode,
+            UUID planId,
+            String planCode,
+            String planName,
+            BigDecimal planPrice,
+            BigDecimal retailerValue,
+            BigDecimal distributorValue,
+            BigDecimal superDistributorValue,
+            BigDecimal totalValue,
+            Boolean enabled,
+            Instant updatedAt
+    ) {}
+
+    public record UpdateRechargeConfigRequest(
+            @NotBlank(message = "Commission mode is required (PERCENTAGE or FIXED)")
+            String commissionMode,
+
+            @NotNull(message = "Retailer commission value is required")
+            @DecimalMin(value = "0.0000", inclusive = true, message = "Retailer value cannot be negative")
+            BigDecimal retailerValue,
+
+            @NotNull(message = "Distributor commission value is required")
+            @DecimalMin(value = "0.0000", inclusive = true, message = "Distributor value cannot be negative")
+            BigDecimal distributorValue,
+
+            @NotNull(message = "Super Distributor commission value is required")
+            @DecimalMin(value = "0.0000", inclusive = true, message = "Super Distributor value cannot be negative")
+            BigDecimal superDistributorValue,
+
+            Boolean enabled
+    ) {}
+
+    public record RechargeAuditDto(
+            UUID id,
+            String serviceType,
+            String operatorCode,
+            String planCode,
+            String adminUsername,
+            String prevCommissionMode,
+            BigDecimal prevRetailerValue,
+            BigDecimal prevDistributorValue,
+            BigDecimal prevSuperDistributorValue,
+            Boolean prevEnabled,
+            String newCommissionMode,
+            BigDecimal newRetailerValue,
+            BigDecimal newDistributorValue,
+            BigDecimal newSuperDistributorValue,
             Boolean newEnabled,
             String ipAddress,
             Instant createdAt

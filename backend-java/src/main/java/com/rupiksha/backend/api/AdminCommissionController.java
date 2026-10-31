@@ -146,4 +146,48 @@ public class AdminCommissionController {
         int count = commissionService.reconcileUncreditedBbpsCommissions();
         return ResponseEntity.ok(java.util.Map.of("success", true, "reconciledCount", count));
     }
+
+    // ─── MOBILE & DTH RECHARGE COMMISSION ENDPOINTS ────────────────────────────
+
+    @GetMapping("/recharge/operators")
+    public ResponseEntity<List<CommissionDtos.RechargeOperatorDto>> getRechargeOperators(
+            @RequestParam(required = false, defaultValue = "MOBILE") String serviceCategory
+    ) {
+        return ResponseEntity.ok(commissionService.getRechargeOperators(serviceCategory));
+    }
+
+    @GetMapping("/recharge/configs")
+    public ResponseEntity<List<CommissionDtos.RechargeCommissionConfigDto>> getRechargeConfigs(
+            @RequestParam(required = false, defaultValue = "MOBILE_RECHARGE") String serviceType,
+            @RequestParam(required = false, defaultValue = "JRE") String operatorCode
+    ) {
+        return ResponseEntity.ok(commissionService.getRechargeConfigs(serviceType, operatorCode));
+    }
+
+    @PutMapping("/recharge/configs/{configId}")
+    public ResponseEntity<CommissionDtos.RechargeCommissionConfigDto> updateRechargeConfig(
+            @PathVariable UUID configId,
+            @Valid @RequestBody CommissionDtos.UpdateRechargeConfigRequest request,
+            @AuthenticationPrincipal JwtPrincipal principal,
+            HttpServletRequest httpRequest
+    ) {
+        UUID adminId = UUID.fromString(principal.userId());
+        String ip = getClientIp(httpRequest);
+        CommissionDtos.RechargeCommissionConfigDto updated = commissionService.updateRechargeConfig(configId, request, adminId, ip);
+        return ResponseEntity.ok(updated);
+    }
+
+    @GetMapping("/recharge/audits")
+    public ResponseEntity<List<CommissionDtos.RechargeAuditDto>> getRechargeAudits(
+            @RequestParam(required = false, defaultValue = "MOBILE_RECHARGE") String serviceType,
+            @RequestParam(required = false, defaultValue = "JRE") String operatorCode
+    ) {
+        return ResponseEntity.ok(commissionService.getRechargeAudits(serviceType, operatorCode));
+    }
+
+    @PostMapping("/recharge/reconcile")
+    public ResponseEntity<java.util.Map<String, Object>> reconcileRechargeCommissions() {
+        int count = commissionService.reconcileUncreditedRechargeCommissions();
+        return ResponseEntity.ok(java.util.Map.of("success", true, "reconciledCount", count));
+    }
 }

@@ -9,6 +9,7 @@ import com.rupiksha.backend.integration.recharge.VenusRechargeProvider;
 import com.rupiksha.backend.repository.RechargeRepository;
 import com.rupiksha.backend.repository.TxnRepository;
 import com.rupiksha.backend.security.JwtPrincipal;
+import com.rupiksha.backend.service.CommissionService;
 import com.rupiksha.backend.service.RechargeTransferService;
 import com.rupiksha.backend.service.WalletService;
 import jakarta.validation.Valid;
@@ -33,6 +34,7 @@ public class ProviderTxnController {
     private final TxnRepository txnRepository;
     private final WalletService walletService;
     private final VenusRechargeProvider venusRechargeProvider;
+    private final CommissionService commissionService;
 
     @GetMapping("/recharge/operators")
     public java.util.List<com.rupiksha.backend.config.AppProperties.VenusOperator> getOperators() {
@@ -106,7 +108,7 @@ public class ProviderTxnController {
             recharge.setOperatorTxnId(operatorTxnId);
             recharge.setOrderNo(orderNo);
             recharge.setCompletedAt(Instant.now());
-            rechargeRepository.save(recharge);
+            recharge = rechargeRepository.save(recharge);
 
             if (txn != null) {
                 txn.setStatus(TransactionStatus.SUCCESS);
@@ -114,6 +116,12 @@ public class ProviderTxnController {
                 txnRepository.save(txn);
             }
             log.info("VenusRecharge callback marked Ref: {} as SUCCESS", merTxnId);
+
+            try {
+                commissionService.processRechargeCommission(recharge);
+            } catch (Exception ce) {
+                log.error("Failed to process commission for successful recharge callback Ref: {}", merTxnId, ce);
+            }
         } else if ("FAILED".equalsIgnoreCase(responseStatus)) {
             recharge.setStatus(TransactionStatus.FAILED);
             recharge.setCompletedAt(Instant.now());
@@ -193,12 +201,18 @@ public class ProviderTxnController {
             recharge.setOperatorTxnId(providerRes.providerTxnId());
             recharge.setOrderNo(String.valueOf(providerRes.raw().getOrDefault("orderNo", providerRes.providerTxnId())));
             recharge.setCompletedAt(Instant.now());
-            rechargeRepository.save(recharge);
+            recharge = rechargeRepository.save(recharge);
 
             if (txn != null) {
                 txn.setStatus(TransactionStatus.SUCCESS);
                 txn.setProviderRef(providerRes.providerTxnId());
                 txnRepository.save(txn);
+            }
+
+            try {
+                commissionService.processRechargeCommission(recharge);
+            } catch (Exception ce) {
+                log.error("Failed to process commission for reconciled recharge Ref: {}", merchantRefNo, ce);
             }
         } else if ("FAILED".equalsIgnoreCase(responseStatus)) {
             recharge.setStatus(TransactionStatus.FAILED);

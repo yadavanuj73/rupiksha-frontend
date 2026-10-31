@@ -106,6 +106,47 @@ export const commissionService = {
         });
     },
 
+    // ─── MOBILE & DTH RECHARGE COMMISSION METHODS ──────────────────────────────
+    /**
+     * Get registered operators and their commission configuration status
+     */
+    async getRechargeOperators(serviceCategory = 'MOBILE') {
+        return apiFetch(`/admin/commissions/recharge/operators?serviceCategory=${encodeURIComponent(serviceCategory)}`);
+    },
+
+    /**
+     * Get commission configs (percentage or fixed) for all plans under an operator
+     */
+    async getRechargeConfigs(operatorCode = 'JRE', serviceType = 'MOBILE_RECHARGE') {
+        return apiFetch(`/admin/commissions/recharge/configs?operatorCode=${encodeURIComponent(operatorCode)}&serviceType=${encodeURIComponent(serviceType)}`);
+    },
+
+    /**
+     * Update commission configuration for an operator plan
+     */
+    async updateRechargeConfig(configId, configData) {
+        return apiFetch(`/admin/commissions/recharge/configs/${configId}`, {
+            method: 'PUT',
+            body: JSON.stringify(configData),
+        });
+    },
+
+    /**
+     * Get audit trail of commission changes for an operator
+     */
+    async getRechargeAudits(operatorCode = 'JRE', serviceType = 'MOBILE_RECHARGE') {
+        return apiFetch(`/admin/commissions/recharge/audits?operatorCode=${encodeURIComponent(operatorCode)}&serviceType=${encodeURIComponent(serviceType)}`);
+    },
+
+    /**
+     * Reconcile past uncredited Mobile Recharge transactions and grant their commissions
+     */
+    async reconcileRechargeCommissions() {
+        return apiFetch('/admin/commissions/recharge/reconcile', {
+            method: 'POST',
+        });
+    },
+
     // ─── RETAILER METHODS ─────────────────────────────────────────────────────
     /**
      * Get retailer's own commission summary

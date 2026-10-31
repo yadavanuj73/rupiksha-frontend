@@ -3,6 +3,7 @@ package com.rupiksha.backend.service;
 import com.rupiksha.aeps.entity.AepsTransactionEngine;
 import com.rupiksha.backend.api.dto.CommissionDtos;
 import com.rupiksha.backend.domain.BbpsTransaction;
+import com.rupiksha.backend.domain.Recharge;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -102,4 +103,36 @@ public interface CommissionService {
      * Reconciles and credits commission for any confirmed BBPS transactions that were not yet processed.
      */
     int reconcileUncreditedBbpsCommissions();
+
+    // ─── MOBILE & DTH RECHARGE COMMISSION METHODS ──────────────────────────────
+
+    /**
+     * Idempotently calculates and distributes commission (Percentage or Fixed) for a confirmed Mobile Recharge.
+     */
+    void processRechargeCommission(Recharge recharge);
+
+    /**
+     * Lists operators for Mobile or DTH recharge with configuration status.
+     */
+    List<CommissionDtos.RechargeOperatorDto> getRechargeOperators(String serviceCategory);
+
+    /**
+     * Retrieves commission configs for all plans under an operator.
+     */
+    List<CommissionDtos.RechargeCommissionConfigDto> getRechargeConfigs(String serviceType, String operatorCode);
+
+    /**
+     * Updates commission values (Percentage or Fixed) and enabled status for an operator plan config.
+     */
+    CommissionDtos.RechargeCommissionConfigDto updateRechargeConfig(UUID configId, CommissionDtos.UpdateRechargeConfigRequest request, UUID adminId, String ipAddress);
+
+    /**
+     * Retrieves audit history for an operator.
+     */
+    List<CommissionDtos.RechargeAuditDto> getRechargeAudits(String serviceType, String operatorCode);
+
+    /**
+     * Reconciles and credits commission for any confirmed Mobile Recharge transactions that were not yet processed.
+     */
+    int reconcileUncreditedRechargeCommissions();
 }

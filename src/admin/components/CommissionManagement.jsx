@@ -6,15 +6,15 @@ import {
     AlertTriangle, Search, Filter, History, ChevronLeft, ChevronRight,
     RefreshCw, Layers, Sparkles, TrendingUp, HelpCircle, HandCoins,
     Percent, ToggleLeft, ToggleRight, Check, X, ShieldCheck, ArrowRight,
-    Calculator, Building2, Coins, ArrowUpRight
+    Calculator, Building2, Coins, ArrowUpRight, Smartphone, Tv, Radio, Signal
 } from 'lucide-react';
 import { ChevronDown, ArrowLeft } from 'lucide-react';
 import { commissionService } from '../../services/commissionService';
 import { BBPS_CATEGORIES } from '../../retailer/data/bbpsCategories';
 
 export default function CommissionManagement() {
-    // ── MODEL SWITCHER: 'AEPS_1' or 'BBPS'
-    const [commissionModel, setCommissionModel] = useState('AEPS_1'); // 'AEPS_1' | 'BBPS'
+    // ── MODEL SWITCHER: 'AEPS_1', 'BBPS' or 'RECHARGE'
+    const [commissionModel, setCommissionModel] = useState('AEPS_1'); // 'AEPS_1' | 'BBPS' | 'RECHARGE'
     const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
     const modelDropdownRef = React.useRef(null);
 
@@ -39,6 +39,15 @@ export default function CommissionManagement() {
             badge: 'Percentage',
             icon: Percent,
             accent: 'emerald'
+        },
+        {
+            id: 'RECHARGE',
+            label: 'Mobile & DTH Recharge',
+            sublabel: 'Percentage / Fixed ₹',
+            description: 'Prepaid Mobile & DTH Recharge Commission Strategy',
+            badge: 'Flexible ₹/%',
+            icon: Smartphone,
+            accent: 'blue'
         }
     ];
 
@@ -58,6 +67,9 @@ export default function CommissionManagement() {
         setNotification(null);
         if (modelId === 'BBPS') {
             setBbpsStep('select-service');
+        } else if (modelId === 'RECHARGE') {
+            setRechargeStep('select-operator');
+            fetchRechargeOperators(rechargeCategory);
         }
     };
 
@@ -93,6 +105,28 @@ export default function CommissionManagement() {
     });
     const [originalBbpsFormData, setOriginalBbpsFormData] = useState(null);
     const [simulatedAmount, setSimulatedAmount] = useState('2000');
+
+    // ── MOBILE & DTH RECHARGE STATE ─────────────────────────────────────────────
+    const [rechargeCategory, setRechargeCategory] = useState('MOBILE'); // 'MOBILE' | 'DTH'
+    const [rechargeStep, setRechargeStep] = useState('select-operator'); // 'select-operator' | 'configure'
+    const [rechargeOperators, setRechargeOperators] = useState([]);
+    const [loadingRechargeOperators, setLoadingRechargeOperators] = useState(false);
+    const [rechargeSearch, setRechargeSearch] = useState('');
+    const [selectedOperatorCode, setSelectedOperatorCode] = useState('JRE');
+    const [selectedOperatorName, setSelectedOperatorName] = useState('Jio Recharge');
+    const [rechargeConfigs, setRechargeConfigs] = useState([]);
+    const [loadingRechargeConfigs, setLoadingRechargeConfigs] = useState(false);
+    const [selectedRechargePlanCode, setSelectedRechargePlanCode] = useState('FREE');
+    const [rechargeFormData, setRechargeFormData] = useState({
+        commissionMode: 'PERCENTAGE',
+        retailerValue: '1.00',
+        distributorValue: '0.25',
+        superDistributorValue: '0.25',
+        enabled: true
+    });
+    const [originalRechargeFormData, setOriginalRechargeFormData] = useState(null);
+    const [simulatedRechargeAmount, setSimulatedRechargeAmount] = useState('500');
+    const [rechargeAudits, setRechargeAudits] = useState([]);
 
     // ── COMMON STATE ────────────────────────────────────────────────────────────
     const [saving, setSaving] = useState(false);
@@ -192,7 +226,9 @@ export default function CommissionManagement() {
         try {
             let filterSvc = historyServiceFilter;
             if (filterSvc === 'ALL') {
-                filterSvc = commissionModel === 'AEPS_1' ? 'AEPS_1' : 'ALL';
+                if (commissionModel === 'AEPS_1') filterSvc = 'AEPS_1';
+                else if (commissionModel === 'RECHARGE') filterSvc = 'MOBILE_RECHARGE';
+                else filterSvc = 'ALL';
             }
             const res = await commissionService.getAdminTransactions({
                 serviceType: filterSvc !== 'ALL' ? filterSvc : undefined,
@@ -445,6 +481,274 @@ export default function CommissionManagement() {
         return Number((simRetCommission + simDistCommission + simSdCommission).toFixed(2));
     }, [simRetCommission, simDistCommission, simSdCommission]);
 
+    // ── MOBILE & DTH RECHARGE HANDLERS & HELPERS ────────────────────────────────
+    const fetchRechargeOperators = async (category = 'MOBILE') => {
+        setLoadingRechargeOperators(true);
+        try {
+            const data = await commissionService.getRechargeOperators(category);
+            setRechargeOperators(data || []);
+        } catch (err) {
+            setNotification({ type: 'error', message: err.message || 'Failed to load operators.' });
+        } finally {
+            setLoadingRechargeOperators(false);
+        }
+    };
+
+    const fetchRechargeConfigs = async (serviceType, opCode) => {
+        setLoadingRechargeConfigs(true);
+        try {
+            const data = await commissionService.getRechargeConfigs(opCode, serviceType);
+            setRechargeConfigs(data || []);
+            if (data && data.length > 0) {
+                const currentPlanConfig = data.find(c => c.planCode === selectedRechargePlanCode) || data[0];
+                setSelectedRechargePlanCode(currentPlanConfig.planCode);
+                const formVals = {
+                    commissionMode: currentPlanConfig.commissionMode || 'PERCENTAGE',
+                    retailerValue: String(currentPlanConfig.retailerValue ?? '0.00'),
+                    distributorValue: String(currentPlanConfig.distributorValue ?? '0.00'),
+                    superDistributorValue: String(currentPlanConfig.superDistributorValue ?? '0.00'),
+                    enabled: currentPlanConfig.enabled ?? true
+                };
+                setRechargeFormData(formVals);
+                setOriginalRechargeFormData(JSON.parse(JSON.stringify(formVals)));
+            }
+        } catch (err) {
+            setNotification({ type: 'error', message: err.message || 'Failed to load recharge commission configs.' });
+        } finally {
+            setLoadingRechargeConfigs(false);
+        }
+    };
+
+    const fetchRechargeAudits = async (serviceType, opCode) => {
+        try {
+            const data = await commissionService.getRechargeAudits(opCode, serviceType);
+            setRechargeAudits(data || []);
+        } catch (_) {}
+    };
+
+    useEffect(() => {
+        if (commissionModel === 'RECHARGE') {
+            fetchRechargeOperators(rechargeCategory);
+        }
+    }, [commissionModel, rechargeCategory]);
+
+    const handleSelectRechargeOperator = (opCode, opName) => {
+        setSelectedOperatorCode(opCode);
+        setSelectedOperatorName(opName);
+        setRechargeStep('configure');
+        setRechargeSearch('');
+        setNotification(null);
+        fetchRechargeConfigs('MOBILE_RECHARGE', opCode);
+        fetchRechargeAudits('MOBILE_RECHARGE', opCode);
+    };
+
+    const handleSelectRechargePlan = (planCode) => {
+        setSelectedRechargePlanCode(planCode);
+        const config = rechargeConfigs.find(c => c.planCode === planCode);
+        if (config) {
+            const formVals = {
+                commissionMode: config.commissionMode || 'PERCENTAGE',
+                retailerValue: String(config.retailerValue ?? '0.00'),
+                distributorValue: String(config.distributorValue ?? '0.00'),
+                superDistributorValue: String(config.superDistributorValue ?? '0.00'),
+                enabled: config.enabled ?? true
+            };
+            setRechargeFormData(formVals);
+            setOriginalRechargeFormData(JSON.parse(JSON.stringify(formVals)));
+        }
+        setNotification(null);
+    };
+
+    const handleRechargeModeChange = (newMode) => {
+        if (newMode === rechargeFormData.commissionMode) return;
+        setRechargeFormData(prev => ({
+            ...prev,
+            commissionMode: newMode
+        }));
+    };
+
+    const activeRechargeConfig = useMemo(() => {
+        return rechargeConfigs.find(c => c.planCode === selectedRechargePlanCode);
+    }, [rechargeConfigs, selectedRechargePlanCode]);
+
+    const isRechargePercentage = rechargeFormData.commissionMode === 'PERCENTAGE';
+
+    const rechargeTotalValue = useMemo(() => {
+        const ret = parseFloat(rechargeFormData.retailerValue) || 0;
+        const dist = parseFloat(rechargeFormData.distributorValue) || 0;
+        const sd = parseFloat(rechargeFormData.superDistributorValue) || 0;
+        return Number((ret + dist + sd).toFixed(4));
+    }, [rechargeFormData]);
+
+    const rechargeValidationError = useMemo(() => {
+        const ret = parseFloat(rechargeFormData.retailerValue);
+        const dist = parseFloat(rechargeFormData.distributorValue);
+        const sd = parseFloat(rechargeFormData.superDistributorValue);
+
+        if (isNaN(ret) || ret < 0) return 'Retailer commission value cannot be negative.';
+        if (isNaN(dist) || dist < 0) return 'Distributor commission value cannot be negative.';
+        if (isNaN(sd) || sd < 0) return 'Super Distributor commission value cannot be negative.';
+
+        if (isRechargePercentage) {
+            if (ret > 100 || dist > 100 || sd > 100) return 'Commission percentage cannot exceed 100%.';
+            if (rechargeTotalValue > 100) return `Total combined commission (${rechargeTotalValue}%) exceeds the 100% maximum limit.`;
+        } else {
+            if (ret > 5000 || dist > 5000 || sd > 5000) return 'Fixed commission cannot exceed ₹5,000.';
+        }
+        return null;
+    }, [rechargeFormData, rechargeTotalValue, isRechargePercentage]);
+
+    const hasRechargeChanges = useMemo(() => {
+        if (!originalRechargeFormData) return false;
+        return JSON.stringify(rechargeFormData) !== JSON.stringify(originalRechargeFormData);
+    }, [rechargeFormData, originalRechargeFormData]);
+
+    const handleResetRecharge = () => {
+        if (originalRechargeFormData) {
+            setRechargeFormData(JSON.parse(JSON.stringify(originalRechargeFormData)));
+            setNotification({ type: 'info', message: 'Values reverted to saved database configuration.' });
+        }
+    };
+
+    const handleSaveRecharge = async () => {
+        if (!activeRechargeConfig) return;
+        if (rechargeValidationError) {
+            setNotification({ type: 'error', message: rechargeValidationError });
+            return;
+        }
+
+        setSaving(true);
+        setNotification(null);
+        try {
+            const ret = parseFloat(rechargeFormData.retailerValue) || 0;
+            const dist = parseFloat(rechargeFormData.distributorValue) || 0;
+            const sd = parseFloat(rechargeFormData.superDistributorValue) || 0;
+
+            const req = {
+                commissionMode: rechargeFormData.commissionMode,
+                retailerValue: ret,
+                distributorValue: dist,
+                superDistributorValue: sd,
+                enabled: rechargeFormData.enabled
+            };
+
+            const updated = await commissionService.updateRechargeConfig(activeRechargeConfig.id, req);
+            setNotification({
+                type: 'success',
+                message: `${selectedOperatorName} (${activeRechargeConfig.planName}) Commission Saved Successfully`
+            });
+            triggerConfetti();
+
+            setRechargeConfigs(prev => prev.map(c => c.id === updated.id ? updated : c));
+            const newForm = {
+                commissionMode: updated.commissionMode,
+                retailerValue: String(updated.retailerValue),
+                distributorValue: String(updated.distributorValue),
+                superDistributorValue: String(updated.superDistributorValue),
+                enabled: updated.enabled
+            };
+            setRechargeFormData(newForm);
+            setOriginalRechargeFormData(JSON.parse(JSON.stringify(newForm)));
+
+            fetchRechargeOperators(rechargeCategory);
+            fetchRechargeAudits('MOBILE_RECHARGE', selectedOperatorCode);
+        } catch (err) {
+            setNotification({
+                type: 'error',
+                message: err.message || 'Failed to save recharge commission configuration.'
+            });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleReconcileRecharge = async () => {
+        setReconciling(true);
+        try {
+            const res = await commissionService.reconcileRechargeCommissions();
+            const count = res?.reconciledCount ?? 0;
+            if (count > 0) {
+                setNotification({
+                    type: 'success',
+                    message: `Successfully reconciled and credited commissions for ${count} Mobile Recharge transaction(s)!`
+                });
+                triggerConfetti();
+            } else {
+                setNotification({
+                    type: 'info',
+                    message: 'All Mobile Recharge transactions are already up to date with full commission credits.'
+                });
+            }
+            fetchHistory();
+        } catch (err) {
+            setNotification({
+                type: 'error',
+                message: err.message || 'Failed to reconcile Mobile Recharge commissions.'
+            });
+        } finally {
+            setReconciling(false);
+        }
+    };
+
+    const simRechargeAmountNum = Math.max(1, parseFloat(simulatedRechargeAmount) || 500);
+
+    const simRechargeRetailer = useMemo(() => {
+        const val = parseFloat(rechargeFormData.retailerValue) || 0;
+        return isRechargePercentage ? Number(((simRechargeAmountNum * val) / 100).toFixed(2)) : Number(val.toFixed(2));
+    }, [simRechargeAmountNum, rechargeFormData.retailerValue, isRechargePercentage]);
+
+    const simRechargeDistributor = useMemo(() => {
+        const val = parseFloat(rechargeFormData.distributorValue) || 0;
+        return isRechargePercentage ? Number(((simRechargeAmountNum * val) / 100).toFixed(2)) : Number(val.toFixed(2));
+    }, [simRechargeAmountNum, rechargeFormData.distributorValue, isRechargePercentage]);
+
+    const simRechargeSuperDist = useMemo(() => {
+        const val = parseFloat(rechargeFormData.superDistributorValue) || 0;
+        return isRechargePercentage ? Number(((simRechargeAmountNum * val) / 100).toFixed(2)) : Number(val.toFixed(2));
+    }, [simRechargeAmountNum, rechargeFormData.superDistributorValue, isRechargePercentage]);
+
+    const simRechargeTotal = Number((simRechargeRetailer + simRechargeDistributor + simRechargeSuperDist).toFixed(2));
+
+    const filteredOperators = useMemo(() => {
+        if (!rechargeSearch.trim()) return rechargeOperators;
+        const q = rechargeSearch.toLowerCase().trim();
+        return rechargeOperators.filter(op =>
+            op.operatorName.toLowerCase().includes(q) ||
+            op.operatorCode.toLowerCase().includes(q)
+        );
+    }, [rechargeOperators, rechargeSearch]);
+
+    const getOperatorStyle = (code) => {
+        switch (String(code || '').toUpperCase()) {
+            case 'JRE':
+            case 'JTU':
+                return { bg: 'bg-blue-600', text: 'text-white', badge: 'bg-blue-50 text-blue-900 border-blue-200' };
+            case 'ATL':
+            case 'ACL':
+                return { bg: 'bg-red-600', text: 'text-white', badge: 'bg-red-50 text-red-900 border-red-200' };
+            case 'VDF':
+                return { bg: 'bg-amber-600', text: 'text-white', badge: 'bg-amber-50 text-amber-900 border-amber-200' };
+            case 'BNT':
+            case 'BNV':
+                return { bg: 'bg-emerald-700', text: 'text-white', badge: 'bg-emerald-50 text-emerald-900 border-emerald-200' };
+            case 'VCT':
+            case 'VCV':
+                return { bg: 'bg-cyan-700', text: 'text-white', badge: 'bg-cyan-50 text-cyan-900 border-cyan-200' };
+            default:
+                return { bg: 'bg-slate-700', text: 'text-white', badge: 'bg-slate-50 text-slate-900 border-slate-200' };
+        }
+    };
+
+    const getRechargePlanDisplayName = (config) => {
+        if (!config) return 'Free Plan';
+        const code = String(config.planCode || '').toUpperCase();
+        if (code === 'PLAN_2999') return 'Rupiksha Anand Plan';
+        if (code === 'PLAN_4999') return 'Rupiksha Nidhi Plan';
+        if (code === 'PLAN_7999') return 'Rupiksha Dhanbarsha Plan';
+        if (code === 'FREE') return 'Free Plan';
+        return config.planName || 'Plan';
+    };
+
     // ── SERVICE SELECTION HELPERS ───────────────────────────────────────────────
     const activePlan = plans.find(p => p.id === selectedPlanId);
 
@@ -494,6 +798,7 @@ export default function CommissionManagement() {
     const renderCommissionModelDropdown = () => {
         const currentModel = COMMISSION_MODELS.find(m => m.id === commissionModel) || COMMISSION_MODELS[0];
         const isBbps = commissionModel === 'BBPS';
+        const isRecharge = commissionModel === 'RECHARGE';
 
         return (
             <div className="space-y-1.5 relative" ref={modelDropdownRef}>
@@ -502,7 +807,9 @@ export default function CommissionManagement() {
                         Commission Model
                     </label>
                     <span className={`text-[9.5px] font-black uppercase px-2 py-0.5 rounded-md border ${
-                        isBbps 
+                        isRecharge
+                            ? 'bg-blue-50 text-blue-950 border-blue-300'
+                            : isBbps 
                             ? 'bg-emerald-50 text-emerald-950 border-emerald-300' 
                             : 'bg-indigo-50 text-indigo-950 border-indigo-300'
                     }`}>
@@ -516,16 +823,24 @@ export default function CommissionManagement() {
                         onClick={() => setIsModelDropdownOpen(prev => !prev)}
                         className={`w-full bg-slate-50 border rounded-2xl px-3.5 py-2.5 text-xs font-black text-black transition-all flex items-center justify-between cursor-pointer shadow-xs outline-none ${
                             isModelDropdownOpen
-                                ? isBbps ? 'border-emerald-600 ring-2 ring-emerald-500/20 bg-white' : 'border-indigo-600 ring-2 ring-indigo-500/20 bg-white'
+                                ? isRecharge
+                                    ? 'border-blue-600 ring-2 ring-blue-500/20 bg-white'
+                                    : isBbps
+                                    ? 'border-emerald-600 ring-2 ring-emerald-500/20 bg-white'
+                                    : 'border-indigo-600 ring-2 ring-indigo-500/20 bg-white'
                                 : 'border-slate-300 hover:border-slate-400 hover:bg-white'
                         }`}
                         aria-expanded={isModelDropdownOpen}
                     >
                         <div className="flex items-center gap-2.5 min-w-0">
                             <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                                isBbps ? 'bg-emerald-600 text-white shadow-xs' : 'bg-indigo-600 text-white shadow-xs'
+                                isRecharge
+                                    ? 'bg-blue-600 text-white shadow-xs'
+                                    : isBbps
+                                    ? 'bg-emerald-600 text-white shadow-xs'
+                                    : 'bg-indigo-600 text-white shadow-xs'
                             }`}>
-                                {isBbps ? <Percent size={15} /> : <Layers size={15} />}
+                                {isRecharge ? <Smartphone size={15} /> : isBbps ? <Percent size={15} /> : <Layers size={15} />}
                             </div>
                             <div className="text-left min-w-0">
                                 <div className="flex items-center gap-1.5">
@@ -534,6 +849,9 @@ export default function CommissionManagement() {
                                     </span>
                                     {isBbps && (
                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    )}
+                                    {isRecharge && (
+                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
                                     )}
                                 </div>
                                 <span className="text-[10px] font-bold text-slate-800 block truncate">
@@ -557,6 +875,7 @@ export default function CommissionManagement() {
                                     const isSelected = commissionModel === m.id;
                                     const IconComp = m.icon;
                                     const isMbbps = m.id === 'BBPS';
+                                    const isMrecharge = m.id === 'RECHARGE';
 
                                     return (
                                         <button
@@ -576,7 +895,11 @@ export default function CommissionManagement() {
                                                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
                                                     isSelected 
                                                         ? 'bg-white/20 text-white' 
-                                                        : isMbbps ? 'bg-emerald-50 text-emerald-800' : 'bg-indigo-50 text-indigo-800'
+                                                        : isMrecharge
+                                                        ? 'bg-blue-50 text-blue-800'
+                                                        : isMbbps
+                                                        ? 'bg-emerald-50 text-emerald-800'
+                                                        : 'bg-indigo-50 text-indigo-800'
                                                 }`}>
                                                     <IconComp size={14} />
                                                 </div>
@@ -585,6 +908,9 @@ export default function CommissionManagement() {
                                                         <p className="text-xs font-black truncate">{m.label}</p>
                                                         {isMbbps && (
                                                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                        )}
+                                                        {isMrecharge && (
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
                                                         )}
                                                     </div>
                                                     <p className={`text-[10px] font-bold truncate ${isSelected ? 'text-slate-200' : 'text-slate-700'}`}>
@@ -687,7 +1013,673 @@ export default function CommissionManagement() {
 
             {/* ── MAIN TAB: CONFIGURATION ──────────────────────────────────────── */}
             {activeTab === 'config' ? (
-                commissionModel === 'BBPS' && bbpsStep === 'select-service' ? (
+                commissionModel === 'RECHARGE' ? (
+                    rechargeStep === 'select-operator' ? (
+                        /* ── RECHARGE STEP 1: OPERATOR SELECTION SCREEN ───────────────── */
+                        <div className="space-y-6">
+                            {/* Recharge Header & Controls */}
+                            <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-sm space-y-6">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+                                    <div>
+                                        <div className="flex items-center gap-3">
+                                            <h2 className="text-xl md:text-2xl font-black text-black tracking-tight">
+                                                Mobile & DTH Recharge Commission
+                                            </h2>
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-black bg-blue-50 px-3 py-1 rounded-full border border-blue-300 shadow-2xs">
+                                                Flexible % / Fixed ₹
+                                            </span>
+                                        </div>
+                                        <p className="text-xs font-bold text-slate-800 mt-1">
+                                            Configure operator commissions with Percentage (%) or Fixed Rupee (₹) modes across all membership plans.
+                                        </p>
+                                    </div>
+
+                                    {/* Model Switcher Dropdown */}
+                                    <div className="w-full sm:w-60">
+                                        <label className="text-[10px] font-black uppercase text-black tracking-wider block mb-1">
+                                            Commission Model
+                                        </label>
+                                        <div className="relative">
+                                            <select
+                                                value={commissionModel}
+                                                onChange={(e) => handleModelChange(e.target.value)}
+                                                className="w-full bg-slate-50 border border-slate-300 rounded-2xl px-3.5 py-2.5 text-xs font-black text-black focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all appearance-none cursor-pointer pr-9 shadow-2xs"
+                                            >
+                                                {COMMISSION_MODELS.map(m => (
+                                                    <option key={m.id} value={m.id}>
+                                                        {m.label} ({m.sublabel})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-black pointer-events-none" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* ── SERVICE CATEGORY SELECTOR (Mobile Recharge vs DTH Recharge) ── */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {/* Category A: Mobile Recharge */}
+                                    <button
+                                        type="button"
+                                        onClick={() => setRechargeCategory('MOBILE')}
+                                        className={`p-5 rounded-2xl border text-left transition-all cursor-pointer flex items-start gap-4 ${
+                                            rechargeCategory === 'MOBILE'
+                                                ? 'bg-blue-50/70 border-blue-500 shadow-md ring-2 ring-blue-500/20'
+                                                : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50 shadow-2xs'
+                                        }`}
+                                    >
+                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+                                            rechargeCategory === 'MOBILE' ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-100 text-black'
+                                        }`}>
+                                            <Smartphone size={24} />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="text-base font-black text-black tracking-tight">Mobile Recharge</h3>
+                                                <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-950 border border-emerald-300">
+                                                    Active
+                                                </span>
+                                            </div>
+                                            <p className="text-xs font-bold text-slate-700 mt-1 line-clamp-2">
+                                                Configure commissions for Jio, Airtel, Vi, BSNL, and Videocon across all 4 plans.
+                                            </p>
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <span className="text-[10px] font-black text-blue-900 bg-blue-100 px-2 py-0.5 rounded-md border border-blue-200">
+                                                    {rechargeOperators.length > 0 ? `${rechargeOperators.length} Operators Available` : '9 Operators Configured'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </button>
+
+                                    {/* Category B: DTH Recharge */}
+                                    <button
+                                        type="button"
+                                        onClick={() => setRechargeCategory('DTH')}
+                                        className={`p-5 rounded-2xl border text-left transition-all cursor-pointer flex items-start gap-4 ${
+                                            rechargeCategory === 'DTH'
+                                                ? 'bg-amber-50/70 border-amber-500 shadow-md ring-2 ring-amber-500/20'
+                                                : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50 shadow-2xs'
+                                        }`}
+                                    >
+                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+                                            rechargeCategory === 'DTH' ? 'bg-amber-600 text-white shadow-xs' : 'bg-slate-100 text-black'
+                                        }`}>
+                                            <Tv size={24} />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="text-base font-black text-black tracking-tight">DTH Recharge</h3>
+                                                <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-950 border border-amber-300">
+                                                    Future Activation
+                                                </span>
+                                            </div>
+                                            <p className="text-xs font-bold text-slate-700 mt-1 line-clamp-2">
+                                                Tata Play, Airtel DTH, Dish TV, Sun Direct. Commission configuration will be activated upon transaction integration.
+                                            </p>
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <span className="text-[10px] font-black text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-200">
+                                                    Disabled / Coming Soon
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </button>
+                                </div>
+
+                                {/* Content based on Category */}
+                                {rechargeCategory === 'DTH' ? (
+                                    <div className="bg-amber-50 border border-amber-200 rounded-3xl p-8 text-center space-y-4">
+                                        <div className="w-16 h-16 bg-amber-100 text-amber-800 rounded-full flex items-center justify-center mx-auto border border-amber-300 shadow-sm">
+                                            <Tv size={32} />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-black text-black">DTH Recharge Commission is Coming Soon</h3>
+                                            <p className="text-xs font-bold text-slate-800 max-w-lg mx-auto mt-1.5 leading-relaxed">
+                                                DTH Recharge uses a separate transaction lifecycle and provider routing engine. To prevent accidental commission credits, DTH commission distribution is safely locked until provider mapping is explicitly enabled.
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setRechargeCategory('MOBILE')}
+                                            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-black uppercase tracking-wider transition-colors cursor-pointer"
+                                        >
+                                            <Smartphone size={14} />
+                                            Switch to Mobile Recharge
+                                        </button>
+                                    </div>
+                                ) : (
+                                    /* MOBILE RECHARGE OPERATOR CATALOG */
+                                    <div className="space-y-4">
+                                        {/* Search & Actions Bar */}
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                            <div className="relative flex-1 max-w-md">
+                                                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search mobile operators (e.g. Jio, Airtel, Vi)..."
+                                                    value={rechargeSearch}
+                                                    onChange={(e) => setRechargeSearch(e.target.value)}
+                                                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-2xl text-xs font-black text-black placeholder:text-slate-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 shadow-2xs"
+                                                />
+                                            </div>
+                                            <div className="flex items-center gap-2 self-end sm:self-auto">
+                                                <button
+                                                    onClick={handleReconcileRecharge}
+                                                    disabled={reconciling}
+                                                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 text-xs font-black transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+                                                    title="Reconcile missing commissions for completed mobile recharges"
+                                                >
+                                                    <Sparkles size={14} className={reconciling ? 'animate-spin text-blue-600' : 'text-blue-600'} />
+                                                    <span>{reconciling ? 'Reconciling...' : 'Reconcile Commissions'}</span>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Operator Cards Grid */}
+                                        {loadingRechargeOperators ? (
+                                            <div className="py-16 text-center text-black font-black">
+                                                <RefreshCw className="animate-spin mx-auto mb-2 text-blue-600" size={24} />
+                                                Loading authorized mobile operators from provider...
+                                            </div>
+                                        ) : filteredOperators.length === 0 ? (
+                                            <div className="py-12 text-center text-black font-black bg-slate-50 rounded-2xl border border-slate-200">
+                                                No mobile operators match your search &ldquo;{rechargeSearch}&rdquo;.
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                {filteredOperators.map(op => {
+                                                    const style = getOperatorStyle(op.operatorCode);
+                                                    return (
+                                                        <div
+                                                            key={op.operatorCode}
+                                                            className="p-5 rounded-2xl border border-slate-200 bg-white hover:border-blue-400 hover:shadow-md transition-all flex flex-col justify-between gap-4 group"
+                                                        >
+                                                            <div className="flex items-start justify-between gap-3">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-black text-xs shrink-0 shadow-xs ${style.bg} ${style.text}`}>
+                                                                        {op.operatorCode}
+                                                                    </div>
+                                                                    <div>
+                                                                        <h4 className="text-sm font-black text-black group-hover:text-blue-700 transition-colors">
+                                                                            {op.operatorName}
+                                                                        </h4>
+                                                                        <span className="text-[10px] font-bold text-slate-700 font-mono">
+                                                                            Code: {op.operatorCode}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                                <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase border ${
+                                                                    op.commissionMode === 'FIXED'
+                                                                        ? 'bg-amber-50 text-amber-950 border-amber-300'
+                                                                        : 'bg-emerald-50 text-emerald-950 border-emerald-300'
+                                                                }`}>
+                                                                    {op.commissionMode === 'FIXED' ? 'Fixed ₹' : 'Percentage %'}
+                                                                </span>
+                                                            </div>
+
+                                                            <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                                                    <span className="text-[11px] font-bold text-slate-800">
+                                                                        4 Plans Supported
+                                                                    </span>
+                                                                </div>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleSelectRechargeOperator(op.operatorCode, op.operatorName)}
+                                                                    className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-blue-600 text-white text-[11px] font-black uppercase tracking-wider transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                                                                >
+                                                                    <span>Configure</span>
+                                                                    <ArrowRight size={12} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ) : (
+                        /* ── RECHARGE STEP 2: OPERATOR PLAN CONFIGURATION ─────────────── */
+                        <div className="space-y-6">
+                            {/* Navigation & Operator Header */}
+                            <div className="bg-white rounded-3xl p-5 md:p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setRechargeStep('select-operator')}
+                                        className="w-10 h-10 rounded-2xl bg-slate-100 hover:bg-slate-200 text-black flex items-center justify-center transition-colors cursor-pointer border border-slate-300 shrink-0"
+                                        title="Back to operator catalogue"
+                                    >
+                                        <ArrowLeft size={18} />
+                                    </button>
+                                    <div>
+                                        <div className="flex items-center gap-2.5">
+                                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-[11px] shadow-2xs ${getOperatorStyle(selectedOperatorCode).bg} ${getOperatorStyle(selectedOperatorCode).text}`}>
+                                                {selectedOperatorCode}
+                                            </div>
+                                            <h2 className="text-lg md:text-xl font-black text-black">
+                                                {selectedOperatorName} Commission
+                                            </h2>
+                                            <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-blue-100 text-blue-950 border border-blue-300">
+                                                Mobile Recharge
+                                            </span>
+                                        </div>
+                                        <p className="text-xs font-bold text-slate-800 mt-0.5">
+                                            Configure Percentage (%) or Fixed (₹) commission across all 4 membership plans.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Quick Switch Operator Dropdown */}
+                                <div className="flex items-center gap-3 self-end md:self-auto">
+                                    <div className="w-48 sm:w-56">
+                                        <div className="relative">
+                                            <select
+                                                value={selectedOperatorCode}
+                                                onChange={(e) => {
+                                                    const found = rechargeOperators.find(o => o.operatorCode === e.target.value);
+                                                    handleSelectRechargeOperator(e.target.value, found?.operatorName || e.target.value);
+                                                }}
+                                                className="w-full bg-slate-50 border border-slate-300 rounded-2xl px-3.5 py-2 text-xs font-black text-black focus:bg-white focus:outline-none cursor-pointer pr-8 shadow-2xs"
+                                            >
+                                                {rechargeOperators.map(op => (
+                                                    <option key={op.operatorCode} value={op.operatorCode}>
+                                                        {op.operatorName} ({op.operatorCode})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-black pointer-events-none" />
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={handleReconcileRecharge}
+                                        disabled={reconciling}
+                                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 text-xs font-black transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+                                        title="Scan and credit missing commissions"
+                                    >
+                                        <Sparkles size={14} className={reconciling ? 'animate-spin text-blue-600' : 'text-blue-600'} />
+                                        <span className="hidden sm:inline">{reconciling ? 'Reconciling...' : 'Reconcile'}</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Main Configuration Columns */}
+                            {loadingRechargeConfigs ? (
+                                <div className="bg-white rounded-3xl p-16 text-center text-black font-black border border-slate-200">
+                                    <RefreshCw className="animate-spin mx-auto mb-2 text-blue-600" size={24} />
+                                    Loading {selectedOperatorName} commission configurations...
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                                    {/* Left Column: Plan Selectors, Mode Switcher & Inputs */}
+                                    <div className="lg:col-span-5 space-y-6">
+                                        {/* 1. Four Membership Plans Selector */}
+                                        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-xs font-black uppercase text-black tracking-wider block">
+                                                    Membership Plan
+                                                </label>
+                                                <span className="text-[10px] font-bold text-slate-700">4 Plans Configurable</span>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-2.5">
+                                                {rechargeConfigs.map(c => {
+                                                    const isSelected = selectedRechargePlanCode === c.planCode;
+                                                    const displayName = getRechargePlanDisplayName(c);
+                                                    const priceNum = Number(c.planPrice || 0);
+
+                                                    return (
+                                                        <button
+                                                            key={c.planCode}
+                                                            type="button"
+                                                            onClick={() => handleSelectRechargePlan(c.planCode)}
+                                                            className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                                                                isSelected
+                                                                    ? 'bg-slate-900 text-white border-slate-900 shadow-md ring-2 ring-slate-900/20'
+                                                                    : 'bg-slate-50 hover:bg-white text-black border-slate-200'
+                                                            }`}
+                                                        >
+                                                            <div>
+                                                                <p className="text-[10px] font-black uppercase tracking-wider opacity-70">
+                                                                    {c.planCode}
+                                                                </p>
+                                                                <h4 className="text-xs font-black truncate mt-0.5">
+                                                                    {displayName}
+                                                                </h4>
+                                                            </div>
+                                                            <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-slate-200/40">
+                                                                <span className="text-xs font-mono font-black">
+                                                                    {priceNum === 0 ? 'Free' : `₹${priceNum.toLocaleString('en-IN')}`}
+                                                                </span>
+                                                                {isSelected && (
+                                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                                                )}
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        {/* 2. Commission Calculation Mode Selector */}
+                                        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-xs font-black uppercase text-black tracking-wider block">
+                                                    Calculation Mode
+                                                </label>
+                                                <span className={`text-[9.5px] font-black uppercase px-2 py-0.5 rounded-md border ${
+                                                    isRechargePercentage
+                                                        ? 'bg-emerald-50 text-emerald-950 border-emerald-300'
+                                                        : 'bg-amber-50 text-amber-950 border-amber-300'
+                                                }`}>
+                                                    {isRechargePercentage ? 'Percentage Mode' : 'Fixed Rupee Mode'}
+                                                </span>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRechargeModeChange('PERCENTAGE')}
+                                                    className={`p-3 rounded-2xl border font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                                                        isRechargePercentage
+                                                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                                                            : 'bg-slate-50 text-black border-slate-200 hover:bg-slate-100'
+                                                    }`}
+                                                >
+                                                    <Percent size={14} />
+                                                    <span>Percentage (%)</span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRechargeModeChange('FIXED')}
+                                                    className={`p-3 rounded-2xl border font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                                                        !isRechargePercentage
+                                                            ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                                                            : 'bg-slate-50 text-black border-slate-200 hover:bg-slate-100'
+                                                    }`}
+                                                >
+                                                    <IndianRupee size={14} />
+                                                    <span>Fixed Amount (₹)</span>
+                                                </button>
+                                            </div>
+                                            <p className="text-[11px] font-bold text-slate-700">
+                                                {isRechargePercentage
+                                                    ? 'Calculates commission as percentage of successful recharge amount.'
+                                                    : 'Grants configured fixed rupee amount per successful recharge regardless of amount.'}
+                                            </p>
+                                        </div>
+
+                                        {/* 3. Hierarchy Commission Inputs */}
+                                        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
+                                            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                                                <h3 className="text-xs font-black uppercase text-black tracking-wider">
+                                                    Hierarchy Distribution Rates
+                                                </h3>
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <span className="text-[11px] font-bold text-slate-800">Enabled</span>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={rechargeFormData.enabled}
+                                                        onChange={(e) => setRechargeFormData(prev => ({ ...prev, enabled: e.target.checked }))}
+                                                        className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                    />
+                                                </label>
+                                            </div>
+
+                                            {/* Retailer */}
+                                            <div>
+                                                <div className="flex items-center justify-between mb-1.5">
+                                                    <label className="text-xs font-black text-black">
+                                                        Retailer Commission
+                                                    </label>
+                                                    <span className="text-[10px] font-bold text-slate-700">Role: Retailer</span>
+                                                </div>
+                                                <div className="relative">
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        max={isRechargePercentage ? "100" : "5000"}
+                                                        value={rechargeFormData.retailerValue}
+                                                        onChange={(e) => setRechargeFormData(prev => ({ ...prev, retailerValue: e.target.value }))}
+                                                        className="w-full bg-slate-50 border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-black text-black focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 shadow-2xs pr-12"
+                                                    />
+                                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black text-slate-600">
+                                                        {isRechargePercentage ? '%' : '₹'}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {/* Distributor */}
+                                            <div>
+                                                <div className="flex items-center justify-between mb-1.5">
+                                                    <label className="text-xs font-black text-black">
+                                                        Distributor Commission
+                                                    </label>
+                                                    <span className="text-[10px] font-bold text-slate-700">Role: Distributor</span>
+                                                </div>
+                                                <div className="relative">
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        max={isRechargePercentage ? "100" : "5000"}
+                                                        value={rechargeFormData.distributorValue}
+                                                        onChange={(e) => setRechargeFormData(prev => ({ ...prev, distributorValue: e.target.value }))}
+                                                        className="w-full bg-slate-50 border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-black text-black focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 shadow-2xs pr-12"
+                                                    />
+                                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black text-slate-600">
+                                                        {isRechargePercentage ? '%' : '₹'}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {/* Super Distributor */}
+                                            <div>
+                                                <div className="flex items-center justify-between mb-1.5">
+                                                    <label className="text-xs font-black text-black">
+                                                        Super Distributor Commission
+                                                    </label>
+                                                    <span className="text-[10px] font-bold text-slate-700">Role: Super Distributor</span>
+                                                </div>
+                                                <div className="relative">
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        max={isRechargePercentage ? "100" : "5000"}
+                                                        value={rechargeFormData.superDistributorValue}
+                                                        onChange={(e) => setRechargeFormData(prev => ({ ...prev, superDistributorValue: e.target.value }))}
+                                                        className="w-full bg-slate-50 border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-black text-black focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 shadow-2xs pr-12"
+                                                    />
+                                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black text-slate-600">
+                                                        {isRechargePercentage ? '%' : '₹'}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {/* Total Summary */}
+                                            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                                                <span className="text-xs font-bold text-black">Combined Distribution:</span>
+                                                <span className="text-xs font-mono font-black text-blue-900">
+                                                    {isRechargePercentage ? `${rechargeTotalValue.toFixed(2)}%` : `₹${rechargeTotalValue.toFixed(2)}`}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Right Column: Simulation Calculator, Breakdown & Actions */}
+                                    <div className="lg:col-span-7 space-y-6">
+                                        {/* 1. Live Simulation Card */}
+                                        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                                                <div>
+                                                    <h3 className="text-base font-black text-black flex items-center gap-2">
+                                                        <Calculator size={18} className="text-blue-600" />
+                                                        Live Commission Simulator
+                                                    </h3>
+                                                    <p className="text-xs font-bold text-slate-700 mt-0.5">
+                                                        Real-time preview of wallet earnings for a successful recharge.
+                                                    </p>
+                                                </div>
+
+                                                {/* Amount Input */}
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-black text-black">Recharge:</span>
+                                                    <div className="relative w-28">
+                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-600">₹</span>
+                                                        <input
+                                                            type="number"
+                                                            value={simulatedRechargeAmount}
+                                                            onChange={(e) => setSimulatedRechargeAmount(e.target.value)}
+                                                            className="w-full pl-6 pr-2 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-black text-black focus:bg-white focus:outline-none"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Breakdown Cards */}
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                                <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-200">
+                                                    <span className="text-[10px] font-black uppercase text-blue-950 block">Retailer Earns</span>
+                                                    <p className="text-lg font-black font-mono text-blue-950 mt-1">
+                                                        ₹{simRechargeRetailer.toFixed(2)}
+                                                    </p>
+                                                    <span className="text-[10px] font-bold text-blue-800">
+                                                        {isRechargePercentage ? `${rechargeFormData.retailerValue}%` : 'Fixed ₹'}
+                                                    </span>
+                                                </div>
+
+                                                <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200">
+                                                    <span className="text-[10px] font-black uppercase text-amber-950 block">Distributor</span>
+                                                    <p className="text-lg font-black font-mono text-amber-950 mt-1">
+                                                        ₹{simRechargeDistributor.toFixed(2)}
+                                                    </p>
+                                                    <span className="text-[10px] font-bold text-amber-800">
+                                                        {isRechargePercentage ? `${rechargeFormData.distributorValue}%` : 'Fixed ₹'}
+                                                    </span>
+                                                </div>
+
+                                                <div className="p-4 rounded-2xl bg-purple-50/70 border border-purple-200">
+                                                    <span className="text-[10px] font-black uppercase text-purple-950 block">Super Dist.</span>
+                                                    <p className="text-lg font-black font-mono text-purple-950 mt-1">
+                                                        ₹{simRechargeSuperDist.toFixed(2)}
+                                                    </p>
+                                                    <span className="text-[10px] font-bold text-purple-800">
+                                                        {isRechargePercentage ? `${rechargeFormData.superDistributorValue}%` : 'Fixed ₹'}
+                                                    </span>
+                                                </div>
+
+                                                <div className="p-4 rounded-2xl bg-slate-900 text-white shadow-xs">
+                                                    <span className="text-[10px] font-bold uppercase text-slate-300 block">Total Disbursed</span>
+                                                    <p className="text-lg font-black font-mono text-emerald-400 mt-1">
+                                                        ₹{simRechargeTotal.toFixed(2)}
+                                                    </p>
+                                                    <span className="text-[10px] font-bold text-slate-300">
+                                                        {isRechargePercentage ? `${rechargeTotalValue.toFixed(2)}% Total` : 'Fixed Total'}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {/* Hierarchy flow indicator */}
+                                            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-black font-bold flex flex-wrap items-center justify-between gap-2">
+                                                <span>Hierarchy Flow:</span>
+                                                <div className="flex items-center gap-2 text-xs font-mono font-black text-slate-800">
+                                                    <span className="bg-purple-100 text-purple-950 px-2 py-0.5 rounded-md border border-purple-300">Super Dist (₹{simRechargeSuperDist.toFixed(2)})</span>
+                                                    <span>&rarr;</span>
+                                                    <span className="bg-amber-100 text-amber-950 px-2 py-0.5 rounded-md border border-amber-300">Dist (₹{simRechargeDistributor.toFixed(2)})</span>
+                                                    <span>&rarr;</span>
+                                                    <span className="bg-blue-100 text-blue-950 px-2 py-0.5 rounded-md border border-blue-300">Retailer (₹{simRechargeRetailer.toFixed(2)})</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* 2. Audit Trail Card */}
+                                        {rechargeAudits.length > 0 && (
+                                            <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <h4 className="text-xs font-black uppercase text-black tracking-wider flex items-center gap-2">
+                                                        <History size={14} className="text-slate-600" />
+                                                        Recent Configuration Changes ({selectedOperatorCode})
+                                                    </h4>
+                                                    <span className="text-[10px] font-bold text-slate-600">Audit Log</span>
+                                                </div>
+                                                <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto">
+                                                    {rechargeAudits.slice(0, 4).map(a => (
+                                                        <div key={a.id} className="py-2.5 text-xs flex items-center justify-between gap-2">
+                                                            <div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-black text-black">[{a.planCode}]</span>
+                                                                    <span className="font-bold text-slate-700">Mode: {a.newCommissionMode}</span>
+                                                                    <span className="text-emerald-700 font-mono font-bold">
+                                                                        (Ret: {a.newRetailerValue}{a.newCommissionMode === 'FIXED' ? '₹' : '%'})
+                                                                    </span>
+                                                                </div>
+                                                                <span className="text-[10px] text-slate-600">by {a.adminUsername || 'admin'}</span>
+                                                            </div>
+                                                            <span className="text-[10px] font-mono text-slate-500 whitespace-nowrap">
+                                                                {new Date(a.createdAt).toLocaleDateString('en-IN')}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* 3. Action Bar (Reset / Save) */}
+                                        <div className="p-5 rounded-3xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                            <div>
+                                                {hasRechargeChanges ? (
+                                                    <span className="text-xs font-black text-amber-700 flex items-center gap-1.5">
+                                                        <AlertTriangle size={14} />
+                                                        You have unsaved commission changes for {selectedOperatorName} ({activeRechargeConfig?.planName}).
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                                        <CheckCircle2 size={14} className="text-emerald-600" />
+                                                        Configuration is saved and up to date with database.
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                                                {hasRechargeChanges && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleResetRecharge}
+                                                        disabled={saving}
+                                                        className="px-4 py-2.5 rounded-2xl border border-slate-300 text-black text-xs font-black uppercase tracking-wider hover:bg-slate-200 transition-all flex items-center gap-2 cursor-pointer"
+                                                    >
+                                                        <RotateCcw size={14} />
+                                                        Reset
+                                                    </button>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={handleSaveRecharge}
+                                                    disabled={saving || !hasRechargeChanges}
+                                                    className={`px-6 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 text-white shadow-lg cursor-pointer ${
+                                                        saving || !hasRechargeChanges
+                                                            ? 'bg-slate-300 shadow-none cursor-not-allowed text-slate-600'
+                                                            : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/30'
+                                                    }`}
+                                                >
+                                                    <Save size={14} />
+                                                    {saving ? 'Saving...' : 'Save Configuration'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )
+                ) : commissionModel === 'BBPS' && bbpsStep === 'select-service' ? (
                     /* ── STEP 1: SELECT BBPS SERVICE SCREEN ───────────────────── */
                     <div className="space-y-6">
                         {/* BBPS Service Search & Selection Panel */}
@@ -1544,6 +2536,7 @@ export default function CommissionManagement() {
                                 <option value="AEPS_1">AEPS 1 (Cash Withdrawal)</option>
                                 <option value="BBPS_LOAN_REPAYMENT">BBPS (Loan Repayment)</option>
                                 <option value="BBPS_ELECTRICITY">BBPS (Electricity)</option>
+                                <option value="MOBILE_RECHARGE">Mobile Recharge</option>
                             </select>
 
                             <select
@@ -1567,11 +2560,21 @@ export default function CommissionManagement() {
                             <button
                                 onClick={handleReconcileBbps}
                                 disabled={reconciling}
-                                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 text-xs font-black transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+                                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs font-black transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
                                 title="Scan and credit missing commissions for successful BBPS transactions"
                             >
+                                <Sparkles size={14} className={reconciling ? 'animate-spin text-emerald-600' : 'text-emerald-600'} />
+                                <span>Reconcile BBPS</span>
+                            </button>
+
+                            <button
+                                onClick={handleReconcileRecharge}
+                                disabled={reconciling}
+                                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 text-xs font-black transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+                                title="Scan and credit missing commissions for successful Mobile Recharge transactions"
+                            >
                                 <Sparkles size={14} className={reconciling ? 'animate-spin text-blue-600' : 'text-blue-600'} />
-                                <span>{reconciling ? 'Reconciling...' : 'Reconcile Commissions'}</span>
+                                <span>Reconcile Recharge</span>
                             </button>
                         </div>
                     </div>
@@ -1610,6 +2613,7 @@ export default function CommissionManagement() {
                                 ) : (
                                     historyList.map(item => {
                                         const isBbps = String(item.serviceType || '').includes('BBPS');
+                                        const isRecharge = String(item.serviceType || '').includes('RECHARGE') || String(item.serviceType || '') === 'MR';
                                         return (
                                             <tr key={item.id} className="hover:bg-slate-50">
                                                 <td className="py-3 px-4 text-slate-800 font-mono text-[11px] whitespace-nowrap">
@@ -1623,12 +2627,26 @@ export default function CommissionManagement() {
                                                 </td>
                                                 <td className="py-3 px-4">
                                                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase ${
-                                                        isBbps
+                                                        isRecharge
+                                                            ? 'bg-blue-100 text-blue-950 border border-blue-300'
+                                                            : isBbps
                                                             ? 'bg-emerald-100 text-emerald-950 border border-emerald-300'
                                                             : 'bg-indigo-100 text-indigo-950 border border-indigo-300'
                                                     }`}>
-                                                        {isBbps ? (item.bbpsCategory ? `BBPS ${item.bbpsCategory}` : (String(item.serviceType).includes('ELECTRICITY') ? 'BBPS Electricity' : 'BBPS Loan')) : 'AEPS 1'}
+                                                        {isRecharge ? (
+                                                            <>
+                                                                <Smartphone size={10} className="text-blue-700" />
+                                                                <span>{item.operatorName || item.operatorCode || 'Recharge'}</span>
+                                                            </>
+                                                        ) : isBbps ? (
+                                                            item.bbpsCategory ? `BBPS ${item.bbpsCategory}` : (String(item.serviceType).includes('ELECTRICITY') ? 'BBPS Electricity' : 'BBPS Loan')
+                                                        ) : 'AEPS 1'}
                                                     </span>
+                                                    {isRecharge && item.mobileNo && (
+                                                        <span className="block text-[10px] font-mono text-slate-500 mt-0.5">
+                                                            {item.mobileNo}
+                                                        </span>
+                                                    )}
                                                 </td>
                                                 <td className="py-3 px-4 font-black text-black">
                                                     {item.beneficiaryName} <span className="text-slate-600 font-bold text-[10px]">({item.beneficiaryUsername})</span>
@@ -1648,7 +2666,13 @@ export default function CommissionManagement() {
                                                     &#8377;{Number(item.transactionAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                                 </td>
                                                 <td className="py-3 px-4 text-center font-mono text-[11px]">
-                                                    {isBbps ? (
+                                                    {isRecharge ? (
+                                                        <span className="inline-block bg-blue-100 text-blue-950 border border-blue-300 px-2 py-0.5 rounded font-black">
+                                                            {item.commissionMode === 'FIXED'
+                                                                ? `₹${Number(item.appliedCommissionValue || 0).toFixed(2)} (Fixed)`
+                                                                : `${Number(item.appliedCommissionValue || 0).toFixed(2)}%`}
+                                                        </span>
+                                                    ) : isBbps ? (
                                                         <span className="inline-block bg-emerald-100 text-emerald-950 border border-emerald-300 px-2 py-0.5 rounded font-black">
                                                             {item.appliedPercentage ? `${item.appliedPercentage}%` : item.slabRange}
                                                         </span>

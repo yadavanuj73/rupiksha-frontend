@@ -40,6 +40,10 @@ public class CommissionServiceImpl implements CommissionService {
     private final BbpsCommissionConfigRepository bbpsCommissionConfigRepository;
     private final BbpsCommissionConfigAuditRepository bbpsCommissionConfigAuditRepository;
     private final BbpsTransactionRepository bbpsTransactionRepository;
+    private final RechargeCommissionConfigRepository rechargeCommissionConfigRepository;
+    private final RechargeCommissionConfigAuditRepository rechargeCommissionConfigAuditRepository;
+    private final RechargeRepository rechargeRepository;
+    private final com.rupiksha.backend.config.AppProperties appProperties;
 
     private static final ZoneId IST_ZONE = ZoneId.of("Asia/Kolkata");
 
@@ -1357,7 +1361,12 @@ public class CommissionServiceImpl implements CommissionService {
 
     private CommissionDtos.CommissionTransactionDto mapTransactionToDto(CommissionTransaction txn) {
         String slabRange;
-        if (txn.getAppliedPercentage() != null) {
+        if ("FIXED".equalsIgnoreCase(txn.getCommissionMode())) {
+            BigDecimal fixedVal = txn.getAppliedCommissionValue() != null ? txn.getAppliedCommissionValue() : txn.getCommissionAmount();
+            slabRange = "₹" + fixedVal.setScale(2, RoundingMode.HALF_UP) + " (Fixed)";
+        } else if (txn.getAppliedCommissionValue() != null) {
+            slabRange = txn.getAppliedCommissionValue() + "%";
+        } else if (txn.getAppliedPercentage() != null) {
             slabRange = txn.getAppliedPercentage() + "%";
         } else if (txn.getSlabMin() != null && txn.getSlabMax() != null) {
             slabRange = "₹" + txn.getSlabMin() + " - ₹" + txn.getSlabMax();
@@ -1389,7 +1398,12 @@ public class CommissionServiceImpl implements CommissionService {
                 txn.getCreatedAt(),
                 txn.getAppliedPercentage(),
                 txn.getCommissionBaseAmount(),
-                txn.getBbpsCategory()
+                txn.getBbpsCategory(),
+                txn.getCommissionMode(),
+                txn.getOperatorCode(),
+                txn.getOperatorName(),
+                txn.getAppliedCommissionValue(),
+                txn.getMobileNo()
         );
     }
 
@@ -1417,12 +1431,607 @@ public class CommissionServiceImpl implements CommissionService {
         return creditedCount;
     }
 
+    // ─── MOBILE & DTH RECHARGE COMMISSION IMPLEMENTATION ───────────────────────
+
+    private String resolveOperatorName(String operatorCode) {
+        if (operatorCode == null) return "Mobile Operator";
+        String op = operatorCode.trim().toUpperCase();
+        if (appProperties.venusRecharge() != null && appProperties.venusRecharge().operators() != null) {
+            for (var o : appProperties.venusRecharge().operators()) {
+                if (o.operatorCode().equalsIgnoreCase(op)) {
+                    return o.name();
+                }
+            }
+        }
+        return switch (op) {
+            case "JRE" -> "Jio Recharge";
+            case "JTU" -> "Jio Topup";
+            case "ATL" -> "Airtel";
+            case "ACL" -> "Airtel Live";
+            case "VDF" -> "Vi (Vodafone Idea)";
+            case "BNT" -> "BSNL Topup";
+            case "BNV" -> "BSNL Validity";
+            case "VCT" -> "Videocon Topup";
+            case "VCV" -> "Videocon Validity";
+            default -> op;
+        };
+    }
+
+    @Override
+    @Transactional
+    public void processRechargeCommission(Recharge recharge) {
+        if (recharge == null || recharge.getMerchantRefNo() == null) {
+            log.warn("Cannot process Recharge commission: payload or merchantRefNo is null.");
+            return;
+        }
+
+        if (recharge.getStatus() != TransactionStatus.SUCCESS) {
+            log.info("Skipping Recharge commission for non-successful transaction: Ref={}, status={}",
+                    recharge.getMerchantRefNo(), recharge.getStatus());
+            return;
+        }
+
+        String serviceType = recharge.getServiceType() != null ? recharge.getServiceType().trim().toUpperCase() : "MR";
+        // Mobile Recharge only in this phase. DTH must remain inactive until explicitly implemented.
+        if (!"MR".equalsIgnoreCase(serviceType) && !"MOBILE_RECHARGE".equalsIgnoreCase(serviceType)) {
+            log.info("Commission only active for Mobile Recharge (MR). Skipping DTH or other type: {}", serviceType);
+            return;
+        }
+
+        String merchantRefNo = recharge.getMerchantRefNo();
+        BigDecimal txnAmount = recharge.getAmount();
+        if (txnAmount == null || txnAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            log.warn("Cannot process Recharge commission for transaction {}: invalid amount {}", merchantRefNo, txnAmount);
+            return;
+        }
+
+        // Database/Repository idempotency check
+        if (commissionTransactionRepository.existsByOriginalTransactionId(merchantRefNo)) {
+            log.warn("Idempotency safeguard: Commission already processed for Recharge transaction: {}", merchantRefNo);
+            return;
+        }
+
+        log.info("Processing commission for successful Mobile Recharge transaction: ref={}, operator={}, amount={}",
+                merchantRefNo, recharge.getOperatorCode(), txnAmount);
+
+        // 1. Resolve Retailer
+        User retailer = recharge.getUser();
+        if (retailer == null || retailer.getId() == null) {
+            log.error("Recharge Commission calculation failed: Retailer user not found on transaction {}", merchantRefNo);
+            return;
+        }
+        retailer = userRepository.findById(retailer.getId()).orElse(null);
+        if (retailer == null) {
+            log.error("Recharge Commission calculation failed: Retailer user not found in DB for ID: {}", recharge.getUser().getId());
+            return;
+        }
+
+        // 2. Resolve Retailer Plan
+        CommissionPlan plan = retailer.getAepsCommissionPlan();
+        if (isPaidPlanExpired(retailer)) {
+            log.info("Retailer {} paid commission plan {} expired on {}. Falling back to default Free plan.",
+                    retailer.getUsername(), plan != null ? plan.getPlanName() : "", retailer.getAepsCommissionPlanExpiresAt());
+            plan = null;
+        }
+        if (plan == null || !Boolean.TRUE.equals(plan.getEnabled())) {
+            plan = commissionPlanRepository.findByServiceTypeAndIsDefaultTrue("AEPS_1")
+                    .or(() -> commissionPlanRepository.findByServiceTypeAndPlanCode("AEPS_1", "FREE"))
+                    .orElse(null);
+        }
+
+        if (plan == null) {
+            log.warn("Active commission plan not found for retailer {}. Skipping Recharge commission for txn {}", retailer.getUsername(), merchantRefNo);
+            return;
+        }
+
+        String opCode = recharge.getOperatorCode() != null ? recharge.getOperatorCode().trim().toUpperCase() : "";
+
+        // 3. Find matching Recharge Commission Config for operator and plan with intelligent fallback
+        Optional<RechargeCommissionConfig> configOpt = rechargeCommissionConfigRepository
+                .findByServiceTypeAndOperatorCodeAndPlan_PlanCode("MOBILE_RECHARGE", opCode, plan.getPlanCode());
+        if (configOpt.isEmpty()) {
+            configOpt = rechargeCommissionConfigRepository
+                    .findByServiceTypeAndOperatorCodeAndPlan_Id("MOBILE_RECHARGE", opCode, plan.getId());
+        }
+
+        RechargeCommissionConfig config = null;
+        if (configOpt.isPresent() && Boolean.TRUE.equals(configOpt.get().getEnabled())
+                && configOpt.get().getRetailerValue() != null
+                && configOpt.get().getRetailerValue().compareTo(BigDecimal.ZERO) > 0) {
+            config = configOpt.get();
+        } else {
+            // Fallback 1: FREE plan for this operator
+            Optional<RechargeCommissionConfig> freeOpt = rechargeCommissionConfigRepository
+                    .findByServiceTypeAndOperatorCodeAndPlan_PlanCode("MOBILE_RECHARGE", opCode, "FREE");
+            if (freeOpt.isPresent() && Boolean.TRUE.equals(freeOpt.get().getEnabled())
+                    && freeOpt.get().getRetailerValue() != null
+                    && freeOpt.get().getRetailerValue().compareTo(BigDecimal.ZERO) > 0) {
+                config = freeOpt.get();
+                log.info("Retailer {} plan {} config missing/zero for operator {}. Falling back to active FREE plan config",
+                        retailer.getUsername(), plan.getPlanCode(), opCode);
+            } else {
+                // Fallback 2: Any active config for this operator
+                List<RechargeCommissionConfig> allConfigs = rechargeCommissionConfigRepository
+                        .findByServiceTypeAndOperatorCode("MOBILE_RECHARGE", opCode);
+                Optional<RechargeCommissionConfig> anyActive = allConfigs.stream()
+                        .filter(c -> Boolean.TRUE.equals(c.getEnabled()) && c.getRetailerValue() != null && c.getRetailerValue().compareTo(BigDecimal.ZERO) > 0)
+                        .findFirst();
+                if (anyActive.isPresent()) {
+                    config = anyActive.get();
+                } else if (configOpt.isPresent() && Boolean.TRUE.equals(configOpt.get().getEnabled())) {
+                    config = configOpt.get();
+                }
+            }
+        }
+
+        if (config == null || !Boolean.TRUE.equals(config.getEnabled())) {
+            log.info("Mobile Recharge commission is disabled or not configured for operator: {} and plan: {}. Skipping distribution for txn: {}",
+                    opCode, plan.getPlanCode(), merchantRefNo);
+            return;
+        }
+
+        String mode = config.getCommissionMode() != null ? config.getCommissionMode().trim().toUpperCase() : "PERCENTAGE";
+        BigDecimal retVal = config.getRetailerValue() != null ? config.getRetailerValue() : BigDecimal.ZERO;
+        BigDecimal distVal = config.getDistributorValue() != null ? config.getDistributorValue() : BigDecimal.ZERO;
+        BigDecimal sdVal = config.getSuperDistributorValue() != null ? config.getSuperDistributorValue() : BigDecimal.ZERO;
+
+        BigDecimal retComm;
+        BigDecimal distComm;
+        BigDecimal sdComm;
+
+        if ("FIXED".equals(mode)) {
+            // Mode B: Fixed Rupee Commission per successful recharge
+            retComm = retVal.setScale(2, RoundingMode.HALF_UP);
+            distComm = distVal.setScale(2, RoundingMode.HALF_UP);
+            sdComm = sdVal.setScale(2, RoundingMode.HALF_UP);
+            log.info("Calculated Mobile Recharge FIXED commissions for txn {}: Ret(₹{}), Dist(₹{}), SD(₹{})",
+                    merchantRefNo, retComm, distComm, sdComm);
+        } else {
+            // Mode A: Percentage-based: Commission = Eligible Recharge Amount * Percentage / 100
+            BigDecimal hundred = new BigDecimal("100");
+            retComm = txnAmount.multiply(retVal).divide(hundred, 2, RoundingMode.HALF_UP);
+            distComm = txnAmount.multiply(distVal).divide(hundred, 2, RoundingMode.HALF_UP);
+            sdComm = txnAmount.multiply(sdVal).divide(hundred, 2, RoundingMode.HALF_UP);
+            log.info("Calculated Mobile Recharge PERCENTAGE commissions for txn {}: Ret({}% = ₹{}), Dist({}% = ₹{}), SD({}% = ₹{})",
+                    merchantRefNo, retVal, retComm, distVal, distComm, sdVal, sdComm);
+        }
+
+        // 4. Resolve Hierarchy with resilient multi-factor fallback
+        User distributor = null;
+        User superDistributor = null;
+
+        User parent = resolveParentUser(retailer);
+        if (parent != null) {
+            boolean isDist = parent.getRoles().stream()
+                    .anyMatch(r -> r.getName() == RoleName.DISTRIBUTOR);
+            boolean isSuperDist = parent.getRoles().stream()
+                    .anyMatch(r -> r.getName() == RoleName.SUPER_DISTRIBUTOR);
+
+            if (isDist) {
+                distributor = parent;
+                User grandParent = resolveParentUser(distributor);
+                if (grandParent != null && grandParent.getRoles().stream().anyMatch(r -> r.getName() == RoleName.SUPER_DISTRIBUTOR)) {
+                    superDistributor = grandParent;
+                }
+            } else if (isSuperDist) {
+                superDistributor = parent;
+            }
+        }
+
+        String ip = "127.0.0.1";
+        String operatorDisplay = config.getOperatorName() != null ? config.getOperatorName() : opCode;
+        String modeDisplay = "FIXED".equals(mode) ? ("₹" + retVal + " Fixed") : (retVal + "%");
+
+        // 5. Credit Retailer
+        if (retComm.compareTo(BigDecimal.ZERO) > 0) {
+            creditRechargeBeneficiary(
+                    retailer,
+                    "RETAILER",
+                    retailer,
+                    plan,
+                    config,
+                    recharge,
+                    txnAmount,
+                    retComm,
+                    retVal,
+                    mode,
+                    ip,
+                    "Mobile Recharge Commission (" + operatorDisplay + ") - ₹" + txnAmount + " (" + modeDisplay + ")"
+            );
+        }
+
+        // 6. Credit Distributor (if mapped in hierarchy)
+        if (distributor != null && distComm.compareTo(BigDecimal.ZERO) > 0) {
+            String distModeDisplay = "FIXED".equals(mode) ? ("₹" + distVal + " Fixed") : (distVal + "%");
+            creditRechargeBeneficiary(
+                    distributor,
+                    "DISTRIBUTOR",
+                    retailer,
+                    plan,
+                    config,
+                    recharge,
+                    txnAmount,
+                    distComm,
+                    distVal,
+                    mode,
+                    ip,
+                    "Mobile Recharge Commission (Distributor - " + operatorDisplay + ") - ₹" + txnAmount + " (" + distModeDisplay + ")"
+            );
+        }
+
+        // 7. Credit Super Distributor (if mapped in hierarchy)
+        if (superDistributor != null && sdComm.compareTo(BigDecimal.ZERO) > 0) {
+            String sdModeDisplay = "FIXED".equals(mode) ? ("₹" + sdVal + " Fixed") : (sdVal + "%");
+            creditRechargeBeneficiary(
+                    superDistributor,
+                    "SUPER_DISTRIBUTOR",
+                    retailer,
+                    plan,
+                    config,
+                    recharge,
+                    txnAmount,
+                    sdComm,
+                    sdVal,
+                    mode,
+                    ip,
+                    "Mobile Recharge Commission (Super Distributor - " + operatorDisplay + ") - ₹" + txnAmount + " (" + sdModeDisplay + ")"
+            );
+        }
+
+        log.info("Recharge commission distribution finished for txn {}: Retailer(₹{}), Distributor(₹{}), SuperDistributor(₹{})",
+                merchantRefNo, retComm, (distributor != null ? distComm : BigDecimal.ZERO), (superDistributor != null ? sdComm : BigDecimal.ZERO));
+    }
+
+    private void creditRechargeBeneficiary(
+            User beneficiary,
+            String role,
+            User retailer,
+            CommissionPlan plan,
+            RechargeCommissionConfig config,
+            Recharge recharge,
+            BigDecimal txnAmount,
+            BigDecimal commAmount,
+            BigDecimal appliedValue,
+            String mode,
+            String ip,
+            String narration
+    ) {
+        String commRef = generateCommissionReference();
+        String idempotencyKey = "COMM-" + recharge.getMerchantRefNo() + "-" + role + "-" + beneficiary.getId();
+
+        try {
+            // Credit wallet using enterprise wallet engine
+            walletService.creditForService(
+                    beneficiary.getId(),
+                    commAmount,
+                    narration,
+                    WalletTransactionContext.COMMISSION,
+                    "Mobile Recharge",
+                    ip,
+                    idempotencyKey
+            );
+
+            // Record in immutable commission audit ledger
+            CommissionTransaction commTxn = CommissionTransaction.builder()
+                    .commissionReference(commRef)
+                    .originalTransactionId(recharge.getMerchantRefNo())
+                    .serviceType("MOBILE_RECHARGE")
+                    .plan(plan)
+                    .planCode(plan != null ? plan.getPlanCode() : null)
+                    .commissionMode(mode)
+                    .operatorCode(recharge.getOperatorCode())
+                    .operatorName(config != null ? config.getOperatorName() : recharge.getOperatorCode())
+                    .appliedCommissionValue(appliedValue)
+                    .appliedPercentage("PERCENTAGE".equals(mode) ? appliedValue : null)
+                    .commissionBaseAmount(txnAmount)
+                    .transactionAmount(txnAmount)
+                    .beneficiaryUser(beneficiary)
+                    .beneficiaryRole(role)
+                    .retailerUser(retailer)
+                    .commissionAmount(commAmount)
+                    .mobileNo(recharge.getMobileNo())
+                    .status("SUCCESS")
+                    .remarks(narration)
+                    .createdAt(Instant.now())
+                    .build();
+
+            commissionTransactionRepository.save(commTxn);
+            log.info("Created Recharge commission ledger entry: ref={}, beneficiary={}, role={}, amount=₹{}, mode={}",
+                    commRef, beneficiary.getUsername(), role, commAmount, mode);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            log.warn("Recharge commission entry already exists for txn {}, role {}, user {}. Skipping duplicate.",
+                    recharge.getMerchantRefNo(), role, beneficiary.getId());
+        } catch (Exception e) {
+            log.error("Failed to credit Recharge commission for txn {}, user {}: {}",
+                    recharge.getMerchantRefNo(), beneficiary.getId(), e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CommissionDtos.RechargeOperatorDto> getRechargeOperators(String serviceCategory) {
+        String category = (serviceCategory != null && !serviceCategory.isBlank()) ? serviceCategory.trim().toUpperCase() : "MOBILE";
+        if ("DTH".equals(category)) {
+            // DTH is disabled / coming soon as per specification
+            return List.of(
+                    new CommissionDtos.RechargeOperatorDto("TATASKY", "Tata Play (Tata Sky)", "DTH", false, false, "PERCENTAGE", 0),
+                    new CommissionDtos.RechargeOperatorDto("AIRTEL_DTH", "Airtel Digital TV", "DTH", false, false, "PERCENTAGE", 0),
+                    new CommissionDtos.RechargeOperatorDto("DISH_TV", "Dish TV", "DTH", false, false, "PERCENTAGE", 0),
+                    new CommissionDtos.RechargeOperatorDto("VIDEOCON_D2H", "Videocon d2h", "DTH", false, false, "PERCENTAGE", 0),
+                    new CommissionDtos.RechargeOperatorDto("SUN_DIRECT", "Sun Direct", "DTH", false, false, "PERCENTAGE", 0)
+            );
+        }
+
+        // Authoritative mobile operators from provider catalog
+        Map<String, String> operatorMap = new LinkedHashMap<>();
+        if (appProperties.venusRecharge() != null && appProperties.venusRecharge().operators() != null) {
+            for (var op : appProperties.venusRecharge().operators()) {
+                operatorMap.put(op.operatorCode().trim().toUpperCase(), op.name());
+            }
+        }
+        if (operatorMap.isEmpty()) {
+            operatorMap.put("JRE", "Jio Recharge");
+            operatorMap.put("JTU", "Jio Topup");
+            operatorMap.put("ATL", "Airtel");
+            operatorMap.put("ACL", "Airtel Live");
+            operatorMap.put("VDF", "Vi (Vodafone Idea)");
+            operatorMap.put("BNT", "BSNL Topup");
+            operatorMap.put("BNV", "BSNL Validity");
+            operatorMap.put("VCT", "Videocon Topup");
+            operatorMap.put("VCV", "Videocon Validity");
+        }
+
+        List<CommissionDtos.RechargeOperatorDto> result = new ArrayList<>();
+        for (Map.Entry<String, String> entry : operatorMap.entrySet()) {
+            String code = entry.getKey();
+            String name = entry.getValue();
+
+            List<RechargeCommissionConfig> configs = rechargeCommissionConfigRepository.findByServiceTypeAndOperatorCode("MOBILE_RECHARGE", code);
+            boolean configured = !configs.isEmpty();
+            boolean anyEnabled = configs.stream().anyMatch(c -> Boolean.TRUE.equals(c.getEnabled()));
+            String commMode = configs.isEmpty() ? "PERCENTAGE" : configs.get(0).getCommissionMode();
+            int activePlans = (int) configs.stream().filter(c -> Boolean.TRUE.equals(c.getEnabled())).count();
+
+            result.add(new CommissionDtos.RechargeOperatorDto(
+                    code,
+                    name,
+                    "MOBILE",
+                    configured,
+                    anyEnabled,
+                    commMode,
+                    activePlans
+            ));
+        }
+
+        return result;
+    }
+
+    @Override
+    @Transactional
+    public List<CommissionDtos.RechargeCommissionConfigDto> getRechargeConfigs(String serviceType, String operatorCode) {
+        String st = (serviceType != null && !serviceType.isBlank()) ? serviceType.trim().toUpperCase() : "MOBILE_RECHARGE";
+        String op = (operatorCode != null && !operatorCode.isBlank()) ? operatorCode.trim().toUpperCase() : "JRE";
+
+        List<RechargeCommissionConfig> configs = new ArrayList<>(rechargeCommissionConfigRepository.findByServiceTypeAndOperatorCodeWithPlan(st, op));
+
+        // If configs are missing for any of the 4 membership plans, ensure they exist
+        List<CommissionPlan> aepsPlans = commissionPlanRepository.findByServiceTypeOrderByPriceAsc("AEPS_1");
+        if (configs.size() < aepsPlans.size()) {
+            Set<UUID> presentPlanIds = configs.stream().map(c -> c.getPlan().getId()).collect(Collectors.toSet());
+            String opName = resolveOperatorName(op);
+
+            for (CommissionPlan p : aepsPlans) {
+                if (!presentPlanIds.contains(p.getId())) {
+                    BigDecimal defRet = "FREE".equalsIgnoreCase(p.getPlanCode()) ? new BigDecimal("1.0000")
+                            : "PLAN_2999".equalsIgnoreCase(p.getPlanCode()) ? new BigDecimal("1.5000")
+                            : "PLAN_4999".equalsIgnoreCase(p.getPlanCode()) ? new BigDecimal("2.0000")
+                            : new BigDecimal("2.5000");
+
+                    RechargeCommissionConfig newCfg = RechargeCommissionConfig.builder()
+                            .serviceType(st)
+                            .operatorCode(op)
+                            .operatorName(opName)
+                            .commissionMode("PERCENTAGE")
+                            .plan(p)
+                            .planCode(p.getPlanCode())
+                            .retailerValue(defRet)
+                            .distributorValue(new BigDecimal("0.2500"))
+                            .superDistributorValue(new BigDecimal("0.2500"))
+                            .enabled(true)
+                            .createdAt(Instant.now())
+                            .updatedAt(Instant.now())
+                            .build();
+
+                    try {
+                        newCfg = rechargeCommissionConfigRepository.save(newCfg);
+                        configs.add(newCfg);
+                    } catch (Exception ignored) {}
+                }
+            }
+            configs.sort(Comparator.comparing(c -> c.getPlan().getPrice()));
+        }
+
+        return configs.stream().map(c -> new CommissionDtos.RechargeCommissionConfigDto(
+                c.getId(),
+                c.getServiceType(),
+                c.getOperatorCode(),
+                c.getOperatorName(),
+                c.getCommissionMode(),
+                c.getPlan().getId(),
+                c.getPlanCode(),
+                c.getPlan().getPlanName(),
+                c.getPlan().getPrice(),
+                c.getRetailerValue(),
+                c.getDistributorValue(),
+                c.getSuperDistributorValue(),
+                c.getTotalValue(),
+                c.getEnabled(),
+                c.getUpdatedAt()
+        )).toList();
+    }
+
+    @Override
+    @Transactional
+    public CommissionDtos.RechargeCommissionConfigDto updateRechargeConfig(
+            UUID configId,
+            CommissionDtos.UpdateRechargeConfigRequest request,
+            UUID adminId,
+            String ipAddress
+    ) {
+        enforceAdmin(adminId);
+        User admin = userRepository.findById(adminId).orElse(null);
+
+        RechargeCommissionConfig config = rechargeCommissionConfigRepository.findById(configId)
+                .orElseThrow(() -> new IllegalArgumentException("Recharge commission configuration not found: " + configId));
+
+        String mode = request.commissionMode() != null ? request.commissionMode().trim().toUpperCase() : "PERCENTAGE";
+        if (!"PERCENTAGE".equals(mode) && !"FIXED".equals(mode)) {
+            throw new IllegalArgumentException("Invalid commission mode: " + request.commissionMode() + ". Must be PERCENTAGE or FIXED.");
+        }
+
+        BigDecimal ret = request.retailerValue() != null ? request.retailerValue() : BigDecimal.ZERO;
+        BigDecimal dist = request.distributorValue() != null ? request.distributorValue() : BigDecimal.ZERO;
+        BigDecimal sd = request.superDistributorValue() != null ? request.superDistributorValue() : BigDecimal.ZERO;
+
+        if (ret.compareTo(BigDecimal.ZERO) < 0 || dist.compareTo(BigDecimal.ZERO) < 0 || sd.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Commission values cannot be negative.");
+        }
+
+        if ("PERCENTAGE".equals(mode)) {
+            if (ret.compareTo(new BigDecimal("100")) > 0 || dist.compareTo(new BigDecimal("100")) > 0 || sd.compareTo(new BigDecimal("100")) > 0) {
+                throw new IllegalArgumentException("Commission percentage cannot exceed 100%.");
+            }
+            if (ret.add(dist).add(sd).compareTo(new BigDecimal("100")) > 0) {
+                throw new IllegalArgumentException("Total combined commission percentage (" + ret.add(dist).add(sd) + "%) cannot exceed 100%.");
+            }
+        } else {
+            // Fixed mode: upper safety limit of ₹5,000 max fixed commission per recharge
+            if (ret.compareTo(new BigDecimal("5000")) > 0 || dist.compareTo(new BigDecimal("5000")) > 0 || sd.compareTo(new BigDecimal("5000")) > 0) {
+                throw new IllegalArgumentException("Fixed commission amount exceeds maximum business limit of ₹5,000.");
+            }
+        }
+
+        // Record immutable audit entry
+        RechargeCommissionConfigAudit audit = RechargeCommissionConfigAudit.builder()
+                .configId(config.getId())
+                .serviceType(config.getServiceType())
+                .operatorCode(config.getOperatorCode())
+                .planCode(config.getPlanCode())
+                .adminUserId(adminId)
+                .adminUsername(admin != null ? admin.getUsername() : "admin")
+                .prevCommissionMode(config.getCommissionMode())
+                .prevRetailerValue(config.getRetailerValue())
+                .prevDistributorValue(config.getDistributorValue())
+                .prevSuperDistributorValue(config.getSuperDistributorValue())
+                .prevEnabled(config.getEnabled())
+                .newCommissionMode(mode)
+                .newRetailerValue(ret)
+                .newDistributorValue(dist)
+                .newSuperDistributorValue(sd)
+                .newEnabled(request.enabled() != null ? request.enabled() : config.getEnabled())
+                .ipAddress(ipAddress)
+                .createdAt(Instant.now())
+                .build();
+        rechargeCommissionConfigAuditRepository.save(audit);
+
+        // Update config
+        config.setCommissionMode(mode);
+        config.setRetailerValue(ret);
+        config.setDistributorValue(dist);
+        config.setSuperDistributorValue(sd);
+        if (request.enabled() != null) {
+            config.setEnabled(request.enabled());
+        }
+        config.setUpdatedBy(admin);
+        config.setUpdatedAt(Instant.now());
+
+        RechargeCommissionConfig saved = rechargeCommissionConfigRepository.save(config);
+
+        return new CommissionDtos.RechargeCommissionConfigDto(
+                saved.getId(),
+                saved.getServiceType(),
+                saved.getOperatorCode(),
+                saved.getOperatorName(),
+                saved.getCommissionMode(),
+                saved.getPlan().getId(),
+                saved.getPlanCode(),
+                saved.getPlan().getPlanName(),
+                saved.getPlan().getPrice(),
+                saved.getRetailerValue(),
+                saved.getDistributorValue(),
+                saved.getSuperDistributorValue(),
+                saved.getTotalValue(),
+                saved.getEnabled(),
+                saved.getUpdatedAt()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CommissionDtos.RechargeAuditDto> getRechargeAudits(String serviceType, String operatorCode) {
+        String st = (serviceType != null && !serviceType.isBlank()) ? serviceType.trim().toUpperCase() : "MOBILE_RECHARGE";
+        String op = (operatorCode != null && !operatorCode.isBlank()) ? operatorCode.trim().toUpperCase() : "JRE";
+        return rechargeCommissionConfigAuditRepository.findByServiceTypeAndOperatorCodeOrderByCreatedAtDesc(st, op)
+                .stream().map(a -> new CommissionDtos.RechargeAuditDto(
+                        a.getId(),
+                        a.getServiceType(),
+                        a.getOperatorCode(),
+                        a.getPlanCode(),
+                        a.getAdminUsername(),
+                        a.getPrevCommissionMode(),
+                        a.getPrevRetailerValue(),
+                        a.getPrevDistributorValue(),
+                        a.getPrevSuperDistributorValue(),
+                        a.getPrevEnabled(),
+                        a.getNewCommissionMode(),
+                        a.getNewRetailerValue(),
+                        a.getNewDistributorValue(),
+                        a.getNewSuperDistributorValue(),
+                        a.getNewEnabled(),
+                        a.getIpAddress(),
+                        a.getCreatedAt()
+                )).toList();
+    }
+
+    @Override
+    @Transactional
+    public int reconcileUncreditedRechargeCommissions() {
+        log.info("Running automated reconciliation for uncredited Mobile Recharge commissions...");
+        List<Recharge> successRecharges = rechargeRepository.findAll().stream()
+                .filter(r -> r.getStatus() == TransactionStatus.SUCCESS)
+                .toList();
+
+        int creditedCount = 0;
+        for (Recharge r : successRecharges) {
+            String ref = r.getMerchantRefNo();
+            if (ref != null && !commissionTransactionRepository.existsByOriginalTransactionId(ref)) {
+                try {
+                    processRechargeCommission(r);
+                    if (commissionTransactionRepository.existsByOriginalTransactionId(ref)) {
+                        creditedCount++;
+                        log.info("Successfully reconciled and credited missing commission for Mobile Recharge txn: {}", ref);
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to reconcile commission for Mobile Recharge txn {}: {}", ref, e.getMessage());
+                }
+            }
+        }
+        log.info("Completed Mobile Recharge commission reconciliation. Credited {} uncredited transactions.", creditedCount);
+        return creditedCount;
+    }
+
     @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
     public void onApplicationReady() {
         try {
             reconcileUncreditedBbpsCommissions();
         } catch (Exception e) {
             log.error("Error running startup BBPS commission reconciliation: {}", e.getMessage(), e);
+        }
+        try {
+            reconcileUncreditedRechargeCommissions();
+        } catch (Exception e) {
+            log.error("Error running startup Recharge commission reconciliation: {}", e.getMessage(), e);
         }
     }
 }

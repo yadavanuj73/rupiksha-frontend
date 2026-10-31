@@ -59,6 +59,21 @@ public class CommissionTransaction {
     @Column(name = "bbps_category", length = 50)
     private String bbpsCategory;
 
+    @Column(name = "commission_mode", length = 20)
+    private String commissionMode; // "PERCENTAGE" or "FIXED"
+
+    @Column(name = "operator_code", length = 20)
+    private String operatorCode; // e.g. "JRE", "ATL"
+
+    @Column(name = "operator_name", length = 100)
+    private String operatorName; // e.g. "Jio Recharge", "Airtel"
+
+    @Column(name = "applied_commission_value", precision = 18, scale = 4)
+    private BigDecimal appliedCommissionValue; // raw percentage or fixed rupee applied
+
+    @Column(name = "mobile_no", length = 20)
+    private String mobileNo;
+
     @Column(name = "transaction_amount", nullable = false, precision = 18, scale = 2)
     private BigDecimal transactionAmount;
 

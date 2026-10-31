@@ -10,6 +10,7 @@ import com.rupiksha.backend.integration.recharge.RechargeTransferProvider;
 import com.rupiksha.backend.repository.TxnRepository;
 import com.rupiksha.backend.repository.RechargeRepository;
 import com.rupiksha.backend.repository.UserServiceRepository;
+import com.rupiksha.backend.service.CommissionService;
 import com.rupiksha.backend.service.RechargeTransferService;
 import com.rupiksha.backend.service.WalletService;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class RechargeTransferServiceImpl implements RechargeTransferService {
     private final UserServiceRepository userServiceRepository;
     private final WalletService walletService;
     private final KycAccessGuard kycAccessGuard;
+    private final CommissionService commissionService;
 
     @Override
     @Transactional
@@ -230,7 +232,13 @@ public class RechargeTransferServiceImpl implements RechargeTransferService {
             recharge.setOrderNo(String.valueOf(providerRes.raw().getOrDefault("orderNo", providerRes.providerTxnId())));
             recharge.setDescription(providerRes.message());
             recharge.setCompletedAt(Instant.now());
-            rechargeRepository.save(recharge);
+            recharge = rechargeRepository.save(recharge);
+
+            try {
+                commissionService.processRechargeCommission(recharge);
+            } catch (Exception ce) {
+                log.error("Failed to process commission for successful recharge Ref: {}", merchantRefNo, ce);
+            }
 
             return new ProviderTxnDtos.TxnResponse(
                     true,
