@@ -8,7 +8,7 @@ import {
     Camera, Eye, IndianRupee, ChevronRight, Wallet, TrendingUp, History, ArrowRight,
     Building2, UserPlus, UserMinus, ShieldCheck, Link2, Crown, ChevronDown, Mail, MapPin, Search, Smartphone, Clock, LayoutGrid, User, Activity, Lock, Unlock, LogOut, Terminal, SendHorizontal,
     ArrowDownCircle, ArrowUpCircle, Snowflake, RotateCcw, BookOpen, FileSpreadsheet,
-    ArrowLeftRight, Landmark, Fingerprint
+    ArrowLeftRight, Landmark, Fingerprint, Layers
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { dataService, BACKEND_URL } from '../services/dataService';
@@ -99,6 +99,12 @@ const Admin = () => {
     useEffect(() => {
         if (activeSection.startsWith('Txn-') || activeSection === 'Transactions-Manager') {
             setTransactionsDropdownOpen(true);
+        }
+    }, [activeSection]);
+    const [commissionDropdownOpen, setCommissionDropdownOpen] = useState(() => initialSection === 'Commission' || initialSection.startsWith('Commission-'));
+    useEffect(() => {
+        if (activeSection === 'Commission' || activeSection.startsWith('Commission-')) {
+            setCommissionDropdownOpen(true);
         }
     }, [activeSection]);
     const [expandedSA, setExpandedSA] = useState(null); // ID of expanded SUPER_DISTRIBUTOR row
@@ -3042,11 +3048,16 @@ const Admin = () => {
     const OPERATIONS_NAV = [
         ...((currentUser?.role === 'ADMIN' || isAdminUser) ? [
             { id: 'Wallet-Manager', icon: Wallet, label: 'Wallet Manager', isDropdown: true },
-            { id: 'Commission', icon: IndianRupee, label: 'Commission Plan' },
+            { id: 'Commission-Manager', icon: IndianRupee, label: 'Commission Plan', isDropdown: true },
             { id: 'PayoutCharges', icon: SendHorizontal, label: 'Payout Charges' },
             { id: 'IdCharges', icon: CreditCard, label: 'Id Charges' },
             { id: 'Transactions-Manager', icon: ArrowLeftRight, label: 'Transactions', isDropdown: true },
         ] : []),
+    ];
+
+    const COMMISSION_SUB_ITEMS = [
+        { id: 'Commission-Plan', label: 'Commission Plan', icon: Layers },
+        { id: 'Commission-Audit', label: 'Audit Ledger', icon: History },
     ];
 
     const TRANSACTIONS_SUB_ITEMS = [
@@ -3149,6 +3160,9 @@ const Admin = () => {
         },
     ];
     const activeLabel = WALLET_SUB_ITEMS.find(w => w.id === activeSection)?.label
+        || COMMISSION_SUB_ITEMS.find(c => c.id === activeSection)?.label
+        || (activeSection === 'Commission' ? 'Commission Plan' : null)
+        || (activeSection === 'Commission-Manager' ? 'Commission Plan' : null)
         || TRANSACTIONS_SUB_ITEMS.find(t => t.id === activeSection)?.label
         || (activeSection === 'Transactions-Manager' ? 'Transactions' : null)
         || ANALYTICS_NAV.find(n => n.id === activeSection)?.label
@@ -3342,6 +3356,95 @@ const Admin = () => {
                                                                                     {pendingFundRequestsCount}
                                                                                 </span>
                                                                             )}
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
+                                                </div>
+                                            );
+                                        }
+
+                                        if (item.isDropdown && item.id === 'Commission-Manager') {
+                                            const isCommissionActive = activeSection === 'Commission' || activeSection.startsWith('Commission-');
+                                            return (
+                                                <div key={item.id} className="space-y-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (!isExpanded) {
+                                                                setSidebarExpanded(true);
+                                                                setCommissionDropdownOpen(true);
+                                                            } else {
+                                                                setCommissionDropdownOpen(prev => !prev);
+                                                                if (!isCommissionActive) {
+                                                                    setActiveSectionPersisted('Commission-Plan');
+                                                                }
+                                                            }
+                                                        }}
+                                                        className={`w-full flex items-center rounded-2xl transition-all duration-200 cursor-pointer ${
+                                                            isExpanded ? 'justify-between px-3 py-2.5' : 'justify-center p-2.5'
+                                                        } ${
+                                                            isCommissionActive
+                                                                ? 'bg-[#fcfcf7] border shadow-sm border-[#f1f5f9]'
+                                                                : 'hover:bg-slate-50'
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-center gap-4">
+                                                            <item.icon size={18} className={isCommissionActive ? 'text-[#18181b]' : 'text-[#94a3b8]'} />
+                                                            {isExpanded && (
+                                                                <span className={`text-[14px] font-bold ${isCommissionActive ? 'text-[#18181b]' : 'text-[#64748b]'}`}>
+                                                                    {item.label}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        {isExpanded && (
+                                                            <div className="flex items-center gap-1.5">
+                                                                <ChevronDown
+                                                                    size={14}
+                                                                    className={`text-slate-400 transition-transform duration-200 ${
+                                                                        commissionDropdownOpen ? 'rotate-180' : ''
+                                                                    }`}
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </button>
+
+                                                    {/* Submenu Dropdown containing Commission Plan & Audit Ledger */}
+                                                    <AnimatePresence>
+                                                        {isExpanded && commissionDropdownOpen && (
+                                                            <motion.div
+                                                                initial={{ opacity: 0, height: 0 }}
+                                                                animate={{ opacity: 1, height: 'auto' }}
+                                                                exit={{ opacity: 0, height: 0 }}
+                                                                transition={{ duration: 0.2 }}
+                                                                className="overflow-hidden pl-2 pr-1 py-1 space-y-0.5 border-l-2 border-slate-200/70 ml-4.5 my-1"
+                                                            >
+                                                                {COMMISSION_SUB_ITEMS.map(sub => {
+                                                                    const isSubActive = activeSection === sub.id || (sub.id === 'Commission-Plan' && activeSection === 'Commission');
+                                                                    return (
+                                                                        <button
+                                                                            key={sub.id}
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                setActiveSectionPersisted(sub.id);
+                                                                                setShowMobileSidebar(false);
+                                                                                setSidebarExpanded(false);
+                                                                            }}
+                                                                            className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left transition-all cursor-pointer ${
+                                                                                isSubActive
+                                                                                    ? 'bg-[#fcfcf7] border shadow-sm border-[#e2e8f0] text-[#18181b] font-black'
+                                                                                    : 'text-[#64748b] hover:text-[#18181b] hover:bg-slate-50 font-bold'
+                                                                            }`}
+                                                                        >
+                                                                            <div className="flex items-center gap-2.5 truncate">
+                                                                                <sub.icon
+                                                                                    size={13}
+                                                                                    className={isSubActive ? 'text-indigo-600 shrink-0' : 'text-slate-400 shrink-0'}
+                                                                                />
+                                                                                <span className="text-[11.5px] truncate">{sub.label}</span>
+                                                                            </div>
                                                                         </button>
                                                                     );
                                                                 })}
@@ -3661,9 +3764,9 @@ const Admin = () => {
                                 )}
 
                                 {/* Operations: Commission Management */}
-                                {activeSection === 'Commission' && (
+                                {(activeSection === 'Commission' || activeSection.startsWith('Commission-')) && (
                                     (currentUser?.role === 'ADMIN' || isAdminUser) ? (
-                                        <CommissionManagement />
+                                        <CommissionManagement activeTab={activeSection === 'Commission-Audit' ? 'history' : 'config'} />
                                     ) : (
                                         <UnauthorizedAccess sectionName={activeLabel} />
                                     )

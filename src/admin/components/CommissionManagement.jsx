@@ -12,7 +12,7 @@ import { ChevronDown, ArrowLeft } from 'lucide-react';
 import { commissionService } from '../../services/commissionService';
 import { BBPS_CATEGORIES } from '../../retailer/data/bbpsCategories';
 
-export default function CommissionManagement() {
+export default function CommissionManagement({ activeTab: propActiveTab = 'config' }) {
     // ── MODEL SWITCHER: 'AEPS_1', 'BBPS' or 'RECHARGE'
     const [commissionModel, setCommissionModel] = useState('AEPS_1'); // 'AEPS_1' | 'BBPS' | 'RECHARGE'
     const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
@@ -132,7 +132,13 @@ export default function CommissionManagement() {
     const [saving, setSaving] = useState(false);
     const [reconciling, setReconciling] = useState(false);
     const [notification, setNotification] = useState(null); // { type: 'success' | 'error' | 'info', message: '' }
-    const [activeTab, setActiveTab] = useState('config'); // 'config' | 'history'
+    const [activeTab, setActiveTab] = useState(propActiveTab || 'config'); // 'config' | 'history'
+
+    useEffect(() => {
+        if (propActiveTab) {
+            setActiveTab(propActiveTab);
+        }
+    }, [propActiveTab]);
 
     // ── HISTORY STATE ───────────────────────────────────────────────────────────
     const [historyList, setHistoryList] = useState([]);
@@ -967,52 +973,6 @@ export default function CommissionManagement() {
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto font-['Inter',sans-serif]">
-            {/* ── TOP HEADER & TAB BAR ────────────────────────────────────────── */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
-                <div className="flex items-center gap-3.5">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 via-blue-600 to-sky-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 shrink-0">
-                        <IndianRupee size={24} strokeWidth={2.5} />
-                    </div>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-black bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-300">
-                                Operations &bull; Master
-                            </span>
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-black bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-300">
-                                Multi-Model Architecture
-                            </span>
-                        </div>
-                        <h1 className="text-xl md:text-2xl font-black text-black tracking-tight mt-0.5">
-                            Commission Management
-                        </h1>
-                    </div>
-                </div>
-
-                {/* Main View Tabs (Config vs History) */}
-                <div className="inline-flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-300 self-start sm:self-center">
-                    <button
-                        onClick={() => setActiveTab('config')}
-                        className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'config'
-                                ? 'bg-black text-white shadow-md'
-                                : 'text-black hover:text-blue-700'
-                            }`}
-                    >
-                        <Layers size={14} />
-                        Plan Config
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('history')}
-                        className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'history'
-                                ? 'bg-black text-white shadow-md'
-                                : 'text-black hover:text-blue-700'
-                            }`}
-                    >
-                        <History size={14} />
-                        Audit Ledger
-                    </button>
-                </div>
-            </div>
-
             {/* ── NOTIFICATION TOAST ────────────────────────────────────────────── */}
             <AnimatePresence>
                 {notification && (
