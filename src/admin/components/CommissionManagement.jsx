@@ -1017,45 +1017,8 @@ export default function CommissionManagement() {
                     rechargeStep === 'select-operator' ? (
                         /* ── RECHARGE STEP 1: OPERATOR SELECTION SCREEN ───────────────── */
                         <div className="space-y-6">
-                            {/* Recharge Header & Controls */}
+                            {/* Recharge Controls */}
                             <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-sm space-y-6">
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
-                                    <div>
-                                        <div className="flex items-center gap-3">
-                                            <h2 className="text-xl md:text-2xl font-black text-black tracking-tight">
-                                                Mobile & DTH Recharge Commission
-                                            </h2>
-                                            <span className="text-[10px] font-black uppercase tracking-wider text-black bg-blue-50 px-3 py-1 rounded-full border border-blue-300 shadow-2xs">
-                                                Flexible % / Fixed ₹
-                                            </span>
-                                        </div>
-                                        <p className="text-xs font-bold text-slate-800 mt-1">
-                                            Configure operator commissions with Percentage (%) or Fixed Rupee (₹) modes across all membership plans.
-                                        </p>
-                                    </div>
-
-                                    {/* Model Switcher Dropdown */}
-                                    <div className="w-full sm:w-60">
-                                        <label className="text-[10px] font-black uppercase text-black tracking-wider block mb-1">
-                                            Commission Model
-                                        </label>
-                                        <div className="relative">
-                                            <select
-                                                value={commissionModel}
-                                                onChange={(e) => handleModelChange(e.target.value)}
-                                                className="w-full bg-slate-50 border border-slate-300 rounded-2xl px-3.5 py-2.5 text-xs font-black text-black focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all appearance-none cursor-pointer pr-9 shadow-2xs"
-                                            >
-                                                {COMMISSION_MODELS.map(m => (
-                                                    <option key={m.id} value={m.id}>
-                                                        {m.label} ({m.sublabel})
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-black pointer-events-none" />
-                                        </div>
-                                    </div>
-                                </div>
-
                                 {/* ── SERVICE CATEGORY SELECTOR (Mobile Recharge vs DTH Recharge) ── */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     {/* Category A: Mobile Recharge */}
@@ -1149,7 +1112,7 @@ export default function CommissionManagement() {
                                 ) : (
                                     /* MOBILE RECHARGE OPERATOR CATALOG */
                                     <div className="space-y-4">
-                                        {/* Search & Actions Bar */}
+                                        {/* Search Bar */}
                                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                             <div className="relative flex-1 max-w-md">
                                                 <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -1160,17 +1123,6 @@ export default function CommissionManagement() {
                                                     onChange={(e) => setRechargeSearch(e.target.value)}
                                                     className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-2xl text-xs font-black text-black placeholder:text-slate-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 shadow-2xs"
                                                 />
-                                            </div>
-                                            <div className="flex items-center gap-2 self-end sm:self-auto">
-                                                <button
-                                                    onClick={handleReconcileRecharge}
-                                                    disabled={reconciling}
-                                                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 text-xs font-black transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
-                                                    title="Reconcile missing commissions for completed mobile recharges"
-                                                >
-                                                    <Sparkles size={14} className={reconciling ? 'animate-spin text-blue-600' : 'text-blue-600'} />
-                                                    <span>{reconciling ? 'Reconciling...' : 'Reconcile Commissions'}</span>
-                                                </button>
                                             </div>
                                         </div>
 
@@ -1245,8 +1197,8 @@ export default function CommissionManagement() {
                         /* ── RECHARGE STEP 2: OPERATOR PLAN CONFIGURATION ─────────────── */
                         <div className="space-y-6">
                             {/* Navigation & Operator Header */}
-                            <div className="bg-white rounded-3xl p-5 md:p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                <div className="flex items-center gap-3">
+                            <div className="bg-white rounded-3xl p-5 md:p-6 border border-slate-200 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                                <div className="flex items-center gap-3 min-w-0">
                                     <button
                                         type="button"
                                         onClick={() => setRechargeStep('select-operator')}
@@ -1255,12 +1207,12 @@ export default function CommissionManagement() {
                                     >
                                         <ArrowLeft size={18} />
                                     </button>
-                                    <div>
-                                        <div className="flex items-center gap-2.5">
-                                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-[11px] shadow-2xs ${getOperatorStyle(selectedOperatorCode).bg} ${getOperatorStyle(selectedOperatorCode).text}`}>
+                                    <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2.5">
+                                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-[11px] shadow-2xs shrink-0 ${getOperatorStyle(selectedOperatorCode).bg} ${getOperatorStyle(selectedOperatorCode).text}`}>
                                                 {selectedOperatorCode}
                                             </div>
-                                            <h2 className="text-lg md:text-xl font-black text-black">
+                                            <h2 className="text-lg md:text-xl font-black text-black truncate">
                                                 {selectedOperatorName} Commission
                                             </h2>
                                             <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-blue-100 text-blue-950 border border-blue-300">
@@ -1273,8 +1225,39 @@ export default function CommissionManagement() {
                                     </div>
                                 </div>
 
-                                {/* Quick Switch Operator Dropdown */}
-                                <div className="flex items-center gap-3 self-end md:self-auto">
+                                {/* Calculation Mode Toggle & Operator Dropdown */}
+                                <div className="flex flex-wrap items-center gap-3 shrink-0">
+                                    {/* Two Mode Toggles: Percentage & Fixed Rate */}
+                                    <div className="inline-flex items-center p-1 bg-slate-100 border border-slate-200 rounded-2xl">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRechargeModeChange('PERCENTAGE')}
+                                            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                                                isRechargePercentage
+                                                    ? 'bg-blue-600 text-white shadow-xs'
+                                                    : 'text-slate-700 hover:text-black hover:bg-slate-200/60'
+                                            }`}
+                                            title="Distribute commission as percentage of recharge"
+                                        >
+                                            <Percent size={13} />
+                                            <span>Percentage (%)</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRechargeModeChange('FIXED')}
+                                            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                                                !isRechargePercentage
+                                                    ? 'bg-blue-600 text-white shadow-xs'
+                                                    : 'text-slate-700 hover:text-black hover:bg-slate-200/60'
+                                            }`}
+                                            title="Distribute commission as fixed rupee amount"
+                                        >
+                                            <IndianRupee size={13} />
+                                            <span>Fixed Rate (₹)</span>
+                                        </button>
+                                    </div>
+
+                                    {/* Quick Switch Operator Dropdown */}
                                     <div className="w-48 sm:w-56">
                                         <div className="relative">
                                             <select
@@ -1294,17 +1277,6 @@ export default function CommissionManagement() {
                                             <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-black pointer-events-none" />
                                         </div>
                                     </div>
-
-                                    <button
-                                        type="button"
-                                        onClick={handleReconcileRecharge}
-                                        disabled={reconciling}
-                                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 text-xs font-black transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
-                                        title="Scan and credit missing commissions"
-                                    >
-                                        <Sparkles size={14} className={reconciling ? 'animate-spin text-blue-600' : 'text-blue-600'} />
-                                        <span className="hidden sm:inline">{reconciling ? 'Reconciling...' : 'Reconcile'}</span>
-                                    </button>
                                 </div>
                             </div>
 
@@ -1316,8 +1288,8 @@ export default function CommissionManagement() {
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                                    {/* Left Column: Plan Selectors, Mode Switcher & Inputs */}
-                                    <div className="lg:col-span-5 space-y-6">
+                                    {/* Left Column: Membership Plans & Live Commission Simulator */}
+                                    <div className="lg:col-span-6 space-y-6">
                                         {/* 1. Four Membership Plans Selector */}
                                         <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
                                             <div className="flex items-center justify-between">
@@ -1366,61 +1338,105 @@ export default function CommissionManagement() {
                                             </div>
                                         </div>
 
-                                        {/* 2. Commission Calculation Mode Selector */}
-                                        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-3">
-                                            <div className="flex items-center justify-between">
-                                                <label className="text-xs font-black uppercase text-black tracking-wider block">
-                                                    Calculation Mode
-                                                </label>
-                                                <span className={`text-[9.5px] font-black uppercase px-2 py-0.5 rounded-md border ${
-                                                    isRechargePercentage
-                                                        ? 'bg-emerald-50 text-emerald-950 border-emerald-300'
-                                                        : 'bg-amber-50 text-amber-950 border-amber-300'
-                                                }`}>
-                                                    {isRechargePercentage ? 'Percentage Mode' : 'Fixed Rupee Mode'}
-                                                </span>
+                                        {/* 2. Live Simulation Card */}
+                                        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                                                <div>
+                                                    <h3 className="text-base font-black text-black flex items-center gap-2">
+                                                        <Calculator size={18} className="text-blue-600" />
+                                                        Live Commission Simulator
+                                                    </h3>
+                                                    <p className="text-xs font-bold text-slate-700 mt-0.5">
+                                                        Real-time preview of wallet earnings for a successful recharge.
+                                                    </p>
+                                                </div>
+
+                                                {/* Amount Input */}
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    <span className="text-xs font-black text-black">Recharge:</span>
+                                                    <div className="relative w-28">
+                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-600">₹</span>
+                                                        <input
+                                                            type="number"
+                                                            value={simulatedRechargeAmount}
+                                                            onChange={(e) => setSimulatedRechargeAmount(e.target.value)}
+                                                            className="w-full pl-6 pr-2 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-black text-black focus:bg-white focus:outline-none"
+                                                        />
+                                                    </div>
+                                                </div>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleRechargeModeChange('PERCENTAGE')}
-                                                    className={`p-3 rounded-2xl border font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                                                        isRechargePercentage
-                                                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                                                            : 'bg-slate-50 text-black border-slate-200 hover:bg-slate-100'
-                                                    }`}
-                                                >
-                                                    <Percent size={14} />
-                                                    <span>Percentage (%)</span>
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleRechargeModeChange('FIXED')}
-                                                    className={`p-3 rounded-2xl border font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                                                        !isRechargePercentage
-                                                            ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                                                            : 'bg-slate-50 text-black border-slate-200 hover:bg-slate-100'
-                                                    }`}
-                                                >
-                                                    <IndianRupee size={14} />
-                                                    <span>Fixed Amount (₹)</span>
-                                                </button>
+                                            {/* Breakdown Cards */}
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                                <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-200">
+                                                    <span className="text-[10px] font-black uppercase text-blue-950 block">Retailer Earns</span>
+                                                    <p className="text-lg font-black font-mono text-blue-950 mt-1">
+                                                        ₹{simRechargeRetailer.toFixed(2)}
+                                                    </p>
+                                                    <span className="text-[10px] font-bold text-blue-800">
+                                                        {isRechargePercentage ? `${rechargeFormData.retailerValue}%` : 'Fixed ₹'}
+                                                    </span>
+                                                </div>
+
+                                                <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200">
+                                                    <span className="text-[10px] font-black uppercase text-amber-950 block">Distributor</span>
+                                                    <p className="text-lg font-black font-mono text-amber-950 mt-1">
+                                                        ₹{simRechargeDistributor.toFixed(2)}
+                                                    </p>
+                                                    <span className="text-[10px] font-bold text-amber-800">
+                                                        {isRechargePercentage ? `${rechargeFormData.distributorValue}%` : 'Fixed ₹'}
+                                                    </span>
+                                                </div>
+
+                                                <div className="p-4 rounded-2xl bg-purple-50/70 border border-purple-200">
+                                                    <span className="text-[10px] font-black uppercase text-purple-950 block">Super Dist.</span>
+                                                    <p className="text-lg font-black font-mono text-purple-950 mt-1">
+                                                        ₹{simRechargeSuperDist.toFixed(2)}
+                                                    </p>
+                                                    <span className="text-[10px] font-bold text-purple-800">
+                                                        {isRechargePercentage ? `${rechargeFormData.superDistributorValue}%` : 'Fixed ₹'}
+                                                    </span>
+                                                </div>
+
+                                                <div className="p-4 rounded-2xl bg-slate-900 text-white shadow-xs">
+                                                    <span className="text-[10px] font-bold uppercase text-slate-300 block">Total Disbursed</span>
+                                                    <p className="text-lg font-black font-mono text-emerald-400 mt-1">
+                                                        ₹{simRechargeTotal.toFixed(2)}
+                                                    </p>
+                                                    <span className="text-[10px] font-bold text-slate-300">
+                                                        {isRechargePercentage ? `${rechargeTotalValue.toFixed(2)}% Total` : 'Fixed Total'}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <p className="text-[11px] font-bold text-slate-700">
-                                                {isRechargePercentage
-                                                    ? 'Calculates commission as percentage of successful recharge amount.'
-                                                    : 'Grants configured fixed rupee amount per successful recharge regardless of amount.'}
-                                            </p>
+
+                                            {/* Hierarchy flow indicator */}
+                                            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-black font-bold flex flex-wrap items-center justify-between gap-2">
+                                                <span>Hierarchy Flow:</span>
+                                                <div className="flex items-center gap-2 text-xs font-mono font-black text-slate-800 flex-wrap">
+                                                    <span className="bg-purple-100 text-purple-950 px-2 py-0.5 rounded-md border border-purple-300">Super Dist (₹{simRechargeSuperDist.toFixed(2)})</span>
+                                                    <span>&rarr;</span>
+                                                    <span className="bg-amber-100 text-amber-950 px-2 py-0.5 rounded-md border border-amber-300">Dist (₹{simRechargeDistributor.toFixed(2)})</span>
+                                                    <span>&rarr;</span>
+                                                    <span className="bg-blue-100 text-blue-950 px-2 py-0.5 rounded-md border border-blue-300">Retailer (₹{simRechargeRetailer.toFixed(2)})</span>
+                                                </div>
+                                            </div>
                                         </div>
+                                    </div>
 
-                                        {/* 3. Hierarchy Commission Inputs */}
-                                        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
+                                    {/* Right Column: Hierarchy Commission Rates & Action Bar */}
+                                    <div className="lg:col-span-6 space-y-6">
+                                        {/* 1. Hierarchy Commission Inputs */}
+                                        <div className="bg-white rounded-3xl p-5 md:p-6 border border-slate-200 shadow-sm space-y-4">
                                             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                                                <h3 className="text-xs font-black uppercase text-black tracking-wider">
-                                                    Hierarchy Distribution Rates
-                                                </h3>
-                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                <div>
+                                                    <h3 className="text-xs font-black uppercase text-black tracking-wider">
+                                                        Hierarchy Distribution Rates
+                                                    </h3>
+                                                    <p className="text-[11px] font-bold text-slate-600 mt-0.5">
+                                                        Set commission distribution across the hierarchy channel in {isRechargePercentage ? 'Percentage (%)' : 'Fixed Rupee (₹)'}.
+                                                    </p>
+                                                </div>
+                                                <label className="flex items-center gap-2 cursor-pointer shrink-0">
                                                     <span className="text-[11px] font-bold text-slate-800">Enabled</span>
                                                     <input
                                                         type="checkbox"
@@ -1511,127 +1527,8 @@ export default function CommissionManagement() {
                                                 </span>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    {/* Right Column: Simulation Calculator, Breakdown & Actions */}
-                                    <div className="lg:col-span-7 space-y-6">
-                                        {/* 1. Live Simulation Card */}
-                                        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
-                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
-                                                <div>
-                                                    <h3 className="text-base font-black text-black flex items-center gap-2">
-                                                        <Calculator size={18} className="text-blue-600" />
-                                                        Live Commission Simulator
-                                                    </h3>
-                                                    <p className="text-xs font-bold text-slate-700 mt-0.5">
-                                                        Real-time preview of wallet earnings for a successful recharge.
-                                                    </p>
-                                                </div>
-
-                                                {/* Amount Input */}
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs font-black text-black">Recharge:</span>
-                                                    <div className="relative w-28">
-                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-600">₹</span>
-                                                        <input
-                                                            type="number"
-                                                            value={simulatedRechargeAmount}
-                                                            onChange={(e) => setSimulatedRechargeAmount(e.target.value)}
-                                                            className="w-full pl-6 pr-2 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-black text-black focus:bg-white focus:outline-none"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Breakdown Cards */}
-                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                                <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-200">
-                                                    <span className="text-[10px] font-black uppercase text-blue-950 block">Retailer Earns</span>
-                                                    <p className="text-lg font-black font-mono text-blue-950 mt-1">
-                                                        ₹{simRechargeRetailer.toFixed(2)}
-                                                    </p>
-                                                    <span className="text-[10px] font-bold text-blue-800">
-                                                        {isRechargePercentage ? `${rechargeFormData.retailerValue}%` : 'Fixed ₹'}
-                                                    </span>
-                                                </div>
-
-                                                <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200">
-                                                    <span className="text-[10px] font-black uppercase text-amber-950 block">Distributor</span>
-                                                    <p className="text-lg font-black font-mono text-amber-950 mt-1">
-                                                        ₹{simRechargeDistributor.toFixed(2)}
-                                                    </p>
-                                                    <span className="text-[10px] font-bold text-amber-800">
-                                                        {isRechargePercentage ? `${rechargeFormData.distributorValue}%` : 'Fixed ₹'}
-                                                    </span>
-                                                </div>
-
-                                                <div className="p-4 rounded-2xl bg-purple-50/70 border border-purple-200">
-                                                    <span className="text-[10px] font-black uppercase text-purple-950 block">Super Dist.</span>
-                                                    <p className="text-lg font-black font-mono text-purple-950 mt-1">
-                                                        ₹{simRechargeSuperDist.toFixed(2)}
-                                                    </p>
-                                                    <span className="text-[10px] font-bold text-purple-800">
-                                                        {isRechargePercentage ? `${rechargeFormData.superDistributorValue}%` : 'Fixed ₹'}
-                                                    </span>
-                                                </div>
-
-                                                <div className="p-4 rounded-2xl bg-slate-900 text-white shadow-xs">
-                                                    <span className="text-[10px] font-bold uppercase text-slate-300 block">Total Disbursed</span>
-                                                    <p className="text-lg font-black font-mono text-emerald-400 mt-1">
-                                                        ₹{simRechargeTotal.toFixed(2)}
-                                                    </p>
-                                                    <span className="text-[10px] font-bold text-slate-300">
-                                                        {isRechargePercentage ? `${rechargeTotalValue.toFixed(2)}% Total` : 'Fixed Total'}
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            {/* Hierarchy flow indicator */}
-                                            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-black font-bold flex flex-wrap items-center justify-between gap-2">
-                                                <span>Hierarchy Flow:</span>
-                                                <div className="flex items-center gap-2 text-xs font-mono font-black text-slate-800">
-                                                    <span className="bg-purple-100 text-purple-950 px-2 py-0.5 rounded-md border border-purple-300">Super Dist (₹{simRechargeSuperDist.toFixed(2)})</span>
-                                                    <span>&rarr;</span>
-                                                    <span className="bg-amber-100 text-amber-950 px-2 py-0.5 rounded-md border border-amber-300">Dist (₹{simRechargeDistributor.toFixed(2)})</span>
-                                                    <span>&rarr;</span>
-                                                    <span className="bg-blue-100 text-blue-950 px-2 py-0.5 rounded-md border border-blue-300">Retailer (₹{simRechargeRetailer.toFixed(2)})</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* 2. Audit Trail Card */}
-                                        {rechargeAudits.length > 0 && (
-                                            <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-3">
-                                                <div className="flex items-center justify-between">
-                                                    <h4 className="text-xs font-black uppercase text-black tracking-wider flex items-center gap-2">
-                                                        <History size={14} className="text-slate-600" />
-                                                        Recent Configuration Changes ({selectedOperatorCode})
-                                                    </h4>
-                                                    <span className="text-[10px] font-bold text-slate-600">Audit Log</span>
-                                                </div>
-                                                <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto">
-                                                    {rechargeAudits.slice(0, 4).map(a => (
-                                                        <div key={a.id} className="py-2.5 text-xs flex items-center justify-between gap-2">
-                                                            <div>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="font-black text-black">[{a.planCode}]</span>
-                                                                    <span className="font-bold text-slate-700">Mode: {a.newCommissionMode}</span>
-                                                                    <span className="text-emerald-700 font-mono font-bold">
-                                                                        (Ret: {a.newRetailerValue}{a.newCommissionMode === 'FIXED' ? '₹' : '%'})
-                                                                    </span>
-                                                                </div>
-                                                                <span className="text-[10px] text-slate-600">by {a.adminUsername || 'admin'}</span>
-                                                            </div>
-                                                            <span className="text-[10px] font-mono text-slate-500 whitespace-nowrap">
-                                                                {new Date(a.createdAt).toLocaleDateString('en-IN')}
-                                                            </span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* 3. Action Bar (Reset / Save) */}
+                                        {/* 2. Action Bar (Reset / Save) */}
                                         <div className="p-5 rounded-3xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
                                             <div>
                                                 {hasRechargeChanges ? (
