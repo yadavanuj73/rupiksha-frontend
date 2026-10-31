@@ -151,10 +151,10 @@ export default function CommissionManagement() {
             const data = await commissionService.getPlans('AEPS_1');
             setPlans(data || []);
             if (data && data.length > 0) {
-                const currentSelected = selectedPlanId 
+                const currentSelected = selectedPlanId
                     ? data.find(p => p.id === selectedPlanId) || data[0]
                     : (data.find(p => p.isDefault) || data[0]);
-                
+
                 setSelectedPlanId(currentSelected.id);
                 setSlabs(JSON.parse(JSON.stringify(currentSelected.slabs || [])));
                 setOriginalSlabs(JSON.parse(JSON.stringify(currentSelected.slabs || [])));
@@ -277,7 +277,7 @@ export default function CommissionManagement() {
                     colors: ['#10b981', '#6366f1', '#f59e0b']
                 });
             }, 200);
-        } catch (_) {}
+        } catch (_) { }
     };
 
     // ── AEPS 1 SLABS EDIT HANDLERS ──────────────────────────────────────────────
@@ -390,7 +390,7 @@ export default function CommissionManagement() {
         }
     };
 
-        const handleReconcileBbps = async () => {
+    const handleReconcileBbps = async () => {
         setReconciling(true);
         try {
             const res = await commissionService.reconcileBbpsCommissions();
@@ -523,7 +523,7 @@ export default function CommissionManagement() {
         try {
             const data = await commissionService.getRechargeAudits(opCode, serviceType);
             setRechargeAudits(data || []);
-        } catch (_) {}
+        } catch (_) { }
     };
 
     useEffect(() => {
@@ -547,24 +547,56 @@ export default function CommissionManagement() {
         const config = rechargeConfigs.find(c => c.planCode === planCode);
         if (config) {
             const formVals = {
+                commissionMode: rechargeFormData.commissionMode, // operator-level active mode
+                retailerValue: String(config.retailerValue ?? '0.00'),
+                distributorValue: String(config.distributorValue ?? '0.00'),
+                superDistributorValue: String(config.superDistributorValue ?? '0.00'),
+                enabled: rechargeFormData.enabled // operator-level enabled status
+            };
+            setRechargeFormData(formVals);
+            setOriginalRechargeFormData({
                 commissionMode: config.commissionMode || 'PERCENTAGE',
                 retailerValue: String(config.retailerValue ?? '0.00'),
                 distributorValue: String(config.distributorValue ?? '0.00'),
                 superDistributorValue: String(config.superDistributorValue ?? '0.00'),
                 enabled: config.enabled ?? true
-            };
-            setRechargeFormData(formVals);
-            setOriginalRechargeFormData(JSON.parse(JSON.stringify(formVals)));
+            });
         }
         setNotification(null);
     };
 
+    const isCommissionEnabled = rechargeFormData.enabled !== false;
+    const isPercentageActive = isCommissionEnabled && rechargeFormData.commissionMode === 'PERCENTAGE';
+    const isFixedActive = isCommissionEnabled && rechargeFormData.commissionMode === 'FIXED';
+
+    const handleToggleMode = (targetMode) => {
+        // If clicking the mode that is already active, turn OFF both (disables commission for this operator)
+        if ((targetMode === 'PERCENTAGE' && isPercentageActive) || (targetMode === 'FIXED' && isFixedActive)) {
+            setRechargeFormData(prev => ({
+                ...prev,
+                enabled: false
+            }));
+            setRechargeConfigs(prev => prev.map(c => ({
+                ...c,
+                enabled: false
+            })));
+        } else {
+            // Activate selected mode and enable commission across all 4 plans for this operator
+            setRechargeFormData(prev => ({
+                ...prev,
+                commissionMode: targetMode,
+                enabled: true
+            }));
+            setRechargeConfigs(prev => prev.map(c => ({
+                ...c,
+                commissionMode: targetMode,
+                enabled: true
+            })));
+        }
+    };
+
     const handleRechargeModeChange = (newMode) => {
-        if (newMode === rechargeFormData.commissionMode) return;
-        setRechargeFormData(prev => ({
-            ...prev,
-            commissionMode: newMode
-        }));
+        handleToggleMode(newMode);
     };
 
     const activeRechargeConfig = useMemo(() => {
@@ -624,32 +656,40 @@ export default function CommissionManagement() {
             const dist = parseFloat(rechargeFormData.distributorValue) || 0;
             const sd = parseFloat(rechargeFormData.superDistributorValue) || 0;
 
+            const targetMode = rechargeFormData.commissionMode;
+            const targetEnabled = rechargeFormData.enabled;
+
             const req = {
-                commissionMode: rechargeFormData.commissionMode,
+                commissionMode: targetMode,
                 retailerValue: ret,
                 distributorValue: dist,
                 superDistributorValue: sd,
-                enabled: rechargeFormData.enabled
+                enabled: targetEnabled
             };
 
             const updated = await commissionService.updateRechargeConfig(activeRechargeConfig.id, req);
+
+            // Synchronize commissionMode and enabled status across all 4 membership plans for this operator
+            const otherConfigs = rechargeConfigs.filter(c => c.id !== activeRechargeConfig.id);
+            if (otherConfigs.length > 0) {
+                await Promise.all(otherConfigs.map(c => {
+                    return commissionService.updateRechargeConfig(c.id, {
+                        commissionMode: targetMode,
+                        retailerValue: c.retailerValue != null ? c.retailerValue : 0,
+                        distributorValue: c.distributorValue != null ? c.distributorValue : 0,
+                        superDistributorValue: c.superDistributorValue != null ? c.superDistributorValue : 0,
+                        enabled: targetEnabled
+                    });
+                }));
+            }
+
             setNotification({
                 type: 'success',
                 message: `${selectedOperatorName} (${activeRechargeConfig.planName}) Commission Saved Successfully`
             });
             triggerConfetti();
 
-            setRechargeConfigs(prev => prev.map(c => c.id === updated.id ? updated : c));
-            const newForm = {
-                commissionMode: updated.commissionMode,
-                retailerValue: String(updated.retailerValue),
-                distributorValue: String(updated.distributorValue),
-                superDistributorValue: String(updated.superDistributorValue),
-                enabled: updated.enabled
-            };
-            setRechargeFormData(newForm);
-            setOriginalRechargeFormData(JSON.parse(JSON.stringify(newForm)));
-
+            await fetchRechargeConfigs('MOBILE_RECHARGE', selectedOperatorCode);
             fetchRechargeOperators(rechargeCategory);
             fetchRechargeAudits('MOBILE_RECHARGE', selectedOperatorCode);
         } catch (err) {
@@ -806,13 +846,12 @@ export default function CommissionManagement() {
                     <label className="text-[11px] font-black text-black uppercase tracking-wider block">
                         Commission Model
                     </label>
-                    <span className={`text-[9.5px] font-black uppercase px-2 py-0.5 rounded-md border ${
-                        isRecharge
+                    <span className={`text-[9.5px] font-black uppercase px-2 py-0.5 rounded-md border ${isRecharge
                             ? 'bg-blue-50 text-blue-950 border-blue-300'
-                            : isBbps 
-                            ? 'bg-emerald-50 text-emerald-950 border-emerald-300' 
-                            : 'bg-indigo-50 text-indigo-950 border-indigo-300'
-                    }`}>
+                            : isBbps
+                                ? 'bg-emerald-50 text-emerald-950 border-emerald-300'
+                                : 'bg-indigo-50 text-indigo-950 border-indigo-300'
+                        }`}>
                         {currentModel.badge}
                     </span>
                 </div>
@@ -821,25 +860,23 @@ export default function CommissionManagement() {
                     <button
                         type="button"
                         onClick={() => setIsModelDropdownOpen(prev => !prev)}
-                        className={`w-full bg-slate-50 border rounded-2xl px-3.5 py-2.5 text-xs font-black text-black transition-all flex items-center justify-between cursor-pointer shadow-xs outline-none ${
-                            isModelDropdownOpen
+                        className={`w-full bg-slate-50 border rounded-2xl px-3.5 py-2.5 text-xs font-black text-black transition-all flex items-center justify-between cursor-pointer shadow-xs outline-none ${isModelDropdownOpen
                                 ? isRecharge
                                     ? 'border-blue-600 ring-2 ring-blue-500/20 bg-white'
                                     : isBbps
-                                    ? 'border-emerald-600 ring-2 ring-emerald-500/20 bg-white'
-                                    : 'border-indigo-600 ring-2 ring-indigo-500/20 bg-white'
+                                        ? 'border-emerald-600 ring-2 ring-emerald-500/20 bg-white'
+                                        : 'border-indigo-600 ring-2 ring-indigo-500/20 bg-white'
                                 : 'border-slate-300 hover:border-slate-400 hover:bg-white'
-                        }`}
+                            }`}
                         aria-expanded={isModelDropdownOpen}
                     >
                         <div className="flex items-center gap-2.5 min-w-0">
-                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                                isRecharge
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${isRecharge
                                     ? 'bg-blue-600 text-white shadow-xs'
                                     : isBbps
-                                    ? 'bg-emerald-600 text-white shadow-xs'
-                                    : 'bg-indigo-600 text-white shadow-xs'
-                            }`}>
+                                        ? 'bg-emerald-600 text-white shadow-xs'
+                                        : 'bg-indigo-600 text-white shadow-xs'
+                                }`}>
                                 {isRecharge ? <Smartphone size={15} /> : isBbps ? <Percent size={15} /> : <Layers size={15} />}
                             </div>
                             <div className="text-left min-w-0">
@@ -885,22 +922,20 @@ export default function CommissionManagement() {
                                                 handleModelChange(m.id);
                                                 setIsModelDropdownOpen(false);
                                             }}
-                                            className={`w-full p-2.5 rounded-xl text-left transition-all flex items-center justify-between gap-2 cursor-pointer ${
-                                                isSelected
+                                            className={`w-full p-2.5 rounded-xl text-left transition-all flex items-center justify-between gap-2 cursor-pointer ${isSelected
                                                     ? 'bg-slate-900 text-white shadow-xs'
                                                     : 'hover:bg-slate-100 text-black'
-                                            }`}
+                                                }`}
                                         >
                                             <div className="flex items-center gap-2.5 min-w-0">
-                                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                                                    isSelected 
-                                                        ? 'bg-white/20 text-white' 
+                                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isSelected
+                                                        ? 'bg-white/20 text-white'
                                                         : isMrecharge
-                                                        ? 'bg-blue-50 text-blue-800'
-                                                        : isMbbps
-                                                        ? 'bg-emerald-50 text-emerald-800'
-                                                        : 'bg-indigo-50 text-indigo-800'
-                                                }`}>
+                                                            ? 'bg-blue-50 text-blue-800'
+                                                            : isMbbps
+                                                                ? 'bg-emerald-50 text-emerald-800'
+                                                                : 'bg-indigo-50 text-indigo-800'
+                                                    }`}>
                                                     <IconComp size={14} />
                                                 </div>
                                                 <div className="min-w-0">
@@ -957,22 +992,20 @@ export default function CommissionManagement() {
                 <div className="inline-flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-300 self-start sm:self-center">
                     <button
                         onClick={() => setActiveTab('config')}
-                        className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
-                            activeTab === 'config'
+                        className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'config'
                                 ? 'bg-black text-white shadow-md'
                                 : 'text-black hover:text-blue-700'
-                        }`}
+                            }`}
                     >
                         <Layers size={14} />
                         Plan Config
                     </button>
                     <button
                         onClick={() => setActiveTab('history')}
-                        className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
-                            activeTab === 'history'
+                        className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'history'
                                 ? 'bg-black text-white shadow-md'
                                 : 'text-black hover:text-blue-700'
-                        }`}
+                            }`}
                     >
                         <History size={14} />
                         Audit Ledger
@@ -987,13 +1020,12 @@ export default function CommissionManagement() {
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className={`p-4 rounded-2xl flex items-center justify-between border text-xs font-bold ${
-                            notification.type === 'success'
+                        className={`p-4 rounded-2xl flex items-center justify-between border text-xs font-bold ${notification.type === 'success'
                                 ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                                 : notification.type === 'error'
-                                ? 'bg-rose-50 text-rose-800 border-rose-200'
-                                : 'bg-blue-50 text-blue-800 border-blue-200'
-                        }`}
+                                    ? 'bg-rose-50 text-rose-800 border-rose-200'
+                                    : 'bg-blue-50 text-blue-800 border-blue-200'
+                            }`}
                     >
                         <div className="flex items-center gap-3">
                             {notification.type === 'success' && <CheckCircle2 size={18} className="text-emerald-600" />}
@@ -1025,15 +1057,13 @@ export default function CommissionManagement() {
                                     <button
                                         type="button"
                                         onClick={() => setRechargeCategory('MOBILE')}
-                                        className={`p-5 rounded-2xl border text-left transition-all cursor-pointer flex items-start gap-4 ${
-                                            rechargeCategory === 'MOBILE'
+                                        className={`p-5 rounded-2xl border text-left transition-all cursor-pointer flex items-start gap-4 ${rechargeCategory === 'MOBILE'
                                                 ? 'bg-blue-50/70 border-blue-500 shadow-md ring-2 ring-blue-500/20'
                                                 : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50 shadow-2xs'
-                                        }`}
+                                            }`}
                                     >
-                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
-                                            rechargeCategory === 'MOBILE' ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-100 text-black'
-                                        }`}>
+                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${rechargeCategory === 'MOBILE' ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-100 text-black'
+                                            }`}>
                                             <Smartphone size={24} />
                                         </div>
                                         <div className="flex-1 min-w-0">
@@ -1058,15 +1088,13 @@ export default function CommissionManagement() {
                                     <button
                                         type="button"
                                         onClick={() => setRechargeCategory('DTH')}
-                                        className={`p-5 rounded-2xl border text-left transition-all cursor-pointer flex items-start gap-4 ${
-                                            rechargeCategory === 'DTH'
+                                        className={`p-5 rounded-2xl border text-left transition-all cursor-pointer flex items-start gap-4 ${rechargeCategory === 'DTH'
                                                 ? 'bg-amber-50/70 border-amber-500 shadow-md ring-2 ring-amber-500/20'
                                                 : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50 shadow-2xs'
-                                        }`}
+                                            }`}
                                     >
-                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
-                                            rechargeCategory === 'DTH' ? 'bg-amber-600 text-white shadow-xs' : 'bg-slate-100 text-black'
-                                        }`}>
+                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${rechargeCategory === 'DTH' ? 'bg-amber-600 text-white shadow-xs' : 'bg-slate-100 text-black'
+                                            }`}>
                                             <Tv size={24} />
                                         </div>
                                         <div className="flex-1 min-w-0">
@@ -1159,11 +1187,10 @@ export default function CommissionManagement() {
                                                                         </span>
                                                                     </div>
                                                                 </div>
-                                                                <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase border ${
-                                                                    op.commissionMode === 'FIXED'
+                                                                <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase border ${op.commissionMode === 'FIXED'
                                                                         ? 'bg-amber-50 text-amber-950 border-amber-300'
                                                                         : 'bg-emerald-50 text-emerald-950 border-emerald-300'
-                                                                }`}>
+                                                                    }`}>
                                                                     {op.commissionMode === 'FIXED' ? 'Fixed ₹' : 'Percentage %'}
                                                                 </span>
                                                             </div>
@@ -1227,33 +1254,46 @@ export default function CommissionManagement() {
 
                                 {/* Calculation Mode Toggle & Operator Dropdown */}
                                 <div className="flex flex-wrap items-center gap-3 shrink-0">
-                                    {/* Two Mode Toggles: Percentage & Fixed Rate */}
-                                    <div className="inline-flex items-center p-1 bg-slate-100 border border-slate-200 rounded-2xl">
+                                    {/* Two Mode Toggles: Percentage & Fixed Rate with Switches */}
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        {/* Percentage (%) Toggle */}
                                         <button
                                             type="button"
-                                            onClick={() => handleRechargeModeChange('PERCENTAGE')}
-                                            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                                                isRechargePercentage
-                                                    ? 'bg-blue-600 text-white shadow-xs'
-                                                    : 'text-slate-700 hover:text-black hover:bg-slate-200/60'
-                                            }`}
-                                            title="Distribute commission as percentage of recharge"
+                                            onClick={() => handleToggleMode('PERCENTAGE')}
+                                            className={`flex items-center gap-2.5 px-3.5 py-2 rounded-2xl border transition-all cursor-pointer select-none ${isPercentageActive
+                                                    ? 'bg-blue-50 border-blue-300 text-blue-950 shadow-2xs ring-1 ring-blue-400/30'
+                                                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-black'
+                                                }`}
+                                            title={isPercentageActive ? "Percentage mode is ACTIVE. Click to turn OFF." : "Click to activate Percentage mode across all 4 plans."}
                                         >
-                                            <Percent size={13} />
-                                            <span>Percentage (%)</span>
+                                            <div className="flex items-center gap-1.5 text-xs font-black">
+                                                <Percent size={13} className={isPercentageActive ? 'text-blue-600' : 'text-slate-500'} />
+                                                <span>Percentage (%)</span>
+                                            </div>
+                                            {/* Toggle switch visual */}
+                                            <div className={`w-8 h-4 rounded-full transition-colors relative ${isPercentageActive ? 'bg-blue-600' : 'bg-slate-300'}`}>
+                                                <div className={`w-3.5 h-3.5 rounded-full bg-white shadow-xs transition-transform absolute top-0.25 ${isPercentageActive ? 'left-4' : 'left-0.5'}`} />
+                                            </div>
                                         </button>
+
+                                        {/* Fixed Rate (₹) Toggle */}
                                         <button
                                             type="button"
-                                            onClick={() => handleRechargeModeChange('FIXED')}
-                                            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                                                !isRechargePercentage
-                                                    ? 'bg-blue-600 text-white shadow-xs'
-                                                    : 'text-slate-700 hover:text-black hover:bg-slate-200/60'
-                                            }`}
-                                            title="Distribute commission as fixed rupee amount"
+                                            onClick={() => handleToggleMode('FIXED')}
+                                            className={`flex items-center gap-2.5 px-3.5 py-2 rounded-2xl border transition-all cursor-pointer select-none ${isFixedActive
+                                                    ? 'bg-blue-50 border-blue-300 text-blue-950 shadow-2xs ring-1 ring-blue-400/30'
+                                                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-black'
+                                                }`}
+                                            title={isFixedActive ? "Fixed Rate mode is ACTIVE. Click to turn OFF." : "Click to activate Fixed Rate mode across all 4 plans."}
                                         >
-                                            <IndianRupee size={13} />
-                                            <span>Fixed Rate (₹)</span>
+                                            <div className="flex items-center gap-1.5 text-xs font-black">
+                                                <IndianRupee size={13} className={isFixedActive ? 'text-blue-600' : 'text-slate-500'} />
+                                                <span>Fixed Rate (₹)</span>
+                                            </div>
+                                            {/* Toggle switch visual */}
+                                            <div className={`w-8 h-4 rounded-full transition-colors relative ${isFixedActive ? 'bg-blue-600' : 'bg-slate-300'}`}>
+                                                <div className={`w-3.5 h-3.5 rounded-full bg-white shadow-xs transition-transform absolute top-0.25 ${isFixedActive ? 'left-4' : 'left-0.5'}`} />
+                                            </div>
                                         </button>
                                     </div>
 
@@ -1288,8 +1328,8 @@ export default function CommissionManagement() {
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                                    {/* Left Column: Membership Plans & Live Commission Simulator */}
-                                    <div className="lg:col-span-6 space-y-6">
+                                    {/* Left Column: Membership Plans & Operator Overview */}
+                                    <div className="lg:col-span-5 space-y-6">
                                         {/* 1. Four Membership Plans Selector */}
                                         <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
                                             <div className="flex items-center justify-between">
@@ -1310,11 +1350,10 @@ export default function CommissionManagement() {
                                                             key={c.planCode}
                                                             type="button"
                                                             onClick={() => handleSelectRechargePlan(c.planCode)}
-                                                            className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                                                                isSelected
+                                                            className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${isSelected
                                                                     ? 'bg-slate-900 text-white border-slate-900 shadow-md ring-2 ring-slate-900/20'
                                                                     : 'bg-slate-50 hover:bg-white text-black border-slate-200'
-                                                            }`}
+                                                                }`}
                                                         >
                                                             <div>
                                                                 <p className="text-[10px] font-black uppercase tracking-wider opacity-70">
@@ -1338,113 +1377,73 @@ export default function CommissionManagement() {
                                             </div>
                                         </div>
 
-                                        {/* 2. Live Simulation Card */}
-                                        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
-                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
-                                                <div>
-                                                    <h3 className="text-base font-black text-black flex items-center gap-2">
-                                                        <Calculator size={18} className="text-blue-600" />
-                                                        Live Commission Simulator
-                                                    </h3>
-                                                    <p className="text-xs font-bold text-slate-700 mt-0.5">
-                                                        Real-time preview of wallet earnings for a successful recharge.
-                                                    </p>
-                                                </div>
-
-                                                {/* Amount Input */}
-                                                <div className="flex items-center gap-2 shrink-0">
-                                                    <span className="text-xs font-black text-black">Recharge:</span>
-                                                    <div className="relative w-28">
-                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-600">₹</span>
-                                                        <input
-                                                            type="number"
-                                                            value={simulatedRechargeAmount}
-                                                            onChange={(e) => setSimulatedRechargeAmount(e.target.value)}
-                                                            className="w-full pl-6 pr-2 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-black text-black focus:bg-white focus:outline-none"
-                                                        />
-                                                    </div>
-                                                </div>
+                                        {/* 2. Operator Overview Card */}
+                                        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="text-xs font-black uppercase text-black tracking-wider">
+                                                    Operator Settings
+                                                </h4>
+                                                <span className={`text-[9.5px] font-black uppercase px-2 py-0.5 rounded-md border ${!isCommissionEnabled
+                                                        ? 'bg-rose-50 text-rose-800 border-rose-200'
+                                                        : isPercentageActive
+                                                            ? 'bg-blue-50 text-blue-900 border-blue-200'
+                                                            : 'bg-emerald-50 text-emerald-900 border-emerald-200'
+                                                    }`}>
+                                                    {!isCommissionEnabled ? 'Disabled (OFF)' : isPercentageActive ? 'Percentage (%)' : 'Fixed Rate (₹)'}
+                                                </span>
                                             </div>
-
-                                            {/* Breakdown Cards */}
-                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                                <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-200">
-                                                    <span className="text-[10px] font-black uppercase text-blue-950 block">Retailer Earns</span>
-                                                    <p className="text-lg font-black font-mono text-blue-950 mt-1">
-                                                        ₹{simRechargeRetailer.toFixed(2)}
-                                                    </p>
-                                                    <span className="text-[10px] font-bold text-blue-800">
-                                                        {isRechargePercentage ? `${rechargeFormData.retailerValue}%` : 'Fixed ₹'}
-                                                    </span>
+                                            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-slate-600 font-bold">Operator:</span>
+                                                    <span className="font-black text-black">{selectedOperatorName} ({selectedOperatorCode})</span>
                                                 </div>
-
-                                                <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200">
-                                                    <span className="text-[10px] font-black uppercase text-amber-950 block">Distributor</span>
-                                                    <p className="text-lg font-black font-mono text-amber-950 mt-1">
-                                                        ₹{simRechargeDistributor.toFixed(2)}
-                                                    </p>
-                                                    <span className="text-[10px] font-bold text-amber-800">
-                                                        {isRechargePercentage ? `${rechargeFormData.distributorValue}%` : 'Fixed ₹'}
-                                                    </span>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-slate-600 font-bold">Selected Plan:</span>
+                                                    <span className="font-black text-blue-900">{activeRechargeConfig?.planName || selectedRechargePlanCode}</span>
                                                 </div>
-
-                                                <div className="p-4 rounded-2xl bg-purple-50/70 border border-purple-200">
-                                                    <span className="text-[10px] font-black uppercase text-purple-950 block">Super Dist.</span>
-                                                    <p className="text-lg font-black font-mono text-purple-950 mt-1">
-                                                        ₹{simRechargeSuperDist.toFixed(2)}
-                                                    </p>
-                                                    <span className="text-[10px] font-bold text-purple-800">
-                                                        {isRechargePercentage ? `${rechargeFormData.superDistributorValue}%` : 'Fixed ₹'}
-                                                    </span>
-                                                </div>
-
-                                                <div className="p-4 rounded-2xl bg-slate-900 text-white shadow-xs">
-                                                    <span className="text-[10px] font-bold uppercase text-slate-300 block">Total Disbursed</span>
-                                                    <p className="text-lg font-black font-mono text-emerald-400 mt-1">
-                                                        ₹{simRechargeTotal.toFixed(2)}
-                                                    </p>
-                                                    <span className="text-[10px] font-bold text-slate-300">
-                                                        {isRechargePercentage ? `${rechargeTotalValue.toFixed(2)}% Total` : 'Fixed Total'}
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-slate-600 font-bold">Distribution Mode:</span>
+                                                    <span className={`font-black ${!isCommissionEnabled
+                                                            ? 'text-rose-700'
+                                                            : isPercentageActive
+                                                                ? 'text-blue-700'
+                                                                : 'text-emerald-700'
+                                                        }`}>
+                                                        {!isCommissionEnabled ? 'No Commission (OFF)' : isPercentageActive ? 'Percentage (%) per recharge' : 'Fixed Rate (₹) flat per recharge'}
                                                     </span>
                                                 </div>
                                             </div>
-
-                                            {/* Hierarchy flow indicator */}
-                                            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-black font-bold flex flex-wrap items-center justify-between gap-2">
-                                                <span>Hierarchy Flow:</span>
-                                                <div className="flex items-center gap-2 text-xs font-mono font-black text-slate-800 flex-wrap">
-                                                    <span className="bg-purple-100 text-purple-950 px-2 py-0.5 rounded-md border border-purple-300">Super Dist (₹{simRechargeSuperDist.toFixed(2)})</span>
-                                                    <span>&rarr;</span>
-                                                    <span className="bg-amber-100 text-amber-950 px-2 py-0.5 rounded-md border border-amber-300">Dist (₹{simRechargeDistributor.toFixed(2)})</span>
-                                                    <span>&rarr;</span>
-                                                    <span className="bg-blue-100 text-blue-950 px-2 py-0.5 rounded-md border border-blue-300">Retailer (₹{simRechargeRetailer.toFixed(2)})</span>
-                                                </div>
-                                            </div>
+                                            <p className="text-[11px] font-bold text-slate-600">
+                                                Toggling between Percentage and Fixed Rate applies to all 4 membership plans for {selectedOperatorName}.
+                                            </p>
                                         </div>
                                     </div>
 
                                     {/* Right Column: Hierarchy Commission Rates & Action Bar */}
-                                    <div className="lg:col-span-6 space-y-6">
+                                    <div className="lg:col-span-7 space-y-6">
                                         {/* 1. Hierarchy Commission Inputs */}
                                         <div className="bg-white rounded-3xl p-5 md:p-6 border border-slate-200 shadow-sm space-y-4">
-                                            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
                                                 <div>
                                                     <h3 className="text-xs font-black uppercase text-black tracking-wider">
                                                         Hierarchy Distribution Rates
                                                     </h3>
                                                     <p className="text-[11px] font-bold text-slate-600 mt-0.5">
-                                                        Set commission distribution across the hierarchy channel in {isRechargePercentage ? 'Percentage (%)' : 'Fixed Rupee (₹)'}.
+                                                        {isCommissionEnabled ? (
+                                                            <>Configure rates for <span className="text-black font-black">{activeRechargeConfig?.planName}</span> in {isRechargePercentage ? 'Percentage (%)' : 'Fixed Rupee (₹)'}.</>
+                                                        ) : (
+                                                            <span className="text-rose-700 font-black">Commission is currently turned OFF for {selectedOperatorName}. No commission will be disbursed.</span>
+                                                        )}
                                                     </p>
                                                 </div>
-                                                <label className="flex items-center gap-2 cursor-pointer shrink-0">
-                                                    <span className="text-[11px] font-bold text-slate-800">Enabled</span>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={rechargeFormData.enabled}
-                                                        onChange={(e) => setRechargeFormData(prev => ({ ...prev, enabled: e.target.checked }))}
-                                                        className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                                    />
-                                                </label>
+                                                <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border self-start sm:self-auto ${!isCommissionEnabled
+                                                        ? 'bg-rose-50 text-rose-800 border-rose-200'
+                                                        : isRechargePercentage
+                                                            ? 'bg-blue-50 text-blue-900 border-blue-200'
+                                                            : 'bg-emerald-50 text-emerald-900 border-emerald-200'
+                                                    }`}>
+                                                    {!isCommissionEnabled ? 'OFF (Disabled)' : isRechargePercentage ? 'Percentage Mode' : 'Fixed Rate Mode'}
+                                                </span>
                                             </div>
 
                                             {/* Retailer */}
@@ -1560,11 +1559,10 @@ export default function CommissionManagement() {
                                                     type="button"
                                                     onClick={handleSaveRecharge}
                                                     disabled={saving || !hasRechargeChanges}
-                                                    className={`px-6 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 text-white shadow-lg cursor-pointer ${
-                                                        saving || !hasRechargeChanges
+                                                    className={`px-6 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 text-white shadow-lg cursor-pointer ${saving || !hasRechargeChanges
                                                             ? 'bg-slate-300 shadow-none cursor-not-allowed text-slate-600'
                                                             : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/30'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     <Save size={14} />
                                                     {saving ? 'Saving...' : 'Save Configuration'}
@@ -1574,6 +1572,7 @@ export default function CommissionManagement() {
                                     </div>
                                 </div>
                             )}
+
                         </div>
                     )
                 ) : commissionModel === 'BBPS' && bbpsStep === 'select-service' ? (
@@ -1696,9 +1695,8 @@ export default function CommissionManagement() {
                                                 whileHover={{ y: -6, scale: 1.02 }}
                                                 whileTap={{ scale: 0.97 }}
                                                 onClick={() => handleSelectBbpsService(cat.id)}
-                                                className={`group relative overflow-hidden text-left rounded-3xl border p-5 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)] hover:border-blue-400 hover:shadow-[0_20px_40px_rgba(59,130,246,0.18)] transition-all duration-300 cursor-pointer flex flex-col justify-between w-full ${
-                                                    isSelected ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-slate-200'
-                                                }`}
+                                                className={`group relative overflow-hidden text-left rounded-3xl border p-5 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)] hover:border-blue-400 hover:shadow-[0_20px_40px_rgba(59,130,246,0.18)] transition-all duration-300 cursor-pointer flex flex-col justify-between w-full ${isSelected ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-slate-200'
+                                                    }`}
                                             >
                                                 {/* Animated Liquid Background Bubble on Hover */}
                                                 <div
@@ -1799,26 +1797,23 @@ export default function CommissionManagement() {
                                                             key={p.id}
                                                             type="button"
                                                             onClick={() => handleSelectPlan(p)}
-                                                            className={`w-full px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-between gap-2 text-left cursor-pointer ${
-                                                                isSelected
+                                                            className={`w-full px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-between gap-2 text-left cursor-pointer ${isSelected
                                                                     ? 'bg-black text-white shadow-md shadow-slate-900/20 ring-2 ring-black'
                                                                     : 'bg-slate-50 text-black hover:bg-slate-100 border border-slate-300'
-                                                            }`}
+                                                                }`}
                                                         >
                                                             <div className="flex items-center gap-2 min-w-0">
                                                                 {p.isDefault && <Sparkles size={13} className={isSelected ? 'text-amber-400' : 'text-amber-500'} />}
                                                                 <span className="truncate">{displayName}</span>
                                                             </div>
                                                             {p.price > 0 ? (
-                                                                <span className={`text-[10.5px] font-black px-2 py-0.5 rounded-lg shrink-0 ${
-                                                                    isSelected ? 'bg-slate-800 text-indigo-200' : 'bg-slate-200 text-black'
-                                                                }`}>
+                                                                <span className={`text-[10.5px] font-black px-2 py-0.5 rounded-lg shrink-0 ${isSelected ? 'bg-slate-800 text-indigo-200' : 'bg-slate-200 text-black'
+                                                                    }`}>
                                                                     &#8377;{Number(p.price).toLocaleString('en-IN')}
                                                                 </span>
                                                             ) : (
-                                                                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg shrink-0 ${
-                                                                    isSelected ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-950 border border-emerald-300'
-                                                                }`}>
+                                                                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg shrink-0 ${isSelected ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-950 border border-emerald-300'
+                                                                    }`}>
                                                                     FREE
                                                                 </span>
                                                             )}
@@ -1920,11 +1915,10 @@ export default function CommissionManagement() {
                                                                 key={cfg.id || cfg.planCode}
                                                                 type="button"
                                                                 onClick={() => handleSelectBbpsPlan(cfg.planCode)}
-                                                                className={`w-full px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-between gap-2 text-left cursor-pointer ${
-                                                                    isSelected
+                                                                className={`w-full px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-between gap-2 text-left cursor-pointer ${isSelected
                                                                         ? 'bg-black text-white shadow-md shadow-slate-900/20 ring-2 ring-black'
                                                                         : 'bg-slate-50 text-black hover:bg-slate-100 border border-slate-300'
-                                                                }`}
+                                                                    }`}
                                                             >
                                                                 <div className="flex items-center gap-2 min-w-0">
                                                                     {cfg.planCode === 'FREE' && (
@@ -1934,23 +1928,20 @@ export default function CommissionManagement() {
                                                                 </div>
                                                                 <div className="flex items-center gap-2 shrink-0">
                                                                     {cfg.planPrice > 0 ? (
-                                                                        <span className={`text-[10.5px] font-black px-2 py-0.5 rounded-lg ${
-                                                                            isSelected ? 'bg-slate-800 text-emerald-300' : 'bg-slate-200 text-black'
-                                                                        }`}>
+                                                                        <span className={`text-[10.5px] font-black px-2 py-0.5 rounded-lg ${isSelected ? 'bg-slate-800 text-emerald-300' : 'bg-slate-200 text-black'
+                                                                            }`}>
                                                                             &#8377;{Number(cfg.planPrice).toLocaleString('en-IN')}
                                                                         </span>
                                                                     ) : (
-                                                                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg ${
-                                                                            isSelected ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-950 border border-emerald-300'
-                                                                        }`}>
+                                                                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg ${isSelected ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-950 border border-emerald-300'
+                                                                            }`}>
                                                                             FREE
                                                                         </span>
                                                                     )}
-                                                                    <span className={`text-[9.5px] font-mono font-black px-1.5 py-0.5 rounded ${
-                                                                        isSelected
+                                                                    <span className={`text-[9.5px] font-mono font-black px-1.5 py-0.5 rounded ${isSelected
                                                                             ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'
                                                                             : cfg.enabled ? 'bg-emerald-100 text-emerald-950 border border-emerald-300' : 'bg-rose-100 text-rose-950 border border-rose-300'
-                                                                    }`}>
+                                                                        }`}>
                                                                         {cfg.totalPercentage}%
                                                                     </span>
                                                                 </div>
@@ -1966,150 +1957,410 @@ export default function CommissionManagement() {
                         </div>
 
                         {/* ── RIGHT COLUMN: Configuration Editor ── */}
-                    <div className="lg:col-span-8 space-y-6">
-                        {/* ── CASE 1: AEPS 1 SLAB EDITOR TABLE ── */}
-                        {commissionModel === 'AEPS_1' && (
-                            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-                                <div className="p-6 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <h2 className="text-lg font-black text-black">
-                                                {activePlan ? `${getAdminPlanDisplayName(activePlan)} Slabs` : 'Commission Slabs'}
-                                            </h2>
-                                            {activePlan?.isDefault && (
-                                                <span className="bg-emerald-100 text-emerald-950 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-emerald-300">
-                                                    Default System Plan
-                                                </span>
-                                            )}
+                        <div className="lg:col-span-8 space-y-6">
+                            {/* ── CASE 1: AEPS 1 SLAB EDITOR TABLE ── */}
+                            {commissionModel === 'AEPS_1' && (
+                                <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                                    <div className="p-6 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <h2 className="text-lg font-black text-black">
+                                                    {activePlan ? `${getAdminPlanDisplayName(activePlan)} Slabs` : 'Commission Slabs'}
+                                                </h2>
+                                                {activePlan?.isDefault && (
+                                                    <span className="bg-emerald-100 text-emerald-950 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-emerald-300">
+                                                        Default System Plan
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-xs font-bold text-slate-800 mt-0.5">
+                                                Commission is a fixed rupee amount granted per successful transaction slab.
+                                            </p>
                                         </div>
-                                        <p className="text-xs font-bold text-slate-800 mt-0.5">
-                                            Commission is a fixed rupee amount granted per successful transaction slab.
-                                        </p>
                                     </div>
-                                </div>
 
-                                {loadingPlans ? (
-                                    <div className="p-12 text-center text-black flex flex-col items-center gap-2">
-                                        <RefreshCw className="animate-spin text-blue-600" size={24} />
-                                        <span className="text-xs font-bold text-black">Loading plans & slabs...</span>
-                                    </div>
-                                ) : slabs.length === 0 ? (
-                                    <div className="p-12 text-center text-black">
-                                        <p className="text-sm font-bold">No slabs configured for this plan.</p>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-left border-collapse">
-                                                <thead>
-                                                    <tr className="bg-slate-100 border-b border-slate-300 text-[10px] font-black text-black uppercase tracking-widest">
-                                                        <th className="py-4 px-5">Slab Range (&#8377;)</th>
-                                                        <th className="py-4 px-3 text-center">Retailer (&#8377;)</th>
-                                                        <th className="py-4 px-3 text-center">Distributor (&#8377;)</th>
-                                                        <th className="py-4 px-3 text-center">Super Distributor (&#8377;)</th>
-                                                        <th className="py-4 px-3 text-center">Total Distributed</th>
-                                                        <th className="py-4 px-5 text-right">Status</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-slate-200 text-xs font-bold text-black">
-                                                    {slabs.map((slab, idx) => {
-                                                        const ret = parseFloat(slab.retailerCommission) || 0;
-                                                        const dist = parseFloat(slab.distributorCommission) || 0;
-                                                        const sd = parseFloat(slab.superDistributorCommission) || 0;
-                                                        const total = ret + dist + sd;
-                                                        const isHighTotal = total > 20;
+                                    {loadingPlans ? (
+                                        <div className="p-12 text-center text-black flex flex-col items-center gap-2">
+                                            <RefreshCw className="animate-spin text-blue-600" size={24} />
+                                            <span className="text-xs font-bold text-black">Loading plans & slabs...</span>
+                                        </div>
+                                    ) : slabs.length === 0 ? (
+                                        <div className="p-12 text-center text-black">
+                                            <p className="text-sm font-bold">No slabs configured for this plan.</p>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-left border-collapse">
+                                                    <thead>
+                                                        <tr className="bg-slate-100 border-b border-slate-300 text-[10px] font-black text-black uppercase tracking-widest">
+                                                            <th className="py-4 px-5">Slab Range (&#8377;)</th>
+                                                            <th className="py-4 px-3 text-center">Retailer (&#8377;)</th>
+                                                            <th className="py-4 px-3 text-center">Distributor (&#8377;)</th>
+                                                            <th className="py-4 px-3 text-center">Super Distributor (&#8377;)</th>
+                                                            <th className="py-4 px-3 text-center">Total Distributed</th>
+                                                            <th className="py-4 px-5 text-right">Status</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-200 text-xs font-bold text-black">
+                                                        {slabs.map((slab, idx) => {
+                                                            const ret = parseFloat(slab.retailerCommission) || 0;
+                                                            const dist = parseFloat(slab.distributorCommission) || 0;
+                                                            const sd = parseFloat(slab.superDistributorCommission) || 0;
+                                                            const total = ret + dist + sd;
+                                                            const isHighTotal = total > 20;
 
-                                                        return (
-                                                            <tr key={slab.id || idx} className="hover:bg-slate-50 transition-colors">
-                                                                <td className="py-4 px-5">
-                                                                    <span className="font-mono text-sm font-black text-black">
-                                                                        &#8377;{Number(slab.minAmount).toLocaleString()} &ndash; &#8377;{Number(slab.maxAmount).toLocaleString()}
-                                                                    </span>
-                                                                </td>
-
-                                                                {/* Retailer Edit */}
-                                                                <td className="py-3 px-3 text-center">
-                                                                    <div className="inline-flex items-center bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-inner">
-                                                                        <span className="text-black font-black mr-1 text-xs">&#8377;</span>
-                                                                        <input
-                                                                            type="number"
-                                                                            step="0.25"
-                                                                            min="0"
-                                                                            value={slab.retailerCommission}
-                                                                            onChange={(e) => handleSlabChange(idx, 'retailerCommission', e.target.value)}
-                                                                            className="w-16 bg-transparent text-sm font-black text-black text-center focus:outline-none"
-                                                                        />
-                                                                    </div>
-                                                                </td>
-
-                                                                {/* Distributor Edit */}
-                                                                <td className="py-3 px-3 text-center">
-                                                                    <div className="inline-flex items-center bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-inner">
-                                                                        <span className="text-black font-black mr-1 text-xs">&#8377;</span>
-                                                                        <input
-                                                                            type="number"
-                                                                            step="0.25"
-                                                                            min="0"
-                                                                            value={slab.distributorCommission}
-                                                                            onChange={(e) => handleSlabChange(idx, 'distributorCommission', e.target.value)}
-                                                                            className="w-16 bg-transparent text-sm font-black text-black text-center focus:outline-none"
-                                                                        />
-                                                                    </div>
-                                                                </td>
-
-                                                                {/* Super Distributor Edit */}
-                                                                <td className="py-3 px-3 text-center">
-                                                                    <div className="inline-flex items-center bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-inner">
-                                                                        <span className="text-black font-black mr-1 text-xs">&#8377;</span>
-                                                                        <input
-                                                                            type="number"
-                                                                            step="0.25"
-                                                                            min="0"
-                                                                            value={slab.superDistributorCommission}
-                                                                            onChange={(e) => handleSlabChange(idx, 'superDistributorCommission', e.target.value)}
-                                                                            className="w-16 bg-transparent text-sm font-black text-black text-center focus:outline-none"
-                                                                        />
-                                                                    </div>
-                                                                </td>
-
-                                                                {/* Total Commission */}
-                                                                <td className="py-4 px-3 text-center">
-                                                                    <div className="flex items-center justify-center gap-1.5">
-                                                                        <span className="font-mono text-xs font-black text-black bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-300">
-                                                                            &#8377;{total.toFixed(2)}
+                                                            return (
+                                                                <tr key={slab.id || idx} className="hover:bg-slate-50 transition-colors">
+                                                                    <td className="py-4 px-5">
+                                                                        <span className="font-mono text-sm font-black text-black">
+                                                                            &#8377;{Number(slab.minAmount).toLocaleString()} &ndash; &#8377;{Number(slab.maxAmount).toLocaleString()}
                                                                         </span>
-                                                                        {isHighTotal && (
-                                                                            <span title="High total commission warning" className="text-amber-500">
-                                                                                <AlertTriangle size={14} />
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                </td>
+                                                                    </td>
 
-                                                                {/* Active / Enabled */}
-                                                                <td className="py-4 px-5 text-right">
-                                                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-950 border border-emerald-300">
-                                                                        Active
-                                                                    </span>
-                                                                </td>
-                                                            </tr>
-                                                        );
-                                                    })}
-                                                </tbody>
-                                            </table>
+                                                                    {/* Retailer Edit */}
+                                                                    <td className="py-3 px-3 text-center">
+                                                                        <div className="inline-flex items-center bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-inner">
+                                                                            <span className="text-black font-black mr-1 text-xs">&#8377;</span>
+                                                                            <input
+                                                                                type="number"
+                                                                                step="0.25"
+                                                                                min="0"
+                                                                                value={slab.retailerCommission}
+                                                                                onChange={(e) => handleSlabChange(idx, 'retailerCommission', e.target.value)}
+                                                                                className="w-16 bg-transparent text-sm font-black text-black text-center focus:outline-none"
+                                                                            />
+                                                                        </div>
+                                                                    </td>
+
+                                                                    {/* Distributor Edit */}
+                                                                    <td className="py-3 px-3 text-center">
+                                                                        <div className="inline-flex items-center bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-inner">
+                                                                            <span className="text-black font-black mr-1 text-xs">&#8377;</span>
+                                                                            <input
+                                                                                type="number"
+                                                                                step="0.25"
+                                                                                min="0"
+                                                                                value={slab.distributorCommission}
+                                                                                onChange={(e) => handleSlabChange(idx, 'distributorCommission', e.target.value)}
+                                                                                className="w-16 bg-transparent text-sm font-black text-black text-center focus:outline-none"
+                                                                            />
+                                                                        </div>
+                                                                    </td>
+
+                                                                    {/* Super Distributor Edit */}
+                                                                    <td className="py-3 px-3 text-center">
+                                                                        <div className="inline-flex items-center bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-inner">
+                                                                            <span className="text-black font-black mr-1 text-xs">&#8377;</span>
+                                                                            <input
+                                                                                type="number"
+                                                                                step="0.25"
+                                                                                min="0"
+                                                                                value={slab.superDistributorCommission}
+                                                                                onChange={(e) => handleSlabChange(idx, 'superDistributorCommission', e.target.value)}
+                                                                                className="w-16 bg-transparent text-sm font-black text-black text-center focus:outline-none"
+                                                                            />
+                                                                        </div>
+                                                                    </td>
+
+                                                                    {/* Total Commission */}
+                                                                    <td className="py-4 px-3 text-center">
+                                                                        <div className="flex items-center justify-center gap-1.5">
+                                                                            <span className="font-mono text-xs font-black text-black bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-300">
+                                                                                &#8377;{total.toFixed(2)}
+                                                                            </span>
+                                                                            {isHighTotal && (
+                                                                                <span title="High total commission warning" className="text-amber-500">
+                                                                                    <AlertTriangle size={14} />
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    </td>
+
+                                                                    {/* Active / Enabled */}
+                                                                    <td className="py-4 px-5 text-right">
+                                                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-950 border border-emerald-300">
+                                                                            Active
+                                                                        </span>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            {/* Footer Action Bar */}
+                                            <div className="p-4 sm:p-6 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-center justify-end gap-4">
+                                                {hasAepsChanges && (
+                                                    <span className="text-xs font-black text-amber-700 mr-auto">
+                                                        You have unsaved changes in slab rates.
+                                                    </span>
+                                                )}
+                                                <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                                                    {hasAepsChanges && (
+                                                        <button
+                                                            onClick={handleResetAeps}
+                                                            disabled={saving}
+                                                            className="px-4 py-2.5 rounded-2xl border border-slate-300 text-black text-xs font-black uppercase tracking-wider hover:bg-slate-200 transition-all flex items-center gap-2 cursor-pointer"
+                                                        >
+                                                            <RotateCcw size={14} />
+                                                            Reset
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={handleSaveAeps}
+                                                        disabled={saving || !hasAepsChanges}
+                                                        className={`px-6 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 text-white shadow-lg cursor-pointer ${saving || !hasAepsChanges
+                                                                ? 'bg-slate-300 shadow-none cursor-not-allowed text-slate-600'
+                                                                : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30'
+                                                            }`}
+                                                    >
+                                                        <Save size={14} />
+                                                        {saving ? 'Saving...' : 'Save Plan'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* ── CASE 2: BBPS PERCENTAGE COMMISSION CONFIGURATION ── */}
+                            {commissionModel === 'BBPS' && (
+                                <div className="space-y-6">
+                                    {/* Percentage Configuration Card */}
+                                    <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                                        {/* Header */}
+                                        <div className="p-6 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <h2 className="text-lg font-black text-black">
+                                                        {activeBbpsConfig ? `${getBbpsPlanDisplayName(activeBbpsConfig)} • ${activeBbpsConfig.serviceName}` : 'BBPS Percentage Commission'}
+                                                    </h2>
+                                                    {activeBbpsConfig?.planCode === 'FREE' && (
+                                                        <span className="bg-emerald-100 text-emerald-950 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-emerald-300">
+                                                            Default Plan
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p className="text-xs font-bold text-slate-800 mt-0.5">
+                                                    Calculated as percentage (%) of the eligible BBPS transaction amount. No transaction slabs.
+                                                </p>
+                                            </div>
+
+                                            {/* Status Toggle Switch */}
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-xs font-black text-black">
+                                                    Commission Status:
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setBbpsFormData(prev => ({ ...prev, enabled: !prev.enabled }))}
+                                                    className={`px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${bbpsFormData.enabled
+                                                            ? 'bg-emerald-100 text-emerald-950 border border-emerald-300 shadow-xs'
+                                                            : 'bg-rose-100 text-rose-950 border border-rose-300'
+                                                        }`}
+                                                >
+                                                    {bbpsFormData.enabled ? (
+                                                        <>
+                                                            <CheckCircle2 size={14} className="text-emerald-700" />
+                                                            Active
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <ShieldAlert size={14} className="text-rose-700" />
+                                                            Disabled
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
                                         </div>
 
-                                        {/* Footer Action Bar */}
+                                        {/* Form Inputs Grid */}
+                                        <div className="p-6 space-y-6">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                                {/* 1. Retailer Percentage */}
+                                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-300 space-y-2 flex flex-col justify-between">
+                                                    <div className="flex items-center justify-between gap-1">
+                                                        <label className="text-[11px] font-black text-black uppercase tracking-wider truncate">
+                                                            Retailer (%)
+                                                        </label>
+                                                        <span className="text-[9px] font-black uppercase bg-blue-100 text-blue-950 px-2 py-0.5 rounded border border-blue-300 shrink-0">
+                                                            Direct
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center bg-white border border-slate-300 rounded-xl px-3 py-2 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-inner">
+                                                        <input
+                                                            type="number"
+                                                            step="0.05"
+                                                            min="0"
+                                                            max="100"
+                                                            value={bbpsFormData.retailerPercentage}
+                                                            onChange={(e) => { const v = e.target.value; const num = parseFloat(v) || 0; setBbpsFormData(prev => ({ ...prev, retailerPercentage: v, enabled: num > 0 ? true : prev.enabled })); }}
+                                                            className="w-full bg-transparent text-sm sm:text-base font-black text-black focus:outline-none min-w-0"
+                                                        />
+                                                        <Percent size={14} className="text-black shrink-0 ml-1 font-black" />
+                                                    </div>
+                                                    <p className="text-[9.5px] sm:text-[10px] font-bold text-slate-800 leading-tight">
+                                                        Granted to the transaction-initiating retailer.
+                                                    </p>
+                                                </div>
+
+                                                {/* 2. Distributor Percentage */}
+                                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-300 space-y-2 flex flex-col justify-between">
+                                                    <div className="flex items-center justify-between gap-1">
+                                                        <label className="text-[11px] font-black text-black uppercase tracking-wider truncate">
+                                                            Distributor (%)
+                                                        </label>
+                                                        <span className="text-[9px] font-black uppercase bg-amber-100 text-amber-950 px-2 py-0.5 rounded border border-amber-300 shrink-0">
+                                                            Upline 1
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center bg-white border border-slate-300 rounded-xl px-3 py-2 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-inner">
+                                                        <input
+                                                            type="number"
+                                                            step="0.05"
+                                                            min="0"
+                                                            max="100"
+                                                            value={bbpsFormData.distributorPercentage}
+                                                            onChange={(e) => { const v = e.target.value; const num = parseFloat(v) || 0; setBbpsFormData(prev => ({ ...prev, distributorPercentage: v, enabled: num > 0 ? true : prev.enabled })); }}
+                                                            className="w-full bg-transparent text-sm sm:text-base font-black text-black focus:outline-none min-w-0"
+                                                        />
+                                                        <Percent size={14} className="text-black shrink-0 ml-1 font-black" />
+                                                    </div>
+                                                    <p className="text-[9.5px] sm:text-[10px] font-bold text-slate-800 leading-tight">
+                                                        Credited to immediate parent distributor if mapped.
+                                                    </p>
+                                                </div>
+
+                                                {/* 3. Super Distributor Percentage */}
+                                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-300 space-y-2 flex flex-col justify-between">
+                                                    <div className="flex items-center justify-between gap-1">
+                                                        <label className="text-[11px] font-black text-black uppercase tracking-wider truncate">
+                                                            Super Dist. (%)
+                                                        </label>
+                                                        <span className="text-[9px] font-black uppercase bg-purple-100 text-purple-950 px-2 py-0.5 rounded border border-purple-300 shrink-0">
+                                                            Upline 2
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center bg-white border border-slate-300 rounded-xl px-3 py-2 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-inner">
+                                                        <input
+                                                            type="number"
+                                                            step="0.05"
+                                                            min="0"
+                                                            max="100"
+                                                            value={bbpsFormData.superDistributorPercentage}
+                                                            onChange={(e) => { const v = e.target.value; const num = parseFloat(v) || 0; setBbpsFormData(prev => ({ ...prev, superDistributorPercentage: v, enabled: num > 0 ? true : prev.enabled })); }}
+                                                            className="w-full bg-transparent text-sm sm:text-base font-black text-black focus:outline-none min-w-0"
+                                                        />
+                                                        <Percent size={14} className="text-black shrink-0 ml-1 font-black" />
+                                                    </div>
+                                                    <p className="text-[9.5px] sm:text-[10px] font-bold text-slate-800 leading-tight">
+                                                        Credited to super distributor in hierarchy branch.
+                                                    </p>
+                                                </div>
+
+                                                {/* 4. Total Calculation Div (Combined Commission Payout) */}
+                                                <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-black text-white space-y-2 flex flex-col justify-between shadow-md border border-slate-800">
+                                                    <div className="flex items-center justify-between gap-1">
+                                                        <span className="text-[11px] font-black uppercase text-indigo-200 tracking-wider truncate">
+                                                            Combined Payout
+                                                        </span>
+                                                        <span className="text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-400/30 shrink-0 flex items-center gap-1">
+                                                            <TrendingUp size={10} />
+                                                            Total
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between bg-white/10 rounded-xl px-3 py-2 border border-white/10">
+                                                        <span className="text-sm sm:text-base font-black font-mono text-emerald-400 truncate">
+                                                            {bbpsTotalPercentage.toFixed(2)}%
+                                                        </span>
+                                                        {bbpsTotalPercentage > 5 && (
+                                                            <span title="High total payout warning" className="text-amber-400 shrink-0">
+                                                                <AlertTriangle size={15} />
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-[9.5px] sm:text-[10px] font-bold text-slate-300 leading-tight">
+                                                        Total distributed percentage across all hierarchy levels.
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {/* ── LIVE INTERACTIVE CALCULATOR / SIMULATOR ── */}
+                                            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-300 space-y-4">
+                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <Calculator size={16} className="text-blue-700" />
+                                                        <h3 className="text-xs font-black text-black uppercase tracking-wider">
+                                                            Live Percentage Calculation Simulator
+                                                        </h3>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[11px] font-black text-black">Sample Amount:</span>
+                                                        <div className="inline-flex items-center bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-mono font-black text-black">
+                                                            <span className="text-black font-black mr-1">&#8377;</span>
+                                                            <input
+                                                                type="number"
+                                                                step="100"
+                                                                min="1"
+                                                                value={simulatedAmount}
+                                                                onChange={(e) => setSimulatedAmount(e.target.value)}
+                                                                className="w-20 bg-transparent text-right font-black text-black focus:outline-none"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Calculated outputs */}
+                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                                                    <div className="bg-white p-3 rounded-xl border border-slate-300 shadow-2xs">
+                                                        <span className="text-[9.5px] font-black text-slate-800 uppercase tracking-wider block">Retailer Earns</span>
+                                                        <p className="text-sm font-black text-black font-mono mt-1">
+                                                            &#8377;{simRetCommission.toFixed(2)}
+                                                        </p>
+                                                        <span className="text-[9px] font-black text-blue-700">({bbpsFormData.retailerPercentage}%)</span>
+                                                    </div>
+
+                                                    <div className="bg-white p-3 rounded-xl border border-slate-300 shadow-2xs">
+                                                        <span className="text-[9.5px] font-black text-slate-800 uppercase tracking-wider block">Distributor Earns</span>
+                                                        <p className="text-sm font-black text-black font-mono mt-1">
+                                                            &#8377;{simDistCommission.toFixed(2)}
+                                                        </p>
+                                                        <span className="text-[9px] font-black text-amber-800">({bbpsFormData.distributorPercentage}%)</span>
+                                                    </div>
+
+                                                    <div className="bg-white p-3 rounded-xl border border-slate-300 shadow-2xs">
+                                                        <span className="text-[9.5px] font-black text-slate-800 uppercase tracking-wider block">Super Dist. Earns</span>
+                                                        <p className="text-sm font-black text-black font-mono mt-1">
+                                                            &#8377;{simSdCommission.toFixed(2)}
+                                                        </p>
+                                                        <span className="text-[9px] font-black text-purple-800">({bbpsFormData.superDistributorPercentage}%)</span>
+                                                    </div>
+
+                                                    <div className="bg-black text-white p-3 rounded-xl shadow-xs">
+                                                        <span className="text-[9.5px] font-bold text-slate-200 uppercase tracking-wider block">Total Disbursed</span>
+                                                        <p className="text-sm font-black font-mono mt-1 text-emerald-400">
+                                                            &#8377;{simTotalCommission.toFixed(2)}
+                                                        </p>
+                                                        <span className="text-[9px] font-bold text-emerald-300">({bbpsTotalPercentage.toFixed(2)}%)</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Action Bar */}
                                         <div className="p-4 sm:p-6 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-center justify-end gap-4">
-                                            {hasAepsChanges && (
+                                            {hasBbpsChanges && (
                                                 <span className="text-xs font-black text-amber-700 mr-auto">
-                                                    You have unsaved changes in slab rates.
+                                                    You have unsaved percentage changes.
                                                 </span>
                                             )}
                                             <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-                                                {hasAepsChanges && (
+                                                {hasBbpsChanges && (
                                                     <button
-                                                        onClick={handleResetAeps}
+                                                        onClick={handleResetBbps}
                                                         disabled={saving}
                                                         className="px-4 py-2.5 rounded-2xl border border-slate-300 text-black text-xs font-black uppercase tracking-wider hover:bg-slate-200 transition-all flex items-center gap-2 cursor-pointer"
                                                     >
@@ -2118,287 +2369,24 @@ export default function CommissionManagement() {
                                                     </button>
                                                 )}
                                                 <button
-                                                    onClick={handleSaveAeps}
-                                                    disabled={saving || !hasAepsChanges}
-                                                    className={`px-6 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 text-white shadow-lg cursor-pointer ${
-                                                        saving || !hasAepsChanges
+                                                    onClick={handleSaveBbps}
+                                                    disabled={saving || !hasBbpsChanges}
+                                                    className={`px-6 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 text-white shadow-lg cursor-pointer ${saving || !hasBbpsChanges
                                                             ? 'bg-slate-300 shadow-none cursor-not-allowed text-slate-600'
                                                             : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     <Save size={14} />
-                                                    {saving ? 'Saving...' : 'Save Plan'}
+                                                    {saving ? 'Saving...' : 'Save Configuration'}
                                                 </button>
                                             </div>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        )}
-
-                        {/* ── CASE 2: BBPS PERCENTAGE COMMISSION CONFIGURATION ── */}
-                        {commissionModel === 'BBPS' && (
-                            <div className="space-y-6">
-                                {/* Percentage Configuration Card */}
-                                <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-                                    {/* Header */}
-                                    <div className="p-6 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <h2 className="text-lg font-black text-black">
-                                                    {activeBbpsConfig ? `${getBbpsPlanDisplayName(activeBbpsConfig)} • ${activeBbpsConfig.serviceName}` : 'BBPS Percentage Commission'}
-                                                </h2>
-                                                {activeBbpsConfig?.planCode === 'FREE' && (
-                                                    <span className="bg-emerald-100 text-emerald-950 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-emerald-300">
-                                                        Default Plan
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <p className="text-xs font-bold text-slate-800 mt-0.5">
-                                                Calculated as percentage (%) of the eligible BBPS transaction amount. No transaction slabs.
-                                            </p>
-                                        </div>
-
-                                        {/* Status Toggle Switch */}
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-xs font-black text-black">
-                                                Commission Status:
-                                            </span>
-                                            <button
-                                                type="button"
-                                                onClick={() => setBbpsFormData(prev => ({ ...prev, enabled: !prev.enabled }))}
-                                                className={`px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${
-                                                    bbpsFormData.enabled
-                                                        ? 'bg-emerald-100 text-emerald-950 border border-emerald-300 shadow-xs'
-                                                        : 'bg-rose-100 text-rose-950 border border-rose-300'
-                                                }`}
-                                            >
-                                                {bbpsFormData.enabled ? (
-                                                    <>
-                                                        <CheckCircle2 size={14} className="text-emerald-700" />
-                                                        Active
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <ShieldAlert size={14} className="text-rose-700" />
-                                                        Disabled
-                                                    </>
-                                                )}
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Form Inputs Grid */}
-                                    <div className="p-6 space-y-6">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                            {/* 1. Retailer Percentage */}
-                                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-300 space-y-2 flex flex-col justify-between">
-                                                <div className="flex items-center justify-between gap-1">
-                                                    <label className="text-[11px] font-black text-black uppercase tracking-wider truncate">
-                                                        Retailer (%)
-                                                    </label>
-                                                    <span className="text-[9px] font-black uppercase bg-blue-100 text-blue-950 px-2 py-0.5 rounded border border-blue-300 shrink-0">
-                                                        Direct
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center bg-white border border-slate-300 rounded-xl px-3 py-2 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-inner">
-                                                    <input
-                                                        type="number"
-                                                        step="0.05"
-                                                        min="0"
-                                                        max="100"
-                                                        value={bbpsFormData.retailerPercentage}
-                                                        onChange={(e) => { const v = e.target.value; const num = parseFloat(v) || 0; setBbpsFormData(prev => ({ ...prev, retailerPercentage: v, enabled: num > 0 ? true : prev.enabled })); }}
-                                                        className="w-full bg-transparent text-sm sm:text-base font-black text-black focus:outline-none min-w-0"
-                                                    />
-                                                    <Percent size={14} className="text-black shrink-0 ml-1 font-black" />
-                                                </div>
-                                                <p className="text-[9.5px] sm:text-[10px] font-bold text-slate-800 leading-tight">
-                                                    Granted to the transaction-initiating retailer.
-                                                </p>
-                                            </div>
-
-                                            {/* 2. Distributor Percentage */}
-                                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-300 space-y-2 flex flex-col justify-between">
-                                                <div className="flex items-center justify-between gap-1">
-                                                    <label className="text-[11px] font-black text-black uppercase tracking-wider truncate">
-                                                        Distributor (%)
-                                                    </label>
-                                                    <span className="text-[9px] font-black uppercase bg-amber-100 text-amber-950 px-2 py-0.5 rounded border border-amber-300 shrink-0">
-                                                        Upline 1
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center bg-white border border-slate-300 rounded-xl px-3 py-2 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-inner">
-                                                    <input
-                                                        type="number"
-                                                        step="0.05"
-                                                        min="0"
-                                                        max="100"
-                                                        value={bbpsFormData.distributorPercentage}
-                                                        onChange={(e) => { const v = e.target.value; const num = parseFloat(v) || 0; setBbpsFormData(prev => ({ ...prev, distributorPercentage: v, enabled: num > 0 ? true : prev.enabled })); }}
-                                                        className="w-full bg-transparent text-sm sm:text-base font-black text-black focus:outline-none min-w-0"
-                                                    />
-                                                    <Percent size={14} className="text-black shrink-0 ml-1 font-black" />
-                                                </div>
-                                                <p className="text-[9.5px] sm:text-[10px] font-bold text-slate-800 leading-tight">
-                                                    Credited to immediate parent distributor if mapped.
-                                                </p>
-                                            </div>
-
-                                            {/* 3. Super Distributor Percentage */}
-                                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-300 space-y-2 flex flex-col justify-between">
-                                                <div className="flex items-center justify-between gap-1">
-                                                    <label className="text-[11px] font-black text-black uppercase tracking-wider truncate">
-                                                        Super Dist. (%)
-                                                    </label>
-                                                    <span className="text-[9px] font-black uppercase bg-purple-100 text-purple-950 px-2 py-0.5 rounded border border-purple-300 shrink-0">
-                                                        Upline 2
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center bg-white border border-slate-300 rounded-xl px-3 py-2 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-inner">
-                                                    <input
-                                                        type="number"
-                                                        step="0.05"
-                                                        min="0"
-                                                        max="100"
-                                                        value={bbpsFormData.superDistributorPercentage}
-                                                        onChange={(e) => { const v = e.target.value; const num = parseFloat(v) || 0; setBbpsFormData(prev => ({ ...prev, superDistributorPercentage: v, enabled: num > 0 ? true : prev.enabled })); }}
-                                                        className="w-full bg-transparent text-sm sm:text-base font-black text-black focus:outline-none min-w-0"
-                                                    />
-                                                    <Percent size={14} className="text-black shrink-0 ml-1 font-black" />
-                                                </div>
-                                                <p className="text-[9.5px] sm:text-[10px] font-bold text-slate-800 leading-tight">
-                                                    Credited to super distributor in hierarchy branch.
-                                                </p>
-                                            </div>
-
-                                            {/* 4. Total Calculation Div (Combined Commission Payout) */}
-                                            <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-black text-white space-y-2 flex flex-col justify-between shadow-md border border-slate-800">
-                                                <div className="flex items-center justify-between gap-1">
-                                                    <span className="text-[11px] font-black uppercase text-indigo-200 tracking-wider truncate">
-                                                        Combined Payout
-                                                    </span>
-                                                    <span className="text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-400/30 shrink-0 flex items-center gap-1">
-                                                        <TrendingUp size={10} />
-                                                        Total
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center justify-between bg-white/10 rounded-xl px-3 py-2 border border-white/10">
-                                                    <span className="text-sm sm:text-base font-black font-mono text-emerald-400 truncate">
-                                                        {bbpsTotalPercentage.toFixed(2)}%
-                                                    </span>
-                                                    {bbpsTotalPercentage > 5 && (
-                                                        <span title="High total payout warning" className="text-amber-400 shrink-0">
-                                                            <AlertTriangle size={15} />
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <p className="text-[9.5px] sm:text-[10px] font-bold text-slate-300 leading-tight">
-                                                    Total distributed percentage across all hierarchy levels.
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        {/* ── LIVE INTERACTIVE CALCULATOR / SIMULATOR ── */}
-                                        <div className="p-5 bg-slate-50 rounded-2xl border border-slate-300 space-y-4">
-                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
-                                                <div className="flex items-center gap-2">
-                                                    <Calculator size={16} className="text-blue-700" />
-                                                    <h3 className="text-xs font-black text-black uppercase tracking-wider">
-                                                        Live Percentage Calculation Simulator
-                                                    </h3>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-[11px] font-black text-black">Sample Amount:</span>
-                                                    <div className="inline-flex items-center bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-mono font-black text-black">
-                                                        <span className="text-black font-black mr-1">&#8377;</span>
-                                                        <input
-                                                            type="number"
-                                                            step="100"
-                                                            min="1"
-                                                            value={simulatedAmount}
-                                                            onChange={(e) => setSimulatedAmount(e.target.value)}
-                                                            className="w-20 bg-transparent text-right font-black text-black focus:outline-none"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Calculated outputs */}
-                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                                                <div className="bg-white p-3 rounded-xl border border-slate-300 shadow-2xs">
-                                                    <span className="text-[9.5px] font-black text-slate-800 uppercase tracking-wider block">Retailer Earns</span>
-                                                    <p className="text-sm font-black text-black font-mono mt-1">
-                                                        &#8377;{simRetCommission.toFixed(2)}
-                                                    </p>
-                                                    <span className="text-[9px] font-black text-blue-700">({bbpsFormData.retailerPercentage}%)</span>
-                                                </div>
-
-                                                <div className="bg-white p-3 rounded-xl border border-slate-300 shadow-2xs">
-                                                    <span className="text-[9.5px] font-black text-slate-800 uppercase tracking-wider block">Distributor Earns</span>
-                                                    <p className="text-sm font-black text-black font-mono mt-1">
-                                                        &#8377;{simDistCommission.toFixed(2)}
-                                                    </p>
-                                                    <span className="text-[9px] font-black text-amber-800">({bbpsFormData.distributorPercentage}%)</span>
-                                                </div>
-
-                                                <div className="bg-white p-3 rounded-xl border border-slate-300 shadow-2xs">
-                                                    <span className="text-[9.5px] font-black text-slate-800 uppercase tracking-wider block">Super Dist. Earns</span>
-                                                    <p className="text-sm font-black text-black font-mono mt-1">
-                                                        &#8377;{simSdCommission.toFixed(2)}
-                                                    </p>
-                                                    <span className="text-[9px] font-black text-purple-800">({bbpsFormData.superDistributorPercentage}%)</span>
-                                                </div>
-
-                                                <div className="bg-black text-white p-3 rounded-xl shadow-xs">
-                                                    <span className="text-[9.5px] font-bold text-slate-200 uppercase tracking-wider block">Total Disbursed</span>
-                                                    <p className="text-sm font-black font-mono mt-1 text-emerald-400">
-                                                        &#8377;{simTotalCommission.toFixed(2)}
-                                                    </p>
-                                                    <span className="text-[9px] font-bold text-emerald-300">({bbpsTotalPercentage.toFixed(2)}%)</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Action Bar */}
-                                    <div className="p-4 sm:p-6 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-center justify-end gap-4">
-                                        {hasBbpsChanges && (
-                                            <span className="text-xs font-black text-amber-700 mr-auto">
-                                                You have unsaved percentage changes.
-                                            </span>
-                                        )}
-                                        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-                                            {hasBbpsChanges && (
-                                                <button
-                                                    onClick={handleResetBbps}
-                                                    disabled={saving}
-                                                    className="px-4 py-2.5 rounded-2xl border border-slate-300 text-black text-xs font-black uppercase tracking-wider hover:bg-slate-200 transition-all flex items-center gap-2 cursor-pointer"
-                                                >
-                                                    <RotateCcw size={14} />
-                                                    Reset
-                                                </button>
-                                            )}
-                                            <button
-                                                onClick={handleSaveBbps}
-                                                disabled={saving || !hasBbpsChanges}
-                                                className={`px-6 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 text-white shadow-lg cursor-pointer ${
-                                                    saving || !hasBbpsChanges
-                                                        ? 'bg-slate-300 shadow-none cursor-not-allowed text-slate-600'
-                                                        : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30'
-                                                }`}
-                                            >
-                                                <Save size={14} />
-                                                {saving ? 'Saving...' : 'Save Configuration'}
-                                            </button>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
-                </div>
-            )) : (
+                )) : (
                 /* ── AUDIT LEDGER TAB (AEPS & BBPS TRANSACTIONS) ───────────────────── */
                 <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-6">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -2523,13 +2511,12 @@ export default function CommissionManagement() {
                                                     {item.originalTransactionId}
                                                 </td>
                                                 <td className="py-3 px-4">
-                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase ${
-                                                        isRecharge
+                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase ${isRecharge
                                                             ? 'bg-blue-100 text-blue-950 border border-blue-300'
                                                             : isBbps
-                                                            ? 'bg-emerald-100 text-emerald-950 border border-emerald-300'
-                                                            : 'bg-indigo-100 text-indigo-950 border border-indigo-300'
-                                                    }`}>
+                                                                ? 'bg-emerald-100 text-emerald-950 border border-emerald-300'
+                                                                : 'bg-indigo-100 text-indigo-950 border border-indigo-300'
+                                                        }`}>
                                                         {isRecharge ? (
                                                             <>
                                                                 <Smartphone size={10} className="text-blue-700" />
@@ -2549,13 +2536,12 @@ export default function CommissionManagement() {
                                                     {item.beneficiaryName} <span className="text-slate-600 font-bold text-[10px]">({item.beneficiaryUsername})</span>
                                                 </td>
                                                 <td className="py-3 px-4">
-                                                    <span className={`inline-flex px-2 py-0.5 rounded-md text-[9px] font-black uppercase ${
-                                                        item.beneficiaryRole === 'RETAILER'
+                                                    <span className={`inline-flex px-2 py-0.5 rounded-md text-[9px] font-black uppercase ${item.beneficiaryRole === 'RETAILER'
                                                             ? 'bg-blue-100 text-blue-950 border border-blue-300'
                                                             : item.beneficiaryRole === 'DISTRIBUTOR'
-                                                            ? 'bg-amber-100 text-amber-950 border border-amber-300'
-                                                            : 'bg-purple-100 text-purple-950 border border-purple-300'
-                                                    }`}>
+                                                                ? 'bg-amber-100 text-amber-950 border border-amber-300'
+                                                                : 'bg-purple-100 text-purple-950 border border-purple-300'
+                                                        }`}>
                                                         {item.beneficiaryRole}
                                                     </span>
                                                 </td>
