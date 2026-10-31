@@ -390,17 +390,17 @@ function MobileTab({ location }) {
     );
 
     return (
-        <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
             {/* LEFT: Input Card */}
-            <div className="lg:col-span-5 xl:col-span-5 flex flex-col h-full">
-                <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs flex flex-col h-full lg:overflow-y-auto scrollbar-none space-y-3">
+            <div className="lg:col-span-5 xl:col-span-5 flex flex-col">
+                <div className="bg-white rounded-2xl border border-slate-200 p-3.5 sm:p-4 shadow-sm flex flex-col space-y-2.5">
                     {/* Header: Title + Balance */}
                     <div className="flex justify-between items-center shrink-0">
                         <h3 className="font-black text-black text-sm sm:text-base flex items-center gap-2">
-                            <Icon3D icon={Smartphone} color="#0f2557" size={30} />
+                            <Icon3D icon={Smartphone} color="#0f2557" size={28} />
                             Enter Recharge Details
                         </h3>
-                        <span className="text-xs font-black text-emerald-950 bg-emerald-100 border border-emerald-300 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-2xs">
+                        <span className="text-[11px] sm:text-xs font-black text-emerald-950 bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 sm:py-1 rounded-full flex items-center gap-1.5 shadow-2xs">
                             <Wallet size={12} className="text-emerald-800" />
                             ₹{currentBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </span>
@@ -412,16 +412,16 @@ function MobileTab({ location }) {
                             Mobile Number
                         </label>
                         <div className="relative">
-                            <Smartphone size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-black" />
+                            <Smartphone size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-black" />
                             <input
                                 type="text"
                                 maxLength={10}
                                 value={mobile}
                                 onChange={e => { const v = e.target.value.replace(/\D/g, ''); setMobile(v); detect(v); }}
                                 placeholder="Enter 10-digit number"
-                                className="w-full pl-10 pr-10 py-2.5 rounded-xl border-2 border-slate-300 text-black font-extrabold text-base sm:text-lg outline-none focus:border-[#0f2557] focus:ring-2 focus:ring-blue-100 transition-all bg-white placeholder:text-slate-500 placeholder:font-bold"
+                                className="w-full pl-9 pr-9 py-2 rounded-xl border-2 border-slate-300 text-black font-extrabold text-sm sm:text-base outline-none focus:border-[#0f2557] focus:ring-2 focus:ring-blue-100 transition-all bg-white placeholder:text-slate-500 placeholder:font-bold"
                             />
-                            {detecting && <RefreshCw size={17} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-blue-600 animate-spin" />}
+                            {detecting && <RefreshCw size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-600 animate-spin" />}
                         </div>
                     </div>
 
@@ -430,23 +430,23 @@ function MobileTab({ location }) {
                         <motion.div
                             initial={{ opacity: 0, y: -4 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="flex items-center gap-2.5 p-2 rounded-xl border border-slate-300 bg-slate-50 shrink-0"
+                            className="flex items-center gap-2 p-1.5 sm:p-2 rounded-xl border border-slate-300 bg-slate-50 shrink-0"
                         >
-                            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-black text-xs shrink-0 shadow-xs" style={{ background: opColor }}>
+                            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-black text-xs shrink-0 shadow-xs" style={{ background: opColor }}>
                                 {(opDisplayName || '')[0]}
                             </div>
                             <div className="min-w-0">
-                                <p className="text-xs sm:text-sm font-black text-black truncate">{opDisplayName}</p>
-                                <p className="text-[11px] font-extrabold text-slate-800">{circle || 'All India'}</p>
+                                <p className="text-xs font-black text-black truncate">{opDisplayName}</p>
+                                <p className="text-[10px] font-extrabold text-slate-800">{circle || 'All India'}</p>
                             </div>
-                            <span className="ml-auto text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-950 border border-emerald-300 shrink-0">
+                            <span className="ml-auto text-[9px] font-black px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-950 border border-emerald-300 shrink-0">
                                 Auto detected ✓
                             </span>
                         </motion.div>
                     )}
 
                     {/* Operator & Circle manual controls */}
-                    <div className="grid grid-cols-2 gap-2.5 shrink-0">
+                    <div className="grid grid-cols-2 gap-2 shrink-0">
                         <div>
                             <label className="text-xs font-black text-black uppercase tracking-wider block mb-1">
                                 Operator
@@ -460,7 +460,7 @@ function MobileTab({ location }) {
                                     setPlans(OPERATOR_PLANS[brand] || []);
                                     setSelectedPlan(null);
                                 }}
-                                className="w-full py-2 px-2.5 rounded-xl border-2 border-slate-300 text-black font-extrabold text-xs sm:text-sm outline-none focus:border-[#0f2557] bg-white cursor-pointer"
+                                className="w-full py-1.5 px-2 rounded-xl border-2 border-slate-300 text-black font-extrabold text-xs sm:text-sm outline-none focus:border-[#0f2557] bg-white cursor-pointer"
                             >
                                 <option value="" className="text-black font-bold">Select Operator</option>
                                 {backendOperators.map(o => (
@@ -478,7 +478,7 @@ function MobileTab({ location }) {
                                 value={circle}
                                 onChange={e => setCircle(e.target.value)}
                                 placeholder="State / Region"
-                                className="w-full py-2 px-2.5 rounded-xl border-2 border-slate-300 text-black font-extrabold text-xs sm:text-sm outline-none focus:border-[#0f2557] bg-white placeholder:text-slate-500 placeholder:font-bold"
+                                className="w-full py-1.5 px-2 rounded-xl border-2 border-slate-300 text-black font-extrabold text-xs sm:text-sm outline-none focus:border-[#0f2557] bg-white placeholder:text-slate-500 placeholder:font-bold"
                             />
                         </div>
                     </div>
@@ -490,13 +490,13 @@ function MobileTab({ location }) {
                                 Or Enter Amount
                             </label>
                             {selectedPlan && (
-                                <span className="text-[11px] font-black text-blue-900 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md">
-                                    Plan Selected: ₹{selectedPlan.amount}
+                                <span className="text-[10px] font-black text-blue-900 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded">
+                                    Selected: ₹{selectedPlan.amount}
                                 </span>
                             )}
                         </div>
                         <div className="relative">
-                            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xl font-black text-black">₹</span>
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base font-black text-black">₹</span>
                             <input
                                 type="text"
                                 inputMode="numeric"
@@ -507,8 +507,8 @@ function MobileTab({ location }) {
                                     setCustomAmount(val);
                                     setSelectedPlan(null);
                                 }}
-                                placeholder="Enter recharge amount"
-                                className="w-full pl-8 pr-3 py-2 rounded-xl border-2 border-slate-300 text-black font-black text-lg outline-none focus:border-[#0f2557] focus:ring-2 focus:ring-blue-100 bg-white placeholder:text-slate-500 placeholder:font-bold"
+                                placeholder="Enter amount"
+                                className="w-full pl-7 pr-3 py-1.5 rounded-xl border-2 border-slate-300 text-black font-black text-base outline-none focus:border-[#0f2557] focus:ring-2 focus:ring-blue-100 bg-white placeholder:text-slate-500 placeholder:font-bold"
                             />
                         </div>
                         {/* Quick amount chips */}
@@ -519,7 +519,7 @@ function MobileTab({ location }) {
                                     key={amt}
                                     type="button"
                                     onClick={() => { setCustomAmount(amt); setSelectedPlan(null); }}
-                                    className="px-2 py-0.5 rounded-md text-[11px] font-black text-black bg-slate-100 hover:bg-slate-200 border border-slate-300 cursor-pointer transition-all"
+                                    className="px-2 py-0.5 rounded-md text-[10px] font-black text-black bg-slate-100 hover:bg-slate-200 border border-slate-300 cursor-pointer transition-all"
                                 >
                                     ₹{amt}
                                 </button>
@@ -529,38 +529,38 @@ function MobileTab({ location }) {
 
                     {/* Payment Method Selection */}
                     {(selectedPlan || customAmount) && (
-                        <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="shrink-0 space-y-1.5">
-                            <p className="text-[11px] font-black uppercase text-black tracking-wider">Payment Method</p>
+                        <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="shrink-0 space-y-1">
+                            <p className="text-[10px] font-black uppercase text-black tracking-wider">Payment Method</p>
                             <div className="grid grid-cols-2 gap-2">
                                 <button
                                     type="button"
                                     onClick={() => setPaymentMethod('wallet')}
-                                    className={`p-2.5 rounded-xl border-2 text-left transition-all cursor-pointer ${
+                                    className={`p-2 rounded-xl border-2 text-left transition-all cursor-pointer ${
                                         paymentMethod === 'wallet'
                                             ? 'border-emerald-600 bg-emerald-50/80 shadow-2xs'
                                             : 'border-slate-300 bg-white hover:border-slate-400'
                                     }`}
                                 >
                                     <div className="flex items-center gap-1.5 mb-0.5">
-                                        <Wallet size={15} className={paymentMethod === 'wallet' ? 'text-emerald-800' : 'text-black'} />
+                                        <Wallet size={14} className={paymentMethod === 'wallet' ? 'text-emerald-800' : 'text-black'} />
                                         <span className={`text-xs font-black ${paymentMethod === 'wallet' ? 'text-emerald-950' : 'text-black'}`}>Main Wallet</span>
                                     </div>
-                                    <p className="text-[10px] font-extrabold text-slate-800">Instant deduction</p>
+                                    <p className="text-[9px] font-extrabold text-slate-800">Instant deduction</p>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setPaymentMethod('gateway')}
-                                    className={`p-2.5 rounded-xl border-2 text-left transition-all cursor-pointer ${
+                                    className={`p-2 rounded-xl border-2 text-left transition-all cursor-pointer ${
                                         paymentMethod === 'gateway'
                                             ? 'border-blue-600 bg-blue-50/80 shadow-2xs'
                                             : 'border-slate-300 bg-white hover:border-slate-400'
                                     }`}
                                 >
                                     <div className="flex items-center gap-1.5 mb-0.5">
-                                        <CreditCard size={15} className={paymentMethod === 'gateway' ? 'text-blue-800' : 'text-black'} />
+                                        <CreditCard size={14} className={paymentMethod === 'gateway' ? 'text-blue-800' : 'text-black'} />
                                         <span className={`text-xs font-black ${paymentMethod === 'gateway' ? 'text-blue-950' : 'text-black'}`}>Gateway</span>
                                     </div>
-                                    <p className="text-[10px] font-extrabold text-slate-800">UPI / Net Banking</p>
+                                    <p className="text-[9px] font-extrabold text-slate-800">UPI / Net Banking</p>
                                 </button>
                             </div>
                         </motion.div>
@@ -568,19 +568,19 @@ function MobileTab({ location }) {
 
                     {/* Summary box */}
                     {(selectedPlan || customAmount) && (
-                        <div className="rounded-xl p-2.5 space-y-1 border border-slate-300 bg-slate-50 shrink-0">
+                        <div className="rounded-xl p-2 space-y-1 border border-slate-300 bg-slate-50 shrink-0">
                             <div className="flex justify-between items-center text-xs">
                                 <span className="font-extrabold text-slate-800">Recharge Amount</span>
                                 <span className="font-black text-black text-sm">₹{parseFloat(selectedPlan?.amount || customAmount || 0).toFixed(2)}</span>
                             </div>
                             {selectedPlan && (
-                                <div className="flex justify-between items-center text-[11px]">
+                                <div className="flex justify-between items-center text-[10px]">
                                     <span className="font-bold text-slate-700">Plan Benefits</span>
                                     <span className="font-black text-black">{selectedPlan.data} · {selectedPlan.validity}</span>
                                 </div>
                             )}
                             {paymentMethod === 'wallet' && (
-                                <div className="flex justify-between items-center text-[11px] pt-1 border-t border-slate-200">
+                                <div className="flex justify-between items-center text-[10px] pt-1 border-t border-slate-200">
                                     <span className="font-bold text-slate-700">Wallet Balance</span>
                                     <span className="font-black text-black">₹{currentBalance.toFixed(2)}</span>
                                 </div>
@@ -592,20 +592,20 @@ function MobileTab({ location }) {
                     <AnimatePresence><Toast status={status} onClose={() => setStatus(null)} /></AnimatePresence>
 
                     {/* Proceed Button */}
-                    <div className="pt-1 mt-auto shrink-0">
+                    <div className="pt-2 shrink-0">
                         <motion.button
                             onClick={handleRecharge}
                             disabled={loading}
                             whileHover={{ scale: 1.01 }}
                             whileTap={{ scale: 0.98 }}
-                            className="w-full py-3 sm:py-3.5 rounded-xl text-white font-black text-sm sm:text-base uppercase tracking-wider relative overflow-hidden disabled:opacity-60 cursor-pointer shadow-md"
+                            className="w-full py-2.5 sm:py-3 rounded-xl text-white font-black text-xs sm:text-sm uppercase tracking-wider relative overflow-hidden disabled:opacity-60 cursor-pointer shadow-md"
                             style={{ background: 'linear-gradient(135deg, #0f2557 0%, #1a3a8f 100%)' }}
                         >
                             <span className="relative z-10 flex items-center justify-center gap-2">
                                 {loading ? (
-                                    <><RefreshCw size={18} className="animate-spin" /> Processing...</>
+                                    <><RefreshCw size={16} className="animate-spin" /> Processing...</>
                                 ) : (
-                                    <>⚡ Proceed to Recharge <ArrowRight size={18} /></>
+                                    <>⚡ Proceed to Recharge <ArrowRight size={16} /></>
                                 )}
                             </span>
                         </motion.button>
@@ -614,31 +614,31 @@ function MobileTab({ location }) {
             </div>
 
             {/* RIGHT: Plans Card */}
-            <div className="lg:col-span-7 xl:col-span-7 flex flex-col h-full">
+            <div className="lg:col-span-7 xl:col-span-7 flex flex-col">
                 {plans.length > 0 ? (
-                    <div className="h-full flex flex-col bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs overflow-hidden">
+                    <div className="bg-white rounded-2xl border border-slate-200 p-3.5 sm:p-4 shadow-sm flex flex-col max-h-[560px] lg:h-[460px]">
                         {/* Header of plans card */}
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-100 shrink-0">
                             <div>
-                                <h3 className="font-black text-black text-sm sm:text-base flex items-center gap-2">
-                                    <span className="w-3 h-3 rounded-full" style={{ background: opColor }} />
+                                <h3 className="font-black text-black text-xs sm:text-sm flex items-center gap-2">
+                                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: opColor }} />
                                     {opDisplayName || operator} Plans — {circle || 'All India'}
                                 </h3>
-                                <p className="text-[11px] font-extrabold text-slate-800 mt-0.5">Click any plan to select</p>
+                                <p className="text-[10px] font-extrabold text-slate-800 mt-0.5">Click any plan to select</p>
                             </div>
-                            <span className="text-xs font-black text-black bg-slate-100 border border-slate-300 px-2.5 py-1 rounded-full shadow-2xs">
+                            <span className="text-[11px] font-black text-black bg-slate-100 border border-slate-300 px-2 py-0.5 rounded-full shadow-2xs">
                                 {filteredPlans.length} plans
                             </span>
                         </div>
 
                         {/* Category filter pills */}
-                        <div className="flex gap-1.5 overflow-x-auto py-2.5 shrink-0 scrollbar-none">
+                        <div className="flex gap-1.5 overflow-x-auto py-2 shrink-0 scrollbar-none">
                             {PLAN_FILTERS.map(f => (
                                 <button
                                     key={f}
                                     type="button"
                                     onClick={() => setFilter(f)}
-                                    className={`px-3 py-1 rounded-lg text-xs font-black border transition-all whitespace-nowrap cursor-pointer ${
+                                    className={`px-2.5 py-1 rounded-lg text-xs font-black border transition-all whitespace-nowrap cursor-pointer ${
                                         filter === f
                                             ? 'bg-[#0f2557] text-white border-[#0f2557] shadow-xs'
                                             : 'bg-white text-black border-slate-300 hover:border-black hover:bg-slate-50'
@@ -650,7 +650,7 @@ function MobileTab({ location }) {
                         </div>
 
                         {/* Scrollable plans list - ONLY this list scrolls! */}
-                        <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 min-h-0 scrollbar-thin scrollbar-thumb-slate-300">
+                        <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-0 scrollbar-thin scrollbar-thumb-slate-300">
                             {filteredPlans.map(plan => (
                                 <PlanCard
                                     key={plan.id}
@@ -663,23 +663,23 @@ function MobileTab({ location }) {
                         </div>
                     </div>
                 ) : (
-                    <div className="h-full flex flex-col justify-between bg-white rounded-2xl border border-slate-200 p-5 shadow-xs overflow-y-auto">
+                    <div className="bg-white rounded-2xl border border-slate-200 p-3.5 sm:p-4 shadow-sm flex flex-col justify-between">
                         <div>
-                            <div className="flex items-center gap-2.5 mb-2">
-                                <Icon3D icon={Smartphone} color="#0f2557" size={34} />
+                            <div className="flex items-center gap-2 mb-1.5">
+                                <Icon3D icon={Smartphone} color="#0f2557" size={30} />
                                 <div>
-                                    <h3 className="text-base sm:text-lg font-black text-black">Operator Plans & Offers</h3>
-                                    <p className="text-xs font-black text-slate-800">Enter mobile number to auto-fetch plans or choose an operator below:</p>
+                                    <h3 className="text-sm sm:text-base font-black text-black leading-tight">Operator Plans & Offers</h3>
+                                    <p className="text-[11px] font-black text-slate-800">Enter mobile number on left or pick an operator below:</p>
                                 </div>
                             </div>
 
                             {/* Operator Quick Select Cards */}
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 my-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 my-2.5">
                                 {[
                                     { name: 'Jio', code: findCodeForBrand('Jio'), color: '#003087', bg: '#eff6ff', tag: 'True 5G' },
                                     { name: 'Airtel', code: findCodeForBrand('Airtel'), color: '#e40000', bg: '#fef2f2', tag: 'Fast 5G' },
-                                    { name: 'Vi', code: findCodeForBrand('Vi'), color: '#c300ff', bg: '#faf5ff', tag: 'Hero Unlimited' },
-                                    { name: 'BSNL', code: findCodeForBrand('BSNL'), color: '#ff8800', bg: '#fff7ed', tag: 'Affordable 4G' },
+                                    { name: 'Vi', code: findCodeForBrand('Vi'), color: '#c300ff', bg: '#faf5ff', tag: 'Hero Unltd' },
+                                    { name: 'BSNL', code: findCodeForBrand('BSNL'), color: '#ff8800', bg: '#fff7ed', tag: 'Best 4G' },
                                 ].map(opItem => (
                                     <motion.button
                                         key={opItem.name}
@@ -692,21 +692,21 @@ function MobileTab({ location }) {
                                             setPlans(OPERATOR_PLANS[opItem.name] || []);
                                             setSelectedPlan(null);
                                         }}
-                                        className="p-3 rounded-xl border-2 border-slate-300 hover:border-black text-left transition-all flex flex-col justify-between cursor-pointer"
+                                        className="p-2 sm:p-2.5 rounded-xl border-2 border-slate-300 hover:border-black text-left transition-all flex flex-col justify-between cursor-pointer"
                                         style={{ background: opItem.bg }}
                                     >
                                         <div className="flex items-center justify-between mb-1">
-                                            <span className="w-7 h-7 rounded-lg text-white font-black text-xs flex items-center justify-center shadow-xs" style={{ background: opItem.color }}>
+                                            <span className="w-6 h-6 rounded-lg text-white font-black text-xs flex items-center justify-center shadow-xs" style={{ background: opItem.color }}>
                                                 {opItem.name[0]}
                                             </span>
-                                            <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-white text-black border border-slate-300">
+                                            <span className="text-[8px] font-black uppercase px-1 py-0.5 rounded bg-white text-black border border-slate-300">
                                                 {opItem.tag}
                                             </span>
                                         </div>
                                         <div>
-                                            <p className="text-sm font-black text-black">{opItem.name}</p>
-                                            <p className="text-[11px] font-black text-blue-900 flex items-center gap-1 mt-0.5">
-                                                View Plans <ArrowRight size={10} />
+                                            <p className="text-xs sm:text-sm font-black text-black">{opItem.name}</p>
+                                            <p className="text-[10px] font-black text-blue-900 flex items-center gap-0.5 mt-0.5">
+                                                Plans <ArrowRight size={9} />
                                             </p>
                                         </div>
                                     </motion.button>
@@ -714,25 +714,24 @@ function MobileTab({ location }) {
                             </div>
 
                             {/* Popular Sample Plans Preview */}
-                            <div className="mt-4">
-                                <p className="text-xs font-black text-black uppercase tracking-wider mb-2">⭐ Trending Recharge Packs</p>
-                                <div className="space-y-2">
+                            <div className="mt-2.5">
+                                <p className="text-[11px] font-black text-black uppercase tracking-wider mb-1.5">⭐ Trending Recharge Packs</p>
+                                <div className="space-y-1.5">
                                     {[
                                         { op: 'Jio', amt: '₹299', val: '28 Days', data: '1.5 GB/Day', desc: 'Daily data, Unlimited 5G + Calls', color: '#003087' },
                                         { op: 'Airtel', amt: '₹349', val: '28 Days', data: '2 GB/Day', desc: 'Unlimited 5G Data + Unlimited Calls', color: '#e40000' },
-                                        { op: 'Vi', amt: '₹479', val: '56 Days', data: '1.5 GB/Day', desc: 'Binge All Night + Weekend Rollover', color: '#c300ff' },
                                     ].map((sample, idx) => (
-                                        <div key={idx} className="p-2.5 rounded-xl border border-slate-300 bg-slate-50 flex items-center justify-between">
-                                            <div className="flex items-center gap-2.5">
-                                                <span className="w-6 h-6 rounded-md text-white font-black text-[10px] flex items-center justify-center" style={{ background: sample.color }}>
+                                        <div key={idx} className="p-2 rounded-xl border border-slate-300 bg-slate-50 flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-5 h-5 rounded-md text-white font-black text-[9px] flex items-center justify-center" style={{ background: sample.color }}>
                                                     {sample.op[0]}
                                                 </span>
                                                 <div>
-                                                    <p className="text-xs font-black text-black">{sample.amt} <span className="text-slate-800 font-extrabold text-[11px]">/ {sample.val}</span></p>
-                                                    <p className="text-[11px] font-extrabold text-slate-800">{sample.desc}</p>
+                                                    <p className="text-xs font-black text-black">{sample.amt} <span className="text-slate-800 font-extrabold text-[10px]">/ {sample.val}</span></p>
+                                                    <p className="text-[10px] font-extrabold text-slate-800">{sample.desc}</p>
                                                 </div>
                                             </div>
-                                            <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-white border border-slate-300 text-black">
+                                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-white border border-slate-300 text-black">
                                                 {sample.data}
                                             </span>
                                         </div>
@@ -742,18 +741,18 @@ function MobileTab({ location }) {
                         </div>
 
                         {/* Feature Badges */}
-                        <div className="mt-4 pt-3 border-t border-slate-200 grid grid-cols-3 gap-2 text-center">
-                            <div className="p-1.5 rounded-lg bg-emerald-50 border border-emerald-200">
-                                <p className="text-xs font-black text-emerald-950">⚡ Instant</p>
-                                <p className="text-[10px] font-extrabold text-emerald-800">&lt; 10 Sec</p>
+                        <div className="mt-2.5 pt-2 border-t border-slate-200 grid grid-cols-3 gap-1.5 text-center shrink-0">
+                            <div className="p-1 rounded-lg bg-emerald-50 border border-emerald-200">
+                                <p className="text-[11px] font-black text-emerald-950">⚡ Instant</p>
+                                <p className="text-[9px] font-extrabold text-emerald-800">&lt; 10 Sec</p>
                             </div>
-                            <div className="p-1.5 rounded-lg bg-blue-50 border border-blue-200">
-                                <p className="text-xs font-black text-blue-950">🛡️ 100% Safe</p>
-                                <p className="text-[10px] font-extrabold text-blue-800">BBPS Certified</p>
+                            <div className="p-1 rounded-lg bg-blue-50 border border-blue-200">
+                                <p className="text-[11px] font-black text-blue-950">🛡️ 100% Safe</p>
+                                <p className="text-[9px] font-extrabold text-blue-800">BBPS Certified</p>
                             </div>
-                            <div className="p-1.5 rounded-lg bg-purple-50 border border-purple-200">
-                                <p className="text-xs font-black text-purple-950">💰 Cashback</p>
-                                <p className="text-[10px] font-extrabold text-purple-800">Best Margins</p>
+                            <div className="p-1 rounded-lg bg-purple-50 border border-purple-200">
+                                <p className="text-[11px] font-black text-purple-950">💰 Cashback</p>
+                                <p className="text-[9px] font-extrabold text-purple-800">Best Margins</p>
                             </div>
                         </div>
                     </div>
@@ -841,17 +840,17 @@ function DthTab({ location }) {
     );
 
     return (
-        <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
             {/* LEFT: Input Card */}
-            <div className="lg:col-span-5 xl:col-span-5 flex flex-col h-full">
-                <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs flex flex-col h-full lg:overflow-y-auto scrollbar-none space-y-3">
+            <div className="lg:col-span-5 xl:col-span-5 flex flex-col">
+                <div className="bg-white rounded-2xl border border-slate-200 p-3.5 sm:p-4 shadow-sm flex flex-col space-y-2.5">
                     {/* Header */}
                     <div className="flex justify-between items-center shrink-0">
                         <h3 className="font-black text-black text-sm sm:text-base flex items-center gap-2">
-                            <Icon3D icon={Tv2} color="#6d28d9" size={30} />
+                            <Icon3D icon={Tv2} color="#6d28d9" size={28} />
                             Enter DTH Details
                         </h3>
-                        <span className="text-xs font-black text-emerald-950 bg-emerald-100 border border-emerald-300 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-2xs">
+                        <span className="text-[11px] sm:text-xs font-black text-emerald-950 bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 sm:py-1 rounded-full flex items-center gap-1.5 shadow-2xs">
                             <Wallet size={12} className="text-emerald-800" />
                             ₹{currentBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </span>
@@ -859,7 +858,7 @@ function DthTab({ location }) {
 
                     {/* Provider selection */}
                     <div className="shrink-0">
-                        <label className="text-xs font-black text-black uppercase tracking-wider block mb-1.5">
+                        <label className="text-xs font-black text-black uppercase tracking-wider block mb-1">
                             Select DTH Provider
                         </label>
                         <div className="grid grid-cols-3 gap-2">
@@ -871,13 +870,13 @@ function DthTab({ location }) {
                                         type="button"
                                         whileTap={{ scale: 0.95 }}
                                         onClick={() => { setProvider(name); setSelectedPlan(null); }}
-                                        className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 transition-all cursor-pointer ${
+                                        className={`flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl border-2 transition-all cursor-pointer ${
                                             active
                                                 ? 'border-[#0f2557] bg-blue-50/70 shadow-xs'
                                                 : 'border-slate-300 bg-white hover:border-slate-400'
                                         }`}
                                     >
-                                        <span className="text-xl mb-0.5">{data.logo}</span>
+                                        <span className="text-lg sm:text-xl mb-0.5">{data.logo}</span>
                                         <span className={`text-[10px] font-black text-center leading-tight truncate w-full ${active ? 'text-black' : 'text-slate-800'}`}>
                                             {name}
                                         </span>
@@ -896,13 +895,13 @@ function DthTab({ location }) {
                             value={subscriberId}
                             onChange={e => setSubscriberId(e.target.value)}
                             placeholder="Enter your DTH ID / VC Number"
-                            className="w-full py-2.5 px-3 rounded-xl border-2 border-slate-300 text-black font-extrabold text-base outline-none focus:border-[#0f2557] focus:ring-2 focus:ring-blue-100 bg-white placeholder:text-slate-500 placeholder:font-bold"
+                            className="w-full py-2 px-3 rounded-xl border-2 border-slate-300 text-black font-extrabold text-sm sm:text-base outline-none focus:border-[#0f2557] focus:ring-2 focus:ring-blue-100 bg-white placeholder:text-slate-500 placeholder:font-bold"
                         />
                     </div>
 
                     {/* Selected Plan Summary */}
                     {selectedPlan && (
-                        <div className="rounded-xl p-2.5 border border-slate-300 bg-slate-50 space-y-1 shrink-0">
+                        <div className="rounded-xl p-2 border border-slate-300 bg-slate-50 space-y-1 shrink-0">
                             <div className="flex justify-between items-center text-xs">
                                 <span className="font-extrabold text-slate-800">Plan</span>
                                 <span className="font-black text-black">{selectedPlan.name}</span>
@@ -911,7 +910,7 @@ function DthTab({ location }) {
                                 <span className="font-extrabold text-slate-800">Recharge Amount</span>
                                 <span className="font-black text-black text-sm">₹{selectedPlan.amount}</span>
                             </div>
-                            <div className="flex justify-between items-center text-[11px]">
+                            <div className="flex justify-between items-center text-[10px]">
                                 <span className="font-bold text-slate-700">Channels</span>
                                 <span className="font-black text-black">{selectedPlan.channels}</span>
                             </div>
@@ -921,18 +920,18 @@ function DthTab({ location }) {
                     <AnimatePresence><Toast status={status} onClose={() => setStatus(null)} /></AnimatePresence>
 
                     {/* Submit Button */}
-                    <div className="pt-1 mt-auto shrink-0">
+                    <div className="pt-2 shrink-0">
                         <motion.button
                             onClick={handleRecharge}
                             disabled={loading || !provider || !selectedPlan}
                             whileHover={{ scale: 1.01 }}
                             whileTap={{ scale: 0.98 }}
-                            className="w-full py-3 sm:py-3.5 rounded-xl text-white font-black text-sm sm:text-base uppercase tracking-wider relative overflow-hidden disabled:opacity-50 cursor-pointer shadow-md"
+                            className="w-full py-2.5 sm:py-3 rounded-xl text-white font-black text-xs sm:text-sm uppercase tracking-wider relative overflow-hidden disabled:opacity-50 cursor-pointer shadow-md"
                             style={{ background: 'linear-gradient(135deg, #0f2557 0%, #1a3a8f 100%)' }}
                         >
                             {loading ? (
                                 <span className="flex items-center justify-center gap-2">
-                                    <RefreshCw size={18} className="animate-spin" /> Processing...
+                                    <RefreshCw size={16} className="animate-spin" /> Processing...
                                 </span>
                             ) : (
                                 '📺 Recharge DTH'
@@ -943,14 +942,14 @@ function DthTab({ location }) {
             </div>
 
             {/* RIGHT: Plans Card */}
-            <div className="lg:col-span-7 xl:col-span-7 flex flex-col h-full">
+            <div className="lg:col-span-7 xl:col-span-7 flex flex-col">
                 {providerData ? (
-                    <div className="h-full flex flex-col bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs overflow-hidden">
+                    <div className="bg-white rounded-2xl border border-slate-200 p-3.5 sm:p-4 shadow-sm flex flex-col max-h-[560px] lg:h-[460px]">
                         {/* Header */}
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-100 shrink-0">
                             <div>
-                                <h3 className="font-black text-black text-sm sm:text-base">{provider} Plans</h3>
-                                <p className="text-[11px] font-extrabold text-slate-800 mt-0.5">Select a pack for your connection</p>
+                                <h3 className="font-black text-black text-xs sm:text-sm">{provider} Plans</h3>
+                                <p className="text-[10px] font-extrabold text-slate-800 mt-0.5">Select a pack for your connection</p>
                             </div>
                             <div className="flex gap-1">
                                 {['All', 'SD', 'HD', '4K'].map(t => (
@@ -958,7 +957,7 @@ function DthTab({ location }) {
                                         key={t}
                                         type="button"
                                         onClick={() => setFilterType(t)}
-                                        className={`px-2.5 py-1 rounded-lg text-xs font-black border transition-all cursor-pointer ${
+                                        className={`px-2 py-0.5 rounded-lg text-xs font-black border transition-all cursor-pointer ${
                                             filterType === t
                                                 ? 'bg-[#0f2557] text-white border-[#0f2557] shadow-xs'
                                                 : 'bg-white text-black border-slate-300 hover:border-black'
@@ -971,20 +970,20 @@ function DthTab({ location }) {
                         </div>
 
                         {/* Scrollable list */}
-                        <div className="flex-1 overflow-y-auto space-y-2.5 py-2.5 pr-1 min-h-0 scrollbar-thin scrollbar-thumb-slate-300">
+                        <div className="flex-1 overflow-y-auto space-y-2 py-2 pr-1 min-h-0 scrollbar-thin scrollbar-thumb-slate-300">
                             {filtered.map(plan => (
                                 <motion.div
                                     key={plan.id}
                                     whileHover={{ y: -2 }}
                                     whileTap={{ scale: 0.98 }}
                                     onClick={() => setSelectedPlan(plan)}
-                                    className={`rounded-xl border-2 p-3.5 cursor-pointer flex items-center gap-3.5 transition-all ${
+                                    className={`rounded-xl border-2 p-3 cursor-pointer flex items-center gap-3 transition-all ${
                                         selectedPlan?.id === plan.id
                                             ? 'border-[#0f2557] bg-blue-50/40 shadow-xs'
                                             : 'border-slate-300 bg-white hover:border-slate-400'
                                     }`}
                                 >
-                                    <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm text-white shrink-0 shadow-xs" style={{ background: providerData.color || '#0f2557' }}>
+                                    <div className="w-11 h-11 rounded-xl flex items-center justify-center font-black text-sm text-white shrink-0 shadow-xs" style={{ background: providerData.color || '#0f2557' }}>
                                         ₹{plan.amount}
                                     </div>
                                     <div className="flex-1 min-w-0">
@@ -997,34 +996,34 @@ function DthTab({ location }) {
                         </div>
                     </div>
                 ) : (
-                    <div className="h-full flex flex-col justify-between bg-white rounded-2xl border border-slate-200 p-5 shadow-xs overflow-y-auto">
+                    <div className="bg-white rounded-2xl border border-slate-200 p-3.5 sm:p-4 shadow-sm flex flex-col justify-between">
                         <div>
-                            <div className="flex items-center gap-2.5 mb-2">
-                                <Icon3D icon={Tv2} color="#6d28d9" size={34} />
+                            <div className="flex items-center gap-2 mb-1.5">
+                                <Icon3D icon={Tv2} color="#6d28d9" size={30} />
                                 <div>
-                                    <h3 className="text-base sm:text-lg font-black text-black">DTH Channel Packs</h3>
-                                    <p className="text-xs font-black text-slate-800">Select your provider on the left or click below to view recharge packages:</p>
+                                    <h3 className="text-sm sm:text-base font-black text-black leading-tight">DTH Channel Packs</h3>
+                                    <p className="text-[11px] font-black text-slate-800">Select your provider on left or click below to view packages:</p>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 my-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 my-2.5">
                                 {Object.entries(DTH_PROVIDERS).map(([name, data]) => (
                                     <motion.button
                                         key={name}
                                         whileHover={{ y: -2 }}
                                         whileTap={{ scale: 0.96 }}
                                         onClick={() => { setProvider(name); setSelectedPlan(null); }}
-                                        className="p-3 rounded-xl border-2 border-slate-300 hover:border-black text-left transition-all flex flex-col justify-between bg-slate-50 cursor-pointer"
+                                        className="p-2 sm:p-2.5 rounded-xl border-2 border-slate-300 hover:border-black text-left transition-all flex flex-col justify-between bg-slate-50 cursor-pointer"
                                     >
                                         <div className="flex items-center justify-between mb-1">
-                                            <span className="text-2xl">{data.logo}</span>
-                                            <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-white text-black border border-slate-200">
+                                            <span className="text-xl sm:text-2xl">{data.logo}</span>
+                                            <span className="text-[9px] font-black uppercase px-1 py-0.5 rounded bg-white text-black border border-slate-200">
                                                 Active
                                             </span>
                                         </div>
                                         <div>
-                                            <p className="text-sm font-black text-black">{name}</p>
-                                            <p className="text-[11px] font-black text-blue-900 mt-0.5">Browse Plans →</p>
+                                            <p className="text-xs sm:text-sm font-black text-black">{name}</p>
+                                            <p className="text-[10px] font-black text-blue-900 mt-0.5">Browse Plans →</p>
                                         </div>
                                     </motion.button>
                                 ))}
@@ -1032,18 +1031,18 @@ function DthTab({ location }) {
                         </div>
 
                         {/* Feature Badges */}
-                        <div className="mt-4 pt-3 border-t border-slate-200 grid grid-cols-3 gap-2 text-center">
-                            <div className="p-1.5 rounded-lg bg-emerald-50 border border-emerald-200">
-                                <p className="text-xs font-black text-emerald-950">⚡ Instant</p>
-                                <p className="text-[10px] font-extrabold text-emerald-800">&lt; 15 Sec Activation</p>
+                        <div className="mt-2.5 pt-2 border-t border-slate-200 grid grid-cols-3 gap-1.5 text-center shrink-0">
+                            <div className="p-1 rounded-lg bg-emerald-50 border border-emerald-200">
+                                <p className="text-[11px] font-black text-emerald-950">⚡ Instant</p>
+                                <p className="text-[9px] font-extrabold text-emerald-800">&lt; 15 Sec Activation</p>
                             </div>
-                            <div className="p-1.5 rounded-lg bg-blue-50 border border-blue-200">
-                                <p className="text-xs font-black text-blue-950">🛡️ All Channels</p>
-                                <p className="text-[10px] font-extrabold text-blue-800">HD & 4K Ready</p>
+                            <div className="p-1 rounded-lg bg-blue-50 border border-blue-200">
+                                <p className="text-[11px] font-black text-blue-950">🛡️ All Channels</p>
+                                <p className="text-[9px] font-extrabold text-blue-800">HD & 4K Ready</p>
                             </div>
-                            <div className="p-1.5 rounded-lg bg-purple-50 border border-purple-200">
-                                <p className="text-xs font-black text-purple-950">💰 Highest Margin</p>
-                                <p className="text-[10px] font-extrabold text-purple-800">Best Commission</p>
+                            <div className="p-1 rounded-lg bg-purple-50 border border-purple-200">
+                                <p className="text-[11px] font-black text-purple-950">💰 Highest Margin</p>
+                                <p className="text-[9px] font-extrabold text-purple-800">Best Commission</p>
                             </div>
                         </div>
                     </div>
@@ -1638,8 +1637,8 @@ export default function Utility({ initialTab = 'mobile' }) {
             </div>
 
             {/* ── Main Two-Part Content Area ── */}
-            <div className="flex-1 overflow-y-auto lg:overflow-hidden p-3 sm:p-4 lg:p-4 min-h-0">
-                <div className="h-full max-w-7xl mx-auto flex flex-col">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-4 pb-12 sm:pb-14 min-h-0">
+                <div className="max-w-7xl mx-auto flex flex-col">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={tab}
@@ -1647,7 +1646,7 @@ export default function Utility({ initialTab = 'mobile' }) {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -6 }}
                             transition={{ duration: 0.15 }}
-                            className="h-full flex-1 flex flex-col min-h-0"
+                            className="flex-1 flex flex-col min-h-0"
                         >
                             {tab === 'mobile' && <MobileTab location={location} />}
                             {tab === 'dth' && <DthTab location={location} />}
