@@ -3,6 +3,7 @@ import { Award, Download, Printer, Copy, Check, RefreshCw } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import rupikshaLogo from '/logo rupiksha transprent.png';
+import authorativeSignature from '/authorative-signature.png';
 import { certificateService } from '../../../services/apiService';
 
 const Certificate = ({ formData = {}, currentUser = {} }) => {
@@ -13,6 +14,7 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
     const [isDownloading, setIsDownloading] = useState(false);
     const [copied, setCopied] = useState(false);
     const [safeLogoUrl, setSafeLogoUrl] = useState('/logo rupiksha transprent.png');
+    const [safeSignatureUrl, setSafeSignatureUrl] = useState(authorativeSignature);
 
     // Determine role dynamically
     const rawRole = (
@@ -76,6 +78,26 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
             }
         };
         img.onerror = () => setSafeLogoUrl(rupikshaLogo);
+    }, []);
+
+    // Convert signature to safe Data URL for canvas/pdf exports
+    useEffect(() => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = authorativeSignature;
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth || 1024;
+                canvas.height = img.naturalHeight || 391;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                setSafeSignatureUrl(canvas.toDataURL('image/png'));
+            } catch {
+                setSafeSignatureUrl(authorativeSignature);
+            }
+        };
+        img.onerror = () => setSafeSignatureUrl(authorativeSignature);
     }, []);
 
     useEffect(() => {
@@ -576,25 +598,23 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
                             <polygon points="2398,1450 2410,1440 2422,1450 2410,1460" fill="url(#goldGrad)" />
                         </g>
 
-                        {/* 10. LEGAL AUTHORIZATION CLAUSE (PROMINENT & READABLE) */}
+                        {/* 10. LEGAL AUTHORIZATION STATEMENT (LEFT ALIGNED) */}
                         <g>
                             <text
-                                x="1485"
-                                y="1595"
-                                textAnchor="middle"
+                                x="440"
+                                y="1585"
                                 fill="#0B2145"
-                                fontSize="40"
+                                fontSize="33"
                                 fontWeight="500"
                                 style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}
                             >
-                                This {isSuperDistributor ? 'Super Distributor' : 'Distributor'} is hereby authorised for providing the services offered by Rupiksha Services Pvt. Ltd.
+                                This {isSuperDistributor ? 'Super Distributor' : 'Distributor'} is hereby authorised for providing the services offered by <tspan fontWeight="800" fill="#071A3A">Rupiksha Services Pvt. Ltd.</tspan>
                             </text>
                             <text
-                                x="1485"
-                                y="1655"
-                                textAnchor="middle"
+                                x="440"
+                                y="1635"
                                 fill="#0B2145"
-                                fontSize="40"
+                                fontSize="33"
                                 fontWeight="500"
                                 style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}
                             >
@@ -625,32 +645,106 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
                             />
                         </g>
 
-                        {/* 12. BOTTOM SECTION: ROLE & DISCLAIMER NOTE (TIGHTLY POSITIONED ON CLEAN IVORY) */}
-                        <g transform="translate(440, 1790)">
+                        {/* 12. BOTTOM-LEFT SECTION: ROLE & DISCLAIMER NOTE */}
+                        <g>
                             {/* Role Label */}
                             <text
-                                x="0"
-                                y="0"
+                                x="440"
+                                y="1735"
                                 fill="#071A3A"
-                                fontSize="48"
+                                fontSize="46"
                                 fontWeight="900"
                                 letterSpacing="2"
                                 style={{ fontFamily: 'Montserrat, sans-serif', textTransform: 'uppercase' }}
                             >
                                 {bottomRoleText}
                             </text>
-                            <line x1="0" y1="16" x2="420" y2="16" stroke="url(#goldGrad)" strokeWidth="4" />
+                            <line x1="440" y1="1750" x2="880" y2="1750" stroke="url(#goldGrad)" strokeWidth="4" />
 
-                            {/* Disclaimer Note */}
+                            {/* Disclaimer Note (wrapped into 2 clean lines) */}
                             <text
-                                x="0"
-                                y="75"
+                                x="440"
+                                y="1815"
                                 fill="#0B2145"
-                                fontSize="35"
+                                fontSize="28"
                                 fontWeight="600"
-                                style={{ fontFamily: 'Montserrat, sans-serif' }}
+                                style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}
                             >
-                                {disclaimerText}
+                                NOTE: If you will not perform up to the mark, then your {isSuperDistributor ? 'Super Distributor' : 'Distributor'}
+                            </text>
+                            <text
+                                x="440"
+                                y="1860"
+                                fill="#0B2145"
+                                fontSize="28"
+                                fontWeight="600"
+                                style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}
+                            >
+                                location will be allocated to some other person.
+                            </text>
+                        </g>
+
+                        {/* 13. BOTTOM-RIGHT SECTION: AUTHORATIVE SIGNATURE */}
+                        <g>
+                            {/* Authorative Signature Image */}
+                            <image
+                                href={safeSignatureUrl || authorativeSignature}
+                                x="2100"
+                                y="1535"
+                                width="480"
+                                height="183"
+                                preserveAspectRatio="xMidYMid meet"
+                            />
+
+                            {/* Signature Underline */}
+                            <line
+                                x1="2060"
+                                y1="1745"
+                                x2="2620"
+                                y2="1745"
+                                stroke="#0B2145"
+                                strokeWidth="3.5"
+                            />
+
+                            {/* Authorative Signature Text */}
+                            <text
+                                x="2340"
+                                y="1795"
+                                textAnchor="middle"
+                                fill="#071A3A"
+                                fontSize="34"
+                                fontWeight="800"
+                                letterSpacing="0.8"
+                                style={{ fontFamily: 'Playfair Display, Montserrat, serif' }}
+                            >
+                                Authorative Signature
+                            </text>
+
+                            {/* Rupiksha Subtitle */}
+                            <text
+                                x="2340"
+                                y="1840"
+                                textAnchor="middle"
+                                fill="#173B7A"
+                                fontSize="26"
+                                fontWeight="700"
+                                letterSpacing="0.5"
+                                style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}
+                            >
+                                Rupiksha Services Private Limited
+                            </text>
+
+                            <text
+                                x="2340"
+                                y="1876"
+                                textAnchor="middle"
+                                fill="#64748B"
+                                fontSize="20"
+                                fontWeight="600"
+                                letterSpacing="0.8"
+                                style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}
+                            >
+                                OFFICIAL DIGITAL AUTHORIZATION
                             </text>
                         </g>
 
