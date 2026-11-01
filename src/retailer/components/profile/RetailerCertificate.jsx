@@ -3,6 +3,7 @@ import { Award, Download, Printer, Copy, Check, RefreshCw } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import rupikshaLogo from '/logo rupiksha transprent.png';
+import authorativeSignature from '/authorative-signature.png';
 import { certificateService } from '../../../services/apiService';
 
 const RetailerCertificate = ({ formData = {}, currentUser = {} }) => {
@@ -74,6 +75,68 @@ const RetailerCertificate = ({ formData = {}, currentUser = {} }) => {
     const fallbackValidTill = formatValidTill(createdD);
     const fallbackDownloadDate = formatDisplayDate(new Date());
 
+    const d = certData || {};
+    const recipientName = d.recipientName || fallbackName;
+    const partyCodeText = d.partyCode || fallbackPartyCode;
+    const issuedOnText = d.issuedOn || fallbackIssuedOn;
+    const validTillText = d.validTill || fallbackValidTill;
+    const fullAddressText = d.fullAddress || fallbackFullAddress;
+    const downloadDateText = d.downloadDate || fallbackDownloadDate;
+
+    const [safeSignatureUrl, setSafeSignatureUrl] = useState(authorativeSignature);
+
+    const nameRef = useRef(null);
+    const addressRef = useRef(null);
+    const partyCodeRef = useRef(null);
+    const issuedOnRef = useRef(null);
+
+    const measureText = (text, font) => {
+        if (typeof window === 'undefined' || typeof document === 'undefined') {
+            return (text?.length || 0) * 26;
+        }
+        try {
+            const canvas = measureText.canvas || (measureText.canvas = document.createElement('canvas'));
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return (text?.length || 0) * 26;
+            ctx.font = font;
+            return ctx.measureText(text || '').width;
+        } catch {
+            return (text?.length || 0) * 26;
+        }
+    };
+
+    const [textWidths, setTextWidths] = useState({
+        name: 0,
+        address: 0,
+        partyCode: 0,
+        issuedOn: 0
+    });
+
+    useEffect(() => {
+        const updateWidths = () => {
+            const nW = nameRef.current?.getComputedTextLength?.() || measureText(recipientName, '800 58px "Playfair Display", "Times New Roman", serif');
+            const aW = addressRef.current?.getComputedTextLength?.() || measureText(fullAddressText, '700 46px "Playfair Display", "Times New Roman", serif');
+            const pW = partyCodeRef.current?.getComputedTextLength?.() || measureText(partyCodeText, '800 48px "Playfair Display", monospace, serif');
+            const iW = issuedOnRef.current?.getComputedTextLength?.() || measureText(issuedOnText, '800 46px "Playfair Display", Montserrat, serif');
+            setTextWidths({
+                name: Math.max(nW, 120),
+                address: Math.max(aW, 150),
+                partyCode: Math.max(pW, 100),
+                issuedOn: Math.max(iW, 100)
+            });
+        };
+
+        updateWidths();
+        if (typeof document !== 'undefined' && document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(updateWidths).catch(() => {});
+        }
+    }, [recipientName, fullAddressText, partyCodeText, issuedOnText]);
+
+    const measuredName = textWidths.name || measureText(recipientName, '800 58px "Playfair Display", "Times New Roman", serif');
+    const measuredAddress = textWidths.address || measureText(fullAddressText, '700 46px "Playfair Display", "Times New Roman", serif');
+    const measuredPartyCode = textWidths.partyCode || measureText(partyCodeText, '800 48px "Playfair Display", monospace, serif');
+    const measuredIssuedOn = textWidths.issuedOn || measureText(issuedOnText, '800 46px "Playfair Display", Montserrat, serif');
+
     // Convert logo to safe Data URL for canvas/pdf exports
     useEffect(() => {
         const img = new Image();
@@ -92,6 +155,26 @@ const RetailerCertificate = ({ formData = {}, currentUser = {} }) => {
             }
         };
         img.onerror = () => setSafeLogoUrl(rupikshaLogo);
+    }, []);
+
+    // Convert signature to safe Data URL for canvas/pdf exports
+    useEffect(() => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = authorativeSignature;
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth || 1024;
+                canvas.height = img.naturalHeight || 391;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                setSafeSignatureUrl(canvas.toDataURL('image/png'));
+            } catch {
+                setSafeSignatureUrl(authorativeSignature);
+            }
+        };
+        img.onerror = () => setSafeSignatureUrl(authorativeSignature);
     }, []);
 
     useEffect(() => {
@@ -210,14 +293,6 @@ const RetailerCertificate = ({ formData = {}, currentUser = {} }) => {
             </div>
         );
     }
-
-    const d = certData || {};
-    const recipientName = d.recipientName || fallbackName;
-    const partyCodeText = d.partyCode || fallbackPartyCode;
-    const issuedOnText = d.issuedOn || fallbackIssuedOn;
-    const validTillText = d.validTill || fallbackValidTill;
-    const fullAddressText = d.fullAddress || fallbackFullAddress;
-    const downloadDateText = d.downloadDate || fallbackDownloadDate;
 
     return (
         <div className="w-full flex flex-col items-center space-y-6 font-['Inter',sans-serif]">
@@ -421,21 +496,21 @@ const RetailerCertificate = ({ formData = {}, currentUser = {} }) => {
                             <text x="210" y="775" fill="#0B2145" fontSize="38" fontWeight="800" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
                                 Retailer ID:
                             </text>
-                            <text x="460" y="775" fill="#173B7A" fontSize="46" fontWeight="800" style={{ fontFamily: 'Playfair Display, Montserrat, serif' }}>
+                            <text ref={partyCodeRef} x="460" y="775" fill="#173B7A" fontSize="46" fontWeight="800" style={{ fontFamily: 'Playfair Display, Montserrat, serif' }}>
                                 {partyCodeText}
                             </text>
                             {/* Underline below Retailer ID */}
-                            <line x1="450" y1="795" x2="920" y2="795" stroke="#254B8C" strokeWidth="2.5" />
+                            <line x1="450" y1="795" x2={460 + measuredPartyCode + 15} y2="795" stroke="#254B8C" strokeWidth="2.5" />
 
                             {/* Right: Retailer ID Creation Date */}
                             <text x="1600" y="775" fill="#0B2145" fontSize="38" fontWeight="800" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
                                 Retailer ID Creation Date:
                             </text>
-                            <text x="2200" y="775" fill="#173B7A" fontSize="46" fontWeight="800" style={{ fontFamily: 'Playfair Display, Montserrat, serif' }}>
+                            <text ref={issuedOnRef} x="2200" y="775" fill="#173B7A" fontSize="46" fontWeight="800" style={{ fontFamily: 'Playfair Display, Montserrat, serif' }}>
                                 {issuedOnText}
                             </text>
                             {/* Underline below Creation Date */}
-                            <line x1="2190" y1="795" x2="2740" y2="795" stroke="#254B8C" strokeWidth="2.5" />
+                            <line x1="2190" y1="795" x2={2200 + measuredIssuedOn + 15} y2="795" stroke="#254B8C" strokeWidth="2.5" />
                         </g>
 
                         {/* 9. MAIN CERTIFICATION STATEMENT WITH RECIPIENT NAME */}
@@ -443,11 +518,11 @@ const RetailerCertificate = ({ formData = {}, currentUser = {} }) => {
                             <text x="210" y="930" fill="#0B2145" fontSize="42" fontWeight="500" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
                                 This is to certify that Mr./Mrs.
                             </text>
-                            <text x="890" y="930" fill="#173B7A" fontSize="58" fontWeight="800" style={{ fontFamily: 'Playfair Display, "Times New Roman", serif' }}>
+                            <text ref={nameRef} x="890" y="930" fill="#173B7A" fontSize="58" fontWeight="800" style={{ fontFamily: 'Playfair Display, "Times New Roman", serif' }}>
                                 {recipientName}
                             </text>
-                            {/* Long Underline */}
-                            <line x1="860" y1="950" x2="2760" y2="950" stroke="#254B8C" strokeWidth="2.5" />
+                            {/* Underline closely fitted to recipient name */}
+                            <line x1="875" y1="950" x2={890 + measuredName + 15} y2="950" stroke="#254B8C" strokeWidth="2.5" />
                         </g>
 
                         {/* 10. RESIDING AT WITH FULL ADDRESS */}
@@ -455,11 +530,11 @@ const RetailerCertificate = ({ formData = {}, currentUser = {} }) => {
                             <text x="210" y="1070" fill="#0B2145" fontSize="42" fontWeight="500" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
                                 residing at
                             </text>
-                            <text x="475" y="1070" fill="#173B7A" fontSize="46" fontWeight="700" style={{ fontFamily: 'Playfair Display, "Times New Roman", serif' }}>
+                            <text ref={addressRef} x="475" y="1070" fill="#173B7A" fontSize="46" fontWeight="700" style={{ fontFamily: 'Playfair Display, "Times New Roman", serif' }}>
                                 {fullAddressText}
                             </text>
-                            {/* Long Underline */}
-                            <line x1="450" y1="1090" x2="2760" y2="1090" stroke="#254B8C" strokeWidth="2.5" />
+                            {/* Underline closely fitted to full address */}
+                            <line x1="465" y1="1090" x2={475 + measuredAddress + 15} y2="1090" stroke="#254B8C" strokeWidth="2.5" />
                         </g>
 
                         {/* 11. BEARING PARTY CODE LINE */}
@@ -470,10 +545,10 @@ const RetailerCertificate = ({ formData = {}, currentUser = {} }) => {
                             <text x="400" y="1210" fill="#173B7A" fontSize="48" fontWeight="800" style={{ fontFamily: 'Playfair Display, monospace, serif' }}>
                                 {partyCodeText}
                             </text>
-                            {/* Underline */}
-                            <line x1="385" y1="1230" x2="1280" y2="1230" stroke="#254B8C" strokeWidth="2.5" />
+                            {/* Underline closely fitted to bearing ID */}
+                            <line x1="390" y1="1230" x2={400 + measuredPartyCode + 15} y2="1230" stroke="#254B8C" strokeWidth="2.5" />
                             
-                            <text x="1300" y="1210" fill="#0B2145" fontSize="42" fontWeight="500" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
+                            <text x={400 + measuredPartyCode + 25} y="1210" fill="#0B2145" fontSize="42" fontWeight="500" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
                                 has been onboarded as a <tspan fontWeight="800" fill="#071A3A">Retailer</tspan> of <tspan fontWeight="800" fill="#071A3A">Rupiksha Services Private Limited</tspan>
                             </text>
                         </g>
@@ -498,13 +573,13 @@ const RetailerCertificate = ({ formData = {}, currentUser = {} }) => {
                             <line x1="1550" y1="1505" x2="1870" y2="1505" stroke="url(#goldGradRetailer)" strokeWidth="3.5" />
                         </g>
 
-                        {/* 14. NOTE BOX (SOFT LIGHT BLUE PANEL WITH PRECISE FULL-WIDTH OCCUPANCY) */}
+                        {/* 14. NOTE BOX (BALANCED WIDTH WITH CLEAN 3-BULLET FLOW) */}
                         <g>
                             <rect
                                 x="180"
-                                y="1540"
-                                width="2610"
-                                height="360"
+                                y="1530"
+                                width="1780"
+                                height="380"
                                 rx="16"
                                 fill="#EAF3FA"
                                 stroke="rgba(200,154,61,0.5)"
@@ -512,30 +587,97 @@ const RetailerCertificate = ({ formData = {}, currentUser = {} }) => {
                             />
                             
                             {/* Note: Title */}
-                            <text x="220" y="1588" fill="#173B7A" fontSize="38" fontWeight="800" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                            <text x="220" y="1578" fill="#173B7A" fontSize="36" fontWeight="800" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                                 Note:
                             </text>
-                            <line x1="220" y1="1598" x2="330" y2="1598" stroke="url(#goldGradRetailer)" strokeWidth="3.5" />
+                            <line x1="220" y1="1588" x2="325" y2="1588" stroke="url(#goldGradRetailer)" strokeWidth="3.5" />
 
                             {/* Bullet 1 */}
-                            <text x="220" y="1646" fill="#071A3A" fontSize="33" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
-                                •  This is a system-generated certificate and does not require a physical signature.
+                            <text x="220" y="1636" fill="#071A3A" fontSize="30" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
+                                •  This certificate confirms the retailer's authorization to distribute services offered by
+                            </text>
+                            <text x="252" y="1678" fill="#071A3A" fontSize="30" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
+                                <tspan fontWeight="800" fill="#071A3A">Rupiksha Services Private Limited</tspan> in accordance with company policies &amp; regulatory guidelines.
                             </text>
 
-                            {/* Bullet 2 (Full-width clean 2-line flow) */}
-                            <text x="220" y="1700" fill="#071A3A" fontSize="33" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
-                                •  This certificate confirms the retailer's authorization to provide the services offered by <tspan fontWeight="800" fill="#071A3A">Rupiksha Services Private Limited</tspan>
+                            {/* Bullet 2 */}
+                            <text x="220" y="1736" fill="#071A3A" fontSize="30" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
+                                •  Downloaded from Rupiksha Web Portal/App on <tspan fontWeight="800" fill="#173B7A">{downloadDateText}</tspan> &amp; valid up to <tspan fontWeight="800" fill="#173B7A">{validTillText}</tspan>
                             </text>
-                            <text x="254" y="1746" fill="#071A3A" fontSize="33" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
-                                in accordance with applicable company policies and regulatory guidelines.
+                            <text x="252" y="1778" fill="#071A3A" fontSize="30" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
+                                unless revoked or suspended earlier by <tspan fontWeight="800" fill="#071A3A">Rupiksha Services Private Limited</tspan>.
                             </text>
 
-                            {/* Bullet 3 (Full-width clean 2-line flow with dates nicely framed) */}
-                            <text x="220" y="1802" fill="#071A3A" fontSize="33" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
-                                •  This certificate has been downloaded by the above-mentioned retailer from the Company's Web Portal/Mobile Application on <tspan fontWeight="800" fill="#173B7A">{downloadDateText}</tspan>
+                            {/* Bullet 3 */}
+                            <text x="220" y="1836" fill="#071A3A" fontSize="30" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
+                                •  This is an official digitally authorized certificate and carries legal validity.
                             </text>
-                            <text x="254" y="1848" fill="#071A3A" fontSize="33" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
-                                and shall remain valid up to <tspan fontWeight="800" fill="#173B7A">{validTillText}</tspan> unless revoked or suspended earlier by <tspan fontWeight="800" fill="#071A3A">Rupiksha Services Private Limited</tspan>.
+                            <text x="252" y="1878" fill="#071A3A" fontSize="28" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
+                                Verification can be confirmed at <tspan fontWeight="700" fill="#173B7A">rupiksha.in</tspan> using the Retailer ID.
+                            </text>
+                        </g>
+
+                        {/* 15. AUTHORATIVE SIGNATURE SECTION */}
+                        <g>
+                            {/* Authorative Signature Image */}
+                            <image
+                                href={safeSignatureUrl || authorativeSignature}
+                                x="2100"
+                                y="1535"
+                                width="480"
+                                height="183"
+                                preserveAspectRatio="xMidYMid meet"
+                            />
+
+                            {/* Signature Underline */}
+                            <line
+                                x1="2060"
+                                y1="1745"
+                                x2="2620"
+                                y2="1745"
+                                stroke="#0B2145"
+                                strokeWidth="3.5"
+                            />
+
+                            {/* Authorative Signature Text */}
+                            <text
+                                x="2340"
+                                y="1795"
+                                textAnchor="middle"
+                                fill="#071A3A"
+                                fontSize="34"
+                                fontWeight="800"
+                                letterSpacing="0.8"
+                                style={{ fontFamily: 'Playfair Display, Montserrat, serif' }}
+                            >
+                                Authorative Signature
+                            </text>
+
+                            {/* Rupiksha Subtitle */}
+                            <text
+                                x="2340"
+                                y="1840"
+                                textAnchor="middle"
+                                fill="#173B7A"
+                                fontSize="26"
+                                fontWeight="700"
+                                letterSpacing="0.5"
+                                style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}
+                            >
+                                Rupiksha Services Private Limited
+                            </text>
+
+                            <text
+                                x="2340"
+                                y="1876"
+                                textAnchor="middle"
+                                fill="#64748B"
+                                fontSize="20"
+                                fontWeight="600"
+                                letterSpacing="0.8"
+                                style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}
+                            >
+                                OFFICIAL DIGITAL AUTHORIZATION
                             </text>
                         </g>
 
