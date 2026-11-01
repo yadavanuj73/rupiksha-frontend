@@ -311,18 +311,18 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
                                 <stop offset="100%" stopColor="#F5DB8B" />
                             </linearGradient>
 
-                            {/* Deep Midnight Navy Gradient */}
+                            {/* Vibrant Sky Blue Gradient for Corners */}
                             <linearGradient id="navyMainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stopColor="#0B2145" />
-                                <stop offset="40%" stopColor="#071A3A" />
-                                <stop offset="100%" stopColor="#030A17" />
+                                <stop offset="0%" stopColor="#38BDF8" />
+                                <stop offset="45%" stopColor="#0284C7" />
+                                <stop offset="100%" stopColor="#0369A1" />
                             </linearGradient>
 
-                            {/* Top Right Header Banner Navy Gradient */}
+                            {/* Top Right Header Banner Sky Blue Gradient */}
                             <linearGradient id="bannerNavyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stopColor="#0D2A55" />
-                                <stop offset="30%" stopColor="#071A3A" />
-                                <stop offset="100%" stopColor="#030814" />
+                                <stop offset="0%" stopColor="#38BDF8" />
+                                <stop offset="35%" stopColor="#0284C7" />
+                                <stop offset="100%" stopColor="#0369A1" />
                             </linearGradient>
 
                             {/* Drop Shadow for Banner */}
@@ -637,7 +637,7 @@ const Certificate = ({ formData = {}, currentUser = {} }) => {
                             {/* Inner Accent Wave */}
                             <path
                                 d="M54,1860 C150,1860 260,1960 480,2046 L54,2046 Z"
-                                fill="#040A17"
+                                fill="#0284C7"
                             />
                             <path
                                 d="M54,1856 C150,1856 260,1956 480,2042 L480,2046 C260,1960 150,1860 54,1860 Z"
