@@ -3668,97 +3668,113 @@ public class BbpsServiceImpl implements BbpsService {
         long paise = request.getAmount().multiply(BigDecimal.valueOf(100)).longValue();
         long convFeePaise = convenienceFee.multiply(BigDecimal.valueOf(100)).longValue();
 
-        String mode = "Cash";
-        String initChannel = "AGT";
-        String paymentAccountInfo = "Cash Payment";
         String remitterName = (user.getFullName() != null && !user.getFullName().isBlank()) ? user.getFullName().trim() : "Rupiksha Retailer";
         String userEmail = (user.getEmail() != null && !user.getEmail().isBlank()) ? user.getEmail().trim() : "customer@rupiksha.in";
-
-        BillAvenueDtos.BillPayXmlRequest xmlReq = BillAvenueDtos.BillPayXmlRequest.builder()
-                .fetchRequestId(effectiveRequestId)
-                .billerId(biller.getBillerId())
-                .customerMobile(request.getCustomerMobile().trim())
-                .customerEmail(userEmail)
-                .initChannel(initChannel)
-                .amountPaise(paise)
-                .billAmountPaise(paise)
-                .billDate(effectiveBillDate)
-                .billNumber(effectiveBillNumber)
-                .dueDate(effectiveDueDate)
-                .billPeriod(effectiveBillPeriod)
-                .customerName(customerName)
-                .additionalInfo(addnlItems.isEmpty() ? null : addnlItems)
-                .inputParams(inputs)
-                .clientTxnId(merchantRefNo)
-                .paymentMode(mode)
-                .remitterName(remitterName)
-                .remarks("FASTag Bill Payment")
-                .paymentAccountInfo(paymentAccountInfo)
-                .clientIp(sanitizedIp)
-                .billerAdhoc("true")
-                .quickPay("0")
-                .custConvFeePaise(convFeePaise)
-                .ccf1Paise(0L)
-                .rawBillerResponseXml(rawBillerResponseXml)
-                .rawAdditionalInfoXml(rawAdditionalInfoXml)
-                .build();
-
-        BillAvenueDtos.BillPayResponse payResp;
-        try {
-            payResp = billAvenueClient.payBillXml(xmlReq);
-        } catch (BillAvenueTimeoutException te) {
-            log.warn("BillAvenue timeout for FASTag payment ref: {}. Keeping transaction PENDING.", merchantRefNo, te);
-            txn.setStatus(TransactionStatus.PENDING);
-            txnRepository.save(txn);
-
-            bbpsTxn.setStatus("PENDING");
-            bbpsTxn.setProviderMessage("Transaction processing at FASTag issuing bank. Reconciling status.");
-            bbpsTransactionRepository.save(bbpsTxn);
-
-            WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
-            return BbpsDtos.FastagPayResponse.builder()
-                    .success(false)
-                    .transactionId(bbpsTxn.getId().toString())
-                    .merchantRefNo(merchantRefNo)
-                    .status("PENDING")
-                    .amount(request.getAmount())
-                    .convenienceFee(convenienceFee)
-                    .totalAmount(totalPayable)
-                    .vehicleNumber(vrn)
-                    .customerName(customerName)
-                    .customerMobile(request.getCustomerMobile())
-                    .billerId(biller.getBillerId())
-                    .billerName(biller.getBillerName())
-                    .billNumber(request.getBillNumber())
-                    .dueDate(request.getDueDate())
-                    .message("FASTag recharge is processing with bank. Status will update shortly.")
-                    .walletBalance(bal.balance())
-                    .createdAt(bbpsTxn.getCreatedAt())
-                    .build();
-        } catch (Exception ex) {
-            log.error("Unexpected exception calling BillAvenue for FASTag payment. Performing safe refund. Ref: {}", merchantRefNo, ex);
-            handleFailureAndRefund(userId, txn, bbpsTxn, totalPayable, "Provider communication error: " + ex.getMessage(), clientIp);
-            WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
-            return BbpsDtos.FastagPayResponse.builder()
-                    .success(false)
-                    .transactionId(bbpsTxn.getId().toString())
-                    .merchantRefNo(merchantRefNo)
-                    .status("FAILED")
-                    .amount(request.getAmount())
-                    .convenienceFee(convenienceFee)
-                    .totalAmount(totalPayable)
-                    .vehicleNumber(vrn)
-                    .customerName(customerName)
-                    .customerMobile(request.getCustomerMobile())
-                    .billerId(biller.getBillerId())
-                    .billerName(biller.getBillerName())
-                    .billNumber(request.getBillNumber())
-                    .dueDate(request.getDueDate())
-                    .message("FASTag recharge failed: " + ex.getMessage() + ". Amount has been refunded to your wallet.")
-                    .walletBalance(bal.balance())
-                    .createdAt(bbpsTxn.getCreatedAt())
-                    .build();
+        String cleanPaymentRefId = merchantRefNo.replaceAll("[^a-zA-Z0-9]", "");
+        if (cleanPaymentRefId.length() > 35) {
+            cleanPaymentRefId = cleanPaymentRefId.substring(0, 35);
         }
+
+        // Per BillAvenue v2.8.7 (Pages 9-10 & 23), FASTag/toll billers often disable Cash (E0379)
+        // and mandate electronic clearing modes (Internet Banking, Debit Card).
+        // Channel INT supports Internet Banking and Debit Card with IP and MAC parameters.
+        record FastagPaymentModeConfig(String mode, String channel, String accountInfo) {}
+        List<FastagPaymentModeConfig> modeConfigs = List.of(
+                new FastagPaymentModeConfig("Internet Banking", "INT", cleanPaymentRefId + "|" + cleanPaymentRefId),
+                new FastagPaymentModeConfig("Debit Card", "INT", cleanPaymentRefId + "|" + cleanPaymentRefId),
+                new FastagPaymentModeConfig("Cash", "AGT", "Cash Payment")
+        );
+
+        BillAvenueDtos.BillPayResponse payResp = null;
+        String finalMode = "Internet Banking";
+        String finalChannel = "INT";
+
+        for (FastagPaymentModeConfig cfg : modeConfigs) {
+            finalMode = cfg.mode();
+            finalChannel = cfg.channel();
+
+            BillAvenueDtos.BillPayXmlRequest xmlReq = BillAvenueDtos.BillPayXmlRequest.builder()
+                    .fetchRequestId(effectiveRequestId)
+                    .billerId(biller.getBillerId())
+                    .customerMobile(request.getCustomerMobile().trim())
+                    .customerEmail(userEmail)
+                    .initChannel(cfg.channel())
+                    .amountPaise(paise)
+                    .billAmountPaise(paise)
+                    .billDate(effectiveBillDate)
+                    .billNumber(effectiveBillNumber)
+                    .dueDate(effectiveDueDate)
+                    .billPeriod(effectiveBillPeriod)
+                    .customerName(customerName)
+                    .additionalInfo(addnlItems.isEmpty() ? null : addnlItems)
+                    .inputParams(inputs)
+                    .clientTxnId(merchantRefNo)
+                    .paymentMode(cfg.mode())
+                    .remitterName(remitterName)
+                    .remarks("FASTag Bill Payment")
+                    .paymentAccountInfo(cfg.accountInfo())
+                    .clientIp(sanitizedIp)
+                    .billerAdhoc("true")
+                    .quickPay("0")
+                    .custConvFeePaise(convFeePaise)
+                    .ccf1Paise(0L)
+                    .rawBillerResponseXml(rawBillerResponseXml)
+                    .rawAdditionalInfoXml(rawAdditionalInfoXml)
+                    .build();
+
+            try {
+                payResp = billAvenueClient.payBillXml(xmlReq);
+                if (payResp != null && payResp.isSuccess()) {
+                    log.info("BillAvenue FASTag payment SUCCESS with mode: {}, channel: {}", cfg.mode(), cfg.channel());
+                    break;
+                }
+                // If payment mode is disabled (E0379/E0380), fallback to next mode candidate
+                if (payResp != null && isPaymentModeDisabledError(payResp)) {
+                    log.warn("Payment mode {} disabled for FASTag biller {} ({}). Retrying with alternate mode.",
+                            cfg.mode(), biller.getBillerId(), payResp.getErrorMessage());
+                    continue;
+                }
+                // If failure is not a payment mode error, do not retry other payment modes
+                break;
+            } catch (BillAvenueTimeoutException te) {
+                log.warn("BillAvenue timeout for FASTag payment ref: {}. Keeping transaction PENDING.", merchantRefNo, te);
+                txn.setStatus(TransactionStatus.PENDING);
+                txnRepository.save(txn);
+
+                bbpsTxn.setPaymentMode(finalMode);
+                bbpsTxn.setPaymentChannel(finalChannel);
+                bbpsTxn.setStatus("PENDING");
+                bbpsTxn.setProviderMessage("Transaction processing at FASTag issuing bank. Reconciling status.");
+                bbpsTransactionRepository.save(bbpsTxn);
+
+                WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
+                return BbpsDtos.FastagPayResponse.builder()
+                        .success(false)
+                        .transactionId(bbpsTxn.getId().toString())
+                        .merchantRefNo(merchantRefNo)
+                        .status("PENDING")
+                        .amount(request.getAmount())
+                        .convenienceFee(convenienceFee)
+                        .totalAmount(totalPayable)
+                        .vehicleNumber(vrn)
+                        .customerName(customerName)
+                        .customerMobile(request.getCustomerMobile())
+                        .billerId(biller.getBillerId())
+                        .billerName(biller.getBillerName())
+                        .billNumber(request.getBillNumber())
+                        .dueDate(request.getDueDate())
+                        .message("FASTag recharge is processing with bank. Status will update shortly.")
+                        .walletBalance(bal.balance())
+                        .createdAt(bbpsTxn.getCreatedAt())
+                        .build();
+            } catch (Exception ex) {
+                log.error("Exception calling BillAvenue for FASTag payment with mode {}. Ref: {}", cfg.mode(), merchantRefNo, ex);
+                break;
+            }
+        }
+
+        bbpsTxn.setPaymentMode(finalMode);
+        bbpsTxn.setPaymentChannel(finalChannel);
 
         // 9. Process Provider Outcome
         if (payResp != null && payResp.isSuccess()) {
@@ -3860,6 +3876,16 @@ public class BbpsServiceImpl implements BbpsService {
             return "Vehicle plate " + vrn + " format not recognized by " + billerName + ". Please ensure standard plate format (e.g. RJ14GU8645).";
         }
         return rawMsg;
+    }
+
+    private boolean isPaymentModeDisabledError(BillAvenueDtos.BillPayResponse resp) {
+        if (resp == null) return false;
+        String r = resp.getResponseReason() != null ? resp.getResponseReason().toLowerCase() : "";
+        String m = resp.getErrorMessage() != null ? resp.getErrorMessage().toLowerCase() : "";
+        String code = resp.getResponseCode() != null ? resp.getResponseCode() : "";
+        return "E0379".equalsIgnoreCase(code) || "E0380".equalsIgnoreCase(code)
+                || r.contains("e0379") || r.contains("e0380") || (r.contains("payment mode") && (r.contains("disable") || r.contains("not supported")))
+                || m.contains("e0379") || m.contains("e0380") || (m.contains("payment mode") && (m.contains("disable") || m.contains("not supported")));
     }
 
     private List<List<BillAvenueDtos.InputParam>> generateFastagParameterVariations(String vrn, String mobile) {
