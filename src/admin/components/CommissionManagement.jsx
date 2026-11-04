@@ -839,7 +839,7 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
         };
     }, [selectedBbpsServiceId]);
 
-    const isServiceActive = selectedBbpsServiceId === 'loan-repayment' || selectedBbpsServiceId === 'electricity';
+    const isServiceActive = (bbpsConfigs.length > 0 && bbpsConfigs.some(c => c.enabled)) || selectedBbpsServiceId === 'loan-repayment' || selectedBbpsServiceId === 'electricity' || selectedBbpsServiceId === 'fastag';
 
     const renderCommissionModelDropdown = () => {
         const currentModel = COMMISSION_MODELS.find(m => m.id === commissionModel) || COMMISSION_MODELS[0];
@@ -1592,7 +1592,7 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
                                                 <option value="" disabled>-- Choose BBPS Service --</option>
                                                 {BBPS_CATEGORIES.map(cat => (
                                                     <option key={cat.id} value={cat.id}>
-                                                        {cat.name} {(cat.id === 'loan-repayment' || cat.id === 'electricity') ? '(Active)' : ''}
+                                                        {cat.name} {(cat.id === 'loan-repayment' || cat.id === 'electricity' || cat.id === 'fastag') ? '(Active)' : ''}
                                                     </option>
                                                 ))}
                                             </select>
@@ -1640,7 +1640,7 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
                             ) : (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
                                     {filteredBbpsCategories.map((cat, index) => {
-                                        const isServiceReady = cat.id === 'loan-repayment' || cat.id === 'electricity';
+                                        const isServiceReady = cat.id === 'loan-repayment' || cat.id === 'electricity' || cat.id === 'fastag';
                                         const isSelected = cat.id === selectedBbpsServiceId;
                                         const IconComp = cat.icon || HandCoins;
                                         const gradient = cat.gradient || 'from-indigo-500 to-blue-600';
@@ -1840,7 +1840,7 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
                                                 >
                                                     {BBPS_CATEGORIES.map(cat => (
                                                         <option key={cat.id} value={cat.id}>
-                                                            Switch to: {cat.name} {(cat.id === 'loan-repayment' || cat.id === 'electricity') ? '(Active)' : ''}
+                                                            Switch to: {cat.name} {(cat.id === 'loan-repayment' || cat.id === 'electricity' || cat.id === 'fastag') ? '(Active)' : ''}
                                                         </option>
                                                     ))}
                                                 </select>
@@ -2379,6 +2379,7 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
                             >
                                 <option value="ALL">All Services</option>
                                 <option value="AEPS_1">AEPS 1 (Cash Withdrawal)</option>
+                                <option value="BBPS_FASTAG">BBPS (FASTag)</option>
                                 <option value="BBPS_LOAN_REPAYMENT">BBPS (Loan Repayment)</option>
                                 <option value="BBPS_ELECTRICITY">BBPS (Electricity)</option>
                                 <option value="MOBILE_RECHARGE">Mobile Recharge</option>

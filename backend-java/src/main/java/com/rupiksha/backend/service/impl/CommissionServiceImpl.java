@@ -840,9 +840,26 @@ public class CommissionServiceImpl implements CommissionService {
             return;
         }
 
-        String serviceDisplayName = "loan-repayment".equalsIgnoreCase(serviceId) ? "Loan Repayment" : "Electricity";
-        String serviceType = "loan-repayment".equalsIgnoreCase(serviceId) ? "BBPS_LOAN_REPAYMENT" : "BBPS_ELECTRICITY";
-        String bbpsCategory = "loan-repayment".equalsIgnoreCase(serviceId) ? "Loan Repayment" : "Electricity";
+        String serviceDisplayName;
+        String serviceType;
+        String bbpsCategory;
+        if ("loan-repayment".equalsIgnoreCase(serviceId)) {
+            serviceDisplayName = "Loan Repayment";
+            serviceType = "BBPS_LOAN_REPAYMENT";
+            bbpsCategory = "Loan Repayment";
+        } else if ("electricity".equalsIgnoreCase(serviceId)) {
+            serviceDisplayName = "Electricity";
+            serviceType = "BBPS_ELECTRICITY";
+            bbpsCategory = "Electricity";
+        } else if ("fastag".equalsIgnoreCase(serviceId)) {
+            serviceDisplayName = "FASTag";
+            serviceType = "BBPS_FASTAG";
+            bbpsCategory = "FASTag";
+        } else {
+            serviceDisplayName = serviceId;
+            serviceType = "BBPS_" + serviceId.toUpperCase().replace('-', '_');
+            bbpsCategory = serviceId;
+        }
         String walletServiceName = "BBPS " + serviceDisplayName;
 
         String originalTxnId = bbpsTxn.getMerchantRefNo() != null ? bbpsTxn.getMerchantRefNo() : bbpsTxn.getId().toString();
@@ -1043,6 +1060,9 @@ public class CommissionServiceImpl implements CommissionService {
         if (cat.equals("electricity") || cat.equals("prepaid meter") || cat.equals("prepaid-meter")) {
             return "electricity";
         }
+        if (cat.equals("fastag") || cat.equals("fast-tag") || cat.equals("fast tag") || cat.equals("toll")) {
+            return "fastag";
+        }
         return null;
     }
 
@@ -1189,7 +1209,7 @@ public class CommissionServiceImpl implements CommissionService {
                         .findFirst()
                         .orElse(sId);
 
-                boolean isPreSeeded = "loan-repayment".equalsIgnoreCase(sId) || "electricity".equalsIgnoreCase(sId);
+                boolean isPreSeeded = "loan-repayment".equalsIgnoreCase(sId) || "electricity".equalsIgnoreCase(sId) || "fastag".equalsIgnoreCase(sId);
 
                 for (CommissionPlan plan : plans) {
                     BigDecimal ret = isPreSeeded ? getDefaultPercentage(plan.getPlanCode(), "RETAILER") : BigDecimal.ZERO;

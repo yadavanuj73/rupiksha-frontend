@@ -726,4 +726,469 @@ public class BbpsCommissionServiceImplTest {
         verify(walletService, never()).creditForService(any(), any(), any(), any(), any(), any(), any());
         verify(commissionTransactionRepository, never()).save(any());
     }
+
+    // ─── FASTAG PERCENTAGE COMMISSION TESTS ─────────────────────────────────────
+
+    @Test
+    @DisplayName("FASTag Commission: ₹2,000 at 1.00% Ret / 0.25% Dist / 0.25% SD yields exact ₹20.00 / ₹5.00 / ₹5.00")
+    void testFastagPercentageCommissionCalculation() {
+        CommissionPlan fastagPlan = CommissionPlan.builder()
+                .id(UUID.randomUUID())
+                .serviceType("AEPS_1")
+                .planName("Free Plan")
+                .planCode("FREE")
+                .price(BigDecimal.ZERO)
+                .isDefault(true)
+                .enabled(true)
+                .build();
+
+        retailer.setAepsCommissionPlan(fastagPlan);
+
+        BbpsCommissionConfig fastagConfig = BbpsCommissionConfig.builder()
+                .id(UUID.randomUUID())
+                .serviceId("fastag")
+                .serviceName("Fastag")
+                .commissionModel("PERCENTAGE")
+                .plan(fastagPlan)
+                .planCode("FREE")
+                .retailerPercentage(new BigDecimal("1.0000"))
+                .distributorPercentage(new BigDecimal("0.2500"))
+                .superDistributorPercentage(new BigDecimal("0.2500"))
+                .enabled(true)
+                .build();
+
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+        when(bbpsCommissionConfigRepository.findByServiceIdAndPlan_PlanCode("fastag", "FREE"))
+                .thenReturn(Optional.of(fastagConfig));
+        when(commissionTransactionRepository.existsByOriginalTransactionId("BBPSFT2000001")).thenReturn(false);
+
+        BbpsTransaction bbpsTxn = new BbpsTransaction();
+        bbpsTxn.setId(UUID.randomUUID());
+        bbpsTxn.setCategory("FASTag");
+        bbpsTxn.setMerchantRefNo("BBPSFT2000001");
+        bbpsTxn.setAmount(new BigDecimal("2000.00"));
+        bbpsTxn.setStatus("SUCCESS");
+        bbpsTxn.setUser(retailer);
+
+        commissionService.processBbpsCommission(bbpsTxn);
+
+        ArgumentCaptor<BigDecimal> amountCaptor = ArgumentCaptor.forClass(BigDecimal.class);
+        ArgumentCaptor<UUID> userCaptor = ArgumentCaptor.forClass(UUID.class);
+        ArgumentCaptor<String> serviceNameCaptor = ArgumentCaptor.forClass(String.class);
+
+        verify(walletService, times(3)).creditForService(
+                userCaptor.capture(),
+                amountCaptor.capture(),
+                anyString(),
+                eq(com.rupiksha.backend.domain.WalletTransactionContext.COMMISSION),
+                serviceNameCaptor.capture(),
+                anyString(),
+                anyString()
+        );
+
+        List<BigDecimal> amounts = amountCaptor.getAllValues();
+        List<UUID> userIds = userCaptor.getAllValues();
+        List<String> serviceNames = serviceNameCaptor.getAllValues();
+
+        // 1. Retailer gets ₹20.00 (1.00% of ₹2,000)
+        assertEquals(retailer.getId(), userIds.get(0));
+        assertEquals(new BigDecimal("20.00"), amounts.get(0));
+        assertEquals("BBPS FASTag", serviceNames.get(0));
+
+        // 2. Distributor gets ₹5.00 (0.25% of ₹2,000)
+        assertEquals(distributor.getId(), userIds.get(1));
+        assertEquals(new BigDecimal("5.00"), amounts.get(1));
+        assertEquals("BBPS FASTag", serviceNames.get(1));
+
+        // 3. Super Distributor gets ₹5.00 (0.25% of ₹2,000)
+        assertEquals(superDistributor.getId(), userIds.get(2));
+        assertEquals(new BigDecimal("5.00"), amounts.get(2));
+        assertEquals("BBPS FASTag", serviceNames.get(2));
+
+        // Total distributed: ₹30.00
+        BigDecimal totalDisbursed = amounts.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+        assertEquals(new BigDecimal("30.00"), totalDisbursed);
+
+        // Verify CommissionTransaction ledger entries
+        ArgumentCaptor<CommissionTransaction> txnCaptor = ArgumentCaptor.forClass(CommissionTransaction.class);
+        verify(commissionTransactionRepository, times(3)).save(txnCaptor.capture());
+
+        List<CommissionTransaction> txns = txnCaptor.getAllValues();
+        assertEquals("BBPS_FASTAG", txns.get(0).getServiceType());
+        assertEquals("FASTag", txns.get(0).getBbpsCategory());
+        assertEquals("RETAILER", txns.get(0).getBeneficiaryRole());
+        assertEquals(new BigDecimal("1.0000"), txns.get(0).getAppliedPercentage());
+        assertEquals(new BigDecimal("20.00"), txns.get(0).getCommissionAmount());
+
+        assertEquals("DISTRIBUTOR", txns.get(1).getBeneficiaryRole());
+        assertEquals(new BigDecimal("0.2500"), txns.get(1).getAppliedPercentage());
+        assertEquals(new BigDecimal("5.00"), txns.get(1).getCommissionAmount());
+
+        assertEquals("SUPER_DISTRIBUTOR", txns.get(2).getBeneficiaryRole());
+        assertEquals(new BigDecimal("0.2500"), txns.get(2).getAppliedPercentage());
+        assertEquals(new BigDecimal("5.00"), txns.get(2).getCommissionAmount());
+    }
+
+    @Test
+    @DisplayName("FASTag Commission: Direct Retailer with no uplines receives only retailer commission")
+    void testFastagCommissionDirectRetailer() {
+        User directRetailer = new User();
+        directRetailer.setId(UUID.randomUUID());
+        directRetailer.setUsername("DIRECT_RET");
+        Role rRole = new Role();
+        rRole.setName(RoleName.RETAILER);
+        directRetailer.setRoles(Set.of(rRole));
+        directRetailer.setParentUser(null);
+
+        BbpsCommissionConfig fastagConfig = BbpsCommissionConfig.builder()
+                .id(UUID.randomUUID())
+                .serviceId("fastag")
+                .serviceName("Fastag")
+                .commissionModel("PERCENTAGE")
+                .plan(freePlan)
+                .planCode("FREE")
+                .retailerPercentage(new BigDecimal("1.0000"))
+                .distributorPercentage(new BigDecimal("0.2500"))
+                .superDistributorPercentage(new BigDecimal("0.2500"))
+                .enabled(true)
+                .build();
+
+        when(userRepository.findById(directRetailer.getId())).thenReturn(Optional.of(directRetailer));
+        when(commissionPlanRepository.findByServiceTypeAndIsDefaultTrue("AEPS_1")).thenReturn(Optional.of(freePlan));
+        when(bbpsCommissionConfigRepository.findByServiceIdAndPlan_PlanCode("fastag", "FREE"))
+                .thenReturn(Optional.of(fastagConfig));
+        when(commissionTransactionRepository.existsByOriginalTransactionId("BBPSFT_DIR_001")).thenReturn(false);
+
+        BbpsTransaction bbpsTxn = new BbpsTransaction();
+        bbpsTxn.setId(UUID.randomUUID());
+        bbpsTxn.setCategory("FASTag");
+        bbpsTxn.setMerchantRefNo("BBPSFT_DIR_001");
+        bbpsTxn.setAmount(new BigDecimal("2000.00"));
+        bbpsTxn.setStatus("SUCCESS");
+        bbpsTxn.setUser(directRetailer);
+
+        commissionService.processBbpsCommission(bbpsTxn);
+
+        ArgumentCaptor<BigDecimal> amountCaptor = ArgumentCaptor.forClass(BigDecimal.class);
+        ArgumentCaptor<UUID> userCaptor = ArgumentCaptor.forClass(UUID.class);
+
+        verify(walletService, times(1)).creditForService(
+                userCaptor.capture(),
+                amountCaptor.capture(),
+                anyString(),
+                eq(com.rupiksha.backend.domain.WalletTransactionContext.COMMISSION),
+                eq("BBPS FASTag"),
+                anyString(),
+                anyString()
+        );
+
+        assertEquals(directRetailer.getId(), userCaptor.getValue());
+        assertEquals(new BigDecimal("20.00"), amountCaptor.getValue());
+        verify(commissionTransactionRepository, times(1)).save(any());
+    }
+
+    @Test
+    @DisplayName("FASTag Commission: Retailer under Distributor only (no Super Distributor)")
+    void testFastagCommissionRetailerUnderDistributorOnly() {
+        User distOnly = new User();
+        distOnly.setId(UUID.randomUUID());
+        distOnly.setUsername("D_ONLY");
+        distOnly.setParentUser(null);
+        Role dRole = new Role();
+        dRole.setName(RoleName.DISTRIBUTOR);
+        distOnly.setRoles(Set.of(dRole));
+
+        User retUnderDist = new User();
+        retUnderDist.setId(UUID.randomUUID());
+        retUnderDist.setUsername("R_UNDER_D");
+        retUnderDist.setParentUser(distOnly);
+        Role rRole = new Role();
+        rRole.setName(RoleName.RETAILER);
+        retUnderDist.setRoles(Set.of(rRole));
+        retUnderDist.setAepsCommissionPlan(freePlan);
+
+        BbpsCommissionConfig fastagConfig = BbpsCommissionConfig.builder()
+                .id(UUID.randomUUID())
+                .serviceId("fastag")
+                .serviceName("Fastag")
+                .commissionModel("PERCENTAGE")
+                .plan(freePlan)
+                .planCode("FREE")
+                .retailerPercentage(new BigDecimal("1.0000"))
+                .distributorPercentage(new BigDecimal("0.2500"))
+                .superDistributorPercentage(new BigDecimal("0.2500"))
+                .enabled(true)
+                .build();
+
+        when(userRepository.findById(retUnderDist.getId())).thenReturn(Optional.of(retUnderDist));
+        when(bbpsCommissionConfigRepository.findByServiceIdAndPlan_PlanCode("fastag", "FREE"))
+                .thenReturn(Optional.of(fastagConfig));
+        when(commissionTransactionRepository.existsByOriginalTransactionId("BBPSFT_DIST_ONLY")).thenReturn(false);
+
+        BbpsTransaction bbpsTxn = new BbpsTransaction();
+        bbpsTxn.setId(UUID.randomUUID());
+        bbpsTxn.setCategory("FASTag");
+        bbpsTxn.setMerchantRefNo("BBPSFT_DIST_ONLY");
+        bbpsTxn.setAmount(new BigDecimal("4000.00"));
+        bbpsTxn.setStatus("SUCCESS");
+        bbpsTxn.setUser(retUnderDist);
+
+        commissionService.processBbpsCommission(bbpsTxn);
+
+        ArgumentCaptor<BigDecimal> amountCaptor = ArgumentCaptor.forClass(BigDecimal.class);
+        ArgumentCaptor<UUID> userCaptor = ArgumentCaptor.forClass(UUID.class);
+
+        verify(walletService, times(2)).creditForService(
+                userCaptor.capture(),
+                amountCaptor.capture(),
+                anyString(),
+                eq(com.rupiksha.backend.domain.WalletTransactionContext.COMMISSION),
+                eq("BBPS FASTag"),
+                anyString(),
+                anyString()
+        );
+
+        List<BigDecimal> amounts = amountCaptor.getAllValues();
+        List<UUID> userIds = userCaptor.getAllValues();
+
+        // Retailer: 1% of ₹4,000 = ₹40.00
+        assertEquals(retUnderDist.getId(), userIds.get(0));
+        assertEquals(new BigDecimal("40.00"), amounts.get(0));
+
+        // Distributor: 0.25% of ₹4,000 = ₹10.00
+        assertEquals(distOnly.getId(), userIds.get(1));
+        assertEquals(new BigDecimal("10.00"), amounts.get(1));
+
+        verify(commissionTransactionRepository, times(2)).save(any());
+    }
+
+    @Test
+    @DisplayName("FASTag Commission: Idempotency safeguard prevents duplicate wallet credits")
+    void testFastagCommissionIdempotency() {
+        BbpsTransaction bbpsTxn = new BbpsTransaction();
+        bbpsTxn.setId(UUID.randomUUID());
+        bbpsTxn.setCategory("FASTag");
+        bbpsTxn.setMerchantRefNo("BBPSFT_DUP_001");
+        bbpsTxn.setStatus("SUCCESS");
+        bbpsTxn.setAmount(new BigDecimal("2000.00"));
+
+        when(commissionTransactionRepository.existsByOriginalTransactionId("BBPSFT_DUP_001")).thenReturn(true);
+
+        commissionService.processBbpsCommission(bbpsTxn);
+
+        verify(walletService, never()).creditForService(any(), any(), any(), any(), any(), any(), any());
+        verify(commissionTransactionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("FASTag Commission: Non-SUCCESS transactions (FAILED, PENDING, INITIATED) generate no commission")
+    void testFastagNonSuccessTransactionsExcluded() {
+        BbpsTransaction failedTxn = new BbpsTransaction();
+        failedTxn.setId(UUID.randomUUID());
+        failedTxn.setCategory("FASTag");
+        failedTxn.setStatus("FAILED");
+        failedTxn.setAmount(new BigDecimal("2000.00"));
+
+        BbpsTransaction pendingTxn = new BbpsTransaction();
+        pendingTxn.setId(UUID.randomUUID());
+        pendingTxn.setCategory("FASTag");
+        pendingTxn.setStatus("PENDING");
+        pendingTxn.setAmount(new BigDecimal("2000.00"));
+
+        BbpsTransaction initiatedTxn = new BbpsTransaction();
+        initiatedTxn.setId(UUID.randomUUID());
+        initiatedTxn.setCategory("FASTag");
+        initiatedTxn.setStatus("INITIATED");
+        initiatedTxn.setAmount(new BigDecimal("2000.00"));
+
+        commissionService.processBbpsCommission(failedTxn);
+        commissionService.processBbpsCommission(pendingTxn);
+        commissionService.processBbpsCommission(initiatedTxn);
+
+        verify(walletService, never()).creditForService(any(), any(), any(), any(), any(), any(), any());
+        verify(commissionTransactionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("FASTag Commission: Disabled configuration generates no commission")
+    void testFastagCommissionDisabledConfig() {
+        BbpsCommissionConfig disabledConfig = BbpsCommissionConfig.builder()
+                .id(UUID.randomUUID())
+                .serviceId("fastag")
+                .serviceName("Fastag")
+                .commissionModel("PERCENTAGE")
+                .plan(freePlan)
+                .planCode("FREE")
+                .retailerPercentage(new BigDecimal("1.0000"))
+                .distributorPercentage(new BigDecimal("0.2500"))
+                .superDistributorPercentage(new BigDecimal("0.2500"))
+                .enabled(false)
+                .build();
+
+        retailer.setAepsCommissionPlan(freePlan);
+
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+        when(bbpsCommissionConfigRepository.findByServiceIdAndPlan_PlanCode("fastag", "FREE"))
+                .thenReturn(Optional.of(disabledConfig));
+        when(commissionTransactionRepository.existsByOriginalTransactionId("BBPSFT_DISABLED")).thenReturn(false);
+
+        BbpsTransaction bbpsTxn = new BbpsTransaction();
+        bbpsTxn.setId(UUID.randomUUID());
+        bbpsTxn.setCategory("FASTag");
+        bbpsTxn.setMerchantRefNo("BBPSFT_DISABLED");
+        bbpsTxn.setAmount(new BigDecimal("2000.00"));
+        bbpsTxn.setStatus("SUCCESS");
+        bbpsTxn.setUser(retailer);
+
+        commissionService.processBbpsCommission(bbpsTxn);
+
+        verify(walletService, never()).creditForService(any(), any(), any(), any(), any(), any(), any());
+        verify(commissionTransactionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("FASTag Commission: Admin can update configuration and creates audit record")
+    void testFastagAdminConfigUpdateAndAudit() {
+        BbpsCommissionConfig config = BbpsCommissionConfig.builder()
+                .id(UUID.randomUUID())
+                .serviceId("fastag")
+                .serviceName("Fastag")
+                .commissionModel("PERCENTAGE")
+                .plan(freePlan)
+                .planCode("FREE")
+                .retailerPercentage(new BigDecimal("0.2000"))
+                .distributorPercentage(new BigDecimal("0.1000"))
+                .superDistributorPercentage(new BigDecimal("0.0500"))
+                .enabled(true)
+                .build();
+
+        when(userRepository.findById(adminUser.getId())).thenReturn(Optional.of(adminUser));
+        when(bbpsCommissionConfigRepository.findById(config.getId())).thenReturn(Optional.of(config));
+        when(bbpsCommissionConfigRepository.save(any(BbpsCommissionConfig.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CommissionDtos.UpdateBbpsConfigRequest updateReq = new CommissionDtos.UpdateBbpsConfigRequest(
+                new BigDecimal("1.0000"),
+                new BigDecimal("0.2500"),
+                new BigDecimal("0.2500"),
+                true
+        );
+
+        CommissionDtos.BbpsCommissionConfigDto updated = commissionService.updateBbpsConfig(
+                config.getId(),
+                updateReq,
+                adminUser.getId(),
+                "192.168.1.100"
+        );
+
+        assertNotNull(updated);
+        assertEquals(new BigDecimal("1.0000"), updated.retailerPercentage());
+        assertEquals(new BigDecimal("0.2500"), updated.distributorPercentage());
+        assertEquals(new BigDecimal("0.2500"), updated.superDistributorPercentage());
+        assertEquals(new BigDecimal("1.5000"), updated.totalPercentage());
+        assertTrue(updated.enabled());
+
+        ArgumentCaptor<BbpsCommissionConfigAudit> auditCaptor = ArgumentCaptor.forClass(BbpsCommissionConfigAudit.class);
+        verify(bbpsCommissionConfigAuditRepository, times(1)).save(auditCaptor.capture());
+
+        BbpsCommissionConfigAudit savedAudit = auditCaptor.getValue();
+        assertEquals("fastag", savedAudit.getServiceId());
+        assertEquals("FREE", savedAudit.getPlanCode());
+        assertEquals(adminUser.getUsername(), savedAudit.getAdminUsername());
+        assertEquals(new BigDecimal("0.2000"), savedAudit.getPrevRetailerPercentage());
+        assertEquals(new BigDecimal("1.0000"), savedAudit.getNewRetailerPercentage());
+        assertEquals("192.168.1.100", savedAudit.getIpAddress());
+    }
+
+    @Test
+    @DisplayName("FASTag Commission: Invalid percentages are rejected (negative or exceeding 100%)")
+    void testFastagInvalidPercentagesRejected() {
+        UUID configId = UUID.randomUUID();
+        when(userRepository.findById(adminUser.getId())).thenReturn(Optional.of(adminUser));
+        when(bbpsCommissionConfigRepository.findById(configId)).thenReturn(Optional.of(loanRepaymentFreeConfig));
+
+        // Negative percentage
+        CommissionDtos.UpdateBbpsConfigRequest negativeReq = new CommissionDtos.UpdateBbpsConfigRequest(
+                new BigDecimal("-0.5000"),
+                new BigDecimal("0.2500"),
+                new BigDecimal("0.2500"),
+                true
+        );
+        assertThrows(IllegalArgumentException.class, () ->
+                commissionService.updateBbpsConfig(configId, negativeReq, adminUser.getId(), "127.0.0.1")
+        );
+
+        // Combined percentage exceeds 100%
+        CommissionDtos.UpdateBbpsConfigRequest overflowReq = new CommissionDtos.UpdateBbpsConfigRequest(
+                new BigDecimal("60.0000"),
+                new BigDecimal("30.0000"),
+                new BigDecimal("15.0000"),
+                true
+        );
+        assertThrows(IllegalArgumentException.class, () ->
+                commissionService.updateBbpsConfig(configId, overflowReq, adminUser.getId(), "127.0.0.1")
+        );
+    }
+
+    @Test
+    @DisplayName("FASTag Commission: Works correctly across all 4 membership plans")
+    void testFastagCommissionAcrossAllFourMembershipPlans() {
+        CommissionPlan plan4999 = CommissionPlan.builder()
+                .id(UUID.randomUUID())
+                .serviceType("AEPS_1")
+                .planName("Rupiksha Nidhi Plan")
+                .planCode("PLAN_4999")
+                .price(new BigDecimal("4999.00"))
+                .isDefault(false)
+                .enabled(true)
+                .build();
+
+        retailer.setAepsCommissionPlan(plan4999);
+
+        BbpsCommissionConfig plan4999Config = BbpsCommissionConfig.builder()
+                .id(UUID.randomUUID())
+                .serviceId("fastag")
+                .serviceName("Fastag")
+                .commissionModel("PERCENTAGE")
+                .plan(plan4999)
+                .planCode("PLAN_4999")
+                .retailerPercentage(new BigDecimal("1.2000"))
+                .distributorPercentage(new BigDecimal("0.3000"))
+                .superDistributorPercentage(new BigDecimal("0.2000"))
+                .enabled(true)
+                .build();
+
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+        when(bbpsCommissionConfigRepository.findByServiceIdAndPlan_PlanCode("fastag", "PLAN_4999"))
+                .thenReturn(Optional.of(plan4999Config));
+        when(commissionTransactionRepository.existsByOriginalTransactionId("BBPSFT_PLAN_4999")).thenReturn(false);
+
+        BbpsTransaction bbpsTxn = new BbpsTransaction();
+        bbpsTxn.setId(UUID.randomUUID());
+        bbpsTxn.setCategory("FASTag");
+        bbpsTxn.setMerchantRefNo("BBPSFT_PLAN_4999");
+        bbpsTxn.setAmount(new BigDecimal("5000.00"));
+        bbpsTxn.setStatus("SUCCESS");
+        bbpsTxn.setUser(retailer);
+
+        commissionService.processBbpsCommission(bbpsTxn);
+
+        ArgumentCaptor<BigDecimal> amountCaptor = ArgumentCaptor.forClass(BigDecimal.class);
+        verify(walletService, times(3)).creditForService(
+                any(),
+                amountCaptor.capture(),
+                anyString(),
+                eq(com.rupiksha.backend.domain.WalletTransactionContext.COMMISSION),
+                eq("BBPS FASTag"),
+                anyString(),
+                anyString()
+        );
+
+        List<BigDecimal> amounts = amountCaptor.getAllValues();
+        // Retailer: 1.20% of ₹5,000 = ₹60.00
+        assertEquals(new BigDecimal("60.00"), amounts.get(0));
+        // Distributor: 0.30% of ₹5,000 = ₹15.00
+        assertEquals(new BigDecimal("15.00"), amounts.get(1));
+        // Super Distributor: 0.20% of ₹5,000 = ₹10.00
+        assertEquals(new BigDecimal("10.00"), amounts.get(2));
+    }
 }
