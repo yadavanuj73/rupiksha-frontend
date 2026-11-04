@@ -295,6 +295,62 @@ public class BbpsController {
     }
 
     /**
+     * Retrieves NETC FASTag billers / issuers, optionally filtered by search query.
+     */
+    @GetMapping("/fastag/billers")
+    public List<BbpsDtos.FastagBillerInfo> getFastagBillers(
+            @RequestParam(required = false) String search
+    ) {
+        return bbpsService.getFastagBillers(search);
+    }
+
+    /**
+     * Fetches real FASTag balance and bill details from BillAvenue CU.
+     */
+    @PostMapping("/fastag/fetch")
+    public ResponseEntity<BbpsDtos.BillFetchResult> fetchFastagBill(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @Valid @RequestBody BbpsDtos.FastagFetchRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        if (principal == null) {
+            throw new IllegalArgumentException("Unauthorized");
+        }
+        UUID userId = UUID.fromString(principal.userId());
+        String clientIp = resolveClientIp(servletRequest);
+        BbpsDtos.BillFetchResult response = bbpsService.fetchFastagBill(userId, request, clientIp);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Executes server-authoritative FASTag Bill Payment / Recharge with wallet debit,
+     * BillAvenue integration, fetchRequestId binding, and idempotent failure refund.
+     */
+    @PostMapping("/fastag/pay")
+    public ResponseEntity<BbpsDtos.FastagPayResponse> payFastagBill(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKeyHeader,
+            @Valid @RequestBody BbpsDtos.FastagPayRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        if (principal == null) {
+            throw new IllegalArgumentException("Unauthorized");
+        }
+        UUID userId = UUID.fromString(principal.userId());
+
+        // Respect header idempotency key if body idempotencyKey is not provided
+        if ((request.getIdempotencyKey() == null || request.getIdempotencyKey().isBlank())
+                && idempotencyKeyHeader != null && !idempotencyKeyHeader.isBlank()) {
+            request.setIdempotencyKey(idempotencyKeyHeader.trim());
+        }
+
+        String clientIp = resolveClientIp(servletRequest);
+        BbpsDtos.FastagPayResponse response = bbpsService.payFastagBill(userId, request, clientIp);
+        return ResponseEntity.ok(response);
+    }
+
+
+    /**
      * Dedicated BBPS Transaction History with pagination, filters, and summary metrics.
      */
     @GetMapping("/history")

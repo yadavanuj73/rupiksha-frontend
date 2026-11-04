@@ -9,6 +9,7 @@ import MobilePrepaidFlow from './MobilePrepaidFlow';
 import ElectricityFlow from './ElectricityFlow';
 import LoanRepaymentFlow from './LoanRepaymentFlow';
 import CreditCardFlow from './CreditCardFlow';
+import FastagFlow from './FastagFlow';
 import BbpsServiceNav from './BbpsServiceNav';
 
 const BbpsCategoryDetail = ({ category, onBack }) => {
@@ -32,6 +33,10 @@ const BbpsCategoryDetail = ({ category, onBack }) => {
 
     if (category.id === 'credit-card' || category.id === 'creditcard') {
         return <CreditCardFlow onBack={onBack} category={category} />;
+    }
+
+    if (category.id === 'fastag' || category.id === 'FASTag') {
+        return <FastagFlow onBack={onBack} category={category} />;
     }
 
     const Icon = category.icon;

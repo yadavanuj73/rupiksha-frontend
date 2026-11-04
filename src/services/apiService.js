@@ -332,6 +332,23 @@ export const bbpsService = {
       headers: {
         "X-Idempotency-Key": idempotencyKey,
       },
+  getFastagBillers: (search) =>
+    apiFetch(`/bbps/fastag/billers${search ? `?search=${encodeURIComponent(search)}` : ''}`),
+  fetchFastagBill: (payload) =>
+    apiFetch("/bbps/fastag/fetch", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  payFastagBill: (data) => {
+    const idempotencyKey = data.idempotencyKey || `BBPS-FT-${Date.now()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+    return apiFetch("/bbps/fastag/pay", {
+      method: "POST",
+      headers: {
+        "X-Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify({ ...data, idempotencyKey }),
+    });
+  },
       body: JSON.stringify({ ...data, idempotencyKey }),
     });
   },

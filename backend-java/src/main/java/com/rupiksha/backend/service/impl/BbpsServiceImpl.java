@@ -15,6 +15,7 @@ import com.rupiksha.backend.service.BbpsService;
 import com.rupiksha.backend.integration.bbps.ElectricityBillerRegistry;
 import com.rupiksha.backend.integration.bbps.LoanBillerRegistry;
 import com.rupiksha.backend.integration.bbps.CreditCardBillerRegistry;
+import com.rupiksha.backend.integration.bbps.FastagBillerRegistry;
 import com.rupiksha.backend.service.WalletService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +46,7 @@ public class BbpsServiceImpl implements BbpsService {
     private final ElectricityBillerRegistry electricityBillerRegistry;
     private final LoanBillerRegistry loanBillerRegistry;
     private final CreditCardBillerRegistry creditCardBillerRegistry;
+    private final FastagBillerRegistry fastagBillerRegistry;
     private final com.rupiksha.backend.service.CommissionService commissionService;
     private final ObjectMapper objectMapper;
     private final Map<String, BillAvenueDtos.BillFetchResponse> fetchCache = new java.util.concurrent.ConcurrentHashMap<>();
@@ -2852,6 +2854,8 @@ public class BbpsServiceImpl implements BbpsService {
                 .minimumDue(txn.getMinimumDue())
                 .totalDue(txn.getTotalDue())
                 .statementDate(txn.getStatementDate())
+                .vehicleNumber(txn.getVehicleNumber())
+                .fastagTagId(txn.getFastagTagId())
                 .createdAt(txn.getCreatedAt())
                 .completedAt(txn.getCompletedAt())
                 .build();
@@ -3247,6 +3251,629 @@ public class BbpsServiceImpl implements BbpsService {
         // Variation 12: "Card Number"
         variations.add(List.of(
                 BillAvenueDtos.InputParam.builder().paramName("Card Number").paramValue(raw).build()
+        ));
+
+        return variations;
+    }
+
+    // â”€â”€ FASTag Bill Payment Implementation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+    @Override
+    public List<BbpsDtos.FastagBillerInfo> getFastagBillers(String search) {
+        return fastagBillerRegistry.getAllBillers(search);
+    }
+
+    @Override
+    public BbpsDtos.BillFetchResult fetchFastagBill(UUID userId, BbpsDtos.FastagFetchRequest request, String clientIp) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        boolean isServiceEnabled = userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)
+                .map(UserService::getIsEnabled)
+                .orElse(true);
+
+        if (!isServiceEnabled) {
+            log.warn("BBPS service disabled for user: {}", userId);
+            throw new IllegalStateException("BBPS service is disabled for your account by administrator");
+        }
+
+        if (request.getCustomerMobile() == null || !request.getCustomerMobile().matches("^[6-9]\\d{9}$")) {
+            throw new IllegalArgumentException("Valid 10-digit Indian mobile number starting with 6-9 is required");
+        }
+
+        BbpsDtos.FastagBillerInfo biller = fastagBillerRegistry.findById(request.getBillerId())
+                .orElseThrow(() -> new IllegalArgumentException("Unknown or unmapped FASTag issuer: " + request.getBillerId()));
+
+        // Sync with BillAvenue MDM Biller Info API if available (cached in-memory per 24h quota)
+        try {
+            BillAvenueDtos.BillerInfoResponse mdm = billAvenueClient.fetchBillerInfo(biller.getBillerId());
+            if (mdm != null && mdm.isSuccess() && mdm.getInputParams() != null && !mdm.getInputParams().isEmpty()) {
+                fastagBillerRegistry.updateFromMdm(biller.getBillerId(), mdm);
+                biller = fastagBillerRegistry.findById(biller.getBillerId()).orElse(biller);
+            }
+        } catch (Exception mdmEx) {
+            log.warn("MDM lookup error for FASTag biller {}: {}", biller.getBillerId(), mdmEx.getMessage());
+        }
+
+        fastagBillerRegistry.validateCustomerParams(biller, request.getCustomerParams());
+        String vrn = fastagBillerRegistry.extractVehicleNumber(request.getCustomerParams());
+
+        String sanitizedIp = (clientIp != null && clientIp.matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"))
+                ? clientIp : "103.108.7.127";
+
+        String initChannel = "AGT";
+        String agentId = billAvenueClient.getAgentId();
+        String customerMobile = request.getCustomerMobile().trim();
+        String userEmail = (user.getEmail() != null && !user.getEmail().isBlank()) ? user.getEmail().trim() : "customer@rupiksha.in";
+
+        List<BillAvenueDtos.InputParam> inputs = fastagBillerRegistry.buildFastagInputParams(
+                biller, request.getCustomerParams(), request.getCustomerMobile());
+
+        BillAvenueDtos.BillFetchResponse fetchResp = null;
+        try {
+            fetchResp = billAvenueClient.fetchBill(
+                    biller.getBillerId(),
+                    inputs,
+                    customerMobile,
+                    sanitizedIp,
+                    initChannel,
+                    userEmail
+            );
+        } catch (Exception ex) {
+            log.warn("Initial FASTag bill fetch failed: {}. Attempting fallback parameter variations.", ex.getMessage());
+        }
+
+        // Parameter variation retry if initial fetch failed
+        if (fetchResp == null || !fetchResp.isSuccess()) {
+            List<List<BillAvenueDtos.InputParam>> variations = generateFastagParameterVariations(vrn, customerMobile);
+            for (List<BillAvenueDtos.InputParam> varInputs : variations) {
+                try {
+                    log.info("Retrying FASTag bill fetch with parameter variation: {}", varInputs);
+                    BillAvenueDtos.BillFetchResponse retryResp = billAvenueClient.fetchBill(
+                            biller.getBillerId(),
+                            varInputs,
+                            customerMobile,
+                            sanitizedIp,
+                            initChannel,
+                            userEmail
+                    );
+                    if (retryResp != null && retryResp.isSuccess()) {
+                        fetchResp = retryResp;
+                        inputs = varInputs;
+                        log.info("FASTag bill fetch variation succeeded with: {}", varInputs);
+                        break;
+                    }
+                } catch (Exception retryEx) {
+                    log.debug("FASTag variation attempt failed: {}", retryEx.getMessage());
+                }
+            }
+        }
+
+        // Cache fetch result if returned with a valid request ID
+        if (fetchResp != null && fetchResp.getFetchRequestId() != null && !fetchResp.getFetchRequestId().isBlank()) {
+            fetchCache.put(fetchResp.getFetchRequestId(), fetchResp);
+        }
+
+        if (fetchResp != null && fetchResp.isSuccess()) {
+            BigDecimal billAmount = BigDecimal.ZERO;
+            if (fetchResp.getBillAmountPaise() > 0) {
+                billAmount = BigDecimal.valueOf(fetchResp.getBillAmountPaise()).divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+            }
+
+            List<BbpsDtos.InfoItemDto> addnlInfoList = new ArrayList<>();
+            if (fetchResp.getAdditionalInfo() != null) {
+                for (BillAvenueDtos.InfoItem item : fetchResp.getAdditionalInfo()) {
+                    addnlInfoList.add(new BbpsDtos.InfoItemDto(item.getInfoName(), item.getInfoValue()));
+                }
+            }
+
+            return BbpsDtos.BillFetchResult.builder()
+                    .success(true)
+                    .noBillDue(false)
+                    .fetchRequestId(fetchResp.getFetchRequestId())
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .consumerNumber(vrn)
+                    .billAmount(billAmount)
+                    .customerName(fetchResp.getCustomerName() != null && !fetchResp.getCustomerName().isBlank() ? fetchResp.getCustomerName() : "FASTag Customer")
+                    .billNumber(fetchResp.getBillNumber())
+                    .billDate(fetchResp.getBillDate())
+                    .dueDate(fetchResp.getDueDate())
+                    .billPeriod(fetchResp.getBillPeriod())
+                    .customerParams(fastagBillerRegistry.sanitizeCustomerParams(request.getCustomerParams(), request.getCustomerMobile()))
+                    .additionalInfo(addnlInfoList)
+                    .message("FASTag details fetched successfully")
+                    .build();
+        }
+
+        // Check if provider returned BFR004 (Payment received / zero bill due) or adhoc allowed
+        String errCode = fetchResp != null ? fetchResp.getResponseCode() : "500";
+        String errMsg = fetchResp != null ? fetchResp.getErrorMessage() : "FASTag bill fetch failed";
+
+        if ("BFR004".equalsIgnoreCase(errCode) || (errMsg != null && errMsg.toLowerCase().contains("no bill"))) {
+            String genReqId = com.rupiksha.backend.integration.bbps.util.BillAvenueCryptoUtil.generateRequestId();
+            return BbpsDtos.BillFetchResult.builder()
+                    .success(true)
+                    .noBillDue(true)
+                    .fetchRequestId(genReqId)
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .consumerNumber(vrn)
+                    .billAmount(BigDecimal.ZERO)
+                    .customerName("FASTag User")
+                    .customerParams(fastagBillerRegistry.sanitizeCustomerParams(request.getCustomerParams(), request.getCustomerMobile()))
+                    .message("No outstanding dues on FASTag. You can recharge any desired amount.")
+                    .build();
+        }
+
+        return BbpsDtos.BillFetchResult.builder()
+                .success(false)
+                .billerId(biller.getBillerId())
+                .billerName(biller.getBillerName())
+                .consumerNumber(vrn)
+                .errorCode(errCode)
+                .message(errMsg != null && !errMsg.isBlank() ? errMsg : "Failed to fetch FASTag details. Please check vehicle number and retry.")
+                .build();
+    }
+
+    @Override
+    public BbpsDtos.FastagPayResponse payFastagBill(UUID userId, BbpsDtos.FastagPayRequest request, String clientIp) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        // 1. Verify service permission in user_services
+        boolean isServiceEnabled = userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)
+                .map(UserService::getIsEnabled)
+                .orElse(true);
+
+        if (!isServiceEnabled) {
+            log.warn("BBPS service disabled for user: {}", userId);
+            throw new IllegalStateException("BBPS service is disabled for your account by administrator");
+        }
+
+        // 2. Validate input
+        if (request.getCustomerMobile() == null || !request.getCustomerMobile().matches("^[6-9]\\d{9}$")) {
+            throw new IllegalArgumentException("Valid 10-digit Indian mobile number starting with 6-9 is required");
+        }
+        if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ONE) < 0) {
+            throw new IllegalArgumentException("FASTag recharge amount must be at least â‚¹1.00");
+        }
+
+        BbpsDtos.FastagBillerInfo biller = fastagBillerRegistry.findById(request.getBillerId())
+                .orElseThrow(() -> new IllegalArgumentException("Unknown FASTag biller: " + request.getBillerId()));
+
+        // Sync with BillAvenue MDM Biller Info API if available (cached in-memory per 24h quota)
+        try {
+            BillAvenueDtos.BillerInfoResponse mdm = billAvenueClient.fetchBillerInfo(biller.getBillerId());
+            if (mdm != null && mdm.isSuccess() && mdm.getInputParams() != null && !mdm.getInputParams().isEmpty()) {
+                fastagBillerRegistry.updateFromMdm(biller.getBillerId(), mdm);
+                biller = fastagBillerRegistry.findById(biller.getBillerId()).orElse(biller);
+            }
+        } catch (Exception mdmEx) {
+            log.warn("MDM lookup error for FASTag biller {}: {}", biller.getBillerId(), mdmEx.getMessage());
+        }
+
+        fastagBillerRegistry.validateCustomerParams(biller, request.getCustomerParams());
+        String vrn = fastagBillerRegistry.extractVehicleNumber(request.getCustomerParams());
+
+        BigDecimal convenienceFee = (request.getConvenienceFee() != null && request.getConvenienceFee().compareTo(BigDecimal.ZERO) > 0)
+                ? request.getConvenienceFee()
+                : BigDecimal.ZERO;
+        BigDecimal totalPayable = request.getAmount().add(convenienceFee);
+
+        // 3. Server-enforced Idempotency check
+        String idempotencyKey = request.getIdempotencyKey();
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            idempotencyKey = "BBPS-FT-" + UUID.randomUUID();
+        }
+
+        Optional<BbpsTransaction> existingOpt = bbpsTransactionRepository.findByIdempotencyKey(idempotencyKey);
+        if (existingOpt.isPresent()) {
+            BbpsTransaction existing = existingOpt.get();
+            log.info("Idempotent request duplicate detected for FASTag payment key: {}. Returning existing status: {}",
+                    idempotencyKey, existing.getStatus());
+
+            WalletDtos.WalletBalanceResponse currentBal = walletService.getBalance(userId.toString());
+            return BbpsDtos.FastagPayResponse.builder()
+                    .success("SUCCESS".equals(existing.getStatus()))
+                    .transactionId(existing.getId().toString())
+                    .merchantRefNo(existing.getMerchantRefNo())
+                    .providerTxnId(existing.getProviderTxnId())
+                    .approvalRefNo(existing.getApprovalRefNo())
+                    .status(existing.getStatus())
+                    .amount(existing.getAmount())
+                    .convenienceFee(existing.getConvenienceFee())
+                    .totalAmount(existing.getAmount().add(existing.getConvenienceFee() != null ? existing.getConvenienceFee() : BigDecimal.ZERO))
+                    .vehicleNumber(existing.getVehicleNumber())
+                    .customerName(existing.getCustomerName())
+                    .customerMobile(existing.getMobileNumber())
+                    .billerId(existing.getBillerId())
+                    .billerName(existing.getBillerName())
+                    .billNumber(existing.getBillNumber())
+                    .dueDate(existing.getDueDate())
+                    .message(existing.getProviderMessage() != null ? existing.getProviderMessage() : "Existing transaction returned")
+                    .walletBalance(currentBal.balance())
+                    .createdAt(existing.getCreatedAt())
+                    .build();
+        }
+
+        // 4. Authoritative backend wallet balance enforcement
+        WalletDtos.WalletBalanceResponse balanceResponse = walletService.getBalance(userId.toString());
+        BigDecimal availableBalance = balanceResponse.availableBalance() != null ? balanceResponse.availableBalance() : BigDecimal.ZERO;
+        if (availableBalance.compareTo(totalPayable) < 0) {
+            log.warn("Insufficient wallet balance for user {}. Required: {}, Available: {}",
+                    userId, totalPayable, availableBalance);
+            throw new IllegalStateException("Insufficient wallet balance. Available: â‚¹" + availableBalance + ", Required: â‚¹" + totalPayable);
+        }
+
+        // 5. Generate unique references and build inputs
+        String merchantRefNo = "BBPSFT" + System.currentTimeMillis() + UUID.randomUUID().toString().replaceAll("-", "").substring(0, 6).toUpperCase();
+
+        String sanitizedIp = (clientIp != null && clientIp.matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"))
+                ? clientIp : "103.108.7.127";
+
+        List<BillAvenueDtos.InputParam> inputs = fastagBillerRegistry.buildFastagInputParams(
+                biller, request.getCustomerParams(), request.getCustomerMobile());
+
+        String effectiveRequestId = (request.getFetchRequestId() != null && !request.getFetchRequestId().isBlank())
+                ? request.getFetchRequestId().trim()
+                : null;
+
+        String customerName = (request.getCustomerName() != null && !request.getCustomerName().isBlank() && !"NA".equalsIgnoreCase(request.getCustomerName().trim()))
+                ? request.getCustomerName().trim()
+                : "FASTag Customer";
+
+        String effectiveBillDate = (request.getBillDate() != null && !request.getBillDate().isBlank() && !"N/A".equalsIgnoreCase(request.getBillDate().trim()))
+                ? request.getBillDate().trim()
+                : null;
+
+        String effectiveDueDate = (request.getDueDate() != null && !request.getDueDate().isBlank() && !"N/A".equalsIgnoreCase(request.getDueDate().trim()))
+                ? request.getDueDate().trim()
+                : null;
+
+        String effectiveBillNumber = (request.getBillNumber() != null && !request.getBillNumber().isBlank() && !"N/A".equalsIgnoreCase(request.getBillNumber().trim()))
+                ? request.getBillNumber().trim()
+                : null;
+
+        String effectiveBillPeriod = (request.getBillPeriod() != null && !request.getBillPeriod().isBlank() && !"N/A".equalsIgnoreCase(request.getBillPeriod().trim()))
+                ? request.getBillPeriod().trim()
+                : "NA";
+
+        List<BillAvenueDtos.InfoItem> addnlItems = new ArrayList<>();
+        if (request.getAdditionalInfo() != null) {
+            for (BbpsDtos.InfoItemDto dto : request.getAdditionalInfo()) {
+                addnlItems.add(new BillAvenueDtos.InfoItem(dto.getInfoName(), dto.getInfoValue()));
+            }
+        }
+
+        String rawBillerResponseXml = null;
+        String rawAdditionalInfoXml = null;
+
+        if (effectiveRequestId != null) {
+            BillAvenueDtos.BillFetchResponse cached = fetchCache.get(effectiveRequestId);
+            if (cached != null) {
+                if (cached.getInputParams() != null && !cached.getInputParams().isEmpty()) {
+                    inputs = cached.getInputParams();
+                }
+                if (cached.getRawBillerResponseXml() != null) {
+                    String raw = cached.getRawBillerResponseXml();
+                    if (!raw.contains("<billAmount>0</billAmount>") && !raw.contains("<billAmount>0.00</billAmount>")) {
+                        rawBillerResponseXml = raw;
+                    }
+                }
+                if (cached.getRawAdditionalInfoXml() != null) {
+                    rawAdditionalInfoXml = cached.getRawAdditionalInfoXml();
+                }
+                if (cached.getAdditionalInfo() != null && !cached.getAdditionalInfo().isEmpty() && addnlItems.isEmpty()) {
+                    addnlItems.addAll(cached.getAdditionalInfo());
+                }
+                if (customerName == null && cached.getCustomerName() != null && !cached.getCustomerName().isBlank()) {
+                    customerName = cached.getCustomerName().trim();
+                }
+            }
+        }
+
+        // Sanitize customer params for JSON audit
+        Map<String, String> safeCustomerParams = fastagBillerRegistry.sanitizeCustomerParams(
+                request.getCustomerParams(), request.getCustomerMobile());
+
+        String customerParamsJson = null;
+        try {
+            customerParamsJson = objectMapper.writeValueAsString(safeCustomerParams);
+        } catch (Exception ignored) {}
+
+        String additionalInfoJson = null;
+        try {
+            if (!addnlItems.isEmpty()) {
+                additionalInfoJson = objectMapper.writeValueAsString(addnlItems);
+            }
+        } catch (Exception ignored) {}
+
+        // 6. Persist Core Txn and BbpsTransaction in INITIATED state
+        Txn txn = new Txn();
+        txn.setUser(user);
+        txn.setAmount(totalPayable);
+        txn.setServiceType("BBPS_FASTAG");
+        txn.setStatus(TransactionStatus.INITIATED);
+        txn.setIdempotencyKey(idempotencyKey);
+        txn = txnRepository.save(txn);
+
+        BbpsTransaction bbpsTxn = new BbpsTransaction();
+        bbpsTxn.setUser(user);
+        bbpsTxn.setTxn(txn);
+        bbpsTxn.setIdempotencyKey(idempotencyKey);
+        bbpsTxn.setRequestId(effectiveRequestId != null ? effectiveRequestId : com.rupiksha.backend.integration.bbps.util.BillAvenueCryptoUtil.generateRequestId());
+        bbpsTxn.setMerchantRefNo(merchantRefNo);
+        bbpsTxn.setCategory("FASTag");
+        bbpsTxn.setBillerId(biller.getBillerId());
+        bbpsTxn.setBillerName(biller.getBillerName());
+        bbpsTxn.setCircle("National");
+        bbpsTxn.setMobileNumber(request.getCustomerMobile().trim());
+        bbpsTxn.setConsumerNumber(vrn);
+        bbpsTxn.setVehicleNumber(vrn);
+        bbpsTxn.setCustomerName(customerName);
+        bbpsTxn.setPaymentMode("Cash");
+        bbpsTxn.setPaymentChannel("AGT");
+        bbpsTxn.setBillNumber(effectiveBillNumber);
+        bbpsTxn.setBillDate(effectiveBillDate);
+        bbpsTxn.setDueDate(effectiveDueDate);
+        bbpsTxn.setBillPeriod(effectiveBillPeriod);
+        bbpsTxn.setConvenienceFee(convenienceFee);
+        bbpsTxn.setCustomerParams(customerParamsJson);
+        bbpsTxn.setAdditionalInfo(additionalInfoJson);
+        bbpsTxn.setFetchRequestId(request.getFetchRequestId());
+        bbpsTxn.setAmount(request.getAmount());
+        bbpsTxn.setStatus("INITIATED");
+        bbpsTxn = bbpsTransactionRepository.save(bbpsTxn);
+
+        // 7. Atomically debit wallet using ledger-safe service debit
+        String debitRef = txn.getId().toString();
+        try {
+            String debitDesc = "BBPS FASTag Recharge - " + biller.getBillerName() + " (" + vrn + ")";
+            walletService.debitForService(
+                    userId,
+                    totalPayable,
+                    debitDesc,
+                    WalletTransactionContext.BBPS_PAYMENT,
+                    "BBPS",
+                    clientIp != null ? clientIp : "127.0.0.1",
+                    debitRef
+            );
+            bbpsTxn.setWalletDebitRef(debitRef);
+            bbpsTxn = bbpsTransactionRepository.save(bbpsTxn);
+        } catch (Exception e) {
+            log.error("Failed to debit wallet for BBPS FASTag payment. MerchantRef: {}", merchantRefNo, e);
+            txn.setStatus(TransactionStatus.FAILED);
+            txnRepository.save(txn);
+
+            bbpsTxn.setStatus("FAILED");
+            bbpsTxn.setProviderMessage("Wallet debit failed: " + e.getMessage());
+            bbpsTransactionRepository.save(bbpsTxn);
+
+            throw new IllegalStateException("Wallet debit failed: " + e.getMessage());
+        }
+
+        // 8. Submit provider request to BillAvenue
+        long paise = request.getAmount().multiply(BigDecimal.valueOf(100)).longValue();
+        long convFeePaise = convenienceFee.multiply(BigDecimal.valueOf(100)).longValue();
+
+        String mode = "Cash";
+        String initChannel = "AGT";
+        String paymentAccountInfo = "Cash Payment";
+        String remitterName = (user.getFullName() != null && !user.getFullName().isBlank()) ? user.getFullName().trim() : "Rupiksha Retailer";
+        String userEmail = (user.getEmail() != null && !user.getEmail().isBlank()) ? user.getEmail().trim() : "customer@rupiksha.in";
+
+        BillAvenueDtos.BillPayXmlRequest xmlReq = BillAvenueDtos.BillPayXmlRequest.builder()
+                .fetchRequestId(effectiveRequestId)
+                .billerId(biller.getBillerId())
+                .customerMobile(request.getCustomerMobile().trim())
+                .customerEmail(userEmail)
+                .initChannel(initChannel)
+                .amountPaise(paise)
+                .billAmountPaise(paise)
+                .billDate(effectiveBillDate)
+                .billNumber(effectiveBillNumber)
+                .dueDate(effectiveDueDate)
+                .billPeriod(effectiveBillPeriod)
+                .customerName(customerName)
+                .additionalInfo(addnlItems.isEmpty() ? null : addnlItems)
+                .inputParams(inputs)
+                .clientTxnId(merchantRefNo)
+                .paymentMode(mode)
+                .remitterName(remitterName)
+                .remarks("FASTag Bill Payment")
+                .paymentAccountInfo(paymentAccountInfo)
+                .clientIp(sanitizedIp)
+                .billerAdhoc("true")
+                .quickPay("0")
+                .custConvFeePaise(convFeePaise)
+                .ccf1Paise(0L)
+                .rawBillerResponseXml(rawBillerResponseXml)
+                .rawAdditionalInfoXml(rawAdditionalInfoXml)
+                .build();
+
+        BillAvenueDtos.BillPayResponse payResp;
+        try {
+            payResp = billAvenueClient.payBillXml(xmlReq);
+        } catch (BillAvenueTimeoutException te) {
+            log.warn("BillAvenue timeout for FASTag payment ref: {}. Keeping transaction PENDING.", merchantRefNo, te);
+            txn.setStatus(TransactionStatus.PENDING);
+            txnRepository.save(txn);
+
+            bbpsTxn.setStatus("PENDING");
+            bbpsTxn.setProviderMessage("Transaction processing at FASTag issuing bank. Reconciling status.");
+            bbpsTransactionRepository.save(bbpsTxn);
+
+            WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
+            return BbpsDtos.FastagPayResponse.builder()
+                    .success(false)
+                    .transactionId(bbpsTxn.getId().toString())
+                    .merchantRefNo(merchantRefNo)
+                    .status("PENDING")
+                    .amount(request.getAmount())
+                    .convenienceFee(convenienceFee)
+                    .totalAmount(totalPayable)
+                    .vehicleNumber(vrn)
+                    .customerName(customerName)
+                    .customerMobile(request.getCustomerMobile())
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .billNumber(request.getBillNumber())
+                    .dueDate(request.getDueDate())
+                    .message("FASTag recharge is processing with bank. Status will update shortly.")
+                    .walletBalance(bal.balance())
+                    .createdAt(bbpsTxn.getCreatedAt())
+                    .build();
+        } catch (Exception ex) {
+            log.error("Unexpected exception calling BillAvenue for FASTag payment. Performing safe refund. Ref: {}", merchantRefNo, ex);
+            handleFailureAndRefund(userId, txn, bbpsTxn, totalPayable, "Provider communication error: " + ex.getMessage(), clientIp);
+            WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
+            return BbpsDtos.FastagPayResponse.builder()
+                    .success(false)
+                    .transactionId(bbpsTxn.getId().toString())
+                    .merchantRefNo(merchantRefNo)
+                    .status("FAILED")
+                    .amount(request.getAmount())
+                    .convenienceFee(convenienceFee)
+                    .totalAmount(totalPayable)
+                    .vehicleNumber(vrn)
+                    .customerName(customerName)
+                    .customerMobile(request.getCustomerMobile())
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .billNumber(request.getBillNumber())
+                    .dueDate(request.getDueDate())
+                    .message("FASTag recharge failed: " + ex.getMessage() + ". Amount has been refunded to your wallet.")
+                    .walletBalance(bal.balance())
+                    .createdAt(bbpsTxn.getCreatedAt())
+                    .build();
+        }
+
+        // 9. Process Provider Outcome
+        if (payResp != null && payResp.isSuccess()) {
+            log.info("BillAvenue FASTag payment SUCCESS. TxnRefId: {}, ApprovalRef: {}",
+                    payResp.getTxnRefId(), payResp.getApprovalRefNumber());
+
+            txn.setStatus(TransactionStatus.SUCCESS);
+            txn.setProviderRef(payResp.getTxnRefId());
+            txnRepository.save(txn);
+
+            bbpsTxn.setStatus("SUCCESS");
+            bbpsTxn.setProviderTxnId(payResp.getTxnRefId());
+            bbpsTxn.setApprovalRefNo(payResp.getApprovalRefNumber());
+            bbpsTxn.setValidationRefNo(payResp.getApprovalRefNumber());
+            bbpsTxn.setProviderResponseCode(payResp.getResponseCode());
+            bbpsTxn.setProviderMessage("FASTag recharge completed successfully");
+            bbpsTxn.setCompletedAt(Instant.now());
+            bbpsTxn = bbpsTransactionRepository.save(bbpsTxn);
+
+            // Calculate and distribute commission if configured
+            try {
+                commissionService.processBbpsCommission(bbpsTxn);
+            } catch (Exception commEx) {
+                log.warn("Commission distribution failed for BBPS FASTag txn {}: {}", bbpsTxn.getId(), commEx.getMessage());
+            }
+
+            WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
+            return BbpsDtos.FastagPayResponse.builder()
+                    .success(true)
+                    .transactionId(bbpsTxn.getId().toString())
+                    .merchantRefNo(merchantRefNo)
+                    .providerTxnId(payResp.getTxnRefId())
+                    .approvalRefNo(payResp.getApprovalRefNumber())
+                    .status("SUCCESS")
+                    .amount(request.getAmount())
+                    .convenienceFee(convenienceFee)
+                    .totalAmount(totalPayable)
+                    .vehicleNumber(vrn)
+                    .customerName(customerName)
+                    .customerMobile(request.getCustomerMobile())
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .billNumber(request.getBillNumber())
+                    .dueDate(request.getDueDate())
+                    .message("FASTag recharge completed successfully!")
+                    .walletBalance(bal.balance())
+                    .createdAt(bbpsTxn.getCreatedAt())
+                    .build();
+        } else {
+            String errReason = payResp != null ? payResp.getErrorMessage() : "FASTag issuer bank rejected recharge";
+            log.warn("BillAvenue FASTag payment failed. Code: {}, Reason: {}. Issuing refund.",
+                    payResp != null ? payResp.getResponseCode() : "NULL", errReason);
+
+            bbpsTxn.setComplianceCode(payResp != null ? payResp.getResponseCode() : "500");
+            bbpsTxn.setComplianceReason(errReason);
+            handleFailureAndRefund(userId, txn, bbpsTxn, totalPayable, errReason, clientIp);
+
+            WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
+            return BbpsDtos.FastagPayResponse.builder()
+                    .success(false)
+                    .transactionId(bbpsTxn.getId().toString())
+                    .merchantRefNo(merchantRefNo)
+                    .status("FAILED")
+                    .amount(request.getAmount())
+                    .convenienceFee(convenienceFee)
+                    .totalAmount(totalPayable)
+                    .vehicleNumber(vrn)
+                    .customerName(customerName)
+                    .customerMobile(request.getCustomerMobile())
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .billNumber(request.getBillNumber())
+                    .dueDate(request.getDueDate())
+                    .message(errReason + ". Amount has been refunded to your wallet.")
+                    .walletBalance(bal.balance())
+                    .createdAt(bbpsTxn.getCreatedAt())
+                    .build();
+        }
+    }
+
+    private List<List<BillAvenueDtos.InputParam>> generateFastagParameterVariations(String vrn, String mobile) {
+        List<List<BillAvenueDtos.InputParam>> variations = new ArrayList<>();
+        if (vrn == null || vrn.isBlank()) return variations;
+
+        String cleanVrn = fastagBillerRegistry.cleanVehicleNumber(vrn);
+        String mob = mobile != null ? mobile.replaceAll("\\D", "").trim() : "";
+
+        // Variation 1: "Vehicle Registration Number"
+        variations.add(List.of(
+                BillAvenueDtos.InputParam.builder().paramName("Vehicle Registration Number").paramValue(cleanVrn).build()
+        ));
+
+        // Variation 2: "Vehicle Registration Number" + "Mobile Number"
+        if (!mob.isEmpty()) {
+            variations.add(List.of(
+                    BillAvenueDtos.InputParam.builder().paramName("Vehicle Registration Number").paramValue(cleanVrn).build(),
+                    BillAvenueDtos.InputParam.builder().paramName("Mobile Number").paramValue(mob).build()
+            ));
+        }
+
+        // Variation 3: "Vehicle Number"
+        variations.add(List.of(
+                BillAvenueDtos.InputParam.builder().paramName("Vehicle Number").paramValue(cleanVrn).build()
+        ));
+
+        // Variation 4: "Vehicle Number" + "Mobile Number"
+        if (!mob.isEmpty()) {
+            variations.add(List.of(
+                    BillAvenueDtos.InputParam.builder().paramName("Vehicle Number").paramValue(cleanVrn).build(),
+                    BillAvenueDtos.InputParam.builder().paramName("Mobile Number").paramValue(mob).build()
+            ));
+        }
+
+        // Variation 5: "VRN"
+        variations.add(List.of(
+                BillAvenueDtos.InputParam.builder().paramName("VRN").paramValue(cleanVrn).build()
+        ));
+
+        // Variation 6: "Vehicle Reg No"
+        variations.add(List.of(
+                BillAvenueDtos.InputParam.builder().paramName("Vehicle Reg No").paramValue(cleanVrn).build()
+        ));
+
+        // Variation 7: "Vehicle Registration No"
+        variations.add(List.of(
+                BillAvenueDtos.InputParam.builder().paramName("Vehicle Registration No").paramValue(cleanVrn).build()
         ));
 
         return variations;

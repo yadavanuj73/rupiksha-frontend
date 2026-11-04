@@ -135,6 +135,19 @@ public class BbpsTransaction {
     @Column(name = "statement_date", length = 30)
     private String statementDate;
 
+    // FASTag specific fields (V56 migration)
+    @Column(name = "vehicle_number", length = 30)
+    private String vehicleNumber;
+
+    @Column(name = "fastag_tag_id", length = 50)
+    private String fastagTagId;
+
+    @Column(name = "chassis_number", length = 50)
+    private String chassisNumber;
+
+    @Column(name = "vehicle_type", length = 50)
+    private String vehicleType;
+
     @Column(name = "payment_mode", length = 50)
     private String paymentMode = "Cash";
 

@@ -18,12 +18,42 @@ const STATUS_CONFIG = {
 
 const CATEGORY_TABS = [
     { id: 'ALL', label: 'All Services' },
+    { id: 'FASTag', label: 'FASTag', icon: CarFront },
     { id: 'Electricity', label: 'Electricity', icon: Zap },
     { id: 'Loan Repayment', label: 'Loan Repayment', icon: HandCoins },
+    { id: 'Credit Card', label: 'Credit Card', icon: CreditCard },
     { id: 'Mobile Prepaid', label: 'Mobile Prepaid', icon: Smartphone }
 ];
 
 // Helper to reliably identify electricity transactions across categories and billers
+
+// Helper to reliably identify FASTag transactions
+const isFastagTxn = (txn) => {
+    if (!txn) return false;
+    const cat = String(txn.category || '').toLowerCase();
+    const ref = String(txn.merchantRefNo || txn.id || '').toUpperCase();
+    const bName = String(txn.billerName || '').toLowerCase();
+    return (
+        cat.includes('fastag') ||
+        ref.startsWith('BBPSFT') ||
+        bName.includes('fastag') ||
+        bName.includes('netc') ||
+        Boolean(txn.vehicleNumber)
+    );
+};
+
+// Helper to reliably identify credit card transactions
+const isCreditCardTxn = (txn) => {
+    if (!txn) return false;
+    const cat = String(txn.category || '').toLowerCase();
+    const ref = String(txn.merchantRefNo || txn.id || '').toUpperCase();
+    return (
+        cat.includes('credit') ||
+        ref.startsWith('BBPSCC') ||
+        Boolean(txn.cardLastFour)
+    );
+};
+
 const isElectricityTxn = (txn) => {
     if (!txn) return false;
     const cat = String(txn.category || '').toLowerCase();
@@ -60,7 +90,20 @@ const BbpsHistory = () => {
     const [error, setError] = useState(null);
 
     // Filters
-    const [categoryFilter, setCategoryFilter] = useState('ALL');
+    const [categoryFilter, setCategoryFilter] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const cat = params.get('category');
+            if (cat) {
+                if (cat.toLowerCase() === 'fastag') return 'FASTag';
+                if (cat.toLowerCase() === 'electricity') return 'Electricity';
+                if (cat.toLowerCase() === 'loan' || cat.toLowerCase().includes('loan')) return 'Loan Repayment';
+                if (cat.toLowerCase().includes('credit')) return 'Credit Card';
+                return cat;
+            }
+        }
+        return 'ALL';
+    });
     const [statusFilter, setStatusFilter] = useState('ALL');
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -352,6 +395,8 @@ const BbpsHistory = () => {
                                             const isPending = item.status === 'PENDING' || item.status === 'INITIATED';
                                             const isElectricity = isElectricityTxn(item);
                                             const isLoan = isLoanTxn(item);
+                                            const isFastag = isFastagTxn(item);
+                                            const isCreditCard = isCreditCardTxn(item);
 
                                             return (
                                                 <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
@@ -362,7 +407,17 @@ const BbpsHistory = () => {
                                                         }) : 'N/A'}
                                                     </td>
                                                     <td className="py-3 px-4 whitespace-nowrap">
-                                                        {isElectricity ? (
+                                                        {isFastag ? (
+                                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-purple-50 text-purple-800 border border-purple-200">
+                                                                <CarFront className="w-3 h-3 text-purple-600" />
+                                                                FASTag
+                                                            </span>
+                                                        ) : isCreditCard ? (
+                                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-indigo-50 text-indigo-800 border border-indigo-200">
+                                                                <CreditCard className="w-3 h-3 text-indigo-600" />
+                                                                Credit Card
+                                                            </span>
+                                                        ) : isElectricity ? (
                                                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-50 text-amber-800 border border-amber-200">
                                                                 <Zap className="w-3 h-3 text-amber-600" />
                                                                 Electricity
@@ -384,7 +439,17 @@ const BbpsHistory = () => {
                                                     </td>
                                                     <td className="py-3 px-4">
                                                         <div className="font-black text-black">{item.billerName}</div>
-                                                        {isElectricity ? (
+                                                        {isFastag ? (
+                                                            <div className="text-[11px] text-slate-700 font-mono font-bold">
+                                                                VRN: {item.vehicleNumber || item.consumerNumber || '—'}
+                                                                {item.customerName ? ` (${item.customerName})` : ''}
+                                                            </div>
+                                                        ) : isCreditCard ? (
+                                                            <div className="text-[11px] text-slate-600 font-mono">
+                                                                Card: •••• {item.cardLastFour || item.consumerNumber || '—'}
+                                                                {item.customerName ? ` (${item.customerName})` : ''}
+                                                            </div>
+                                                        ) : isElectricity ? (
                                                             <div className="text-[11px] text-slate-600 font-mono">
                                                                 ID: {item.consumerNumber || item.maskedMobileNumber || '—'}
                                                                 {item.customerName ? ` (${item.customerName})` : ''}

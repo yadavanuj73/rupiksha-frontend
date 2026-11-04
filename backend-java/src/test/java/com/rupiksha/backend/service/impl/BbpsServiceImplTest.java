@@ -66,6 +66,10 @@ class BbpsServiceImplTest {
             new com.rupiksha.backend.integration.bbps.CreditCardBillerRegistry();
 
     @org.mockito.Spy
+    private com.rupiksha.backend.integration.bbps.FastagBillerRegistry fastagBillerRegistry =
+            new com.rupiksha.backend.integration.bbps.FastagBillerRegistry();
+
+    @org.mockito.Spy
     private com.fasterxml.jackson.databind.ObjectMapper objectMapper =
             new com.fasterxml.jackson.databind.ObjectMapper();
 
@@ -986,5 +990,324 @@ class BbpsServiceImplTest {
                         && req.getInputParams().stream().anyMatch(i -> "Registered Mobile No".equals(i.getParamName()) && "7292987918".equals(i.getParamValue())))
         );
     }
-}
 
+    // ==========================================
+    // FASTAG BILL PAYMENT UNIT TESTS
+    // ==========================================
+
+    @Test
+    @DisplayName("FASTag billers catalogue returns verified issuing banks and supports search filtering")
+    void testFastagBillersCatalogueAndSearch() {
+        List<BbpsDtos.FastagBillerInfo> allBillers = bbpsService.getFastagBillers(null);
+        assertNotNull(allBillers);
+        assertTrue(allBillers.size() >= 30, "Expected at least 30 verified FASTag billers");
+
+        // Verify ICICI FASTag exists
+        Optional<BbpsDtos.FastagBillerInfo> icici = allBillers.stream()
+                .filter(b -> "ICIC00000NAT01".equals(b.getBillerId()))
+                .findFirst();
+        assertTrue(icici.isPresent());
+        assertEquals("ICICI Bank FASTag", icici.get().getBillerName());
+        assertEquals("FASTag", icici.get().getCategory());
+        assertNotNull(icici.get().getBillerFetchRequirement());
+
+        // Test search filter for "State Bank" or "SBI"
+        List<BbpsDtos.FastagBillerInfo> sbiResults = bbpsService.getFastagBillers("State Bank");
+        assertFalse(sbiResults.isEmpty());
+        assertTrue(sbiResults.stream().anyMatch(b -> b.getBillerId().equals("SBIN00000NAT01")));
+
+        // Test case-insensitive search
+        List<BbpsDtos.FastagBillerInfo> paytmResults = bbpsService.getFastagBillers("paytm");
+        assertFalse(paytmResults.isEmpty());
+    }
+
+    @Test
+    @DisplayName("Successful FASTag Bill Fetch with VRN and mobile number")
+    void testFetchFastagBillSuccess() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)).thenReturn(Optional.empty());
+
+        BillAvenueDtos.BillFetchResponse mockFetch = BillAvenueDtos.BillFetchResponse.builder()
+                .responseCode("000")
+                .responseReason("Successful")
+                .fetchRequestId("FETCH-FT-991188")
+                .billerId("ICIC00000NAT01")
+                .customerName("Amit Sharma")
+                .billAmountPaise(50000L) // ₹500.00
+                .billNumber("FT-INV-5001")
+                .billDate("04-11-2026")
+                .dueDate("15-11-2026")
+                .additionalInfo(List.of(new BillAvenueDtos.InfoItem("Tag Status", "Active")))
+                .build();
+
+        when(billAvenueClient.fetchBill(eq("ICIC00000NAT01"), any(), eq("9876543210"), any(), eq("AGT"), any()))
+                .thenReturn(mockFetch);
+
+        BbpsDtos.FastagFetchRequest fetchReq = new BbpsDtos.FastagFetchRequest();
+        fetchReq.setBillerId("ICIC00000NAT01");
+        fetchReq.setCustomerMobile("9876543210");
+        fetchReq.setCustomerParams(java.util.Map.of("Vehicle Registration Number", "MH12AB1234"));
+
+        BbpsDtos.BillFetchResult result = bbpsService.fetchFastagBill(userId, fetchReq, "127.0.0.1");
+
+        assertNotNull(result);
+        assertTrue(result.isSuccess());
+        assertEquals("FETCH-FT-991188", result.getFetchRequestId());
+        assertEquals("MH12AB1234", result.getConsumerNumber());
+        assertEquals("Amit Sharma", result.getCustomerName());
+        assertEquals(new BigDecimal("500.00"), result.getBillAmount());
+        assertEquals("ICIC00000NAT01", result.getBillerId());
+    }
+
+    @Test
+    @DisplayName("FASTag Bill Fetch with zero dues allows flexible adhoc recharge")
+    void testFetchFastagBillZeroDuesAdhocAllowed() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)).thenReturn(Optional.empty());
+
+        BillAvenueDtos.BillFetchResponse mockFetch = BillAvenueDtos.BillFetchResponse.builder()
+                .responseCode("000")
+                .responseReason("Successful")
+                .fetchRequestId("FETCH-FT-ZERO-01")
+                .billerId("ICIC00000NAT01")
+                .customerName("Pooja Verma")
+                .billAmountPaise(0L) // ₹0.00
+                .build();
+
+        when(billAvenueClient.fetchBill(eq("ICIC00000NAT01"), any(), eq("9876543210"), any(), eq("AGT"), any()))
+                .thenReturn(mockFetch);
+
+        BbpsDtos.FastagFetchRequest fetchReq = new BbpsDtos.FastagFetchRequest();
+        fetchReq.setBillerId("ICIC00000NAT01");
+        fetchReq.setCustomerMobile("9876543210");
+        fetchReq.setCustomerParams(java.util.Map.of("Vehicle Registration Number", "DL01CA1234"));
+
+        BbpsDtos.BillFetchResult result = bbpsService.fetchFastagBill(userId, fetchReq, "127.0.0.1");
+
+        assertNotNull(result);
+        assertTrue(result.isSuccess());
+        assertEquals(BigDecimal.ZERO, result.getBillAmount());
+        assertEquals("DL01CA1234", result.getConsumerNumber());
+    }
+
+    @Test
+    @DisplayName("Successful FASTag Bill Payment with wallet debit and commission trigger")
+    void testPayFastagBillSuccessWithWalletDebit() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)).thenReturn(Optional.empty());
+        when(bbpsTransactionRepository.findByIdempotencyKey(anyString())).thenReturn(Optional.empty());
+        when(walletService.getBalance(userId.toString())).thenReturn(mockBalance(new BigDecimal("5000.00"), new BigDecimal("5000.00")));
+        when(walletService.debitForService(eq(userId), eq(new BigDecimal("500.00")), anyString(), eq(WalletTransactionContext.BBPS_PAYMENT), eq("BBPS"), anyString(), anyString()))
+                .thenReturn(mockBalance(new BigDecimal("4500.00"), new BigDecimal("4500.00")));
+
+        when(txnRepository.save(any(Txn.class))).thenAnswer(i -> {
+            Txn t = i.getArgument(0);
+            if (t.getId() == null) t.setId(UUID.randomUUID());
+            return t;
+        });
+
+        when(bbpsTransactionRepository.save(any(BbpsTransaction.class))).thenAnswer(i -> {
+            BbpsTransaction b = i.getArgument(0);
+            if (b.getId() == null) b.setId(UUID.randomUUID());
+            if (b.getCreatedAt() == null) b.setCreatedAt(Instant.now());
+            return b;
+        });
+
+        BillAvenueDtos.BillPayResponse payResp = new BillAvenueDtos.BillPayResponse();
+        payResp.setResponseCode("000");
+        payResp.setResponseReason("Successful");
+        payResp.setTxnRefId("FT015062BAAE00071903");
+        payResp.setApprovalRefNumber("FT-APPR-998877");
+
+        when(billAvenueClient.payBillXml(any())).thenReturn(payResp);
+
+        BbpsDtos.FastagPayRequest payReq = new BbpsDtos.FastagPayRequest();
+        payReq.setBillerId("ICIC00000NAT01");
+        payReq.setVehicleNumber("MH12AB1234");
+        payReq.setCustomerMobile("9876543210");
+        payReq.setAmount(new BigDecimal("500.00"));
+        payReq.setIdempotencyKey("FT-IDEM-001");
+        payReq.setFetchRequestId("FETCH-FT-991188");
+        payReq.setCustomerParams(java.util.Map.of("Vehicle Registration Number", "MH12AB1234"));
+
+        BbpsDtos.FastagPayResponse response = bbpsService.payFastagBill(userId, payReq, "127.0.0.1");
+
+        assertNotNull(response);
+        assertTrue(response.isSuccess());
+        assertEquals("SUCCESS", response.getStatus());
+        assertEquals("MH12AB1234", response.getVehicleNumber());
+        assertEquals("FT015062BAAE00071903", response.getProviderTxnId());
+        assertEquals("FT-APPR-998877", response.getApprovalRefNo());
+
+        // Verify wallet was debited for ₹500 via debitForService
+        verify(walletService).debitForService(eq(userId), eq(new BigDecimal("500.00")), anyString(), eq(WalletTransactionContext.BBPS_PAYMENT), eq("BBPS"), anyString(), anyString());
+
+        // Verify commission was processed
+        verify(commissionService).processBbpsCommission(any(BbpsTransaction.class));
+    }
+
+    @Test
+    @DisplayName("FASTag Bill Payment blocked when wallet balance is insufficient")
+    void testPayFastagBillInsufficientBalanceBlocksDebit() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)).thenReturn(Optional.empty());
+        when(bbpsTransactionRepository.findByIdempotencyKey(anyString())).thenReturn(Optional.empty());
+        // Wallet only has ₹100, but payment requires ₹500
+        when(walletService.getBalance(userId.toString())).thenReturn(mockBalance(new BigDecimal("100.00"), new BigDecimal("100.00")));
+
+        BbpsDtos.FastagPayRequest payReq = new BbpsDtos.FastagPayRequest();
+        payReq.setBillerId("ICIC00000NAT01");
+        payReq.setVehicleNumber("MH12AB1234");
+        payReq.setCustomerMobile("9876543210");
+        payReq.setCustomerParams(java.util.Map.of("Vehicle Registration Number", "MH12AB1234"));
+        payReq.setAmount(new BigDecimal("500.00"));
+        payReq.setIdempotencyKey("FT-IDEM-INSUFF-01");
+
+        IllegalStateException thrown = assertThrows(IllegalStateException.class, () ->
+                bbpsService.payFastagBill(userId, payReq, "127.0.0.1")
+        );
+        assertTrue(thrown.getMessage().contains("Insufficient wallet balance"));
+
+        // Verify wallet debit was never invoked
+        verify(walletService, never()).debitForService(any(), any(), any(), any(), any(), any(), any());
+        verify(billAvenueClient, never()).payBillXml(any());
+    }
+
+    @Test
+    @DisplayName("FASTag Bill Payment failure triggers immediate wallet refund")
+    void testPayFastagBillProviderFailureTriggersRefund() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)).thenReturn(Optional.empty());
+        when(bbpsTransactionRepository.findByIdempotencyKey(anyString())).thenReturn(Optional.empty());
+        when(walletService.getBalance(userId.toString())).thenReturn(mockBalance(new BigDecimal("5000.00"), new BigDecimal("5000.00")));
+        when(walletService.debitForService(eq(userId), eq(new BigDecimal("500.00")), anyString(), eq(WalletTransactionContext.BBPS_PAYMENT), eq("BBPS"), anyString(), anyString()))
+                .thenReturn(mockBalance(new BigDecimal("4500.00"), new BigDecimal("4500.00")));
+        when(walletService.refundForService(eq(userId), eq(new BigDecimal("500.00")), anyString(), anyString(), eq(WalletTransactionContext.REVERSAL), eq("BBPS"), anyString(), anyString()))
+                .thenReturn(mockBalance(new BigDecimal("5000.00"), new BigDecimal("5000.00")));
+
+        when(txnRepository.save(any(Txn.class))).thenAnswer(i -> {
+            Txn t = i.getArgument(0);
+            if (t.getId() == null) t.setId(UUID.randomUUID());
+            return t;
+        });
+
+        when(bbpsTransactionRepository.save(any(BbpsTransaction.class))).thenAnswer(i -> {
+            BbpsTransaction b = i.getArgument(0);
+            if (b.getId() == null) b.setId(UUID.randomUUID());
+            if (b.getCreatedAt() == null) b.setCreatedAt(Instant.now());
+            return b;
+        });
+
+        BillAvenueDtos.BillPayResponse failResp = new BillAvenueDtos.BillPayResponse();
+        failResp.setResponseCode("BPR001");
+        failResp.setResponseReason("NPCI Tag Central Switch Unavailable");
+
+        when(billAvenueClient.payBillXml(any())).thenReturn(failResp);
+
+        BbpsDtos.FastagPayRequest payReq = new BbpsDtos.FastagPayRequest();
+        payReq.setBillerId("ICIC00000NAT01");
+        payReq.setVehicleNumber("MH12AB1234");
+        payReq.setCustomerMobile("9876543210");
+        payReq.setCustomerParams(java.util.Map.of("Vehicle Registration Number", "MH12AB1234"));
+        payReq.setAmount(new BigDecimal("500.00"));
+        payReq.setIdempotencyKey("FT-IDEM-FAIL-01");
+
+        BbpsDtos.FastagPayResponse response = bbpsService.payFastagBill(userId, payReq, "127.0.0.1");
+
+        assertNotNull(response);
+        assertFalse(response.isSuccess());
+        assertEquals("FAILED", response.getStatus());
+
+        // Verify debit happened first
+        verify(walletService).debitForService(eq(userId), eq(new BigDecimal("500.00")), anyString(), eq(WalletTransactionContext.BBPS_PAYMENT), eq("BBPS"), anyString(), anyString());
+        // Verify refund credit was dispatched
+        verify(walletService).refundForService(eq(userId), eq(new BigDecimal("500.00")), anyString(), anyString(), eq(WalletTransactionContext.REVERSAL), eq("BBPS"), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("FASTag Bill Payment timeout keeps transaction PENDING without refund")
+    void testPayFastagBillTimeoutKeepsPending() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)).thenReturn(Optional.empty());
+        when(bbpsTransactionRepository.findByIdempotencyKey(anyString())).thenReturn(Optional.empty());
+        when(walletService.getBalance(userId.toString())).thenReturn(mockBalance(new BigDecimal("5000.00"), new BigDecimal("5000.00")));
+        when(walletService.debitForService(eq(userId), eq(new BigDecimal("500.00")), anyString(), eq(WalletTransactionContext.BBPS_PAYMENT), eq("BBPS"), anyString(), anyString()))
+                .thenReturn(mockBalance(new BigDecimal("4500.00"), new BigDecimal("4500.00")));
+
+        when(txnRepository.save(any(Txn.class))).thenAnswer(i -> {
+            Txn t = i.getArgument(0);
+            if (t.getId() == null) t.setId(UUID.randomUUID());
+            return t;
+        });
+
+        when(bbpsTransactionRepository.save(any(BbpsTransaction.class))).thenAnswer(i -> {
+            BbpsTransaction b = i.getArgument(0);
+            if (b.getId() == null) b.setId(UUID.randomUUID());
+            if (b.getCreatedAt() == null) b.setCreatedAt(Instant.now());
+            return b;
+        });
+
+        when(billAvenueClient.payBillXml(any())).thenThrow(new BillAvenueTimeoutException("Read timeout to BillAvenue gateway", null));
+
+        BbpsDtos.FastagPayRequest payReq = new BbpsDtos.FastagPayRequest();
+        payReq.setBillerId("ICIC00000NAT01");
+        payReq.setVehicleNumber("MH12AB1234");
+        payReq.setCustomerMobile("9876543210");
+        payReq.setCustomerParams(java.util.Map.of("Vehicle Registration Number", "MH12AB1234"));
+        payReq.setAmount(new BigDecimal("500.00"));
+        payReq.setIdempotencyKey("FT-IDEM-TIMEOUT-01");
+
+        BbpsDtos.FastagPayResponse response = bbpsService.payFastagBill(userId, payReq, "127.0.0.1");
+
+        assertNotNull(response);
+        assertFalse(response.isSuccess());
+        assertEquals("PENDING", response.getStatus());
+
+        // Verify debit happened
+        verify(walletService).debitForService(eq(userId), eq(new BigDecimal("500.00")), anyString(), eq(WalletTransactionContext.BBPS_PAYMENT), eq("BBPS"), anyString(), anyString());
+        // Verify refund credit was NOT called on timeout
+        verify(walletService, never()).refundForService(any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("FASTag Bill Payment idempotency returns existing transaction without double debit")
+    void testPayFastagBillIdempotency() {
+        BbpsTransaction existing = new BbpsTransaction();
+        existing.setId(UUID.randomUUID());
+        existing.setMerchantRefNo("MER-FT-123456");
+        existing.setProviderTxnId("FT015062BAAE00071903");
+        existing.setApprovalRefNo("APPR-FT-99");
+        existing.setStatus("SUCCESS");
+        existing.setAmount(new BigDecimal("500.00"));
+        existing.setConsumerNumber("MH12AB1234");
+        existing.setVehicleNumber("MH12AB1234");
+        existing.setBillerId("ICIC00000NAT01");
+        existing.setBillerName("ICICI Bank FASTag");
+        existing.setIdempotencyKey("FT-IDEM-DUPLICATE-01");
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)).thenReturn(Optional.empty());
+        when(bbpsTransactionRepository.findByIdempotencyKey("FT-IDEM-DUPLICATE-01")).thenReturn(Optional.of(existing));
+        when(walletService.getBalance(userId.toString())).thenReturn(mockBalance(new BigDecimal("5000.00"), new BigDecimal("5000.00")));
+
+        BbpsDtos.FastagPayRequest payReq = new BbpsDtos.FastagPayRequest();
+        payReq.setBillerId("ICIC00000NAT01");
+        payReq.setVehicleNumber("MH12AB1234");
+        payReq.setCustomerMobile("9876543210");
+        payReq.setCustomerParams(java.util.Map.of("Vehicle Registration Number", "MH12AB1234"));
+        payReq.setAmount(new BigDecimal("500.00"));
+        payReq.setIdempotencyKey("FT-IDEM-DUPLICATE-01");
+
+        BbpsDtos.FastagPayResponse response = bbpsService.payFastagBill(userId, payReq, "127.0.0.1");
+
+        assertNotNull(response);
+        assertTrue(response.isSuccess());
+        assertEquals("SUCCESS", response.getStatus());
+        assertEquals("FT015062BAAE00071903", response.getProviderTxnId());
+
+        // Verify wallet debit and provider API were NEVER called due to duplicate idempotency key
+        verify(walletService, never()).debitForService(any(), any(), any(), any(), any(), any(), any());
+        verify(billAvenueClient, never()).payBillXml(any());
+    }
+
+}

@@ -54,7 +54,10 @@ const RetailerLayout = () => {
         if (path === '/transactions/wallet-to-wallet') return 'wallet_to_wallet';
         if (path === '/upi-cash-point') return 'upi_cash_point';
         if (path === '/upi-cash-history' || path === '/reports/upi-cash-history' || reportType === 'upi_cash_history' || reportType === 'upi_cash_withdrawal') return 'upi_cash_history';
-        if (path === '/bbps-history' || path === '/reports/bbps' || reportType === 'bbps') return 'bbps';
+        if (path === '/bbps-history' || path === '/reports/bbps' || reportType === 'bbps') {
+            if (location.search && location.search.toLowerCase().includes('fastag')) return 'fastag';
+            return 'bbps';
+        }
         if (path.startsWith('/reports')) {
             return reportType || 'reports';
         }

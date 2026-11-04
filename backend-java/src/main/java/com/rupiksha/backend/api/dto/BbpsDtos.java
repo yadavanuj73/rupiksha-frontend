@@ -472,8 +472,105 @@ public class BbpsDtos {
         private BigDecimal minimumDue;
         private BigDecimal totalDue;
         private String statementDate;
+        private String vehicleNumber;
+        private String fastagTagId;
         private Instant createdAt;
         private Instant completedAt;
+    }
+
+    // ── FASTag Bill Payment DTOs ────────────────────────────────────────────────
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public static class FastagBillerInfo {
+        private String billerId;
+        private String billerName;
+        private String bankName;
+        private String category;
+        private String billerFetchRequirement; // MANDATORY, OPTIONAL, NOT_SUPPORTED
+        private String billerPaymentExactness; // Exact, Exact and above, Exact and below
+        private String supportBillValidation;  // MANDATORY, OPTIONAL, NOT_SUPPORTED
+        private boolean billerAdhoc;           // Accepts customer recharge amount
+        private List<InputParamInfo> inputParams;
+        private String description;
+        private BigDecimal minAmount;
+        private BigDecimal maxAmount;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class FastagFetchRequest {
+        @NotBlank(message = "Biller ID is required")
+        private String billerId;
+
+        @NotBlank(message = "Customer mobile number is required")
+        @Pattern(regexp = "^[6-9]\\d{9}$", message = "Invalid 10-digit mobile number")
+        private String customerMobile;
+
+        @NotEmpty(message = "Customer parameters required")
+        private Map<String, String> customerParams;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class FastagPayRequest {
+        @NotBlank(message = "Biller ID is required")
+        private String billerId;
+
+        @NotBlank(message = "Customer mobile number is required")
+        @Pattern(regexp = "^[6-9]\\d{9}$", message = "Invalid 10-digit mobile number")
+        private String customerMobile;
+
+        @NotEmpty(message = "Customer parameters required")
+        private Map<String, String> customerParams;
+
+        @NotNull(message = "Amount is required")
+        @DecimalMin(value = "1.00", message = "Recharge amount must be at least ₹1")
+        @DecimalMax(value = "100000.00", message = "Recharge amount cannot exceed ₹1,00,000")
+        private BigDecimal amount;
+
+        private BigDecimal convenienceFee;
+        private String vehicleNumber;
+        private String fetchRequestId;
+        private String billNumber;
+        private String billDate;
+        private String dueDate;
+        private String billPeriod;
+        private String customerName;
+        private List<InfoItemDto> additionalInfo;
+        private String idempotencyKey;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public static class FastagPayResponse {
+        private boolean success;
+        private String transactionId;
+        private String merchantRefNo;
+        private String providerTxnId;
+        private String approvalRefNo;
+        private String status;
+        private BigDecimal amount;
+        private BigDecimal convenienceFee;
+        private BigDecimal totalAmount;
+        private String vehicleNumber;
+        private String customerName;
+        private String customerMobile;
+        private String billerId;
+        private String billerName;
+        private String billNumber;
+        private String dueDate;
+        private String message;
+        private BigDecimal walletBalance;
+        private Instant createdAt;
     }
 
     @Data
