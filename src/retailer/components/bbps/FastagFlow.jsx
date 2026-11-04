@@ -15,59 +15,58 @@ import BbpsServiceNav from './BbpsServiceNav';
 import BbpsReceiptCard from './BbpsReceiptCard';
 import { primeBharatConnectSound, playBharatConnectSuccessSound } from '../../../utils/bbpsSound';
 
-// Official 32 Verified Bharat Connect FASTag Issuing Banks
+// Official 31 Verified Bharat Connect FASTag Issuing Banks (BillAvenue Version 2.8.7)
 const DEFAULT_FASTAG_BILLERS = [
-    { billerId: 'ICIC00000NAT01', billerName: 'ICICI Bank FASTag', bankName: 'ICICI Bank' },
-    { billerId: 'UTIB00000NAT01', billerName: 'Axis Bank FASTag', bankName: 'Axis Bank' },
-    { billerId: 'SBIN00000NAT01', billerName: 'State Bank of India FASTag', bankName: 'State Bank of India' },
-    { billerId: 'HDFC00000NAT01', billerName: 'HDFC Bank FASTag', bankName: 'HDFC Bank' },
-    { billerId: 'KKBK00000NAT01', billerName: 'Kotak Mahindra Bank FASTag', bankName: 'Kotak Mahindra Bank' },
-    { billerId: 'IDFB00000NAT01', billerName: 'IDFC FIRST Bank FASTag', bankName: 'IDFC FIRST Bank' },
-    { billerId: 'BARB00000NAT01', billerName: 'Bank of Baroda FASTag', bankName: 'Bank of Baroda' },
-    { billerId: 'PYTM00000NAT01', billerName: 'Paytm Payments Bank FASTag', bankName: 'Paytm Payments Bank' },
-    { billerId: 'AIRP00000NAT01', billerName: 'Airtel Payments Bank FASTag', bankName: 'Airtel Payments Bank' },
-    { billerId: 'INDB00000NAT01', billerName: 'IndusInd Bank FASTag', bankName: 'IndusInd Bank' },
-    { billerId: 'FDRL00000NAT01', billerName: 'Federal Bank FASTag', bankName: 'Federal Bank' },
-    { billerId: 'CNRB00000NAT01', billerName: 'Canara Bank FASTag', bankName: 'Canara Bank' },
-    { billerId: 'PUNB00000NAT01', billerName: 'Punjab National Bank FASTag', bankName: 'Punjab National Bank' },
-    { billerId: 'UBIN00000NAT01', billerName: 'Union Bank of India FASTag', bankName: 'Union Bank of India' },
-    { billerId: 'IDIB00000NAT01', billerName: 'Indian Bank FASTag', bankName: 'Indian Bank' },
-    { billerId: 'IOBA00000NAT01', billerName: 'Indian Overseas Bank FASTag', bankName: 'Indian Overseas Bank' },
-    { billerId: 'YESB00000NAT01', billerName: 'Yes Bank FASTag', bankName: 'Yes Bank' },
-    { billerId: 'MAHB00000NAT01', billerName: 'Bank of Maharashtra FASTag', bankName: 'Bank of Maharashtra' },
-    { billerId: 'PSIB00000NAT01', billerName: 'Punjab & Sind Bank FASTag', bankName: 'Punjab & Sind Bank' },
-    { billerId: 'UCBA00000NAT01', billerName: 'UCO Bank FASTag', bankName: 'UCO Bank' },
-    { billerId: 'BKID00000NAT01', billerName: 'Bank of India FASTag', bankName: 'Bank of India' },
-    { billerId: 'CUBK00000NAT01', billerName: 'City Union Bank FASTag', bankName: 'City Union Bank' },
-    { billerId: 'KVBL00000NAT01', billerName: 'Karur Vysya Bank FASTag', bankName: 'Karur Vysya Bank' },
-    { billerId: 'SIBL00000NAT01', billerName: 'South Indian Bank FASTag', bankName: 'South Indian Bank' },
-    { billerId: 'TMBL00000NAT01', billerName: 'Tamilnad Mercantile Bank FASTag', bankName: 'Tamilnad Mercantile Bank' },
-    { billerId: 'CSBK00000NAT01', billerName: 'CSB Bank FASTag', bankName: 'CSB Bank' },
-    { billerId: 'AUBK00000NAT01', billerName: 'AU Small Finance Bank FASTag', bankName: 'AU Small Finance Bank' },
-    { billerId: 'ESFB00000NAT01', billerName: 'Equitas Small Finance Bank FASTag', bankName: 'Equitas Small Finance Bank' },
-    { billerId: 'USFB00000NAT01', billerName: 'Ujjivan Small Finance Bank FASTag', bankName: 'Ujjivan Small Finance Bank' },
-    { billerId: 'IPPB00000NAT01', billerName: 'India Post Payments Bank FASTag', bankName: 'India Post Payments Bank' },
-    { billerId: 'FINO00000NAT01', billerName: 'Fino Payments Bank FASTag', bankName: 'Fino Payments Bank' },
-    { billerId: 'JAKA00000NAT01', billerName: 'Jammu & Kashmir Bank FASTag', bankName: 'Jammu & Kashmir Bank' }
+    { billerId: 'SBIB00000NAT25', billerName: 'State Bank of India (SBI) FASTag', bankName: 'State Bank of India', paramName: 'Vehicle Number' },
+    { billerId: 'TOLL00000NAT72', billerName: 'ICICI Bank FASTag', bankName: 'ICICI Bank', paramName: 'Vehicle Number' },
+    { billerId: 'HDFC00000NAT5K', billerName: 'HDFC Bank FASTag', bankName: 'HDFC Bank', paramName: 'Vehicle Registration Number' },
+    { billerId: 'AXIS00000NAT31', billerName: 'Axis Bank FASTag', bankName: 'Axis Bank', paramName: 'Vehicle Registration Number' },
+    { billerId: 'KOTA00000NATJZ', billerName: 'Kotak Mahindra Bank FASTag', bankName: 'Kotak Mahindra Bank', paramName: 'Vehicle Registered Number' },
+    { billerId: 'IDFC00000NATXM', billerName: 'IDFC FIRST Bank FASTag', bankName: 'IDFC FIRST Bank', paramName: 'Vehicle Number' },
+    { billerId: 'BANK00000NATDH', billerName: 'Bank of Baroda FASTag', bankName: 'Bank of Baroda', paramName: 'Vehicle Number' },
+    { billerId: 'PUNJ00022NATNO', billerName: 'Punjab National Bank (PNB) FASTag', bankName: 'Punjab National Bank', paramName: 'Vehicle Registered Number' },
+    { billerId: 'CANA00000NATM9', billerName: 'Canara Bank FASTag', bankName: 'Canara Bank', paramName: 'Vehicle Number' },
+    { billerId: 'UNIO00000NATQA', billerName: 'Union Bank of India FASTag', bankName: 'Union Bank of India', paramName: 'Vehicle Registration Number' },
+    { billerId: 'INDI00000NATA0', billerName: 'Indian Bank FASTag', bankName: 'Indian Bank', paramName: 'VRN' },
+    { billerId: 'INDU00000NATR2', billerName: 'IndusInd Bank FASTag', bankName: 'IndusInd Bank', paramName: 'Vehicle Registration Number' },
+    { billerId: 'THEF00000NATZO', billerName: 'Federal Bank FASTag', bankName: 'Federal Bank', paramName: 'Vehicle Registration Number ID' },
+    { billerId: 'IDBI00000NATK7', billerName: 'IDBI Bank FASTag', bankName: 'IDBI Bank', paramName: 'Vehicle Number' },
+    { billerId: 'AIRT00000NATVI', billerName: 'Airtel Payments Bank FASTag', bankName: 'Airtel Payments Bank', paramName: 'Vehicle Registration Number' },
+    { billerId: 'BAJA00000NAT9J', billerName: 'Bajaj Pay FASTag', bankName: 'Bajaj Finance', paramName: 'Vehicle Registration Number' },
+    { billerId: 'BAND00000NATEO', billerName: 'Bandhan Bank FASTag', bankName: 'Bandhan Bank', paramName: 'Vehicle Registration Number (VRN)' },
+    { billerId: 'BANK00000NAT4Z', billerName: 'Bank of Maharashtra FASTag', bankName: 'Bank of Maharashtra', paramName: 'Vehicle Registration Number' },
+    { billerId: 'BLAC00015NATKL', billerName: 'BlackBuck FASTag', bankName: 'BlackBuck', paramName: 'Vehicle Number' },
+    { billerId: 'CUBF00016NATVK', billerName: 'City Union Bank FASTag', bankName: 'City Union Bank', paramName: 'Vehicle Registration Number' },
+    { billerId: 'EQUI00000NATNF', billerName: 'Equitas Small Finance Bank FASTag', bankName: 'Equitas Small Finance Bank', paramName: 'Vehicle Registration Number' },
+    { billerId: 'INDI00000NATTR', billerName: 'IHMCL FASTag', bankName: 'Indian Highway Management Company Limited', paramName: 'Vehicle Registration Number' },
+    { billerId: 'IOBF00000NATV1', billerName: 'Indian Overseas Bank (IOB) FASTag', bankName: 'Indian Overseas Bank', paramName: 'Vehicle Registration Number (VRN)' },
+    { billerId: 'JAMM00000NATWB', billerName: 'Jammu & Kashmir Bank FASTag', bankName: 'Jammu & Kashmir Bank', paramName: 'Vehicle Registration Number/Wallet Number' },
+    { billerId: 'KARN00000NATWS', billerName: 'Karnataka Bank FASTag', bankName: 'Karnataka Bank', paramName: 'Vehicle Registration Number/Wallet Number' },
+    { billerId: 'KVBF00000NATO7', billerName: 'Karur Vysya Bank FASTag', bankName: 'Karur Vysya Bank', paramName: 'Vehicle Registration Number' },
+    { billerId: 'SOUT00000NAT99', billerName: 'South Indian Bank FASTag', bankName: 'South Indian Bank', paramName: 'Vehicle Registration Number ID' },
+    { billerId: 'UCOB00000NATEH', billerName: 'UCO Bank FASTag', bankName: 'UCO Bank', paramName: 'Vehicle Registration Number/Wallet Number' },
+    { billerId: 'YESB00000NATOM', billerName: 'Yes Bank FASTag', bankName: 'Yes Bank', paramName: 'Vehicle Number' },
+    { billerId: 'AUBA00000NATOF', billerName: 'AU Small Finance Bank FASTag', bankName: 'AU Small Finance Bank', paramName: 'Vehicle Registration Number' },
+    { billerId: 'LIVQ00000MAHMZ', billerName: 'LivQuik / EROUTE FASTag', bankName: 'LivQuik Technology (EROUTE)', paramName: 'Vehicle Number' }
 ];
 
 // Popular FASTag issuing banks quick chips
 const POPULAR_ISSUERS = [
     { label: 'All', query: '' },
     { label: 'ICICI Bank', query: 'ICICI' },
-    { label: 'Axis Bank', query: 'Axis' },
     { label: 'State Bank of India', query: 'SBI' },
+    { label: 'Axis Bank', query: 'Axis' },
     { label: 'HDFC Bank', query: 'HDFC' },
     { label: 'Kotak Mahindra', query: 'Kotak' },
     { label: 'IDFC FIRST Bank', query: 'IDFC' },
     { label: 'Bank of Baroda', query: 'Baroda' },
-    { label: 'Paytm Payments Bank', query: 'Paytm' },
     { label: 'Airtel Payments Bank', query: 'Airtel' },
     { label: 'IndusInd Bank', query: 'IndusInd' },
     { label: 'Federal Bank', query: 'Federal' },
     { label: 'Canara Bank', query: 'Canara' },
     { label: 'Punjab National Bank', query: 'Punjab' },
-    { label: 'Union Bank of India', query: 'Union' }
+    { label: 'Union Bank of India', query: 'Union' },
+    { label: 'BlackBuck FASTag', query: 'BlackBuck' }
 ];
 
 // Quick recharge amount presets
@@ -233,7 +232,12 @@ const FastagFlow = ({ onBack, category }) => {
         setCustomerParams(prev => ({
             ...prev,
             'Vehicle Registration Number': clean,
-            'Vehicle Number': clean
+            'Vehicle Number': clean,
+            'Vehicle Registered Number': clean,
+            'VRN': clean,
+            'Vehicle Registration Number ID': clean,
+            'Vehicle Registration Number (VRN)': clean,
+            'Vehicle Registration Number/Wallet Number': clean
         }));
         if (paramErrors.vehicleNumber) {
             setParamErrors(prev => ({ ...prev, vehicleNumber: null }));
@@ -288,6 +292,11 @@ const FastagFlow = ({ onBack, category }) => {
                 ...customerParams,
                 'Vehicle Registration Number': cleanVrn,
                 'Vehicle Number': cleanVrn,
+                'Vehicle Registered Number': cleanVrn,
+                'VRN': cleanVrn,
+                'Vehicle Registration Number ID': cleanVrn,
+                'Vehicle Registration Number (VRN)': cleanVrn,
+                'Vehicle Registration Number/Wallet Number': cleanVrn,
                 'Mobile Number': customerMobile.trim()
             }
         };

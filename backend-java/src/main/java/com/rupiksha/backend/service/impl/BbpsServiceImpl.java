@@ -3866,14 +3866,29 @@ public class BbpsServiceImpl implements BbpsService {
                 BillAvenueDtos.InputParam.builder().paramName("VRN").paramValue(cleanVrn).build()
         ));
 
-        // Variation 6: "Vehicle Reg No"
+        // Variation 6: "Vehicle Registered Number"
         variations.add(List.of(
-                BillAvenueDtos.InputParam.builder().paramName("Vehicle Reg No").paramValue(cleanVrn).build()
+                BillAvenueDtos.InputParam.builder().paramName("Vehicle Registered Number").paramValue(cleanVrn).build()
         ));
 
-        // Variation 7: "Vehicle Registration No"
+        // Variation 7: "Vehicle Registration Number ID"
         variations.add(List.of(
-                BillAvenueDtos.InputParam.builder().paramName("Vehicle Registration No").paramValue(cleanVrn).build()
+                BillAvenueDtos.InputParam.builder().paramName("Vehicle Registration Number ID").paramValue(cleanVrn).build()
+        ));
+
+        // Variation 8: "Vehicle Registration Number (VRN)"
+        variations.add(List.of(
+                BillAvenueDtos.InputParam.builder().paramName("Vehicle Registration Number (VRN)").paramValue(cleanVrn).build()
+        ));
+
+        // Variation 9: "Vehicle Registration Number/Wallet Number"
+        variations.add(List.of(
+                BillAvenueDtos.InputParam.builder().paramName("Vehicle Registration Number/Wallet Number").paramValue(cleanVrn).build()
+        ));
+
+        // Variation 10: "Vehicle Reg No"
+        variations.add(List.of(
+                BillAvenueDtos.InputParam.builder().paramName("Vehicle Reg No").paramValue(cleanVrn).build()
         ));
 
         return variations;

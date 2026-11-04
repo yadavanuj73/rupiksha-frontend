@@ -1004,7 +1004,7 @@ class BbpsServiceImplTest {
 
         // Verify ICICI FASTag exists
         Optional<BbpsDtos.FastagBillerInfo> icici = allBillers.stream()
-                .filter(b -> "ICIC00000NAT01".equals(b.getBillerId()))
+                .filter(b -> "TOLL00000NAT72".equals(b.getBillerId()))
                 .findFirst();
         assertTrue(icici.isPresent());
         assertEquals("ICICI Bank FASTag", icici.get().getBillerName());
@@ -1014,10 +1014,10 @@ class BbpsServiceImplTest {
         // Test search filter for "State Bank" or "SBI"
         List<BbpsDtos.FastagBillerInfo> sbiResults = bbpsService.getFastagBillers("State Bank");
         assertFalse(sbiResults.isEmpty());
-        assertTrue(sbiResults.stream().anyMatch(b -> b.getBillerId().equals("SBIN00000NAT01")));
+        assertTrue(sbiResults.stream().anyMatch(b -> b.getBillerId().equals("SBIB00000NAT25")));
 
         // Test case-insensitive search
-        List<BbpsDtos.FastagBillerInfo> paytmResults = bbpsService.getFastagBillers("paytm");
+        List<BbpsDtos.FastagBillerInfo> paytmResults = bbpsService.getFastagBillers("airtel");
         assertFalse(paytmResults.isEmpty());
     }
 
@@ -1031,7 +1031,7 @@ class BbpsServiceImplTest {
                 .responseCode("000")
                 .responseReason("Successful")
                 .fetchRequestId("FETCH-FT-991188")
-                .billerId("ICIC00000NAT01")
+                .billerId("TOLL00000NAT72")
                 .customerName("Amit Sharma")
                 .billAmountPaise(50000L) // ₹500.00
                 .billNumber("FT-INV-5001")
@@ -1040,11 +1040,11 @@ class BbpsServiceImplTest {
                 .additionalInfo(List.of(new BillAvenueDtos.InfoItem("Tag Status", "Active")))
                 .build();
 
-        when(billAvenueClient.fetchBill(eq("ICIC00000NAT01"), any(), eq("9876543210"), any(), eq("AGT"), any()))
+        when(billAvenueClient.fetchBill(eq("TOLL00000NAT72"), any(), eq("9876543210"), any(), eq("AGT"), any()))
                 .thenReturn(mockFetch);
 
         BbpsDtos.FastagFetchRequest fetchReq = new BbpsDtos.FastagFetchRequest();
-        fetchReq.setBillerId("ICIC00000NAT01");
+        fetchReq.setBillerId("TOLL00000NAT72");
         fetchReq.setCustomerMobile("9876543210");
         fetchReq.setCustomerParams(java.util.Map.of("Vehicle Registration Number", "MH12AB1234"));
 
@@ -1056,7 +1056,7 @@ class BbpsServiceImplTest {
         assertEquals("MH12AB1234", result.getConsumerNumber());
         assertEquals("Amit Sharma", result.getCustomerName());
         assertEquals(new BigDecimal("500.00"), result.getBillAmount());
-        assertEquals("ICIC00000NAT01", result.getBillerId());
+        assertEquals("TOLL00000NAT72", result.getBillerId());
     }
 
     @Test
@@ -1069,16 +1069,16 @@ class BbpsServiceImplTest {
                 .responseCode("000")
                 .responseReason("Successful")
                 .fetchRequestId("FETCH-FT-ZERO-01")
-                .billerId("ICIC00000NAT01")
+                .billerId("TOLL00000NAT72")
                 .customerName("Pooja Verma")
                 .billAmountPaise(0L) // ₹0.00
                 .build();
 
-        when(billAvenueClient.fetchBill(eq("ICIC00000NAT01"), any(), eq("9876543210"), any(), eq("AGT"), any()))
+        when(billAvenueClient.fetchBill(eq("TOLL00000NAT72"), any(), eq("9876543210"), any(), eq("AGT"), any()))
                 .thenReturn(mockFetch);
 
         BbpsDtos.FastagFetchRequest fetchReq = new BbpsDtos.FastagFetchRequest();
-        fetchReq.setBillerId("ICIC00000NAT01");
+        fetchReq.setBillerId("TOLL00000NAT72");
         fetchReq.setCustomerMobile("9876543210");
         fetchReq.setCustomerParams(java.util.Map.of("Vehicle Registration Number", "DL01CA1234"));
 
@@ -1122,7 +1122,7 @@ class BbpsServiceImplTest {
         when(billAvenueClient.payBillXml(any())).thenReturn(payResp);
 
         BbpsDtos.FastagPayRequest payReq = new BbpsDtos.FastagPayRequest();
-        payReq.setBillerId("ICIC00000NAT01");
+        payReq.setBillerId("TOLL00000NAT72");
         payReq.setVehicleNumber("MH12AB1234");
         payReq.setCustomerMobile("9876543210");
         payReq.setAmount(new BigDecimal("500.00"));
@@ -1156,7 +1156,7 @@ class BbpsServiceImplTest {
         when(walletService.getBalance(userId.toString())).thenReturn(mockBalance(new BigDecimal("100.00"), new BigDecimal("100.00")));
 
         BbpsDtos.FastagPayRequest payReq = new BbpsDtos.FastagPayRequest();
-        payReq.setBillerId("ICIC00000NAT01");
+        payReq.setBillerId("TOLL00000NAT72");
         payReq.setVehicleNumber("MH12AB1234");
         payReq.setCustomerMobile("9876543210");
         payReq.setCustomerParams(java.util.Map.of("Vehicle Registration Number", "MH12AB1234"));
@@ -1205,7 +1205,7 @@ class BbpsServiceImplTest {
         when(billAvenueClient.payBillXml(any())).thenReturn(failResp);
 
         BbpsDtos.FastagPayRequest payReq = new BbpsDtos.FastagPayRequest();
-        payReq.setBillerId("ICIC00000NAT01");
+        payReq.setBillerId("TOLL00000NAT72");
         payReq.setVehicleNumber("MH12AB1234");
         payReq.setCustomerMobile("9876543210");
         payReq.setCustomerParams(java.util.Map.of("Vehicle Registration Number", "MH12AB1234"));
@@ -1250,7 +1250,7 @@ class BbpsServiceImplTest {
         when(billAvenueClient.payBillXml(any())).thenThrow(new BillAvenueTimeoutException("Read timeout to BillAvenue gateway", null));
 
         BbpsDtos.FastagPayRequest payReq = new BbpsDtos.FastagPayRequest();
-        payReq.setBillerId("ICIC00000NAT01");
+        payReq.setBillerId("TOLL00000NAT72");
         payReq.setVehicleNumber("MH12AB1234");
         payReq.setCustomerMobile("9876543210");
         payReq.setCustomerParams(java.util.Map.of("Vehicle Registration Number", "MH12AB1234"));
@@ -1281,7 +1281,7 @@ class BbpsServiceImplTest {
         existing.setAmount(new BigDecimal("500.00"));
         existing.setConsumerNumber("MH12AB1234");
         existing.setVehicleNumber("MH12AB1234");
-        existing.setBillerId("ICIC00000NAT01");
+        existing.setBillerId("TOLL00000NAT72");
         existing.setBillerName("ICICI Bank FASTag");
         existing.setIdempotencyKey("FT-IDEM-DUPLICATE-01");
 
@@ -1291,7 +1291,7 @@ class BbpsServiceImplTest {
         when(walletService.getBalance(userId.toString())).thenReturn(mockBalance(new BigDecimal("5000.00"), new BigDecimal("5000.00")));
 
         BbpsDtos.FastagPayRequest payReq = new BbpsDtos.FastagPayRequest();
-        payReq.setBillerId("ICIC00000NAT01");
+        payReq.setBillerId("TOLL00000NAT72");
         payReq.setVehicleNumber("MH12AB1234");
         payReq.setCustomerMobile("9876543210");
         payReq.setCustomerParams(java.util.Map.of("Vehicle Registration Number", "MH12AB1234"));
