@@ -3406,13 +3406,15 @@ public class BbpsServiceImpl implements BbpsService {
                     .build();
         }
 
+        String friendlyMsg = mapFriendlyFastagError(errMsg, vrn, biller.getBillerName());
+
         return BbpsDtos.BillFetchResult.builder()
                 .success(false)
                 .billerId(biller.getBillerId())
                 .billerName(biller.getBillerName())
                 .consumerNumber(vrn)
                 .errorCode(errCode)
-                .message(errMsg != null && !errMsg.isBlank() ? errMsg : "Failed to fetch FASTag details. Please check vehicle number and retry.")
+                .message(friendlyMsg)
                 .build();
     }
 
@@ -3828,65 +3830,57 @@ public class BbpsServiceImpl implements BbpsService {
         }
     }
 
+    private String mapFriendlyFastagError(String rawMsg, String vrn, String billerName) {
+        if (rawMsg == null || rawMsg.isBlank()) {
+            return "Vehicle " + vrn + " details could not be retrieved from " + billerName + ". Please verify the vehicle plate number or select the correct FASTag issuing bank.";
+        }
+        String lower = rawMsg.toLowerCase();
+        if (lower.contains("bvr001") || lower.contains("not found") || lower.contains("does not exist") ||
+                lower.contains("invalid customer") || lower.contains("invalid account") || lower.contains("no record") ||
+                lower.contains("tag not found") || lower.contains("vehicle not registered") || lower.contains("unregistered")) {
+            return "Vehicle plate " + vrn + " is not registered with " + billerName + ". Please verify the vehicle registration number or select your FASTag issuing bank.";
+        }
+        if (lower.contains("hotlist") || lower.contains("blacklist") || lower.contains("tag low balance") || lower.contains("inactive") || lower.contains("deactivated")) {
+            return "FASTag for vehicle " + vrn + " is currently reported inactive/hotlisted by " + billerName + ". Please contact the bank.";
+        }
+        if (lower.contains("timeout") || lower.contains("timed out") || lower.contains("down") || lower.contains("unavailable")) {
+            return billerName + " FASTag server is temporarily unresponsive. Please try again in a few moments.";
+        }
+        if (lower.contains("custom param") || lower.contains("cp1")) {
+            return "Unable to validate vehicle format with " + billerName + ". Please ensure standard plate format (e.g. RJ14GU8645).";
+        }
+        return rawMsg;
+    }
+
     private List<List<BillAvenueDtos.InputParam>> generateFastagParameterVariations(String vrn, String mobile) {
         List<List<BillAvenueDtos.InputParam>> variations = new ArrayList<>();
         if (vrn == null || vrn.isBlank()) return variations;
 
         String cleanVrn = fastagBillerRegistry.cleanVehicleNumber(vrn);
-        String mob = mobile != null ? mobile.replaceAll("\\D", "").trim() : "";
 
-        // Variation 1: "Vehicle Registration Number"
+        // FASTag in Bharat Connect / BillAvenue v2.8.7 strictly takes ONLY ONE vehicle registration parameter in <inputParams>.
+        // Mobile number is transmitted exclusively in <customerInfo><customerMobile> and rejected if included in <inputParams>.
         variations.add(List.of(
                 BillAvenueDtos.InputParam.builder().paramName("Vehicle Registration Number").paramValue(cleanVrn).build()
         ));
-
-        // Variation 2: "Vehicle Registration Number" + "Mobile Number"
-        if (!mob.isEmpty()) {
-            variations.add(List.of(
-                    BillAvenueDtos.InputParam.builder().paramName("Vehicle Registration Number").paramValue(cleanVrn).build(),
-                    BillAvenueDtos.InputParam.builder().paramName("Mobile Number").paramValue(mob).build()
-            ));
-        }
-
-        // Variation 3: "Vehicle Number"
         variations.add(List.of(
                 BillAvenueDtos.InputParam.builder().paramName("Vehicle Number").paramValue(cleanVrn).build()
         ));
-
-        // Variation 4: "Vehicle Number" + "Mobile Number"
-        if (!mob.isEmpty()) {
-            variations.add(List.of(
-                    BillAvenueDtos.InputParam.builder().paramName("Vehicle Number").paramValue(cleanVrn).build(),
-                    BillAvenueDtos.InputParam.builder().paramName("Mobile Number").paramValue(mob).build()
-            ));
-        }
-
-        // Variation 5: "VRN"
         variations.add(List.of(
                 BillAvenueDtos.InputParam.builder().paramName("VRN").paramValue(cleanVrn).build()
         ));
-
-        // Variation 6: "Vehicle Registered Number"
         variations.add(List.of(
                 BillAvenueDtos.InputParam.builder().paramName("Vehicle Registered Number").paramValue(cleanVrn).build()
         ));
-
-        // Variation 7: "Vehicle Registration Number ID"
         variations.add(List.of(
                 BillAvenueDtos.InputParam.builder().paramName("Vehicle Registration Number ID").paramValue(cleanVrn).build()
         ));
-
-        // Variation 8: "Vehicle Registration Number (VRN)"
         variations.add(List.of(
                 BillAvenueDtos.InputParam.builder().paramName("Vehicle Registration Number (VRN)").paramValue(cleanVrn).build()
         ));
-
-        // Variation 9: "Vehicle Registration Number/Wallet Number"
         variations.add(List.of(
                 BillAvenueDtos.InputParam.builder().paramName("Vehicle Registration Number/Wallet Number").paramValue(cleanVrn).build()
         ));
-
-        // Variation 10: "Vehicle Reg No"
         variations.add(List.of(
                 BillAvenueDtos.InputParam.builder().paramName("Vehicle Reg No").paramValue(cleanVrn).build()
         ));

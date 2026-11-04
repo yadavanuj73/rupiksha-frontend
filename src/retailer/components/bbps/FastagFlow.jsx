@@ -6,7 +6,7 @@ import {
     Wallet, ArrowRight, Info, X, Building2, User,
     FileText, Calendar, DollarSign, ExternalLink, Lock,
     ChevronDown, ChevronRight, Eye, Sparkles,
-    Shield, History, Tag, Fuel
+    Shield, History, Tag, Fuel, XCircle
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { bbpsService } from '../../../services/apiService';
@@ -296,8 +296,7 @@ const FastagFlow = ({ onBack, category }) => {
                 'VRN': cleanVrn,
                 'Vehicle Registration Number ID': cleanVrn,
                 'Vehicle Registration Number (VRN)': cleanVrn,
-                'Vehicle Registration Number/Wallet Number': cleanVrn,
-                'Mobile Number': customerMobile.trim()
+                'Vehicle Registration Number/Wallet Number': cleanVrn
             }
         };
 
@@ -369,8 +368,7 @@ const FastagFlow = ({ onBack, category }) => {
             customerParams: {
                 ...customerParams,
                 'Vehicle Registration Number': cleanVrn,
-                'Vehicle Number': cleanVrn,
-                'Mobile Number': customerMobile.trim()
+                'Vehicle Number': cleanVrn
             }
         };
 
@@ -694,24 +692,44 @@ const FastagFlow = ({ onBack, category }) => {
                             </button>
 
                             {/* Fetch Error Display */}
-                            {fetchError && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: 4 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-2.5 text-xs text-amber-800"
-                                >
-                                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                                    <div>
-                                        <div className="font-black">Notice from FASTag Bank Switch</div>
-                                        <div className="font-bold text-[11px] text-amber-700 mt-0.5">
-                                            {fetchError}
+                            {fetchError && (() => {
+                                const isMismatch = /(not registered|not found|mismatch|does not exist|invalid|unregistered|tag not found)/i.test(fetchError);
+                                return isMismatch ? (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 4 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 flex items-start gap-2.5 text-xs text-rose-800"
+                                    >
+                                        <XCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                                        <div>
+                                            <div className="font-black text-rose-900">FASTag Vehicle Not Found / Mismatch</div>
+                                            <div className="font-bold text-[11px] text-rose-700 mt-0.5">
+                                                {fetchError}
+                                            </div>
+                                            <div className="font-medium text-[10px] text-rose-600 mt-1">
+                                                Please double check the vehicle number ({cleanVehicleNumber(vehicleNumber)}) or choose the correct issuing bank above.
+                                            </div>
                                         </div>
-                                        <div className="font-bold text-[11px] text-amber-800 mt-1">
-                                            You can still proceed with your chosen recharge amount using &quot;Proceed to Recharge&quot; on the right.
+                                    </motion.div>
+                                ) : (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 4 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-2.5 text-xs text-amber-800"
+                                    >
+                                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                                        <div>
+                                            <div className="font-black">Notice from FASTag Bank Switch</div>
+                                            <div className="font-bold text-[11px] text-amber-700 mt-0.5">
+                                                {fetchError}
+                                            </div>
+                                            <div className="font-bold text-[11px] text-amber-800 mt-1">
+                                                You can still proceed with your chosen recharge amount using &quot;Proceed to Recharge&quot; on the right.
+                                            </div>
                                         </div>
-                                    </div>
-                                </motion.div>
-                            )}
+                                    </motion.div>
+                                );
+                            })()}
                         </div>
                     </div>
 

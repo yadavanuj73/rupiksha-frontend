@@ -156,7 +156,7 @@ public class FastagBillerRegistry {
     }
 
     public List<BbpsDtos.InputParamInfo> defaultFastagParams() {
-        return List.of(vehicleParam("Vehicle Number", 4, 20), mobileParam());
+        return List.of(vehicleParam("Vehicle Registration Number", 4, 20));
     }
 
     /**
@@ -304,52 +304,27 @@ public class FastagBillerRegistry {
     ) {
         List<BillAvenueDtos.InputParam> inputs = new ArrayList<>();
         String vrn = extractVehicleNumber(customerParams);
-
-        Map<String, String> normalizedIncoming = new LinkedHashMap<>();
-        if (customerParams != null) {
-            customerParams.forEach((k, v) -> {
-                if (k != null && v != null) normalizedIncoming.put(k.trim(), v.trim());
-            });
+        if (vrn == null || vrn.isBlank()) {
+            return inputs;
         }
 
-        List<BbpsDtos.InputParamInfo> schema = (biller != null && biller.getInputParams() != null && !biller.getInputParams().isEmpty())
-                ? biller.getInputParams()
-                : defaultFastagParams();
-
-        for (BbpsDtos.InputParamInfo paramInfo : schema) {
-            String pName = paramInfo.getParamName();
-            String pNameLower = pName.toLowerCase();
-            String directVal = normalizedIncoming.get(pName);
-
-            if (pNameLower.contains("vehicle") || pNameLower.contains("vrn") || pNameLower.contains("reg") || pNameLower.contains("plate") || pNameLower.contains("chassis") || pNameLower.contains("wallet")) {
-                inputs.add(BillAvenueDtos.InputParam.builder()
-                        .paramName(pName)
-                        .paramValue(vrn != null ? vrn : (directVal != null ? cleanVehicleNumber(directVal) : ""))
-                        .build());
-            } else if (pNameLower.contains("mobile") || pNameLower.contains("phone")) {
-                String mob = (directVal != null && !directVal.isBlank())
-                        ? directVal.replaceAll("\\D", "")
-                        : (customerMobile != null ? customerMobile.replaceAll("\\D", "") : "");
-                if (!mob.isEmpty()) {
-                    inputs.add(BillAvenueDtos.InputParam.builder()
-                            .paramName(pName)
-                            .paramValue(mob)
-                            .build());
-                }
-            } else {
-                String val = directVal != null ? directVal : normalizedIncoming.getOrDefault(pName, "");
-                if (!val.isBlank() || !paramInfo.isOptional()) {
-                    inputs.add(BillAvenueDtos.InputParam.builder()
-                            .paramName(pName)
-                            .paramValue(val)
-                            .build());
+        // FASTag in Bharat Connect / BillAvenue v2.8.7 requires EXACTLY ONE vehicle input parameter in <inputParams>.
+        // Customer mobile is strictly passed in <customerInfo><customerMobile> and MUST NOT be passed in <inputParams>.
+        String targetParamName = "Vehicle Registration Number";
+        if (biller != null && biller.getInputParams() != null && !biller.getInputParams().isEmpty()) {
+            for (BbpsDtos.InputParamInfo p : biller.getInputParams()) {
+                String nameLower = p.getParamName().toLowerCase();
+                if (!nameLower.contains("mobile") && !nameLower.contains("phone")) {
+                    targetParamName = p.getParamName();
+                    break;
                 }
             }
         }
 
-        if (inputs.isEmpty() && vrn != null) {
-            inputs.add(BillAvenueDtos.InputParam.builder().paramName("Vehicle Number").paramValue(vrn).build());
-        }
+        inputs.add(BillAvenueDtos.InputParam.builder()
+                .paramName(targetParamName)
+                .paramValue(cleanVehicleNumber(vrn))
+                .build());
 
         return inputs;
     }
@@ -385,8 +360,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Number", 5, 15),
-                        mobileParam()
+                        vehicleParam("Vehicle Number", 5, 15)
                 ))
                 .description("SBI National Electronic Toll Collection FASTag")
                 .build());
@@ -404,8 +378,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Number", 7, 10),
-                        mobileParam()
+                        vehicleParam("Vehicle Number", 7, 10)
                 ))
                 .description("ICICI Bank NETC FASTag Recharge")
                 .build());
@@ -423,8 +396,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Registration Number", 7, 30),
-                        mobileParam()
+                        vehicleParam("Vehicle Registration Number", 7, 30)
                 ))
                 .description("HDFC Bank NETC FASTag")
                 .build());
@@ -442,8 +414,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Registration Number", 8, 20),
-                        mobileParam()
+                        vehicleParam("Vehicle Registration Number", 8, 20)
                 ))
                 .description("Axis Bank FASTag Toll Collection")
                 .build());
@@ -461,8 +432,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Registered Number", 7, 10),
-                        mobileParam()
+                        vehicleParam("Vehicle Registered Number", 7, 10)
                 ))
                 .description("Kotak NETC FASTag Toll Collection")
                 .build());
@@ -480,8 +450,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Number", 7, 10),
-                        mobileParam()
+                        vehicleParam("Vehicle Number", 7, 10)
                 ))
                 .description("IDFC FIRST Bank FASTag Recharge")
                 .build());
@@ -499,8 +468,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Number", 7, 10),
-                        mobileParam()
+                        vehicleParam("Vehicle Number", 7, 10)
                 ))
                 .description("Bank of Baroda NETC FASTag")
                 .build());
@@ -518,8 +486,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Registered Number", 3, 25),
-                        mobileParam()
+                        vehicleParam("Vehicle Registered Number", 3, 25)
                 ))
                 .description("Punjab National Bank NETC FASTag")
                 .build());
@@ -537,8 +504,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Number", 7, 10),
-                        mobileParam()
+                        vehicleParam("Vehicle Number", 7, 10)
                 ))
                 .description("Canara Bank FASTag")
                 .build());
@@ -556,8 +522,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Registration Number", 5, 20),
-                        mobileParam()
+                        vehicleParam("Vehicle Registration Number", 5, 20)
                 ))
                 .description("Union Bank of India FASTag")
                 .build());
@@ -575,8 +540,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("VRN", 7, 20),
-                        mobileParam()
+                        vehicleParam("VRN", 7, 20)
                 ))
                 .description("Indian Bank NETC FASTag")
                 .build());
@@ -594,8 +558,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Registration Number", 4, 10),
-                        mobileParam()
+                        vehicleParam("Vehicle Registration Number", 4, 10)
                 ))
                 .description("IndusInd Bank FASTag Recharge")
                 .build());
@@ -613,8 +576,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Registration Number ID", 4, 12),
-                        mobileParam()
+                        vehicleParam("Vehicle Registration Number ID", 4, 12)
                 ))
                 .description("Federal Bank NETC FASTag Recharge")
                 .build());
@@ -632,8 +594,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Number", 7, 50),
-                        mobileParam()
+                        vehicleParam("Vehicle Number", 7, 50)
                 ))
                 .description("IDBI Bank NETC FASTag")
                 .build());
@@ -651,8 +612,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Registration Number", 4, 20),
-                        mobileParam()
+                        vehicleParam("Vehicle Registration Number", 4, 20)
                 ))
                 .description("Airtel Payments Bank NETC FASTag")
                 .build());
@@ -670,8 +630,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Registration Number", 7, 12),
-                        mobileParam()
+                        vehicleParam("Vehicle Registration Number", 7, 12)
                 ))
                 .description("Bajaj Finance NETC FASTag")
                 .build());
@@ -689,8 +648,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Registration Number (VRN)", 4, 20),
-                        mobileParam()
+                        vehicleParam("Vehicle Registration Number (VRN)", 4, 20)
                 ))
                 .description("Bandhan Bank NETC FASTag")
                 .build());
@@ -708,8 +666,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Registration Number", 7, 12),
-                        mobileParam()
+                        vehicleParam("Vehicle Registration Number", 7, 12)
                 ))
                 .description("Bank of Maharashtra FASTag")
                 .build());
@@ -727,8 +684,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Number", 7, 14),
-                        mobileParam()
+                        vehicleParam("Vehicle Number", 7, 14)
                 ))
                 .description("BlackBuck Commercial FASTag")
                 .build());
@@ -746,8 +702,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Registration Number", 7, 10),
-                        mobileParam()
+                        vehicleParam("Vehicle Registration Number", 7, 10)
                 ))
                 .description("City Union Bank NETC FASTag")
                 .build());
@@ -765,8 +720,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Registration Number", 7, 10),
-                        mobileParam()
+                        vehicleParam("Vehicle Registration Number", 7, 10)
                 ))
                 .description("Equitas Small Finance Bank FASTag")
                 .build());
@@ -784,8 +738,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Registration Number", 4, 10),
-                        mobileParam()
+                        vehicleParam("Vehicle Registration Number", 4, 10)
                 ))
                 .description("Indian Highway Management Company Limited FASTag")
                 .build());
@@ -803,8 +756,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Registration Number (VRN)", 5, 50),
-                        mobileParam()
+                        vehicleParam("Vehicle Registration Number (VRN)", 5, 50)
                 ))
                 .description("Indian Overseas Bank NETC FASTag")
                 .build());
@@ -822,8 +774,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Registration Number/Wallet Number", 7, 20),
-                        mobileParam()
+                        vehicleParam("Vehicle Registration Number/Wallet Number", 7, 20)
                 ))
                 .description("Jammu & Kashmir Bank NETC FASTag")
                 .build());
@@ -841,8 +792,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Registration Number/Wallet Number", 7, 20),
-                        mobileParam()
+                        vehicleParam("Vehicle Registration Number/Wallet Number", 7, 20)
                 ))
                 .description("Karnataka Bank FASTag")
                 .build());
@@ -860,8 +810,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Registration Number", 7, 12),
-                        mobileParam()
+                        vehicleParam("Vehicle Registration Number", 7, 12)
                 ))
                 .description("Karur Vysya Bank NETC FASTag")
                 .build());
@@ -879,8 +828,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Registration Number ID", 4, 12),
-                        mobileParam()
+                        vehicleParam("Vehicle Registration Number ID", 4, 12)
                 ))
                 .description("South Indian Bank FASTag")
                 .build());
@@ -898,8 +846,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Registration Number/Wallet Number", 4, 20),
-                        mobileParam()
+                        vehicleParam("Vehicle Registration Number/Wallet Number", 4, 20)
                 ))
                 .description("UCO Bank NETC FASTag")
                 .build());
@@ -917,8 +864,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Number", 6, 10),
-                        mobileParam()
+                        vehicleParam("Vehicle Number", 6, 10)
                 ))
                 .description("Yes Bank NETC FASTag Recharge")
                 .build());
@@ -936,8 +882,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Registration Number", 4, 20),
-                        mobileParam()
+                        vehicleParam("Vehicle Registration Number", 4, 20)
                 ))
                 .description("AU Small Finance Bank FASTag")
                 .build());
@@ -955,10 +900,10 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Number", 6, 22),
-                        mobileParam()
+                        vehicleParam("Vehicle Number", 6, 22)
                 ))
                 .description("LivQuik / EROUTE Prepaid NETC FASTag")
                 .build());
     }
 }
+
