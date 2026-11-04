@@ -3323,12 +3323,16 @@ public class BbpsServiceImpl implements BbpsService {
             log.warn("Initial FASTag bill fetch failed: {}. Attempting fallback parameter variations.", ex.getMessage());
         }
 
-        // Parameter variation retry if initial fetch failed
-        if (fetchResp == null || !fetchResp.isSuccess()) {
+        // Parameter variation retry if initial fetch returned E135 / parameter mismatch or failed
+        if (fetchResp == null || isE135Error(fetchResp) || (!fetchResp.isSuccess() && !fetchResp.isNoBillDue())) {
             List<List<BillAvenueDtos.InputParam>> variations = generateFastagParameterVariations(vrn, customerMobile);
             for (List<BillAvenueDtos.InputParam> varInputs : variations) {
+                if (inputs != null && !inputs.isEmpty() && !varInputs.isEmpty() &&
+                        inputs.get(0).getParamName().equalsIgnoreCase(varInputs.get(0).getParamName())) {
+                    continue;
+                }
                 try {
-                    log.info("Retrying FASTag bill fetch with parameter variation: {}", varInputs);
+                    log.info("Retrying FASTag bill fetch with parameter variation for {}: {}", biller.getBillerId(), varInputs);
                     BillAvenueDtos.BillFetchResponse retryResp = billAvenueClient.fetchBill(
                             biller.getBillerId(),
                             varInputs,
@@ -3337,10 +3341,12 @@ public class BbpsServiceImpl implements BbpsService {
                             initChannel,
                             userEmail
                     );
-                    if (retryResp != null && retryResp.isSuccess()) {
+                    if (retryResp != null && !isE135Error(retryResp)) {
                         fetchResp = retryResp;
                         inputs = varInputs;
-                        log.info("FASTag bill fetch variation succeeded with: {}", varInputs);
+                        fastagBillerRegistry.updateWorkingInputParams(biller.getBillerId(), varInputs);
+                        log.info("FASTag bill fetch variation accepted by biller {} with param: {}",
+                                biller.getBillerId(), varInputs.get(0).getParamName());
                         break;
                     }
                 } catch (Exception retryEx) {
@@ -3350,8 +3356,11 @@ public class BbpsServiceImpl implements BbpsService {
         }
 
         // Cache fetch result if returned with a valid request ID
-        if (fetchResp != null && fetchResp.getFetchRequestId() != null && !fetchResp.getFetchRequestId().isBlank()) {
-            fetchCache.put(fetchResp.getFetchRequestId(), fetchResp);
+        if (fetchResp != null) {
+            fetchResp.setInputParams(inputs);
+            if (fetchResp.getFetchRequestId() != null && !fetchResp.getFetchRequestId().isBlank()) {
+                fetchCache.put(fetchResp.getFetchRequestId().trim(), fetchResp);
+            }
         }
 
         if (fetchResp != null && fetchResp.isSuccess()) {
@@ -3837,7 +3846,8 @@ public class BbpsServiceImpl implements BbpsService {
         String lower = rawMsg.toLowerCase();
         if (lower.contains("bvr001") || lower.contains("not found") || lower.contains("does not exist") ||
                 lower.contains("invalid customer") || lower.contains("invalid account") || lower.contains("no record") ||
-                lower.contains("tag not found") || lower.contains("vehicle not registered") || lower.contains("unregistered")) {
+                lower.contains("tag not found") || lower.contains("vehicle not registered") || lower.contains("unregistered") ||
+                lower.contains("e135") || lower.contains("mandatory input parameter")) {
             return "Vehicle plate " + vrn + " is not registered with " + billerName + ". Please verify the vehicle registration number or select your FASTag issuing bank.";
         }
         if (lower.contains("hotlist") || lower.contains("blacklist") || lower.contains("tag low balance") || lower.contains("inactive") || lower.contains("deactivated")) {
@@ -3847,7 +3857,7 @@ public class BbpsServiceImpl implements BbpsService {
             return billerName + " FASTag server is temporarily unresponsive. Please try again in a few moments.";
         }
         if (lower.contains("custom param") || lower.contains("cp1")) {
-            return "Unable to validate vehicle format with " + billerName + ". Please ensure standard plate format (e.g. RJ14GU8645).";
+            return "Vehicle plate " + vrn + " format not recognized by " + billerName + ". Please ensure standard plate format (e.g. RJ14GU8645).";
         }
         return rawMsg;
     }
@@ -3859,12 +3869,12 @@ public class BbpsServiceImpl implements BbpsService {
         String cleanVrn = fastagBillerRegistry.cleanVehicleNumber(vrn);
 
         // FASTag in Bharat Connect / BillAvenue v2.8.7 strictly takes ONLY ONE vehicle registration parameter in <inputParams>.
-        // Mobile number is transmitted exclusively in <customerInfo><customerMobile> and rejected if included in <inputParams>.
-        variations.add(List.of(
-                BillAvenueDtos.InputParam.builder().paramName("Vehicle Registration Number").paramValue(cleanVrn).build()
-        ));
+        // "Vehicle Number" is the primary standard across most NPCI FASTag banks (SBI, ICICI, Axis, IDFC, BOB, Canara).
         variations.add(List.of(
                 BillAvenueDtos.InputParam.builder().paramName("Vehicle Number").paramValue(cleanVrn).build()
+        ));
+        variations.add(List.of(
+                BillAvenueDtos.InputParam.builder().paramName("Vehicle Registration Number").paramValue(cleanVrn).build()
         ));
         variations.add(List.of(
                 BillAvenueDtos.InputParam.builder().paramName("VRN").paramValue(cleanVrn).build()

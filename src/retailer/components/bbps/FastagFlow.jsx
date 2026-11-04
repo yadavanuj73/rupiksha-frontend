@@ -20,7 +20,7 @@ const DEFAULT_FASTAG_BILLERS = [
     { billerId: 'SBIB00000NAT25', billerName: 'State Bank of India (SBI) FASTag', bankName: 'State Bank of India', paramName: 'Vehicle Number' },
     { billerId: 'TOLL00000NAT72', billerName: 'ICICI Bank FASTag', bankName: 'ICICI Bank', paramName: 'Vehicle Number' },
     { billerId: 'HDFC00000NAT5K', billerName: 'HDFC Bank FASTag', bankName: 'HDFC Bank', paramName: 'Vehicle Registration Number' },
-    { billerId: 'AXIS00000NAT31', billerName: 'Axis Bank FASTag', bankName: 'Axis Bank', paramName: 'Vehicle Registration Number' },
+    { billerId: 'AXIS00000NAT31', billerName: 'Axis Bank FASTag', bankName: 'Axis Bank', paramName: 'Vehicle Number' },
     { billerId: 'KOTA00000NATJZ', billerName: 'Kotak Mahindra Bank FASTag', bankName: 'Kotak Mahindra Bank', paramName: 'Vehicle Registered Number' },
     { billerId: 'IDFC00000NATXM', billerName: 'IDFC FIRST Bank FASTag', bankName: 'IDFC FIRST Bank', paramName: 'Vehicle Number' },
     { billerId: 'BANK00000NATDH', billerName: 'Bank of Baroda FASTag', bankName: 'Bank of Baroda', paramName: 'Vehicle Number' },

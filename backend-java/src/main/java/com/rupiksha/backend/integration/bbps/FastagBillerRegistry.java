@@ -330,6 +330,29 @@ public class FastagBillerRegistry {
     }
 
     /**
+     * Dynamically caches working input parameter schemas validated in runtime against bank switches.
+     */
+    public void updateWorkingInputParams(String billerId, List<BillAvenueDtos.InputParam> workingInputs) {
+        if (workingInputs == null || workingInputs.isEmpty() || billerId == null) return;
+        Optional<BbpsDtos.FastagBillerInfo> opt = findById(billerId);
+        if (opt.isPresent()) {
+            BbpsDtos.FastagBillerInfo existing = opt.get();
+            List<BbpsDtos.InputParamInfo> newParams = new ArrayList<>();
+            for (BillAvenueDtos.InputParam p : workingInputs) {
+                newParams.add(BbpsDtos.InputParamInfo.builder()
+                        .paramName(p.getParamName())
+                        .dataType("ALPHANUMERIC")
+                        .optional(false)
+                        .minLength(4)
+                        .maxLength(20)
+                        .hint(p.getParamName())
+                        .build());
+            }
+            existing.setInputParams(newParams);
+        }
+    }
+
+    /**
      * Returns sanitized customer params for responses and database persistence.
      */
     public Map<String, String> sanitizeCustomerParams(Map<String, String> params, String customerMobile) {
@@ -401,7 +424,7 @@ public class FastagBillerRegistry {
                 .description("HDFC Bank NETC FASTag")
                 .build());
 
-        // 4. Axis Bank FASTag — Biller ID: AXIS00000NAT31, Param: "Vehicle Registration Number" (8-20)
+        // 4. Axis Bank FASTag — Biller ID: AXIS00000NAT31, Param: "Vehicle Number"
         add(BbpsDtos.FastagBillerInfo.builder()
                 .billerId("AXIS00000NAT31")
                 .billerName("Axis Bank FASTag")
@@ -414,7 +437,7 @@ public class FastagBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(100000))
                 .inputParams(List.of(
-                        vehicleParam("Vehicle Registration Number", 8, 20)
+                        vehicleParam("Vehicle Number", 5, 20)
                 ))
                 .description("Axis Bank FASTag Toll Collection")
                 .build());
