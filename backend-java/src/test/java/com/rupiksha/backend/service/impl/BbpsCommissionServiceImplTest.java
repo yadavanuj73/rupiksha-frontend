@@ -1244,4 +1244,462 @@ public class BbpsCommissionServiceImplTest {
         assertEquals(new BigDecimal("5.00"), amounts.get(2));
     }
 
+    @Test
+    @DisplayName("Agent Collection: Direct Retailer with no distributor or super distributor gets only retailer commission")
+    void testProcessBbpsCommission_AgentCollection_DirectRetailer() {
+        User directRetailer = new User();
+        directRetailer.setId(UUID.randomUUID());
+        directRetailer.setUsername("DIRECT_RET");
+        Role rRole = new Role();
+        rRole.setName(RoleName.RETAILER);
+        directRetailer.setRoles(Set.of(rRole));
+        directRetailer.setParentUser(null);
+        directRetailer.setAddedByUserRef(null);
+        directRetailer.setAepsCommissionPlan(freePlan);
+
+        BbpsCommissionConfig acConfig = BbpsCommissionConfig.builder()
+                .serviceId("agent-collection")
+                .serviceName("Agent Collection")
+                .commissionModel("PERCENTAGE")
+                .plan(freePlan)
+                .planCode("FREE")
+                .retailerPercentage(new BigDecimal("0.5000"))
+                .distributorPercentage(new BigDecimal("0.2000"))
+                .superDistributorPercentage(new BigDecimal("0.1000"))
+                .enabled(true)
+                .build();
+
+        when(userRepository.findById(directRetailer.getId())).thenReturn(Optional.of(directRetailer));
+        when(bbpsCommissionConfigRepository.findByServiceIdAndPlan_PlanCode("agent-collection", "FREE"))
+                .thenReturn(Optional.of(acConfig));
+        when(commissionTransactionRepository.existsByOriginalTransactionId("BBPSAC_DIR_001")).thenReturn(false);
+
+        BbpsTransaction bbpsTxn = new BbpsTransaction();
+        bbpsTxn.setId(UUID.randomUUID());
+        bbpsTxn.setCategory("Agent Collection");
+        bbpsTxn.setMerchantRefNo("BBPSAC_DIR_001");
+        bbpsTxn.setAmount(new BigDecimal("5000.00"));
+        bbpsTxn.setStatus("SUCCESS");
+        bbpsTxn.setUser(directRetailer);
+
+        commissionService.processBbpsCommission(bbpsTxn);
+
+        // Exactly 1 credit for retailer, none for distributor or super distributor
+        ArgumentCaptor<BigDecimal> amountCaptor = ArgumentCaptor.forClass(BigDecimal.class);
+        verify(walletService, times(1)).creditForService(
+                eq(directRetailer.getId()),
+                amountCaptor.capture(),
+                anyString(),
+                eq(com.rupiksha.backend.domain.WalletTransactionContext.COMMISSION),
+                eq("BBPS Agent Collection"),
+                anyString(),
+                anyString()
+        );
+
+        // Retailer: 0.50% of ₹5,000 = ₹25.00
+        assertEquals(new BigDecimal("25.00"), amountCaptor.getValue());
+    }
+
+    @Test
+    @DisplayName("Agent Collection: Retailer with Distributor only (no Super Distributor upline)")
+    void testProcessBbpsCommission_AgentCollection_RetailerAndDistributorOnly() {
+        User distOnly = new User();
+        distOnly.setId(UUID.randomUUID());
+        distOnly.setUsername("DIST_ONLY");
+        Role dRole = new Role();
+        dRole.setName(RoleName.DISTRIBUTOR);
+        distOnly.setRoles(Set.of(dRole));
+        distOnly.setParentUser(null);
+
+        User retWithDist = new User();
+        retWithDist.setId(UUID.randomUUID());
+        retWithDist.setUsername("RET_WITH_DIST");
+        Role rRole = new Role();
+        rRole.setName(RoleName.RETAILER);
+        retWithDist.setRoles(Set.of(rRole));
+        retWithDist.setParentUser(distOnly);
+        retWithDist.setAepsCommissionPlan(freePlan);
+
+        BbpsCommissionConfig acConfig = BbpsCommissionConfig.builder()
+                .serviceId("agent-collection")
+                .serviceName("Agent Collection")
+                .commissionModel("PERCENTAGE")
+                .plan(freePlan)
+                .planCode("FREE")
+                .retailerPercentage(new BigDecimal("0.4000"))
+                .distributorPercentage(new BigDecimal("0.1500"))
+                .superDistributorPercentage(new BigDecimal("0.1000"))
+                .enabled(true)
+                .build();
+
+        when(userRepository.findById(retWithDist.getId())).thenReturn(Optional.of(retWithDist));
+        when(bbpsCommissionConfigRepository.findByServiceIdAndPlan_PlanCode("agent-collection", "FREE"))
+                .thenReturn(Optional.of(acConfig));
+        when(commissionTransactionRepository.existsByOriginalTransactionId("BBPSAC_DIST_ONLY_001")).thenReturn(false);
+
+        BbpsTransaction bbpsTxn = new BbpsTransaction();
+        bbpsTxn.setId(UUID.randomUUID());
+        bbpsTxn.setCategory("Agent Collection");
+        bbpsTxn.setMerchantRefNo("BBPSAC_DIST_ONLY_001");
+        bbpsTxn.setAmount(new BigDecimal("4000.00"));
+        bbpsTxn.setStatus("SUCCESS");
+        bbpsTxn.setUser(retWithDist);
+
+        commissionService.processBbpsCommission(bbpsTxn);
+
+        // Exactly 2 credits: retailer and distributor, 0 for super distributor
+        verify(walletService, times(2)).creditForService(
+                any(),
+                any(),
+                anyString(),
+                eq(com.rupiksha.backend.domain.WalletTransactionContext.COMMISSION),
+                eq("BBPS Agent Collection"),
+                anyString(),
+                anyString()
+        );
+    }
+
+    @Test
+    @DisplayName("Agent Collection: 0% commission results in no wallet credits")
+    void testProcessBbpsCommission_AgentCollection_ZeroPercentage() {
+        retailer.setAepsCommissionPlan(freePlan);
+
+        BbpsCommissionConfig zeroConfig = BbpsCommissionConfig.builder()
+                .serviceId("agent-collection")
+                .serviceName("Agent Collection")
+                .commissionModel("PERCENTAGE")
+                .plan(freePlan)
+                .planCode("FREE")
+                .retailerPercentage(BigDecimal.ZERO)
+                .distributorPercentage(BigDecimal.ZERO)
+                .superDistributorPercentage(BigDecimal.ZERO)
+                .enabled(true)
+                .build();
+
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+        when(bbpsCommissionConfigRepository.findByServiceIdAndPlan_PlanCode("agent-collection", "FREE"))
+                .thenReturn(Optional.of(zeroConfig));
+        when(commissionTransactionRepository.existsByOriginalTransactionId("BBPSAC_ZERO_001")).thenReturn(false);
+
+        BbpsTransaction bbpsTxn = new BbpsTransaction();
+        bbpsTxn.setId(UUID.randomUUID());
+        bbpsTxn.setCategory("Agent Collection");
+        bbpsTxn.setMerchantRefNo("BBPSAC_ZERO_001");
+        bbpsTxn.setAmount(new BigDecimal("10000.00"));
+        bbpsTxn.setStatus("SUCCESS");
+        bbpsTxn.setUser(retailer);
+
+        commissionService.processBbpsCommission(bbpsTxn);
+
+        verify(walletService, never()).creditForService(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Agent Collection: Duplicate transaction reference is blocked by idempotency check")
+    void testProcessBbpsCommission_AgentCollection_IdempotencyDuplicateBlocked() {
+        when(commissionTransactionRepository.existsByOriginalTransactionId("BBPSAC_DUP_001")).thenReturn(true);
+
+        BbpsTransaction bbpsTxn = new BbpsTransaction();
+        bbpsTxn.setId(UUID.randomUUID());
+        bbpsTxn.setCategory("Agent Collection");
+        bbpsTxn.setMerchantRefNo("BBPSAC_DUP_001");
+        bbpsTxn.setAmount(new BigDecimal("5000.00"));
+        bbpsTxn.setStatus("SUCCESS");
+        bbpsTxn.setUser(retailer);
+
+        commissionService.processBbpsCommission(bbpsTxn);
+
+        verify(userRepository, never()).findById(any());
+        verify(walletService, never()).creditForService(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Agent Collection: FAILED, PENDING, or INITIATED transactions do NOT generate commission")
+    void testProcessBbpsCommission_AgentCollection_NonSuccessStatusIgnored() {
+        BbpsTransaction failedTxn = new BbpsTransaction();
+        failedTxn.setId(UUID.randomUUID());
+        failedTxn.setCategory("Agent Collection");
+        failedTxn.setMerchantRefNo("BBPSAC_FAIL_001");
+        failedTxn.setAmount(new BigDecimal("5000.00"));
+        failedTxn.setStatus("FAILED");
+        failedTxn.setUser(retailer);
+
+        BbpsTransaction pendingTxn = new BbpsTransaction();
+        pendingTxn.setId(UUID.randomUUID());
+        pendingTxn.setCategory("Agent Collection");
+        pendingTxn.setMerchantRefNo("BBPSAC_PEND_001");
+        pendingTxn.setAmount(new BigDecimal("5000.00"));
+        pendingTxn.setStatus("PENDING");
+        pendingTxn.setUser(retailer);
+
+        BbpsTransaction initiatedTxn = new BbpsTransaction();
+        initiatedTxn.setId(UUID.randomUUID());
+        initiatedTxn.setCategory("Agent Collection");
+        initiatedTxn.setMerchantRefNo("BBPSAC_INIT_001");
+        initiatedTxn.setAmount(new BigDecimal("5000.00"));
+        initiatedTxn.setStatus("INITIATED");
+        initiatedTxn.setUser(retailer);
+
+        commissionService.processBbpsCommission(failedTxn);
+        commissionService.processBbpsCommission(pendingTxn);
+        commissionService.processBbpsCommission(initiatedTxn);
+
+        verify(commissionTransactionRepository, never()).existsByOriginalTransactionId(any());
+        verify(walletService, never()).creditForService(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Agent Collection: Higher tier plans (PLAN_2999, PLAN_4999, PLAN_7999) calculate configured rates correctly")
+    void testProcessBbpsCommission_AgentCollection_HigherTierPlans() {
+        CommissionPlan plan7999 = CommissionPlan.builder()
+                .id(UUID.randomUUID())
+                .serviceType("AEPS_1")
+                .planName("Rupiksha Dhanbarsha Plan")
+                .planCode("PLAN_7999")
+                .price(new BigDecimal("7999.00"))
+                .isDefault(false)
+                .enabled(true)
+                .build();
+
+        retailer.setAepsCommissionPlan(plan7999);
+
+        BbpsCommissionConfig plan7999Config = BbpsCommissionConfig.builder()
+                .serviceId("agent-collection")
+                .serviceName("Agent Collection")
+                .commissionModel("PERCENTAGE")
+                .plan(plan7999)
+                .planCode("PLAN_7999")
+                .retailerPercentage(new BigDecimal("0.6000"))
+                .distributorPercentage(new BigDecimal("0.2500"))
+                .superDistributorPercentage(new BigDecimal("0.1500"))
+                .enabled(true)
+                .build();
+
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+        when(bbpsCommissionConfigRepository.findByServiceIdAndPlan_PlanCode("agent-collection", "PLAN_7999"))
+                .thenReturn(Optional.of(plan7999Config));
+        when(commissionTransactionRepository.existsByOriginalTransactionId("BBPSAC_7999_001")).thenReturn(false);
+
+        BbpsTransaction bbpsTxn = new BbpsTransaction();
+        bbpsTxn.setId(UUID.randomUUID());
+        bbpsTxn.setCategory("Agent Collection");
+        bbpsTxn.setMerchantRefNo("BBPSAC_7999_001");
+        bbpsTxn.setAmount(new BigDecimal("8000.00"));
+        bbpsTxn.setStatus("SUCCESS");
+        bbpsTxn.setUser(retailer);
+
+        commissionService.processBbpsCommission(bbpsTxn);
+
+        ArgumentCaptor<BigDecimal> amountCaptor = ArgumentCaptor.forClass(BigDecimal.class);
+        verify(walletService, times(3)).creditForService(
+                any(),
+                amountCaptor.capture(),
+                anyString(),
+                eq(com.rupiksha.backend.domain.WalletTransactionContext.COMMISSION),
+                eq("BBPS Agent Collection"),
+                anyString(),
+                anyString()
+        );
+
+        List<BigDecimal> amounts = amountCaptor.getAllValues();
+        // Retailer: 0.60% of ₹8,000 = ₹48.00
+        assertEquals(new BigDecimal("48.00"), amounts.get(0));
+        // Distributor: 0.25% of ₹8,000 = ₹20.00
+        assertEquals(new BigDecimal("20.00"), amounts.get(1));
+        // Super Distributor: 0.15% of ₹8,000 = ₹12.00
+        assertEquals(new BigDecimal("12.00"), amounts.get(2));
+    }
+
+    @Test
+    @DisplayName("Agent Collection: Currency rounding test with fractional amounts using HALF_UP rounding")
+    void testProcessBbpsCommission_AgentCollection_CurrencyRounding() {
+        retailer.setAepsCommissionPlan(freePlan);
+
+        BbpsCommissionConfig acConfig = BbpsCommissionConfig.builder()
+                .serviceId("agent-collection")
+                .serviceName("Agent Collection")
+                .commissionModel("PERCENTAGE")
+                .plan(freePlan)
+                .planCode("FREE")
+                .retailerPercentage(new BigDecimal("0.3500"))
+                .distributorPercentage(new BigDecimal("0.1500"))
+                .superDistributorPercentage(new BigDecimal("0.1000"))
+                .enabled(true)
+                .build();
+
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+        when(bbpsCommissionConfigRepository.findByServiceIdAndPlan_PlanCode("agent-collection", "FREE"))
+                .thenReturn(Optional.of(acConfig));
+        when(commissionTransactionRepository.existsByOriginalTransactionId("BBPSAC_ROUNDING_001")).thenReturn(false);
+
+        BbpsTransaction bbpsTxn = new BbpsTransaction();
+        bbpsTxn.setId(UUID.randomUUID());
+        bbpsTxn.setCategory("Agent Collection");
+        bbpsTxn.setMerchantRefNo("BBPSAC_ROUNDING_001");
+        bbpsTxn.setAmount(new BigDecimal("1234.50"));
+        bbpsTxn.setStatus("SUCCESS");
+        bbpsTxn.setUser(retailer);
+
+        commissionService.processBbpsCommission(bbpsTxn);
+
+        ArgumentCaptor<BigDecimal> amountCaptor = ArgumentCaptor.forClass(BigDecimal.class);
+        verify(walletService, times(3)).creditForService(
+                any(),
+                amountCaptor.capture(),
+                anyString(),
+                eq(com.rupiksha.backend.domain.WalletTransactionContext.COMMISSION),
+                eq("BBPS Agent Collection"),
+                anyString(),
+                anyString()
+        );
+
+        List<BigDecimal> amounts = amountCaptor.getAllValues();
+        // Retailer: 1234.50 * 0.35 / 100 = 4.32075 -> rounded HALF_UP: 4.32
+        assertEquals(new BigDecimal("4.32"), amounts.get(0));
+        // Distributor: 1234.50 * 0.15 / 100 = 1.85175 -> rounded HALF_UP: 1.85
+        assertEquals(new BigDecimal("1.85"), amounts.get(1));
+        // Super Distributor: 1234.50 * 0.10 / 100 = 1.23450 -> rounded HALF_UP: 1.23
+        assertEquals(new BigDecimal("1.23"), amounts.get(2));
+    }
+
+    @Test
+    @DisplayName("Admin Commission Config Update for Agent Collection with Audit Trail and total <= 100% check")
+    void testUpdateBbpsConfig_AgentCollection_AdminSuccess() {
+        UUID configId = UUID.randomUUID();
+        BbpsCommissionConfig existingConfig = BbpsCommissionConfig.builder()
+                .id(configId)
+                .serviceId("agent-collection")
+                .serviceName("Agent Collection")
+                .commissionModel("PERCENTAGE")
+                .plan(freePlan)
+                .planCode("FREE")
+                .retailerPercentage(new BigDecimal("0.2000"))
+                .distributorPercentage(new BigDecimal("0.1000"))
+                .superDistributorPercentage(new BigDecimal("0.0500"))
+                .enabled(true)
+                .build();
+
+        when(userRepository.findById(adminUser.getId())).thenReturn(Optional.of(adminUser));
+        when(bbpsCommissionConfigRepository.findById(configId)).thenReturn(Optional.of(existingConfig));
+        when(bbpsCommissionConfigRepository.save(any(BbpsCommissionConfig.class))).thenAnswer(i -> i.getArgument(0));
+
+        CommissionDtos.UpdateBbpsConfigRequest req = new CommissionDtos.UpdateBbpsConfigRequest(
+                new BigDecimal("0.5000"),
+                new BigDecimal("0.2000"),
+                new BigDecimal("0.1000"),
+                true
+        );
+
+        CommissionDtos.BbpsCommissionConfigDto updated = commissionService.updateBbpsConfig(configId, req, adminUser.getId(), "192.168.1.1");
+
+        assertNotNull(updated);
+        assertEquals(new BigDecimal("0.5000"), updated.retailerPercentage());
+        assertEquals(new BigDecimal("0.2000"), updated.distributorPercentage());
+        assertEquals(new BigDecimal("0.1000"), updated.superDistributorPercentage());
+        assertEquals(new BigDecimal("0.8000"), updated.totalPercentage());
+        assertTrue(updated.enabled());
+
+        verify(bbpsCommissionConfigAuditRepository, times(1)).save(any(BbpsCommissionConfigAudit.class));
+    }
+
+    @Test
+    @DisplayName("Admin Commission Config Update rejected when user is not ADMIN")
+    void testUpdateBbpsConfig_NonAdmin_AccessDenied() {
+        UUID configId = UUID.randomUUID();
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+
+        CommissionDtos.UpdateBbpsConfigRequest req = new CommissionDtos.UpdateBbpsConfigRequest(
+                new BigDecimal("0.5000"),
+                new BigDecimal("0.2000"),
+                new BigDecimal("0.1000"),
+                true
+        );
+
+        assertThrows(AccessDeniedException.class, () ->
+                commissionService.updateBbpsConfig(configId, req, retailer.getId(), "127.0.0.1")
+        );
+        verify(bbpsCommissionConfigRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Admin Commission Config Update rejected when combined percentage exceeds 100%")
+    void testUpdateBbpsConfig_Exceeds100Percent_ThrowsException() {
+        UUID configId = UUID.randomUUID();
+        BbpsCommissionConfig existingConfig = BbpsCommissionConfig.builder()
+                .id(configId)
+                .serviceId("agent-collection")
+                .serviceName("Agent Collection")
+                .commissionModel("PERCENTAGE")
+                .plan(freePlan)
+                .planCode("FREE")
+                .retailerPercentage(new BigDecimal("0.2000"))
+                .distributorPercentage(new BigDecimal("0.1000"))
+                .superDistributorPercentage(new BigDecimal("0.0500"))
+                .enabled(true)
+                .build();
+
+        when(userRepository.findById(adminUser.getId())).thenReturn(Optional.of(adminUser));
+        when(bbpsCommissionConfigRepository.findById(configId)).thenReturn(Optional.of(existingConfig));
+
+        CommissionDtos.UpdateBbpsConfigRequest req = new CommissionDtos.UpdateBbpsConfigRequest(
+                new BigDecimal("60.0000"),
+                new BigDecimal("30.0000"),
+                new BigDecimal("20.0000"), // sum = 110%
+                true
+        );
+
+        assertThrows(IllegalArgumentException.class, () ->
+                commissionService.updateBbpsConfig(configId, req, adminUser.getId(), "127.0.0.1")
+        );
+        verify(bbpsCommissionConfigRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Automated reconciliation identifies and processes uncredited Agent Collection transactions")
+    void testReconcileUncreditedBbpsCommissions_AgentCollection() {
+        retailer.setAepsCommissionPlan(freePlan);
+
+        BbpsCommissionConfig acConfig = BbpsCommissionConfig.builder()
+                .serviceId("agent-collection")
+                .serviceName("Agent Collection")
+                .commissionModel("PERCENTAGE")
+                .plan(freePlan)
+                .planCode("FREE")
+                .retailerPercentage(new BigDecimal("0.2000"))
+                .distributorPercentage(new BigDecimal("0.1000"))
+                .superDistributorPercentage(new BigDecimal("0.0500"))
+                .enabled(true)
+                .build();
+
+        BbpsTransaction uncreditedTxn = new BbpsTransaction();
+        uncreditedTxn.setId(UUID.randomUUID());
+        uncreditedTxn.setCategory("Agent Collection");
+        uncreditedTxn.setMerchantRefNo("BBPSAC_RECON_001");
+        uncreditedTxn.setAmount(new BigDecimal("5000.00"));
+        uncreditedTxn.setStatus("SUCCESS");
+        uncreditedTxn.setUser(retailer);
+
+        when(bbpsTransactionRepository.findByStatus("SUCCESS")).thenReturn(List.of(uncreditedTxn));
+        when(commissionTransactionRepository.existsByOriginalTransactionId("BBPSAC_RECON_001"))
+                .thenReturn(false) // 1. reconcileUncreditedBbpsCommissions initial check
+                .thenReturn(false) // 2. processBbpsCommission idempotency safeguard
+                .thenReturn(true);  // 3. reconcileUncreditedBbpsCommissions post-credit confirmation check
+
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+        when(bbpsCommissionConfigRepository.findByServiceIdAndPlan_PlanCode("agent-collection", "FREE"))
+                .thenReturn(Optional.of(acConfig));
+
+        int reconciledCount = commissionService.reconcileUncreditedBbpsCommissions();
+
+        assertEquals(1, reconciledCount);
+        verify(walletService, times(3)).creditForService(
+                any(),
+                any(),
+                anyString(),
+                eq(com.rupiksha.backend.domain.WalletTransactionContext.COMMISSION),
+                eq("BBPS Agent Collection"),
+                anyString(),
+                anyString()
+        );
+    }
 }

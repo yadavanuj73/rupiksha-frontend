@@ -328,284 +328,10 @@ public class AgentCollectionBillerRegistry {
     }
 
     private void initBillers() {
-        // 1. Spandana Sphoorty Financial Limited
+        // 1. Bajaj Finance Limited Agent Collection
         add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("SPAN00000NAT01")
-                .billerName("Spandana Sphoorty Financial - Agent Collection")
-                .agencyName("Spandana Sphoorty Financial Ltd")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(100))
-                .maxAmount(BigDecimal.valueOf(200000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Agent Code").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build(),
-                        BbpsDtos.InputParamInfo.builder().paramName("Center ID").dataType("ALPHANUMERIC").optional(true).minLength(2).maxLength(20).build()
-                ))
-                .description("Microfinance field collection and group repayment deposits")
-                .build());
-
-        // 2. Swatantra Microfin
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("SWAT00000NAT01")
-                .billerName("Swatantra Microfin - Agent Collection")
-                .agencyName("Swatantra Microfin Pvt Ltd")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(100))
-                .maxAmount(BigDecimal.valueOf(200000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Agent ID").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build(),
-                        BbpsDtos.InputParamInfo.builder().paramName("Group Code").dataType("ALPHANUMERIC").optional(true).minLength(2).maxLength(20).build()
-                ))
-                .description("Swatantra Microfin field agent collection drop")
-                .build());
-
-        // 3. Fincare Small Finance Bank - Agent Collection
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("FICA00000NAT01")
-                .billerName("Fincare Small Finance Bank - Agent Collection")
-                .agencyName("Fincare Small Finance Bank")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(50))
-                .maxAmount(BigDecimal.valueOf(200000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Agent Code").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build()
-                ))
-                .description("Fincare field executive cash deposit collection")
-                .build());
-
-        // 4. Satin Creditcare Network
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("SATI00000NAT01")
-                .billerName("Satin Creditcare Network - Agent Collection")
-                .agencyName("Satin Creditcare Network Ltd")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(100))
-                .maxAmount(BigDecimal.valueOf(200000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Agent ID").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build(),
-                        BbpsDtos.InputParamInfo.builder().paramName("Branch Code").dataType("ALPHANUMERIC").optional(true).minLength(2).maxLength(15).build()
-                ))
-                .description("Satin Creditcare field collection and cash drop")
-                .build());
-
-        // 5. Sonata Finance
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("SONA00000NAT01")
-                .billerName("Sonata Finance - Agent Collection")
-                .agencyName("Sonata Finance Pvt Ltd")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(100))
-                .maxAmount(BigDecimal.valueOf(200000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Collector ID").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build()
-                ))
-                .description("Sonata microfinance loan recovery field collection")
-                .build());
-
-        // 6. Asirvad Microfinance
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("ASIR00000NAT01")
-                .billerName("Asirvad Microfinance - Agent Collection")
-                .agencyName("Asirvad Microfinance Ltd")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(100))
-                .maxAmount(BigDecimal.valueOf(200000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Agent ID").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build()
-                ))
-                .description("Asirvad microfinance field staff collection point")
-                .build());
-
-        // 7. Muthoot Microfin
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("MUTM00000NAT01")
-                .billerName("Muthoot Microfin - Agent Collection")
-                .agencyName("Muthoot Microfin Ltd")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(100))
-                .maxAmount(BigDecimal.valueOf(200000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Agent ID").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build(),
-                        BbpsDtos.InputParamInfo.builder().paramName("Center Code").dataType("ALPHANUMERIC").optional(true).minLength(2).maxLength(20).build()
-                ))
-                .description("Muthoot Microfin field officer cash deposit")
-                .build());
-
-        // 8. Arohan Financial Services
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("AROH00000NAT01")
-                .billerName("Arohan Financial Services - Agent Collection")
-                .agencyName("Arohan Financial Services Ltd")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(100))
-                .maxAmount(BigDecimal.valueOf(200000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("CSR ID").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build()
-                ))
-                .description("Arohan Customer Service Representative collection deposit")
-                .build());
-
-        // 9. Delhivery Field Agent Collection
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("DELH00000NAT01")
-                .billerName("Delhivery - Field Agent Collection")
-                .agencyName("Delhivery Ltd")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(50))
-                .maxAmount(BigDecimal.valueOf(200000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Delivery Agent ID").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(25).build()
-                ))
-                .description("Delhivery cash-on-delivery field rider cash drop")
-                .build());
-
-        // 10. Shadowfax Rider Cash Drop
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("SHAD00000NAT01")
-                .billerName("Shadowfax - Rider Collection")
-                .agencyName("Shadowfax Technologies")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(50))
-                .maxAmount(BigDecimal.valueOf(100000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Rider ID").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build()
-                ))
-                .description("Shadowfax logistics delivery partner cash deposit")
-                .build());
-
-        // 11. Porter Partner Collection
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("PORT00000NAT01")
-                .billerName("Porter - Partner Cash Collection")
-                .agencyName("SmartShift Logistics Solutions (Porter)")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(50))
-                .maxAmount(BigDecimal.valueOf(100000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Partner ID").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build()
-                ))
-                .description("Porter driver partner COD reconciliation drop")
-                .build());
-
-        // 12. Zomato Delivery Partner Collection
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("ZOMA00000NAT01")
-                .billerName("Zomato - Delivery Partner Collection")
-                .agencyName("Zomato Limited")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(50))
-                .maxAmount(BigDecimal.valueOf(100000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Rider ID").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build()
-                ))
-                .description("Zomato delivery partner cash float deposit")
-                .build());
-
-        // 13. Swiggy Delivery Partner Collection
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("SWIG00000NAT01")
-                .billerName("Swiggy - Delivery Partner Collection")
-                .agencyName("Bundl Technologies (Swiggy)")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(50))
-                .maxAmount(BigDecimal.valueOf(100000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("DE ID").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build()
-                ))
-                .description("Swiggy Delivery Executive cash collection reconciliation")
-                .build());
-
-        // 14. Ekart Logistics Field Agent Collection
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("EKAR00000NAT01")
-                .billerName("Ekart Logistics - Field Agent Collection")
-                .agencyName("Instakart Services (Ekart)")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(50))
-                .maxAmount(BigDecimal.valueOf(200000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Agent ID").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(25).build()
-                ))
-                .description("Ekart logistics delivery boy COD remittance drop")
-                .build());
-
-        // 15. L&T Finance - Collection
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("LNTF00000NAT01")
-                .billerName("L&T Finance - Agent Collection")
-                .agencyName("L&T Finance Holdings Ltd")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(100))
-                .maxAmount(BigDecimal.valueOf(200000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Agent Code").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build()
-                ))
-                .description("L&T Finance two-wheeler & micro-loan field collection")
-                .build());
-
-        // 16. Bajaj Finance - Agent Collection
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("BAJA00000NAT01")
-                .billerName("Bajaj Finance - Agent Collection")
+                .billerId("BAJA00000NAT9L")
+                .billerName("Bajaj Finance Limited Agent Collection")
                 .agencyName("Bajaj Finance Limited")
                 .category("Agent Collection")
                 .billerFetchRequirement("OPTIONAL")
@@ -613,263 +339,69 @@ public class AgentCollectionBillerRegistry {
                 .supportBillValidation("OPTIONAL")
                 .billerAdhoc(true)
                 .minAmount(BigDecimal.valueOf(100))
-                .maxAmount(BigDecimal.valueOf(200000))
+                .maxAmount(BigDecimal.valueOf(500000))
                 .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Agent ID").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build()
+                        BbpsDtos.InputParamInfo.builder().paramName("Agent ID").dataType("ALPHANUMERIC").optional(false).minLength(3).maxLength(30).build(),
+                        BbpsDtos.InputParamInfo.builder().paramName("Collection Reference Number").dataType("ALPHANUMERIC").optional(true).minLength(2).maxLength(30).build()
                 ))
-                .description("Bajaj Finance field collection agent deposit")
+                .description("Bajaj Finance field agent cash collection and recovery deposit")
                 .build());
 
-        // 17. Cholamandalam Investment - Agent Collection
+        // 2. DMI Housing Finance Pvt Ltd
         add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("CHOL00000NAT01")
-                .billerName("Cholamandalam Investment - Agent Collection")
-                .agencyName("Cholamandalam Investment and Finance Co Ltd")
+                .billerId("DMIH00020NATNH")
+                .billerName("DMI Housing Finance Pvt Ltd")
+                .agencyName("DMI Housing Finance Private Limited")
                 .category("Agent Collection")
                 .billerFetchRequirement("OPTIONAL")
                 .billerPaymentExactness("Exact and above")
                 .supportBillValidation("OPTIONAL")
                 .billerAdhoc(true)
                 .minAmount(BigDecimal.valueOf(100))
-                .maxAmount(BigDecimal.valueOf(200000))
+                .maxAmount(BigDecimal.valueOf(500000))
                 .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Agent ID").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build()
+                        BbpsDtos.InputParamInfo.builder().paramName("Agent Code").dataType("ALPHANUMERIC").optional(false).minLength(3).maxLength(30).build(),
+                        BbpsDtos.InputParamInfo.builder().paramName("Collection Reference Number").dataType("ALPHANUMERIC").optional(true).minLength(2).maxLength(30).build()
                 ))
-                .description("Chola vehicle and LAP collection agent drop")
+                .description("DMI Housing Finance field collection and loan recovery")
                 .build());
 
-        // 18. Shriram Finance - Agent Collection
+        // 3. HDB Financial Agent Services
         add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("SHRE00000NAT01")
-                .billerName("Shriram Finance - Agent Collection")
-                .agencyName("Shriram Finance Limited")
+                .billerId("HDBF00019NATJC")
+                .billerName("HDB Financial Agent Services")
+                .agencyName("HDB Financial Services Limited")
                 .category("Agent Collection")
                 .billerFetchRequirement("OPTIONAL")
                 .billerPaymentExactness("Exact and above")
                 .supportBillValidation("OPTIONAL")
                 .billerAdhoc(true)
                 .minAmount(BigDecimal.valueOf(100))
-                .maxAmount(BigDecimal.valueOf(200000))
+                .maxAmount(BigDecimal.valueOf(500000))
                 .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Agent ID").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build()
+                        BbpsDtos.InputParamInfo.builder().paramName("Agent Code").dataType("ALPHANUMERIC").optional(false).minLength(3).maxLength(30).build(),
+                        BbpsDtos.InputParamInfo.builder().paramName("Collection Reference Number").dataType("ALPHANUMERIC").optional(true).minLength(2).maxLength(30).build()
                 ))
-                .description("Shriram commercial vehicle recovery collection")
+                .description("HDB Financial Services field agent collection services")
                 .build());
 
-        // 19. Mahindra Finance - Agent Collection
+        // 4. Hiranandani Financial Services Pvt Ltd
         add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("MAHI00000NAT01")
-                .billerName("Mahindra Finance - Agent Collection")
-                .agencyName("Mahindra & Mahindra Financial Services Ltd")
+                .billerId("HIRA00027NAT83")
+                .billerName("Hiranandani Financial Services Pvt Ltd")
+                .agencyName("Hiranandani Financial Services Private Limited")
                 .category("Agent Collection")
                 .billerFetchRequirement("OPTIONAL")
                 .billerPaymentExactness("Exact and above")
                 .supportBillValidation("OPTIONAL")
                 .billerAdhoc(true)
                 .minAmount(BigDecimal.valueOf(100))
-                .maxAmount(BigDecimal.valueOf(200000))
+                .maxAmount(BigDecimal.valueOf(500000))
                 .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Executive Code").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build()
+                        BbpsDtos.InputParamInfo.builder().paramName("Agent Code").dataType("ALPHANUMERIC").optional(false).minLength(3).maxLength(30).build(),
+                        BbpsDtos.InputParamInfo.builder().paramName("Collection Reference Number").dataType("ALPHANUMERIC").optional(true).minLength(2).maxLength(30).build()
                 ))
-                .description("Mahindra Finance rural field recovery executive drop")
-                .build());
-
-        // 20. Tata Capital - Agent Collection
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("TATA00000NAT01")
-                .billerName("Tata Capital - Agent Collection")
-                .agencyName("Tata Capital Financial Services Ltd")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(100))
-                .maxAmount(BigDecimal.valueOf(200000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Agent ID").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build()
-                ))
-                .description("Tata Capital loan field agent collection remittance")
-                .build());
-
-        // 21. HDB Financial Services
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("HDBF00000NAT01")
-                .billerName("HDB Financial Services - Agent Collection")
-                .agencyName("HDB Financial Services Ltd")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(100))
-                .maxAmount(BigDecimal.valueOf(200000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Agent Code").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build()
-                ))
-                .description("HDB Financial consumer loan recovery deposit")
-                .build());
-
-        // 22. Aditya Birla Finance
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("ADIT00000NAT01")
-                .billerName("Aditya Birla Finance - Agent Collection")
-                .agencyName("Aditya Birla Finance Limited")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(100))
-                .maxAmount(BigDecimal.valueOf(200000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Collector ID").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build()
-                ))
-                .description("Aditya Birla Capital loan collection point")
-                .build());
-
-        // 23. Kotak Mahindra Prime
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("KOTF00000NAT01")
-                .billerName("Kotak Mahindra Prime - Agent Collection")
-                .agencyName("Kotak Mahindra Prime Ltd")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(100))
-                .maxAmount(BigDecimal.valueOf(200000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Executive ID").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build()
-                ))
-                .description("Kotak Prime car and two-wheeler finance recovery")
-                .build());
-
-        // 24. IDFC Bharat Banking
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("IDFC00000NAT01")
-                .billerName("IDFC FIRST Bharat Banking - Agent Collection")
-                .agencyName("IDFC FIRST Bank (Bharat Banking)")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(50))
-                .maxAmount(BigDecimal.valueOf(200000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Bharat Agent ID").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build()
-                ))
-                .description("IDFC FIRST micro-banking business correspondent deposit")
-                .build());
-
-        // 25. Annapurna Finance
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("ANNAP0000NAT01")
-                .billerName("Annapurna Finance - Agent Collection")
-                .agencyName("Annapurna Finance Pvt Ltd")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(100))
-                .maxAmount(BigDecimal.valueOf(200000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Agent ID").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build()
-                ))
-                .description("Annapurna rural micro-credit field collection")
-                .build());
-
-        // 26. Belstar Microfinance
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("BELST0000NAT01")
-                .billerName("Belstar Microfinance - Agent Collection")
-                .agencyName("Belstar Microfinance Ltd")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(100))
-                .maxAmount(BigDecimal.valueOf(200000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Agent Code").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build()
-                ))
-                .description("Belstar self-help group loan collection drop")
-                .build());
-
-        // 27. Midland Microfin
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("MIDLA0000NAT01")
-                .billerName("Midland Microfin - Agent Collection")
-                .agencyName("Midland Microfin Ltd")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(100))
-                .maxAmount(BigDecimal.valueOf(200000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Agent ID").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build()
-                ))
-                .description("Midland Microfin northern region field remittance")
-                .build());
-
-        // 28. Svamaan Financial Services
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("SVATR0000NAT01")
-                .billerName("Svamaan Financial Services - Agent Collection")
-                .agencyName("Svamaan Financial Services Pvt Ltd")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(100))
-                .maxAmount(BigDecimal.valueOf(200000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Agent ID").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build()
-                ))
-                .description("Svamaan micro-enterprise loan recovery deposit")
-                .build());
-
-        // 29. Five-Star Business Finance
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("FIVEL0000NAT01")
-                .billerName("Five-Star Business Finance - Agent Collection")
-                .agencyName("Five-Star Business Finance Ltd")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(100))
-                .maxAmount(BigDecimal.valueOf(200000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Collection Agent ID").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build()
-                ))
-                .description("Five-Star MSME business loan recovery field collection")
-                .build());
-
-        // 30. CreditAccess Grameen
-        add(BbpsDtos.AgentCollectionBillerInfo.builder()
-                .billerId("CRED00000NAT01")
-                .billerName("CreditAccess Grameen - Agent Collection")
-                .agencyName("CreditAccess Grameen Limited")
-                .category("Agent Collection")
-                .billerFetchRequirement("OPTIONAL")
-                .billerPaymentExactness("Exact and above")
-                .supportBillValidation("OPTIONAL")
-                .billerAdhoc(true)
-                .minAmount(BigDecimal.valueOf(100))
-                .maxAmount(BigDecimal.valueOf(200000))
-                .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Kendra / Agent ID").dataType("ALPHANUMERIC").optional(false).minLength(4).maxLength(20).build()
-                ))
-                .description("CreditAccess Grameen Kendra loan collection cash point")
+                .description("Hiranandani Financial Services agent collection and field recovery")
                 .build());
     }
 }

@@ -839,7 +839,7 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
         };
     }, [selectedBbpsServiceId]);
 
-    const isServiceActive = (bbpsConfigs.length > 0 && bbpsConfigs.some(c => c.enabled)) || selectedBbpsServiceId === 'loan-repayment' || selectedBbpsServiceId === 'electricity' || selectedBbpsServiceId === 'fastag';
+    const isServiceActive = (bbpsConfigs.length > 0 && bbpsConfigs.some(c => c.enabled)) || selectedBbpsServiceId === 'loan-repayment' || selectedBbpsServiceId === 'electricity' || selectedBbpsServiceId === 'fastag' || selectedBbpsServiceId === 'agent-collection';
 
     const renderCommissionModelDropdown = () => {
         const currentModel = COMMISSION_MODELS.find(m => m.id === commissionModel) || COMMISSION_MODELS[0];
@@ -1592,7 +1592,7 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
                                                 <option value="" disabled>-- Choose BBPS Service --</option>
                                                 {BBPS_CATEGORIES.map(cat => (
                                                     <option key={cat.id} value={cat.id}>
-                                                        {cat.name} {(cat.id === 'loan-repayment' || cat.id === 'electricity' || cat.id === 'fastag') ? '(Active)' : ''}
+                                                        {cat.name} {(cat.id === 'loan-repayment' || cat.id === 'electricity' || cat.id === 'fastag' || cat.id === 'agent-collection') ? '(Active)' : ''}
                                                     </option>
                                                 ))}
                                             </select>
@@ -1607,7 +1607,7 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
                                 <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-700" />
                                 <input
                                     type="text"
-                                    placeholder="Search BBPS services by name, category, or keyword (e.g. Loan Repayment, Fastag, DTH, Electricity)..."
+                                    placeholder="Search BBPS services by name, category, or keyword (e.g. Agent Collection, Loan Repayment, FASTag, Electricity)..."
                                     value={bbpsSearch}
                                     onChange={(e) => setBbpsSearch(e.target.value)}
                                     className="w-full pl-11 pr-10 py-3.5 bg-slate-50/80 border border-slate-300 rounded-2xl text-xs sm:text-sm font-bold text-black placeholder:text-slate-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all shadow-2xs"
@@ -1628,7 +1628,7 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
                                 <div className="p-12 text-center text-slate-800 border border-dashed border-slate-300 rounded-3xl space-y-2">
                                     <Search size={32} className="mx-auto text-slate-600 mb-2" />
                                     <p className="text-base font-black text-black">No BBPS services found matching &ldquo;{bbpsSearch}&rdquo;</p>
-                                    <p className="text-xs font-bold text-slate-800">Try searching for Fastag, Electricity, Water, Gas, or Loan Repayment.</p>
+                                    <p className="text-xs font-bold text-slate-800">Try searching for Agent Collection, Fastag, Electricity, Water, Gas, or Loan Repayment.</p>
                                     <button
                                         type="button"
                                         onClick={() => setBbpsSearch('')}
@@ -1640,7 +1640,7 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
                             ) : (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
                                     {filteredBbpsCategories.map((cat, index) => {
-                                        const isServiceReady = cat.id === 'loan-repayment' || cat.id === 'electricity' || cat.id === 'fastag';
+                                        const isServiceReady = cat.id === 'loan-repayment' || cat.id === 'electricity' || cat.id === 'fastag' || cat.id === 'agent-collection';
                                         const isSelected = cat.id === selectedBbpsServiceId;
                                         const IconComp = cat.icon || HandCoins;
                                         const gradient = cat.gradient || 'from-indigo-500 to-blue-600';
@@ -1840,7 +1840,7 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
                                                 >
                                                     {BBPS_CATEGORIES.map(cat => (
                                                         <option key={cat.id} value={cat.id}>
-                                                            Switch to: {cat.name} {(cat.id === 'loan-repayment' || cat.id === 'electricity' || cat.id === 'fastag') ? '(Active)' : ''}
+                                                            Switch to: {cat.name} {(cat.id === 'loan-repayment' || cat.id === 'electricity' || cat.id === 'fastag' || cat.id === 'agent-collection') ? '(Active)' : ''}
                                                         </option>
                                                     ))}
                                                 </select>
@@ -2382,6 +2382,7 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
                                 <option value="BBPS_FASTAG">BBPS (FASTag)</option>
                                 <option value="BBPS_LOAN_REPAYMENT">BBPS (Loan Repayment)</option>
                                 <option value="BBPS_ELECTRICITY">BBPS (Electricity)</option>
+                                <option value="BBPS_AGENT_COLLECTION">BBPS (Agent Collection)</option>
                                 <option value="MOBILE_RECHARGE">Mobile Recharge</option>
                             </select>
 

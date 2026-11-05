@@ -1319,21 +1319,32 @@ class BbpsServiceImplTest {
     // ==========================================
 
     @Test
-    @DisplayName("Agent Collection billers query returns registered billers and filters by search")
+    @DisplayName("Agent Collection billers query returns the 4 official registered billers and filters by search")
     void testGetAgentCollectionBillers_SuccessAndSearch() {
         List<BbpsDtos.AgentCollectionBillerInfo> allBillers = bbpsService.getAgentCollectionBillers(null);
         assertNotNull(allBillers);
-        assertTrue(allBillers.size() >= 30, "Expected at least 30 pre-seeded billers");
+        assertEquals(4, allBillers.size(), "Expected exactly 4 official registered billers");
 
-        List<BbpsDtos.AgentCollectionBillerInfo> filtered = bbpsService.getAgentCollectionBillers("Spandana");
-        assertNotNull(filtered);
-        assertFalse(filtered.isEmpty());
-        assertTrue(filtered.get(0).getBillerName().contains("Spandana"));
+        List<BbpsDtos.AgentCollectionBillerInfo> bajaj = bbpsService.getAgentCollectionBillers("Bajaj");
+        assertNotNull(bajaj);
+        assertEquals(1, bajaj.size());
+        assertEquals("BAJA00000NAT9L", bajaj.get(0).getBillerId());
+        assertEquals("Bajaj Finance Limited Agent Collection", bajaj.get(0).getBillerName());
 
-        List<BbpsDtos.AgentCollectionBillerInfo> logistics = bbpsService.getAgentCollectionBillers("Delhivery");
-        assertNotNull(logistics);
-        assertFalse(logistics.isEmpty());
-        assertEquals("DELH00000NAT01", logistics.get(0).getBillerId());
+        List<BbpsDtos.AgentCollectionBillerInfo> dmi = bbpsService.getAgentCollectionBillers("DMI");
+        assertNotNull(dmi);
+        assertEquals(1, dmi.size());
+        assertEquals("DMIH00020NATNH", dmi.get(0).getBillerId());
+
+        List<BbpsDtos.AgentCollectionBillerInfo> hdb = bbpsService.getAgentCollectionBillers("HDB");
+        assertNotNull(hdb);
+        assertEquals(1, hdb.size());
+        assertEquals("HDBF00019NATJC", hdb.get(0).getBillerId());
+
+        List<BbpsDtos.AgentCollectionBillerInfo> hira = bbpsService.getAgentCollectionBillers("Hiranandani");
+        assertNotNull(hira);
+        assertEquals(1, hira.size());
+        assertEquals("HIRA00027NAT83", hira.get(0).getBillerId());
     }
 
     @Test
@@ -1343,18 +1354,18 @@ class BbpsServiceImplTest {
         when(userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)).thenReturn(Optional.empty());
 
         BbpsDtos.AgentCollectionFetchRequest fetchReq = new BbpsDtos.AgentCollectionFetchRequest();
-        fetchReq.setBillerId("SPAN00000NAT01");
+        fetchReq.setBillerId("BAJA00000NAT9L");
         fetchReq.setCustomerMobile("9876543210");
         fetchReq.setCustomerParams(java.util.Map.of(
-                "Agent Code", "AG-776655",
+                "Agent ID", "AG-776655",
                 "Collection Reference Number", "REF-2026-99"
         ));
 
         BbpsDtos.BillFetchResult result = bbpsService.fetchAgentCollectionBill(userId, fetchReq, "127.0.0.1");
         assertNotNull(result);
         assertTrue(result.isSuccess());
-        assertEquals("SPAN00000NAT01", result.getBillerId());
-        assertTrue(result.getBillerName().contains("Spandana"));
+        assertEquals("BAJA00000NAT9L", result.getBillerId());
+        assertTrue(result.getBillerName().contains("Bajaj Finance"));
     }
 
     @Test
@@ -1388,14 +1399,14 @@ class BbpsServiceImplTest {
         when(billAvenueClient.payBillXml(any())).thenReturn(payResp);
 
         BbpsDtos.AgentCollectionPayRequest payReq = new BbpsDtos.AgentCollectionPayRequest();
-        payReq.setBillerId("SPAN00000NAT01");
+        payReq.setBillerId("BAJA00000NAT9L");
         payReq.setCustomerMobile("9876543210");
         payReq.setAgentCode("AG-776655");
         payReq.setCollectionRef("REF-2026-99");
         payReq.setCustomerName("Ramesh Kumar");
         payReq.setAmount(new BigDecimal("2500.00"));
         payReq.setIdempotencyKey("AC-IDEM-SUCCESS-01");
-        payReq.setCustomerParams(java.util.Map.of("Agent Code", "AG-776655"));
+        payReq.setCustomerParams(java.util.Map.of("Agent ID", "AG-776655"));
 
         BbpsDtos.AgentCollectionPayResponse response = bbpsService.payAgentCollectionBill(userId, payReq, "127.0.0.1");
 
@@ -1425,12 +1436,12 @@ class BbpsServiceImplTest {
         when(walletService.getBalance(userId.toString())).thenReturn(mockBalance(new BigDecimal("500.00"), new BigDecimal("500.00")));
 
         BbpsDtos.AgentCollectionPayRequest payReq = new BbpsDtos.AgentCollectionPayRequest();
-        payReq.setBillerId("SPAN00000NAT01");
+        payReq.setBillerId("BAJA00000NAT9L");
         payReq.setCustomerMobile("9876543210");
         payReq.setAgentCode("AG-776655");
         payReq.setAmount(new BigDecimal("2500.00"));
         payReq.setIdempotencyKey("AC-IDEM-INSUFFICIENT-01");
-        payReq.setCustomerParams(java.util.Map.of("Agent Code", "AG-776655"));
+        payReq.setCustomerParams(java.util.Map.of("Agent ID", "AG-776655"));
 
         IllegalStateException ex = assertThrows(IllegalStateException.class, () -> {
             bbpsService.payAgentCollectionBill(userId, payReq, "127.0.0.1");
@@ -1472,12 +1483,12 @@ class BbpsServiceImplTest {
         when(billAvenueClient.payBillXml(any())).thenReturn(failResp);
 
         BbpsDtos.AgentCollectionPayRequest payReq = new BbpsDtos.AgentCollectionPayRequest();
-        payReq.setBillerId("SPAN00000NAT01");
+        payReq.setBillerId("BAJA00000NAT9L");
         payReq.setCustomerMobile("9876543210");
         payReq.setAgentCode("AG-INVALID");
         payReq.setAmount(new BigDecimal("2500.00"));
         payReq.setIdempotencyKey("AC-IDEM-FAIL-01");
-        payReq.setCustomerParams(java.util.Map.of("Agent Code", "AG-INVALID"));
+        payReq.setCustomerParams(java.util.Map.of("Agent ID", "AG-INVALID"));
 
         BbpsDtos.AgentCollectionPayResponse response = bbpsService.payAgentCollectionBill(userId, payReq, "127.0.0.1");
 
@@ -1519,12 +1530,12 @@ class BbpsServiceImplTest {
         when(billAvenueClient.payBillXml(any())).thenThrow(new BillAvenueTimeoutException("Read timeout to BillAvenue gateway", null));
 
         BbpsDtos.AgentCollectionPayRequest payReq = new BbpsDtos.AgentCollectionPayRequest();
-        payReq.setBillerId("SPAN00000NAT01");
+        payReq.setBillerId("BAJA00000NAT9L");
         payReq.setCustomerMobile("9876543210");
         payReq.setAgentCode("AG-776655");
         payReq.setAmount(new BigDecimal("2500.00"));
         payReq.setIdempotencyKey("AC-IDEM-TIMEOUT-01");
-        payReq.setCustomerParams(java.util.Map.of("Agent Code", "AG-776655"));
+        payReq.setCustomerParams(java.util.Map.of("Agent ID", "AG-776655"));
 
         BbpsDtos.AgentCollectionPayResponse response = bbpsService.payAgentCollectionBill(userId, payReq, "127.0.0.1");
 
@@ -1552,8 +1563,8 @@ class BbpsServiceImplTest {
         existing.setAgentCode("AG-776655");
         existing.setCollectionRef("REF-2026-99");
         existing.setAgentName("Ramesh Kumar");
-        existing.setBillerId("SPAN00000NAT01");
-        existing.setBillerName("Spandana Sphoorty Financial Limited");
+        existing.setBillerId("BAJA00000NAT9L");
+        existing.setBillerName("Bajaj Finance Limited Agent Collection");
         existing.setIdempotencyKey("AC-IDEM-DUPLICATE-01");
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
@@ -1562,12 +1573,12 @@ class BbpsServiceImplTest {
         when(walletService.getBalance(userId.toString())).thenReturn(mockBalance(new BigDecimal("10000.00"), new BigDecimal("10000.00")));
 
         BbpsDtos.AgentCollectionPayRequest payReq = new BbpsDtos.AgentCollectionPayRequest();
-        payReq.setBillerId("SPAN00000NAT01");
+        payReq.setBillerId("BAJA00000NAT9L");
         payReq.setCustomerMobile("9876543210");
         payReq.setAgentCode("AG-776655");
         payReq.setAmount(new BigDecimal("2500.00"));
         payReq.setIdempotencyKey("AC-IDEM-DUPLICATE-01");
-        payReq.setCustomerParams(java.util.Map.of("Agent Code", "AG-776655"));
+        payReq.setCustomerParams(java.util.Map.of("Agent ID", "AG-776655"));
 
         BbpsDtos.AgentCollectionPayResponse response = bbpsService.payAgentCollectionBill(userId, payReq, "127.0.0.1");
 

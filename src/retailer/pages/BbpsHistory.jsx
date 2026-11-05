@@ -20,6 +20,7 @@ const STATUS_CONFIG = {
 
 const CATEGORY_TABS = [
     { id: 'ALL', label: 'All Services' },
+    { id: 'Agent Collection', label: 'Agent Collection', icon: Users },
     { id: 'FASTag', label: 'FASTag', icon: CarFront },
     { id: 'Electricity', label: 'Electricity', icon: Zap },
     { id: 'Loan Repayment', label: 'Loan Repayment', icon: HandCoins },
@@ -144,7 +145,181 @@ const BbpsHistory = () => {
         return () => clearTimeout(handler);
     }, [searchQuery]);
 
+        const [exporting, setExporting] = useState(false);
+
+    // Fetch all matching records for export
+    const fetchExportData = async () => {
+        try {
+            const params = {
+                page: 0,
+                size: 1000,
+                category: categoryFilter !== 'ALL' ? categoryFilter : undefined,
+                status: statusFilter !== 'ALL' ? statusFilter : undefined,
+                search: debouncedSearch || undefined
+            };
+            const res = await bbpsService.getHistory(params);
+            return (res && res.content) ? res.content : transactions;
+        } catch (e) {
+            console.error('Failed to fetch full export dataset, fallback to current page', e);
+            return transactions;
+        }
+    };
+
+    const handleExportExcel = async () => {
+        setExporting(true);
+        try {
+            const data = await fetchExportData();
+            if (!data || data.length === 0) {
+                alert('No transaction records available to export.');
+                return;
+            }
+            const rows = data.map((item, idx) => ({
+                '#': idx + 1,
+                'Date & Time': item.createdAt ? new Date(item.createdAt).toLocaleString('en-IN') : 'N/A',
+                'Transaction ID': item.merchantRefNo || item.id,
+                'Category': isAgentCollectionTxn(item) ? 'Agent Collection' : (item.category || 'BBPS'),
+                'Biller / Provider': item.billerName || '—',
+                'Agent Code / ID': item.agentCode || item.consumerNumber || item.vehicleNumber || item.mobileNumber || '—',
+                'Collection Ref': item.collectionRef || '—',
+                'Customer / Agent': item.agentName || item.customerName || '—',
+                'Amount (INR)': Number(item.amount || 0).toFixed(2),
+                'Status': item.status || '—',
+                'Provider Ref': item.providerTxnId || item.approvalRefNo || '—'
+            }));
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'BBPS Transactions');
+            const dateStr = new Date().toISOString().slice(0, 10);
+            XLSX.writeFile(wb, `BBPS_Transactions_${categoryFilter}_${dateStr}.xlsx`);
+        } catch (err) {
+            console.error('Excel export error:', err);
+            alert('Failed to export Excel.');
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    const handleExportCsv = async () => {
+        setExporting(true);
+        try {
+            const data = await fetchExportData();
+            if (!data || data.length === 0) {
+                alert('No transaction records available to export.');
+                return;
+            }
+            const headers = ['#', 'Date & Time', 'Transaction ID', 'Category', 'Biller', 'Identifier / Agent Code', 'Collection Ref', 'Name', 'Amount', 'Status', 'Provider Ref'];
+            const csvRows = [headers.join(',')];
+            data.forEach((item, idx) => {
+                const row = [
+                    idx + 1,
+                    `"${item.createdAt ? new Date(item.createdAt).toLocaleString('en-IN') : 'N/A'}"`,
+                    `"${item.merchantRefNo || item.id}"`,
+                    `"${isAgentCollectionTxn(item) ? 'Agent Collection' : (item.category || 'BBPS')}"`,
+                    `"${(item.billerName || '').replace(/"/g, '""')}"`,
+                    `"${item.agentCode || item.consumerNumber || item.vehicleNumber || item.mobileNumber || ''}"`,
+                    `"${item.collectionRef || ''}"`,
+                    `"${(item.agentName || item.customerName || '').replace(/"/g, '""')}"`,
+                    Number(item.amount || 0).toFixed(2),
+                    `"${item.status || ''}"`,
+                    `"${item.providerTxnId || item.approvalRefNo || ''}"`
+                ];
+                csvRows.push(row.join(','));
+            });
+            const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `BBPS_Transactions_${new Date().toISOString().slice(0, 10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (err) {
+            console.error('CSV export error:', err);
+            alert('Failed to export CSV.');
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    const handleExportPdf = async () => {
+        setExporting(true);
+        try {
+            const data = await fetchExportData();
+            if (!data || data.length === 0) {
+                alert('No transaction records available to export.');
+                return;
+            }
+            const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(14);
+            pdf.setTextColor(15, 23, 42);
+            pdf.text('Rupiksha Services - BBPS Transaction History Report', 14, 15);
+            pdf.setFontSize(9);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(100, 116, 139);
+            pdf.text(`Generated: ${new Date().toLocaleString('en-IN')} | Category: ${categoryFilter} | Records: ${data.length}`, 14, 21);
+
+            let y = 30;
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(8);
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFillColor(37, 99, 235);
+            pdf.rect(14, y, 269, 7, 'F');
+            pdf.text('Date', 16, y + 5);
+            pdf.text('Transaction ID', 45, y + 5);
+            pdf.text('Category', 85, y + 5);
+            pdf.text('Biller Name', 120, y + 5);
+            pdf.text('Agent Code / ID', 170, y + 5);
+            pdf.text('Amount (INR)', 215, y + 5);
+            pdf.text('Status', 245, y + 5);
+
+            y += 8;
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(7.5);
+            pdf.setTextColor(15, 23, 42);
+
+            data.slice(0, 50).forEach((item, i) => {
+                if (y > 185) {
+                    pdf.addPage();
+                    y = 20;
+                }
+                const dateStr = item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-IN') : '—';
+                const idStr = String(item.merchantRefNo || item.id || '').substring(0, 18);
+                const catStr = isAgentCollectionTxn(item) ? 'Agent Collection' : (item.category || 'BBPS').substring(0, 15);
+                const billerStr = String(item.billerName || '—').substring(0, 24);
+                const idNumStr = String(item.agentCode || item.consumerNumber || item.vehicleNumber || '—').substring(0, 18);
+                const amtStr = 'Rs. ' + Number(item.amount || 0).toFixed(2);
+                const stStr = String(item.status || '—');
+
+                if (i % 2 === 1) {
+                    pdf.setFillColor(248, 250, 252);
+                    pdf.rect(14, y - 4, 269, 6, 'F');
+                }
+                pdf.text(dateStr, 16, y);
+                pdf.text(idStr, 45, y);
+                pdf.text(catStr, 85, y);
+                pdf.text(billerStr, 120, y);
+                pdf.text(idNumStr, 170, y);
+                pdf.text(amtStr, 215, y);
+                pdf.text(stStr, 245, y);
+                y += 6;
+            });
+
+            pdf.save(`BBPS_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
+        } catch (err) {
+            console.error('PDF export error:', err);
+            alert('Failed to export PDF.');
+        } finally {
+            setExporting(false);
+        }
+    };
+
+
+
+
     // Fetch transactions
+
+
     const fetchHistory = useCallback(async () => {
         setLoading(true);
         setError(null);

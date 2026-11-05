@@ -17,52 +17,19 @@ import { primeBharatConnectSound, playBharatConnectSuccessSound } from '../../..
 
 // Official Bharat Connect Agent Collection Billers (BillAvenue Version 2.8.7)
 const DEFAULT_COLLECTION_BILLERS = [
-    { billerId: 'SPAN00000NAT01', billerName: 'Spandana Sphoorty Financial - Agent Collection', agencyName: 'Spandana Sphoorty Financial Ltd', paramName: 'Agent Code' },
-    { billerId: 'SWAT00000NAT01', billerName: 'Swatantra Microfin - Agent Collection', agencyName: 'Swatantra Microfin Pvt Ltd', paramName: 'Agent ID' },
-    { billerId: 'FICA00000NAT01', billerName: 'Fincare Small Finance Bank - Agent Collection', agencyName: 'Fincare Small Finance Bank', paramName: 'Agent Code' },
-    { billerId: 'SATI00000NAT01', billerName: 'Satin Creditcare Network - Agent Collection', agencyName: 'Satin Creditcare Network Ltd', paramName: 'Agent ID' },
-    { billerId: 'DELH00000NAT01', billerName: 'Delhivery - Field Agent Collection', agencyName: 'Delhivery Ltd', paramName: 'Delivery Agent ID' },
-    { billerId: 'SHAD00000NAT01', billerName: 'Shadowfax - Rider Collection', agencyName: 'Shadowfax Technologies', paramName: 'Rider ID' },
-    { billerId: 'PORT00000NAT01', billerName: 'Porter - Partner Cash Collection', agencyName: 'SmartShift Logistics Solutions (Porter)', paramName: 'Partner ID' },
-    { billerId: 'ZOMA00000NAT01', billerName: 'Zomato - Delivery Partner Collection', agencyName: 'Zomato Limited', paramName: 'Rider ID' },
-    { billerId: 'SWIG00000NAT01', billerName: 'Swiggy - Delivery Partner Collection', agencyName: 'Bundl Technologies (Swiggy)', paramName: 'DE ID' },
-    { billerId: 'EKAR00000NAT01', billerName: 'Ekart Logistics - Field Agent Collection', agencyName: 'Instakart Services (Ekart)', paramName: 'Agent ID' },
-    { billerId: 'LNTF00000NAT01', billerName: 'L&T Finance - Agent Collection', agencyName: 'L&T Finance Holdings Ltd', paramName: 'Agent Code' },
-    { billerId: 'BAJA00000NAT01', billerName: 'Bajaj Finance - Agent Collection', agencyName: 'Bajaj Finance Limited', paramName: 'Agent ID' },
-    { billerId: 'CHOL00000NAT01', billerName: 'Cholamandalam Investment - Agent Collection', agencyName: 'Cholamandalam Investment and Finance', paramName: 'Agent ID' },
-    { billerId: 'SHRE00000NAT01', billerName: 'Shriram Finance - Agent Collection', agencyName: 'Shriram Finance Limited', paramName: 'Agent ID' },
-    { billerId: 'MAHI00000NAT01', billerName: 'Mahindra Finance - Agent Collection', agencyName: 'Mahindra & Mahindra Financial Services', paramName: 'Executive Code' },
-    { billerId: 'TATA00000NAT01', billerName: 'Tata Capital - Agent Collection', agencyName: 'Tata Capital Financial Services', paramName: 'Agent ID' },
-    { billerId: 'HDBF00000NAT01', billerName: 'HDB Financial Services - Agent Collection', agencyName: 'HDB Financial Services Ltd', paramName: 'Agent Code' },
-    { billerId: 'ADIT00000NAT01', billerName: 'Aditya Birla Finance - Agent Collection', agencyName: 'Aditya Birla Finance Limited', paramName: 'Collector ID' },
-    { billerId: 'KOTF00000NAT01', billerName: 'Kotak Mahindra Prime - Agent Collection', agencyName: 'Kotak Mahindra Prime Ltd', paramName: 'Executive ID' },
-    { billerId: 'IDFC00000NAT01', billerName: 'IDFC FIRST Bharat Banking - Agent Collection', agencyName: 'IDFC FIRST Bank', paramName: 'Bharat Agent ID' },
-    { billerId: 'SONA00000NAT01', billerName: 'Sonata Finance - Agent Collection', agencyName: 'Sonata Finance Pvt Ltd', paramName: 'Collector ID' },
-    { billerId: 'ASIR00000NAT01', billerName: 'Asirvad Microfinance - Agent Collection', agencyName: 'Asirvad Microfinance Ltd', paramName: 'Agent ID' },
-    { billerId: 'MUTM00000NAT01', billerName: 'Muthoot Microfin - Agent Collection', agencyName: 'Muthoot Microfin Ltd', paramName: 'Agent ID' },
-    { billerId: 'AROH00000NAT01', billerName: 'Arohan Financial Services - Agent Collection', agencyName: 'Arohan Financial Services Ltd', paramName: 'CSR ID' },
-    { billerId: 'ANNAP0000NAT01', billerName: 'Annapurna Finance - Agent Collection', agencyName: 'Annapurna Finance Pvt Ltd', paramName: 'Agent ID' },
-    { billerId: 'BELST0000NAT01', billerName: 'Belstar Microfinance - Agent Collection', agencyName: 'Belstar Microfinance Ltd', paramName: 'Agent Code' },
-    { billerId: 'MIDLA0000NAT01', billerName: 'Midland Microfin - Agent Collection', agencyName: 'Midland Microfin Ltd', paramName: 'Agent ID' },
-    { billerId: 'SVATR0000NAT01', billerName: 'Svamaan Financial Services - Agent Collection', agencyName: 'Svamaan Financial Services Pvt Ltd', paramName: 'Agent ID' },
-    { billerId: 'FIVEL0000NAT01', billerName: 'Five-Star Business Finance - Agent Collection', agencyName: 'Five-Star Business Finance Ltd', paramName: 'Collection Agent ID' },
-    { billerId: 'CRED00000NAT01', billerName: 'CreditAccess Grameen - Agent Collection', agencyName: 'CreditAccess Grameen Limited', paramName: 'Kendra / Agent ID' }
+    { billerId: 'BAJA00000NAT9L', billerName: 'Bajaj Finance Limited Agent Collection', agencyName: 'Bajaj Finance Limited', paramName: 'Agent ID' },
+    { billerId: 'DMIH00020NATNH', billerName: 'DMI Housing Finance Pvt Ltd', agencyName: 'DMI Housing Finance Private Limited', paramName: 'Agent Code' },
+    { billerId: 'HDBF00019NATJC', billerName: 'HDB Financial Agent Services', agencyName: 'HDB Financial Services Limited', paramName: 'Agent Code' },
+    { billerId: 'HIRA00027NAT83', billerName: 'Hiranandani Financial Services Pvt Ltd', agencyName: 'Hiranandani Financial Services Private Limited', paramName: 'Agent Code' }
 ];
 
 // Popular Agent Collection quick chips
 const POPULAR_COLLECTIONS = [
     { label: 'All', query: '' },
-    { label: 'Spandana', query: 'Spandana' },
-    { label: 'Swatantra', query: 'Swatantra' },
-    { label: 'Fincare', query: 'Fincare' },
-    { label: 'Delhivery', query: 'Delhivery' },
-    { label: 'Shadowfax', query: 'Shadowfax' },
-    { label: 'Porter', query: 'Porter' },
-    { label: 'Zomato', query: 'Zomato' },
-    { label: 'Swiggy', query: 'Swiggy' },
-    { label: 'L&T Finance', query: 'L&T' },
     { label: 'Bajaj Finance', query: 'Bajaj' },
-    { label: 'Satin', query: 'Satin' }
+    { label: 'DMI Housing', query: 'DMI' },
+    { label: 'HDB Financial', query: 'HDB' },
+    { label: 'Hiranandani', query: 'Hiranandani' }
 ];
 
 // Quick collection amount presets
