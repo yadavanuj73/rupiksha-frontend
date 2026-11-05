@@ -229,6 +229,10 @@ const AgentCollectionFlow = ({ onBack, category }) => {
         return Object.keys(errors).length === 0;
     };
 
+    // Common agent identifier and collection reference
+    const mainCode = customerParams['Agent Code'] || customerParams['Agent ID'] || customerParams['Collector ID'] || customerParams['Delivery Agent ID'] || customerParams['Rider ID'] || Object.values(customerParams)[0] || '';
+    const centerCode = customerParams['Center ID'] || customerParams['Group Code'] || customerParams['Branch Code'] || '';
+
     // Fetch bill / dues
     const handleFetchBill = async () => {
         if (!validateInputs()) return;
@@ -287,9 +291,6 @@ const AgentCollectionFlow = ({ onBack, category }) => {
         setIsSubmitting(true);
         setFormError('');
 
-        const mainCode = customerParams['Agent Code'] || customerParams['Agent ID'] || customerParams['Collector ID'] || customerParams['Delivery Agent ID'] || customerParams['Rider ID'] || Object.values(customerParams)[0] || '';
-        const centerCode = customerParams['Center ID'] || customerParams['Group Code'] || customerParams['Branch Code'] || '';
-
         try {
             const payload = {
                 billerId: selectedBiller.billerId,
@@ -299,7 +300,7 @@ const AgentCollectionFlow = ({ onBack, category }) => {
                 convenienceFee: 0,
                 agentCode: mainCode,
                 collectionRef: centerCode,
-                customerName: fetchedBill?.customerName || `Agent ${mainCode}`,
+                customerName: fetchedBill?.customerName || (mainCode ? `Agent ${mainCode}` : 'Agent Collection'),
                 billNumber: fetchedBill?.billNumber,
                 billDate: fetchedBill?.billDate,
                 dueDate: fetchedBill?.dueDate,
@@ -606,23 +607,104 @@ const AgentCollectionFlow = ({ onBack, category }) => {
                                 </div>
                             )}
 
-                            {/* Fetched Bill Info Banner */}
+                            {/* Fetched Account & Bill Verification Card */}
                             {fetchedBill && (
-                                <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-2">
-                                    <div className="flex items-center justify-between text-xs">
-                                        <span className="font-bold text-slate-600">Account / Name:</span>
-                                        <span className="font-black text-black">{fetchedBill.customerName || 'Verified Agent'}</span>
-                                    </div>
-                                    {fetchedBill.billAmount > 0 && (
-                                        <div className="flex items-center justify-between text-xs">
-                                            <span className="font-bold text-slate-600">Outstanding Balance:</span>
-                                            <span className="font-black text-emerald-800 font-mono">₹{fetchedBill.billAmount.toFixed(2)}</span>
+                                <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-50/90 via-slate-50 to-white border border-emerald-200 shadow-xs space-y-3">
+                                    <div className="flex items-center justify-between border-b border-emerald-200/60 pb-2.5">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-7 h-7 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-2xs">
+                                                <BadgeCheck className="w-4 h-4" />
+                                            </div>
+                                            <div>
+                                                <div className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+                                                    <span>Account Verified</span>
+                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                                        Active Biller
+                                                    </span>
+                                                </div>
+                                                <div className="text-[11px] font-bold text-slate-500">
+                                                    {fetchedBill.billerName || selectedBiller?.billerName}
+                                                </div>
+                                            </div>
                                         </div>
-                                    )}
-                                    {fetchedBill.dueDate && (
-                                        <div className="flex items-center justify-between text-xs">
-                                            <span className="font-bold text-slate-600">Due Date:</span>
-                                            <span className="font-bold text-slate-800">{fetchedBill.dueDate}</span>
+                                        {fetchedBill.fetchRequestId && (
+                                            <span className="text-[10px] font-mono font-bold text-slate-400 hidden sm:inline">
+                                                ID: {fetchedBill.fetchRequestId.slice(-8)}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {/* Account & Details Grid */}
+                                    <div className="space-y-1.5 text-xs">
+                                        {/* Customer / Agent Name */}
+                                        <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                                            <span className="font-bold text-slate-600">Customer / Agent Name:</span>
+                                            {fetchedBill.customerName ? (
+                                                <span className="font-black text-black text-right">{fetchedBill.customerName}</span>
+                                            ) : (
+                                                <span className="font-bold text-slate-500 italic text-right">Not provided by biller (Verified Account)</span>
+                                            )}
+                                        </div>
+
+                                        {/* Agent Code / ID */}
+                                        <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                                            <span className="font-bold text-slate-600">Agent Code / ID:</span>
+                                            <span className="font-black font-mono text-black">{fetchedBill.consumerNumber || mainCode || 'Verified'}</span>
+                                        </div>
+
+                                        {/* Collection Reference if available */}
+                                        {centerCode && (
+                                            <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                                                <span className="font-bold text-slate-600">Collection Ref:</span>
+                                                <span className="font-black font-mono text-black">{centerCode}</span>
+                                            </div>
+                                        )}
+
+                                        {/* Due Date if available */}
+                                        {fetchedBill.dueDate && (
+                                            <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                                                <span className="font-bold text-slate-600">Due Date:</span>
+                                                <span className="font-black text-amber-700">{fetchedBill.dueDate}</span>
+                                            </div>
+                                        )}
+
+                                        {/* Bill Number if available */}
+                                        {fetchedBill.billNumber && (
+                                            <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                                                <span className="font-bold text-slate-600">Bill Number:</span>
+                                                <span className="font-mono font-bold text-slate-800">{fetchedBill.billNumber}</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Due Amount vs No Bill Due Display */}
+                                    {fetchedBill.billAmount && Number(fetchedBill.billAmount) > 0 ? (
+                                        <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-between">
+                                            <div>
+                                                <div className="text-[11px] font-black text-amber-900 uppercase tracking-wide">
+                                                    Outstanding Bill Due
+                                                </div>
+                                                <div className="text-base font-black text-amber-700 font-mono mt-0.5">
+                                                    ₹{Number(fetchedBill.billAmount).toFixed(2)}
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setCollectionAmount(String(fetchedBill.billAmount))}
+                                                className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-black text-xs cursor-pointer shadow-xs transition"
+                                            >
+                                                Apply Due Amount
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="p-3 rounded-xl bg-emerald-100/70 border border-emerald-300 text-emerald-950 text-xs space-y-1">
+                                            <div className="flex items-center gap-1.5 font-black text-emerald-900">
+                                                <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                                                <span>No Bill Due • Flexible Collection Deposit</span>
+                                            </div>
+                                            <p className="text-[11px] text-emerald-800 font-medium leading-relaxed">
+                                                No overdue bill on this account. You can enter any collection amount to deposit below.
+                                            </p>
                                         </div>
                                     )}
                                 </div>

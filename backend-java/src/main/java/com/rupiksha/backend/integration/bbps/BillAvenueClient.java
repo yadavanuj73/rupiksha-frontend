@@ -1284,23 +1284,30 @@ public class BillAvenueClient {
         // 1. Check billerResponse first
         if (billerResp != null) {
             val = findFirstTagValue(billerResp, "customerName", "CustomerName", "RespCustomerName", "respCustomerName",
-                    "consumerName", "ConsumerName", "userName", "accountHolderName", "customer_name", "consumer_name");
+                    "consumerName", "ConsumerName", "userName", "accountHolderName", "customer_name", "consumer_name",
+                    "agentName", "AgentName", "RespAgentName", "respAgentName", "agent_name",
+                    "collectorName", "CollectorName", "collector_name", "accountName", "beneficiaryName",
+                    "clientName", "borrowerName", "employeeName", "staffName");
         }
         // 2. Check directly under root (<billFetchResponse>)
         if ((val == null || val.isBlank() || "NA".equalsIgnoreCase(val.trim())) && root != null) {
             val = findFirstTagValue(root, "customerName", "CustomerName", "RespCustomerName", "respCustomerName",
-                    "consumerName", "ConsumerName", "userName", "accountHolderName", "customer_name", "consumer_name");
+                    "consumerName", "ConsumerName", "userName", "accountHolderName", "customer_name", "consumer_name",
+                    "agentName", "AgentName", "RespAgentName", "respAgentName", "agent_name",
+                    "collectorName", "CollectorName", "collector_name", "accountName", "beneficiaryName",
+                    "clientName", "borrowerName", "employeeName", "staffName");
         }
         // 3. Check inside additionalInfo items
         if ((val == null || val.isBlank() || "NA".equalsIgnoreCase(val.trim())) && items != null) {
             for (BillAvenueDtos.InfoItem item : items) {
                 if (item == null || item.getInfoName() == null || item.getInfoValue() == null) continue;
                 String k = item.getInfoName().trim().toLowerCase();
-                if (k.equals("customer name") || k.equals("consumer name") ||
-                    k.equals("customername") || k.equals("consumername") ||
-                    k.equals("account holder name") || k.equals("accountholdername") ||
-                    k.equals("user name") || k.equals("subscriber name") ||
-                    k.equals("name") || k.contains("consumer name") || k.contains("customer name")) {
+                if (k.contains("customer name") || k.contains("consumer name") ||
+                    k.contains("agent name") || k.contains("collector name") ||
+                    k.contains("account holder") || k.contains("subscriber name") ||
+                    k.contains("beneficiary name") || k.contains("borrower name") ||
+                    k.contains("client name") || k.contains("staff name") || k.contains("employee name") ||
+                    k.equals("user name") || k.equals("name") || k.equals("agent") || k.equals("collector")) {
                     String candidate = item.getInfoValue().trim();
                     if (!candidate.isBlank() && !"NA".equalsIgnoreCase(candidate)) {
                         val = candidate;
@@ -1311,7 +1318,7 @@ public class BillAvenueClient {
         }
         // 4. Regex scan on raw XML as safety net
         if ((val == null || val.isBlank() || "NA".equalsIgnoreCase(val.trim())) && xmlStr != null && !xmlStr.isBlank()) {
-            Pattern p = Pattern.compile("<(?:Resp)?(?:Customer|Consumer|User)Name>([^<]+)<", Pattern.CASE_INSENSITIVE);
+            Pattern p = Pattern.compile("<(?:Resp)?(?:Customer|Consumer|User|Agent|Collector|Borrower|Staff)Name>([^<]+)<", Pattern.CASE_INSENSITIVE);
             Matcher m = p.matcher(xmlStr);
             if (m.find()) {
                 String candidate = m.group(1).trim();

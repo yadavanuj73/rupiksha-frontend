@@ -4037,10 +4037,10 @@ public class BbpsServiceImpl implements BbpsService {
         }
 
         if (fetchResp != null && fetchResp.isSuccess()) {
-            BigDecimal billAmount = BigDecimal.ZERO;
-            if (fetchResp.getBillAmountPaise() > 0) {
-                billAmount = BigDecimal.valueOf(fetchResp.getBillAmountPaise()).divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
-            }
+            boolean isNoBillDue = fetchResp.isNoBillDue() || fetchResp.getBillAmountPaise() <= 0;
+            BigDecimal billAmount = isNoBillDue
+                    ? BigDecimal.ZERO
+                    : BigDecimal.valueOf(fetchResp.getBillAmountPaise()).divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
 
             List<BbpsDtos.InfoItemDto> addnlDtos = new ArrayList<>();
             if (fetchResp.getAdditionalInfo() != null) {
@@ -4049,18 +4049,30 @@ public class BbpsServiceImpl implements BbpsService {
                 }
             }
 
+            String custName = (fetchResp.getCustomerName() != null && !fetchResp.getCustomerName().isBlank() && !"NA".equalsIgnoreCase(fetchResp.getCustomerName().trim()))
+                    ? fetchResp.getCustomerName().trim()
+                    : null;
+
+            String message = isNoBillDue
+                    ? "Payment received / No bill due for this billing period"
+                    : "Bill fetched successfully";
+
             return BbpsDtos.BillFetchResult.builder()
                     .success(true)
+                    .noBillDue(isNoBillDue)
                     .billerId(biller.getBillerId())
                     .billerName(biller.getBillerName())
-                    .customerName(fetchResp.getCustomerName() != null ? fetchResp.getCustomerName() : "Agent " + (agentCode != null ? agentCode : ""))
+                    .consumerNumber(agentCode)
+                    .customerName(custName)
                     .billAmount(billAmount)
                     .billDate(fetchResp.getBillDate())
                     .dueDate(fetchResp.getDueDate())
                     .billNumber(fetchResp.getBillNumber())
                     .billPeriod(fetchResp.getBillPeriod())
                     .fetchRequestId(fetchResp.getFetchRequestId())
+                    .customerParams(request.getCustomerParams())
                     .additionalInfo(addnlDtos)
+                    .message(message)
                     .build();
         }
 
@@ -4068,11 +4080,15 @@ public class BbpsServiceImpl implements BbpsService {
         String generatedRequestId = com.rupiksha.backend.integration.bbps.util.BillAvenueCryptoUtil.generateRequestId();
         return BbpsDtos.BillFetchResult.builder()
                 .success(true)
+                .noBillDue(true)
                 .billerId(biller.getBillerId())
                 .billerName(biller.getBillerName())
-                .customerName("Agent " + (agentCode != null ? agentCode : ""))
+                .consumerNumber(agentCode)
+                .customerName(null)
                 .billAmount(BigDecimal.ZERO)
                 .fetchRequestId(generatedRequestId)
+                .customerParams(request.getCustomerParams())
+                .message("No bill due. Flexible collection amount accepted.")
                 .build();
     }
 
