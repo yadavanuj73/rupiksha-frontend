@@ -10,6 +10,7 @@ import ElectricityFlow from './ElectricityFlow';
 import LoanRepaymentFlow from './LoanRepaymentFlow';
 import CreditCardFlow from './CreditCardFlow';
 import FastagFlow from './FastagFlow';
+import AgentCollectionFlow from './AgentCollectionFlow';
 import BbpsServiceNav from './BbpsServiceNav';
 
 const BbpsCategoryDetail = ({ category, onBack }) => {
@@ -37,6 +38,10 @@ const BbpsCategoryDetail = ({ category, onBack }) => {
 
     if (category.id === 'fastag' || category.id === 'FASTag') {
         return <FastagFlow onBack={onBack} category={category} />;
+    }
+
+    if (category.id === 'agent-collection' || category.id === 'agent_collection') {
+        return <AgentCollectionFlow onBack={onBack} category={category} />;
     }
 
     const Icon = category.icon;

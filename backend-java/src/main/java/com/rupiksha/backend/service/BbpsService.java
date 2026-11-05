@@ -25,6 +25,9 @@ public interface BbpsService {
     List<BbpsDtos.FastagBillerInfo> getFastagBillers(String search);
     BbpsDtos.BillFetchResult fetchFastagBill(UUID userId, BbpsDtos.FastagFetchRequest request, String clientIp);
     BbpsDtos.FastagPayResponse payFastagBill(UUID userId, BbpsDtos.FastagPayRequest request, String clientIp);
+    List<BbpsDtos.AgentCollectionBillerInfo> getAgentCollectionBillers(String search);
+    BbpsDtos.BillFetchResult fetchAgentCollectionBill(UUID userId, BbpsDtos.AgentCollectionFetchRequest request, String clientIp);
+    BbpsDtos.AgentCollectionPayResponse payAgentCollectionBill(UUID userId, BbpsDtos.AgentCollectionPayRequest request, String clientIp);
     BbpsDtos.HistoryResponse getHistory(UUID userId, String category, String status, String search, Instant startDate, Instant endDate, Pageable pageable);
     default BbpsDtos.HistoryResponse getHistory(UUID userId, String status, String search, Instant startDate, Instant endDate, Pageable pageable) {
         return getHistory(userId, null, status, search, startDate, endDate, pageable);

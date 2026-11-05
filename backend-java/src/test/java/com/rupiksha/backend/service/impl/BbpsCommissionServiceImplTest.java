@@ -1191,4 +1191,57 @@ public class BbpsCommissionServiceImplTest {
         // Super Distributor: 0.20% of ₹5,000 = ₹10.00
         assertEquals(new BigDecimal("10.00"), amounts.get(2));
     }
+
+    @Test
+    @DisplayName("Process Agent Collection percentage commission distribution across full hierarchy (Retailer, Distributor, Super Distributor)")
+    void testProcessBbpsCommission_AgentCollection_FullHierarchy() {
+        retailer.setAepsCommissionPlan(freePlan);
+
+        BbpsCommissionConfig acConfig = BbpsCommissionConfig.builder()
+                .serviceId("agent-collection")
+                .serviceName("Agent Collection")
+                .commissionModel("PERCENTAGE")
+                .plan(freePlan)
+                .planCode("FREE")
+                .retailerPercentage(new BigDecimal("0.2000"))
+                .distributorPercentage(new BigDecimal("0.1000"))
+                .superDistributorPercentage(new BigDecimal("0.0500"))
+                .enabled(true)
+                .build();
+
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+        when(bbpsCommissionConfigRepository.findByServiceIdAndPlan_PlanCode("agent-collection", "FREE"))
+                .thenReturn(Optional.of(acConfig));
+        when(commissionTransactionRepository.existsByOriginalTransactionId("BBPSAC_2026_001")).thenReturn(false);
+
+        BbpsTransaction bbpsTxn = new BbpsTransaction();
+        bbpsTxn.setId(UUID.randomUUID());
+        bbpsTxn.setCategory("Agent Collection");
+        bbpsTxn.setMerchantRefNo("BBPSAC_2026_001");
+        bbpsTxn.setAmount(new BigDecimal("10000.00"));
+        bbpsTxn.setStatus("SUCCESS");
+        bbpsTxn.setUser(retailer);
+
+        commissionService.processBbpsCommission(bbpsTxn);
+
+        ArgumentCaptor<BigDecimal> amountCaptor = ArgumentCaptor.forClass(BigDecimal.class);
+        verify(walletService, times(3)).creditForService(
+                any(),
+                amountCaptor.capture(),
+                anyString(),
+                eq(com.rupiksha.backend.domain.WalletTransactionContext.COMMISSION),
+                eq("BBPS Agent Collection"),
+                anyString(),
+                anyString()
+        );
+
+        List<BigDecimal> amounts = amountCaptor.getAllValues();
+        // Retailer: 0.20% of 10,000 = 20.00
+        assertEquals(new BigDecimal("20.00"), amounts.get(0));
+        // Distributor: 0.10% of 10,000 = 10.00
+        assertEquals(new BigDecimal("10.00"), amounts.get(1));
+        // Super Distributor: 0.05% of 10,000 = 5.00
+        assertEquals(new BigDecimal("5.00"), amounts.get(2));
+    }
+
 }

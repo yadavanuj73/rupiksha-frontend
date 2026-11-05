@@ -56,6 +56,7 @@ const RetailerLayout = () => {
         if (path === '/upi-cash-history' || path === '/reports/upi-cash-history' || reportType === 'upi_cash_history' || reportType === 'upi_cash_withdrawal') return 'upi_cash_history';
         if (path === '/bbps-history' || path === '/reports/bbps' || reportType === 'bbps') {
             if (location.search && location.search.toLowerCase().includes('fastag')) return 'fastag';
+            if (location.search && (location.search.toLowerCase().includes('agent-collection') || location.search.toLowerCase().includes('agent_collection') || location.search.toLowerCase().includes('collection'))) return 'agent_collection';
             return 'bbps';
         }
         if (path.startsWith('/reports')) {
@@ -165,6 +166,18 @@ const RetailerLayout = () => {
 
         if (tab === 'bbps' || tab === 'bbps_history') {
             navigate('/bbps-history');
+            setShowMobileSidebar(false);
+            return;
+        }
+
+        if (tab === 'fastag') {
+            navigate('/bbps-history?category=FASTag');
+            setShowMobileSidebar(false);
+            return;
+        }
+
+        if (tab === 'agent_collection' || tab === 'agent-collection') {
+            navigate('/bbps-history?category=Agent+Collection');
             setShowMobileSidebar(false);
             return;
         }

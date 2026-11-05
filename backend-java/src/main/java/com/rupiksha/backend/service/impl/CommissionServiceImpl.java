@@ -855,6 +855,10 @@ public class CommissionServiceImpl implements CommissionService {
             serviceDisplayName = "FASTag";
             serviceType = "BBPS_FASTAG";
             bbpsCategory = "FASTag";
+        } else if ("agent-collection".equalsIgnoreCase(serviceId) || "agent_collection".equalsIgnoreCase(serviceId)) {
+            serviceDisplayName = "Agent Collection";
+            serviceType = "BBPS_AGENT_COLLECTION";
+            bbpsCategory = "Agent Collection";
         } else {
             serviceDisplayName = serviceId;
             serviceType = "BBPS_" + serviceId.toUpperCase().replace('-', '_');
@@ -1063,6 +1067,9 @@ public class CommissionServiceImpl implements CommissionService {
         if (cat.equals("fastag") || cat.equals("fast-tag") || cat.equals("fast tag") || cat.equals("toll")) {
             return "fastag";
         }
+        if (cat.equals("agent collection") || cat.equals("agent-collection") || cat.equals("agent_collection") || cat.equals("collection")) {
+            return "agent-collection";
+        }
         return null;
     }
 
@@ -1209,7 +1216,7 @@ public class CommissionServiceImpl implements CommissionService {
                         .findFirst()
                         .orElse(sId);
 
-                boolean isPreSeeded = "loan-repayment".equalsIgnoreCase(sId) || "electricity".equalsIgnoreCase(sId) || "fastag".equalsIgnoreCase(sId);
+                boolean isPreSeeded = "loan-repayment".equalsIgnoreCase(sId) || "electricity".equalsIgnoreCase(sId) || "fastag".equalsIgnoreCase(sId) || "agent-collection".equalsIgnoreCase(sId);
 
                 for (CommissionPlan plan : plans) {
                     BigDecimal ret = isPreSeeded ? getDefaultPercentage(plan.getPlanCode(), "RETAILER") : BigDecimal.ZERO;

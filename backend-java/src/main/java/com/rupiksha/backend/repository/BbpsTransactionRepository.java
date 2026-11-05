@@ -20,7 +20,7 @@ public interface BbpsTransactionRepository extends JpaRepository<BbpsTransaction
 
     @Query("SELECT b FROM BbpsTransaction b WHERE (:userId IS NULL OR b.user.id = :userId) " +
            "AND (:status IS NULL OR b.status = :status) " +
-           "AND (:category IS NULL OR b.category = :category OR (lower(:category) = 'electricity' AND lower(b.category) IN ('electricity', 'prepaid meter')) OR (lower(:category) IN ('credit card', 'credit-card', 'creditcard') AND lower(b.category) IN ('credit card', 'creditcard')) OR (lower(:category) IN ('fastag', 'fast-tag', 'fast tag') AND lower(b.category) IN ('fastag', 'fast-tag', 'fast tag'))) " +
+           "AND (:category IS NULL OR b.category = :category OR (lower(:category) = 'electricity' AND lower(b.category) IN ('electricity', 'prepaid meter')) OR (lower(:category) IN ('credit card', 'credit-card', 'creditcard') AND lower(b.category) IN ('credit card', 'creditcard')) OR (lower(:category) IN ('fastag', 'fast-tag', 'fast tag') AND lower(b.category) IN ('fastag', 'fast-tag', 'fast tag')) OR (lower(:category) IN ('agent collection', 'agent-collection', 'agent_collection', 'collection') AND lower(b.category) IN ('agent collection', 'agent-collection', 'agent_collection', 'collection'))) " +
            "AND (cast(:startDate as timestamp) IS NULL OR b.createdAt >= :startDate) " +
            "AND (cast(:endDate as timestamp) IS NULL OR b.createdAt <= :endDate) " +
            "AND (:search IS NULL OR " +
@@ -28,6 +28,9 @@ public interface BbpsTransactionRepository extends JpaRepository<BbpsTransaction
            "     lower(coalesce(b.consumerNumber, '')) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
            "     lower(coalesce(b.vehicleNumber, '')) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
            "     lower(coalesce(b.fastagTagId, '')) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "     lower(coalesce(b.agentCode, '')) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "     lower(coalesce(b.collectionRef, '')) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
+           "     lower(coalesce(b.agentName, '')) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
            "     lower(coalesce(b.loanAccountNumber, '')) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
            "     lower(coalesce(b.cardLastFour, '')) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
            "     lower(coalesce(b.cardIssuer, '')) LIKE concat('%', lower(cast(:search as string)), '%') OR " +
@@ -46,7 +49,7 @@ public interface BbpsTransactionRepository extends JpaRepository<BbpsTransaction
     );
 
     @Query("SELECT COUNT(b) FROM BbpsTransaction b WHERE (:userId IS NULL OR b.user.id = :userId) " +
-           "AND (:category IS NULL OR b.category = :category OR (lower(:category) = 'electricity' AND lower(b.category) IN ('electricity', 'prepaid meter')) OR (lower(:category) IN ('credit card', 'credit-card', 'creditcard') AND lower(b.category) IN ('credit card', 'creditcard')) OR (lower(:category) IN ('fastag', 'fast-tag', 'fast tag') AND lower(b.category) IN ('fastag', 'fast-tag', 'fast tag'))) " +
+           "AND (:category IS NULL OR b.category = :category OR (lower(:category) = 'electricity' AND lower(b.category) IN ('electricity', 'prepaid meter')) OR (lower(:category) IN ('credit card', 'credit-card', 'creditcard') AND lower(b.category) IN ('credit card', 'creditcard')) OR (lower(:category) IN ('fastag', 'fast-tag', 'fast tag') AND lower(b.category) IN ('fastag', 'fast-tag', 'fast tag')) OR (lower(:category) IN ('agent collection', 'agent-collection', 'agent_collection', 'collection') AND lower(b.category) IN ('agent collection', 'agent-collection', 'agent_collection', 'collection'))) " +
            "AND (:status IS NULL OR b.status = :status)")
     long countByUserCategoryAndStatus(@Param("userId") UUID userId, @Param("category") String category, @Param("status") String status);
 

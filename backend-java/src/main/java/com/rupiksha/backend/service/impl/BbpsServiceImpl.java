@@ -16,6 +16,7 @@ import com.rupiksha.backend.integration.bbps.ElectricityBillerRegistry;
 import com.rupiksha.backend.integration.bbps.LoanBillerRegistry;
 import com.rupiksha.backend.integration.bbps.CreditCardBillerRegistry;
 import com.rupiksha.backend.integration.bbps.FastagBillerRegistry;
+import com.rupiksha.backend.integration.bbps.AgentCollectionBillerRegistry;
 import com.rupiksha.backend.service.WalletService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +48,7 @@ public class BbpsServiceImpl implements BbpsService {
     private final LoanBillerRegistry loanBillerRegistry;
     private final CreditCardBillerRegistry creditCardBillerRegistry;
     private final FastagBillerRegistry fastagBillerRegistry;
+    private final AgentCollectionBillerRegistry agentCollectionBillerRegistry;
     private final com.rupiksha.backend.service.CommissionService commissionService;
     private final ObjectMapper objectMapper;
     private final Map<String, BillAvenueDtos.BillFetchResponse> fetchCache = new java.util.concurrent.ConcurrentHashMap<>();
@@ -2856,6 +2858,9 @@ public class BbpsServiceImpl implements BbpsService {
                 .statementDate(txn.getStatementDate())
                 .vehicleNumber(txn.getVehicleNumber())
                 .fastagTagId(txn.getFastagTagId())
+                .agentCode(txn.getAgentCode())
+                .collectionRef(txn.getCollectionRef())
+                .agentName(txn.getAgentName())
                 .createdAt(txn.getCreatedAt())
                 .completedAt(txn.getCompletedAt())
                 .build();
@@ -3922,6 +3927,588 @@ public class BbpsServiceImpl implements BbpsService {
         ));
 
         return variations;
+    }
+
+    // ── AGENT COLLECTION SERVICE METHODS ──────────────────────────────────────────
+
+    @Override
+    public List<BbpsDtos.AgentCollectionBillerInfo> getAgentCollectionBillers(String search) {
+        return agentCollectionBillerRegistry.getAllBillers(search);
+    }
+
+    @Override
+    public BbpsDtos.BillFetchResult fetchAgentCollectionBill(UUID userId, BbpsDtos.AgentCollectionFetchRequest request, String clientIp) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        boolean isServiceEnabled = userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)
+                .map(UserService::getIsEnabled)
+                .orElse(true);
+
+        if (!isServiceEnabled) {
+            log.warn("BBPS service disabled for user: {}", userId);
+            throw new IllegalStateException("BBPS service is disabled for your account by administrator");
+        }
+
+        if (request.getCustomerMobile() == null || !request.getCustomerMobile().matches("^[6-9]\\d{9}$")) {
+            throw new IllegalArgumentException("Valid 10-digit Indian mobile number starting with 6-9 is required");
+        }
+
+        BbpsDtos.AgentCollectionBillerInfo biller = agentCollectionBillerRegistry.findById(request.getBillerId())
+                .orElseThrow(() -> new IllegalArgumentException("Unknown or unmapped Agent Collection institution: " + request.getBillerId()));
+
+        // Sync with BillAvenue MDM Biller Info API if available (cached in-memory per 24h quota)
+        try {
+            BillAvenueDtos.BillerInfoResponse mdm = billAvenueClient.fetchBillerInfo(biller.getBillerId());
+            if (mdm != null && mdm.isSuccess() && mdm.getInputParams() != null && !mdm.getInputParams().isEmpty()) {
+                agentCollectionBillerRegistry.updateFromMdm(biller.getBillerId(), mdm);
+                biller = agentCollectionBillerRegistry.findById(biller.getBillerId()).orElse(biller);
+            }
+        } catch (Exception mdmEx) {
+            log.warn("MDM lookup error for Agent Collection biller {}: {}", biller.getBillerId(), mdmEx.getMessage());
+        }
+
+        agentCollectionBillerRegistry.validateCustomerParams(biller, request.getCustomerParams());
+        String agentCode = agentCollectionBillerRegistry.extractAgentCode(request.getCustomerParams());
+        String collectionRef = agentCollectionBillerRegistry.extractCollectionRef(request.getCustomerParams());
+
+        String sanitizedIp = (clientIp != null && clientIp.matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"))
+                ? clientIp : "103.108.7.127";
+
+        String initChannel = "AGT";
+        String customerMobile = request.getCustomerMobile().trim();
+        String userEmail = (user.getEmail() != null && !user.getEmail().isBlank()) ? user.getEmail().trim() : "customer@rupiksha.in";
+
+        List<BillAvenueDtos.InputParam> inputs = agentCollectionBillerRegistry.buildAgentCollectionInputParams(
+                biller, request.getCustomerParams(), request.getCustomerMobile());
+
+        // Check if bill fetch is NOT_SUPPORTED by the biller
+        boolean isFetchSupported = !"NOT_SUPPORTED".equalsIgnoreCase(biller.getBillerFetchRequirement());
+
+        BillAvenueDtos.BillFetchResponse fetchResp = null;
+        if (isFetchSupported) {
+            try {
+                fetchResp = billAvenueClient.fetchBill(
+                        biller.getBillerId(),
+                        inputs,
+                        customerMobile,
+                        sanitizedIp,
+                        initChannel,
+                        userEmail
+                );
+            } catch (Exception ex) {
+                log.warn("Initial Agent Collection bill fetch failed: {}. Attempting fallback parameter variations.", ex.getMessage());
+            }
+
+            // Parameter variation retry if initial fetch returned E135 / parameter mismatch or failed
+            if (fetchResp == null || isE135Error(fetchResp) || (!fetchResp.isSuccess() && !fetchResp.isNoBillDue())) {
+                List<List<BillAvenueDtos.InputParam>> variations = agentCollectionBillerRegistry.generateParameterVariations(agentCode, collectionRef, customerMobile);
+                for (List<BillAvenueDtos.InputParam> varInputs : variations) {
+                    try {
+                        log.info("Retrying Agent Collection bill fetch with parameter variation for {}: {}", biller.getBillerId(), varInputs);
+                        BillAvenueDtos.BillFetchResponse retryResp = billAvenueClient.fetchBill(
+                                biller.getBillerId(),
+                                varInputs,
+                                customerMobile,
+                                sanitizedIp,
+                                initChannel,
+                                userEmail
+                        );
+                        if (retryResp != null && !isE135Error(retryResp)) {
+                            fetchResp = retryResp;
+                            inputs = varInputs;
+                            log.info("Agent Collection bill fetch variation accepted by biller {} with params: {}",
+                                    biller.getBillerId(), varInputs);
+                            break;
+                        }
+                    } catch (Exception retryEx) {
+                        log.debug("Agent Collection variation attempt failed: {}", retryEx.getMessage());
+                    }
+                }
+            }
+        }
+
+        // Cache fetch result if returned with a valid request ID
+        if (fetchResp != null) {
+            fetchResp.setInputParams(inputs);
+            if (fetchResp.getFetchRequestId() != null && !fetchResp.getFetchRequestId().isBlank()) {
+                fetchCache.put(fetchResp.getFetchRequestId().trim(), fetchResp);
+            }
+        }
+
+        if (fetchResp != null && fetchResp.isSuccess()) {
+            BigDecimal billAmount = BigDecimal.ZERO;
+            if (fetchResp.getBillAmountPaise() > 0) {
+                billAmount = BigDecimal.valueOf(fetchResp.getBillAmountPaise()).divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+            }
+
+            List<BbpsDtos.InfoItemDto> addnlDtos = new ArrayList<>();
+            if (fetchResp.getAdditionalInfo() != null) {
+                for (BillAvenueDtos.InfoItem item : fetchResp.getAdditionalInfo()) {
+                    addnlDtos.add(new BbpsDtos.InfoItemDto(item.getInfoName(), item.getInfoValue()));
+                }
+            }
+
+            return BbpsDtos.BillFetchResult.builder()
+                    .success(true)
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .customerName(fetchResp.getCustomerName() != null ? fetchResp.getCustomerName() : "Agent " + (agentCode != null ? agentCode : ""))
+                    .billAmount(billAmount)
+                    .billDate(fetchResp.getBillDate())
+                    .dueDate(fetchResp.getDueDate())
+                    .billNumber(fetchResp.getBillNumber())
+                    .billPeriod(fetchResp.getBillPeriod())
+                    .fetchRequestId(fetchResp.getFetchRequestId())
+                    .additionalInfo(addnlDtos)
+                    .build();
+        }
+
+        // If bill fetch returned NO BILL DUE or NOT_SUPPORTED / Ad-hoc collection:
+        String generatedRequestId = com.rupiksha.backend.integration.bbps.util.BillAvenueCryptoUtil.generateRequestId();
+        return BbpsDtos.BillFetchResult.builder()
+                .success(true)
+                .billerId(biller.getBillerId())
+                .billerName(biller.getBillerName())
+                .customerName("Agent " + (agentCode != null ? agentCode : ""))
+                .billAmount(BigDecimal.ZERO)
+                .fetchRequestId(generatedRequestId)
+                .build();
+    }
+
+    @Override
+    public BbpsDtos.AgentCollectionPayResponse payAgentCollectionBill(UUID userId, BbpsDtos.AgentCollectionPayRequest request, String clientIp) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        // 1. Verify service permission in user_services
+        boolean isServiceEnabled = userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)
+                .map(UserService::getIsEnabled)
+                .orElse(true);
+
+        if (!isServiceEnabled) {
+            log.warn("BBPS service disabled for user: {}", userId);
+            throw new IllegalStateException("BBPS service is disabled for your account by administrator");
+        }
+
+        // 2. Validate input
+        if (request.getCustomerMobile() == null || !request.getCustomerMobile().matches("^[6-9]\\d{9}$")) {
+            throw new IllegalArgumentException("Valid 10-digit Indian mobile number starting with 6-9 is required");
+        }
+        if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ONE) < 0) {
+            throw new IllegalArgumentException("Collection amount must be at least ₹1.00");
+        }
+
+        BbpsDtos.AgentCollectionBillerInfo biller = agentCollectionBillerRegistry.findById(request.getBillerId())
+                .orElseThrow(() -> new IllegalArgumentException("Unknown Agent Collection institution: " + request.getBillerId()));
+
+        // Sync with BillAvenue MDM Biller Info API if available (cached in-memory per 24h quota)
+        try {
+            BillAvenueDtos.BillerInfoResponse mdm = billAvenueClient.fetchBillerInfo(biller.getBillerId());
+            if (mdm != null && mdm.isSuccess() && mdm.getInputParams() != null && !mdm.getInputParams().isEmpty()) {
+                agentCollectionBillerRegistry.updateFromMdm(biller.getBillerId(), mdm);
+                biller = agentCollectionBillerRegistry.findById(biller.getBillerId()).orElse(biller);
+            }
+        } catch (Exception mdmEx) {
+            log.warn("MDM lookup error for Agent Collection biller {}: {}", biller.getBillerId(), mdmEx.getMessage());
+        }
+
+        agentCollectionBillerRegistry.validateCustomerParams(biller, request.getCustomerParams());
+        String agentCode = request.getAgentCode() != null && !request.getAgentCode().isBlank()
+                ? request.getAgentCode().trim()
+                : agentCollectionBillerRegistry.extractAgentCode(request.getCustomerParams());
+        String collectionRef = request.getCollectionRef() != null && !request.getCollectionRef().isBlank()
+                ? request.getCollectionRef().trim()
+                : agentCollectionBillerRegistry.extractCollectionRef(request.getCustomerParams());
+
+        BigDecimal convenienceFee = (request.getConvenienceFee() != null && request.getConvenienceFee().compareTo(BigDecimal.ZERO) > 0)
+                ? request.getConvenienceFee()
+                : BigDecimal.ZERO;
+        BigDecimal totalPayable = request.getAmount().add(convenienceFee);
+
+        // 3. Server-enforced Idempotency check
+        String idempotencyKey = request.getIdempotencyKey();
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            idempotencyKey = "BBPS-AC-" + UUID.randomUUID();
+        }
+
+        Optional<BbpsTransaction> existingOpt = bbpsTransactionRepository.findByIdempotencyKey(idempotencyKey);
+        if (existingOpt.isPresent()) {
+            BbpsTransaction existing = existingOpt.get();
+            log.info("Idempotent request duplicate detected for Agent Collection payment key: {}. Returning existing status: {}",
+                    idempotencyKey, existing.getStatus());
+
+            WalletDtos.WalletBalanceResponse currentBal = walletService.getBalance(userId.toString());
+            return BbpsDtos.AgentCollectionPayResponse.builder()
+                    .success("SUCCESS".equals(existing.getStatus()))
+                    .transactionId(existing.getId().toString())
+                    .merchantRefNo(existing.getMerchantRefNo())
+                    .providerTxnId(existing.getProviderTxnId())
+                    .approvalRefNo(existing.getApprovalRefNo())
+                    .status(existing.getStatus())
+                    .amount(existing.getAmount())
+                    .convenienceFee(existing.getConvenienceFee())
+                    .totalAmount(existing.getAmount().add(existing.getConvenienceFee() != null ? existing.getConvenienceFee() : BigDecimal.ZERO))
+                    .agentCode(existing.getAgentCode())
+                    .collectionRef(existing.getCollectionRef())
+                    .customerName(existing.getCustomerName())
+                    .customerMobile(existing.getMobileNumber())
+                    .billerId(existing.getBillerId())
+                    .billerName(existing.getBillerName())
+                    .billNumber(existing.getBillNumber())
+                    .dueDate(existing.getDueDate())
+                    .message(existing.getProviderMessage() != null ? existing.getProviderMessage() : "Existing transaction returned")
+                    .walletBalance(currentBal.balance())
+                    .createdAt(existing.getCreatedAt())
+                    .build();
+        }
+
+        // 4. Authoritative backend wallet balance enforcement
+        WalletDtos.WalletBalanceResponse balanceResponse = walletService.getBalance(userId.toString());
+        BigDecimal availableBalance = balanceResponse.availableBalance() != null ? balanceResponse.availableBalance() : BigDecimal.ZERO;
+        if (availableBalance.compareTo(totalPayable) < 0) {
+            log.warn("Insufficient wallet balance for user {}. Required: {}, Available: {}",
+                    userId, totalPayable, availableBalance);
+            throw new IllegalStateException("Insufficient wallet balance. Available: ₹" + availableBalance + ", Required: ₹" + totalPayable);
+        }
+
+        // 5. Generate unique references and build inputs
+        String merchantRefNo = "BBPSAC" + System.currentTimeMillis() + UUID.randomUUID().toString().replaceAll("-", "").substring(0, 6).toUpperCase();
+
+        String sanitizedIp = (clientIp != null && clientIp.matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"))
+                ? clientIp : "103.108.7.127";
+
+        List<BillAvenueDtos.InputParam> inputs = agentCollectionBillerRegistry.buildAgentCollectionInputParams(
+                biller, request.getCustomerParams(), request.getCustomerMobile());
+
+        String effectiveRequestId = (request.getFetchRequestId() != null && !request.getFetchRequestId().isBlank())
+                ? request.getFetchRequestId().trim()
+                : null;
+
+        String customerName = (request.getCustomerName() != null && !request.getCustomerName().isBlank() && !"NA".equalsIgnoreCase(request.getCustomerName().trim()))
+                ? request.getCustomerName().trim()
+                : ("Agent " + (agentCode != null ? agentCode : "Collection"));
+
+        String effectiveBillDate = (request.getBillDate() != null && !request.getBillDate().isBlank() && !"N/A".equalsIgnoreCase(request.getBillDate().trim()))
+                ? request.getBillDate().trim()
+                : null;
+
+        String effectiveDueDate = (request.getDueDate() != null && !request.getDueDate().isBlank() && !"N/A".equalsIgnoreCase(request.getDueDate().trim()))
+                ? request.getDueDate().trim()
+                : null;
+
+        String effectiveBillNumber = (request.getBillNumber() != null && !request.getBillNumber().isBlank() && !"N/A".equalsIgnoreCase(request.getBillNumber().trim()))
+                ? request.getBillNumber().trim()
+                : null;
+
+        String effectiveBillPeriod = (request.getBillPeriod() != null && !request.getBillPeriod().isBlank() && !"N/A".equalsIgnoreCase(request.getBillPeriod().trim()))
+                ? request.getBillPeriod().trim()
+                : "NA";
+
+        List<BillAvenueDtos.InfoItem> addnlItems = new ArrayList<>();
+        if (request.getAdditionalInfo() != null) {
+            for (BbpsDtos.InfoItemDto dto : request.getAdditionalInfo()) {
+                addnlItems.add(new BillAvenueDtos.InfoItem(dto.getInfoName(), dto.getInfoValue()));
+            }
+        }
+
+        String rawBillerResponseXml = null;
+        String rawAdditionalInfoXml = null;
+
+        if (effectiveRequestId != null) {
+            BillAvenueDtos.BillFetchResponse cached = fetchCache.get(effectiveRequestId);
+            if (cached != null) {
+                if (cached.getInputParams() != null && !cached.getInputParams().isEmpty()) {
+                    inputs = cached.getInputParams();
+                }
+                if (cached.getRawBillerResponseXml() != null) {
+                    String raw = cached.getRawBillerResponseXml();
+                    if (!raw.contains("<billAmount>0</billAmount>") && !raw.contains("<billAmount>0.00</billAmount>")) {
+                        rawBillerResponseXml = raw;
+                    }
+                }
+                if (cached.getRawAdditionalInfoXml() != null) {
+                    rawAdditionalInfoXml = cached.getRawAdditionalInfoXml();
+                }
+                if (cached.getAdditionalInfo() != null && !cached.getAdditionalInfo().isEmpty() && addnlItems.isEmpty()) {
+                    addnlItems.addAll(cached.getAdditionalInfo());
+                }
+                if (customerName == null && cached.getCustomerName() != null && !cached.getCustomerName().isBlank()) {
+                    customerName = cached.getCustomerName().trim();
+                }
+            }
+        }
+
+        // Sanitize customer params for JSON audit
+        Map<String, String> safeCustomerParams = agentCollectionBillerRegistry.sanitizeCustomerParams(
+                request.getCustomerParams(), request.getCustomerMobile());
+
+        String customerParamsJson = null;
+        try {
+            customerParamsJson = objectMapper.writeValueAsString(safeCustomerParams);
+        } catch (Exception ignored) {}
+
+        String additionalInfoJson = null;
+        try {
+            if (!addnlItems.isEmpty()) {
+                additionalInfoJson = objectMapper.writeValueAsString(addnlItems);
+            }
+        } catch (Exception ignored) {}
+
+        // 6. Persist Core Txn and BbpsTransaction in INITIATED state
+        Txn txn = new Txn();
+        txn.setUser(user);
+        txn.setAmount(totalPayable);
+        txn.setServiceType("BBPS_AGENT_COLLECTION");
+        txn.setStatus(TransactionStatus.INITIATED);
+        txn.setIdempotencyKey(idempotencyKey);
+        txn = txnRepository.save(txn);
+
+        BbpsTransaction bbpsTxn = new BbpsTransaction();
+        bbpsTxn.setUser(user);
+        bbpsTxn.setTxn(txn);
+        bbpsTxn.setIdempotencyKey(idempotencyKey);
+        bbpsTxn.setRequestId(effectiveRequestId != null ? effectiveRequestId : com.rupiksha.backend.integration.bbps.util.BillAvenueCryptoUtil.generateRequestId());
+        bbpsTxn.setMerchantRefNo(merchantRefNo);
+        bbpsTxn.setCategory("Agent Collection");
+        bbpsTxn.setBillerId(biller.getBillerId());
+        bbpsTxn.setBillerName(biller.getBillerName());
+        bbpsTxn.setCircle("National");
+        bbpsTxn.setMobileNumber(request.getCustomerMobile().trim());
+        bbpsTxn.setConsumerNumber(agentCode);
+        bbpsTxn.setAgentCode(agentCode);
+        bbpsTxn.setCollectionRef(collectionRef);
+        bbpsTxn.setAgentName(customerName);
+        bbpsTxn.setCustomerName(customerName);
+        bbpsTxn.setPaymentMode("Cash");
+        bbpsTxn.setPaymentChannel("AGT");
+        bbpsTxn.setBillNumber(effectiveBillNumber);
+        bbpsTxn.setBillDate(effectiveBillDate);
+        bbpsTxn.setDueDate(effectiveDueDate);
+        bbpsTxn.setBillPeriod(effectiveBillPeriod);
+        bbpsTxn.setConvenienceFee(convenienceFee);
+        bbpsTxn.setCustomerParams(customerParamsJson);
+        bbpsTxn.setAdditionalInfo(additionalInfoJson);
+        bbpsTxn.setFetchRequestId(request.getFetchRequestId());
+        bbpsTxn.setAmount(request.getAmount());
+        bbpsTxn.setStatus("INITIATED");
+        bbpsTxn = bbpsTransactionRepository.save(bbpsTxn);
+
+        // 7. Atomically debit wallet using ledger-safe service debit
+        String debitRef = txn.getId().toString();
+        try {
+            String debitDesc = "BBPS Agent Collection - " + biller.getBillerName() + " (" + (agentCode != null ? agentCode : "") + ")";
+            walletService.debitForService(
+                    userId,
+                    totalPayable,
+                    debitDesc,
+                    WalletTransactionContext.BBPS_PAYMENT,
+                    "BBPS",
+                    clientIp != null ? clientIp : "127.0.0.1",
+                    debitRef
+            );
+            bbpsTxn.setWalletDebitRef(debitRef);
+            bbpsTxn = bbpsTransactionRepository.save(bbpsTxn);
+        } catch (Exception e) {
+            log.error("Failed to debit wallet for BBPS Agent Collection payment. MerchantRef: {}", merchantRefNo, e);
+            txn.setStatus(TransactionStatus.FAILED);
+            txnRepository.save(txn);
+
+            bbpsTxn.setStatus("FAILED");
+            bbpsTxn.setProviderMessage("Wallet debit failed: " + e.getMessage());
+            bbpsTransactionRepository.save(bbpsTxn);
+
+            throw new IllegalStateException("Wallet debit failed: " + e.getMessage());
+        }
+
+        // 8. Submit provider request to BillAvenue
+        long paise = request.getAmount().multiply(BigDecimal.valueOf(100)).longValue();
+        long convFeePaise = convenienceFee.multiply(BigDecimal.valueOf(100)).longValue();
+
+        String remitterName = (user.getFullName() != null && !user.getFullName().isBlank()) ? user.getFullName().trim() : "Rupiksha Retailer";
+        String userEmail = (user.getEmail() != null && !user.getEmail().isBlank()) ? user.getEmail().trim() : "customer@rupiksha.in";
+        String cleanPaymentRefId = merchantRefNo.replaceAll("[^a-zA-Z0-9]", "");
+        if (cleanPaymentRefId.length() > 35) {
+            cleanPaymentRefId = cleanPaymentRefId.substring(0, 35);
+        }
+
+        record PaymentModeCandidate(String mode, String channel, String accountInfo) {}
+        List<PaymentModeCandidate> modeCandidates = List.of(
+                new PaymentModeCandidate("Cash", "AGT", "Cash Payment"),
+                new PaymentModeCandidate("Internet Banking", "INT", cleanPaymentRefId + "|" + cleanPaymentRefId),
+                new PaymentModeCandidate("Debit Card", "INT", cleanPaymentRefId + "|" + cleanPaymentRefId)
+        );
+
+        BillAvenueDtos.BillPayResponse payResp = null;
+        String finalMode = "Cash";
+        String finalChannel = "AGT";
+
+        for (PaymentModeCandidate candidate : modeCandidates) {
+            finalMode = candidate.mode();
+            finalChannel = candidate.channel();
+
+            BillAvenueDtos.BillPayXmlRequest xmlReq = BillAvenueDtos.BillPayXmlRequest.builder()
+                    .fetchRequestId(effectiveRequestId)
+                    .billerId(biller.getBillerId())
+                    .customerMobile(request.getCustomerMobile().trim())
+                    .customerEmail(userEmail)
+                    .initChannel(candidate.channel())
+                    .amountPaise(paise)
+                    .billAmountPaise(paise)
+                    .billDate(effectiveBillDate)
+                    .billNumber(effectiveBillNumber)
+                    .dueDate(effectiveDueDate)
+                    .billPeriod(effectiveBillPeriod)
+                    .customerName(customerName)
+                    .additionalInfo(addnlItems.isEmpty() ? null : addnlItems)
+                    .inputParams(inputs)
+                    .clientTxnId(merchantRefNo)
+                    .paymentMode(candidate.mode())
+                    .remitterName(remitterName)
+                    .remarks("Agent Collection Deposit")
+                    .paymentAccountInfo(candidate.accountInfo())
+                    .clientIp(sanitizedIp)
+                    .billerAdhoc("true")
+                    .quickPay("0")
+                    .custConvFeePaise(convFeePaise)
+                    .ccf1Paise(0L)
+                    .rawBillerResponseXml(rawBillerResponseXml)
+                    .rawAdditionalInfoXml(rawAdditionalInfoXml)
+                    .build();
+
+            try {
+                payResp = billAvenueClient.payBillXml(xmlReq);
+                if (payResp != null && payResp.isSuccess()) {
+                    log.info("BillAvenue Agent Collection payment SUCCESS with mode: {}, channel: {}", candidate.mode(), candidate.channel());
+                    break;
+                }
+                if (payResp != null && isPaymentModeDisabledError(payResp)) {
+                    log.warn("Payment mode {} disabled for Agent Collection biller {} ({}). Retrying with alternate mode.",
+                            candidate.mode(), biller.getBillerId(), payResp.getErrorMessage());
+                    continue;
+                }
+                break;
+            } catch (BillAvenueTimeoutException te) {
+                log.warn("BillAvenue timeout for Agent Collection payment ref: {}. Keeping transaction PENDING.", merchantRefNo, te);
+                txn.setStatus(TransactionStatus.PENDING);
+                txnRepository.save(txn);
+
+                bbpsTxn.setPaymentMode(finalMode);
+                bbpsTxn.setPaymentChannel(finalChannel);
+                bbpsTxn.setStatus("PENDING");
+                bbpsTxn.setProviderMessage("Transaction processing with collection institution. Reconciling status.");
+                bbpsTransactionRepository.save(bbpsTxn);
+
+                WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
+                return BbpsDtos.AgentCollectionPayResponse.builder()
+                        .success(false)
+                        .transactionId(bbpsTxn.getId().toString())
+                        .merchantRefNo(merchantRefNo)
+                        .status("PENDING")
+                        .amount(request.getAmount())
+                        .convenienceFee(convenienceFee)
+                        .totalAmount(totalPayable)
+                        .agentCode(agentCode)
+                        .collectionRef(collectionRef)
+                        .customerName(customerName)
+                        .customerMobile(request.getCustomerMobile())
+                        .billerId(biller.getBillerId())
+                        .billerName(biller.getBillerName())
+                        .billNumber(request.getBillNumber())
+                        .dueDate(request.getDueDate())
+                        .message("Agent Collection deposit is processing with provider. Status will update shortly.")
+                        .walletBalance(bal.balance())
+                        .createdAt(bbpsTxn.getCreatedAt())
+                        .build();
+            } catch (Exception ex) {
+                log.error("Exception calling BillAvenue for Agent Collection payment with mode {}. Ref: {}", candidate.mode(), merchantRefNo, ex);
+                break;
+            }
+        }
+
+        bbpsTxn.setPaymentMode(finalMode);
+        bbpsTxn.setPaymentChannel(finalChannel);
+
+        // 9. Process Provider Outcome
+        if (payResp != null && payResp.isSuccess()) {
+            log.info("BillAvenue Agent Collection payment SUCCESS. TxnRefId: {}, ApprovalRef: {}",
+                    payResp.getTxnRefId(), payResp.getApprovalRefNumber());
+
+            txn.setStatus(TransactionStatus.SUCCESS);
+            txn.setProviderRef(payResp.getTxnRefId());
+            txnRepository.save(txn);
+
+            bbpsTxn.setStatus("SUCCESS");
+            bbpsTxn.setProviderTxnId(payResp.getTxnRefId());
+            bbpsTxn.setApprovalRefNo(payResp.getApprovalRefNumber());
+            bbpsTxn.setValidationRefNo(payResp.getApprovalRefNumber());
+            bbpsTxn.setProviderResponseCode(payResp.getResponseCode());
+            bbpsTxn.setProviderMessage("Agent Collection payment completed successfully");
+            bbpsTxn.setCompletedAt(Instant.now());
+            bbpsTxn = bbpsTransactionRepository.save(bbpsTxn);
+
+            // Calculate and distribute commission if configured
+            try {
+                commissionService.processBbpsCommission(bbpsTxn);
+            } catch (Exception commEx) {
+                log.error("Agent Collection commission processing error for txn {}: {}", merchantRefNo, commEx.getMessage());
+            }
+
+            WalletDtos.WalletBalanceResponse updatedBal = walletService.getBalance(userId.toString());
+            return BbpsDtos.AgentCollectionPayResponse.builder()
+                    .success(true)
+                    .transactionId(bbpsTxn.getId().toString())
+                    .merchantRefNo(merchantRefNo)
+                    .providerTxnId(payResp.getTxnRefId())
+                    .approvalRefNo(payResp.getApprovalRefNumber())
+                    .status("SUCCESS")
+                    .amount(request.getAmount())
+                    .convenienceFee(convenienceFee)
+                    .totalAmount(totalPayable)
+                    .agentCode(agentCode)
+                    .collectionRef(collectionRef)
+                    .customerName(customerName)
+                    .customerMobile(request.getCustomerMobile())
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .billNumber(request.getBillNumber())
+                    .dueDate(request.getDueDate())
+                    .message("Agent Collection deposit successful")
+                    .walletBalance(updatedBal.balance())
+                    .createdAt(bbpsTxn.getCreatedAt())
+                    .build();
+
+        } else {
+            String errReason = payResp != null ? payResp.getErrorMessage() : "Agent Collection institution rejected payment";
+            log.warn("BillAvenue Agent Collection payment failed. Code: {}, Reason: {}. Issuing refund.",
+                    payResp != null ? payResp.getResponseCode() : "NULL", errReason);
+
+            bbpsTxn.setComplianceCode(payResp != null ? payResp.getResponseCode() : "500");
+            bbpsTxn.setComplianceReason(errReason);
+            handleFailureAndRefund(userId, txn, bbpsTxn, totalPayable, errReason, clientIp);
+
+            WalletDtos.WalletBalanceResponse bal = walletService.getBalance(userId.toString());
+            return BbpsDtos.AgentCollectionPayResponse.builder()
+                    .success(false)
+                    .transactionId(bbpsTxn.getId().toString())
+                    .merchantRefNo(merchantRefNo)
+                    .status("FAILED")
+                    .amount(request.getAmount())
+                    .convenienceFee(convenienceFee)
+                    .totalAmount(totalPayable)
+                    .agentCode(agentCode)
+                    .collectionRef(collectionRef)
+                    .customerName(customerName)
+                    .customerMobile(request.getCustomerMobile())
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .billNumber(request.getBillNumber())
+                    .dueDate(request.getDueDate())
+                    .message(errReason + ". Amount has been refunded to your wallet.")
+                    .walletBalance(bal.balance())
+                    .createdAt(bbpsTxn.getCreatedAt())
+                    .build();
+        }
     }
 
     @Override

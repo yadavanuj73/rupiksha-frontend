@@ -60,6 +60,7 @@ const BbpsReceiptCard = ({
     const isLoan = category === 'loan-repayment' || category === 'loan' || String(category || '').toLowerCase().includes('loan');
     const isCreditCard = category === 'credit-card' || category === 'creditcard' || String(category || '').toLowerCase().includes('credit');
     const isFastag = category === 'fastag' || category === 'FASTag' || String(category || '').toLowerCase().includes('fastag');
+    const isAgentCollection = category === 'agent-collection' || category === 'agent_collection' || String(category || '').toLowerCase().includes('collection') || String(category || '').toLowerCase().includes('agent');
 
     // Format paid date nicely
     const formatPaidDate = (dateVal) => {
@@ -83,10 +84,10 @@ const BbpsReceiptCard = ({
     const txnId = txnOutcome.merchantRefNo || txnOutcome.transactionId || 'N/A';
     const refNo = txnOutcome.providerTxnId || txnOutcome.bankRRN || txnOutcome.refNo || 'N/A';
     const approvalNo = txnOutcome.approvalRefNo || txnOutcome.approvalNumber || 'AB123456';
-    const displayBiller = txnOutcome.billerName || billerName || (isFastag ? 'FASTag Issuer Bank' : isElectricity ? 'Electricity Board' : isLoan ? 'Lender / Financier' : isCreditCard ? 'Card Issuer Bank' : 'Telecom Operator');
+    const displayBiller = txnOutcome.billerName || billerName || (isFastag ? 'FASTag Issuer Bank' : isElectricity ? 'Electricity Board' : isLoan ? 'Lender / Financier' : isCreditCard ? 'Card Issuer Bank' : isAgentCollection ? 'Collection Agency / Institution' : 'Telecom Operator');
     const isPrepaidMeter = isPrepaid || txnOutcome.meterType === 'PREPAID';
 
-    const serviceType = isElectricity
+    const serviceType = isAgentCollection ? 'BBPS Agent Collection (CMS)' : isElectricity
         ? (isPrepaidMeter ? 'Smart Prepaid Meter Recharge' : 'Postpaid Electricity Bill')
         : isLoan
             ? 'Loan Repayment (EMI / Advance)'
@@ -95,8 +96,8 @@ const BbpsReceiptCard = ({
                 : (isMobile ? 'Smart Prepaid Mobile Recharge' : 'Bharat Connect Utility Payment');
 
     const paidDate = formatPaidDate(txnOutcome.createdAt || txnOutcome.completedAt || txnOutcome.billDate || new Date());
-    const caNumber = txnOutcome.vehicleNumber || txnOutcome.consumerNumber || txnOutcome.mobileNumber || consumerNumber || 'N/A';
-    const custName = txnOutcome.customerName || customerName || (isElectricity ? (isPrepaidMeter ? 'Prepaid Meter Consumer' : 'Electricity Consumer') : isLoan ? 'Borrower / Customer' : 'Customer');
+    const caNumber = txnOutcome.agentCode || txnOutcome.collectionRef || txnOutcome.vehicleNumber || txnOutcome.consumerNumber || txnOutcome.mobileNumber || consumerNumber || 'N/A';
+    const custName = txnOutcome.agentName || txnOutcome.customerName || customerName || (isAgentCollection ? 'Agent / Depositor' : isElectricity ? (isPrepaidMeter ? 'Prepaid Meter Consumer' : 'Electricity Consumer') : isLoan ? 'Borrower / Customer' : 'Customer');
     const amountVal = Number(txnOutcome.amount || txnOutcome.totalAmount || 0).toFixed(2);
 
     // Direct, reliable PDF download using jsPDF vector engine
@@ -232,17 +233,17 @@ const BbpsReceiptCard = ({
                 { label: 'Transaction ID', value: txnId },
                 { label: 'Refrence No', value: refNo },
                 { label: 'Approval No', value: approvalNo },
-                { label: isFastag ? 'FASTag Issuer Bank' : isElectricity ? 'Electricity Board' : isLoan ? 'Lender / Financier' : isCreditCard ? 'Card Issuer Bank' : 'Operator', value: displayBiller },
+                { label: isFastag ? 'FASTag Issuer Bank' : isElectricity ? 'Electricity Board' : isLoan ? 'Lender / Financier' : isCreditCard ? 'Card Issuer Bank' : isAgentCollection ? 'Agency / Institution' : 'Operator', value: displayBiller },
                 { label: 'Service Type', value: serviceType },
                 { label: 'Bill Date', value: paidDate },
-                { label: isFastag ? 'Vehicle Reg No (VRN)' : isElectricity ? 'CA Number' : isLoan ? 'Loan Account No (LAN)' : isCreditCard ? 'Credit Card (Last 4)' : 'Mobile Number', value: caNumber },
+                { label: isFastag ? 'Vehicle Reg No (VRN)' : isElectricity ? 'CA Number' : isLoan ? 'Loan Account No (LAN)' : isCreditCard ? 'Credit Card (Last 4)' : isAgentCollection ? 'Agent Code / Ref' : 'Mobile Number', value: caNumber },
                 { label: 'Customer Name', value: custName },
                 { label: 'Amount Paid', value: `INR ${amountVal}`, isAmount: true }
             ] : [
                 { label: 'Transaction ID', value: txnId },
-                { label: isFastag ? 'FASTag Issuer Bank' : isElectricity ? 'Electricity Board' : isLoan ? 'Lender / Financier' : isCreditCard ? 'Card Issuer Bank' : 'Operator', value: displayBiller },
+                { label: isFastag ? 'FASTag Issuer Bank' : isElectricity ? 'Electricity Board' : isLoan ? 'Lender / Financier' : isCreditCard ? 'Card Issuer Bank' : isAgentCollection ? 'Agency / Institution' : 'Operator', value: displayBiller },
                 { label: 'Service Type', value: serviceType },
-                { label: isFastag ? 'Vehicle Reg No (VRN)' : isElectricity ? 'Consumer Number / CA' : isLoan ? 'Loan Account No (LAN)' : isCreditCard ? 'Credit Card (Last 4)' : 'Mobile Number', value: caNumber },
+                { label: isFastag ? 'Vehicle Reg No (VRN)' : isElectricity ? 'Consumer Number / CA' : isLoan ? 'Loan Account No (LAN)' : isCreditCard ? 'Credit Card (Last 4)' : isAgentCollection ? 'Agent Code / Ref' : 'Mobile Number', value: caNumber },
                 { label: 'Customer Name', value: custName },
                 { label: 'Amount Paid', value: `INR ${amountVal}`, isAmount: true }
             ];
@@ -444,7 +445,7 @@ const BbpsReceiptCard = ({
                                 </div>
 
                                 <div className="flex justify-between items-center py-1 border-b border-slate-200/70 gap-2">
-                                    <span className="text-slate-500 shrink-0">{isFastag ? 'FASTag Issuer Bank' : isElectricity ? 'Electricity Board' : isLoan ? 'Lender / Financier' : isCreditCard ? 'Card Issuer Bank' : 'Operator'}</span>
+                                    <span className="text-slate-500 shrink-0">{isFastag ? 'FASTag Issuer Bank' : isElectricity ? 'Electricity Board' : isLoan ? 'Lender / Financier' : isCreditCard ? 'Card Issuer Bank' : isAgentCollection ? 'Agency / Institution' : 'Operator'}</span>
                                     <span className="font-black text-black text-right break-words max-w-[65%]">
                                         {displayBiller}
                                     </span>
@@ -465,7 +466,7 @@ const BbpsReceiptCard = ({
                                 </div>
 
                                 <div className="flex justify-between items-center py-1 border-b border-slate-200/70 gap-2">
-                                    <span className="text-slate-500 shrink-0">{isFastag ? 'Vehicle Reg No (VRN)' : isElectricity ? 'CA Number' : isLoan ? 'Loan Account No' : isCreditCard ? 'Credit Card (Last 4)' : 'Mobile Number'}</span>
+                                    <span className="text-slate-500 shrink-0">{isFastag ? 'Vehicle Reg No (VRN)' : isElectricity ? 'CA Number' : isLoan ? 'Loan Account No' : isCreditCard ? 'Credit Card (Last 4)' : isAgentCollection ? 'Agent Code / Ref' : 'Mobile Number'}</span>
                                     <span className="font-mono font-black text-black text-right break-all">
                                         {caNumber}
                                     </span>
@@ -503,7 +504,7 @@ const BbpsReceiptCard = ({
                                 </div>
 
                                 <div className="flex justify-between items-center py-1 border-b border-slate-200/70 gap-2">
-                                    <span className="text-slate-500 shrink-0">{isFastag ? 'FASTag Issuer Bank' : isElectricity ? 'Electricity Board' : isLoan ? 'Lender / Financier' : isCreditCard ? 'Card Issuer Bank' : 'Operator'}</span>
+                                    <span className="text-slate-500 shrink-0">{isFastag ? 'FASTag Issuer Bank' : isElectricity ? 'Electricity Board' : isLoan ? 'Lender / Financier' : isCreditCard ? 'Card Issuer Bank' : isAgentCollection ? 'Agency / Institution' : 'Operator'}</span>
                                     <span className="font-black text-black text-right break-words max-w-[65%]">
                                         {displayBiller}
                                     </span>
@@ -517,7 +518,7 @@ const BbpsReceiptCard = ({
                                 </div>
 
                                 <div className="flex justify-between items-center py-1 border-b border-slate-200/70 gap-2">
-                                    <span className="text-slate-500 shrink-0">{isFastag ? 'Vehicle Reg No (VRN)' : isElectricity ? 'Consumer Number / CA' : isLoan ? 'Loan Account No' : isCreditCard ? 'Credit Card (Last 4)' : 'Mobile Number'}</span>
+                                    <span className="text-slate-500 shrink-0">{isFastag ? 'Vehicle Reg No (VRN)' : isElectricity ? 'Consumer Number / CA' : isLoan ? 'Loan Account No' : isCreditCard ? 'Credit Card (Last 4)' : isAgentCollection ? 'Agent Code / Ref' : 'Mobile Number'}</span>
                                     <span className="font-mono font-black text-black text-right break-all">
                                         {caNumber}
                                     </span>

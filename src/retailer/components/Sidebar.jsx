@@ -161,6 +161,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
             subItems: [
                 { id: 'bbps', label: 'BBPS' },
                 { id: 'fastag', label: 'FASTag' },
+                { id: 'agent_collection', label: 'Agent Collection' },
                 { id: 'aeps_1', label: 'Aeps 1' },
                 { id: 'aeps_2', label: 'Aeps 2' },
                 { id: 'fingpay_cms', label: 'Fingpay Cms' },

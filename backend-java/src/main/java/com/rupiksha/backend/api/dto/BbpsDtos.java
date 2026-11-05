@@ -474,6 +474,9 @@ public class BbpsDtos {
         private String statementDate;
         private String vehicleNumber;
         private String fastagTagId;
+        private String agentCode;
+        private String collectionRef;
+        private String agentName;
         private Instant createdAt;
         private Instant completedAt;
     }
@@ -562,6 +565,102 @@ public class BbpsDtos {
         private BigDecimal convenienceFee;
         private BigDecimal totalAmount;
         private String vehicleNumber;
+        private String customerName;
+        private String customerMobile;
+        private String billerId;
+        private String billerName;
+        private String billNumber;
+        private String dueDate;
+        private String message;
+        private BigDecimal walletBalance;
+        private Instant createdAt;
+    }
+
+    // ── Agent Collection DTOs ────────────────────────────────────────────────
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public static class AgentCollectionBillerInfo {
+        private String billerId;
+        private String billerName;
+        private String agencyName;
+        private String category;
+        private String billerFetchRequirement; // MANDATORY, OPTIONAL, NOT_SUPPORTED
+        private String billerPaymentExactness; // Exact, Exact and above, Exact and below
+        private String supportBillValidation;  // MANDATORY, OPTIONAL, NOT_SUPPORTED
+        private boolean billerAdhoc;           // Accepts flexible collection amount
+        private BigDecimal minAmount;
+        private BigDecimal maxAmount;
+        private List<InputParamInfo> inputParams;
+        private String description;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AgentCollectionFetchRequest {
+        @NotBlank(message = "Biller ID is required")
+        private String billerId;
+
+        @NotBlank(message = "Customer mobile number is required")
+        @Pattern(regexp = "^[6-9]\\d{9}$", message = "Invalid 10-digit mobile number")
+        private String customerMobile;
+
+        @NotEmpty(message = "Customer parameters required")
+        private Map<String, String> customerParams;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AgentCollectionPayRequest {
+        @NotBlank(message = "Biller ID is required")
+        private String billerId;
+
+        @NotBlank(message = "Customer mobile number is required")
+        @Pattern(regexp = "^[6-9]\\d{9}$", message = "Invalid 10-digit mobile number")
+        private String customerMobile;
+
+        @NotEmpty(message = "Customer parameters required")
+        private Map<String, String> customerParams;
+
+        @NotNull(message = "Payment amount is required")
+        @DecimalMin(value = "1.00", message = "Minimum collection amount is ₹1.00")
+        private BigDecimal amount;
+
+        private BigDecimal convenienceFee;
+        private String billNumber;
+        private String billDate;
+        private String dueDate;
+        private String billPeriod;
+        private String customerName;
+        private String agentCode;
+        private String collectionRef;
+        private String fetchRequestId;
+        private List<InfoItemDto> additionalInfo;
+        private String idempotencyKey;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public static class AgentCollectionPayResponse {
+        private boolean success;
+        private String transactionId;
+        private String merchantRefNo;
+        private String providerTxnId;
+        private String approvalRefNo;
+        private String status;
+        private BigDecimal amount;
+        private BigDecimal convenienceFee;
+        private BigDecimal totalAmount;
+        private String agentCode;
+        private String collectionRef;
         private String customerName;
         private String customerMobile;
         private String billerId;

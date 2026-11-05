@@ -349,6 +349,61 @@ public class BbpsController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Agent Collection Billers Catalogue with optional search.
+     */
+    @GetMapping("/agent-collection/billers")
+    public List<BbpsDtos.AgentCollectionBillerInfo> getAgentCollectionBillers(
+            @RequestParam(required = false) String search
+    ) {
+        return bbpsService.getAgentCollectionBillers(search);
+    }
+
+    /**
+     * Fetches real Agent Collection account details or dues from BillAvenue CU.
+     */
+    @PostMapping("/agent-collection/fetch")
+    public ResponseEntity<BbpsDtos.BillFetchResult> fetchAgentCollectionBill(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @Valid @RequestBody BbpsDtos.AgentCollectionFetchRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        if (principal == null) {
+            throw new IllegalArgumentException("Unauthorized");
+        }
+        UUID userId = UUID.fromString(principal.userId());
+        String clientIp = resolveClientIp(servletRequest);
+        BbpsDtos.BillFetchResult response = bbpsService.fetchAgentCollectionBill(userId, request, clientIp);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Executes server-authoritative Agent Collection deposit payment with wallet debit,
+     * BillAvenue integration, fetchRequestId binding, and idempotent failure refund.
+     */
+    @PostMapping("/agent-collection/pay")
+    public ResponseEntity<BbpsDtos.AgentCollectionPayResponse> payAgentCollectionBill(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKeyHeader,
+            @Valid @RequestBody BbpsDtos.AgentCollectionPayRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        if (principal == null) {
+            throw new IllegalArgumentException("Unauthorized");
+        }
+        UUID userId = UUID.fromString(principal.userId());
+
+        // Respect header idempotency key if body idempotencyKey is not provided
+        if ((request.getIdempotencyKey() == null || request.getIdempotencyKey().isBlank())
+                && idempotencyKeyHeader != null && !idempotencyKeyHeader.isBlank()) {
+            request.setIdempotencyKey(idempotencyKeyHeader.trim());
+        }
+
+        String clientIp = resolveClientIp(servletRequest);
+        BbpsDtos.AgentCollectionPayResponse response = bbpsService.payAgentCollectionBill(userId, request, clientIp);
+        return ResponseEntity.ok(response);
+    }
+
 
     /**
      * Dedicated BBPS Transaction History with pagination, filters, and summary metrics.

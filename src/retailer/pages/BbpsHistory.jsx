@@ -3,10 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     History, Search, Filter, Calendar, RefreshCw, AlertCircle,
     CheckCircle2, Clock, XCircle, Printer, Eye, ChevronLeft,
-    ChevronRight, ArrowUpRight, ShieldCheck, Download, Smartphone, Zap, HandCoins, CarFront, CreditCard
+    ChevronRight, ArrowUpRight, ShieldCheck, Download, Smartphone, Zap, HandCoins, CarFront, CreditCard, Users, FileSpreadsheet, FileText
 } from 'lucide-react';
 import { bbpsService } from '../../services/apiService';
 import BbpsReceiptCard from '../components/bbps/BbpsReceiptCard';
+import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
 
 const STATUS_CONFIG = {
     SUCCESS: { label: 'SUCCESS', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle2 },
@@ -26,6 +28,21 @@ const CATEGORY_TABS = [
 ];
 
 // Helper to reliably identify electricity transactions across categories and billers
+
+// Helper to reliably identify Agent Collection transactions
+const isAgentCollectionTxn = (txn) => {
+    if (!txn) return false;
+    const cat = String(txn.category || '').toLowerCase();
+    const ref = String(txn.merchantRefNo || txn.id || '').toUpperCase();
+    const bName = String(txn.billerName || '').toLowerCase();
+    return (
+        cat.includes('agent') ||
+        cat.includes('collection') ||
+        ref.startsWith('BBPSAC') ||
+        Boolean(txn.agentCode) ||
+        Boolean(txn.collectionRef)
+    );
+};
 
 // Helper to reliably identify FASTag transactions
 const isFastagTxn = (txn) => {
@@ -99,6 +116,7 @@ const BbpsHistory = () => {
                 if (cat.toLowerCase() === 'electricity') return 'Electricity';
                 if (cat.toLowerCase() === 'loan' || cat.toLowerCase().includes('loan')) return 'Loan Repayment';
                 if (cat.toLowerCase().includes('credit')) return 'Credit Card';
+                if (cat.toLowerCase().includes('collection') || cat.toLowerCase().includes('agent')) return 'Agent Collection';
                 return cat;
             }
         }
@@ -329,26 +347,62 @@ const BbpsHistory = () => {
                         </div>
                     </div>
 
-                    {/* Bottom Row: Status Tabs */}
-                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-                        <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 mr-1">Status:</span>
-                        {['ALL', 'SUCCESS', 'PENDING', 'FAILED', 'REFUNDED'].map(st => (
+                    {/* Bottom Row: Status Tabs & Exports */}
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+                            <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 mr-1">Status:</span>
+                            {['ALL', 'SUCCESS', 'PENDING', 'FAILED', 'REFUNDED'].map(st => (
+                                <button
+                                    key={st}
+                                    type="button"
+                                    onClick={() => {
+                                        setStatusFilter(st);
+                                        setPage(0);
+                                    }}
+                                    className={`px-3 py-1.5 rounded-xl text-xs font-black shrink-0 transition-all cursor-pointer ${
+                                        statusFilter === st
+                                            ? 'bg-blue-600 text-white shadow-2xs'
+                                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-black'
+                                    }`}
+                                >
+                                    {st}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Export Buttons */}
+                        <div className="flex items-center gap-2">
                             <button
-                                key={st}
                                 type="button"
-                                onClick={() => {
-                                    setStatusFilter(st);
-                                    setPage(0);
-                                }}
-                                className={`px-3 py-1.5 rounded-xl text-xs font-black shrink-0 transition-all cursor-pointer ${
-                                    statusFilter === st
-                                        ? 'bg-blue-600 text-white shadow-2xs'
-                                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-black'
-                                }`}
+                                onClick={handleExportExcel}
+                                disabled={exporting || transactions.length === 0}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 disabled:opacity-50 transition-colors cursor-pointer"
+                                title="Export filtered records to Excel"
                             >
-                                {st}
+                                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Excel</span>
                             </button>
-                        ))}
+                            <button
+                                type="button"
+                                onClick={handleExportCsv}
+                                disabled={exporting || transactions.length === 0}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 disabled:opacity-50 transition-colors cursor-pointer"
+                                title="Export filtered records to CSV"
+                            >
+                                <Download className="w-3.5 h-3.5 text-blue-600" />
+                                <span>CSV</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleExportPdf}
+                                disabled={exporting || transactions.length === 0}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 disabled:opacity-50 transition-colors cursor-pointer"
+                                title="Export summary PDF report"
+                            >
+                                <FileText className="w-3.5 h-3.5 text-rose-600" />
+                                <span>PDF</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -397,6 +451,7 @@ const BbpsHistory = () => {
                                             const isLoan = isLoanTxn(item);
                                             const isFastag = isFastagTxn(item);
                                             const isCreditCard = isCreditCardTxn(item);
+                                            const isAgentCollection = isAgentCollectionTxn(item);
 
                                             return (
                                                 <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
@@ -407,7 +462,12 @@ const BbpsHistory = () => {
                                                         }) : 'N/A'}
                                                     </td>
                                                     <td className="py-3 px-4 whitespace-nowrap">
-                                                        {isFastag ? (
+                                                        {isAgentCollection ? (
+                                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-teal-50 text-teal-800 border border-teal-200">
+                                                                <Users className="w-3 h-3 text-teal-600" />
+                                                                Agent Collection
+                                                            </span>
+                                                        ) : isFastag ? (
                                                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-purple-50 text-purple-800 border border-purple-200">
                                                                 <CarFront className="w-3 h-3 text-purple-600" />
                                                                 FASTag
@@ -439,7 +499,13 @@ const BbpsHistory = () => {
                                                     </td>
                                                     <td className="py-3 px-4">
                                                         <div className="font-black text-black">{item.billerName}</div>
-                                                        {isFastag ? (
+                                                        {isAgentCollection ? (
+                                                            <div className="text-[11px] text-slate-700 font-mono font-bold">
+                                                                Agent: {item.agentCode || item.consumerNumber || '—'}
+                                                                {item.collectionRef ? ' | Ref: ' + item.collectionRef : ''}
+                                                                {item.agentName || item.customerName ? ' (' + (item.agentName || item.customerName) + ')' : ''}
+                                                            </div>
+                                                        ) : isFastag ? (
                                                             <div className="text-[11px] text-slate-700 font-mono font-bold">
                                                                 VRN: {item.vehicleNumber || item.consumerNumber || '—'}
                                                                 {item.customerName ? ` (${item.customerName})` : ''}
@@ -566,6 +632,7 @@ const BbpsHistory = () => {
                             {(() => {
                                 const isElec = isElectricityTxn(selectedTxn);
                                 const isLoan = isLoanTxn(selectedTxn);
+                                const isAgentCol = isAgentCollectionTxn(selectedTxn);
                                 const isPrepaidMeter = selectedTxn.category === 'Prepaid Meter' || selectedTxn.meterType === 'PREPAID' || selectedTxn.billerName?.toLowerCase().includes('prepaid');
                                 return (
                                     <BbpsReceiptCard
@@ -577,12 +644,15 @@ const BbpsHistory = () => {
                                             approvalRefNo: selectedTxn.approvalRefNo,
                                             amount: selectedTxn.amount,
                                             billerName: selectedTxn.billerName,
-                                            consumerNumber: selectedTxn.consumerNumber || selectedTxn.mobileNumber,
+                                            consumerNumber: selectedTxn.agentCode || selectedTxn.collectionRef || selectedTxn.consumerNumber || selectedTxn.mobileNumber,
+                                            agentCode: selectedTxn.agentCode,
+                                            collectionRef: selectedTxn.collectionRef,
+                                            agentName: selectedTxn.agentName,
                                             customerName: selectedTxn.customerName || (isElec ? (isPrepaidMeter ? 'Prepaid Meter Consumer' : 'Electricity Consumer') : isLoan ? 'Borrower / Customer' : 'Mobile Subscriber'),
                                             meterType: isPrepaidMeter ? 'PREPAID' : (selectedTxn.meterType || 'POSTPAID'),
                                             createdAt: selectedTxn.createdAt
                                         }}
-                                        category={isElec ? 'electricity' : isLoan ? 'loan-repayment' : 'mobile-prepaid'}
+                                        category={isAgentCol ? 'agent-collection' : isElec ? 'electricity' : isLoan ? 'loan-repayment' : isFastagTxn(selectedTxn) ? 'fastag' : isCreditCardTxn(selectedTxn) ? 'credit-card' : 'mobile-prepaid'}
                                         isPrepaid={isElec && isPrepaidMeter}
                                         billerName={selectedTxn.billerName}
                                         consumerNumber={selectedTxn.consumerNumber || selectedTxn.mobileNumber}

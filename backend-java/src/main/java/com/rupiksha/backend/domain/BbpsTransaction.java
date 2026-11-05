@@ -148,6 +148,16 @@ public class BbpsTransaction {
     @Column(name = "vehicle_type", length = 50)
     private String vehicleType;
 
+    // Agent Collection specific fields (V58 migration)
+    @Column(name = "agent_code", length = 100)
+    private String agentCode;
+
+    @Column(name = "collection_ref", length = 100)
+    private String collectionRef;
+
+    @Column(name = "agent_name", length = 150)
+    private String agentName;
+
     @Column(name = "payment_mode", length = 50)
     private String paymentMode = "Cash";
 

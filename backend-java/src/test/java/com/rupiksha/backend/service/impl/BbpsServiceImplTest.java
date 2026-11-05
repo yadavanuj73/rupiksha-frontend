@@ -66,6 +66,10 @@ class BbpsServiceImplTest {
             new com.rupiksha.backend.integration.bbps.CreditCardBillerRegistry();
 
     @org.mockito.Spy
+    private com.rupiksha.backend.integration.bbps.AgentCollectionBillerRegistry agentCollectionBillerRegistry =
+            new com.rupiksha.backend.integration.bbps.AgentCollectionBillerRegistry();
+
+    @org.mockito.Spy
     private com.rupiksha.backend.integration.bbps.FastagBillerRegistry fastagBillerRegistry =
             new com.rupiksha.backend.integration.bbps.FastagBillerRegistry();
 
@@ -1310,4 +1314,270 @@ class BbpsServiceImplTest {
         verify(billAvenueClient, never()).payBillXml(any());
     }
 
+    // ==========================================
+    // AGENT COLLECTION (CMS) TEST SUITE
+    // ==========================================
+
+    @Test
+    @DisplayName("Agent Collection billers query returns registered billers and filters by search")
+    void testGetAgentCollectionBillers_SuccessAndSearch() {
+        List<BbpsDtos.AgentCollectionBillerInfo> allBillers = bbpsService.getAgentCollectionBillers(null);
+        assertNotNull(allBillers);
+        assertTrue(allBillers.size() >= 30, "Expected at least 30 pre-seeded billers");
+
+        List<BbpsDtos.AgentCollectionBillerInfo> filtered = bbpsService.getAgentCollectionBillers("Spandana");
+        assertNotNull(filtered);
+        assertFalse(filtered.isEmpty());
+        assertTrue(filtered.get(0).getBillerName().contains("Spandana"));
+
+        List<BbpsDtos.AgentCollectionBillerInfo> logistics = bbpsService.getAgentCollectionBillers("Delhivery");
+        assertNotNull(logistics);
+        assertFalse(logistics.isEmpty());
+        assertEquals("DELH00000NAT01", logistics.get(0).getBillerId());
+    }
+
+    @Test
+    @DisplayName("Agent Collection bill fetch resolves required parameters and adhoc bill details")
+    void testFetchAgentCollectionBill_Success() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)).thenReturn(Optional.empty());
+
+        BbpsDtos.AgentCollectionFetchRequest fetchReq = new BbpsDtos.AgentCollectionFetchRequest();
+        fetchReq.setBillerId("SPAN00000NAT01");
+        fetchReq.setCustomerMobile("9876543210");
+        fetchReq.setCustomerParams(java.util.Map.of(
+                "Agent Code", "AG-776655",
+                "Collection Reference Number", "REF-2026-99"
+        ));
+
+        BbpsDtos.BillFetchResult result = bbpsService.fetchAgentCollectionBill(userId, fetchReq, "127.0.0.1");
+        assertNotNull(result);
+        assertTrue(result.isSuccess());
+        assertEquals("SPAN00000NAT01", result.getBillerId());
+        assertTrue(result.getBillerName().contains("Spandana"));
+    }
+
+    @Test
+    @DisplayName("Successful Agent Collection payment debits wallet, confirms with BillAvenue, and triggers commission")
+    void testPayAgentCollectionBill_Success() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)).thenReturn(Optional.empty());
+        when(bbpsTransactionRepository.findByIdempotencyKey(anyString())).thenReturn(Optional.empty());
+        when(walletService.getBalance(userId.toString())).thenReturn(mockBalance(new BigDecimal("10000.00"), new BigDecimal("10000.00")));
+
+        when(txnRepository.save(any(Txn.class))).thenAnswer(i -> {
+            Txn t = i.getArgument(0);
+            t.setId(UUID.randomUUID());
+            return t;
+        });
+
+        when(bbpsTransactionRepository.save(any(BbpsTransaction.class))).thenAnswer(i -> {
+            BbpsTransaction b = i.getArgument(0);
+            if (b.getId() == null) b.setId(UUID.randomUUID());
+            return b;
+        });
+
+        when(walletService.debitForService(eq(userId), eq(new BigDecimal("2500.00")), anyString(), eq(WalletTransactionContext.BBPS_PAYMENT), eq("BBPS"), anyString(), anyString()))
+                .thenReturn(mockBalance(new BigDecimal("7500.00"), new BigDecimal("7500.00")));
+
+        BillAvenueDtos.BillPayResponse payResp = new BillAvenueDtos.BillPayResponse();
+        payResp.setResponseCode("000");
+        payResp.setResponseReason("Successful");
+        payResp.setTxnRefId("AC019999BAAE00011111");
+        payResp.setApprovalRefNumber("AB778899");
+        when(billAvenueClient.payBillXml(any())).thenReturn(payResp);
+
+        BbpsDtos.AgentCollectionPayRequest payReq = new BbpsDtos.AgentCollectionPayRequest();
+        payReq.setBillerId("SPAN00000NAT01");
+        payReq.setCustomerMobile("9876543210");
+        payReq.setAgentCode("AG-776655");
+        payReq.setCollectionRef("REF-2026-99");
+        payReq.setCustomerName("Ramesh Kumar");
+        payReq.setAmount(new BigDecimal("2500.00"));
+        payReq.setIdempotencyKey("AC-IDEM-SUCCESS-01");
+        payReq.setCustomerParams(java.util.Map.of("Agent Code", "AG-776655"));
+
+        BbpsDtos.AgentCollectionPayResponse response = bbpsService.payAgentCollectionBill(userId, payReq, "127.0.0.1");
+
+        assertNotNull(response);
+        assertTrue(response.isSuccess());
+        assertEquals("SUCCESS", response.getStatus());
+        assertEquals("AC019999BAAE00011111", response.getProviderTxnId());
+        assertEquals("AB778899", response.getApprovalRefNo());
+        assertEquals("AG-776655", response.getAgentCode());
+        assertEquals("REF-2026-99", response.getCollectionRef());
+
+        // Verify authoritative wallet debit was executed
+        verify(walletService, times(1)).debitForService(eq(userId), eq(new BigDecimal("2500.00")), anyString(), eq(WalletTransactionContext.BBPS_PAYMENT), eq("BBPS"), anyString(), anyString());
+        // Verify commission distribution was triggered
+        verify(commissionService, times(1)).processBbpsCommission(any(BbpsTransaction.class));
+        // Verify refund was NEVER called
+        verify(walletService, never()).refundForService(any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Agent Collection payment with insufficient balance rejects transaction without debit or provider call")
+    void testPayAgentCollectionBill_InsufficientBalance() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)).thenReturn(Optional.empty());
+        when(bbpsTransactionRepository.findByIdempotencyKey(anyString())).thenReturn(Optional.empty());
+        // Balance is ₹500, but transaction requires ₹2500
+        when(walletService.getBalance(userId.toString())).thenReturn(mockBalance(new BigDecimal("500.00"), new BigDecimal("500.00")));
+
+        BbpsDtos.AgentCollectionPayRequest payReq = new BbpsDtos.AgentCollectionPayRequest();
+        payReq.setBillerId("SPAN00000NAT01");
+        payReq.setCustomerMobile("9876543210");
+        payReq.setAgentCode("AG-776655");
+        payReq.setAmount(new BigDecimal("2500.00"));
+        payReq.setIdempotencyKey("AC-IDEM-INSUFFICIENT-01");
+        payReq.setCustomerParams(java.util.Map.of("Agent Code", "AG-776655"));
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> {
+            bbpsService.payAgentCollectionBill(userId, payReq, "127.0.0.1");
+        });
+        assertTrue(ex.getMessage().contains("Insufficient wallet balance"));
+
+        // Verify zero wallet debit, zero provider call, zero commission
+        verify(walletService, never()).debitForService(any(), any(), any(), any(), any(), any(), any());
+        verify(billAvenueClient, never()).payBillXml(any());
+        verify(commissionService, never()).processBbpsCommission(any());
+    }
+
+    @Test
+    @DisplayName("Agent Collection provider failure triggers safe atomic refund to user wallet")
+    void testPayAgentCollectionBill_ProviderFailureTriggersRefund() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)).thenReturn(Optional.empty());
+        when(bbpsTransactionRepository.findByIdempotencyKey(anyString())).thenReturn(Optional.empty());
+        when(walletService.getBalance(userId.toString())).thenReturn(mockBalance(new BigDecimal("5000.00"), new BigDecimal("5000.00")));
+
+        when(txnRepository.save(any(Txn.class))).thenAnswer(i -> {
+            Txn t = i.getArgument(0);
+            t.setId(UUID.randomUUID());
+            return t;
+        });
+
+        when(bbpsTransactionRepository.save(any(BbpsTransaction.class))).thenAnswer(i -> {
+            BbpsTransaction b = i.getArgument(0);
+            if (b.getId() == null) b.setId(UUID.randomUUID());
+            return b;
+        });
+
+        when(walletService.debitForService(eq(userId), eq(new BigDecimal("2500.00")), anyString(), eq(WalletTransactionContext.BBPS_PAYMENT), eq("BBPS"), anyString(), anyString()))
+                .thenReturn(mockBalance(new BigDecimal("2500.00"), new BigDecimal("2500.00")));
+
+        BillAvenueDtos.BillPayResponse failResp = new BillAvenueDtos.BillPayResponse();
+        failResp.setResponseCode("BFR004");
+        failResp.setResponseReason("Invalid Agent Code or Collection Reference");
+        when(billAvenueClient.payBillXml(any())).thenReturn(failResp);
+
+        BbpsDtos.AgentCollectionPayRequest payReq = new BbpsDtos.AgentCollectionPayRequest();
+        payReq.setBillerId("SPAN00000NAT01");
+        payReq.setCustomerMobile("9876543210");
+        payReq.setAgentCode("AG-INVALID");
+        payReq.setAmount(new BigDecimal("2500.00"));
+        payReq.setIdempotencyKey("AC-IDEM-FAIL-01");
+        payReq.setCustomerParams(java.util.Map.of("Agent Code", "AG-INVALID"));
+
+        BbpsDtos.AgentCollectionPayResponse response = bbpsService.payAgentCollectionBill(userId, payReq, "127.0.0.1");
+
+        assertNotNull(response);
+        assertFalse(response.isSuccess());
+        assertEquals("FAILED", response.getStatus());
+
+        // Verify wallet debit was called
+        verify(walletService, times(1)).debitForService(eq(userId), eq(new BigDecimal("2500.00")), anyString(), eq(WalletTransactionContext.BBPS_PAYMENT), eq("BBPS"), anyString(), anyString());
+        // Verify refund was triggered with REVERSAL context
+        verify(walletService, times(1)).refundForService(eq(userId), eq(new BigDecimal("2500.00")), anyString(), anyString(), eq(WalletTransactionContext.REVERSAL), eq("BBPS"), anyString(), anyString());
+        // Verify commission was NEVER processed on failed transaction
+        verify(commissionService, never()).processBbpsCommission(any());
+    }
+
+    @Test
+    @DisplayName("Agent Collection provider timeout leaves transaction PENDING without refund")
+    void testPayAgentCollectionBill_TimeoutLeavesPendingWithoutRefund() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)).thenReturn(Optional.empty());
+        when(bbpsTransactionRepository.findByIdempotencyKey(anyString())).thenReturn(Optional.empty());
+        when(walletService.getBalance(userId.toString())).thenReturn(mockBalance(new BigDecimal("5000.00"), new BigDecimal("5000.00")));
+
+        when(txnRepository.save(any(Txn.class))).thenAnswer(i -> {
+            Txn t = i.getArgument(0);
+            t.setId(UUID.randomUUID());
+            return t;
+        });
+
+        when(bbpsTransactionRepository.save(any(BbpsTransaction.class))).thenAnswer(i -> {
+            BbpsTransaction b = i.getArgument(0);
+            if (b.getId() == null) b.setId(UUID.randomUUID());
+            return b;
+        });
+
+        when(walletService.debitForService(eq(userId), eq(new BigDecimal("2500.00")), anyString(), eq(WalletTransactionContext.BBPS_PAYMENT), eq("BBPS"), anyString(), anyString()))
+                .thenReturn(mockBalance(new BigDecimal("2500.00"), new BigDecimal("2500.00")));
+
+        when(billAvenueClient.payBillXml(any())).thenThrow(new BillAvenueTimeoutException("Read timeout to BillAvenue gateway", null));
+
+        BbpsDtos.AgentCollectionPayRequest payReq = new BbpsDtos.AgentCollectionPayRequest();
+        payReq.setBillerId("SPAN00000NAT01");
+        payReq.setCustomerMobile("9876543210");
+        payReq.setAgentCode("AG-776655");
+        payReq.setAmount(new BigDecimal("2500.00"));
+        payReq.setIdempotencyKey("AC-IDEM-TIMEOUT-01");
+        payReq.setCustomerParams(java.util.Map.of("Agent Code", "AG-776655"));
+
+        BbpsDtos.AgentCollectionPayResponse response = bbpsService.payAgentCollectionBill(userId, payReq, "127.0.0.1");
+
+        assertNotNull(response);
+        assertFalse(response.isSuccess());
+        assertEquals("PENDING", response.getStatus());
+
+        // Verify debit happened
+        verify(walletService).debitForService(eq(userId), eq(new BigDecimal("2500.00")), anyString(), eq(WalletTransactionContext.BBPS_PAYMENT), eq("BBPS"), anyString(), anyString());
+        // Verify refund credit was NOT called on timeout (money stays debited until status check)
+        verify(walletService, never()).refundForService(any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Agent Collection idempotency returns existing transaction without double debit")
+    void testPayAgentCollectionBill_Idempotency() {
+        BbpsTransaction existing = new BbpsTransaction();
+        existing.setId(UUID.randomUUID());
+        existing.setMerchantRefNo("MER-AC-123456");
+        existing.setProviderTxnId("AC019999BAAE00011111");
+        existing.setApprovalRefNo("APPR-AC-99");
+        existing.setStatus("SUCCESS");
+        existing.setAmount(new BigDecimal("2500.00"));
+        existing.setConsumerNumber("AG-776655");
+        existing.setAgentCode("AG-776655");
+        existing.setCollectionRef("REF-2026-99");
+        existing.setAgentName("Ramesh Kumar");
+        existing.setBillerId("SPAN00000NAT01");
+        existing.setBillerName("Spandana Sphoorty Financial Limited");
+        existing.setIdempotencyKey("AC-IDEM-DUPLICATE-01");
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)).thenReturn(Optional.empty());
+        when(bbpsTransactionRepository.findByIdempotencyKey("AC-IDEM-DUPLICATE-01")).thenReturn(Optional.of(existing));
+        when(walletService.getBalance(userId.toString())).thenReturn(mockBalance(new BigDecimal("10000.00"), new BigDecimal("10000.00")));
+
+        BbpsDtos.AgentCollectionPayRequest payReq = new BbpsDtos.AgentCollectionPayRequest();
+        payReq.setBillerId("SPAN00000NAT01");
+        payReq.setCustomerMobile("9876543210");
+        payReq.setAgentCode("AG-776655");
+        payReq.setAmount(new BigDecimal("2500.00"));
+        payReq.setIdempotencyKey("AC-IDEM-DUPLICATE-01");
+        payReq.setCustomerParams(java.util.Map.of("Agent Code", "AG-776655"));
+
+        BbpsDtos.AgentCollectionPayResponse response = bbpsService.payAgentCollectionBill(userId, payReq, "127.0.0.1");
+
+        assertNotNull(response);
+        assertTrue(response.isSuccess());
+        assertEquals("SUCCESS", response.getStatus());
+        assertEquals("AC019999BAAE00011111", response.getProviderTxnId());
+
+        // Verify wallet debit and provider API were NEVER called due to duplicate idempotency key
+        verify(walletService, never()).debitForService(any(), any(), any(), any(), any(), any(), any());
+        verify(billAvenueClient, never()).payBillXml(any());
+    }
 }

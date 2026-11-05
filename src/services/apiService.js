@@ -352,6 +352,23 @@ export const bbpsService = {
       body: JSON.stringify({ ...data, idempotencyKey }),
     });
   },
+  getAgentCollectionBillers: (search) =>
+    apiFetch(`/bbps/agent-collection/billers${search ? `?search=${encodeURIComponent(search)}` : ''}`),
+  fetchAgentCollectionBill: (payload) =>
+    apiFetch("/bbps/agent-collection/fetch", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  payAgentCollectionBill: (data) => {
+    const idempotencyKey = data.idempotencyKey || `BBPS-AC-${Date.now()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+    return apiFetch("/bbps/agent-collection/pay", {
+      method: "POST",
+      headers: {
+        "X-Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify({ ...data, idempotencyKey }),
+    });
+  },
 };
 
 // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
