@@ -2495,63 +2495,6 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
                                                             </span>
                                                         </div>
                                                     </div>
-
-                                                    {/* Change Audit History Section */}
-                                                    {twoFaAudits.length > 0 && (
-                                                        <div className="mt-4 pt-4 border-t border-slate-200 space-y-3">
-                                                            <div className="flex items-center justify-between">
-                                                                <h4 className="text-xs font-black uppercase tracking-wider text-black flex items-center gap-2">
-                                                                    <History size={14} className="text-blue-600" />
-                                                                    Recent 2FA Charge Audit Trail
-                                                                </h4>
-                                                                <span className="text-[10px] font-black text-slate-500 uppercase">
-                                                                    Last {twoFaAudits.length} changes
-                                                                </span>
-                                                            </div>
-                                                            <div className="overflow-x-auto max-h-48 overflow-y-auto border border-slate-200 rounded-xl">
-                                                                <table className="w-full text-left border-collapse text-[11px]">
-                                                                    <thead className="bg-slate-100 sticky top-0 border-b border-slate-200 font-black text-black uppercase text-[10px]">
-                                                                        <tr>
-                                                                            <th className="py-2 px-3">Date</th>
-                                                                            <th className="py-2 px-3">Plan</th>
-                                                                            <th className="py-2 px-3">Admin</th>
-                                                                            <th className="py-2 px-3 text-right">Retailer</th>
-                                                                            <th className="py-2 px-3 text-right">Distributor</th>
-                                                                            <th className="py-2 px-3 text-right">Super Dist</th>
-                                                                            <th className="py-2 px-3">IP Address</th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody className="divide-y divide-slate-100 font-bold text-slate-800">
-                                                                        {twoFaAudits.map(aud => (
-                                                                            <tr key={aud.id} className="hover:bg-slate-50">
-                                                                                <td className="py-2 px-3 whitespace-nowrap font-mono text-[10px]">
-                                                                                    {new Date(aud.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
-                                                                                </td>
-                                                                                <td className="py-2 px-3 font-black text-black">
-                                                                                    {aud.planName || aud.planCode}
-                                                                                </td>
-                                                                                <td className="py-2 px-3 font-mono text-black">
-                                                                                    {aud.changedBy || 'Admin'}
-                                                                                </td>
-                                                                                <td className="py-2 px-3 text-right font-mono">
-                                                                                    &#8377;{Number(aud.oldRetailerCharge || 0).toFixed(2)} &rarr; <span className="text-black font-black">&#8377;{Number(aud.newRetailerCharge || 0).toFixed(2)}</span>
-                                                                                </td>
-                                                                                <td className="py-2 px-3 text-right font-mono">
-                                                                                    &#8377;{Number(aud.oldDistributorCharge || 0).toFixed(2)} &rarr; <span className="text-black font-black">&#8377;{Number(aud.newDistributorCharge || 0).toFixed(2)}</span>
-                                                                                </td>
-                                                                                <td className="py-2 px-3 text-right font-mono">
-                                                                                    &#8377;{Number(aud.oldSuperDistributorCharge || 0).toFixed(2)} &rarr; <span className="text-black font-black">&#8377;{Number(aud.newSuperDistributorCharge || 0).toFixed(2)}</span>
-                                                                                </td>
-                                                                                <td className="py-2 px-3 font-mono text-[10px] text-slate-500">
-                                                                                    {aud.ipAddress || '-'}
-                                                                                </td>
-                                                                            </tr>
-                                                                        ))}
-                                                                    </tbody>
-                                                                </table>
-                                                            </div>
-                                                        </div>
-                                                    )}
                                                 </div>
 
                                                 {/* Footer Action Bar */}
