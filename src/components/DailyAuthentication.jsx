@@ -232,4 +232,29 @@ export default function DailyAuthentication({ provider, serviceType = 'AEPS', on
                         className="w-full py-2 border-2 border-slate-300 text-black rounded-xl font-black uppercase tracking-wider text-[11px] hover:bg-slate-100 transition cursor-pointer"
                     >
                         Back to Dashboard
+                    </button>
+                </div>
+            ) : (
+                <div className="space-y-4 py-4">
+                    <div className="w-12 h-12 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-2xl flex items-center justify-center mx-auto shadow-sm">
+                        <CheckCircle2 size={24} />
+                    </div>
+                    <div>
+                        <h3 className="text-base font-black text-black uppercase tracking-wide">Daily Session Activated</h3>
+                        <p className="text-xs text-slate-600 font-bold mt-0.5">
+                            Your merchant 2FA session is active. Terminal is unlocked.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onSuccess}
+                        className="w-full py-3 bg-black hover:bg-slate-900 text-white rounded-2xl font-black uppercase tracking-wider text-xs transition shadow-md cursor-pointer"
+                    >
+                        Enter Transaction Terminal
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
 
