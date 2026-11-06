@@ -29,5 +29,7 @@ public enum WalletTransactionContext {
     WALLET_TRANSFER,
     CMS_REFUND,
     CMS_DEBIT,
-    UPI_CASH_WITHDRAWAL
+    UPI_CASH_WITHDRAWAL,
+    AEPS_2FA_CHARGE,
+    AEPS_2FA_SETTLEMENT
 }

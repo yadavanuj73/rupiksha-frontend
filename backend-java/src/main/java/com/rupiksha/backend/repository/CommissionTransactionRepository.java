@@ -47,4 +47,7 @@ public interface CommissionTransactionRepository extends JpaRepository<Commissio
             @Param("userId") UUID userId,
             @Param("serviceType") String serviceType
     );
+
+    @Query("SELECT COALESCE(SUM(ct.commissionAmount), 0) FROM CommissionTransaction ct WHERE ct.beneficiaryUser.id = :userId AND ct.serviceType IN ('AEPS_1', 'AEPS_1_MINI_STATEMENT', 'AEPS_MINI_STATEMENT') AND ct.status = 'SUCCESS'")
+    BigDecimal sumAeps1CommissionByBeneficiaryId(@Param("userId") UUID userId);
 }

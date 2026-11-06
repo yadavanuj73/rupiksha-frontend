@@ -82,7 +82,9 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
 
     // ── AEPS 1 STATE ────────────────────────────────────────────────────────────
     const [services] = useState([
-        { id: 'AEPS_1', label: 'AEPS 1 (Cash Withdrawal)' }
+        { id: 'AEPS_1', label: 'Cash Withdrawal' },
+        { id: 'MINI_STATEMENT', label: 'Mini Statement' },
+        { id: 'TWO_FACTOR_AUTH', label: '2FA Charges' }
     ]);
     const [selectedService, setSelectedService] = useState('AEPS_1');
     const [plans, setPlans] = useState([]);
@@ -90,6 +92,32 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
     const [slabs, setSlabs] = useState([]);
     const [originalSlabs, setOriginalSlabs] = useState([]);
     const [loadingPlans, setLoadingPlans] = useState(true);
+
+    // ── AEPS 1 MINI STATEMENT STATE ─────────────────────────────────────────────
+    const [msConfigs, setMsConfigs] = useState([]);
+    const [loadingMsConfigs, setLoadingMsConfigs] = useState(false);
+    const [selectedMsPlanCode, setSelectedMsPlanCode] = useState('FREE');
+    const [msFormData, setMsFormData] = useState({
+        retailerCommission: '1.00',
+        distributorCommission: '0.50',
+        superDistributorCommission: '0.25',
+        enabled: true
+    });
+    const [originalMsFormData, setOriginalMsFormData] = useState(null);
+
+    // ── AEPS 1 2FA CHARGES STATE ────────────────────────────────────────────────
+    const [twoFaConfigs, setTwoFaConfigs] = useState([]);
+    const [loadingTwoFaConfigs, setLoadingTwoFaConfigs] = useState(false);
+    const [selectedTwoFaPlanCode, setSelectedTwoFaPlanCode] = useState('FREE');
+    const [twoFaFormData, setTwoFaFormData] = useState({
+        retailerCharge: '0.00',
+        distributorCharge: '0.00',
+        superDistributorCharge: '0.00',
+        enabled: true
+    });
+    const [originalTwoFaFormData, setOriginalTwoFaFormData] = useState(null);
+    const [twoFaAudits, setTwoFaAudits] = useState([]);
+    const [loadingTwoFaAudits, setLoadingTwoFaAudits] = useState(false);
 
     // ── BBPS STATE ──────────────────────────────────────────────────────────────
     const [bbpsSearch, setBbpsSearch] = useState('');
@@ -172,9 +200,77 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
         }
     };
 
+    // ── 1B. FETCH AEPS MINI STATEMENT CONFIGS ──────────────────────────────────
+    const fetchAepsMiniStatementConfigs = async () => {
+        setLoadingMsConfigs(true);
+        try {
+            const data = await commissionService.getAepsMiniStatementConfigs();
+            setMsConfigs(data || []);
+            if (data && data.length > 0) {
+                const currentPlanConfig = data.find(c => c.planCode === selectedMsPlanCode) || data[0];
+                setSelectedMsPlanCode(currentPlanConfig.planCode);
+                const formVals = {
+                    retailerCommission: String(currentPlanConfig.retailerCommission ?? '0.00'),
+                    distributorCommission: String(currentPlanConfig.distributorCommission ?? '0.00'),
+                    superDistributorCommission: String(currentPlanConfig.superDistributorCommission ?? '0.00'),
+                    enabled: currentPlanConfig.enabled ?? true
+                };
+                setMsFormData(formVals);
+                setOriginalMsFormData(JSON.parse(JSON.stringify(formVals)));
+            }
+        } catch (err) {
+            setNotification({ type: 'error', message: err.message || 'Failed to load AEPS Mini Statement commission configuration.' });
+        } finally {
+            setLoadingMsConfigs(false);
+        }
+    };
+
+    // ── 1C. FETCH AEPS 2FA CHARGE CONFIGS & AUDITS ─────────────────────────────
+    const fetchAeps2faConfigs = async () => {
+        setLoadingTwoFaConfigs(true);
+        try {
+            const data = await commissionService.getAeps2faConfigs();
+            setTwoFaConfigs(data || []);
+            if (data && data.length > 0) {
+                const currentPlanConfig = data.find(c => c.planCode === selectedTwoFaPlanCode) || data[0];
+                setSelectedTwoFaPlanCode(currentPlanConfig.planCode);
+                const formVals = {
+                    retailerCharge: String(currentPlanConfig.retailerCharge ?? '0.00'),
+                    distributorCharge: String(currentPlanConfig.distributorCharge ?? '0.00'),
+                    superDistributorCharge: String(currentPlanConfig.superDistributorCharge ?? '0.00'),
+                    enabled: currentPlanConfig.enabled ?? true
+                };
+                setTwoFaFormData(formVals);
+                setOriginalTwoFaFormData(JSON.parse(JSON.stringify(formVals)));
+            }
+        } catch (err) {
+            setNotification({ type: 'error', message: err.message || 'Failed to load AEPS 2FA charge configuration.' });
+        } finally {
+            setLoadingTwoFaConfigs(false);
+        }
+    };
+
+    const fetchTwoFaAudits = async () => {
+        setLoadingTwoFaAudits(true);
+        try {
+            const data = await commissionService.getAeps2faAudits();
+            setTwoFaAudits(data || []);
+        } catch (_) { }
+        finally {
+            setLoadingTwoFaAudits(false);
+        }
+    };
+
     useEffect(() => {
         if (commissionModel === 'AEPS_1') {
-            fetchAepsPlans();
+            if (selectedService === 'TWO_FACTOR_AUTH') {
+                fetchAeps2faConfigs();
+                fetchTwoFaAudits();
+            } else if (selectedService === 'MINI_STATEMENT') {
+                fetchAepsMiniStatementConfigs();
+            } else {
+                fetchAepsPlans();
+            }
         }
     }, [commissionModel, selectedService]);
 
@@ -232,9 +328,19 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
         try {
             let filterSvc = historyServiceFilter;
             if (filterSvc === 'ALL') {
-                if (commissionModel === 'AEPS_1') filterSvc = 'AEPS_1';
-                else if (commissionModel === 'RECHARGE') filterSvc = 'MOBILE_RECHARGE';
-                else filterSvc = 'ALL';
+                if (commissionModel === 'AEPS_1') {
+                    if (selectedService === 'TWO_FACTOR_AUTH') {
+                        filterSvc = 'AEPS_1_2FA_CHARGE';
+                    } else if (selectedService === 'MINI_STATEMENT') {
+                        filterSvc = 'AEPS_1_MINI_STATEMENT';
+                    } else {
+                        filterSvc = 'AEPS_1';
+                    }
+                } else if (commissionModel === 'RECHARGE') {
+                    filterSvc = 'MOBILE_RECHARGE';
+                } else {
+                    filterSvc = 'ALL';
+                }
             }
             const res = await commissionService.getAdminTransactions({
                 serviceType: filterSvc !== 'ALL' ? filterSvc : undefined,
@@ -358,6 +464,220 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
     const hasAepsChanges = useMemo(() => {
         return JSON.stringify(slabs) !== JSON.stringify(originalSlabs);
     }, [slabs, originalSlabs]);
+
+    // ── AEPS 1 MINI STATEMENT EDIT HANDLERS ─────────────────────────────────────
+    const activeMsConfig = useMemo(() => {
+        return msConfigs.find(c => c.planCode === selectedMsPlanCode);
+    }, [msConfigs, selectedMsPlanCode]);
+
+    const handleSelectMsPlan = (planCode) => {
+        setSelectedMsPlanCode(planCode);
+        const config = msConfigs.find(c => c.planCode === planCode);
+        if (config) {
+            const formVals = {
+                retailerCommission: String(config.retailerCommission ?? '0.00'),
+                distributorCommission: String(config.distributorCommission ?? '0.00'),
+                superDistributorCommission: String(config.superDistributorCommission ?? '0.00'),
+                enabled: config.enabled ?? true
+            };
+            setMsFormData(formVals);
+            setOriginalMsFormData(JSON.parse(JSON.stringify(formVals)));
+        }
+        setNotification(null);
+    };
+
+    const msTotalCommission = useMemo(() => {
+        const retCents = Math.round((parseFloat(msFormData.retailerCommission) || 0) * 100);
+        const distCents = Math.round((parseFloat(msFormData.distributorCommission) || 0) * 100);
+        const sdCents = Math.round((parseFloat(msFormData.superDistributorCommission) || 0) * 100);
+        return ((retCents + distCents + sdCents) / 100).toFixed(2);
+    }, [msFormData]);
+
+    const msValidationError = useMemo(() => {
+        const ret = parseFloat(msFormData.retailerCommission);
+        const dist = parseFloat(msFormData.distributorCommission);
+        const sd = parseFloat(msFormData.superDistributorCommission);
+
+        if (isNaN(ret) || ret < 0) return 'Retailer commission cannot be negative.';
+        if (isNaN(dist) || dist < 0) return 'Distributor commission cannot be negative.';
+        if (isNaN(sd) || sd < 0) return 'Super Distributor commission cannot be negative.';
+        return null;
+    }, [msFormData]);
+
+    const hasMsChanges = useMemo(() => {
+        if (!originalMsFormData) return false;
+        return JSON.stringify(msFormData) !== JSON.stringify(originalMsFormData);
+    }, [msFormData, originalMsFormData]);
+
+    const handleResetMs = () => {
+        if (originalMsFormData) {
+            setMsFormData(JSON.parse(JSON.stringify(originalMsFormData)));
+            setNotification({ type: 'info', message: 'Values reverted to saved database configuration.' });
+        }
+    };
+
+    const handleReconcileMs = async () => {
+        setReconciling(true);
+        try {
+            const res = await commissionService.reconcileAepsMiniStatementCommissions();
+            const count = res?.reconciledCount ?? 0;
+            if (count > 0) {
+                setNotification({
+                    type: 'success',
+                    message: `Successfully reconciled and credited commissions for ${count} AEPS Mini Statement transaction(s)!`
+                });
+                triggerConfetti();
+            } else {
+                setNotification({
+                    type: 'info',
+                    message: 'All AEPS Mini Statement transactions are already up to date with full commission credits.'
+                });
+            }
+            fetchHistory();
+        } catch (err) {
+            setNotification({
+                type: 'error',
+                message: err.message || 'Failed to reconcile AEPS Mini Statement commissions.'
+            });
+        } finally {
+            setReconciling(false);
+        }
+    };
+
+    const handleSaveMs = async () => {
+        if (!activeMsConfig) return;
+        if (msValidationError) {
+            setNotification({ type: 'error', message: msValidationError });
+            return;
+        }
+
+        setSaving(true);
+        setNotification(null);
+        try {
+            const ret = parseFloat(msFormData.retailerCommission) || 0;
+            const dist = parseFloat(msFormData.distributorCommission) || 0;
+            const sd = parseFloat(msFormData.superDistributorCommission) || 0;
+            const isAnyConfigured = (ret > 0 || dist > 0 || sd > 0);
+
+            const req = {
+                retailerCommission: ret,
+                distributorCommission: dist,
+                superDistributorCommission: sd,
+                enabled: msFormData.enabled || isAnyConfigured
+            };
+
+            const updated = await commissionService.updateAepsMiniStatementConfig(activeMsConfig.id, req);
+            setNotification({ type: 'success', message: `AEPS 1 Mini Statement (${updated.planName || activeMsConfig.planName}) configuration saved successfully!` });
+            triggerConfetti();
+
+            setMsConfigs(prev => prev.map(c => c.id === updated.id ? updated : c));
+            const newForm = {
+                retailerCommission: String(updated.retailerCommission ?? '0.00'),
+                distributorCommission: String(updated.distributorCommission ?? '0.00'),
+                superDistributorCommission: String(updated.superDistributorCommission ?? '0.00'),
+                enabled: updated.enabled ?? true
+            };
+            setMsFormData(newForm);
+            setOriginalMsFormData(JSON.parse(JSON.stringify(newForm)));
+        } catch (err) {
+            setNotification({ type: 'error', message: err.message || 'Failed to save AEPS Mini Statement commission configuration.' });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    // ── AEPS 1 2FA CHARGES EDIT HANDLERS ────────────────────────────────────────
+    const activeTwoFaConfig = useMemo(() => {
+        return twoFaConfigs.find(c => c.planCode === selectedTwoFaPlanCode);
+    }, [twoFaConfigs, selectedTwoFaPlanCode]);
+
+    const handleSelectTwoFaPlan = (planCode) => {
+        setSelectedTwoFaPlanCode(planCode);
+        const config = twoFaConfigs.find(c => c.planCode === planCode);
+        if (config) {
+            const formVals = {
+                retailerCharge: String(config.retailerCharge ?? '0.00'),
+                distributorCharge: String(config.distributorCharge ?? '0.00'),
+                superDistributorCharge: String(config.superDistributorCharge ?? '0.00'),
+                enabled: config.enabled ?? true
+            };
+            setTwoFaFormData(formVals);
+            setOriginalTwoFaFormData(JSON.parse(JSON.stringify(formVals)));
+        }
+        setNotification(null);
+    };
+
+    const twoFaTotalCharge = useMemo(() => {
+        const retCents = Math.round((parseFloat(twoFaFormData.retailerCharge) || 0) * 100);
+        const distCents = Math.round((parseFloat(twoFaFormData.distributorCharge) || 0) * 100);
+        const sdCents = Math.round((parseFloat(twoFaFormData.superDistributorCharge) || 0) * 100);
+        return ((retCents + distCents + sdCents) / 100).toFixed(2);
+    }, [twoFaFormData]);
+
+    const twoFaValidationError = useMemo(() => {
+        const ret = parseFloat(twoFaFormData.retailerCharge);
+        const dist = parseFloat(twoFaFormData.distributorCharge);
+        const sd = parseFloat(twoFaFormData.superDistributorCharge);
+
+        if (isNaN(ret) || ret < 0) return 'Retailer 2FA charge cannot be negative.';
+        if (isNaN(dist) || dist < 0) return 'Distributor 2FA charge cannot be negative.';
+        if (isNaN(sd) || sd < 0) return 'Super Distributor 2FA charge cannot be negative.';
+        return null;
+    }, [twoFaFormData]);
+
+    const hasTwoFaChanges = useMemo(() => {
+        if (!originalTwoFaFormData) return false;
+        return JSON.stringify(twoFaFormData) !== JSON.stringify(originalTwoFaFormData);
+    }, [twoFaFormData, originalTwoFaFormData]);
+
+    const handleResetTwoFa = () => {
+        if (originalTwoFaFormData) {
+            setTwoFaFormData(JSON.parse(JSON.stringify(originalTwoFaFormData)));
+            setNotification({ type: 'info', message: 'Values reverted to saved database configuration.' });
+        }
+    };
+
+    const handleSaveTwoFa = async () => {
+        if (!activeTwoFaConfig) return;
+        if (twoFaValidationError) {
+            setNotification({ type: 'error', message: twoFaValidationError });
+            return;
+        }
+
+        setSaving(true);
+        setNotification(null);
+        try {
+            const ret = parseFloat(twoFaFormData.retailerCharge) || 0;
+            const dist = parseFloat(twoFaFormData.distributorCharge) || 0;
+            const sd = parseFloat(twoFaFormData.superDistributorCharge) || 0;
+
+            const req = {
+                retailerCharge: ret,
+                distributorCharge: dist,
+                superDistributorCharge: sd,
+                enabled: twoFaFormData.enabled
+            };
+
+            const updated = await commissionService.updateAeps2faConfig(activeTwoFaConfig.id, req);
+            setNotification({ type: 'success', message: `AEPS 1 2FA Charges (${updated.planName || activeTwoFaConfig.planName}) configuration saved successfully!` });
+            triggerConfetti();
+
+            setTwoFaConfigs(prev => prev.map(c => c.id === updated.id ? updated : c));
+            const newForm = {
+                retailerCharge: String(updated.retailerCharge ?? '0.00'),
+                distributorCharge: String(updated.distributorCharge ?? '0.00'),
+                superDistributorCharge: String(updated.superDistributorCharge ?? '0.00'),
+                enabled: updated.enabled ?? true
+            };
+            setTwoFaFormData(newForm);
+            setOriginalTwoFaFormData(JSON.parse(JSON.stringify(newForm)));
+            fetchTwoFaAudits();
+        } catch (err) {
+            setNotification({ type: 'error', message: err.message || 'Failed to save AEPS 2FA charge configuration.' });
+        } finally {
+            setSaving(false);
+        }
+    };
 
     // ── BBPS PERCENTAGE EDIT HANDLERS ───────────────────────────────────────────
     const activeBbpsConfig = useMemo(() => {
@@ -1749,37 +2069,117 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
                                                 Select Commission Plan
                                             </label>
                                             <div className="flex flex-col gap-2">
-                                                {plans.map(p => {
-                                                    const isSelected = p.id === selectedPlanId;
-                                                    const displayName = getAdminPlanDisplayName(p);
-                                                    return (
-                                                        <button
-                                                            key={p.id}
-                                                            type="button"
-                                                            onClick={() => handleSelectPlan(p)}
-                                                            className={`w-full px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-between gap-2 text-left cursor-pointer ${isSelected
-                                                                    ? 'bg-black text-white shadow-md shadow-slate-900/20 ring-2 ring-black'
-                                                                    : 'bg-slate-50 text-black hover:bg-slate-100 border border-slate-300'
-                                                                }`}
-                                                        >
-                                                            <div className="flex items-center gap-2 min-w-0">
-                                                                {p.isDefault && <Sparkles size={13} className={isSelected ? 'text-amber-400' : 'text-amber-500'} />}
-                                                                <span className="truncate">{displayName}</span>
-                                                            </div>
-                                                            {p.price > 0 ? (
-                                                                <span className={`text-[10.5px] font-black px-2 py-0.5 rounded-lg shrink-0 ${isSelected ? 'bg-slate-800 text-indigo-200' : 'bg-slate-200 text-black'
-                                                                    }`}>
-                                                                    &#8377;{Number(p.price).toLocaleString('en-IN')}
-                                                                </span>
-                                                            ) : (
-                                                                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg shrink-0 ${isSelected ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-950 border border-emerald-300'
-                                                                    }`}>
-                                                                    FREE
-                                                                </span>
-                                                            )}
-                                                        </button>
-                                                    );
-                                                })}
+                                                {selectedService === 'TWO_FACTOR_AUTH' ? (
+                                                    loadingTwoFaConfigs ? (
+                                                        <div className="p-8 text-center text-black flex flex-col items-center justify-center gap-2 bg-slate-50 rounded-2xl border border-slate-200">
+                                                            <RefreshCw className="animate-spin text-blue-600" size={20} />
+                                                            <span className="text-xs font-bold text-black">Loading plans...</span>
+                                                        </div>
+                                                    ) : (
+                                                        twoFaConfigs.map(c => {
+                                                            const isSelected = c.planCode === selectedTwoFaPlanCode;
+                                                            const displayName = getAdminPlanDisplayName(c);
+                                                            return (
+                                                                <button
+                                                                    key={c.id || c.planCode}
+                                                                    type="button"
+                                                                    onClick={() => handleSelectTwoFaPlan(c.planCode)}
+                                                                    className={`w-full px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-between gap-2 text-left cursor-pointer ${isSelected
+                                                                            ? 'bg-black text-white shadow-md shadow-slate-900/20 ring-2 ring-black'
+                                                                            : 'bg-slate-50 text-black hover:bg-slate-100 border border-slate-300'
+                                                                        }`}
+                                                                >
+                                                                    <div className="flex items-center gap-2 min-w-0">
+                                                                        {c.planCode === 'FREE' && <Sparkles size={13} className={isSelected ? 'text-amber-400' : 'text-amber-500'} />}
+                                                                        <span className="truncate">{displayName}</span>
+                                                                    </div>
+                                                                    {c.planPrice > 0 ? (
+                                                                        <span className={`text-[10.5px] font-black px-2 py-0.5 rounded-lg shrink-0 ${isSelected ? 'bg-slate-800 text-indigo-200' : 'bg-slate-200 text-black'
+                                                                            }`}>
+                                                                            &#8377;{Number(c.planPrice).toLocaleString('en-IN')}
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg shrink-0 ${isSelected ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-950 border border-emerald-300'
+                                                                            }`}>
+                                                                            FREE
+                                                                        </span>
+                                                                    )}
+                                                                </button>
+                                                            );
+                                                        })
+                                                    )
+                                                ) : selectedService === 'MINI_STATEMENT' ? (
+                                                    loadingMsConfigs ? (
+                                                        <div className="p-8 text-center text-black flex flex-col items-center justify-center gap-2 bg-slate-50 rounded-2xl border border-slate-200">
+                                                            <RefreshCw className="animate-spin text-blue-600" size={20} />
+                                                            <span className="text-xs font-bold text-black">Loading plans...</span>
+                                                        </div>
+                                                    ) : (
+                                                        msConfigs.map(c => {
+                                                            const isSelected = c.planCode === selectedMsPlanCode;
+                                                            const displayName = getAdminPlanDisplayName(c);
+                                                            return (
+                                                                <button
+                                                                    key={c.id || c.planCode}
+                                                                    type="button"
+                                                                    onClick={() => handleSelectMsPlan(c.planCode)}
+                                                                    className={`w-full px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-between gap-2 text-left cursor-pointer ${isSelected
+                                                                            ? 'bg-black text-white shadow-md shadow-slate-900/20 ring-2 ring-black'
+                                                                            : 'bg-slate-50 text-black hover:bg-slate-100 border border-slate-300'
+                                                                        }`}
+                                                                >
+                                                                    <div className="flex items-center gap-2 min-w-0">
+                                                                        {c.planCode === 'FREE' && <Sparkles size={13} className={isSelected ? 'text-amber-400' : 'text-amber-500'} />}
+                                                                        <span className="truncate">{displayName}</span>
+                                                                    </div>
+                                                                    {c.planPrice > 0 ? (
+                                                                        <span className={`text-[10.5px] font-black px-2 py-0.5 rounded-lg shrink-0 ${isSelected ? 'bg-slate-800 text-indigo-200' : 'bg-slate-200 text-black'
+                                                                            }`}>
+                                                                            &#8377;{Number(c.planPrice).toLocaleString('en-IN')}
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg shrink-0 ${isSelected ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-950 border border-emerald-300'
+                                                                            }`}>
+                                                                            FREE
+                                                                        </span>
+                                                                    )}
+                                                                </button>
+                                                            );
+                                                        })
+                                                    )
+                                                ) : (
+                                                    plans.map(p => {
+                                                        const isSelected = p.id === selectedPlanId;
+                                                        const displayName = getAdminPlanDisplayName(p);
+                                                        return (
+                                                            <button
+                                                                key={p.id}
+                                                                type="button"
+                                                                onClick={() => handleSelectPlan(p)}
+                                                                className={`w-full px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-between gap-2 text-left cursor-pointer ${isSelected
+                                                                        ? 'bg-black text-white shadow-md shadow-slate-900/20 ring-2 ring-black'
+                                                                        : 'bg-slate-50 text-black hover:bg-slate-100 border border-slate-300'
+                                                                    }`}
+                                                            >
+                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                    {p.isDefault && <Sparkles size={13} className={isSelected ? 'text-amber-400' : 'text-amber-500'} />}
+                                                                    <span className="truncate">{displayName}</span>
+                                                                </div>
+                                                                {p.price > 0 ? (
+                                                                    <span className={`text-[10.5px] font-black px-2 py-0.5 rounded-lg shrink-0 ${isSelected ? 'bg-slate-800 text-indigo-200' : 'bg-slate-200 text-black'
+                                                                        }`}>
+                                                                        &#8377;{Number(p.price).toLocaleString('en-IN')}
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg shrink-0 ${isSelected ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-950 border border-emerald-300'
+                                                                        }`}>
+                                                                        FREE
+                                                                    </span>
+                                                                )}
+                                                            </button>
+                                                        );
+                                                    })
+                                                )}
                                             </div>
                                         </div>
                                     </>
@@ -1918,8 +2318,492 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
 
                         {/* ── RIGHT COLUMN: Configuration Editor ── */}
                         <div className="lg:col-span-8 space-y-6">
-                            {/* ── CASE 1: AEPS 1 SLAB EDITOR TABLE ── */}
+                            {/* ── CASE 1: AEPS 1 CONFIGURATION ── */}
                             {commissionModel === 'AEPS_1' && (
+                                selectedService === 'TWO_FACTOR_AUTH' ? (
+                                    <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden space-y-0">
+                                        {/* Header */}
+                                        <div className="p-6 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                            <div>
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <h2 className="text-lg font-black text-black">
+                                                        {activeTwoFaConfig ? `${getAdminPlanDisplayName(activeTwoFaConfig)} • AEPS 1 2FA Charges` : '2FA Charges Configuration'}
+                                                    </h2>
+                                                    {activeTwoFaConfig?.planCode === 'FREE' && (
+                                                        <span className="bg-emerald-100 text-emerald-950 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-emerald-300">
+                                                            Default Plan
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p className="text-xs font-bold text-slate-800 mt-0.5">
+                                                    Fixed rupee charge debited per eligible AEPS 1 2FA transaction. Non-negative, no slabs, no percentage.
+                                                </p>
+                                                {activeTwoFaConfig?.updatedAt && (
+                                                    <p className="text-[10px] font-bold text-slate-500 mt-1">
+                                                        Last updated: {new Date(activeTwoFaConfig.updatedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
+                                                        {activeTwoFaConfig.updatedByAdminUsername ? ` by ${activeTwoFaConfig.updatedByAdminUsername}` : ''}
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            {/* Status Toggle Switch */}
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-xs font-black text-black">
+                                                    Charge Status:
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setTwoFaFormData(prev => ({ ...prev, enabled: !prev.enabled }))}
+                                                    className={`px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${twoFaFormData.enabled
+                                                            ? 'bg-emerald-100 text-emerald-950 border border-emerald-300 shadow-xs'
+                                                            : 'bg-rose-100 text-rose-950 border border-rose-300'
+                                                        }`}
+                                                >
+                                                    {twoFaFormData.enabled ? (
+                                                        <>
+                                                            <CheckCircle2 size={14} className="text-emerald-700" />
+                                                            Active
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <ShieldAlert size={14} className="text-rose-700" />
+                                                            Disabled
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {loadingTwoFaConfigs ? (
+                                            <div className="p-12 text-center text-black flex flex-col items-center gap-2">
+                                                <RefreshCw className="animate-spin text-blue-600" size={24} />
+                                                <span className="text-xs font-bold text-black">Loading 2FA charge configuration...</span>
+                                            </div>
+                                        ) : !activeTwoFaConfig ? (
+                                            <div className="p-12 text-center text-black">
+                                                <p className="text-sm font-bold">No 2FA charge configuration found for this plan.</p>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className="p-6 space-y-6">
+                                                    {/* Form Inputs Grid: 3 Hierarchy Members */}
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                        {/* 1. Retailer Fixed Rupee */}
+                                                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-300 space-y-2 flex flex-col justify-between">
+                                                            <div className="flex items-center justify-between gap-1">
+                                                                <label className="text-[11px] font-black text-black uppercase tracking-wider truncate">
+                                                                    Retailer (&#8377;)
+                                                                </label>
+                                                                <span className="text-[9px] font-black uppercase bg-blue-100 text-blue-950 px-2 py-0.5 rounded border border-blue-300 shrink-0">
+                                                                    Direct Agent
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center bg-white border border-slate-300 rounded-xl px-3 py-2 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-inner">
+                                                                <span className="text-black font-black mr-1 text-sm sm:text-base">&#8377;</span>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.05"
+                                                                    min="0"
+                                                                    value={twoFaFormData.retailerCharge}
+                                                                    onChange={(e) => {
+                                                                        const v = e.target.value;
+                                                                        setTwoFaFormData(prev => ({ ...prev, retailerCharge: v }));
+                                                                    }}
+                                                                    className="w-full bg-transparent text-sm sm:text-base font-black text-black focus:outline-none min-w-0"
+                                                                />
+                                                            </div>
+                                                            <p className="text-[9.5px] sm:text-[10px] font-bold text-slate-800 leading-tight">
+                                                                Debited when Retailer completes AEPS 1 daily biometric 2FA.
+                                                            </p>
+                                                        </div>
+
+                                                        {/* 2. Distributor Fixed Rupee */}
+                                                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-300 space-y-2 flex flex-col justify-between">
+                                                            <div className="flex items-center justify-between gap-1">
+                                                                <label className="text-[11px] font-black text-black uppercase tracking-wider truncate">
+                                                                    Distributor (&#8377;)
+                                                                </label>
+                                                                <span className="text-[9px] font-black uppercase bg-amber-100 text-amber-950 px-2 py-0.5 rounded border border-amber-300 shrink-0">
+                                                                    Direct / Upline
+                                                                </span>
+                            </div>
+                                                            <div className="flex items-center bg-white border border-slate-300 rounded-xl px-3 py-2 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-inner">
+                                                                <span className="text-black font-black mr-1 text-sm sm:text-base">&#8377;</span>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.05"
+                                                                    min="0"
+                                                                    value={twoFaFormData.distributorCharge}
+                                                                    onChange={(e) => {
+                                                                        const v = e.target.value;
+                                                                        setTwoFaFormData(prev => ({ ...prev, distributorCharge: v }));
+                                                                    }}
+                                                                    className="w-full bg-transparent text-sm sm:text-base font-black text-black focus:outline-none min-w-0"
+                                                                />
+                                                            </div>
+                                                            <p className="text-[9.5px] sm:text-[10px] font-bold text-slate-800 leading-tight">
+                                                                Debited when Distributor completes 2FA authentication.
+                                                            </p>
+                                                        </div>
+
+                                                        {/* 3. Super Distributor Fixed Rupee */}
+                                                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-300 space-y-2 flex flex-col justify-between">
+                                                            <div className="flex items-center justify-between gap-1">
+                                                                <label className="text-[11px] font-black text-black uppercase tracking-wider truncate">
+                                                                    Super Distributor (&#8377;)
+                                                                </label>
+                                                                <span className="text-[9px] font-black uppercase bg-purple-100 text-purple-950 px-2 py-0.5 rounded border border-purple-300 shrink-0">
+                                                                    Direct / Upline
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center bg-white border border-slate-300 rounded-xl px-3 py-2 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-inner">
+                                                                <span className="text-black font-black mr-1 text-sm sm:text-base">&#8377;</span>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.05"
+                                                                    min="0"
+                                                                    value={twoFaFormData.superDistributorCharge}
+                                                                    onChange={(e) => {
+                                                                        const v = e.target.value;
+                                                                        setTwoFaFormData(prev => ({ ...prev, superDistributorCharge: v }));
+                                                                    }}
+                                                                    className="w-full bg-transparent text-sm sm:text-base font-black text-black focus:outline-none min-w-0"
+                                                                />
+                                                            </div>
+                                                            <p className="text-[9.5px] sm:text-[10px] font-bold text-slate-800 leading-tight">
+                                                                Debited when Super Distributor completes 2FA authentication.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Negative Balance & Auto Settlement Policy Callout */}
+                                                    <div className="p-4 sm:p-5 bg-amber-50/60 rounded-2xl border border-amber-300 flex items-start gap-3.5">
+                                                        <div className="p-2 bg-amber-100 rounded-xl border border-amber-300 shrink-0 text-amber-900 mt-0.5">
+                                                            <ShieldCheck size={20} />
+                                                        </div>
+                                                        <div className="space-y-1.5">
+                                                            <h4 className="text-xs font-black text-black uppercase tracking-wider">
+                                                                Negative Balance Allowed & Automatic Settlement Policy
+                                                            </h4>
+                                                            <p className="text-xs font-bold text-slate-800 leading-relaxed">
+                                                                Eligible AEPS 1 2FA authentications are <strong>never blocked</strong> due to insufficient wallet balance. If the agent&apos;s wallet balance is insufficient, the wallet balance goes negative (e.g. &#8377;2.00 bal - &#8377;5.00 fee = <strong>-&#8377;3.00</strong> balance; outstanding charge = &#8377;3.00).
+                                                            </p>
+                                                            <p className="text-[11px] font-bold text-slate-700 leading-relaxed">
+                                                                &bull; <strong>Automatic Recovery:</strong> Outstanding negative charges are automatically settled in FIFO order whenever the wallet receives subsequent incoming credits (commissions, admin credits, fund requests, or transfers).<br />
+                                                                &bull; <strong>Strict Isolation:</strong> Negative balance permissions apply <em>strictly to AEPS 1 2FA</em>. All other services (Cash Withdrawal, BBPS, Recharge, Payout, W2W) remain strictly blocked when available balance is insufficient.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Summary Card */}
+                                                    <div className="p-5 bg-gradient-to-r from-slate-50 via-blue-50/30 to-slate-50 rounded-2xl border border-slate-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                                        <div>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-xs font-black uppercase tracking-wider text-slate-700">Combined Hierarchy Charge:</span>
+                                                                <span className="text-xl font-black text-black font-mono">
+                                                                    &#8377;{twoFaTotalCharge}
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-[10.5px] font-bold text-slate-800 mt-0.5">
+                                                                Hierarchy breakdown: Retailer (&#8377;{Number(twoFaFormData.retailerCharge || 0).toFixed(2)}) | Distributor (&#8377;{Number(twoFaFormData.distributorCharge || 0).toFixed(2)}) | Super Distributor (&#8377;{Number(twoFaFormData.superDistributorCharge || 0).toFixed(2)})
+                                                            </p>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-blue-100 text-blue-900 border border-blue-200">
+                                                                AEPS 1 2FA Charges
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Change Audit History Section */}
+                                                    {twoFaAudits.length > 0 && (
+                                                        <div className="mt-4 pt-4 border-t border-slate-200 space-y-3">
+                                                            <div className="flex items-center justify-between">
+                                                                <h4 className="text-xs font-black uppercase tracking-wider text-black flex items-center gap-2">
+                                                                    <History size={14} className="text-blue-600" />
+                                                                    Recent 2FA Charge Audit Trail
+                                                                </h4>
+                                                                <span className="text-[10px] font-black text-slate-500 uppercase">
+                                                                    Last {twoFaAudits.length} changes
+                                                                </span>
+                                                            </div>
+                                                            <div className="overflow-x-auto max-h-48 overflow-y-auto border border-slate-200 rounded-xl">
+                                                                <table className="w-full text-left border-collapse text-[11px]">
+                                                                    <thead className="bg-slate-100 sticky top-0 border-b border-slate-200 font-black text-black uppercase text-[10px]">
+                                                                        <tr>
+                                                                            <th className="py-2 px-3">Date</th>
+                                                                            <th className="py-2 px-3">Plan</th>
+                                                                            <th className="py-2 px-3">Admin</th>
+                                                                            <th className="py-2 px-3 text-right">Retailer</th>
+                                                                            <th className="py-2 px-3 text-right">Distributor</th>
+                                                                            <th className="py-2 px-3 text-right">Super Dist</th>
+                                                                            <th className="py-2 px-3">IP Address</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody className="divide-y divide-slate-100 font-bold text-slate-800">
+                                                                        {twoFaAudits.map(aud => (
+                                                                            <tr key={aud.id} className="hover:bg-slate-50">
+                                                                                <td className="py-2 px-3 whitespace-nowrap font-mono text-[10px]">
+                                                                                    {new Date(aud.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
+                                                                                </td>
+                                                                                <td className="py-2 px-3 font-black text-black">
+                                                                                    {aud.planName || aud.planCode}
+                                                                                </td>
+                                                                                <td className="py-2 px-3 font-mono text-black">
+                                                                                    {aud.changedBy || 'Admin'}
+                                                                                </td>
+                                                                                <td className="py-2 px-3 text-right font-mono">
+                                                                                    &#8377;{Number(aud.oldRetailerCharge || 0).toFixed(2)} &rarr; <span className="text-black font-black">&#8377;{Number(aud.newRetailerCharge || 0).toFixed(2)}</span>
+                                                                                </td>
+                                                                                <td className="py-2 px-3 text-right font-mono">
+                                                                                    &#8377;{Number(aud.oldDistributorCharge || 0).toFixed(2)} &rarr; <span className="text-black font-black">&#8377;{Number(aud.newDistributorCharge || 0).toFixed(2)}</span>
+                                                                                </td>
+                                                                                <td className="py-2 px-3 text-right font-mono">
+                                                                                    &#8377;{Number(aud.oldSuperDistributorCharge || 0).toFixed(2)} &rarr; <span className="text-black font-black">&#8377;{Number(aud.newSuperDistributorCharge || 0).toFixed(2)}</span>
+                                                                                </td>
+                                                                                <td className="py-2 px-3 font-mono text-[10px] text-slate-500">
+                                                                                    {aud.ipAddress || '-'}
+                                                                                </td>
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Footer Action Bar */}
+                                                <div className="p-4 sm:p-6 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-center justify-end gap-4">
+                                                    {hasTwoFaChanges && (
+                                                        <span className="text-xs font-black text-amber-700 mr-auto">
+                                                            You have unsaved changes in 2FA charge rates.
+                                                        </span>
+                                                    )}
+                                                    <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                                                        {hasTwoFaChanges && (
+                                                            <button
+                                                                onClick={handleResetTwoFa}
+                                                                disabled={saving}
+                                                                className="px-4 py-2.5 rounded-2xl border border-slate-300 text-black text-xs font-black uppercase tracking-wider hover:bg-slate-200 transition-all flex items-center gap-2 cursor-pointer"
+                                                            >
+                                                                <RotateCcw size={14} />
+                                                                Reset
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            onClick={handleSaveTwoFa}
+                                                            disabled={saving || !hasTwoFaChanges}
+                                                            className={`px-6 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 text-white shadow-lg cursor-pointer ${saving || !hasTwoFaChanges
+                                                                    ? 'bg-slate-300 shadow-none cursor-not-allowed text-slate-600'
+                                                                    : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30'
+                                                                }`}
+                                                        >
+                                                            <Save size={14} />
+                                                            {saving ? 'Saving...' : 'Save Configuration'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                ) : selectedService === 'MINI_STATEMENT' ? (
+                                    <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                                        {/* Header */}
+                                        <div className="p-6 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <h2 className="text-lg font-black text-black">
+                                                        {activeMsConfig ? `${getAdminPlanDisplayName(activeMsConfig)} • AEPS 1 Mini Statement` : 'Mini Statement Commission'}
+                                                    </h2>
+                                                    {activeMsConfig?.planCode === 'FREE' && (
+                                                        <span className="bg-emerald-100 text-emerald-950 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-emerald-300">
+                                                            Default Plan
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p className="text-xs font-bold text-slate-800 mt-0.5">
+                                                    Flat rupee commission granted per successful AEPS 1 Mini Statement transaction. No transaction slabs.
+                                                </p>
+                                            </div>
+
+                                            {/* Status Toggle Switch */}
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-xs font-black text-black">
+                                                    Commission Status:
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setMsFormData(prev => ({ ...prev, enabled: !prev.enabled }))}
+                                                    className={`px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${msFormData.enabled
+                                                            ? 'bg-emerald-100 text-emerald-950 border border-emerald-300 shadow-xs'
+                                                            : 'bg-rose-100 text-rose-950 border border-rose-300'
+                                                        }`}
+                                                >
+                                                    {msFormData.enabled ? (
+                                                        <>
+                                                            <CheckCircle2 size={14} className="text-emerald-700" />
+                                                            Active
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <ShieldAlert size={14} className="text-rose-700" />
+                                                            Disabled
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {loadingMsConfigs ? (
+                                            <div className="p-12 text-center text-black flex flex-col items-center gap-2">
+                                                <RefreshCw className="animate-spin text-blue-600" size={24} />
+                                                <span className="text-xs font-bold text-black">Loading Mini Statement configuration...</span>
+                                            </div>
+                                        ) : !activeMsConfig ? (
+                                            <div className="p-12 text-center text-black">
+                                                <p className="text-sm font-bold">No Mini Statement configuration found for this plan.</p>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                {/* Form Inputs Grid */}
+                                                <div className="p-6 space-y-6">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                        {/* 1. Retailer Fixed Rupee */}
+                                                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-300 space-y-2 flex flex-col justify-between">
+                                                            <div className="flex items-center justify-between gap-1">
+                                                                <label className="text-[11px] font-black text-black uppercase tracking-wider truncate">
+                                                                    Retailer (&#8377;)
+                                                                </label>
+                                                                <span className="text-[9px] font-black uppercase bg-blue-100 text-blue-950 px-2 py-0.5 rounded border border-blue-300 shrink-0">
+                                                                    Direct
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center bg-white border border-slate-300 rounded-xl px-3 py-2 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-inner">
+                                                                <span className="text-black font-black mr-1 text-sm sm:text-base">&#8377;</span>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.05"
+                                                                    min="0"
+                                                                    value={msFormData.retailerCommission}
+                                                                    onChange={(e) => { const v = e.target.value; const num = parseFloat(v) || 0; setMsFormData(prev => ({ ...prev, retailerCommission: v, enabled: num > 0 ? true : prev.enabled })); }}
+                                                                    className="w-full bg-transparent text-sm sm:text-base font-black text-black focus:outline-none min-w-0"
+                                                                />
+                                                            </div>
+                                                            <p className="text-[9.5px] sm:text-[10px] font-bold text-slate-800 leading-tight">
+                                                                Credited to the transaction-initiating retailer.
+                                                            </p>
+                                                        </div>
+
+                                                        {/* 2. Distributor Fixed Rupee */}
+                                                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-300 space-y-2 flex flex-col justify-between">
+                                                            <div className="flex items-center justify-between gap-1">
+                                                                <label className="text-[11px] font-black text-black uppercase tracking-wider truncate">
+                                                                    Distributor (&#8377;)
+                                                                </label>
+                                                                <span className="text-[9px] font-black uppercase bg-amber-100 text-amber-950 px-2 py-0.5 rounded border border-amber-300 shrink-0">
+                                                                    Upline 1
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center bg-white border border-slate-300 rounded-xl px-3 py-2 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-inner">
+                                                                <span className="text-black font-black mr-1 text-sm sm:text-base">&#8377;</span>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.05"
+                                                                    min="0"
+                                                                    value={msFormData.distributorCommission}
+                                                                    onChange={(e) => { const v = e.target.value; const num = parseFloat(v) || 0; setMsFormData(prev => ({ ...prev, distributorCommission: v, enabled: num > 0 ? true : prev.enabled })); }}
+                                                                    className="w-full bg-transparent text-sm sm:text-base font-black text-black focus:outline-none min-w-0"
+                                                                />
+                                                            </div>
+                                                            <p className="text-[9.5px] sm:text-[10px] font-bold text-slate-800 leading-tight">
+                                                                Credited to immediate parent distributor if mapped.
+                                                            </p>
+                                                        </div>
+
+                                                        {/* 3. Super Distributor Fixed Rupee */}
+                                                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-300 space-y-2 flex flex-col justify-between">
+                                                            <div className="flex items-center justify-between gap-1">
+                                                                <label className="text-[11px] font-black text-black uppercase tracking-wider truncate">
+                                                                    Super Distributor (&#8377;)
+                                                                </label>
+                                                                <span className="text-[9px] font-black uppercase bg-purple-100 text-purple-950 px-2 py-0.5 rounded border border-purple-300 shrink-0">
+                                                                    Upline 2
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center bg-white border border-slate-300 rounded-xl px-3 py-2 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-inner">
+                                                                <span className="text-black font-black mr-1 text-sm sm:text-base">&#8377;</span>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.05"
+                                                                    min="0"
+                                                                    value={msFormData.superDistributorCommission}
+                                                                    onChange={(e) => { const v = e.target.value; const num = parseFloat(v) || 0; setMsFormData(prev => ({ ...prev, superDistributorCommission: v, enabled: num > 0 ? true : prev.enabled })); }}
+                                                                    className="w-full bg-transparent text-sm sm:text-base font-black text-black focus:outline-none min-w-0"
+                                                                />
+                                                            </div>
+                                                            <p className="text-[9.5px] sm:text-[10px] font-bold text-slate-800 leading-tight">
+                                                                Credited to upline super distributor if mapped.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Summary Card */}
+                                                    <div className="p-5 bg-gradient-to-r from-slate-50 via-indigo-50/30 to-slate-50 rounded-2xl border border-slate-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                                        <div>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-xs font-black uppercase tracking-wider text-slate-700">Total Commission Distributed:</span>
+                                                                <span className="text-xl font-black text-black font-mono">
+                                                                    &#8377;{msTotalCommission}
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-[10.5px] font-bold text-slate-800 mt-0.5">
+                                                                Per successful Mini Statement: Retailer (&#8377;{Number(msFormData.retailerCommission || 0).toFixed(2)}) + Distributor (&#8377;{Number(msFormData.distributorCommission || 0).toFixed(2)}) + Super Distributor (&#8377;{Number(msFormData.superDistributorCommission || 0).toFixed(2)})
+                                                            </p>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-900 border border-indigo-200">
+                                                                AEPS 1 Mini Statement
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Footer Action Bar */}
+                                                <div className="p-4 sm:p-6 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-center justify-end gap-4">
+                                                    {hasMsChanges && (
+                                                        <span className="text-xs font-black text-amber-700 mr-auto">
+                                                            You have unsaved changes in Mini Statement rates.
+                                                        </span>
+                                                    )}
+                                                    <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                                                        {hasMsChanges && (
+                                                            <button
+                                                                onClick={handleResetMs}
+                                                                disabled={saving}
+                                                                className="px-4 py-2.5 rounded-2xl border border-slate-300 text-black text-xs font-black uppercase tracking-wider hover:bg-slate-200 transition-all flex items-center gap-2 cursor-pointer"
+                                                            >
+                                                                <RotateCcw size={14} />
+                                                                Reset
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            onClick={handleSaveMs}
+                                                            disabled={saving || !hasMsChanges}
+                                                            className={`px-6 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 text-white shadow-lg cursor-pointer ${saving || !hasMsChanges
+                                                                    ? 'bg-slate-300 shadow-none cursor-not-allowed text-slate-600'
+                                                                    : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30'
+                                                                }`}
+                                                        >
+                                                            <Save size={14} />
+                                                            {saving ? 'Saving...' : 'Save Configuration'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                ) : (
                                 <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
                                     <div className="p-6 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                         <div>
@@ -2084,6 +2968,7 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
                                         </>
                                     )}
                                 </div>
+                                )
                             )}
 
                             {/* ── CASE 2: BBPS PERCENTAGE COMMISSION CONFIGURATION ── */}
@@ -2379,6 +3264,9 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
                             >
                                 <option value="ALL">All Services</option>
                                 <option value="AEPS_1">AEPS 1 (Cash Withdrawal)</option>
+                                <option value="AEPS_1_MINI_STATEMENT">AEPS 1 (Mini Statement)</option>
+                                <option value="AEPS_1_2FA_CHARGE">AEPS 1 (2FA Charges)</option>
+                                <option value="AEPS_1_2FA_SETTLEMENT">AEPS 1 (2FA Settlement)</option>
                                 <option value="BBPS_FASTAG">BBPS (FASTag)</option>
                                 <option value="BBPS_LOAN_REPAYMENT">BBPS (Loan Repayment)</option>
                                 <option value="BBPS_ELECTRICITY">BBPS (Electricity)</option>
@@ -2402,6 +3290,16 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
                                 title="Refresh"
                             >
                                 <RefreshCw size={14} className={historyLoading ? 'animate-spin' : ''} />
+                            </button>
+
+                            <button
+                                onClick={handleReconcileMs}
+                                disabled={reconciling}
+                                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 text-xs font-black transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+                                title="Scan and credit missing commissions for successful AEPS Mini Statement transactions"
+                            >
+                                <Sparkles size={14} className={reconciling ? 'animate-spin text-purple-600' : 'text-purple-600'} />
+                                <span>Reconcile Mini Statement</span>
                             </button>
 
                             <button
@@ -2461,6 +3359,9 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
                                     historyList.map(item => {
                                         const isBbps = String(item.serviceType || '').includes('BBPS');
                                         const isRecharge = String(item.serviceType || '').includes('RECHARGE') || String(item.serviceType || '') === 'MR';
+                                        const isMiniStatement = String(item.serviceType || '').includes('MINI_STATEMENT');
+                                        const is2faCharge = String(item.serviceType || '').includes('2FA_CHARGE') || String(item.serviceType || '') === 'AEPS_2FA_CHARGE';
+                                        const is2faSettlement = String(item.serviceType || '').includes('2FA_SETTLEMENT') || String(item.serviceType || '') === 'AEPS_2FA_SETTLEMENT';
                                         return (
                                             <tr key={item.id} className="hover:bg-slate-50">
                                                 <td className="py-3 px-4 text-slate-800 font-mono text-[11px] whitespace-nowrap">
@@ -2473,20 +3374,32 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
                                                     {item.originalTransactionId}
                                                 </td>
                                                 <td className="py-3 px-4">
-                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase ${isRecharge
-                                                            ? 'bg-blue-100 text-blue-950 border border-blue-300'
-                                                            : isBbps
-                                                                ? 'bg-emerald-100 text-emerald-950 border border-emerald-300'
-                                                                : 'bg-indigo-100 text-indigo-950 border border-indigo-300'
+                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase ${is2faCharge
+                                                            ? 'bg-rose-100 text-rose-950 border border-rose-300'
+                                                            : is2faSettlement
+                                                                ? 'bg-teal-100 text-teal-950 border border-teal-300'
+                                                                : isRecharge
+                                                                    ? 'bg-blue-100 text-blue-950 border border-blue-300'
+                                                                    : isBbps
+                                                                        ? 'bg-emerald-100 text-emerald-950 border border-emerald-300'
+                                                                        : isMiniStatement
+                                                                            ? 'bg-purple-100 text-purple-950 border border-purple-300'
+                                                                            : 'bg-indigo-100 text-indigo-950 border border-indigo-300'
                                                         }`}>
-                                                        {isRecharge ? (
+                                                        {is2faCharge ? (
+                                                            'AEPS 1 2FA Charge'
+                                                        ) : is2faSettlement ? (
+                                                            'AEPS 1 2FA Settlement'
+                                                        ) : isRecharge ? (
                                                             <>
                                                                 <Smartphone size={10} className="text-blue-700" />
                                                                 <span>{item.operatorName || item.operatorCode || 'Recharge'}</span>
                                                             </>
                                                         ) : isBbps ? (
                                                             item.bbpsCategory ? `BBPS ${item.bbpsCategory}` : (String(item.serviceType).includes('ELECTRICITY') ? 'BBPS Electricity' : 'BBPS Loan')
-                                                        ) : 'AEPS 1'}
+                                                        ) : isMiniStatement ? (
+                                                            'AEPS 1 Mini Statement'
+                                                        ) : 'AEPS 1 (Cash Withdrawal)'}
                                                     </span>
                                                     {isRecharge && item.mobileNo && (
                                                         <span className="block text-[10px] font-mono text-slate-500 mt-0.5">
@@ -2521,14 +3434,26 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
                                                         <span className="inline-block bg-emerald-100 text-emerald-950 border border-emerald-300 px-2 py-0.5 rounded font-black">
                                                             {item.appliedPercentage ? `${item.appliedPercentage}%` : item.slabRange}
                                                         </span>
+                                                    ) : isMiniStatement ? (
+                                                        <span className="inline-block bg-purple-100 text-purple-950 border border-purple-300 px-2 py-0.5 rounded font-black">
+                                                            {item.slabRange || `₹${Number(item.commissionAmount || 0).toFixed(2)} (Fixed)`}
+                                                        </span>
+                                                    ) : is2faCharge ? (
+                                                        <span className="inline-block bg-rose-100 text-rose-950 border border-rose-300 px-2 py-0.5 rounded font-black">
+                                                            2FA Fee
+                                                        </span>
+                                                    ) : is2faSettlement ? (
+                                                        <span className="inline-block bg-teal-100 text-teal-950 border border-teal-300 px-2 py-0.5 rounded font-black">
+                                                            Recovery
+                                                        </span>
                                                     ) : (
                                                         <span className="text-black font-bold">
                                                             {item.slabRange}
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className="py-3 px-4 text-right font-mono font-black text-emerald-700">
-                                                    +&#8377;{Number(item.commissionAmount).toFixed(2)}
+                                                <td className={`py-3 px-4 text-right font-mono font-black ${is2faCharge ? 'text-rose-700' : 'text-emerald-700'}`}>
+                                                    {is2faCharge ? '-' : '+'}₹{Number(item.commissionAmount).toFixed(2)}
                                                 </td>
                                                 <td className="py-3 px-4 text-center">
                                                     <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-100 text-emerald-950 border border-emerald-300">

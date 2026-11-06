@@ -39,6 +39,8 @@ public class WalletServiceImpl implements WalletService {
     private final AuditLogRepository auditLogRepository;
     private final AppProperties appProperties;
     private final PlatformTransactionManager transactionManager;
+    @org.springframework.context.annotation.Lazy
+    private final com.rupiksha.backend.service.Aeps2faSettlementService aeps2faSettlementService;
 
     // Helper to generate reference number (WLT-YYYYMMDD-XXXXXX)
     private String generateReferenceNumber() {
@@ -295,8 +297,9 @@ public class WalletServiceImpl implements WalletService {
 
         User operator = userRepository.findById(operatorId)
                 .orElseThrow(() -> new IllegalArgumentException("Operator not found"));
-        User target = userRepository.findById(UUID.fromString(request.userId()))
+        User targetUser = userRepository.findById(UUID.fromString(request.userId()))
                 .orElseThrow(() -> new IllegalArgumentException("Target user not found"));
+        User target = targetUser;
 
         Wallet tgtWallet = getOrCreateWalletWithLock(target.getId());
         validateWalletStatus(tgtWallet, "CREDIT");
@@ -306,12 +309,15 @@ public class WalletServiceImpl implements WalletService {
             throw new IllegalArgumentException("Amount must be positive");
         }
 
+        String refNum = generateReferenceNumber();
+        if (aeps2faSettlementService != null) {
+            aeps2faSettlementService.settleOutstandingCharges(targetUser.getId(), amount, refNum);
+        }
+
         BigDecimal oldTgtBal = tgtWallet.getBalance();
         BigDecimal newTgtBal = oldTgtBal.add(amount);
         tgtWallet.setBalance(newTgtBal);
         walletRepository.save(tgtWallet);
-
-        String refNum = generateReferenceNumber();
 
         WalletEntry tgtEntry = new WalletEntry();
         tgtEntry.setWallet(tgtWallet);
@@ -370,8 +376,9 @@ public class WalletServiceImpl implements WalletService {
 
         User operator = userRepository.findById(operatorId)
                 .orElseThrow(() -> new IllegalArgumentException("Operator not found"));
-        User target = userRepository.findById(UUID.fromString(request.userId()))
+        User targetUser = userRepository.findById(UUID.fromString(request.userId()))
                 .orElseThrow(() -> new IllegalArgumentException("Target user not found"));
+        User target = targetUser;
 
         Wallet tgtWallet = getOrCreateWalletWithLock(target.getId());
         validateWalletStatus(tgtWallet, "DEBIT");
@@ -450,8 +457,9 @@ public class WalletServiceImpl implements WalletService {
 
         User operator = userRepository.findById(operatorId)
                 .orElseThrow(() -> new IllegalArgumentException("Operator not found"));
-        User target = userRepository.findById(UUID.fromString(request.userId()))
+        User targetUser = userRepository.findById(UUID.fromString(request.userId()))
                 .orElseThrow(() -> new IllegalArgumentException("Target user not found"));
+        User target = targetUser;
 
         Wallet wallet = getOrCreateWalletWithLock(target.getId());
         validateWalletStatus(wallet, "DEBIT");
@@ -528,8 +536,9 @@ public class WalletServiceImpl implements WalletService {
 
         User operator = userRepository.findById(operatorId)
                 .orElseThrow(() -> new IllegalArgumentException("Operator not found"));
-        User target = userRepository.findById(UUID.fromString(request.userId()))
+        User targetUser = userRepository.findById(UUID.fromString(request.userId()))
                 .orElseThrow(() -> new IllegalArgumentException("Target user not found"));
+        User target = targetUser;
 
         Wallet wallet = getOrCreateWalletWithLock(target.getId());
         validateWalletStatus(wallet, "CREDIT");
@@ -605,8 +614,9 @@ public class WalletServiceImpl implements WalletService {
 
         User operator = userRepository.findById(operatorId)
                 .orElseThrow(() -> new IllegalArgumentException("Operator not found"));
-        User target = userRepository.findById(UUID.fromString(request.userId()))
+        User targetUser = userRepository.findById(UUID.fromString(request.userId()))
                 .orElseThrow(() -> new IllegalArgumentException("Target user not found"));
+        User target = targetUser;
 
         Wallet tgtWallet = getOrCreateWalletWithLock(target.getId());
         validateWalletStatus(tgtWallet, "CREDIT");
@@ -706,8 +716,9 @@ public class WalletServiceImpl implements WalletService {
 
         User operator = userRepository.findById(operatorId)
                 .orElseThrow(() -> new IllegalArgumentException("Operator not found"));
-        User target = userRepository.findById(UUID.fromString(request.userId()))
+        User targetUser = userRepository.findById(UUID.fromString(request.userId()))
                 .orElseThrow(() -> new IllegalArgumentException("Target user not found"));
+        User target = targetUser;
 
         Wallet tgtWallet = getOrCreateWalletWithLock(target.getId());
         validateWalletStatus(tgtWallet, "CREDIT");
@@ -717,12 +728,15 @@ public class WalletServiceImpl implements WalletService {
             throw new IllegalArgumentException("Amount must be positive");
         }
 
+        String refNum = generateReferenceNumber();
+        if (aeps2faSettlementService != null) {
+            aeps2faSettlementService.settleOutstandingCharges(targetUser.getId(), amount, refNum);
+        }
+
         BigDecimal oldTgtBal = tgtWallet.getBalance();
         BigDecimal newTgtBal = oldTgtBal.add(amount);
         tgtWallet.setBalance(newTgtBal);
         walletRepository.save(tgtWallet);
-
-        String refNum = generateReferenceNumber();
 
         WalletEntry tgtEntry = new WalletEntry();
         tgtEntry.setWallet(tgtWallet);
@@ -1003,12 +1017,15 @@ public class WalletServiceImpl implements WalletService {
 
         BigDecimal amount = fr.getAmount();
 
+        String refNum = generateReferenceNumber();
+        if (aeps2faSettlementService != null) {
+            aeps2faSettlementService.settleOutstandingCharges(targetUser.getId(), amount, refNum);
+        }
+
         BigDecimal oldTgtBal = tgtWallet.getBalance();
         BigDecimal newTgtBal = oldTgtBal.add(amount);
         tgtWallet.setBalance(newTgtBal);
         walletRepository.save(tgtWallet);
-
-        String refNum = generateReferenceNumber();
 
         fr.setStatus("APPROVED");
         fr.setApprovedBy(admin);
@@ -1322,12 +1339,15 @@ public class WalletServiceImpl implements WalletService {
         Wallet wallet = getOrCreateWalletWithLock(userId);
         validateWalletStatus(wallet, "CREDIT");
 
+        String refNum = generateReferenceNumber();
+        if (aeps2faSettlementService != null) {
+            aeps2faSettlementService.settleOutstandingCharges(userId, amount, refNum);
+        }
+
         BigDecimal oldBal = wallet.getBalance();
         BigDecimal newBal = oldBal.add(amount);
         wallet.setBalance(newBal);
         walletRepository.save(wallet);
-
-        String refNum = generateReferenceNumber();
 
         WalletEntry entry = new WalletEntry();
         entry.setWallet(wallet);
@@ -1381,12 +1401,15 @@ public class WalletServiceImpl implements WalletService {
         Wallet wallet = getOrCreateWalletWithLock(userId);
         validateWalletStatus(wallet, "CREDIT");
 
+        String refNum = generateReferenceNumber();
+        if (aeps2faSettlementService != null) {
+            aeps2faSettlementService.settleOutstandingCharges(userId, amount, refNum);
+        }
+
         BigDecimal oldBal = wallet.getBalance();
         BigDecimal newBal = oldBal.add(amount);
         wallet.setBalance(newBal);
         walletRepository.save(wallet);
-
-        String refNum = generateReferenceNumber();
 
         WalletEntry entry = new WalletEntry();
         entry.setWallet(wallet);
@@ -1412,6 +1435,67 @@ public class WalletServiceImpl implements WalletService {
                 .referenceNumber(refNum)
                 .ipAddress(ipAddress)
                 .remark(sanitizeRemark("Service refund: " + serviceName + " parentRef: " + parentReferenceNumber + " Context: " + context))
+                .build();
+        auditLogRepository.save(audit);
+
+        return mapBalanceResponse(wallet);
+    }
+
+    @Override
+    @Transactional
+    public WalletDtos.WalletBalanceResponse debitFor2faCharge(
+            UUID userId,
+            BigDecimal amount,
+            String narration,
+            String serviceName,
+            String ipAddress,
+            String idempotencyKey) {
+
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            Optional<WalletEntry> existing = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
+            if (existing.isPresent()) {
+                return mapBalanceResponse(existing.get().getWallet());
+            }
+        }
+
+        Wallet wallet = getOrCreateWalletWithLock(userId);
+        validateWalletStatus(wallet, "DEBIT");
+
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("2FA charge amount must be positive");
+        }
+
+        BigDecimal oldBal = wallet.getBalance();
+        BigDecimal newBal = oldBal.subtract(amount);
+        wallet.setBalance(newBal);
+        walletRepository.save(wallet);
+
+        String refNum = generateReferenceNumber();
+
+        WalletEntry entry = new WalletEntry();
+        entry.setWallet(wallet);
+        entry.setAmount(amount);
+        entry.setEntryType("SERVICE_DEBIT");
+        entry.setReferenceId(refNum);
+        entry.setNarration(sanitizeNarration(serviceName + " usage: " + narration));
+        entry.setOpeningBalance(oldBal);
+        entry.setClosingBalance(newBal);
+        entry.setIpAddress(ipAddress);
+        entry.setIdempotencyKey(idempotencyKey);
+        entry.setTransactionContext(WalletTransactionContext.AEPS_2FA_CHARGE);
+        entry.setStatus(WalletTransactionStatus.SUCCESS);
+        walletEntryRepository.save(entry);
+
+        AuditLog audit = AuditLog.builder()
+                .targetUser(wallet.getUser())
+                .oldBalance(oldBal)
+                .newBalance(newBal)
+                .amount(amount)
+                .walletType("MAIN")
+                .ledgerType("SERVICE_DEBIT")
+                .referenceNumber(refNum)
+                .ipAddress(ipAddress)
+                .remark(sanitizeRemark("2FA Charge debit: " + serviceName + " Context: AEPS_2FA_CHARGE"))
                 .build();
         auditLogRepository.save(audit);
 

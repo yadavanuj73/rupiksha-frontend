@@ -10,7 +10,7 @@ const WalletContext = createContext({
   status: "ACTIVE",
   isWalletLoading: true,
   walletError: null,
-  refreshWallet: async () => {}
+  refreshWallet: async () => { }
 });
 
 /**
@@ -27,7 +27,7 @@ function readLocalBalance(user) {
     // 1. Per-user wallet cache (written by adjustUserWalletBalance in admin tab)
     for (const id of ids) {
       const cached = localStorage.getItem(`rupiksha_wallet_${id}`);
-      if (cached !== null && parseFloat(cached) > 0) return parseFloat(cached);
+      if (cached !== null && !isNaN(parseFloat(cached))) return parseFloat(cached);
     }
 
     // 2. Session keys
@@ -41,9 +41,9 @@ function readLocalBalance(user) {
         );
         if (match) {
           const bal = parseFloat(String(u.balance || u.walletBalance || 0));
-          if (bal > 0) return bal;
+          if (!isNaN(bal)) return bal;
         }
-      } catch (_) {}
+      } catch (_) { }
     }
 
     // 3. rupiksha_data.users[]
@@ -99,7 +99,7 @@ export function WalletProvider({ children }) {
       const profile = await userService.getProfile();
       if (profile && (profile.balance !== undefined || profile.walletBalance !== undefined || profile.availableBalance !== undefined)) {
         const liveBal = parseFloat(String(profile.balance ?? profile.walletBalance ?? profile.availableBalance ?? 0).replace(/,/g, '')) || 0;
-        
+
         applyBalance(
           liveBal,
           profile.lockedBalance ?? profile.lockedAmount ?? 0,
@@ -112,7 +112,7 @@ export function WalletProvider({ children }) {
           localStorage.setItem(`rupiksha_wallet_${userId}`, liveBal.toFixed(2));
           if (profile.username) localStorage.setItem(`rupiksha_wallet_${profile.username}`, liveBal.toFixed(2));
           if (profile.mobile) localStorage.setItem(`rupiksha_wallet_${profile.mobile}`, liveBal.toFixed(2));
-          
+
           const sessionRaw = localStorage.getItem('rupiksha_user');
           if (sessionRaw) {
             const sessionUser = JSON.parse(sessionRaw);
@@ -126,7 +126,7 @@ export function WalletProvider({ children }) {
               localStorage.setItem('rupiksha_user', JSON.stringify(mergedSession));
             }
           }
-        } catch (_) {}
+        } catch (_) { }
 
         setIsWalletLoading(false);
         return;
@@ -139,11 +139,11 @@ export function WalletProvider({ children }) {
     try {
       const data = await walletService.getBalance(userId);
       if (data && (data.balance !== undefined || data.availableBalance !== undefined)) {
-        const backendBal = parseFloat(String(data.balance ?? data.availableBalance ?? 0)) || 0;
-        if (backendBal > 0) {
+        const backendBal = parseFloat(String(data.balance ?? data.availableBalance ?? 0));
+        if (!isNaN(backendBal)) {
           setWallet(data);
           applyBalance(backendBal, data.lockedBalance, data.availableBalance, data.status);
-          try { localStorage.setItem(`rupiksha_wallet_${userId}`, backendBal.toFixed(2)); } catch (_) {}
+          try { localStorage.setItem(`rupiksha_wallet_${userId}`, backendBal.toFixed(2)); } catch (_) { }
           setIsWalletLoading(false);
           return;
         }
@@ -259,7 +259,7 @@ export function WalletProvider({ children }) {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
-            
+
             <div className="space-y-1">
               <span className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider bg-rose-100 text-rose-700 border border-rose-200">
                 Security & Compliance Notice

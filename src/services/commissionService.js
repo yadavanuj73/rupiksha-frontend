@@ -65,6 +65,40 @@ export const commissionService = {
         });
     },
 
+    // ─── AEPS 1 MINI STATEMENT COMMISSION METHODS ──────────────────────────────
+    /**
+     * Get AEPS 1 Mini Statement commission configs for all plans
+     */
+    async getAepsMiniStatementConfigs() {
+        return apiFetch('/admin/commissions/aeps/mini-statement/configs');
+    },
+
+    /**
+     * Update AEPS 1 Mini Statement commission config for a plan
+     */
+    async updateAepsMiniStatementConfig(configId, configData) {
+        return apiFetch(`/admin/commissions/aeps/mini-statement/configs/${configId}`, {
+            method: 'PUT',
+            body: JSON.stringify(configData),
+        });
+    },
+
+    /**
+     * Get audit trail of AEPS 1 Mini Statement commission changes
+     */
+    async getAepsMiniStatementAudits() {
+        return apiFetch('/admin/commissions/aeps/mini-statement/audits');
+    },
+
+    /**
+     * Reconcile past uncredited AEPS 1 Mini Statement transactions and grant their commissions
+     */
+    async reconcileAepsMiniStatementCommissions() {
+        return apiFetch('/admin/commissions/aeps/mini-statement/reconcile', {
+            method: 'POST',
+        });
+    },
+
     // ─── BBPS PERCENTAGE COMMISSION METHODS ────────────────────────────────────
     /**
      * Get registered BBPS services and their commission configuration status
@@ -205,5 +239,85 @@ export const commissionService = {
         query.append('sortDir', params.sortDir || 'desc');
 
         return apiFetch(`/retailer/commissions/history?${query.toString()}`);
+    },
+
+    /**
+     * Get retailer's active AEPS 1 Mini Statement commission configuration
+     */
+    async getRetailerMiniStatementConfig() {
+        return apiFetch('/retailer/commissions/aeps/mini-statement');
+    },
+
+    // ─── AEPS 1 2FA CHARGES METHODS ───────────────────────────────────────────
+    /**
+     * Get AEPS 1 2FA charge configs for all plans
+     */
+    async getAeps2faConfigs() {
+        return apiFetch('/admin/commissions/aeps/2fa/configs');
+    },
+
+    /**
+     * Update AEPS 1 2FA charge config for a plan
+     */
+    async updateAeps2faConfig(configId, configData) {
+        return apiFetch(`/admin/commissions/aeps/2fa/configs/${configId}`, {
+            method: 'PUT',
+            body: JSON.stringify(configData),
+        });
+    },
+
+    /**
+     * Get audit trail of AEPS 1 2FA charge changes
+     */
+    async getAeps2faAudits(planId) {
+        const query = planId ? `?planId=${planId}` : '';
+        return apiFetch(`/admin/commissions/aeps/2fa/audits${query}`);
+    },
+
+    /**
+     * Get paginated 2FA charge transaction records for Admin
+     */
+    async getAeps2faCharges(params = {}) {
+        const query = new URLSearchParams();
+        query.append('page', params.page ?? 0);
+        query.append('size', params.size ?? 20);
+        return apiFetch(`/admin/commissions/aeps/2fa/charges?${query.toString()}`);
+    },
+
+    /**
+     * Get paginated 2FA settlement records for Admin
+     */
+    async getAeps2faSettlements(params = {}) {
+        const query = new URLSearchParams();
+        query.append('page', params.page ?? 0);
+        query.append('size', params.size ?? 20);
+        return apiFetch(`/admin/commissions/aeps/2fa/settlements?${query.toString()}`);
+    },
+
+    /**
+     * Get retailer's active AEPS 1 2FA charge configuration
+     */
+    async getRetailer2faConfig() {
+        return apiFetch('/retailer/commissions/aeps/2fa');
+    },
+
+    /**
+     * Get retailer's own 2FA charge history
+     */
+    async getRetailer2faCharges(params = {}) {
+        const query = new URLSearchParams();
+        query.append('page', params.page ?? 0);
+        query.append('size', params.size ?? 20);
+        return apiFetch(`/retailer/commissions/aeps/2fa/charges?${query.toString()}`);
+    },
+
+    /**
+     * Get retailer's own 2FA settlement history
+     */
+    async getRetailer2faSettlements(params = {}) {
+        const query = new URLSearchParams();
+        query.append('page', params.page ?? 0);
+        query.append('size', params.size ?? 20);
+        return apiFetch(`/retailer/commissions/aeps/2fa/settlements?${query.toString()}`);
     },
 };

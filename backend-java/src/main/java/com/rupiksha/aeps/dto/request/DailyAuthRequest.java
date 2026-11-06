@@ -21,4 +21,6 @@ public class DailyAuthRequest {
     private String serviceType = "AEPS";
 
     private String bankIin;
+
+    private String ipAddress;
 }

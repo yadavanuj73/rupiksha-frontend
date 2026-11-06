@@ -25,6 +25,8 @@ import java.util.UUID;
 public class RetailerCommissionController {
 
     private final CommissionService commissionService;
+    private final com.rupiksha.backend.service.Aeps2faChargeService aeps2faChargeService;
+    private final com.rupiksha.backend.service.Aeps2faSettlementService aeps2faSettlementService;
 
     @GetMapping("/summary")
     public ResponseEntity<CommissionDtos.CommissionSummaryDto> getSummary(
@@ -86,5 +88,43 @@ public class RetailerCommissionController {
                 currentUserId, false, serviceType, status, planCode, startDate, endDate, search, pageable
         );
         return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/aeps/mini-statement")
+    public ResponseEntity<CommissionDtos.AepsMiniStatementCommissionConfigDto> getMyMiniStatementConfig(
+            @AuthenticationPrincipal JwtPrincipal principal
+    ) {
+        UUID retailerId = UUID.fromString(principal.userId());
+        return ResponseEntity.ok(commissionService.getRetailerMiniStatementConfig(retailerId));
+    }
+
+    @GetMapping("/aeps/2fa")
+    public ResponseEntity<CommissionDtos.Aeps2faChargeConfigDto> getMy2faConfig(
+            @AuthenticationPrincipal JwtPrincipal principal
+    ) {
+        UUID retailerId = UUID.fromString(principal.userId());
+        return ResponseEntity.ok(aeps2faChargeService.getRetailerChargeConfig(retailerId));
+    }
+
+    @GetMapping("/aeps/2fa/charges")
+    public ResponseEntity<Page<CommissionDtos.Aeps2faChargeTxnDto>> getMy2faCharges(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        UUID userId = UUID.fromString(principal.userId());
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        return ResponseEntity.ok(aeps2faChargeService.getUserChargeHistory(userId, pageable));
+    }
+
+    @GetMapping("/aeps/2fa/settlements")
+    public ResponseEntity<Page<CommissionDtos.Aeps2faSettlementDto>> getMy2faSettlements(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        UUID userId = UUID.fromString(principal.userId());
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        return ResponseEntity.ok(aeps2faSettlementService.getSettlementHistory(userId, pageable));
     }
 }

@@ -348,4 +348,138 @@ public class CommissionDtos {
             String ipAddress,
             Instant createdAt
     ) {}
+
+    // ─── AEPS 1 MINI STATEMENT COMMISSION DTOS ──────────────────────────────
+
+    public record AepsMiniStatementCommissionConfigDto(
+            UUID id,
+            String serviceType,
+            UUID planId,
+            String planCode,
+            String planName,
+            BigDecimal planPrice,
+            BigDecimal retailerCommission,
+            BigDecimal distributorCommission,
+            BigDecimal superDistributorCommission,
+            BigDecimal totalCommission,
+            Boolean enabled,
+            Instant updatedAt
+    ) {}
+
+    public record UpdateAepsMiniStatementConfigRequest(
+            @NotNull(message = "Retailer commission is required")
+            @DecimalMin(value = "0.00", inclusive = true, message = "Retailer commission cannot be negative")
+            BigDecimal retailerCommission,
+
+            @NotNull(message = "Distributor commission is required")
+            @DecimalMin(value = "0.00", inclusive = true, message = "Distributor commission cannot be negative")
+            BigDecimal distributorCommission,
+
+            @NotNull(message = "Super Distributor commission is required")
+            @DecimalMin(value = "0.00", inclusive = true, message = "Super Distributor commission cannot be negative")
+            BigDecimal superDistributorCommission,
+
+            Boolean enabled
+    ) {}
+
+    public record AepsMiniStatementAuditDto(
+            UUID id,
+            String planCode,
+            String adminUsername,
+            BigDecimal prevRetailerCommission,
+            BigDecimal prevDistributorCommission,
+            BigDecimal prevSuperDistributorCommission,
+            Boolean prevEnabled,
+            BigDecimal newRetailerCommission,
+            BigDecimal newDistributorCommission,
+            BigDecimal newSuperDistributorCommission,
+            Boolean newEnabled,
+            String ipAddress,
+            Instant createdAt
+    ) {}
+
+    // ─── AEPS 1 2FA CHARGE DTOS ──────────────────────────────────────────────
+
+    public record Aeps2faChargeConfigDto(
+            UUID id,
+            String serviceType,
+            UUID planId,
+            String planCode,
+            String planName,
+            BigDecimal planPrice,
+            BigDecimal retailerCharge,
+            BigDecimal distributorCharge,
+            BigDecimal superDistributorCharge,
+            Boolean enabled,
+            String createdBy,
+            String updatedBy,
+            Instant updatedAt
+    ) {}
+
+    public record UpdateAeps2faConfigRequest(
+            @NotNull(message = "Retailer charge is required")
+            @DecimalMin(value = "0.00", inclusive = true, message = "Retailer charge cannot be negative")
+            BigDecimal retailerCharge,
+
+            @NotNull(message = "Distributor charge is required")
+            @DecimalMin(value = "0.00", inclusive = true, message = "Distributor charge cannot be negative")
+            BigDecimal distributorCharge,
+
+            @NotNull(message = "Super Distributor charge is required")
+            @DecimalMin(value = "0.00", inclusive = true, message = "Super Distributor charge cannot be negative")
+            BigDecimal superDistributorCharge,
+
+            Boolean enabled
+    ) {}
+
+    public record Aeps2faAuditDto(
+            UUID id,
+            UUID configId,
+            UUID planId,
+            String planCode,
+            String adminUsername,
+            BigDecimal prevRetailerCharge,
+            BigDecimal prevDistributorCharge,
+            BigDecimal prevSuperDistributorCharge,
+            Boolean prevEnabled,
+            BigDecimal newRetailerCharge,
+            BigDecimal newDistributorCharge,
+            BigDecimal newSuperDistributorCharge,
+            Boolean newEnabled,
+            String ipAddress,
+            Instant createdAt
+    ) {}
+
+    public record Aeps2faChargeTxnDto(
+            UUID id,
+            String chargeReference,
+            String original2faReference,
+            UUID userId,
+            String userName,
+            String userRole,
+            String planCode,
+            BigDecimal configuredChargeAmount,
+            BigDecimal amountCharged,
+            BigDecimal walletOpeningBalance,
+            BigDecimal walletClosingBalance,
+            BigDecimal outstandingAmount,
+            String settlementStatus,
+            String providerTransactionReference,
+            String transactionStatus,
+            Instant createdAt
+    ) {}
+
+    public record Aeps2faSettlementDto(
+            UUID id,
+            String settlementReference,
+            UUID chargeTxnId,
+            String chargeReference,
+            String incomingCreditReference,
+            UUID userId,
+            String userName,
+            BigDecimal settlementAmount,
+            BigDecimal remainingOutstandingAmount,
+            String settlementStatus,
+            Instant createdAt
+    ) {}
 }

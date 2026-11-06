@@ -12,4 +12,11 @@ public class KycResponse {
     private String providerReference;
     private String providerTxnId;
     private String provider;
+
+    // 2FA Charge & Wallet Settlement Details
+    private java.math.BigDecimal chargeAmount;
+    private java.math.BigDecimal walletBalance;
+    private java.math.BigDecimal outstandingAmount;
+    private String chargeReference;
+    private String chargeStatus;
 }

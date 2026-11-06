@@ -44,6 +44,30 @@ public class CommissionServiceImplTest {
     @Mock
     private com.rupiksha.backend.repository.BbpsTransactionRepository bbpsTransactionRepository;
 
+    @Mock
+    private AepsMiniStatementCommissionConfigRepository aepsMiniStatementCommissionConfigRepository;
+
+    @Mock
+    private AepsMiniStatementCommissionConfigAuditRepository aepsMiniStatementCommissionConfigAuditRepository;
+
+    @Mock
+    private com.rupiksha.aeps.repository.AepsTransactionEngineRepository aepsTransactionEngineRepository;
+
+    @Mock
+    private BbpsCommissionConfigRepository bbpsCommissionConfigRepository;
+
+    @Mock
+    private BbpsCommissionConfigAuditRepository bbpsCommissionConfigAuditRepository;
+
+    @Mock
+    private RechargeCommissionConfigRepository rechargeCommissionConfigRepository;
+
+    @Mock
+    private RechargeCommissionConfigAuditRepository rechargeCommissionConfigAuditRepository;
+
+    @Mock
+    private RechargeRepository rechargeRepository;
+
     @InjectMocks
     private CommissionServiceImpl commissionService;
 
@@ -587,5 +611,480 @@ public class CommissionServiceImplTest {
         assertNotNull(page);
         assertEquals(1, page.getTotalElements());
         assertEquals("COMM-20260920-TEST01", page.getContent().get(0).commissionReference());
+    }
+
+    // ─── AEPS 1 MINI STATEMENT COMMISSION TESTS ─────────────────────────────
+
+    @Test
+    @DisplayName("MS-1: Full Hierarchy Mini Statement Commission Distribution")
+    void testMiniStatement_FullHierarchy_Success() {
+        // Arrange
+        retailer.setAepsCommissionPlan(freePlan);
+        AepsTransactionEngine txn = AepsTransactionEngine.builder()
+                .transactionId("MS_TXN_FULL_001")
+                .userId(retailer.getId())
+                .serviceType("MINI_STATEMENT")
+                .amount(BigDecimal.ZERO)
+                .status("SUCCESS")
+                .ipAddress("192.168.1.100")
+                .build();
+
+        AepsMiniStatementCommissionConfig config = AepsMiniStatementCommissionConfig.builder()
+                .id(UUID.randomUUID())
+                .serviceType("AEPS_1_MINI_STATEMENT")
+                .plan(freePlan)
+                .planCode("FREE")
+                .retailerCommission(new BigDecimal("1.00"))
+                .distributorCommission(new BigDecimal("0.50"))
+                .superDistributorCommission(new BigDecimal("0.25"))
+                .enabled(true)
+                .build();
+
+        when(commissionTransactionRepository.existsByOriginalTransactionId("MS_TXN_FULL_001")).thenReturn(false);
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+        when(aepsMiniStatementCommissionConfigRepository.findByPlan_Id(freePlan.getId())).thenReturn(Optional.of(config));
+
+        // Act
+        commissionService.processAepsCommission(txn);
+
+        // Assert - Retailer credited ₹1.00
+        verify(walletService, times(1)).creditForService(
+                eq(retailer.getId()), eq(new BigDecimal("1.00")), contains("MS_TXN_FULL_001"),
+                eq(WalletTransactionContext.COMMISSION), eq("AEPS 1 Mini Statement"), eq("192.168.1.100"),
+                eq("COMM-MS-MS_TXN_FULL_001-RETAILER-" + retailer.getId())
+        );
+
+        // Assert - Distributor credited ₹0.50
+        verify(walletService, times(1)).creditForService(
+                eq(distributor.getId()), eq(new BigDecimal("0.50")), contains("MS_TXN_FULL_001"),
+                eq(WalletTransactionContext.COMMISSION), eq("AEPS 1 Mini Statement"), eq("192.168.1.100"),
+                eq("COMM-MS-MS_TXN_FULL_001-DISTRIBUTOR-" + distributor.getId())
+        );
+
+        // Assert - Super Distributor credited ₹0.25
+        verify(walletService, times(1)).creditForService(
+                eq(superDistributor.getId()), eq(new BigDecimal("0.25")), contains("MS_TXN_FULL_001"),
+                eq(WalletTransactionContext.COMMISSION), eq("AEPS 1 Mini Statement"), eq("192.168.1.100"),
+                eq("COMM-MS-MS_TXN_FULL_001-SUPER_DISTRIBUTOR-" + superDistributor.getId())
+        );
+
+        // 3 ledger transactions saved
+        verify(commissionTransactionRepository, times(3)).save(any(CommissionTransaction.class));
+    }
+
+    @Test
+    @DisplayName("MS-2: Direct Retailer with No Hierarchy - Only Retailer Credited")
+    void testMiniStatement_DirectRetailer_OnlyRetailerCredited() {
+        retailer.setAepsCommissionPlan(freePlan);
+        retailer.setParentUser(null);
+        retailer.setAddedByUserRef(null);
+        retailer.setAddedByPartyCode(null);
+
+        AepsTransactionEngine txn = AepsTransactionEngine.builder()
+                .transactionId("MS_TXN_DIRECT_002")
+                .userId(retailer.getId())
+                .serviceType("MINI_STATEMENT")
+                .amount(BigDecimal.ZERO)
+                .status("SUCCESS")
+                .build();
+
+        AepsMiniStatementCommissionConfig config = AepsMiniStatementCommissionConfig.builder()
+                .id(UUID.randomUUID())
+                .serviceType("AEPS_1_MINI_STATEMENT")
+                .plan(freePlan)
+                .planCode("FREE")
+                .retailerCommission(new BigDecimal("1.00"))
+                .distributorCommission(new BigDecimal("0.50"))
+                .superDistributorCommission(new BigDecimal("0.25"))
+                .enabled(true)
+                .build();
+
+        when(commissionTransactionRepository.existsByOriginalTransactionId("MS_TXN_DIRECT_002")).thenReturn(false);
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+        when(aepsMiniStatementCommissionConfigRepository.findByPlan_Id(freePlan.getId())).thenReturn(Optional.of(config));
+
+        commissionService.processAepsCommission(txn);
+
+        // Only Retailer credited
+        verify(walletService, times(1)).creditForService(
+                eq(retailer.getId()), eq(new BigDecimal("1.00")), anyString(),
+                eq(WalletTransactionContext.COMMISSION), eq("AEPS 1 Mini Statement"), anyString(), anyString()
+        );
+
+        // Distributor and Super Distributor NOT credited
+        verify(walletService, never()).creditForService(
+                eq(distributor.getId()), any(), any(), any(), any(), any(), any()
+        );
+        verify(walletService, never()).creditForService(
+                eq(superDistributor.getId()), any(), any(), any(), any(), any(), any()
+        );
+
+        // Only 1 ledger record saved
+        verify(commissionTransactionRepository, times(1)).save(any(CommissionTransaction.class));
+    }
+
+    @Test
+    @DisplayName("MS-3: Distributor without Super Distributor - Only Retailer & Distributor Credited")
+    void testMiniStatement_DistributorWithoutSuperDistributor() {
+        retailer.setAepsCommissionPlan(freePlan);
+        distributor.setParentUser(null);
+        distributor.setAddedByUserRef(null);
+        distributor.setAddedByPartyCode(null);
+
+        AepsTransactionEngine txn = AepsTransactionEngine.builder()
+                .transactionId("MS_TXN_DIST_ONLY_003")
+                .userId(retailer.getId())
+                .serviceType("MINI_STATEMENT")
+                .amount(BigDecimal.ZERO)
+                .status("SUCCESS")
+                .build();
+
+        AepsMiniStatementCommissionConfig config = AepsMiniStatementCommissionConfig.builder()
+                .id(UUID.randomUUID())
+                .serviceType("AEPS_1_MINI_STATEMENT")
+                .plan(freePlan)
+                .planCode("FREE")
+                .retailerCommission(new BigDecimal("1.00"))
+                .distributorCommission(new BigDecimal("0.50"))
+                .superDistributorCommission(new BigDecimal("0.25"))
+                .enabled(true)
+                .build();
+
+        when(commissionTransactionRepository.existsByOriginalTransactionId("MS_TXN_DIST_ONLY_003")).thenReturn(false);
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+        when(aepsMiniStatementCommissionConfigRepository.findByPlan_Id(freePlan.getId())).thenReturn(Optional.of(config));
+
+        commissionService.processAepsCommission(txn);
+
+        // Retailer + Distributor credited
+        verify(walletService, times(1)).creditForService(
+                eq(retailer.getId()), eq(new BigDecimal("1.00")), anyString(),
+                eq(WalletTransactionContext.COMMISSION), eq("AEPS 1 Mini Statement"), anyString(), anyString()
+        );
+        verify(walletService, times(1)).creditForService(
+                eq(distributor.getId()), eq(new BigDecimal("0.50")), anyString(),
+                eq(WalletTransactionContext.COMMISSION), eq("AEPS 1 Mini Statement"), anyString(), anyString()
+        );
+        // Super Distributor NOT credited
+        verify(walletService, never()).creditForService(
+                eq(superDistributor.getId()), any(), any(), any(), any(), any(), any()
+        );
+
+        // Exactly 2 ledger records saved
+        verify(commissionTransactionRepository, times(2)).save(any(CommissionTransaction.class));
+    }
+
+    @Test
+    @DisplayName("MS-4: Zero Commission Configured - No Wallet Credit")
+    void testMiniStatement_ZeroCommission_NoWalletCredit() {
+        retailer.setAepsCommissionPlan(freePlan);
+        AepsTransactionEngine txn = AepsTransactionEngine.builder()
+                .transactionId("MS_TXN_ZERO_004")
+                .userId(retailer.getId())
+                .serviceType("MINI_STATEMENT")
+                .amount(BigDecimal.ZERO)
+                .status("SUCCESS")
+                .build();
+
+        AepsMiniStatementCommissionConfig config = AepsMiniStatementCommissionConfig.builder()
+                .id(UUID.randomUUID())
+                .serviceType("AEPS_1_MINI_STATEMENT")
+                .plan(freePlan)
+                .planCode("FREE")
+                .retailerCommission(BigDecimal.ZERO)
+                .distributorCommission(BigDecimal.ZERO)
+                .superDistributorCommission(BigDecimal.ZERO)
+                .enabled(true)
+                .build();
+
+        when(commissionTransactionRepository.existsByOriginalTransactionId("MS_TXN_ZERO_004")).thenReturn(false);
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+        when(aepsMiniStatementCommissionConfigRepository.findByPlan_Id(freePlan.getId())).thenReturn(Optional.of(config));
+
+        commissionService.processAepsCommission(txn);
+
+        verify(walletService, never()).creditForService(any(), any(), any(), any(), any(), any(), any());
+        verify(commissionTransactionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("MS-5: Non-Successful Transaction - No Commission Generated")
+    void testMiniStatement_FailedOrPendingTransaction_NoCommission() {
+        AepsTransactionEngine failedTxn = AepsTransactionEngine.builder()
+                .transactionId("MS_TXN_FAIL_005")
+                .userId(retailer.getId())
+                .serviceType("MINI_STATEMENT")
+                .status("FAILED")
+                .build();
+
+        AepsTransactionEngine pendingTxn = AepsTransactionEngine.builder()
+                .transactionId("MS_TXN_PEND_005")
+                .userId(retailer.getId())
+                .serviceType("MINI_STATEMENT")
+                .status("PENDING")
+                .build();
+
+        commissionService.processAepsCommission(failedTxn);
+        commissionService.processAepsCommission(pendingTxn);
+
+        verify(commissionTransactionRepository, never()).existsByOriginalTransactionId(anyString());
+        verify(walletService, never()).creditForService(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("MS-6: Idempotency Protection - Duplicate Transaction Not Re-credited")
+    void testMiniStatement_Idempotency_AlreadyProcessed() {
+        AepsTransactionEngine txn = AepsTransactionEngine.builder()
+                .transactionId("MS_TXN_DUP_006")
+                .userId(retailer.getId())
+                .serviceType("MINI_STATEMENT")
+                .status("SUCCESS")
+                .build();
+
+        when(commissionTransactionRepository.existsByOriginalTransactionId("MS_TXN_DUP_006")).thenReturn(true);
+
+        commissionService.processAepsCommission(txn);
+
+        verify(walletService, never()).creditForService(any(), any(), any(), any(), any(), any(), any());
+        verify(commissionTransactionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("MS-7: Different Commission Plans Use Independent Configurations")
+    void testMiniStatement_DifferentPlans_Independent() {
+        CommissionPlan anandPlan = CommissionPlan.builder()
+                .id(UUID.randomUUID())
+                .serviceType("AEPS_1")
+                .planName("Rupiksha Anand Plan")
+                .planCode("PLAN_2999")
+                .price(new BigDecimal("2999.00"))
+                .enabled(true)
+                .build();
+
+        retailer.setAepsCommissionPlan(anandPlan);
+        retailer.setAepsCommissionPlanExpiresAt(Instant.now().plusSeconds(86400 * 30));
+
+        AepsTransactionEngine txn = AepsTransactionEngine.builder()
+                .transactionId("MS_TXN_PLAN_007")
+                .userId(retailer.getId())
+                .serviceType("MINI_STATEMENT")
+                .status("SUCCESS")
+                .build();
+
+        AepsMiniStatementCommissionConfig anandConfig = AepsMiniStatementCommissionConfig.builder()
+                .id(UUID.randomUUID())
+                .serviceType("AEPS_1_MINI_STATEMENT")
+                .plan(anandPlan)
+                .planCode("PLAN_2999")
+                .retailerCommission(new BigDecimal("1.50"))
+                .distributorCommission(new BigDecimal("0.75"))
+                .superDistributorCommission(new BigDecimal("0.50"))
+                .enabled(true)
+                .build();
+
+        when(commissionTransactionRepository.existsByOriginalTransactionId("MS_TXN_PLAN_007")).thenReturn(false);
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+        when(aepsMiniStatementCommissionConfigRepository.findByPlan_Id(anandPlan.getId())).thenReturn(Optional.of(anandConfig));
+
+        commissionService.processAepsCommission(txn);
+
+        // Verify Anand plan specific amounts applied
+        verify(walletService, times(1)).creditForService(
+                eq(retailer.getId()), eq(new BigDecimal("1.50")), anyString(), any(), any(), any(), any()
+        );
+        verify(walletService, times(1)).creditForService(
+                eq(distributor.getId()), eq(new BigDecimal("0.75")), anyString(), any(), any(), any(), any()
+        );
+        verify(walletService, times(1)).creditForService(
+                eq(superDistributor.getId()), eq(new BigDecimal("0.50")), anyString(), any(), any(), any(), any()
+        );
+    }
+
+    @Test
+    @DisplayName("MS-8: Cash Withdrawal and Mini Statement Do Not Interfere with Each Other")
+    void testMiniStatement_CashWithdrawalVsMiniStatement_Independence() {
+        // 1. Run Cash Withdrawal txn: Should use slabs
+        AepsTransactionEngine cwTxn = AepsTransactionEngine.builder()
+                .transactionId("CW_TXN_INDEP_008")
+                .userId(retailer.getId())
+                .serviceType("CASH_WITHDRAWAL")
+                .amount(new BigDecimal("1200.00"))
+                .status("SUCCESS")
+                .build();
+
+        when(commissionTransactionRepository.existsByOriginalTransactionId("CW_TXN_INDEP_008")).thenReturn(false);
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+        when(commissionPlanRepository.findByServiceTypeAndIsDefaultTrue("AEPS_1")).thenReturn(Optional.of(freePlan));
+        when(commissionSlabRepository.findMatchingSlabs(freePlan.getId(), new BigDecimal("1200.00")))
+                .thenReturn(List.of(defaultSlabs.get(1))); // slab 1000-1499: ret=2, dist=0.5, sd=0.5
+
+        commissionService.processAepsCommission(cwTxn);
+
+        // Verify Cash Withdrawal credited using slab amounts
+        verify(walletService, times(1)).creditForService(
+                eq(retailer.getId()), eq(new BigDecimal("2.00")), contains("AEPS 1 Commission"),
+                eq(WalletTransactionContext.COMMISSION), eq("AEPS 1"), anyString(), contains("CW_TXN_INDEP_008")
+        );
+
+        // 2. Run Mini Statement txn: Should use flat config, NOT slabs
+        AepsTransactionEngine msTxn = AepsTransactionEngine.builder()
+                .transactionId("MS_TXN_INDEP_008")
+                .userId(retailer.getId())
+                .serviceType("MINI_STATEMENT")
+                .amount(BigDecimal.ZERO)
+                .status("SUCCESS")
+                .build();
+
+        AepsMiniStatementCommissionConfig msConfig = AepsMiniStatementCommissionConfig.builder()
+                .id(UUID.randomUUID())
+                .serviceType("AEPS_1_MINI_STATEMENT")
+                .plan(freePlan)
+                .planCode("FREE")
+                .retailerCommission(new BigDecimal("1.00"))
+                .distributorCommission(new BigDecimal("0.50"))
+                .superDistributorCommission(new BigDecimal("0.25"))
+                .enabled(true)
+                .build();
+
+        when(commissionTransactionRepository.existsByOriginalTransactionId("MS_TXN_INDEP_008")).thenReturn(false);
+        when(aepsMiniStatementCommissionConfigRepository.findByPlan_Id(freePlan.getId())).thenReturn(Optional.of(msConfig));
+
+        commissionService.processAepsCommission(msTxn);
+
+        // Verify Mini Statement credited using flat amount
+        verify(walletService, times(1)).creditForService(
+                eq(retailer.getId()), eq(new BigDecimal("1.00")), contains("MS_TXN_INDEP_008"),
+                eq(WalletTransactionContext.COMMISSION), eq("AEPS 1 Mini Statement"), anyString(), anyString()
+        );
+    }
+
+    @Test
+    @DisplayName("MS-9: Admin Update Mini Statement Config - Success and Audit Log")
+    void testMiniStatement_AdminUpdateConfig_SuccessAndAudit() {
+        UUID adminId = UUID.randomUUID();
+        User admin = new User();
+        admin.setId(adminId);
+        admin.setUsername("admin");
+        Role adminRole = new Role();
+        adminRole.setName(RoleName.ADMIN);
+        admin.setRoles(Set.of(adminRole));
+
+        UUID configId = UUID.randomUUID();
+        AepsMiniStatementCommissionConfig existingConfig = AepsMiniStatementCommissionConfig.builder()
+                .id(configId)
+                .serviceType("AEPS_1_MINI_STATEMENT")
+                .plan(freePlan)
+                .planCode("FREE")
+                .retailerCommission(new BigDecimal("1.00"))
+                .distributorCommission(new BigDecimal("0.50"))
+                .superDistributorCommission(new BigDecimal("0.25"))
+                .enabled(true)
+                .build();
+
+        when(userRepository.findById(adminId)).thenReturn(Optional.of(admin));
+        when(aepsMiniStatementCommissionConfigRepository.findById(configId)).thenReturn(Optional.of(existingConfig));
+        when(aepsMiniStatementCommissionConfigRepository.save(any(AepsMiniStatementCommissionConfig.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        CommissionDtos.UpdateAepsMiniStatementConfigRequest request = new CommissionDtos.UpdateAepsMiniStatementConfigRequest(
+                new BigDecimal("1.50"),
+                new BigDecimal("0.60"),
+                new BigDecimal("0.30"),
+                true
+        );
+
+        CommissionDtos.AepsMiniStatementCommissionConfigDto result = commissionService.updateAepsMiniStatementConfig(
+                configId, request, adminId, "10.0.0.1"
+        );
+
+        assertNotNull(result);
+        assertEquals(new BigDecimal("1.50"), result.retailerCommission());
+        assertEquals(new BigDecimal("0.60"), result.distributorCommission());
+        assertEquals(new BigDecimal("0.30"), result.superDistributorCommission());
+        assertEquals(new BigDecimal("2.40"), result.totalCommission());
+
+        // Verify audit record saved
+        ArgumentCaptor<AepsMiniStatementCommissionConfigAudit> auditCaptor = ArgumentCaptor.forClass(AepsMiniStatementCommissionConfigAudit.class);
+        verify(aepsMiniStatementCommissionConfigAuditRepository, times(1)).save(auditCaptor.capture());
+        AepsMiniStatementCommissionConfigAudit audit = auditCaptor.getValue();
+        assertEquals(new BigDecimal("1.00"), audit.getPrevRetailerCommission());
+        assertEquals(new BigDecimal("1.50"), audit.getNewRetailerCommission());
+        assertEquals("admin", audit.getAdminUsername());
+        assertEquals("10.0.0.1", audit.getIpAddress());
+    }
+
+    @Test
+    @DisplayName("MS-10: Negative Commission Rejected with IllegalArgumentException")
+    void testMiniStatement_NegativeCommission_Rejected() {
+        UUID adminId = UUID.randomUUID();
+        User admin = new User();
+        admin.setId(adminId);
+        admin.setUsername("admin");
+        Role adminRole = new Role();
+        adminRole.setName(RoleName.ADMIN);
+        admin.setRoles(Set.of(adminRole));
+
+        UUID configId = UUID.randomUUID();
+        AepsMiniStatementCommissionConfig existingConfig = AepsMiniStatementCommissionConfig.builder()
+                .id(configId)
+                .serviceType("AEPS_1_MINI_STATEMENT")
+                .plan(freePlan)
+                .planCode("FREE")
+                .retailerCommission(new BigDecimal("1.00"))
+                .distributorCommission(new BigDecimal("0.50"))
+                .superDistributorCommission(new BigDecimal("0.25"))
+                .enabled(true)
+                .build();
+
+        when(userRepository.findById(adminId)).thenReturn(Optional.of(admin));
+        when(aepsMiniStatementCommissionConfigRepository.findById(configId)).thenReturn(Optional.of(existingConfig));
+
+        CommissionDtos.UpdateAepsMiniStatementConfigRequest negRequest = new CommissionDtos.UpdateAepsMiniStatementConfigRequest(
+                new BigDecimal("-1.00"),
+                new BigDecimal("0.50"),
+                new BigDecimal("0.25"),
+                true
+        );
+
+        assertThrows(IllegalArgumentException.class, () ->
+                commissionService.updateAepsMiniStatementConfig(configId, negRequest, adminId, "127.0.0.1")
+        );
+    }
+
+    @Test
+    @DisplayName("MS-11: Reconcile Credits Uncredited Mini Statement Transactions")
+    void testMiniStatement_Reconciliation_CreditsUncredited() {
+        retailer.setAepsCommissionPlan(freePlan);
+        AepsTransactionEngine uncreditedTxn = AepsTransactionEngine.builder()
+                .transactionId("MS_RECON_011")
+                .userId(retailer.getId())
+                .serviceType("MINI_STATEMENT")
+                .amount(BigDecimal.ZERO)
+                .status("SUCCESS")
+                .build();
+
+        AepsMiniStatementCommissionConfig config = AepsMiniStatementCommissionConfig.builder()
+                .id(UUID.randomUUID())
+                .serviceType("AEPS_1_MINI_STATEMENT")
+                .plan(freePlan)
+                .planCode("FREE")
+                .retailerCommission(new BigDecimal("1.00"))
+                .distributorCommission(new BigDecimal("0.50"))
+                .superDistributorCommission(new BigDecimal("0.25"))
+                .enabled(true)
+                .build();
+
+        when(aepsTransactionEngineRepository.findSuccessfulMiniStatements()).thenReturn(List.of(uncreditedTxn));
+        when(commissionTransactionRepository.existsByOriginalTransactionId("MS_RECON_011"))
+                .thenReturn(false, false, true); // 1st: check uncredited, 2nd: idempotency inside process, 3rd: confirm credited
+        when(userRepository.findById(retailer.getId())).thenReturn(Optional.of(retailer));
+        when(aepsMiniStatementCommissionConfigRepository.findByPlan_Id(freePlan.getId())).thenReturn(Optional.of(config));
+
+        int reconciled = commissionService.reconcileUncreditedAepsMiniStatementCommissions();
+
+        assertEquals(1, reconciled);
+        verify(walletService, times(1)).creditForService(
+                eq(retailer.getId()), eq(new BigDecimal("1.00")), anyString(), any(), any(), any(), any()
+        );
     }
 }

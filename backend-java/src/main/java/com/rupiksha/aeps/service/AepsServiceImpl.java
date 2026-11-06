@@ -69,6 +69,13 @@ public class AepsServiceImpl implements AepsService {
     private final ObjectMapper objectMapper;
     private final com.rupiksha.aeps.provider.fingpay.service.FingpayTxnOtpService fingpayTxnOtpService;
 
+    @Autowired(required = false)
+    private com.rupiksha.backend.service.Aeps2faChargeService aeps2faChargeService;
+
+    public void setAeps2faChargeService(com.rupiksha.backend.service.Aeps2faChargeService aeps2faChargeService) {
+        this.aeps2faChargeService = aeps2faChargeService;
+    }
+
     @Autowired
     public AepsServiceImpl(
             List<AepsProvider> providers,
@@ -953,12 +960,33 @@ public class AepsServiceImpl implements AepsService {
                     .build();
             aepsKycHistoryRepository.save(sessionHistory);
 
+            // 2FA Charge Execution
+            com.rupiksha.backend.service.Aeps2faChargeService.ChargeExecutionResult chargeResult = null;
+            if (aeps2faChargeService != null) {
+                try {
+                    chargeResult = aeps2faChargeService.process2faCharge(
+                            mainUser,
+                            sessionRef,
+                            providerResult.getProviderTxnId(),
+                            activeProvider.getProviderName(),
+                            request.getIpAddress() != null ? request.getIpAddress() : "127.0.0.1"
+                    );
+                } catch (Exception e) {
+                    log.error("Failed to process 2FA charge for user {}: {}", mainUser.getUsername(), e.getMessage(), e);
+                }
+            }
+
             return KycResponse.builder()
                     .success(true)
                     .workflowState(workflowState.name())
                     .message("Daily authentication completed successfully.")
                     .providerReference(sessionRef)
                     .provider(activeProvider.getProviderName().toUpperCase())
+                    .chargeAmount(chargeResult != null ? chargeResult.chargeAmount() : null)
+                    .walletBalance(chargeResult != null ? chargeResult.walletBalance() : null)
+                    .outstandingAmount(chargeResult != null ? chargeResult.outstandingAmount() : null)
+                    .chargeReference(chargeResult != null ? chargeResult.chargeReference() : null)
+                    .chargeStatus(chargeResult != null ? chargeResult.chargeStatus() : "NONE")
                     .build();
         } else {
             log.warn("Daily 2FA authentication rejected by provider with state: {}", workflowState);

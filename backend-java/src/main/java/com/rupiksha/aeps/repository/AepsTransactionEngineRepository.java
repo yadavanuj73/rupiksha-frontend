@@ -136,6 +136,8 @@ public interface AepsTransactionEngineRepository extends JpaRepository<AepsTrans
             @Param("search") String search,
             @Param("matchingUserIds") List<UUID> matchingUserIds,
             Sort sort);
+    @Query("SELECT t FROM AepsTransactionEngine t WHERE UPPER(t.serviceType) = 'MINI_STATEMENT' AND UPPER(t.status) = 'SUCCESS'")
+    List<AepsTransactionEngine> findSuccessfulMiniStatements();
 }
 
 

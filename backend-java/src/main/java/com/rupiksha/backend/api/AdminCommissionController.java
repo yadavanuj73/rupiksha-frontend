@@ -28,6 +28,8 @@ import java.util.UUID;
 public class AdminCommissionController {
 
     private final CommissionService commissionService;
+    private final com.rupiksha.backend.service.Aeps2faChargeService aeps2faChargeService;
+    private final com.rupiksha.backend.service.Aeps2faSettlementService aeps2faSettlementService;
 
     private String getClientIp(HttpServletRequest request) {
         String ip = request.getHeader("X-Forwarded-For");
@@ -189,5 +191,86 @@ public class AdminCommissionController {
     public ResponseEntity<java.util.Map<String, Object>> reconcileRechargeCommissions() {
         int count = commissionService.reconcileUncreditedRechargeCommissions();
         return ResponseEntity.ok(java.util.Map.of("success", true, "reconciledCount", count));
+    }
+
+    // ─── AEPS 1 MINI STATEMENT COMMISSION ENDPOINTS ────────────────────────────
+
+    @GetMapping("/aeps/mini-statement/configs")
+    public ResponseEntity<List<CommissionDtos.AepsMiniStatementCommissionConfigDto>> getAepsMiniStatementConfigs() {
+        return ResponseEntity.ok(commissionService.getAepsMiniStatementConfigs());
+    }
+
+    @GetMapping("/aeps/mini-statement/configs/{configId}")
+    public ResponseEntity<CommissionDtos.AepsMiniStatementCommissionConfigDto> getAepsMiniStatementConfigById(@PathVariable UUID configId) {
+        return ResponseEntity.ok(commissionService.getAepsMiniStatementConfigById(configId));
+    }
+
+    @PutMapping("/aeps/mini-statement/configs/{configId}")
+    public ResponseEntity<CommissionDtos.AepsMiniStatementCommissionConfigDto> updateAepsMiniStatementConfig(
+            @PathVariable UUID configId,
+            @Valid @RequestBody CommissionDtos.UpdateAepsMiniStatementConfigRequest request,
+            @AuthenticationPrincipal JwtPrincipal principal,
+            HttpServletRequest httpRequest
+    ) {
+        UUID adminId = UUID.fromString(principal.userId());
+        String ip = getClientIp(httpRequest);
+        CommissionDtos.AepsMiniStatementCommissionConfigDto updated = commissionService.updateAepsMiniStatementConfig(configId, request, adminId, ip);
+        return ResponseEntity.ok(updated);
+    }
+
+    @GetMapping("/aeps/mini-statement/audits")
+    public ResponseEntity<List<CommissionDtos.AepsMiniStatementAuditDto>> getAepsMiniStatementAudits() {
+        return ResponseEntity.ok(commissionService.getAepsMiniStatementAudits());
+    }
+
+    @PostMapping("/aeps/mini-statement/reconcile")
+    public ResponseEntity<java.util.Map<String, Object>> reconcileAepsMiniStatementCommissions() {
+        int count = commissionService.reconcileUncreditedAepsMiniStatementCommissions();
+        return ResponseEntity.ok(java.util.Map.of("success", true, "reconciledCount", count));
+    }
+
+    // ─── AEPS 1 2FA CHARGES ENDPOINTS ──────────────────────────────────────────
+
+    @GetMapping("/aeps/2fa/configs")
+    public ResponseEntity<List<CommissionDtos.Aeps2faChargeConfigDto>> getAeps2faConfigs() {
+        return ResponseEntity.ok(aeps2faChargeService.getAllConfigs());
+    }
+
+    @PutMapping("/aeps/2fa/configs/{configId}")
+    public ResponseEntity<CommissionDtos.Aeps2faChargeConfigDto> updateAeps2faConfig(
+            @PathVariable UUID configId,
+            @Valid @RequestBody CommissionDtos.UpdateAeps2faConfigRequest request,
+            @AuthenticationPrincipal JwtPrincipal principal,
+            HttpServletRequest httpRequest
+    ) {
+        UUID adminId = UUID.fromString(principal.userId());
+        String ip = getClientIp(httpRequest);
+        CommissionDtos.Aeps2faChargeConfigDto updated = aeps2faChargeService.updateConfig(configId, request, adminId, ip);
+        return ResponseEntity.ok(updated);
+    }
+
+    @GetMapping("/aeps/2fa/audits")
+    public ResponseEntity<List<CommissionDtos.Aeps2faAuditDto>> getAeps2faAudits(
+            @RequestParam(required = false) UUID planId
+    ) {
+        return ResponseEntity.ok(aeps2faChargeService.getAudits(planId));
+    }
+
+    @GetMapping("/aeps/2fa/charges")
+    public ResponseEntity<Page<CommissionDtos.Aeps2faChargeTxnDto>> getAeps2faCharges(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("createdAt").descending());
+        return ResponseEntity.ok(aeps2faChargeService.getAllCharges(pageable));
+    }
+
+    @GetMapping("/aeps/2fa/settlements")
+    public ResponseEntity<Page<CommissionDtos.Aeps2faSettlementDto>> getAeps2faSettlements(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("createdAt").descending());
+        return ResponseEntity.ok(aeps2faSettlementService.getAllSettlements(pageable));
     }
 }

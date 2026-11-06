@@ -43,6 +43,9 @@ public class CommissionServiceImpl implements CommissionService {
     private final RechargeCommissionConfigRepository rechargeCommissionConfigRepository;
     private final RechargeCommissionConfigAuditRepository rechargeCommissionConfigAuditRepository;
     private final RechargeRepository rechargeRepository;
+    private final AepsMiniStatementCommissionConfigRepository aepsMiniStatementCommissionConfigRepository;
+    private final AepsMiniStatementCommissionConfigAuditRepository aepsMiniStatementCommissionConfigAuditRepository;
+    private final com.rupiksha.aeps.repository.AepsTransactionEngineRepository aepsTransactionEngineRepository;
     private final com.rupiksha.backend.config.AppProperties appProperties;
 
     private static final ZoneId IST_ZONE = ZoneId.of("Asia/Kolkata");
@@ -104,8 +107,13 @@ public class CommissionServiceImpl implements CommissionService {
         }
 
         String serviceType = txn.getServiceType() != null ? txn.getServiceType().toUpperCase() : "";
+        if ("MINI_STATEMENT".equals(serviceType) || "AEPS_1_MINI_STATEMENT".equals(serviceType) || "AEPS_MINI_STATEMENT".equals(serviceType)) {
+            processMiniStatementCommission(txn);
+            return;
+        }
+
         if (!"CASH_WITHDRAWAL".equals(serviceType) && !"AEPS_1".equals(serviceType)) {
-            log.debug("Commission only enabled for AEPS 1 Cash Withdrawal in this phase. Txn service: {}", serviceType);
+            log.debug("Commission only enabled for AEPS 1 Cash Withdrawal and Mini Statement in this phase. Txn service: {}", serviceType);
             return;
         }
 
@@ -559,8 +567,8 @@ public class CommissionServiceImpl implements CommissionService {
         Instant monthEnd = firstDayOfMonth.plusMonths(1).atStartOfDay(IST_ZONE).minusNanos(1).toInstant();
         BigDecimal monthComm = commissionTransactionRepository.sumCommissionByBeneficiaryIdAndDateRange(retailerId, monthStart, monthEnd);
 
-        // AEPS 1 specific total
-        BigDecimal aeps1Comm = commissionTransactionRepository.sumCommissionByBeneficiaryIdAndServiceType(retailerId, "AEPS_1");
+        // AEPS 1 specific total (Cash Withdrawal + Mini Statement)
+        BigDecimal aeps1Comm = commissionTransactionRepository.sumAeps1CommissionByBeneficiaryId(retailerId);
 
         User user = userRepository.findById(retailerId).orElse(null);
         String planName = "Free Plan";
@@ -1388,7 +1396,9 @@ public class CommissionServiceImpl implements CommissionService {
 
     private CommissionDtos.CommissionTransactionDto mapTransactionToDto(CommissionTransaction txn) {
         String slabRange;
-        if ("FIXED".equalsIgnoreCase(txn.getCommissionMode())) {
+        if ("FIXED".equalsIgnoreCase(txn.getCommissionMode())
+                || "AEPS_1_MINI_STATEMENT".equalsIgnoreCase(txn.getServiceType())
+                || "AEPS_MINI_STATEMENT".equalsIgnoreCase(txn.getServiceType())) {
             BigDecimal fixedVal = txn.getAppliedCommissionValue() != null ? txn.getAppliedCommissionValue() : txn.getCommissionAmount();
             slabRange = "₹" + fixedVal.setScale(2, RoundingMode.HALF_UP) + " (Fixed)";
         } else if (txn.getAppliedCommissionValue() != null) {
@@ -2048,6 +2058,384 @@ public class CommissionServiceImpl implements CommissionService {
         return creditedCount;
     }
 
+    // ─── AEPS 1 MINI STATEMENT COMMISSION IMPLEMENTATION ────────────────────────
+
+    @Transactional
+    public void processMiniStatementCommission(AepsTransactionEngine txn) {
+        String txnId = txn.getTransactionId();
+        log.info("Processing AEPS Mini Statement commission for transaction: txnId={}", txnId);
+
+        // Idempotency check: verify if already processed
+        if (commissionTransactionRepository.existsByOriginalTransactionId(txnId)) {
+            log.warn("Idempotency safeguard: Commission already processed for Mini Statement transaction ID: {}", txnId);
+            return;
+        }
+
+        // 1. Resolve Retailer
+        User retailer = userRepository.findById(txn.getUserId()).orElse(null);
+        if (retailer == null) {
+            log.error("Mini Statement commission calculation failed: Retailer user not found for ID: {}", txn.getUserId());
+            return;
+        }
+
+        // 2. Resolve Retailer Plan
+        CommissionPlan plan = retailer.getAepsCommissionPlan();
+        if (isPaidPlanExpired(retailer)) {
+            log.info("Retailer {} paid commission plan {} expired on {}. Falling back to default Free plan.",
+                    retailer.getUsername(), plan != null ? plan.getPlanName() : "", retailer.getAepsCommissionPlanExpiresAt());
+            plan = null;
+        }
+        if (plan == null || !Boolean.TRUE.equals(plan.getEnabled())) {
+            plan = commissionPlanRepository.findByServiceTypeAndIsDefaultTrue("AEPS_1")
+                    .or(() -> commissionPlanRepository.findByServiceTypeAndPlanCode("AEPS_1", "FREE"))
+                    .orElse(null);
+        }
+
+        if (plan == null) {
+            log.warn("Commission plan not found or disabled for service AEPS_1. Skipping Mini Statement commission distribution for txn {}", txnId);
+            return;
+        }
+
+        final CommissionPlan effectivePlan = plan;
+
+        // 3. Load Mini Statement commission configuration for this plan
+        AepsMiniStatementCommissionConfig config = aepsMiniStatementCommissionConfigRepository.findByPlan_Id(effectivePlan.getId())
+                .or(() -> aepsMiniStatementCommissionConfigRepository.findByPlan_PlanCode(effectivePlan.getPlanCode()))
+                .orElse(null);
+
+        if (config == null) {
+            log.warn("No Mini Statement commission configuration found for plan: {}. Skipping for txn: {}", plan.getPlanName(), txnId);
+            return;
+        }
+
+        if (!Boolean.TRUE.equals(config.getEnabled())) {
+            log.info("Mini Statement commission is disabled for plan: {}. Skipping for txn: {}", plan.getPlanName(), txnId);
+            return;
+        }
+
+        // 4. Resolve Hierarchy with resilient multi-factor fallback
+        User distributor = null;
+        User superDistributor = null;
+
+        User parent = resolveParentUser(retailer);
+        if (parent != null) {
+            boolean isDist = parent.getRoles().stream()
+                    .anyMatch(r -> r.getName() == RoleName.DISTRIBUTOR);
+            boolean isSuperDist = parent.getRoles().stream()
+                    .anyMatch(r -> r.getName() == RoleName.SUPER_DISTRIBUTOR);
+
+            if (isDist) {
+                distributor = parent;
+                User grandParent = resolveParentUser(distributor);
+                if (grandParent != null && grandParent.getRoles().stream().anyMatch(r -> r.getName() == RoleName.SUPER_DISTRIBUTOR)) {
+                    superDistributor = grandParent;
+                }
+            } else if (isSuperDist) {
+                superDistributor = parent;
+            }
+        }
+
+        String ip = txn.getIpAddress() != null && !txn.getIpAddress().isBlank() ? txn.getIpAddress() : "127.0.0.1";
+        BigDecimal txnAmount = txn.getAmount() != null ? txn.getAmount() : BigDecimal.ZERO;
+
+        // 5. Credit Retailer
+        BigDecimal retComm = config.getRetailerCommission() != null ? config.getRetailerCommission() : BigDecimal.ZERO;
+        if (retComm.compareTo(BigDecimal.ZERO) > 0) {
+            creditMiniStatementBeneficiary(
+                    retailer,
+                    "RETAILER",
+                    retailer,
+                    plan,
+                    txnId,
+                    txnAmount,
+                    retComm,
+                    ip,
+                    "AEPS 1 Mini Statement Commission - " + txnId
+            );
+        }
+
+        // 6. Credit Distributor (if mapped in hierarchy)
+        BigDecimal distComm = config.getDistributorCommission() != null ? config.getDistributorCommission() : BigDecimal.ZERO;
+        if (distributor != null && distComm.compareTo(BigDecimal.ZERO) > 0) {
+            creditMiniStatementBeneficiary(
+                    distributor,
+                    "DISTRIBUTOR",
+                    retailer,
+                    plan,
+                    txnId,
+                    txnAmount,
+                    distComm,
+                    ip,
+                    "AEPS 1 Mini Statement Commission (Distributor) - " + txnId
+            );
+        }
+
+        // 7. Credit Super Distributor (if mapped in hierarchy)
+        BigDecimal sdComm = config.getSuperDistributorCommission() != null ? config.getSuperDistributorCommission() : BigDecimal.ZERO;
+        if (superDistributor != null && sdComm.compareTo(BigDecimal.ZERO) > 0) {
+            creditMiniStatementBeneficiary(
+                    superDistributor,
+                    "SUPER_DISTRIBUTOR",
+                    retailer,
+                    plan,
+                    txnId,
+                    txnAmount,
+                    sdComm,
+                    ip,
+                    "AEPS 1 Mini Statement Commission (Super Distributor) - " + txnId
+            );
+        }
+
+        log.info("AEPS Mini Statement commission distribution completed for txn {}: Retailer(₹{}), Distributor(₹{}), SuperDistributor(₹{})",
+                txnId, retComm, (distributor != null ? distComm : BigDecimal.ZERO), (superDistributor != null ? sdComm : BigDecimal.ZERO));
+    }
+
+    private void creditMiniStatementBeneficiary(
+            User beneficiary,
+            String role,
+            User retailer,
+            CommissionPlan plan,
+            String originalTxnId,
+            BigDecimal txnAmount,
+            BigDecimal commAmount,
+            String ip,
+            String narration
+    ) {
+        String commRef = generateCommissionReference();
+        String idempotencyKey = "COMM-MS-" + originalTxnId + "-" + role + "-" + beneficiary.getId();
+
+        try {
+            // Credit wallet using existing enterprise wallet engine
+            walletService.creditForService(
+                    beneficiary.getId(),
+                    commAmount,
+                    narration,
+                    WalletTransactionContext.COMMISSION,
+                    "AEPS 1 Mini Statement",
+                    ip,
+                    idempotencyKey
+            );
+
+            // Record in immutable commission audit ledger
+            CommissionTransaction commTxn = CommissionTransaction.builder()
+                    .commissionReference(commRef)
+                    .originalTransactionId(originalTxnId)
+                    .serviceType("AEPS_1_MINI_STATEMENT")
+                    .plan(plan)
+                    .planCode(plan != null ? plan.getPlanCode() : null)
+                    .slab(null)
+                    .slabMin(BigDecimal.ZERO)
+                    .slabMax(BigDecimal.ZERO)
+                    .transactionAmount(txnAmount)
+                    .beneficiaryUser(beneficiary)
+                    .beneficiaryRole(role)
+                    .retailerUser(retailer)
+                    .commissionAmount(commAmount)
+                    .status("SUCCESS")
+                    .remarks(narration)
+                    .createdAt(Instant.now())
+                    .build();
+
+            commissionTransactionRepository.save(commTxn);
+            log.info("Created Mini Statement commission ledger entry: ref={}, beneficiary={}, role={}, amount=₹{}",
+                    commRef, beneficiary.getUsername(), role, commAmount);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            log.warn("Commission entry already exists for Mini Statement txn {}, role {}, user {}. Skipping duplicate.",
+                    originalTxnId, role, beneficiary.getId());
+        } catch (Exception e) {
+            log.error("Failed to credit Mini Statement commission for txn {}, user {}: {}",
+                    originalTxnId, beneficiary.getId(), e.getMessage(), e);
+            throw e; // Bubble up for transaction rollback
+        }
+    }
+
+    @Override
+    @Transactional
+    public List<CommissionDtos.AepsMiniStatementCommissionConfigDto> getAepsMiniStatementConfigs() {
+        List<AepsMiniStatementCommissionConfig> configs = aepsMiniStatementCommissionConfigRepository.findAllWithPlan();
+        if (configs.isEmpty()) {
+            List<CommissionPlan> plans = commissionPlanRepository.findByServiceTypeWithSlabs("AEPS_1");
+            for (CommissionPlan plan : plans) {
+                BigDecimal retComm = switch (plan.getPlanCode() != null ? plan.getPlanCode().toUpperCase() : "") {
+                    case "FREE" -> new BigDecimal("1.00");
+                    case "PLAN_2999" -> new BigDecimal("1.25");
+                    case "PLAN_4999" -> new BigDecimal("1.50");
+                    case "PLAN_7999" -> new BigDecimal("2.00");
+                    default -> new BigDecimal("1.00");
+                };
+                AepsMiniStatementCommissionConfig cfg = AepsMiniStatementCommissionConfig.builder()
+                        .serviceType("AEPS_1_MINI_STATEMENT")
+                        .plan(plan)
+                        .planCode(plan.getPlanCode())
+                        .retailerCommission(retComm)
+                        .distributorCommission(new BigDecimal("0.50"))
+                        .superDistributorCommission(new BigDecimal("0.25"))
+                        .enabled(true)
+                        .build();
+                aepsMiniStatementCommissionConfigRepository.save(cfg);
+            }
+            configs = aepsMiniStatementCommissionConfigRepository.findAllWithPlan();
+        }
+        return configs.stream().map(this::mapMiniStatementConfigToDto).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CommissionDtos.AepsMiniStatementCommissionConfigDto getAepsMiniStatementConfigById(UUID configId) {
+        AepsMiniStatementCommissionConfig config = aepsMiniStatementCommissionConfigRepository.findById(configId)
+                .orElseThrow(() -> new IllegalArgumentException("AEPS Mini Statement commission config not found: " + configId));
+        return mapMiniStatementConfigToDto(config);
+    }
+
+    @Override
+    @Transactional
+    public CommissionDtos.AepsMiniStatementCommissionConfigDto updateAepsMiniStatementConfig(
+            UUID configId,
+            CommissionDtos.UpdateAepsMiniStatementConfigRequest request,
+            UUID adminId,
+            String ipAddress
+    ) {
+        enforceAdmin(adminId);
+        User admin = userRepository.findById(adminId)
+                .orElseThrow(() -> new IllegalArgumentException("Admin user not found"));
+
+        AepsMiniStatementCommissionConfig config = aepsMiniStatementCommissionConfigRepository.findById(configId)
+                .orElseThrow(() -> new IllegalArgumentException("AEPS Mini Statement commission config not found: " + configId));
+
+        BigDecimal ret = request.retailerCommission() != null ? request.retailerCommission().setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+        BigDecimal dist = request.distributorCommission() != null ? request.distributorCommission().setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+        BigDecimal sd = request.superDistributorCommission() != null ? request.superDistributorCommission().setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+
+        if (ret.compareTo(BigDecimal.ZERO) < 0 || dist.compareTo(BigDecimal.ZERO) < 0 || sd.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Commission amounts cannot be negative.");
+        }
+
+        // Capture previous values for audit trail
+        AepsMiniStatementCommissionConfigAudit audit = AepsMiniStatementCommissionConfigAudit.builder()
+                .config(config)
+                .serviceType(config.getServiceType())
+                .planCode(config.getPlanCode())
+                .adminUser(admin)
+                .adminUsername(admin.getUsername())
+                .prevRetailerCommission(config.getRetailerCommission())
+                .prevDistributorCommission(config.getDistributorCommission())
+                .prevSuperDistributorCommission(config.getSuperDistributorCommission())
+                .prevEnabled(config.getEnabled())
+                .newRetailerCommission(ret)
+                .newDistributorCommission(dist)
+                .newSuperDistributorCommission(sd)
+                .newEnabled(request.enabled() != null ? request.enabled() : config.getEnabled())
+                .ipAddress(ipAddress)
+                .createdAt(Instant.now())
+                .build();
+        aepsMiniStatementCommissionConfigAuditRepository.save(audit);
+
+        // Update config
+        config.setRetailerCommission(ret);
+        config.setDistributorCommission(dist);
+        config.setSuperDistributorCommission(sd);
+        if (request.enabled() != null) {
+            config.setEnabled(request.enabled());
+        }
+        config.setUpdatedBy(admin);
+        config.setUpdatedAt(Instant.now());
+
+        AepsMiniStatementCommissionConfig saved = aepsMiniStatementCommissionConfigRepository.save(config);
+        log.info("Admin {} updated AEPS Mini Statement commission for plan {}: Ret=₹{}, Dist=₹{}, SD=₹{}, Enabled={}",
+                admin.getUsername(), saved.getPlanCode(), ret, dist, sd, saved.getEnabled());
+        return mapMiniStatementConfigToDto(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CommissionDtos.AepsMiniStatementAuditDto> getAepsMiniStatementAudits() {
+        return aepsMiniStatementCommissionConfigAuditRepository.findAllByOrderByCreatedAtDesc()
+                .stream()
+                .map(a -> new CommissionDtos.AepsMiniStatementAuditDto(
+                        a.getId(),
+                        a.getPlanCode(),
+                        a.getAdminUsername(),
+                        a.getPrevRetailerCommission(),
+                        a.getPrevDistributorCommission(),
+                        a.getPrevSuperDistributorCommission(),
+                        a.getPrevEnabled(),
+                        a.getNewRetailerCommission(),
+                        a.getNewDistributorCommission(),
+                        a.getNewSuperDistributorCommission(),
+                        a.getNewEnabled(),
+                        a.getIpAddress(),
+                        a.getCreatedAt()
+                ))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public int reconcileUncreditedAepsMiniStatementCommissions() {
+        log.info("Starting AEPS Mini Statement commission reconciliation scan...");
+        List<AepsTransactionEngine> miniStatements = aepsTransactionEngineRepository.findSuccessfulMiniStatements();
+        int creditedCount = 0;
+        for (AepsTransactionEngine txn : miniStatements) {
+            String txnId = txn.getTransactionId();
+            if (txnId != null && !commissionTransactionRepository.existsByOriginalTransactionId(txnId)) {
+                try {
+                    processMiniStatementCommission(txn);
+                    if (commissionTransactionRepository.existsByOriginalTransactionId(txnId)) {
+                        creditedCount++;
+                        log.info("Successfully reconciled and credited missing commission for Mini Statement txn: {}", txnId);
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to reconcile commission for Mini Statement txn {}: {}", txnId, e.getMessage());
+                }
+            }
+        }
+        log.info("Completed AEPS Mini Statement commission reconciliation. Credited {} uncredited transactions.", creditedCount);
+        return creditedCount;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CommissionDtos.AepsMiniStatementCommissionConfigDto getRetailerMiniStatementConfig(UUID retailerId) {
+        User retailer = userRepository.findById(retailerId)
+                .orElseThrow(() -> new IllegalArgumentException("Retailer not found: " + retailerId));
+
+        CommissionPlan plan = retailer.getAepsCommissionPlan();
+        if (isPaidPlanExpired(retailer)) {
+            plan = null;
+        }
+        if (plan == null || !Boolean.TRUE.equals(plan.getEnabled())) {
+            plan = commissionPlanRepository.findByServiceTypeAndIsDefaultTrue("AEPS_1")
+                    .or(() -> commissionPlanRepository.findByServiceTypeAndPlanCode("AEPS_1", "FREE"))
+                    .orElse(null);
+        }
+        if (plan == null) {
+            return null;
+        }
+        final CommissionPlan effectivePlan = plan;
+        AepsMiniStatementCommissionConfig config = aepsMiniStatementCommissionConfigRepository.findByPlan_Id(effectivePlan.getId())
+                .or(() -> aepsMiniStatementCommissionConfigRepository.findByPlan_PlanCode(effectivePlan.getPlanCode()))
+                .orElse(null);
+        return config != null ? mapMiniStatementConfigToDto(config) : null;
+    }
+
+    private CommissionDtos.AepsMiniStatementCommissionConfigDto mapMiniStatementConfigToDto(AepsMiniStatementCommissionConfig cfg) {
+        CommissionPlan plan = cfg.getPlan();
+        return new CommissionDtos.AepsMiniStatementCommissionConfigDto(
+                cfg.getId(),
+                cfg.getServiceType(),
+                plan != null ? plan.getId() : null,
+                cfg.getPlanCode(),
+                plan != null ? plan.getPlanName() : cfg.getPlanCode(),
+                plan != null ? plan.getPrice() : BigDecimal.ZERO,
+                cfg.getRetailerCommission(),
+                cfg.getDistributorCommission(),
+                cfg.getSuperDistributorCommission(),
+                cfg.getTotalCommission(),
+                cfg.getEnabled(),
+                cfg.getUpdatedAt()
+        );
+    }
+
     @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
     public void onApplicationReady() {
         try {
@@ -2059,6 +2447,11 @@ public class CommissionServiceImpl implements CommissionService {
             reconcileUncreditedRechargeCommissions();
         } catch (Exception e) {
             log.error("Error running startup Recharge commission reconciliation: {}", e.getMessage(), e);
+        }
+        try {
+            reconcileUncreditedAepsMiniStatementCommissions();
+        } catch (Exception e) {
+            log.error("Error running startup AEPS Mini Statement commission reconciliation: {}", e.getMessage(), e);
         }
     }
 }

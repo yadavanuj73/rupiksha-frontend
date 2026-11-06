@@ -90,5 +90,13 @@ public interface WalletService {
             String serviceName,
             String ipAddress,
             String idempotencyKey);
+
+    WalletDtos.WalletBalanceResponse debitFor2faCharge(
+            UUID userId,
+            BigDecimal amount,
+            String narration,
+            String serviceName,
+            String ipAddress,
+            String idempotencyKey);
 }
 

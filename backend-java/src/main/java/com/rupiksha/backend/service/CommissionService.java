@@ -135,4 +135,36 @@ public interface CommissionService {
      * Reconciles and credits commission for any confirmed Mobile Recharge transactions that were not yet processed.
      */
     int reconcileUncreditedRechargeCommissions();
+
+    // ─── AEPS 1 MINI STATEMENT COMMISSION METHODS ──────────────────────────────
+
+    /**
+     * Retrieves flat rupee commission configs for all plans under AEPS 1 Mini Statement.
+     */
+    List<CommissionDtos.AepsMiniStatementCommissionConfigDto> getAepsMiniStatementConfigs();
+
+    /**
+     * Retrieves single AEPS 1 Mini Statement commission config by ID.
+     */
+    CommissionDtos.AepsMiniStatementCommissionConfigDto getAepsMiniStatementConfigById(UUID configId);
+
+    /**
+     * Updates fixed rupee commission amounts and enabled status for an AEPS 1 Mini Statement plan config.
+     */
+    CommissionDtos.AepsMiniStatementCommissionConfigDto updateAepsMiniStatementConfig(UUID configId, CommissionDtos.UpdateAepsMiniStatementConfigRequest request, UUID adminId, String ipAddress);
+
+    /**
+     * Retrieves audit history for AEPS 1 Mini Statement commission updates.
+     */
+    List<CommissionDtos.AepsMiniStatementAuditDto> getAepsMiniStatementAudits();
+
+    /**
+     * Reconciles and credits commission for any confirmed AEPS 1 Mini Statement transactions that were not yet processed.
+     */
+    int reconcileUncreditedAepsMiniStatementCommissions();
+
+    /**
+     * Retrieves active AEPS 1 Mini Statement commission config for a retailer based on their assigned plan.
+     */
+    CommissionDtos.AepsMiniStatementCommissionConfigDto getRetailerMiniStatementConfig(UUID retailerId);
 }

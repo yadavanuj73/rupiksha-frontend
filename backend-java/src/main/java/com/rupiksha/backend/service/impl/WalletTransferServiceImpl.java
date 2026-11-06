@@ -33,6 +33,8 @@ public class WalletTransferServiceImpl implements WalletTransferService {
     private final WalletRepository walletRepository;
     private final WalletEntryRepository walletEntryRepository;
     private final WalletTransferRepository walletTransferRepository;
+    @org.springframework.context.annotation.Lazy
+    private final com.rupiksha.backend.service.Aeps2faSettlementService aeps2faSettlementService;
 
     private String cleanMobile(String mobile) {
         if (mobile == null) return "";
@@ -246,6 +248,10 @@ public class WalletTransferServiceImpl implements WalletTransferService {
         BigDecimal recipientClosing = recipientOpening.add(amount);
         recipientWallet.setBalance(recipientClosing);
         walletRepository.save(recipientWallet);
+
+        if (aeps2faSettlementService != null) {
+            aeps2faSettlementService.settleOutstandingCharges(recipient.getId(), amount, reference);
+        }
 
         // 5. Create Sender & Recipient Wallet Entries
         String senderRemark = "Wallet transfer to " + recipient.getFullName() + 
