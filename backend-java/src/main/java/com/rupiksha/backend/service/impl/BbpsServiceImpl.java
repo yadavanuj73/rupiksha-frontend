@@ -3979,8 +3979,11 @@ public class BbpsServiceImpl implements BbpsService {
         String customerMobile = request.getCustomerMobile().trim();
         String userEmail = (user.getEmail() != null && !user.getEmail().isBlank()) ? user.getEmail().trim() : "customer@rupiksha.in";
 
-        List<BillAvenueDtos.InputParam> inputs = agentCollectionBillerRegistry.buildAgentCollectionInputParams(
-                biller, request.getCustomerParams(), request.getCustomerMobile());
+        List<BillAvenueDtos.InputParam> inputs = agentCollectionBillerRegistry.getWorkingInputParams(biller.getBillerId());
+        if (inputs == null || inputs.isEmpty()) {
+            inputs = agentCollectionBillerRegistry.buildAgentCollectionInputParams(
+                    biller, request.getCustomerParams(), request.getCustomerMobile());
+        }
 
         // Check if bill fetch is NOT_SUPPORTED by the biller
         boolean isFetchSupported = !"NOT_SUPPORTED".equalsIgnoreCase(biller.getBillerFetchRequirement());
@@ -4017,12 +4020,50 @@ public class BbpsServiceImpl implements BbpsService {
                         if (retryResp != null && (retryResp.isSuccess() || retryResp.isNoBillDue())) {
                             fetchResp = retryResp;
                             inputs = varInputs;
+                            agentCollectionBillerRegistry.updateWorkingInputParams(biller.getBillerId(), varInputs);
                             log.info("Agent Collection bill fetch variation accepted by biller {} with params: {}",
                                     biller.getBillerId(), varInputs);
                             break;
                         }
                     } catch (Exception retryEx) {
                         log.debug("Agent Collection variation attempt failed: {}", retryEx.getMessage());
+                    }
+                }
+            }
+        }
+
+        // 2. If bill fetch returned E135 (or biller is adhoc / payment-only validation biller per Section 4.7):
+        // Execute Biller Validation API call (billValidationRequest) per official BillAvenue BBPS doc (Pages 58-62)
+        BillAvenueDtos.BillValidationResponse valResp = null;
+        if (fetchResp == null || (!fetchResp.isSuccess() && !fetchResp.isNoBillDue())) {
+            log.info("Bill fetch not applicable or returned E135 for {}. Invoking Biller Validation API per Section 4.7.", biller.getBillerId());
+            try {
+                valResp = billAvenueClient.validateBillXml(biller.getBillerId(), inputs);
+            } catch (Exception valEx) {
+                log.warn("Initial Agent Collection validation call failed for {}: {}", biller.getBillerId(), valEx.getMessage());
+            }
+
+            // Retry validation across parameter variations if initial validation returned parameter mismatch
+            if (valResp == null || !valResp.isSuccess()) {
+                List<List<BillAvenueDtos.InputParam>> variations = agentCollectionBillerRegistry.generateParameterVariations(agentCode, collectionRef, customerMobile);
+                for (List<BillAvenueDtos.InputParam> varInputs : variations) {
+                    try {
+                        log.info("Retrying Agent Collection validation with parameter variation for {}: {}", biller.getBillerId(), varInputs);
+                        BillAvenueDtos.BillValidationResponse retryVal = billAvenueClient.validateBillXml(biller.getBillerId(), varInputs);
+                        if (retryVal != null && retryVal.isSuccess()) {
+                            valResp = retryVal;
+                            inputs = varInputs;
+                            agentCollectionBillerRegistry.updateWorkingInputParams(biller.getBillerId(), varInputs);
+                            log.info("Agent Collection validation accepted by biller {} with params: {}", biller.getBillerId(), varInputs);
+                            break;
+                        } else if (retryVal != null && ("BVR001".equalsIgnoreCase(retryVal.getComplianceCode()) ||
+                                "Incorrect / invalid customer account".equalsIgnoreCase(retryVal.getComplianceReason()))) {
+                            // Definitive rejection from biller (account does not exist for this biller)
+                            valResp = retryVal;
+                            break;
+                        }
+                    } catch (Exception retryEx) {
+                        log.debug("Agent Collection validation variation attempt failed: {}", retryEx.getMessage());
                     }
                 }
             }
@@ -4036,7 +4077,39 @@ public class BbpsServiceImpl implements BbpsService {
             }
         }
 
-        // 1. Success response (or valid account with zero dues / payment already received)
+        // 3. Successful Biller Validation response
+        if (valResp != null && valResp.isSuccess()) {
+            List<BbpsDtos.InfoItemDto> addnlDtos = new ArrayList<>();
+            if (valResp.getAdditionalInfo() != null) {
+                for (BillAvenueDtos.InfoItem item : valResp.getAdditionalInfo()) {
+                    addnlDtos.add(new BbpsDtos.InfoItemDto(item.getInfoName(), item.getInfoValue()));
+                }
+            }
+
+            String custName = (valResp.getCustomerName() != null && !valResp.getCustomerName().isBlank() && !"NA".equalsIgnoreCase(valResp.getCustomerName().trim()))
+                    ? valResp.getCustomerName().trim()
+                    : null;
+
+            String effectiveRef = (valResp.getApprovalRefNo() != null && !valResp.getApprovalRefNo().isBlank())
+                    ? valResp.getApprovalRefNo().trim()
+                    : com.rupiksha.backend.integration.bbps.util.BillAvenueCryptoUtil.generateRequestId();
+
+            return BbpsDtos.BillFetchResult.builder()
+                    .success(true)
+                    .noBillDue(true)
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .consumerNumber(agentCode)
+                    .customerName(custName)
+                    .billAmount(BigDecimal.ZERO)
+                    .fetchRequestId(effectiveRef)
+                    .customerParams(request.getCustomerParams())
+                    .additionalInfo(addnlDtos)
+                    .message("Account verified successfully. Flexible collection deposit accepted.")
+                    .build();
+        }
+
+        // 4. Successful Bill Fetch response (or valid account with zero dues / payment already received)
         if (fetchResp != null && (fetchResp.isSuccess() || fetchResp.isNoBillDue())) {
             boolean isNoBillDue = fetchResp.isNoBillDue() || fetchResp.getBillAmountPaise() <= 0;
             BigDecimal billAmount = isNoBillDue
@@ -4095,13 +4168,20 @@ public class BbpsServiceImpl implements BbpsService {
         }
 
         // 3. Bill fetch was attempted but rejected/failed by provider (e.g. invalid account / wrong biller)
-        String errorMsg = (fetchResp != null && fetchResp.getErrorMessage() != null && !fetchResp.getErrorMessage().isBlank())
-                ? fetchResp.getErrorMessage().trim()
-                : ("Unable to verify agent account with " + biller.getBillerName() + ". Please verify the Agent ID / Code.");
-
-        String errorCode = (fetchResp != null && fetchResp.getResponseCode() != null)
-                ? fetchResp.getResponseCode().trim()
-                : "BVR001";
+        String errorMsg;
+        String errorCode;
+        if (valResp != null && !valResp.isSuccess() && valResp.getErrorMessage() != null && !valResp.getErrorMessage().isBlank()) {
+            errorMsg = valResp.getErrorMessage().trim();
+            errorCode = (valResp.getComplianceCode() != null && !valResp.getComplianceCode().isBlank())
+                    ? valResp.getComplianceCode().trim()
+                    : (valResp.getResponseCode() != null ? valResp.getResponseCode().trim() : "BVR001");
+        } else if (fetchResp != null && fetchResp.getErrorMessage() != null && !fetchResp.getErrorMessage().isBlank()) {
+            errorMsg = fetchResp.getErrorMessage().trim();
+            errorCode = (fetchResp.getResponseCode() != null ? fetchResp.getResponseCode().trim() : "BVR001");
+        } else {
+            errorMsg = "Unable to verify agent account with " + biller.getBillerName() + ". Please verify the Agent ID / Code.";
+            errorCode = "BVR001";
+        }
 
         return BbpsDtos.BillFetchResult.builder()
                 .success(false)

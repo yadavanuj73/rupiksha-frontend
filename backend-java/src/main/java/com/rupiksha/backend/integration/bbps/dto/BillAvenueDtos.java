@@ -399,6 +399,7 @@ public class BillAvenueDtos {
         private String complianceCode;
         private String complianceReason;
         private String approvalRefNo;
+        private String customerName;
         private List<InfoItem> additionalInfo;
         private List<ErrorInfo> errorInfo;
         private String rawXml;

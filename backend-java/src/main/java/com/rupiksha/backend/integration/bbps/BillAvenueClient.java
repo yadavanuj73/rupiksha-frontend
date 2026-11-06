@@ -1212,6 +1212,12 @@ public class BillAvenueClient {
                 builder.additionalInfo(items);
             }
 
+            // Extract real customer/agent name from validation response (additionalInfo or root)
+            String extractedName = extractCustomerName(root, null, items, xmlStr);
+            if (!extractedName.isBlank()) {
+                builder.customerName(extractedName);
+            }
+
             NodeList errNodes = root.getElementsByTagName("error");
             if (errNodes != null && errNodes.getLength() > 0) {
                 List<BillAvenueDtos.ErrorInfo> errors = new ArrayList<>();

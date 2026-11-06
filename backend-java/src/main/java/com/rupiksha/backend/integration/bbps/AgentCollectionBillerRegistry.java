@@ -28,6 +28,18 @@ public class AgentCollectionBillerRegistry {
 
     private final List<BbpsDtos.AgentCollectionBillerInfo> billers = new CopyOnWriteArrayList<>();
     private final Map<String, BbpsDtos.AgentCollectionBillerInfo> billerMap = new ConcurrentHashMap<>();
+    private final Map<String, List<BillAvenueDtos.InputParam>> workingParamsCache = new ConcurrentHashMap<>();
+
+    public void updateWorkingInputParams(String billerId, List<BillAvenueDtos.InputParam> params) {
+        if (billerId != null && params != null && !params.isEmpty()) {
+            workingParamsCache.put(billerId.trim().toUpperCase(), params);
+        }
+    }
+
+    public List<BillAvenueDtos.InputParam> getWorkingInputParams(String billerId) {
+        if (billerId == null) return null;
+        return workingParamsCache.get(billerId.trim().toUpperCase());
+    }
 
     // Backward-compatibility alias map for common or shortened IDs
     private static final Map<String, String> BILLER_ID_ALIASES = Map.ofEntries(
