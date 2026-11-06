@@ -914,11 +914,21 @@ public class BillAvenueClient {
         }
     }
 
+    private final java.util.Map<String, JsonNode> jsonMdmCache = new java.util.concurrent.ConcurrentHashMap<>();
+
     /**
      * Calls BillAvenue MDM Biller Info API (Section 11.0 of BillAvenue doc)
      * POST /extMdmCntrl/mdmRequestNew/json
      */
     public JsonNode getBillerInfo(String billerId) {
+        if (billerId == null || billerId.isBlank()) return null;
+        String cleanId = billerId.trim().toUpperCase();
+        JsonNode cached = jsonMdmCache.get(cleanId);
+        if (cached != null) {
+            log.info("Returning cached JSON MDM BillerInfo for: {}", cleanId);
+            return cached;
+        }
+
         String requestId = BillAvenueCryptoUtil.generateRequestId();
         String endpoint = String.format("%s/extMdmCntrl/mdmRequestNew/json?accessCode=%s&requestId=%s&ver=1.0&instituteId=%s",
                 baseUrl, accessCode != null ? accessCode.trim() : "", requestId, getInstituteId());
@@ -931,7 +941,7 @@ public class BillAvenueClient {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
 
-            String bodyJson = String.format("{\"billerId\":[\"%s\"]}", billerId);
+            String bodyJson = String.format("{\"billerId\":[\"%s\"]}", cleanId);
             HttpEntity<String> entity = new HttpEntity<>(bodyJson, headers);
 
             ResponseEntity<String> response = restTemplate.postForEntity(endpoint, entity, String.class);
@@ -943,10 +953,14 @@ public class BillAvenueClient {
                 jsonToParse = BillAvenueCryptoUtil.decrypt(jsonToParse, workingKey, aesIv);
             }
 
-            log.info("Decrypted MDM BillerInfo for {}: {}", billerId, jsonToParse);
-            return objectMapper.readTree(jsonToParse);
+            log.info("Decrypted MDM BillerInfo for {}: {}", cleanId, jsonToParse);
+            JsonNode parsed = objectMapper.readTree(jsonToParse);
+            if (parsed != null && !"200".equals(parsed.path("responseCode").asText(""))) {
+                jsonMdmCache.put(cleanId, parsed);
+            }
+            return parsed;
         } catch (Exception e) {
-            log.warn("MDM BillerInfo call failed for biller {}: {}", billerId, e.getMessage());
+            log.warn("MDM BillerInfo call failed for biller {}: {}", cleanId, e.getMessage());
             return null;
         }
     }

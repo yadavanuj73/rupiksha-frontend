@@ -1,7 +1,9 @@
 package com.rupiksha.backend.integration.bbps;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.rupiksha.backend.api.dto.BbpsDtos;
 import com.rupiksha.backend.integration.bbps.dto.BillAvenueDtos;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -21,6 +23,7 @@ import java.util.regex.Pattern;
  *   - Payment modes supported: Cash (AGT channel) and electronic modes (INT/MOB channels).
  *   - Supports dynamic MDM parameter synchronization via BillAvenue MDM Biller Info API.
  */
+@Slf4j
 @Component
 public class AgentCollectionBillerRegistry {
 
@@ -159,6 +162,108 @@ public class AgentCollectionBillerRegistry {
                 break;
             }
         }
+    }
+
+    public synchronized boolean updateFromJsonMdm(String billerId, JsonNode root) {
+        if (billerId == null || root == null) return false;
+        String key = billerId.trim().toUpperCase();
+        BbpsDtos.AgentCollectionBillerInfo existing = billerMap.get(key);
+        if (existing == null) return false;
+
+        JsonNode billerNode = null;
+        if (root.has("biller") && root.get("biller").isArray() && root.get("biller").size() > 0) {
+            billerNode = root.get("biller").get(0);
+        } else if (root.has("biller") && root.get("biller").isObject()) {
+            billerNode = root.get("biller");
+        }
+
+        if (billerNode == null) return false;
+
+        String bName = billerNode.path("billerName").asText(existing.getBillerName());
+        String fetchReq = billerNode.path("billerFetchRequiremet").asText(
+                billerNode.path("billerFetchRequirement").asText(existing.getBillerFetchRequirement())
+        );
+        String payExact = billerNode.path("billerPaymentExactness").asText(existing.getBillerPaymentExactness());
+        String valSupport = billerNode.path("billerSupportBillValidation").asText(existing.getSupportBillValidation());
+        boolean adhoc = "true".equalsIgnoreCase(billerNode.path("billerAdhoc").asText("true"));
+
+        List<BbpsDtos.InputParamInfo> newParams = new ArrayList<>();
+        JsonNode inputParamsNode = billerNode.path("billerInputParams");
+
+        if (inputParamsNode.isArray()) {
+            for (JsonNode groupOrParam : inputParamsNode) {
+                if (groupOrParam.has("paramsList") && groupOrParam.get("paramsList").isArray()) {
+                    for (JsonNode p : groupOrParam.get("paramsList")) {
+                        parseSingleParam(p, newParams);
+                    }
+                } else if (groupOrParam.has("paramInfo") && groupOrParam.get("paramInfo").isArray()) {
+                    for (JsonNode p : groupOrParam.get("paramInfo")) {
+                        parseSingleParam(p, newParams);
+                    }
+                } else {
+                    parseSingleParam(groupOrParam, newParams);
+                }
+            }
+        } else if (inputParamsNode.isObject()) {
+            if (inputParamsNode.has("paramInfo") && inputParamsNode.get("paramInfo").isArray()) {
+                for (JsonNode p : inputParamsNode.get("paramInfo")) {
+                    parseSingleParam(p, newParams);
+                }
+            } else if (inputParamsNode.has("paramsList") && inputParamsNode.get("paramsList").isArray()) {
+                for (JsonNode p : inputParamsNode.get("paramsList")) {
+                    parseSingleParam(p, newParams);
+                }
+            }
+        }
+
+        if (newParams.isEmpty()) {
+            return false;
+        }
+
+        BbpsDtos.AgentCollectionBillerInfo updated = BbpsDtos.AgentCollectionBillerInfo.builder()
+                .billerId(existing.getBillerId())
+                .billerName(bName)
+                .agencyName(existing.getAgencyName())
+                .category("Agent Collection")
+                .billerFetchRequirement(fetchReq)
+                .billerPaymentExactness(payExact)
+                .supportBillValidation(valSupport)
+                .billerAdhoc(adhoc)
+                .minAmount(existing.getMinAmount())
+                .maxAmount(existing.getMaxAmount())
+                .inputParams(newParams)
+                .description(existing.getDescription())
+                .build();
+
+        billerMap.put(key, updated);
+        for (int i = 0; i < billers.size(); i++) {
+            if (billers.get(i).getBillerId().equalsIgnoreCase(key)) {
+                billers.set(i, updated);
+                break;
+            }
+        }
+        log.info("Successfully updated Agent Collection biller {} from live JSON MDM with {} params: {}",
+                key, newParams.size(), newParams);
+        return true;
+    }
+
+    private void parseSingleParam(JsonNode p, List<BbpsDtos.InputParamInfo> list) {
+        String pName = p.path("paramName").asText("");
+        if (pName.isBlank()) return;
+        boolean opt = "true".equalsIgnoreCase(p.path("isOptional").asText("false"));
+        String dType = p.path("dataType").asText("ALPHANUMERIC");
+        int minL = p.path("minLength").asInt(1);
+        int maxL = p.path("maxLength").asInt(50);
+        String regEx = p.path("regEx").asText(null);
+
+        list.add(BbpsDtos.InputParamInfo.builder()
+                .paramName(pName)
+                .dataType(dType)
+                .optional(opt)
+                .minLength(minL)
+                .maxLength(maxL)
+                .regEx(regEx)
+                .build());
     }
 
     public void validateCustomerParams(BbpsDtos.AgentCollectionBillerInfo biller, Map<String, String> customerParams) {

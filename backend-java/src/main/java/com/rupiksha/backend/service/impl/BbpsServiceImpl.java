@@ -3959,10 +3959,18 @@ public class BbpsServiceImpl implements BbpsService {
 
         // Sync with BillAvenue MDM Biller Info API if available (cached in-memory per 24h quota)
         try {
-            BillAvenueDtos.BillerInfoResponse mdm = billAvenueClient.fetchBillerInfo(biller.getBillerId());
-            if (mdm != null && mdm.isSuccess() && mdm.getInputParams() != null && !mdm.getInputParams().isEmpty()) {
-                agentCollectionBillerRegistry.updateFromMdm(biller.getBillerId(), mdm);
-                biller = agentCollectionBillerRegistry.findById(biller.getBillerId()).orElse(biller);
+            com.fasterxml.jackson.databind.JsonNode jsonMdm = billAvenueClient.getBillerInfo(biller.getBillerId());
+            if (jsonMdm != null) {
+                boolean updated = agentCollectionBillerRegistry.updateFromJsonMdm(biller.getBillerId(), jsonMdm);
+                if (updated) {
+                    biller = agentCollectionBillerRegistry.findById(biller.getBillerId()).orElse(biller);
+                }
+            } else {
+                BillAvenueDtos.BillerInfoResponse mdm = billAvenueClient.fetchBillerInfo(biller.getBillerId());
+                if (mdm != null && mdm.isSuccess() && mdm.getInputParams() != null && !mdm.getInputParams().isEmpty()) {
+                    agentCollectionBillerRegistry.updateFromMdm(biller.getBillerId(), mdm);
+                    biller = agentCollectionBillerRegistry.findById(biller.getBillerId()).orElse(biller);
+                }
             }
         } catch (Exception mdmEx) {
             log.warn("MDM lookup error for Agent Collection biller {}: {}", biller.getBillerId(), mdmEx.getMessage());
@@ -3978,10 +3986,10 @@ public class BbpsServiceImpl implements BbpsService {
         String customerMobile = request.getCustomerMobile().trim();
         String userEmail = (user.getEmail() != null && !user.getEmail().isBlank()) ? user.getEmail().trim() : "customer@rupiksha.in";
 
-        List<BillAvenueDtos.InputParam> inputs = agentCollectionBillerRegistry.getWorkingInputParams(biller.getBillerId());
+        List<BillAvenueDtos.InputParam> inputs = agentCollectionBillerRegistry.buildAgentCollectionInputParams(
+                biller, request.getCustomerParams(), request.getCustomerMobile());
         if (inputs == null || inputs.isEmpty()) {
-            inputs = agentCollectionBillerRegistry.buildAgentCollectionInputParams(
-                    biller, request.getCustomerParams(), request.getCustomerMobile());
+            inputs = agentCollectionBillerRegistry.getWorkingInputParams(biller.getBillerId());
         }
 
         // Multi-channel fallback: AGT (counter agent per BillAvenue config), MOB, and INT
@@ -4195,6 +4203,9 @@ public class BbpsServiceImpl implements BbpsService {
         } else if (fetchResp != null && fetchResp.getErrorMessage() != null && !fetchResp.getErrorMessage().isBlank()) {
             errorMsg = fetchResp.getErrorMessage().trim();
             errorCode = (fetchResp.getResponseCode() != null ? fetchResp.getResponseCode().trim() : "BVR001");
+            if (errorMsg.contains("E135") && biller.getInputParams() != null && !biller.getInputParams().isEmpty()) {
+                errorMsg = errorMsg + " [Schema: " + biller.getInputParams().stream().map(p -> p.getParamName() + (p.isOptional() ? " (opt)" : " (mandatory)")).toList() + "]";
+            }
         } else {
             errorMsg = "Unable to verify agent account with " + biller.getBillerName() + ". Please verify the Agent ID / Code.";
             errorCode = "BVR001";
@@ -4242,10 +4253,18 @@ public class BbpsServiceImpl implements BbpsService {
 
         // Sync with BillAvenue MDM Biller Info API if available (cached in-memory per 24h quota)
         try {
-            BillAvenueDtos.BillerInfoResponse mdm = billAvenueClient.fetchBillerInfo(biller.getBillerId());
-            if (mdm != null && mdm.isSuccess() && mdm.getInputParams() != null && !mdm.getInputParams().isEmpty()) {
-                agentCollectionBillerRegistry.updateFromMdm(biller.getBillerId(), mdm);
-                biller = agentCollectionBillerRegistry.findById(biller.getBillerId()).orElse(biller);
+            com.fasterxml.jackson.databind.JsonNode jsonMdm = billAvenueClient.getBillerInfo(biller.getBillerId());
+            if (jsonMdm != null) {
+                boolean updated = agentCollectionBillerRegistry.updateFromJsonMdm(biller.getBillerId(), jsonMdm);
+                if (updated) {
+                    biller = agentCollectionBillerRegistry.findById(biller.getBillerId()).orElse(biller);
+                }
+            } else {
+                BillAvenueDtos.BillerInfoResponse mdm = billAvenueClient.fetchBillerInfo(biller.getBillerId());
+                if (mdm != null && mdm.isSuccess() && mdm.getInputParams() != null && !mdm.getInputParams().isEmpty()) {
+                    agentCollectionBillerRegistry.updateFromMdm(biller.getBillerId(), mdm);
+                    biller = agentCollectionBillerRegistry.findById(biller.getBillerId()).orElse(biller);
+                }
             }
         } catch (Exception mdmEx) {
             log.warn("MDM lookup error for Agent Collection biller {}: {}", biller.getBillerId(), mdmEx.getMessage());
