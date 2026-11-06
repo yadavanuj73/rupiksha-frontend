@@ -2476,25 +2476,6 @@ export default function CommissionManagement({ activeTab: propActiveTab = 'confi
                                                         </div>
                                                     </div>
 
-                                                    {/* Negative Balance & Auto Settlement Policy Callout */}
-                                                    <div className="p-4 sm:p-5 bg-amber-50/60 rounded-2xl border border-amber-300 flex items-start gap-3.5">
-                                                        <div className="p-2 bg-amber-100 rounded-xl border border-amber-300 shrink-0 text-amber-900 mt-0.5">
-                                                            <ShieldCheck size={20} />
-                                                        </div>
-                                                        <div className="space-y-1.5">
-                                                            <h4 className="text-xs font-black text-black uppercase tracking-wider">
-                                                                Negative Balance Allowed & Automatic Settlement Policy
-                                                            </h4>
-                                                            <p className="text-xs font-bold text-slate-800 leading-relaxed">
-                                                                Eligible AEPS 1 2FA authentications are <strong>never blocked</strong> due to insufficient wallet balance. If the agent&apos;s wallet balance is insufficient, the wallet balance goes negative (e.g. &#8377;2.00 bal - &#8377;5.00 fee = <strong>-&#8377;3.00</strong> balance; outstanding charge = &#8377;3.00).
-                                                            </p>
-                                                            <p className="text-[11px] font-bold text-slate-700 leading-relaxed">
-                                                                &bull; <strong>Automatic Recovery:</strong> Outstanding negative charges are automatically settled in FIFO order whenever the wallet receives subsequent incoming credits (commissions, admin credits, fund requests, or transfers).<br />
-                                                                &bull; <strong>Strict Isolation:</strong> Negative balance permissions apply <em>strictly to AEPS 1 2FA</em>. All other services (Cash Withdrawal, BBPS, Recharge, Payout, W2W) remain strictly blocked when available balance is insufficient.
-                                                            </p>
-                                                        </div>
-                                                    </div>
-
                                                     {/* Summary Card */}
                                                     <div className="p-5 bg-gradient-to-r from-slate-50 via-blue-50/30 to-slate-50 rounded-2xl border border-slate-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                                         <div>
