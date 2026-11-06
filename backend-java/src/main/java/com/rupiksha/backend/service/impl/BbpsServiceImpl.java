@@ -3975,7 +3975,6 @@ public class BbpsServiceImpl implements BbpsService {
         String sanitizedIp = (clientIp != null && clientIp.matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"))
                 ? clientIp : "103.108.7.127";
 
-        String initChannel = "AGT";
         String customerMobile = request.getCustomerMobile().trim();
         String userEmail = (user.getEmail() != null && !user.getEmail().isBlank()) ? user.getEmail().trim() : "customer@rupiksha.in";
 
@@ -3985,57 +3984,72 @@ public class BbpsServiceImpl implements BbpsService {
                     biller, request.getCustomerParams(), request.getCustomerMobile());
         }
 
+        // Multi-channel fallback: MOB (primary BBPS CU channel per Section 4.2), INT, and AGT
+        List<String> channelCandidates = List.of("MOB", "INT", "AGT");
+
         // Check if bill fetch is NOT_SUPPORTED by the biller
         boolean isFetchSupported = !"NOT_SUPPORTED".equalsIgnoreCase(biller.getBillerFetchRequirement());
 
         BillAvenueDtos.BillFetchResponse fetchResp = null;
         if (isFetchSupported) {
-            try {
-                fetchResp = billAvenueClient.fetchBill(
-                        biller.getBillerId(),
-                        inputs,
-                        customerMobile,
-                        sanitizedIp,
-                        initChannel,
-                        userEmail
-                );
-            } catch (Exception ex) {
-                log.warn("Initial Agent Collection bill fetch failed: {}. Attempting fallback parameter variations.", ex.getMessage());
-            }
+            for (String channel : channelCandidates) {
+                try {
+                    log.info("Attempting Agent Collection bill fetch for {} on channel {}: {}", biller.getBillerId(), channel, inputs);
+                    fetchResp = billAvenueClient.fetchBill(
+                            biller.getBillerId(),
+                            inputs,
+                            customerMobile,
+                            sanitizedIp,
+                            channel,
+                            userEmail
+                    );
+                    if (fetchResp != null && (fetchResp.isSuccess() || fetchResp.isNoBillDue())) {
+                        log.info("Agent Collection bill fetch SUCCESS on channel {} for biller {}", channel, biller.getBillerId());
+                        break;
+                    }
+                } catch (Exception ex) {
+                    log.warn("Agent Collection bill fetch attempt failed on channel {}: {}", channel, ex.getMessage());
+                }
 
-            // Parameter variation retry if initial fetch returned E135 / parameter mismatch or failed
-            if (fetchResp == null || isE135Error(fetchResp) || (!fetchResp.isSuccess() && !fetchResp.isNoBillDue())) {
-                List<List<BillAvenueDtos.InputParam>> variations = agentCollectionBillerRegistry.generateParameterVariations(agentCode, collectionRef, customerMobile);
-                for (List<BillAvenueDtos.InputParam> varInputs : variations) {
-                    try {
-                        log.info("Retrying Agent Collection bill fetch with parameter variation for {}: {}", biller.getBillerId(), varInputs);
-                        BillAvenueDtos.BillFetchResponse retryResp = billAvenueClient.fetchBill(
-                                biller.getBillerId(),
-                                varInputs,
-                                customerMobile,
-                                sanitizedIp,
-                                initChannel,
-                                userEmail
-                        );
-                        if (retryResp != null && (retryResp.isSuccess() || retryResp.isNoBillDue())) {
-                            fetchResp = retryResp;
-                            inputs = varInputs;
-                            agentCollectionBillerRegistry.updateWorkingInputParams(biller.getBillerId(), varInputs);
-                            log.info("Agent Collection bill fetch variation accepted by biller {} with params: {}",
-                                    biller.getBillerId(), varInputs);
-                            break;
+                // If channel returned E135 / parameter mismatch, retry parameter variations on this channel
+                if (fetchResp == null || isE135Error(fetchResp) || (!fetchResp.isSuccess() && !fetchResp.isNoBillDue())) {
+                    List<List<BillAvenueDtos.InputParam>> variations = agentCollectionBillerRegistry.generateParameterVariations(agentCode, collectionRef, customerMobile);
+                    for (List<BillAvenueDtos.InputParam> varInputs : variations) {
+                        try {
+                            log.info("Retrying Agent Collection bill fetch with variation on channel {} for {}: {}",
+                                    channel, biller.getBillerId(), varInputs);
+                            BillAvenueDtos.BillFetchResponse retryResp = billAvenueClient.fetchBill(
+                                    biller.getBillerId(),
+                                    varInputs,
+                                    customerMobile,
+                                    sanitizedIp,
+                                    channel,
+                                    userEmail
+                            );
+                            if (retryResp != null && (retryResp.isSuccess() || retryResp.isNoBillDue())) {
+                                fetchResp = retryResp;
+                                inputs = varInputs;
+                                agentCollectionBillerRegistry.updateWorkingInputParams(biller.getBillerId(), varInputs);
+                                log.info("Agent Collection bill fetch variation accepted on channel {} for {} with params: {}",
+                                        channel, biller.getBillerId(), varInputs);
+                                break;
+                            }
+                        } catch (Exception retryEx) {
+                            log.debug("Agent Collection variation attempt failed on channel {}: {}", channel, retryEx.getMessage());
                         }
-                    } catch (Exception retryEx) {
-                        log.debug("Agent Collection variation attempt failed: {}", retryEx.getMessage());
+                    }
+                    if (fetchResp != null && (fetchResp.isSuccess() || fetchResp.isNoBillDue())) {
+                        break;
                     }
                 }
             }
         }
 
         // 2. If bill fetch returned E135 (or biller is adhoc / payment-only validation biller per Section 4.7):
-        // Execute Biller Validation API call (billValidationRequest) per official BillAvenue BBPS doc (Pages 58-62)
+        // Execute Biller Validation API call (billValidationRequest) only if validation is supported per MDM/Registry
         BillAvenueDtos.BillValidationResponse valResp = null;
-        if (fetchResp == null || (!fetchResp.isSuccess() && !fetchResp.isNoBillDue())) {
+        boolean isValidationSupported = !"NOT_SUPPORTED".equalsIgnoreCase(biller.getSupportBillValidation());
+        if (isValidationSupported && (fetchResp == null || (!fetchResp.isSuccess() && !fetchResp.isNoBillDue()))) {
             log.info("Bill fetch not applicable or returned E135 for {}. Invoking Biller Validation API per Section 4.7.", biller.getBillerId());
             try {
                 valResp = billAvenueClient.validateBillXml(biller.getBillerId(), inputs);
@@ -4170,7 +4184,10 @@ public class BbpsServiceImpl implements BbpsService {
         // 3. Bill fetch was attempted but rejected/failed by provider (e.g. invalid account / wrong biller)
         String errorMsg;
         String errorCode;
-        if (valResp != null && !valResp.isSuccess() && valResp.getErrorMessage() != null && !valResp.getErrorMessage().isBlank()) {
+        if (valResp != null && !valResp.isSuccess() && valResp.getErrorMessage() != null && !valResp.getErrorMessage().isBlank()
+                && !"VE015".equalsIgnoreCase(valResp.getComplianceCode())
+                && !valResp.getErrorMessage().contains("VE015")
+                && !valResp.getErrorMessage().toLowerCase().contains("validation api not supported")) {
             errorMsg = valResp.getErrorMessage().trim();
             errorCode = (valResp.getComplianceCode() != null && !valResp.getComplianceCode().isBlank())
                     ? valResp.getComplianceCode().trim()
