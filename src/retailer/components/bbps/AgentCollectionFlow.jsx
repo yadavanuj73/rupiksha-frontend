@@ -17,7 +17,7 @@ import { primeBharatConnectSound, playBharatConnectSuccessSound } from '../../..
 
 // Official Bharat Connect Agent Collection Billers (BillAvenue Version 2.8.7)
 const DEFAULT_COLLECTION_BILLERS = [
-    { billerId: 'BAJA00000NAT9L', billerName: 'Bajaj Finance Limited Agent Collection', agencyName: 'Bajaj Finance Limited', paramName: 'Consumer No.' },
+    { billerId: 'BAJA00000NAT9L', billerName: 'Bajaj Finance Limited Agent Collection', agencyName: 'Bajaj Finance Limited', paramName: 'Consumer No' },
     { billerId: 'DMIH00020NATNH', billerName: 'DMI Housing Finance Pvt Ltd', agencyName: 'DMI Housing Finance Private Limited', paramName: 'Agent Code' },
     { billerId: 'HDBF00019NATJC', billerName: 'HDB Financial Agent Services', agencyName: 'HDB Financial Services Limited', paramName: 'Agent Code' },
     { billerId: 'HIRA00027NAT83', billerName: 'Hiranandani Financial Services Pvt Ltd', agencyName: 'Hiranandani Financial Services Private Limited', paramName: 'Agent Code' }

@@ -268,10 +268,11 @@ public class AgentCollectionBillerRegistry {
     }
 
     private static final Map<String, List<String>> PARAM_ALIASES = Map.of(
-            "agent id", List.of("agent id", "agent code", "agent number", "collector id", "employee id", "employee code", "consumer no.", "consumer no", "consumer number", "account number"),
-            "agent code", List.of("agent code", "agent id", "agent number", "collector id", "employee id", "employee code", "consumer no.", "consumer no", "consumer number", "account number"),
+            "agent id", List.of("agent id", "agent code", "agent number", "collector id", "employee id", "employee code", "consumer no", "consumer no.", "consumer number", "account number"),
+            "agent code", List.of("agent code", "agent id", "agent number", "collector id", "employee id", "employee code", "consumer no", "consumer no.", "consumer number", "account number"),
+            "consumer no", List.of("consumer no", "consumer no.", "consumer number", "agent id", "agent code", "agent number", "collector id", "account number"),
             "consumer no.", List.of("consumer no.", "consumer no", "consumer number", "agent id", "agent code", "agent number", "collector id", "account number"),
-            "consumer number", List.of("consumer number", "consumer no.", "consumer no", "agent id", "agent code", "agent number", "collector id", "account number"),
+            "consumer number", List.of("consumer number", "consumer no", "consumer no.", "agent id", "agent code", "agent number", "collector id", "account number"),
             "collection reference number", List.of("collection reference number", "collection ref", "reference number", "center id", "group code", "contract no", "reference no")
     );
 
@@ -281,7 +282,10 @@ public class AgentCollectionBillerRegistry {
 
         String cleanCode = agentCode.trim();
 
-        // 1. Single-parameter variations across official BillAvenue naming conventions (Consumer No. first per reference portal)
+        // 1. Single-parameter variations across official BillAvenue naming conventions (Consumer No first per reference portal)
+        variations.add(List.of(
+                BillAvenueDtos.InputParam.builder().paramName("Consumer No").paramValue(cleanCode).build()
+        ));
         variations.add(List.of(
                 BillAvenueDtos.InputParam.builder().paramName("Consumer No.").paramValue(cleanCode).build()
         ));
@@ -289,10 +293,13 @@ public class AgentCollectionBillerRegistry {
                 BillAvenueDtos.InputParam.builder().paramName("Consumer Number").paramValue(cleanCode).build()
         ));
         variations.add(List.of(
+                BillAvenueDtos.InputParam.builder().paramName("Agent Code").paramValue(cleanCode).build()
+        ));
+        variations.add(List.of(
                 BillAvenueDtos.InputParam.builder().paramName("Agent ID").paramValue(cleanCode).build()
         ));
         variations.add(List.of(
-                BillAvenueDtos.InputParam.builder().paramName("Agent Code").paramValue(cleanCode).build()
+                BillAvenueDtos.InputParam.builder().paramName("CONSUMER NO").paramValue(cleanCode).build()
         ));
         variations.add(List.of(
                 BillAvenueDtos.InputParam.builder().paramName("CONSUMER NO.").paramValue(cleanCode).build()
@@ -301,10 +308,10 @@ public class AgentCollectionBillerRegistry {
                 BillAvenueDtos.InputParam.builder().paramName("CONSUMER NUMBER").paramValue(cleanCode).build()
         ));
         variations.add(List.of(
-                BillAvenueDtos.InputParam.builder().paramName("AGENT ID").paramValue(cleanCode).build()
+                BillAvenueDtos.InputParam.builder().paramName("AGENT CODE").paramValue(cleanCode).build()
         ));
         variations.add(List.of(
-                BillAvenueDtos.InputParam.builder().paramName("AGENT CODE").paramValue(cleanCode).build()
+                BillAvenueDtos.InputParam.builder().paramName("AGENT ID").paramValue(cleanCode).build()
         ));
         variations.add(List.of(
                 BillAvenueDtos.InputParam.builder().paramName("Collector ID").paramValue(cleanCode).build()
@@ -319,43 +326,51 @@ public class AgentCollectionBillerRegistry {
         // 2. Dual-parameter variations with Mobile Number (many billers require mobile alongside consumer number)
         if (mobile != null && !mobile.isBlank()) {
             String cleanMobile = mobile.trim();
-            variations.add(List.of(
-                    BillAvenueDtos.InputParam.builder().paramName("Consumer No.").paramValue(cleanCode).build(),
-                    BillAvenueDtos.InputParam.builder().paramName("Mobile Number").paramValue(cleanMobile).build()
-            ));
-            variations.add(List.of(
-                    BillAvenueDtos.InputParam.builder().paramName("Consumer Number").paramValue(cleanCode).build(),
-                    BillAvenueDtos.InputParam.builder().paramName("Mobile Number").paramValue(cleanMobile).build()
-            ));
-            variations.add(List.of(
-                    BillAvenueDtos.InputParam.builder().paramName("Agent ID").paramValue(cleanCode).build(),
-                    BillAvenueDtos.InputParam.builder().paramName("Mobile Number").paramValue(cleanMobile).build()
-            ));
+            for (String mobileTag : List.of("Mobile Number", "Mobile No", "Mobile No.", "Registered Mobile Number", "Payee Mobile Number")) {
+                variations.add(List.of(
+                        BillAvenueDtos.InputParam.builder().paramName("Consumer No").paramValue(cleanCode).build(),
+                        BillAvenueDtos.InputParam.builder().paramName(mobileTag).paramValue(cleanMobile).build()
+                ));
+                variations.add(List.of(
+                        BillAvenueDtos.InputParam.builder().paramName("Consumer No.").paramValue(cleanCode).build(),
+                        BillAvenueDtos.InputParam.builder().paramName(mobileTag).paramValue(cleanMobile).build()
+                ));
+                variations.add(List.of(
+                        BillAvenueDtos.InputParam.builder().paramName("Agent Code").paramValue(cleanCode).build(),
+                        BillAvenueDtos.InputParam.builder().paramName(mobileTag).paramValue(cleanMobile).build()
+                ));
+                variations.add(List.of(
+                        BillAvenueDtos.InputParam.builder().paramName("Agent ID").paramValue(cleanCode).build(),
+                        BillAvenueDtos.InputParam.builder().paramName(mobileTag).paramValue(cleanMobile).build()
+                ));
+                variations.add(List.of(
+                        BillAvenueDtos.InputParam.builder().paramName("Consumer Number").paramValue(cleanCode).build(),
+                        BillAvenueDtos.InputParam.builder().paramName(mobileTag).paramValue(cleanMobile).build()
+                ));
+            }
         }
 
         // 3. Dual-parameter variations if collection reference is provided
         if (collectionRef != null && !collectionRef.isBlank()) {
             String cleanRef = collectionRef.trim();
-            variations.add(List.of(
-                    BillAvenueDtos.InputParam.builder().paramName("Consumer No.").paramValue(cleanCode).build(),
-                    BillAvenueDtos.InputParam.builder().paramName("Collection Reference Number").paramValue(cleanRef).build()
-            ));
-            variations.add(List.of(
-                    BillAvenueDtos.InputParam.builder().paramName("Agent ID").paramValue(cleanCode).build(),
-                    BillAvenueDtos.InputParam.builder().paramName("Collection Reference Number").paramValue(cleanRef).build()
-            ));
-            variations.add(List.of(
-                    BillAvenueDtos.InputParam.builder().paramName("Agent Code").paramValue(cleanCode).build(),
-                    BillAvenueDtos.InputParam.builder().paramName("Collection Reference Number").paramValue(cleanRef).build()
-            ));
-            variations.add(List.of(
-                    BillAvenueDtos.InputParam.builder().paramName("Agent Code").paramValue(cleanCode).build(),
-                    BillAvenueDtos.InputParam.builder().paramName("Center ID").paramValue(cleanRef).build()
-            ));
-            variations.add(List.of(
-                    BillAvenueDtos.InputParam.builder().paramName("Agent ID").paramValue(cleanCode).build(),
-                    BillAvenueDtos.InputParam.builder().paramName("Group Code").paramValue(cleanRef).build()
-            ));
+            for (String refTag : List.of("Collection Reference Number", "Center ID", "Group Code", "Branch Code")) {
+                variations.add(List.of(
+                        BillAvenueDtos.InputParam.builder().paramName("Consumer No").paramValue(cleanCode).build(),
+                        BillAvenueDtos.InputParam.builder().paramName(refTag).paramValue(cleanRef).build()
+                ));
+                variations.add(List.of(
+                        BillAvenueDtos.InputParam.builder().paramName("Consumer No.").paramValue(cleanCode).build(),
+                        BillAvenueDtos.InputParam.builder().paramName(refTag).paramValue(cleanRef).build()
+                ));
+                variations.add(List.of(
+                        BillAvenueDtos.InputParam.builder().paramName("Agent Code").paramValue(cleanCode).build(),
+                        BillAvenueDtos.InputParam.builder().paramName(refTag).paramValue(cleanRef).build()
+                ));
+                variations.add(List.of(
+                        BillAvenueDtos.InputParam.builder().paramName("Agent ID").paramValue(cleanCode).build(),
+                        BillAvenueDtos.InputParam.builder().paramName(refTag).paramValue(cleanRef).build()
+                ));
+            }
         }
 
         return variations;
@@ -426,7 +441,7 @@ public class AgentCollectionBillerRegistry {
                 .minAmount(BigDecimal.valueOf(100))
                 .maxAmount(BigDecimal.valueOf(500000))
                 .inputParams(List.of(
-                        BbpsDtos.InputParamInfo.builder().paramName("Consumer No.").dataType("ALPHANUMERIC").optional(false).minLength(3).maxLength(30).build(),
+                        BbpsDtos.InputParamInfo.builder().paramName("Consumer No").dataType("ALPHANUMERIC").optional(false).minLength(3).maxLength(30).build(),
                         BbpsDtos.InputParamInfo.builder().paramName("Collection Reference Number").dataType("ALPHANUMERIC").optional(true).minLength(2).maxLength(30).build()
                 ))
                 .description("Bajaj Finance field agent cash collection and recovery deposit")

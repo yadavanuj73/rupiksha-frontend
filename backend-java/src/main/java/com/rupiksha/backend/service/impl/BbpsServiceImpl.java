@@ -3984,8 +3984,8 @@ public class BbpsServiceImpl implements BbpsService {
                     biller, request.getCustomerParams(), request.getCustomerMobile());
         }
 
-        // Multi-channel fallback: MOB (primary BBPS CU channel per Section 4.2), INT, and AGT
-        List<String> channelCandidates = List.of("MOB", "INT", "AGT");
+        // Multi-channel fallback: AGT (counter agent per BillAvenue config), MOB, and INT
+        List<String> channelCandidates = List.of("AGT", "MOB", "INT");
 
         // Check if bill fetch is NOT_SUPPORTED by the biller
         boolean isFetchSupported = !"NOT_SUPPORTED".equalsIgnoreCase(biller.getBillerFetchRequirement());

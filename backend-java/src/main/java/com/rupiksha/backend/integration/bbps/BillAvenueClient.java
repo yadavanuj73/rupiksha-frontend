@@ -230,16 +230,16 @@ public class BillAvenueClient {
                 : getInitChannel();
 
         StringBuilder deviceXml = new StringBuilder("<agentDeviceInfo>");
-        if ("INT".equalsIgnoreCase(effectiveChannel) || "INTB".equalsIgnoreCase(effectiveChannel)) {
-            deviceXml.append("<initChannel>").append(escapeXml(effectiveChannel)).append("</initChannel>")
-                    .append("<ip>").append(escapeXml(sanitizedIp)).append("</ip>")
-                    .append("<mac>01-23-45-67-89-ab</mac>");
-        } else {
+        if ("MOB".equalsIgnoreCase(effectiveChannel) || "MOBB".equalsIgnoreCase(effectiveChannel)) {
             deviceXml.append("<app>tripozo</app>")
                     .append("<imei>000000000000000</imei>")
                     .append("<initChannel>").append(escapeXml(effectiveChannel)).append("</initChannel>")
                     .append("<ip>").append(escapeXml(sanitizedIp)).append("</ip>")
                     .append("<os>android</os>");
+        } else {
+            deviceXml.append("<initChannel>").append(escapeXml(effectiveChannel)).append("</initChannel>")
+                    .append("<ip>").append(escapeXml(sanitizedIp)).append("</ip>")
+                    .append("<mac>01-23-45-67-89-ab</mac>");
         }
         deviceXml.append("</agentDeviceInfo>");
 
@@ -608,16 +608,16 @@ public class BillAvenueClient {
                 : getInitChannel();
 
         StringBuilder deviceXml = new StringBuilder("<agentDeviceInfo>");
-        if ("INT".equalsIgnoreCase(effectiveChannel) || "INTB".equalsIgnoreCase(effectiveChannel)) {
-            deviceXml.append("<initChannel>").append(escapeXml(effectiveChannel)).append("</initChannel>")
-                    .append("<ip>").append(escapeXml(sanitizedIp)).append("</ip>")
-                    .append("<mac>01-23-45-67-89-ab</mac>");
-        } else {
+        if ("MOB".equalsIgnoreCase(effectiveChannel) || "MOBB".equalsIgnoreCase(effectiveChannel)) {
             deviceXml.append("<app>tripozo</app>")
                     .append("<imei>000000000000000</imei>")
                     .append("<initChannel>").append(escapeXml(effectiveChannel)).append("</initChannel>")
                     .append("<ip>").append(escapeXml(sanitizedIp)).append("</ip>")
                     .append("<os>android</os>");
+        } else {
+            deviceXml.append("<initChannel>").append(escapeXml(effectiveChannel)).append("</initChannel>")
+                    .append("<ip>").append(escapeXml(sanitizedIp)).append("</ip>")
+                    .append("<mac>01-23-45-67-89-ab</mac>");
         }
         deviceXml.append("</agentDeviceInfo>");
 
