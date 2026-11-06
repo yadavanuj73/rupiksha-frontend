@@ -1353,11 +1353,21 @@ class BbpsServiceImplTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
         when(userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)).thenReturn(Optional.empty());
 
+        BillAvenueDtos.BillFetchResponse mockFetchResp = BillAvenueDtos.BillFetchResponse.builder()
+                .responseCode("000")
+                .responseReason("Successful")
+                .customerName("Prince Prince56")
+                .billAmountPaise(0L)
+                .fetchRequestId("REQ-AC-12345")
+                .build();
+        when(billAvenueClient.fetchBill(eq("BAJA00000NAT9L"), any(), eq("9876543210"), any(), any(), any()))
+                .thenReturn(mockFetchResp);
+
         BbpsDtos.AgentCollectionFetchRequest fetchReq = new BbpsDtos.AgentCollectionFetchRequest();
         fetchReq.setBillerId("BAJA00000NAT9L");
         fetchReq.setCustomerMobile("9876543210");
         fetchReq.setCustomerParams(java.util.Map.of(
-                "Agent ID", "AG-776655",
+                "Agent ID", "SUPZL2002MFIALLALL",
                 "Collection Reference Number", "REF-2026-99"
         ));
 
@@ -1365,7 +1375,36 @@ class BbpsServiceImplTest {
         assertNotNull(result);
         assertTrue(result.isSuccess());
         assertEquals("BAJA00000NAT9L", result.getBillerId());
+        assertEquals("Prince Prince56", result.getCustomerName());
         assertTrue(result.getBillerName().contains("Bajaj Finance"));
+    }
+
+    @Test
+    @DisplayName("Agent Collection bill fetch returns failure when provider rejects account (wrong biller or invalid ID)")
+    void testFetchAgentCollectionBill_ProviderRejection() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userServiceRepository.findByUserIdAndServiceType(userId, ServiceType.BBPS)).thenReturn(Optional.empty());
+
+        BillAvenueDtos.BillFetchResponse rejectionResp = BillAvenueDtos.BillFetchResponse.builder()
+                .responseCode("001")
+                .responseReason("Invalid customer account")
+                .errorInfo(java.util.List.of(new BillAvenueDtos.ErrorInfo("BVR001", "No records found for Agent Code")))
+                .build();
+        when(billAvenueClient.fetchBill(eq("DMIH00020NATNH"), any(), any(), any(), any(), any()))
+                .thenReturn(rejectionResp);
+
+        BbpsDtos.AgentCollectionFetchRequest fetchReq = new BbpsDtos.AgentCollectionFetchRequest();
+        fetchReq.setBillerId("DMIH00020NATNH");
+        fetchReq.setCustomerMobile("9876543210");
+        fetchReq.setCustomerParams(java.util.Map.of(
+                "Agent Code", "INVALID-CODE-999"
+        ));
+
+        BbpsDtos.BillFetchResult result = bbpsService.fetchAgentCollectionBill(userId, fetchReq, "127.0.0.1");
+        assertNotNull(result);
+        assertFalse(result.isSuccess(), "Rejection should produce success=false");
+        assertEquals("DMIH00020NATNH", result.getBillerId());
+        assertTrue(result.getMessage().contains("No records found for Agent Code") || result.getMessage().contains("Unable to verify"));
     }
 
     @Test

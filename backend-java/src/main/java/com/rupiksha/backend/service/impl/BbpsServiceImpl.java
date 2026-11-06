@@ -4014,7 +4014,7 @@ public class BbpsServiceImpl implements BbpsService {
                                 initChannel,
                                 userEmail
                         );
-                        if (retryResp != null && !isE135Error(retryResp)) {
+                        if (retryResp != null && (retryResp.isSuccess() || retryResp.isNoBillDue())) {
                             fetchResp = retryResp;
                             inputs = varInputs;
                             log.info("Agent Collection bill fetch variation accepted by biller {} with params: {}",
@@ -4036,7 +4036,8 @@ public class BbpsServiceImpl implements BbpsService {
             }
         }
 
-        if (fetchResp != null && fetchResp.isSuccess()) {
+        // 1. Success response (or valid account with zero dues / payment already received)
+        if (fetchResp != null && (fetchResp.isSuccess() || fetchResp.isNoBillDue())) {
             boolean isNoBillDue = fetchResp.isNoBillDue() || fetchResp.getBillAmountPaise() <= 0;
             BigDecimal billAmount = isNoBillDue
                     ? BigDecimal.ZERO
@@ -4054,8 +4055,8 @@ public class BbpsServiceImpl implements BbpsService {
                     : null;
 
             String message = isNoBillDue
-                    ? "Payment received / No bill due for this billing period"
-                    : "Bill fetched successfully";
+                    ? "Account verified / Flexible collection deposit accepted"
+                    : "Bill details fetched successfully";
 
             return BbpsDtos.BillFetchResult.builder()
                     .success(true)
@@ -4076,19 +4077,43 @@ public class BbpsServiceImpl implements BbpsService {
                     .build();
         }
 
-        // If bill fetch returned NO BILL DUE or NOT_SUPPORTED / Ad-hoc collection:
-        String generatedRequestId = com.rupiksha.backend.integration.bbps.util.BillAvenueCryptoUtil.generateRequestId();
+        // 2. If bill fetch is explicitly NOT_SUPPORTED by the biller (pure ad-hoc payment):
+        if (!isFetchSupported) {
+            String generatedRequestId = com.rupiksha.backend.integration.bbps.util.BillAvenueCryptoUtil.generateRequestId();
+            return BbpsDtos.BillFetchResult.builder()
+                    .success(true)
+                    .noBillDue(true)
+                    .billerId(biller.getBillerId())
+                    .billerName(biller.getBillerName())
+                    .consumerNumber(agentCode)
+                    .customerName(null)
+                    .billAmount(BigDecimal.ZERO)
+                    .fetchRequestId(generatedRequestId)
+                    .customerParams(request.getCustomerParams())
+                    .message("Direct collection deposit accepted by biller.")
+                    .build();
+        }
+
+        // 3. Bill fetch was attempted but rejected/failed by provider (e.g. invalid account / wrong biller)
+        String errorMsg = (fetchResp != null && fetchResp.getErrorMessage() != null && !fetchResp.getErrorMessage().isBlank())
+                ? fetchResp.getErrorMessage().trim()
+                : ("Unable to verify agent account with " + biller.getBillerName() + ". Please verify the Agent ID / Code.");
+
+        String errorCode = (fetchResp != null && fetchResp.getResponseCode() != null)
+                ? fetchResp.getResponseCode().trim()
+                : "BVR001";
+
         return BbpsDtos.BillFetchResult.builder()
-                .success(true)
-                .noBillDue(true)
+                .success(false)
+                .noBillDue(false)
                 .billerId(biller.getBillerId())
                 .billerName(biller.getBillerName())
                 .consumerNumber(agentCode)
                 .customerName(null)
                 .billAmount(BigDecimal.ZERO)
-                .fetchRequestId(generatedRequestId)
                 .customerParams(request.getCustomerParams())
-                .message("No bill due. Flexible collection amount accepted.")
+                .errorCode(errorCode)
+                .message(errorMsg)
                 .build();
     }
 

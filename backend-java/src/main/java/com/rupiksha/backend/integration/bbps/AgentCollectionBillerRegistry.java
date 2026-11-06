@@ -182,7 +182,7 @@ public class AgentCollectionBillerRegistry {
 
     public String extractAgentCode(Map<String, String> customerParams) {
         if (customerParams == null) return null;
-        for (String key : List.of("Agent Code", "Agent ID", "Collector ID", "Employee ID", "CSR ID", "DE ID", "Rider ID", "Partner ID", "Cashier ID", "agentCode", "agentId")) {
+        for (String key : List.of("Agent Code", "Agent ID", "Consumer No.", "Consumer No", "Consumer Number", "Collector ID", "Employee ID", "Employee Code", "CSR ID", "DE ID", "Rider ID", "Partner ID", "Cashier ID", "agentCode", "agentId")) {
             String val = findParamValue(customerParams, key);
             if (val != null && !val.isBlank()) {
                 return val.trim().toUpperCase();
@@ -255,17 +255,32 @@ public class AgentCollectionBillerRegistry {
         return clean;
     }
 
+    private static final Map<String, List<String>> PARAM_ALIASES = Map.of(
+            "agent id", List.of("agent id", "agent code", "agent number", "collector id", "employee id", "employee code", "consumer no.", "consumer no", "consumer number", "account number"),
+            "agent code", List.of("agent code", "agent id", "agent number", "collector id", "employee id", "employee code", "consumer no.", "consumer no", "consumer number", "account number"),
+            "consumer no.", List.of("consumer no.", "consumer no", "consumer number", "agent id", "agent code", "agent number", "collector id", "account number"),
+            "consumer number", List.of("consumer number", "consumer no.", "consumer no", "agent id", "agent code", "agent number", "collector id", "account number"),
+            "collection reference number", List.of("collection reference number", "collection ref", "reference number", "center id", "group code", "contract no", "reference no")
+    );
+
     public List<List<BillAvenueDtos.InputParam>> generateParameterVariations(String agentCode, String collectionRef, String mobile) {
         List<List<BillAvenueDtos.InputParam>> variations = new ArrayList<>();
         if (agentCode == null || agentCode.isBlank()) return variations;
 
         String cleanCode = agentCode.trim();
 
-        variations.add(List.of(
-                BillAvenueDtos.InputParam.builder().paramName("Agent Code").paramValue(cleanCode).build()
-        ));
+        // 1. Single-parameter variations across official BillAvenue naming conventions
         variations.add(List.of(
                 BillAvenueDtos.InputParam.builder().paramName("Agent ID").paramValue(cleanCode).build()
+        ));
+        variations.add(List.of(
+                BillAvenueDtos.InputParam.builder().paramName("Consumer No.").paramValue(cleanCode).build()
+        ));
+        variations.add(List.of(
+                BillAvenueDtos.InputParam.builder().paramName("Consumer Number").paramValue(cleanCode).build()
+        ));
+        variations.add(List.of(
+                BillAvenueDtos.InputParam.builder().paramName("Agent Code").paramValue(cleanCode).build()
         ));
         variations.add(List.of(
                 BillAvenueDtos.InputParam.builder().paramName("Collector ID").paramValue(cleanCode).build()
@@ -277,14 +292,28 @@ public class AgentCollectionBillerRegistry {
                 BillAvenueDtos.InputParam.builder().paramName("Partner ID").paramValue(cleanCode).build()
         ));
 
+        // 2. Dual-parameter variations if collection reference is provided
         if (collectionRef != null && !collectionRef.isBlank()) {
+            String cleanRef = collectionRef.trim();
+            variations.add(List.of(
+                    BillAvenueDtos.InputParam.builder().paramName("Agent ID").paramValue(cleanCode).build(),
+                    BillAvenueDtos.InputParam.builder().paramName("Collection Reference Number").paramValue(cleanRef).build()
+            ));
+            variations.add(List.of(
+                    BillAvenueDtos.InputParam.builder().paramName("Consumer No.").paramValue(cleanCode).build(),
+                    BillAvenueDtos.InputParam.builder().paramName("Collection Reference Number").paramValue(cleanRef).build()
+            ));
             variations.add(List.of(
                     BillAvenueDtos.InputParam.builder().paramName("Agent Code").paramValue(cleanCode).build(),
-                    BillAvenueDtos.InputParam.builder().paramName("Center ID").paramValue(collectionRef.trim()).build()
+                    BillAvenueDtos.InputParam.builder().paramName("Collection Reference Number").paramValue(cleanRef).build()
+            ));
+            variations.add(List.of(
+                    BillAvenueDtos.InputParam.builder().paramName("Agent Code").paramValue(cleanCode).build(),
+                    BillAvenueDtos.InputParam.builder().paramName("Center ID").paramValue(cleanRef).build()
             ));
             variations.add(List.of(
                     BillAvenueDtos.InputParam.builder().paramName("Agent ID").paramValue(cleanCode).build(),
-                    BillAvenueDtos.InputParam.builder().paramName("Group Code").paramValue(collectionRef.trim()).build()
+                    BillAvenueDtos.InputParam.builder().paramName("Group Code").paramValue(cleanRef).build()
             ));
         }
 
@@ -293,10 +322,25 @@ public class AgentCollectionBillerRegistry {
 
     private String findParamValue(Map<String, String> params, String key) {
         if (params == null || key == null) return null;
+        // Direct / alphanumeric normalized match
         for (Map.Entry<String, String> entry : params.entrySet()) {
             if (entry.getKey().equalsIgnoreCase(key) ||
                 entry.getKey().replaceAll("[^A-Za-z0-9]", "").equalsIgnoreCase(key.replaceAll("[^A-Za-z0-9]", ""))) {
                 return entry.getValue();
+            }
+        }
+        // Alias match
+        String normalizedKey = key.trim().toLowerCase();
+        for (Map.Entry<String, List<String>> aliasGroup : PARAM_ALIASES.entrySet()) {
+            if (aliasGroup.getKey().equalsIgnoreCase(normalizedKey) || aliasGroup.getValue().contains(normalizedKey)) {
+                for (String alias : aliasGroup.getValue()) {
+                    for (Map.Entry<String, String> entry : params.entrySet()) {
+                        if (entry.getKey().equalsIgnoreCase(alias) ||
+                            entry.getKey().replaceAll("[^A-Za-z0-9]", "").equalsIgnoreCase(alias.replaceAll("[^A-Za-z0-9]", ""))) {
+                            return entry.getValue();
+                        }
+                    }
+                }
             }
         }
         return null;

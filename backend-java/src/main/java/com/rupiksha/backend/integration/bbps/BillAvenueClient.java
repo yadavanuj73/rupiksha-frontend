@@ -122,14 +122,14 @@ public class BillAvenueClient {
         String encRequest = BillAvenueCryptoUtil.encrypt(xmlRequest, workingKey, aesIv);
         String v = (ver != null && !ver.isBlank()) ? ver : "1.0";
 
-        // In the working PHP reference, queryParams contains: accessCode, requestId, encRequest, ver, instituteId
-        // with empty POST body. We also support falling back to application/x-www-form-urlencoded body.
+        // URL-encode encRequest so Base64 +, /, = characters are preserved in URL query string
+        String encodedEncRequest = java.net.URLEncoder.encode(encRequest, java.nio.charset.StandardCharsets.UTF_8);
         String urlWithQuery = String.format("%s/%s?accessCode=%s&requestId=%s&encRequest=%s&ver=%s&instituteId=%s",
                 base,
                 endpointPath,
                 accessCode != null ? accessCode.trim() : "",
                 requestId,
-                encRequest,
+                encodedEncRequest,
                 v,
                 getInstituteId());
 
@@ -139,8 +139,11 @@ public class BillAvenueClient {
             ResponseEntity<String> response = restTemplate.postForEntity(urlWithQuery, HttpEntity.EMPTY, String.class);
             String rawBody = response.getBody();
             if (rawBody != null && !rawBody.isBlank()) {
-                log.info("Received response from BillAvenue XML endpoint: {} for requestId: {}", endpointPath, requestId);
-                return rawBody;
+                if (!rawBody.contains("AI authentication failed") && !rawBody.contains("Invalid ENC request")) {
+                    log.info("Received response from BillAvenue XML endpoint: {} for requestId: {}", endpointPath, requestId);
+                    return rawBody;
+                }
+                log.warn("Query string attempt returned auth/enc error. Trying form-encoded POST fallback.");
             }
         } catch (ResourceAccessException re) {
             log.error("Network timeout calling BillAvenue XML API: {}", endpointPath, re);
@@ -148,30 +151,38 @@ public class BillAvenueClient {
         } catch (Exception e) {
             log.warn("POST with query string for XML endpoint {} returned exception ({}). Trying form body fallback.",
                     endpointPath, e.getMessage());
-            try {
-                HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
-                MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
-                map.add("accessCode", accessCode != null ? accessCode.trim() : "");
-                map.add("requestId", requestId);
-                map.add("encRequest", encRequest);
-                map.add("ver", v);
-                map.add("instituteId", getInstituteId());
-
-                String fallbackUrl = String.format("%s/%s?accessCode=%s&requestId=%s&ver=%s&instituteId=%s",
-                        base, endpointPath, accessCode != null ? accessCode.trim() : "", requestId, v, getInstituteId());
-
-                ResponseEntity<String> response = restTemplate.postForEntity(fallbackUrl, new HttpEntity<>(map, headers), String.class);
-                return response.getBody();
-            } catch (ResourceAccessException re2) {
-                throw new BillAvenueTimeoutException("Timeout communicating with BillAvenue: " + re2.getMessage(), re2);
-            } catch (Exception ex2) {
-                log.error("XML form fallback also failed for endpoint: {}", endpointPath, ex2);
-                return null;
-            }
         }
-        return null;
+
+        // Form-encoded body POST fallback per BillAvenue doc Section 3.0 (Page 7)
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+            MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
+            map.add("accessCode", accessCode != null ? accessCode.trim() : "");
+            map.add("requestId", requestId);
+            map.add("encRequest", encRequest);
+            map.add("ver", v);
+            map.add("instituteId", getInstituteId());
+
+            String fallbackUrl = String.format("%s/%s?accessCode=%s&requestId=%s&ver=%s&instituteId=%s",
+                    base, endpointPath, accessCode != null ? accessCode.trim() : "", requestId, v, getInstituteId());
+
+            ResponseEntity<String> response = restTemplate.postForEntity(fallbackUrl, new HttpEntity<>(map, headers), String.class);
+            if (response.getBody() != null && !response.getBody().isBlank()) {
+                return response.getBody();
+            }
+
+            // Also try clean endpoint without query string
+            String cleanEndpointUrl = String.format("%s/%s", base, endpointPath);
+            ResponseEntity<String> response2 = restTemplate.postForEntity(cleanEndpointUrl, new HttpEntity<>(map, headers), String.class);
+            return response2.getBody();
+        } catch (ResourceAccessException re2) {
+            throw new BillAvenueTimeoutException("Timeout communicating with BillAvenue: " + re2.getMessage(), re2);
+        } catch (Exception ex2) {
+            log.error("XML form fallback also failed for endpoint: {}", endpointPath, ex2);
+            return null;
+        }
     }
 
     /**
