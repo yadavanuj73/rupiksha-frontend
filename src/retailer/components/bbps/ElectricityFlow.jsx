@@ -642,7 +642,7 @@ const ElectricityFlow = ({ onBack }) => {
                                             <span>Insufficient Wallet Balance</span>
                                         </div>
                                         <p className="text-[11px] text-rose-700">
-                                            Your wallet has ₹{numBalance.toFixed(2)}, but this bill requires ₹{totalPayable.toFixed(2)}. Please top up your retailer wallet to pay.
+                                            Your wallet has ₹{numBalance.toFixed(2)}, but this bill requires ₹{totalPayable.toFixed(2)}. Please top up your wallet to pay.
                                         </p>
                                     </div>
                                 ) : (
@@ -998,7 +998,7 @@ const ElectricityFlow = ({ onBack }) => {
                             <span className="text-slate-500">Payment Instrument</span>
                             <span className="font-black text-black flex items-center gap-1">
                                 <Wallet className="w-3.5 h-3.5 text-blue-600" />
-                                Rupiksha Retailer Wallet
+                                Rupiksha Main Wallet
                             </span>
                         </div>
                         <div className="flex justify-between py-1 border-b border-slate-200/60">

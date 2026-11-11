@@ -515,7 +515,11 @@ export default function RegisterWizard() {
             className="bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-blue-100 flex items-center gap-1 hover:bg-blue-100/70 transition-all shadow-sm"
           >
             <ChevronLeft size={12} />
-            {formData.role === 'SUPER_DISTRIBUTOR' ? 'Super Distributor Login' : formData.role === 'DISTRIBUTOR' ? 'Distributor Login' : 'Retailer Login'}
+            {formData.role === 'SUPER_DISTRIBUTOR' 
+              ? 'Super Distributor Login' 
+              : formData.role === 'DISTRIBUTOR' 
+                ? 'Distributor Login' 
+                : 'Login'}
           </motion.button>
 
           {/* Contacts */}
@@ -738,7 +742,7 @@ export default function RegisterWizard() {
                         </label>
                         <div className="w-full bg-blue-50/80 border border-blue-200 rounded-xl px-3.5 py-2 sm:py-2.5 flex items-center justify-between shadow-sm">
                           <span className="text-xs sm:text-sm font-black text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
-                            <ShieldCheck className="w-4 h-4 text-blue-600" /> {formData.role.replace(/_/g, ' ')}
+                            <ShieldCheck className="w-4 h-4 text-blue-600" /> {formData.role === 'RETAILER' ? 'PARTNER' : formData.role.replace(/_/g, ' ')}
                           </span>
                           <span className="text-[10px] font-bold text-blue-600 bg-blue-100/80 px-2 py-0.5 rounded-full uppercase tracking-widest">Default</span>
                         </div>
@@ -1180,7 +1184,7 @@ export default function RegisterWizard() {
                       </div>
                       <div className="flex justify-between border-b border-slate-200 pb-1">
                         <span className="text-slate-400">Partner Role:</span>
-                        <span className="font-bold text-blue-600">{formData.role.replace(/_/g, ' ')}</span>
+                        <span className="font-bold text-blue-600">{formData.role === 'RETAILER' ? 'PARTNER' : formData.role.replace(/_/g, ' ')}</span>
                       </div>
                       <div className="flex justify-between border-b border-slate-200 pb-1">
                         <span className="text-slate-400">State:</span>

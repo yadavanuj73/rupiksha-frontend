@@ -146,19 +146,24 @@ const Login = () => {
 
     // portal: derive initial value from URL path
     const getPortalFromPath = (path) => {
+        if (path === '/portal' || path === '/login') return 'retailer';
         if (path === '/portal/retailer') return 'retailer';
         if (path === '/portal/distributor') return 'distributor';
         if (path === '/portal/super-distributor') return 'SUPER_DISTRIBUTOR';
-        return 'select';
+        return 'retailer';
     };
     const [portal, setPortal] = useState(() => getPortalFromPath(location.pathname));
     const [portalFormMode, setPortalFormMode] = useState('login');
 
     // Sync portal state when URL changes
     useEffect(() => {
+        if (location.pathname === '/portal' || location.pathname === '/login') {
+            navigate('/portal/retailer', { replace: true });
+            return;
+        }
         setPortal(getPortalFromPath(location.pathname));
         setPortalFormMode('login');
-    }, [location.pathname]);
+    }, [location.pathname, navigate]);
     const [view, setView] = useState('login'); // 'login', 'register', 'forgot'
     // const [lang, setLang] = useState('en'); // Removed local state
     const [showLangMenu, setShowLangMenu] = useState(false);
@@ -699,7 +704,7 @@ const Login = () => {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     className="flex items-center gap-3 cursor-pointer"
-                    onClick={() => navigate('/portal')}
+                    onClick={() => navigate('/')}
                 >
                     <img src={logo} alt="RUPIKSHA" style={{ height: '44px', width: 'auto' }} className="object-contain" />
                 </motion.div>
@@ -708,15 +713,6 @@ const Login = () => {
                         <button onClick={() => setLang('en')} className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${lang === 'en' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>EN</button>
                         <button onClick={() => setLang('hi')} className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${lang === 'hi' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>HI</button>
                     </div>
-                    <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={(e) => { e.stopPropagation(); navigate('/portal'); }}
-                        className="bg-blue-50 text-blue-600 text-[8px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-blue-100 flex items-center gap-1.5 transition-all"
-                    >
-                        <ChevronLeft size={12} />
-                        Retailer
-                    </motion.button>
                     <div className="hidden sm:flex flex-col text-[12px] font-bold text-slate-600 tracking-wide border-l border-slate-200 pl-4 space-y-0.5">
                         <span className="flex items-center gap-2 uppercase"><Phone size={14} className="text-blue-600 fill-blue-50" strokeWidth={2.5} /> 0621-4008548 | 7004128310</span>
                         <span className="flex items-center gap-2 lowercase"><Mail size={14} className="text-blue-600 fill-blue-50" strokeWidth={2.5} /> customercare@rupiksha.com</span>
@@ -740,7 +736,9 @@ const Login = () => {
 
                         <div className="bg-white rounded-3xl shadow-2xl shadow-blue-100/50 border border-blue-50 overflow-hidden">
                             <div className="bg-blue-600 py-3 flex items-center justify-center">
-                                <span className="text-white text-[10px] font-black uppercase tracking-[0.2em]">Retailer Login</span>
+                                <span className="text-white text-[10px] font-black uppercase tracking-[0.2em]">
+                                    Login
+                                </span>
                             </div>
                             <div className={portalCardBodyClass}>
                                 <RetailerLogin onFormModeChange={setPortalFormMode} />
@@ -769,7 +767,9 @@ const Login = () => {
 
                             <div className="space-y-4">
                                 <h3 className="text-3xl font-black text-slate-900">Empowering Every<br />Merchant Everyday.</h3>
-                                <p className="text-slate-500 font-medium">Join 50k+ retailers providing essential digital services across India.</p>
+                                <p className="text-slate-500 font-medium">
+                                    Join 50k+ merchants providing essential digital services across India.
+                                </p>
                             </div>
 
                             <div className="grid grid-cols-1 gap-3">
