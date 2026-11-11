@@ -59,7 +59,7 @@ export default function IdPayment() {
     const r = String(role || '').toUpperCase();
     if (r === 'DISTRIBUTOR') return '/portal/distributor';
     if (r === 'SUPER_DISTRIBUTOR') return '/portal/super-distributor';
-    return '/portal/retailer';
+    return '/portal/userlogin';
   };
 
   const formatCurrency = (amt) => {

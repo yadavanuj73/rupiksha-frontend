@@ -147,7 +147,7 @@ const Login = () => {
     // portal: derive initial value from URL path
     const getPortalFromPath = (path) => {
         if (path === '/portal' || path === '/login') return 'retailer';
-        if (path === '/portal/retailer') return 'retailer';
+        if (path === '/portal/retailer' || path === '/portal/userlogin' || path === '/userlogin') return 'retailer';
         if (path === '/portal/distributor') return 'distributor';
         if (path === '/portal/super-distributor') return 'SUPER_DISTRIBUTOR';
         return 'retailer';
@@ -158,7 +158,7 @@ const Login = () => {
     // Sync portal state when URL changes
     useEffect(() => {
         if (location.pathname === '/portal' || location.pathname === '/login') {
-            navigate('/portal/retailer', { replace: true });
+            navigate('/portal/userlogin', { replace: true });
             return;
         }
         setPortal(getPortalFromPath(location.pathname));
@@ -413,7 +413,7 @@ const Login = () => {
                                 borderColor: 'rgba(147, 197, 253, 0.5)',
                             }}
                             className="bg-blue-600/10 backdrop-blur-[40px] rounded-[2.5rem] overflow-hidden border border-blue-200/50 flex flex-col h-auto min-h-[280px] md:min-h-[320px] shadow-[0_40px_100px_rgba(30,58,138,0.06)] transition-all duration-700 group cursor-pointer relative"
-                            onClick={() => navigate('/portal/retailer')}
+                            onClick={() => navigate('/portal/userlogin')}
                         >
                             <div className="flex-1 p-4 flex items-center justify-center bg-blue-50/30 group-hover:bg-transparent transition-colors duration-700">
                                 <img src={characterShop} alt="Retailer" className="h-24 md:h-28 object-contain group-hover:scale-110 transition-transform duration-1000 drop-shadow-xl" />

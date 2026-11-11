@@ -52,7 +52,7 @@ export default function Navbar() {
                     <button className={`rp-nav__link ${location.pathname === '/contact' ? 'active' : ''}`} onClick={() => navigate('/contact')}>Contact</button>
                     <button 
                         className="rp-btn rp-btn--sm rp-btn--primary" 
-                        onClick={() => window.open('/portal/retailer', '_blank')}
+                        onClick={() => window.open('/portal/userlogin', '_blank')}
                     >
                         Login
                     </button>
@@ -78,7 +78,7 @@ export default function Navbar() {
                         <button 
                             className="rp-btn rp-btn--primary" 
                             style={{ width: '100%' }} 
-                            onClick={() => navigate('/portal/retailer')}
+                            onClick={() => navigate('/portal/userlogin')}
                         >
                             Login
                         </button>
