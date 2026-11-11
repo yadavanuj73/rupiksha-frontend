@@ -422,7 +422,9 @@ public class BbpsController {
         if (principal == null) {
             throw new IllegalArgumentException("Unauthorized");
         }
-        UUID userId = UUID.fromString(principal.userId());
+        boolean isAdmin = principal.roles() != null && principal.roles().stream()
+                .anyMatch(r -> "ADMIN".equalsIgnoreCase(r) || "ROLE_ADMIN".equalsIgnoreCase(r));
+        UUID userId = isAdmin ? null : UUID.fromString(principal.userId());
         Pageable pageable = PageRequest.of(page, Math.min(size, 100), Sort.by(Sort.Direction.DESC, "createdAt"));
         BbpsDtos.HistoryResponse response = bbpsService.getHistory(userId, category, status, search, startDate, endDate, pageable);
         return ResponseEntity.ok(response);

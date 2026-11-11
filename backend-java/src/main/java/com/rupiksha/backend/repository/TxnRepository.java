@@ -92,6 +92,12 @@ public interface TxnRepository extends JpaRepository<Txn, UUID> {
             @org.springframework.data.repository.query.Param("endDate") Instant endDate,
             @org.springframework.data.repository.query.Param("search") String search,
             Sort sort);
+
+    @Query("SELECT COUNT(t), COALESCE(SUM(t.amount), 0) FROM Txn t " +
+           "WHERE t.serviceType LIKE 'BBPS_%' AND t.createdAt >= :startDate AND t.createdAt <= :endDate")
+    java.util.List<Object[]> getBbpsStats(
+            @org.springframework.data.repository.query.Param("startDate") Instant startDate,
+            @org.springframework.data.repository.query.Param("endDate") Instant endDate);
 }
 
 

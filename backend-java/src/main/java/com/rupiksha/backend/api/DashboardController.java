@@ -1,23 +1,36 @@
 package com.rupiksha.backend.api;
 
 import com.rupiksha.aeps.repository.PayoutTransactionRepository;
+import com.rupiksha.backend.domain.BbpsTransaction;
+import com.rupiksha.backend.domain.KycStatus;
+import com.rupiksha.backend.domain.User;
 import com.rupiksha.backend.domain.UserStatus;
+import com.rupiksha.backend.repository.BbpsTransactionRepository;
+import com.rupiksha.backend.repository.CommissionTransactionRepository;
+import com.rupiksha.backend.repository.TxnRepository;
 import com.rupiksha.backend.repository.UserRepository;
 import com.rupiksha.backend.repository.WalletRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -28,6 +41,9 @@ public class DashboardController {
     private final PayoutTransactionRepository payoutTransactionRepository;
     private final UserRepository userRepository;
     private final WalletRepository walletRepository;
+    private final BbpsTransactionRepository bbpsTransactionRepository;
+    private final CommissionTransactionRepository commissionTransactionRepository;
+    private final TxnRepository txnRepository;
 
     @GetMapping("/live")
     public ResponseEntity<Map<String, Object>> getLiveDashboard() {
@@ -35,6 +51,13 @@ public class DashboardController {
         LocalDateTime todayEnd = LocalDate.now().atTime(LocalTime.MAX);
         LocalDateTime monthStart = LocalDate.now().withDayOfMonth(1).atStartOfDay();
         LocalDateTime monthEnd = LocalDate.now().atTime(LocalTime.MAX);
+
+        ZoneId istZone = ZoneId.of("Asia/Kolkata");
+        ZonedDateTime nowIst = ZonedDateTime.now(istZone);
+        Instant todayStartInstant = nowIst.toLocalDate().atStartOfDay(istZone).toInstant();
+        Instant todayEndInstant = nowIst.toLocalDate().atTime(LocalTime.MAX).atZone(istZone).toInstant();
+        Instant monthStartInstant = nowIst.toLocalDate().withDayOfMonth(1).atStartOfDay(istZone).toInstant();
+        Instant monthEndInstant = todayEndInstant;
 
         // 1. Payout Live Aggregates
         long todayPayoutTxn = 0;
@@ -68,39 +91,144 @@ public class DashboardController {
         payoutMap.put("monthlyAmt", monthlyPayoutAmt.doubleValue());
         payoutMap.put("monthlyComm", 0.0);
 
-        // 2. User Stats
+        // 2. Bharat Connect (BBPS) Live Aggregates
+        long todayBbpsTxn = 0;
+        BigDecimal todayBbpsAmt = BigDecimal.ZERO;
+        BigDecimal todayBbpsComm = BigDecimal.ZERO;
+        long monthlyBbpsTxn = 0;
+        BigDecimal monthlyBbpsAmt = BigDecimal.ZERO;
+        BigDecimal monthlyBbpsComm = BigDecimal.ZERO;
+
+        try {
+            List<Object[]> todayBbpsStats = bbpsTransactionRepository.getAggregatedStats(todayStartInstant, todayEndInstant);
+            if (todayBbpsStats != null && !todayBbpsStats.isEmpty() && todayBbpsStats.get(0) != null) {
+                Object[] row = todayBbpsStats.get(0);
+                todayBbpsTxn = row[0] != null ? ((Number) row[0]).longValue() : 0;
+                todayBbpsAmt = row[1] != null ? (BigDecimal) row[1] : BigDecimal.ZERO;
+            }
+
+            List<Object[]> monthBbpsStats = bbpsTransactionRepository.getAggregatedStats(monthStartInstant, monthEndInstant);
+            if (monthBbpsStats != null && !monthBbpsStats.isEmpty() && monthBbpsStats.get(0) != null) {
+                Object[] row = monthBbpsStats.get(0);
+                monthlyBbpsTxn = row[0] != null ? ((Number) row[0]).longValue() : 0;
+                monthlyBbpsAmt = row[1] != null ? (BigDecimal) row[1] : BigDecimal.ZERO;
+            }
+
+            // Complement from Txn table if any BBPS transactions were recorded there
+            List<Object[]> todayTxnStats = txnRepository.getBbpsStats(todayStartInstant, todayEndInstant);
+            if (todayTxnStats != null && !todayTxnStats.isEmpty() && todayTxnStats.get(0) != null) {
+                Object[] row = todayTxnStats.get(0);
+                long tCount = row[0] != null ? ((Number) row[0]).longValue() : 0;
+                BigDecimal tAmt = row[1] != null ? (BigDecimal) row[1] : BigDecimal.ZERO;
+                if (tCount > todayBbpsTxn) {
+                    todayBbpsTxn = tCount;
+                    todayBbpsAmt = tAmt;
+                }
+            }
+
+            List<Object[]> monthTxnStats = txnRepository.getBbpsStats(monthStartInstant, monthEndInstant);
+            if (monthTxnStats != null && !monthTxnStats.isEmpty() && monthTxnStats.get(0) != null) {
+                Object[] row = monthTxnStats.get(0);
+                long mCount = row[0] != null ? ((Number) row[0]).longValue() : 0;
+                BigDecimal mAmt = row[1] != null ? (BigDecimal) row[1] : BigDecimal.ZERO;
+                if (mCount > monthlyBbpsTxn) {
+                    monthlyBbpsTxn = mCount;
+                    monthlyBbpsAmt = mAmt;
+                }
+            }
+
+            BigDecimal tComm = commissionTransactionRepository.sumBbpsCommissionByDateRange(todayStartInstant, todayEndInstant);
+            if (tComm != null) todayBbpsComm = tComm;
+
+            BigDecimal mComm = commissionTransactionRepository.sumBbpsCommissionByDateRange(monthStartInstant, monthEndInstant);
+            if (mComm != null) monthlyBbpsComm = mComm;
+        } catch (Exception e) {
+            log.warn("Failed to aggregate BBPS / Bharat Connect stats: {}", e.getMessage());
+        }
+
+        Map<String, Object> bharatConnectMap = new HashMap<>();
+        bharatConnectMap.put("todayTxn", todayBbpsTxn);
+        bharatConnectMap.put("todayAmt", todayBbpsAmt.doubleValue());
+        bharatConnectMap.put("todayComm", todayBbpsComm.doubleValue());
+        bharatConnectMap.put("monthlyTxn", monthlyBbpsTxn);
+        bharatConnectMap.put("monthlyAmt", monthlyBbpsAmt.doubleValue());
+        bharatConnectMap.put("monthlyComm", monthlyBbpsComm.doubleValue());
+
+        // 3. User Stats & Real Profile KYC Stats
         long totalUsers = userRepository.count();
-        long activeUsers = userRepository.findAll().stream().filter(u -> u.getStatus() == UserStatus.APPROVED).count();
-        long pendingUsers = userRepository.findAll().stream().filter(u -> u.getStatus() == UserStatus.PENDING).count();
-        long inactiveUsers = totalUsers - activeUsers - pendingUsers;
+        List<User> allUsers = userRepository.findAll();
+        long activeUsers = allUsers.stream()
+                .filter(u -> u.getStatus() == UserStatus.APPROVED || u.getStatus() == UserStatus.ACTIVE)
+                .count();
+        long pendingUsers = allUsers.stream()
+                .filter(u -> u.getStatus() == UserStatus.PENDING)
+                .count();
+        long inactiveUsers = Math.max(0, totalUsers - activeUsers - pendingUsers);
 
         Map<String, Object> usersMap = Map.of(
                 "total", totalUsers,
                 "active", activeUsers,
                 "pending", pendingUsers,
-                "inactive", Math.max(0, inactiveUsers)
+                "inactive", inactiveUsers
         );
 
-        // 3. Wallet Total Float
+        long kycDone = allUsers.stream()
+                .filter(u -> u.getKycStatus() == KycStatus.APPROVED)
+                .count();
+        long kycPending = allUsers.stream()
+                .filter(u -> u.getKycStatus() == KycStatus.PENDING)
+                .count();
+        long kycNotDone = Math.max(0, totalUsers - kycDone - kycPending);
+
+        Map<String, Object> kycMap = Map.of(
+                "done", kycDone,
+                "notDone", kycNotDone,
+                "pending", kycPending
+        );
+
+        // 4. Wallet Total Float
         BigDecimal totalFloat = walletRepository.findAll().stream()
                 .map(w -> w.getBalance() != null ? w.getBalance() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        // 5. Recent Activity Feed (Include real BBPS transactions)
+        List<Map<String, Object>> recentTransactions = new ArrayList<>();
+        try {
+            List<BbpsTransaction> recentBbps = bbpsTransactionRepository.findAll(
+                    PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "createdAt"))
+            ).getContent();
+            for (BbpsTransaction b : recentBbps) {
+                Map<String, Object> m = new HashMap<>();
+                m.put("id", b.getId() != null ? b.getId().toString() : UUID.randomUUID().toString());
+                m.put("type", "BBPS " + (b.getCategory() != null ? b.getCategory() : "Bill Payment"));
+                m.put("status", b.getStatus() != null ? b.getStatus() : "SUCCESS");
+                m.put("amount", b.getAmount() != null ? b.getAmount().doubleValue() : 0.0);
+                m.put("userName", b.getUser() != null ? (b.getUser().getFullName() != null ? b.getUser().getFullName() : b.getUser().getUsername()) : "Retailer");
+                m.put("user_id", b.getUser() != null ? b.getUser().getId().toString() : "");
+                m.put("operator", b.getBillerName() != null ? b.getBillerName() : b.getCategory());
+                m.put("number", b.getConsumerNumber() != null ? b.getConsumerNumber() : (b.getMobileNumber() != null ? b.getMobileNumber() : ""));
+                m.put("created_at", b.getCreatedAt() != null ? b.getCreatedAt().toString() : null);
+                recentTransactions.add(m);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to load recent BBPS transactions for feed: {}", e.getMessage());
+        }
+
         Map<String, Object> response = new HashMap<>();
         response.put("serverTime", LocalDateTime.now().toString());
         response.put("charges", 0.0);
-        response.put("commission", 0.0);
+        response.put("commission", todayBbpsComm.doubleValue());
         response.put("wallet", totalFloat.doubleValue());
         response.put("users", usersMap);
-        response.put("kyc", Map.of("done", activeUsers, "notDone", inactiveUsers, "pending", pendingUsers));
+        response.put("kyc", kycMap);
         response.put("walletStats", Map.of("total", totalFloat.doubleValue(), "fundRequest", 0, "locked", 0));
         response.put("payout", payoutMap);
         response.put("aeps", Map.of("todayTxn", 0, "todayAmt", 0.0, "monthlyTxn", 0, "monthlyAmt", 0.0, "todayComm", 0.0, "monthlyComm", 0.0));
         response.put("cms", Map.of("todayTxn", 0, "todayAmt", 0.0, "monthlyTxn", 0, "monthlyAmt", 0.0, "todayComm", 0.0, "monthlyComm", 0.0));
         response.put("dmt", Map.of("todayTxn", 0, "todayAmt", 0.0, "monthlyTxn", 0, "monthlyAmt", 0.0, "todayComm", 0.0, "monthlyComm", 0.0));
-        response.put("bharatConnect", Map.of("todayTxn", 0, "todayAmt", 0.0, "monthlyTxn", 0, "monthlyAmt", 0.0, "todayComm", 0.0, "monthlyComm", 0.0));
+        response.put("bharatConnect", bharatConnectMap);
         response.put("otherService", Map.of("todayTxn", 0, "todayAmt", 0.0, "monthlyTxn", 0, "monthlyAmt", 0.0, "todayComm", 0.0, "monthlyComm", 0.0));
-        response.put("recentTransactions", List.of());
+        response.put("recentTransactions", recentTransactions);
 
         return ResponseEntity.ok(response);
     }

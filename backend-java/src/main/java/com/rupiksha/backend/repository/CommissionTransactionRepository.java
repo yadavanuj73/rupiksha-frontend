@@ -50,4 +50,12 @@ public interface CommissionTransactionRepository extends JpaRepository<Commissio
 
     @Query("SELECT COALESCE(SUM(ct.commissionAmount), 0) FROM CommissionTransaction ct WHERE ct.beneficiaryUser.id = :userId AND ct.serviceType IN ('AEPS_1', 'AEPS_1_MINI_STATEMENT', 'AEPS_MINI_STATEMENT') AND ct.status = 'SUCCESS'")
     BigDecimal sumAeps1CommissionByBeneficiaryId(@Param("userId") UUID userId);
+
+    @Query("SELECT COALESCE(SUM(ct.commissionAmount), 0) FROM CommissionTransaction ct " +
+           "WHERE (ct.serviceType LIKE 'BBPS%' OR ct.bbpsCategory IS NOT NULL) " +
+           "AND ct.status = 'SUCCESS' " +
+           "AND ct.createdAt >= :startDate AND ct.createdAt <= :endDate")
+    BigDecimal sumBbpsCommissionByDateRange(
+            @Param("startDate") Instant startDate,
+            @Param("endDate") Instant endDate);
 }

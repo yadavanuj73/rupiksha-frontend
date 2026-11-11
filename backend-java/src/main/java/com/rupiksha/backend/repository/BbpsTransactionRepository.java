@@ -56,4 +56,16 @@ public interface BbpsTransactionRepository extends JpaRepository<BbpsTransaction
     @Query("SELECT COUNT(b) FROM BbpsTransaction b WHERE (:userId IS NULL OR b.user.id = :userId) " +
            "AND (:status IS NULL OR b.status = :status)")
     long countByUserAndStatus(@Param("userId") UUID userId, @Param("status") String status);
+
+    @Query("SELECT COUNT(b), COALESCE(SUM(b.amount), 0) FROM BbpsTransaction b " +
+           "WHERE b.createdAt >= :startDate AND b.createdAt <= :endDate")
+    java.util.List<Object[]> getAggregatedStats(
+            @Param("startDate") Instant startDate,
+            @Param("endDate") Instant endDate);
+
+    @Query("SELECT COUNT(b), COALESCE(SUM(b.amount), 0) FROM BbpsTransaction b " +
+           "WHERE b.createdAt >= :startDate AND b.createdAt <= :endDate AND b.status IN ('SUCCESS', 'PENDING', 'INITIATED')")
+    java.util.List<Object[]> getAggregatedStatsNonFailed(
+            @Param("startDate") Instant startDate,
+            @Param("endDate") Instant endDate);
 }

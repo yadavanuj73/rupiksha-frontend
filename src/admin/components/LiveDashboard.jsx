@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { BACKEND_URL } from '../../services/dataService';
 import { sharedDataService } from '../../services/sharedDataService';
-import { payoutService } from '../../services/apiService';
+import { payoutService, bbpsService } from '../../services/apiService';
 import { 
     CheckCircle2, XCircle, Clock, Search, RefreshCw, AlertTriangle, 
     X, Building2, ShieldCheck, User, Mail, Phone, ExternalLink, Check, Copy
@@ -11,6 +11,30 @@ import {
 const fmt = (n) => Number(n || 0).toLocaleString('en-IN');
 const fmtCur = (n) =>
     Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const isUserActive = (u) => {
+    const s = String(u?.status || '').toUpperCase().trim();
+    return s === 'APPROVED' || s === 'ACTIVE';
+};
+
+const isUserPending = (u) => {
+    const s = String(u?.status || '').toUpperCase().trim();
+    return s === 'PENDING';
+};
+
+const isKycDone = (u) => {
+    if (u?.isKycDone === true || u?.kycDone === true) return true;
+    const s = String(u?.kycStatus || u?.profile_kyc_status || '').toUpperCase().trim();
+    return s === 'APPROVED' || s === 'DONE';
+};
+
+const isKycPending = (u) => {
+    if (isKycDone(u)) return false;
+    const s = String(u?.kycStatus || u?.profile_kyc_status || '').toUpperCase().trim();
+    return s === 'PENDING';
+};
+
+const isKycNotDone = (u) => !isKycDone(u) && !isKycPending(u);
 
 const REFRESH_INTERVAL = 5000; // 5 seconds
 
@@ -273,36 +297,138 @@ const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistr
             prevRef.current = json;
 
             const allLocal = allLocalUsersRef.current;
-            const localActive = allLocal.filter(u => u?.status === 'Approved').length;
-            const localPending = allLocal.filter(u => u?.status === 'Pending').length;
+            const localActive = allLocal.filter(isUserActive).length;
+            const localPending = allLocal.filter(isUserPending).length;
+            const localKycDone = allLocal.filter(isKycDone).length;
+            const localKycPending = allLocal.filter(isKycPending).length;
+            const localKycNotDone = Math.max(0, allLocal.length - localKycDone - localKycPending);
             const localWallet = allLocal.reduce((sum, u) => {
                 const b = parseFloat((u?.wallet?.balance || '0').toString().replace(/,/g, ''));
                 return sum + (isNaN(b) ? 0 : b);
             }, 0);
 
+            const totalUsers = Math.max(json.users?.total || 0, allLocal.length);
+            const activeUsers = Math.max(json.users?.active || 0, localActive);
+            const pendingUsers = Math.max(json.users?.pending || 0, localPending);
+            const inactiveUsers = Math.max(0, totalUsers - activeUsers - pendingUsers);
+
+            // Resolve Real Profile KYC:
+            const serverKyc = json.kyc;
+            const isLegacyBuggyMirror = serverKyc &&
+                serverKyc.done === json.users?.active &&
+                serverKyc.notDone === json.users?.inactive &&
+                serverKyc.pending === json.users?.pending &&
+                allLocal.length > 0;
+
+            let resolvedKyc;
+            if (!isLegacyBuggyMirror && serverKyc && (serverKyc.done !== undefined || serverKyc.pending !== undefined)) {
+                const sDone = Number(serverKyc.done || 0);
+                const sPending = Number(serverKyc.pending || 0);
+                const done = Math.max(sDone, localKycDone);
+                const pending = Math.max(sPending, localKycPending);
+                const notDone = Math.max(0, totalUsers - done - pending);
+                resolvedKyc = { done, pending, notDone };
+            } else {
+                resolvedKyc = {
+                    done: localKycDone,
+                    pending: localKycPending,
+                    notDone: localKycNotDone
+                };
+            }
+
             // Prefer real registered data from localStorage when server in-memory is empty
             const merged = {
                 ...json,
                 users: {
-                    total: Math.max(json.users?.total || 0, allLocal.length),
-                    active: Math.max(json.users?.active || 0, localActive),
-                    pending: Math.max(json.users?.pending || 0, localPending),
-                    inactive: json.users?.inactive || 0,
+                    total: totalUsers,
+                    active: activeUsers,
+                    pending: pendingUsers,
+                    inactive: inactiveUsers,
                 },
+                kyc: resolvedKyc,
                 wallet: Math.max(json.wallet || 0, localWallet),
                 walletStats: {
                     ...json.walletStats,
                     total: Math.max(json.walletStats?.total || 0, localWallet),
                 },
+                bharatConnect: {
+                    todayTxn: Number(json.bharatConnect?.todayTxn || 0),
+                    todayAmt: Number(json.bharatConnect?.todayAmt || 0),
+                    todayComm: Number(json.bharatConnect?.todayComm || 0),
+                    monthlyTxn: Number(json.bharatConnect?.monthlyTxn || 0),
+                    monthlyAmt: Number(json.bharatConnect?.monthlyAmt || 0),
+                    monthlyComm: Number(json.bharatConnect?.monthlyComm || 0),
+                }
             };
+
+            // Real-time BBPS / Bharat Connect fallback / enrichment
+            try {
+                const bbpsRes = await bbpsService.getHistory({ size: 100 });
+                const bbpsItems = bbpsRes?.items || (Array.isArray(bbpsRes?.data) ? bbpsRes.data : []);
+                if (bbpsItems && bbpsItems.length > 0) {
+                    const now = new Date();
+                    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+                    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+
+                    let bTodayTxn = 0;
+                    let bTodayAmt = 0;
+                    let bMonthlyTxn = 0;
+                    let bMonthlyAmt = 0;
+
+                    bbpsItems.forEach(item => {
+                        const t = new Date(item.createdAt || item.created_at || item.date || 0).getTime();
+                        const amt = Number(item.amount || 0);
+                        const nonFailed = String(item.status || '').toUpperCase() !== 'FAILED';
+
+                        if (t >= startOfMonth) {
+                            bMonthlyTxn += 1;
+                            if (nonFailed) bMonthlyAmt += amt;
+                        }
+                        if (t >= startOfDay) {
+                            bTodayTxn += 1;
+                            if (nonFailed) bTodayAmt += amt;
+                        }
+                    });
+
+                    if (bTodayTxn > merged.bharatConnect.todayTxn || bMonthlyTxn > merged.bharatConnect.monthlyTxn) {
+                        merged.bharatConnect = {
+                            todayTxn: Math.max(merged.bharatConnect.todayTxn, bTodayTxn),
+                            todayAmt: Math.max(merged.bharatConnect.todayAmt, bTodayAmt),
+                            todayComm: merged.bharatConnect.todayComm,
+                            monthlyTxn: Math.max(merged.bharatConnect.monthlyTxn, bMonthlyTxn),
+                            monthlyAmt: Math.max(merged.bharatConnect.monthlyAmt, bMonthlyAmt),
+                            monthlyComm: merged.bharatConnect.monthlyComm,
+                        };
+                    }
+
+                    if ((!merged.recentTransactions || merged.recentTransactions.length === 0) && bbpsItems.length > 0) {
+                        merged.recentTransactions = bbpsItems.slice(0, 10).map(b => ({
+                            id: b.id || b.merchantRefNo || b.merchant_ref_no,
+                            type: 'BBPS ' + (b.category || 'Bill Payment'),
+                            status: b.status || 'SUCCESS',
+                            amount: Number(b.amount || 0),
+                            userName: b.customerName || b.billerName || 'Retailer',
+                            operator: b.billerName,
+                            number: b.consumerNumber || b.mobileNumber,
+                            created_at: b.createdAt || b.created_at
+                        }));
+                    }
+                }
+            } catch (bbpsErr) {
+                // Non-blocking: continue with server stats
+            }
+
             setLiveData(merged);
             setConnected(true);
             setLastFetch(new Date());
         } catch (err) {
             setConnected(false);
             const allLocal = allLocalUsersRef.current;
-            const localActive = allLocal.filter(u => u?.status === 'Approved').length;
-            const localPending = allLocal.filter(u => u?.status === 'Pending').length;
+            const localActive = allLocal.filter(isUserActive).length;
+            const localPending = allLocal.filter(isUserPending).length;
+            const localKycDone = allLocal.filter(isKycDone).length;
+            const localKycPending = allLocal.filter(isKycPending).length;
+            const localKycNotDone = Math.max(0, allLocal.length - localKycDone - localKycPending);
             const localWallet = allLocal.reduce((sum, u) => {
                 const b = parseFloat((u?.wallet?.balance || '0').toString().replace(/,/g, ''));
                 return sum + (isNaN(b) ? 0 : b);
@@ -313,7 +439,12 @@ const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistr
                     total: allLocal.length || prev.users.total,
                     active: localActive || prev.users.active,
                     pending: localPending || prev.users.pending,
-                    inactive: prev.users.inactive,
+                    inactive: Math.max(0, (allLocal.length || prev.users.total) - (localActive || prev.users.active) - (localPending || prev.users.pending)),
+                },
+                kyc: {
+                    done: localKycDone,
+                    pending: localKycPending,
+                    notDone: localKycNotDone,
                 },
                 wallet: localWallet || prev.wallet,
                 walletStats: { ...prev.walletStats, total: localWallet || prev.walletStats.total },
@@ -526,9 +657,9 @@ const LiveDashboard = ({ data: parentData, distributors: parentDists, SuperDistr
             {/* ── Network Summary ── */}
             <div className="live-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 16 }}>
                 {[
-                    { label: 'Super Distributors', count: localSAs.length, approved: localSAs.filter(u => u?.status === 'Approved').length, icon: '👑', color: '#6366f1' },
-                    { label: 'Distributors', count: localDists.length, approved: localDists.filter(u => u?.status === 'Approved').length, icon: '🏪', color: '#f59e0b' },
-                    { label: 'Retailers', count: localRetailers.length, approved: localRetailers.filter(u => u?.status === 'Approved').length, icon: '🛒', color: '#10b981' },
+                    { label: 'Super Distributors', count: localSAs.length, approved: localSAs.filter(isUserActive).length, icon: '👑', color: '#6366f1' },
+                    { label: 'Distributors', count: localDists.length, approved: localDists.filter(isUserActive).length, icon: '🏪', color: '#f59e0b' },
+                    { label: 'Retailers', count: localRetailers.length, approved: localRetailers.filter(isUserActive).length, icon: '🛒', color: '#10b981' },
                 ].map(({ label, count, approved, icon, color }) => (
                     <div key={label} style={{
                         background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(10px)',
