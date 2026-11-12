@@ -220,11 +220,11 @@ const Login = () => {
         return () => clearInterval(timer);
     }, [slides.length]);
 
-    const portalFormScrollable = ['register', 'forgot', 'otp', 'success'].includes(portalFormMode);
+    const portalFormScrollable = ['register', 'forgot', 'otp', 'success', 'forgot_password', 'forgot_pin', 'otp_login'].includes(portalFormMode);
 
-    // Login view: lock page scroll. Register / forgot / OTP: allow left column to scroll.
+    // Lock page scroll on body so internal left pane scrolls cleanly without double scrollbars
     useEffect(() => {
-        if (portal === 'select' || portalFormScrollable) return undefined;
+        if (portal === 'select') return undefined;
         const prevHtml = document.documentElement.style.overflow;
         const prevBody = document.body.style.overflow;
         document.documentElement.style.overflow = 'hidden';
@@ -233,19 +233,17 @@ const Login = () => {
             document.documentElement.style.overflow = prevHtml;
             document.body.style.overflow = prevBody;
         };
-    }, [portal, portalFormScrollable]);
+    }, [portal]);
 
     const portalShellClass =
         "h-screen max-h-[100dvh] overflow-hidden bg-white flex flex-col font-['Outfit',sans-serif]";
     const portalHeaderClass =
         'shrink-0 bg-white/80 backdrop-blur-md px-6 md:px-12 py-2.5 flex items-center justify-between shadow-sm z-50 border-b border-slate-100';
     const portalMainClass = 'flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden';
-    const portalLeftClass = portalFormScrollable
-        ? 'w-full md:w-1/2 lg:w-[40%] p-4 md:p-6 flex flex-col items-center justify-start bg-amber-100 min-h-0 overflow-y-auto overscroll-y-contain'
-        : 'w-full md:w-1/2 lg:w-[40%] p-4 md:p-6 flex flex-col items-center justify-center bg-amber-100 min-h-0 overflow-hidden';
-    const portalLeftInnerClass = portalFormScrollable
-        ? 'w-full max-w-[420px] space-y-3 md:space-y-4 py-2 pb-10'
-        : 'w-full max-w-[420px] space-y-3 md:space-y-4';
+    const portalLeftClass =
+        'w-full md:w-1/2 lg:w-[40%] p-4 md:p-6 flex flex-col items-center bg-[#FFFBF2] min-h-0 overflow-y-auto overscroll-y-contain';
+    const portalLeftInnerClass =
+        'w-full max-w-[420px] space-y-3 md:space-y-4 my-auto py-4';
     const portalWelcomeClass = 'text-2xl md:text-3xl font-black text-slate-900 tracking-tight';
     const portalCardBodyClass = 'p-6 md:p-8';
 
@@ -533,7 +531,7 @@ const Login = () => {
                                 </h2>
                             </div>
 
-                            <div className="bg-white rounded-3xl shadow-2xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+                            <div className="bg-white rounded-3xl shadow-2xl shadow-blue-100/50 border border-blue-50 overflow-hidden">
                                 <div className="bg-blue-600 py-3 flex items-center justify-center">
                                     <span className="text-white text-[10px] font-black uppercase tracking-[0.2em]">Distributor Login</span>
                                 </div>
@@ -638,7 +636,7 @@ const Login = () => {
                                 </h2>
                             </div>
 
-                            <div className="bg-white rounded-3xl shadow-2xl shadow-indigo-100/50 border border-indigo-50 overflow-hidden">
+                            <div className="bg-white rounded-3xl shadow-2xl shadow-blue-100/50 border border-blue-50 overflow-hidden">
                                 <div className="bg-blue-600 py-3 flex items-center justify-center">
                                     <span className="text-white text-[10px] font-black uppercase tracking-[0.2em]">Super Distributor Login</span>
                                 </div>

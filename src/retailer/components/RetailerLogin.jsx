@@ -85,7 +85,7 @@ const RetailerLogin = ({ onFormModeChange }) => {
         }
         setIsLoading(true);
         try {
-            await authService.forgotPasswordSendOtp(forgotMobile.trim());
+            await authService.forgotPasswordSendOtp(forgotMobile.trim(), 'RETAILER');
             setForgotStep(2);
         } catch (err) {
             setLoginError(err.message || 'Failed to send OTP for password reset');
@@ -107,7 +107,7 @@ const RetailerLogin = ({ onFormModeChange }) => {
         }
         setIsLoading(true);
         try {
-            const res = await authService.resetPassword(forgotMobile.trim(), forgotOtp.trim(), newPassword.trim());
+            const res = await authService.resetPassword(forgotMobile.trim(), forgotOtp.trim(), newPassword.trim(), 'RETAILER');
             if (res && res.success) {
                 alert('Password reset successfully! Please log in with your new password.');
                 setMode('login');
@@ -132,7 +132,7 @@ const RetailerLogin = ({ onFormModeChange }) => {
         }
         setIsLoading(true);
         try {
-            await authService.forgotPinSendOtp(forgotPinMobile.trim());
+            await authService.forgotPinSendOtp(forgotPinMobile.trim(), 'RETAILER');
             setForgotPinStep(2);
         } catch (err) {
             setLoginError(err.message || 'Failed to send OTP for PIN reset');
@@ -154,7 +154,7 @@ const RetailerLogin = ({ onFormModeChange }) => {
         }
         setIsLoading(true);
         try {
-            const res = await authService.resetPin(forgotPinMobile.trim(), forgotPinOtp.trim(), newPin.trim());
+            const res = await authService.resetPin(forgotPinMobile.trim(), forgotPinOtp.trim(), newPin.trim(), 'RETAILER');
             if (res && res.success) {
                 alert('Login PIN reset successfully! Please log in with your new PIN.');
                 setMode('login');

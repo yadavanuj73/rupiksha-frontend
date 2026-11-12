@@ -238,19 +238,44 @@ public class AuthServiceImpl implements AuthService {
         return toView(saved);
     }
 
+    private User resolveUserForRecovery(String rawMobile, String roleStr) {
+        String cleanMobile = rawMobile != null ? rawMobile.trim() : "";
+        if (cleanMobile.isBlank()) {
+            return null;
+        }
+        if (roleStr != null && !roleStr.isBlank()) {
+            RoleName roleName = resolveSelfRegistrationRole(roleStr);
+            List<User> matches = userRepository.findAllByMobileAndRole(cleanMobile, roleName);
+            if (matches.size() == 1) {
+                return matches.get(0);
+            }
+            if (matches.size() > 1) {
+                log.warn("Multiple accounts found for mobile {} and role {}. Ambiguity detected during recovery.", cleanMobile, roleName);
+                return null;
+            }
+            return null;
+        }
+        return userRepository.findByMobile(cleanMobile).orElse(null);
+    }
+
     @Override
     @Transactional
     public OtpDtos.OtpResponse forgotPasswordSendOtp(AuthDtos.ForgotPasswordRequest request) {
-        User user = userRepository.findByMobile(request.mobile().trim())
-                .orElseThrow(() -> new IllegalArgumentException("Mobile number not registered"));
+        User user = resolveUserForRecovery(request.mobile(), request.role());
+        if (user == null) {
+            // Anti-enumeration: do not reveal whether account exists
+            return new OtpDtos.OtpResponse(true, "If an eligible Rupiksha account exists for this mobile number, an OTP will be sent.");
+        }
         return otpService.sendOtp(new OtpDtos.SendOtpRequest(user.getMobile()));
     }
 
     @Override
     @Transactional
     public OtpDtos.OtpResponse resetPassword(AuthDtos.ResetPasswordRequest request) {
-        User user = userRepository.findByMobile(request.mobile().trim())
-                .orElseThrow(() -> new IllegalArgumentException("Mobile number not registered"));
+        User user = resolveUserForRecovery(request.mobile(), request.role());
+        if (user == null) {
+            return new OtpDtos.OtpResponse(false, "Invalid request or mobile number");
+        }
 
         OtpDtos.OtpResponse otpRes = otpService.verifyOtp(new OtpDtos.VerifyOtpRequest(user.getMobile(), request.otp()));
         if (!otpRes.success()) {
@@ -266,16 +291,21 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public OtpDtos.OtpResponse forgotPinSendOtp(AuthDtos.ForgotPinRequest request) {
-        User user = userRepository.findByMobile(request.mobile().trim())
-                .orElseThrow(() -> new IllegalArgumentException("Mobile number not registered"));
+        User user = resolveUserForRecovery(request.mobile(), request.role());
+        if (user == null) {
+            // Anti-enumeration: do not reveal whether account exists
+            return new OtpDtos.OtpResponse(true, "If an eligible Rupiksha account exists for this mobile number, an OTP will be sent.");
+        }
         return otpService.sendOtp(new OtpDtos.SendOtpRequest(user.getMobile()));
     }
 
     @Override
     @Transactional
     public OtpDtos.OtpResponse resetPin(AuthDtos.ResetPinRequest request) {
-        User user = userRepository.findByMobile(request.mobile().trim())
-                .orElseThrow(() -> new IllegalArgumentException("Mobile number not registered"));
+        User user = resolveUserForRecovery(request.mobile(), request.role());
+        if (user == null) {
+            return new OtpDtos.OtpResponse(false, "Invalid request or mobile number");
+        }
 
         OtpDtos.OtpResponse otpRes = otpService.verifyOtp(new OtpDtos.VerifyOtpRequest(user.getMobile(), request.otp()));
         if (!otpRes.success()) {

@@ -87,25 +87,25 @@ export const authService = {
       method: "POST",
       body: JSON.stringify(userData),
     }),
-  forgotPasswordSendOtp: (mobile) =>
+  forgotPasswordSendOtp: (mobile, role) =>
     apiFetch("/auth/forgot-password/send-otp", {
       method: "POST",
-      body: JSON.stringify({ mobile }),
+      body: JSON.stringify({ mobile, role }),
     }),
-  resetPassword: (mobile, otp, newPassword) =>
+  resetPassword: (mobile, otp, newPassword, role) =>
     apiFetch("/auth/forgot-password/reset", {
       method: "POST",
-      body: JSON.stringify({ mobile, otp, newPassword }),
+      body: JSON.stringify({ mobile, otp, newPassword, role }),
     }),
-  forgotPinSendOtp: (mobile) =>
+  forgotPinSendOtp: (mobile, role) =>
     apiFetch("/auth/forgot-pin/send-otp", {
       method: "POST",
-      body: JSON.stringify({ mobile }),
+      body: JSON.stringify({ mobile, role }),
     }),
-  resetPin: (mobile, otp, newPin) =>
+  resetPin: (mobile, otp, newPin, role) =>
     apiFetch("/auth/forgot-pin/reset", {
       method: "POST",
-      body: JSON.stringify({ mobile, otp, newPin }),
+      body: JSON.stringify({ mobile, otp, newPin, role }),
     }),
   otpLoginRequest: (mobile, role) =>
     apiFetch("/auth/otp-login/request", {

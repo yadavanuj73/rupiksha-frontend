@@ -104,23 +104,27 @@ public class AuthDtos {
     ) {}
 
     public record ForgotPasswordRequest(
-            @NotBlank String mobile
+            @NotBlank String mobile,
+            String role
     ) {}
 
     public record ResetPasswordRequest(
             @NotBlank String mobile,
             @NotBlank String otp,
-            @NotBlank @Size(min = 6, max = 100) String newPassword
+            @NotBlank @Size(min = 6, max = 100) String newPassword,
+            String role
     ) {}
 
     public record ForgotPinRequest(
-            @NotBlank String mobile
+            @NotBlank String mobile,
+            String role
     ) {}
 
     public record ResetPinRequest(
             @NotBlank String mobile,
             @NotBlank String otp,
-            @NotBlank String newPin
+            @NotBlank String newPin,
+            String role
     ) {}
 
     public record OtpLoginRequest(
