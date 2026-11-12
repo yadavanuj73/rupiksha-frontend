@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Wallet, Bell, ChevronDown, Menu, User, CreditCard, Settings, MoreVertical, Plus, BadgeCheck, Clock3, OctagonAlert } from 'lucide-react';
+import { Bell, ChevronDown, Menu, User, CreditCard, Settings, MoreVertical, BadgeCheck, Clock3, OctagonAlert } from 'lucide-react';
 import { dataService } from '../../services/dataService';
-import { useWallet } from '../../context/WalletContext';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,8 +13,6 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
     const [showNotifications, setShowNotifications] = useState(false);
     const [notifications, setNotifications] = useState([]);
     const [imgError, setImgError] = useState(false);
-
-    const { balance, isWalletLoading, walletError } = useWallet();
 
     const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -97,20 +94,6 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
                     <div className={`hidden sm:flex items-center gap-1.5 border rounded-full px-2.5 py-1 ${kycChip.className}`}>
                         <KycIcon size={12} />
                         <span className="text-[9px] font-black uppercase tracking-[0.15em]">KYC {kycChip.label}</span>
-                    </div>
-                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
-                        <Wallet size={13} className="text-amber-500" />
-                        <div className="text-right hidden sm:block min-w-[64px]">
-                            <p className="text-[9px] font-black text-slate-500 uppercase leading-none">Main</p>
-                            {isWalletLoading ? (
-                                <div className="h-3 w-16 bg-slate-200 rounded animate-pulse mt-1" />
-                            ) : (
-                                <p className="text-[11px] font-black text-amber-600 mt-0.5">₹ {parseFloat(balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
-                            )}
-                        </div>
-                        <button onClick={onAddMoney} className="bg-amber-500 hover:bg-amber-400 text-white rounded-lg p-1.5 transition-all shadow-sm shadow-amber-500/30">
-                            <Plus size={13} />
-                        </button>
                     </div>
 
                     <div className="relative">
