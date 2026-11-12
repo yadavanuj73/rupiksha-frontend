@@ -477,6 +477,101 @@ export const dataService = {
         }
     },
 
+    loginWithOtp: async function (challengeId, otp, expectedPortalRole = null, persist = true) {
+        const expected = normalizeRoleForClient(expectedPortalRole);
+        const isRoleAllowedForPortal = (role) => {
+            if (!expectedPortalRole) return true;
+            const normalized = normalizeRoleForClient(role);
+            if (expected === 'DISTRIBUTOR') return normalized === 'DISTRIBUTOR';
+            if (expected === 'RETAILER') return normalized === 'RETAILER';
+            if (expected === 'SUPER_DISTRIBUTOR') return normalized === 'SUPER_DISTRIBUTOR';
+            if (expected === 'ADMIN') {
+                return ['ADMIN', 'SUPER_DISTRIBUTOR', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(normalized);
+            }
+            return normalized === expected;
+        };
+
+        try {
+            const bodyPayload = {
+                challengeId: challengeId?.trim(),
+                otp: otp?.trim(),
+                role: expectedPortalRole || 'RETAILER'
+            };
+
+            const res = await fetch(`${BACKEND_URL}/auth/otp-login/verify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(bodyPayload)
+            });
+            const data = await safeJson(res, null);
+
+            if (!res.ok || !data) {
+                if (data?.code === 'ID_PAYMENT_REQUIRED' || data?.paymentStatus === 'PENDING') {
+                    return {
+                        success: false,
+                        code: 'ID_PAYMENT_REQUIRED',
+                        paymentRequired: true,
+                        userId: data.userId,
+                        username: data.username,
+                        mobile: data.mobile,
+                        fullName: data.fullName,
+                        role: data.role || expectedPortalRole,
+                        message: data.message || 'ID charge payment is required before portal access.'
+                    };
+                }
+                const serverMessage = data?.message || data?.error;
+                return { success: false, message: serverMessage || 'Invalid OTP or authentication failed.' };
+            }
+
+            const backendUser = data.user || {};
+            const rolesArrRaw = Array.isArray(backendUser.roles) ? backendUser.roles.map((r) => normalizeRoleForClient(r)) : [];
+            const fallbackRole = normalizeRoleForClient(backendUser.role);
+            const rolesArr = Array.from(new Set([...(rolesArrRaw || []), ...(fallbackRole ? [fallbackRole] : [])]));
+            const primaryRole = pickDeterministicRole(rolesArr, expectedPortalRole);
+            const userPhoto = backendUser.photoUrl || backendUser.profilePhoto || null;
+            const normalizedUser = {
+                id: backendUser.id,
+                username: backendUser.username,
+                mobile: backendUser.mobile,
+                email: backendUser.email,
+                name: backendUser.fullName,
+                fullName: backendUser.fullName,
+                photoUrl: userPhoto,
+                profilePhoto: userPhoto,
+                status: backendUser.status,
+                kycStatus: backendUser.kycStatus,
+                roles: rolesArr,
+                role: primaryRole,
+                createdAt: backendUser.createdAt,
+            };
+
+            const userUid = normalizedUser.id || normalizedUser.username;
+            if (userPhoto && userUid) {
+                try { localStorage.setItem(`rupiksha_photo_${userUid}`, userPhoto); } catch (_) {}
+            }
+
+            if (!isRoleAllowedForPortal(normalizedUser.role)) {
+                return { success: false, message: 'Invalid credentials or unauthorized portal access.' };
+            }
+
+            if (persist) {
+                localStorage.removeItem('rupiksha_imp_token');
+                localStorage.removeItem('rupiksha_imp_user');
+                localStorage.setItem('rupiksha_user', JSON.stringify(normalizedUser));
+                localStorage.setItem('rupiksha_token', data.accessToken);
+                if (data.refreshToken) localStorage.setItem('rupiksha_refresh_token', data.refreshToken);
+
+                setTimeout(() => {
+                    try { this.fetchUserProfile().catch(() => {}); } catch (_) {}
+                }, 50);
+            }
+
+            return { success: true, user: normalizedUser, token: data.accessToken, refreshToken: data.refreshToken };
+        } catch (e) {
+            return { success: false, message: "Server connection failed: " + (e?.message || 'network error') };
+        }
+    },
+
     getCurrentUser: function () {
         const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
         if (isAdminPath) {

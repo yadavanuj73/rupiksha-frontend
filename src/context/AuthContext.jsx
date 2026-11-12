@@ -8,6 +8,7 @@ const AuthContext = createContext({
   permissions: [],
   loading: true,
   login: async () => ({ success: false }),
+  loginWithOtp: async () => ({ success: false }),
   logout: () => {},
   verifyPin: () => false,
   isLocked: false,
@@ -350,6 +351,45 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const loginWithOtp = async (challengeId, otp, expectedPortalRole = null) => {
+    try {
+      const res = await dataService.loginWithOtp(challengeId, otp, expectedPortalRole);
+      if (res.success) {
+        const normalized = normalizeUserSession(res.user);
+        if (!normalized) {
+          return { success: false, message: "Session normalization failed." };
+        }
+
+        const isAdminRole = expectedPortalRole && ['admin', 'employee', 'national_header', 'state_header', 'regional_header'].includes(String(expectedPortalRole).toLowerCase());
+        if (isAdminRole) {
+          localStorage.setItem("rupiksha_admin_user", JSON.stringify(normalized));
+          if (res.token) {
+            localStorage.setItem("rupiksha_admin_token", res.token);
+          }
+        } else {
+          localStorage.removeItem("rupiksha_imp_token");
+          localStorage.removeItem("rupiksha_imp_user");
+          localStorage.setItem("rupiksha_user", JSON.stringify(normalized));
+          if (res.token) {
+            localStorage.setItem("rupiksha_token", res.token);
+          }
+        }
+        setUser(normalized);
+        setPermissions(normalized.permissions || []);
+
+        const isExempt = ['ADMIN', 'DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE', 'RETAILER'].includes(normalized.role);
+        setIsLocked(!isExempt);
+
+        localStorage.setItem("last_activity", Date.now().toString());
+        return { success: true, user: normalized };
+      } else {
+        return { success: false, ...res, message: res.message };
+      }
+    } catch (err) {
+      return { success: false, message: err.message || "OTP Login failed" };
+    }
+  };
+
   const verifyPin = (pin) => {
     if (user && user.pin === pin) {
       setIsLocked(false);
@@ -410,7 +450,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, permissions, loading, login, logout, verifyPin, isLocked, setIsLocked, hasPermission, getToken, lockTimeLeft, logoutTimeLeft }}>
+    <AuthContext.Provider value={{ user, setUser, permissions, loading, login, loginWithOtp, logout, verifyPin, isLocked, setIsLocked, hasPermission, getToken, lockTimeLeft, logoutTimeLeft }}>
       {children}
     </AuthContext.Provider>
   );

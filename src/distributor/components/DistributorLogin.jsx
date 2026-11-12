@@ -9,6 +9,7 @@ import {
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { dataService, BACKEND_URL } from '../../services/dataService';
+import OtpLoginForm from '../../auth/OtpLoginForm';
 
 const INDIAN_STATES = [
     "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
@@ -264,6 +265,19 @@ const DistributorLogin = ({ onFormModeChange }) => {
         );
     }
 
+    if (mode === 'otp_login') {
+        return (
+            <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
+                <OtpLoginForm
+                    role="DISTRIBUTOR"
+                    portalTitle="Distributor"
+                    onBackToPassword={() => setMode('login')}
+                    onSuccess={() => navigate('/distributor')}
+                />
+            </motion.div>
+        );
+    }
+
     if (mode === 'register') {
         return (
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
@@ -442,12 +456,12 @@ const DistributorLogin = ({ onFormModeChange }) => {
     return (
         <div className="space-y-6">
             <div className="flex bg-slate-100 p-1.5 rounded-2xl">
-                <button onClick={() => setLoginMethod('password')}
+                <button type="button" onClick={() => setLoginMethod('password')}
                     className={`flex-1 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition-all ${loginMethod === 'password' ? 'bg-white text-blue-600 shadow-sm border border-slate-200' : 'text-slate-500'}`}>
                     Password
                 </button>
-                <button onClick={() => setLoginMethod('otp')}
-                    className={`flex-1 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition-all ${loginMethod === 'otp' ? 'bg-white text-blue-600 shadow-sm border border-slate-200' : 'text-slate-500'}`}>
+                <button type="button" onClick={() => { setLoginError(''); setMode('otp_login'); }}
+                    className="flex-1 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition-all text-slate-500 hover:text-blue-600">
                     OTP Login
                 </button>
             </div>
@@ -524,10 +538,22 @@ const DistributorLogin = ({ onFormModeChange }) => {
                     </>
                 )}
 
-                <button type="submit" disabled={isLoading}
-                    className="w-full bg-gradient-to-r from-[#1e40af] to-[#3b82f6] hover:shadow-blue-500/25 text-white font-black py-4 rounded-2xl text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-60">
-                    {isLoading ? <><span className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full" /> {t('signing_in')}</> : <>{t('login_btn')} <ArrowRight size={16} /></>}
-                </button>
+                <div className="grid grid-cols-2 gap-3 items-stretch">
+                    <button type="submit" disabled={isLoading}
+                        className="w-full h-full bg-gradient-to-r from-[#1e40af] to-[#3b82f6] hover:shadow-blue-500/25 text-white font-black py-4 rounded-2xl text-[11px] sm:text-xs uppercase tracking-[0.12em] sm:tracking-[0.18em] shadow-xl shadow-blue-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] disabled:opacity-60 cursor-pointer">
+                        {isLoading ? <><span className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full shrink-0" /> <span className="truncate">{t('signing_in')}</span></> : <><span className="truncate">Login to Dashboard</span> <ArrowRight size={14} className="shrink-0" /></>}
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => { setLoginError(''); setMode('otp_login'); }}
+                        disabled={isLoading}
+                        className="w-full h-full bg-slate-100 hover:bg-slate-200 border-2 border-slate-200/90 text-slate-950 font-black py-4 rounded-2xl text-[11px] sm:text-xs uppercase tracking-[0.12em] sm:tracking-[0.18em] shadow-sm flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] disabled:opacity-60 cursor-pointer"
+                    >
+                        <Smartphone size={15} className="text-slate-900 shrink-0" />
+                        <span className="truncate">OTP Login</span>
+                    </button>
+                </div>
 
                 <div className="flex items-center gap-4 py-2">
                     <div className="flex-1 h-px bg-slate-100" />

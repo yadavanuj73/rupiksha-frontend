@@ -3,6 +3,8 @@ package com.rupiksha.backend.api;
 import com.rupiksha.backend.api.dto.AuthDtos;
 import com.rupiksha.backend.api.dto.OtpDtos;
 import com.rupiksha.backend.service.AuthService;
+import com.rupiksha.backend.service.OtpLoginService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class AuthController {
     private final AuthService authService;
+    private final OtpLoginService otpLoginService;
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
@@ -54,5 +57,48 @@ public class AuthController {
     @PostMapping("/forgot-pin/reset")
     public OtpDtos.OtpResponse resetPin(@Valid @RequestBody AuthDtos.ResetPinRequest request) {
         return authService.resetPin(request);
+    }
+
+    @PostMapping("/otp-login/request")
+    public AuthDtos.OtpLoginRequestResponse requestOtpLogin(
+            @Valid @RequestBody AuthDtos.OtpLoginRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        String ip = resolveClientIp(httpRequest);
+        String userAgent = httpRequest.getHeader("User-Agent");
+        return otpLoginService.requestOtp(request, ip, userAgent);
+    }
+
+    @PostMapping("/otp-login/verify")
+    public AuthDtos.AuthResponse verifyOtpLogin(
+            @Valid @RequestBody AuthDtos.OtpLoginVerifyRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        String ip = resolveClientIp(httpRequest);
+        String userAgent = httpRequest.getHeader("User-Agent");
+        return otpLoginService.verifyOtp(request, ip, userAgent);
+    }
+
+    @PostMapping("/otp-login/resend")
+    public AuthDtos.OtpLoginRequestResponse resendOtpLogin(
+            @Valid @RequestBody AuthDtos.OtpLoginResendRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        String ip = resolveClientIp(httpRequest);
+        String userAgent = httpRequest.getHeader("User-Agent");
+        return otpLoginService.resendOtp(request, ip, userAgent);
+    }
+
+    private String resolveClientIp(HttpServletRequest request) {
+        if (request == null) return "unknown";
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isBlank()) {
+            return xRealIp.trim();
+        }
+        return request.getRemoteAddr();
     }
 }

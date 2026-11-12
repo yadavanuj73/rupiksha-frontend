@@ -8,6 +8,7 @@ import {
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/apiService';
+import OtpLoginForm from '../../auth/OtpLoginForm';
 
 const RetailerLogin = ({ onFormModeChange }) => {
     const { login } = useAuth();
@@ -337,6 +338,20 @@ const RetailerLogin = ({ onFormModeChange }) => {
         );
     }
 
+    // ── OTP LOGIN SCREEN ──
+    if (mode === 'otp_login') {
+        return (
+            <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
+                <OtpLoginForm
+                    role="RETAILER"
+                    portalTitle="Retailer"
+                    onBackToPassword={() => setMode('login')}
+                    onSuccess={() => navigate('/dashboard')}
+                />
+            </motion.div>
+        );
+    }
+
     // ── MAIN LOGIN SCREEN ──
     return (
         <div className="space-y-5">
@@ -423,22 +438,36 @@ const RetailerLogin = ({ onFormModeChange }) => {
                     </button>
                 </div>
 
-                {/* Login Submit Button */}
-                <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-black py-4 rounded-2xl text-xs uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-60"
-                >
-                    {isLoading ? (
-                        <>
-                            <RefreshCw className="w-4 h-4 animate-spin" /> Signing in...
-                        </>
-                    ) : (
-                        <>
-                            Login to Dashboard <ArrowRight size={16} />
-                        </>
-                    )}
-                </button>
+                {/* Action Buttons: Login to Dashboard (50%) & OTP Login (50%) */}
+                <div className="grid grid-cols-2 gap-3 items-stretch">
+                    <button
+                        type="submit"
+                        disabled={isLoading}
+                        className="w-full h-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-black py-4 rounded-2xl text-[11px] sm:text-xs uppercase tracking-[0.12em] sm:tracking-[0.18em] shadow-xl shadow-blue-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] disabled:opacity-60 cursor-pointer"
+                    >
+                        {isLoading ? (
+                            <>
+                                <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
+                                <span className="truncate">Signing in...</span>
+                            </>
+                        ) : (
+                            <>
+                                <span className="truncate">Login to Dashboard</span>
+                                <ArrowRight size={14} className="shrink-0" />
+                            </>
+                        )}
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => { setLoginError(''); setMode('otp_login'); }}
+                        disabled={isLoading}
+                        className="w-full h-full bg-slate-100 hover:bg-slate-200 border-2 border-slate-200/90 text-slate-950 font-black py-4 rounded-2xl text-[11px] sm:text-xs uppercase tracking-[0.12em] sm:tracking-[0.18em] shadow-sm flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] disabled:opacity-60 cursor-pointer"
+                    >
+                        <Smartphone size={15} className="text-slate-900 shrink-0" />
+                        <span className="truncate">OTP Login</span>
+                    </button>
+                </div>
 
                 {/* Account Action Helpers */}
                 <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-bold">

@@ -1,6 +1,7 @@
 package com.rupiksha.backend.api.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
@@ -120,5 +121,28 @@ public class AuthDtos {
             @NotBlank String mobile,
             @NotBlank String otp,
             @NotBlank String newPin
+    ) {}
+
+    public record OtpLoginRequest(
+            @NotBlank @Pattern(regexp = "^[6-9]\\d{9}$", message = "Enter a valid 10-digit mobile number") String mobile,
+            @NotBlank String role
+    ) {}
+
+    public record OtpLoginRequestResponse(
+            boolean success,
+            String message,
+            String challengeId,
+            int cooldownSeconds,
+            long expiresInSeconds
+    ) {}
+
+    public record OtpLoginVerifyRequest(
+            @NotBlank String challengeId,
+            @NotBlank @Pattern(regexp = "^\\d{4,8}$", message = "Invalid OTP") String otp,
+            @NotBlank String role
+    ) {}
+
+    public record OtpLoginResendRequest(
+            @NotBlank String challengeId
     ) {}
 }

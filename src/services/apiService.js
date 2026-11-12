@@ -107,6 +107,21 @@ export const authService = {
       method: "POST",
       body: JSON.stringify({ mobile, otp, newPin }),
     }),
+  otpLoginRequest: (mobile, role) =>
+    apiFetch("/auth/otp-login/request", {
+      method: "POST",
+      body: JSON.stringify({ mobile, role }),
+    }),
+  otpLoginVerify: (challengeId, otp, role) =>
+    apiFetch("/auth/otp-login/verify", {
+      method: "POST",
+      body: JSON.stringify({ challengeId, otp, role }),
+    }),
+  otpLoginResend: (challengeId) =>
+    apiFetch("/auth/otp-login/resend", {
+      method: "POST",
+      body: JSON.stringify({ challengeId }),
+    }),
   logout: () => {
     localStorage.removeItem("rupiksha_token");
     localStorage.removeItem("rupiksha_user");
