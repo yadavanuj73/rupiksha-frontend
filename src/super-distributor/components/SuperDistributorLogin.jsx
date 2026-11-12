@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Eye, EyeOff, RefreshCcw, Smartphone, Mail, User,
     Building2, MapPin, ChevronDown, ArrowRight, ArrowLeft,
-    CheckCircle2, Clock, Lock, Globe, Users, KeyRound
+    CheckCircle2, Clock, Lock, Globe, Users, KeyRound, AlertCircle, CreditCard
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
@@ -254,18 +254,6 @@ const SuperDistributorLogin = ({ onFormModeChange }) => {
         );
     }
 
-    if (mode === 'otp_login') {
-        return (
-            <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
-                <OtpLoginForm
-                    role="SUPER_DISTRIBUTOR"
-                    portalTitle="Super Distributor"
-                    onBackToPassword={() => setMode('login')}
-                    onSuccess={() => navigate('/super-distributor')}
-                />
-            </motion.div>
-        );
-    }
 
     if (mode === 'register') {
         return (
@@ -445,122 +433,169 @@ const SuperDistributorLogin = ({ onFormModeChange }) => {
     return (
         <div className="space-y-6">
             <div className="flex bg-slate-100 p-1.5 rounded-2xl">
-                <button type="button" onClick={() => setLoginMethod('password')}
-                    className={`flex-1 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition-all ${loginMethod === 'password' ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' : 'text-slate-500'}`}>
+                <button
+                    type="button"
+                    onClick={() => { setLoginMethod('password'); setLoginError(''); setMode('login'); }}
+                    className={`flex-1 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition-all cursor-pointer ${
+                        mode === 'login'
+                            ? 'bg-white text-indigo-600 shadow-sm border border-slate-200'
+                            : 'text-slate-500 hover:text-indigo-600'
+                    }`}
+                >
                     Password
                 </button>
-                <button type="button" onClick={() => { setLoginError(''); setMode('otp_login'); }}
-                    className="flex-1 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition-all text-slate-500 hover:text-indigo-600">
+                <button
+                    type="button"
+                    onClick={() => { setLoginError(''); setMode('otp_login'); }}
+                    className={`flex-1 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition-all cursor-pointer ${
+                        mode === 'otp_login'
+                            ? 'bg-white text-indigo-600 shadow-sm border border-slate-200'
+                            : 'text-slate-500 hover:text-indigo-600'
+                    }`}
+                >
                     OTP Login
                 </button>
             </div>
 
-            {loginError && (
-                <div className={`p-4 rounded-2xl text-xs font-bold ${
-                    loginError.toLowerCase().includes('id charge payment')
-                        ? 'bg-amber-50 border-2 border-amber-300 text-amber-900 space-y-2.5 shadow-sm'
-                        : 'bg-red-50 border border-red-200 text-red-700 text-center'
-                }`}>
-                    <div className="flex items-center justify-center gap-2">
-                        <AlertCircle className={`w-4 h-4 shrink-0 ${loginError.toLowerCase().includes('id charge payment') ? 'text-amber-600' : 'text-red-600'}`} />
-                        <span>{loginError}</span>
-                    </div>
-                    {loginError.toLowerCase().includes('id charge payment') && (
-                        <button
-                            type="button"
-                            onClick={() => navigate(`/id-payment?identifier=${encodeURIComponent(loginForm.username.trim())}&role=SUPER_DISTRIBUTOR`)}
-                            className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
-                        >
-                            <CreditCard size={15} /> Pay ID Activation Fee Now →
-                        </button>
-                    )}
-                </div>
-            )}
-
-
-            <form onSubmit={handleLogin} className="space-y-4">
-                <div className="relative group">
-                    <div className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center text-slate-400 border-r border-slate-200 bg-slate-50/50 rounded-l-2xl group-focus-within:text-indigo-600 group-focus-within:bg-indigo-50 transition-colors">
-                        <Smartphone size={18} />
-                    </div>
-                    <input type="text" placeholder="Mobile / System ID"
-                        value={loginForm.username} onChange={e => setLoginForm({ ...loginForm, username: e.target.value })} required
-                        className="w-full pl-14 pr-4 py-4 bg-white border-2 border-slate-100 rounded-2xl focus:border-indigo-500 outline-none text-sm font-bold text-slate-900 transition-all" />
-                </div>
-
-                {loginMethod === 'password' && (
-                    <>
-                        <div className="relative group">
-                            <div className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center text-slate-400 border-r border-slate-200 bg-slate-50/50 rounded-l-2xl group-focus-within:text-indigo-600 group-focus-within:bg-indigo-50 transition-colors">
-                                <Lock size={18} />
+            {mode === 'otp_login' ? (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                    <OtpLoginForm
+                        role="SUPER_DISTRIBUTOR"
+                        portalTitle="Super Distributor"
+                        onBackToPassword={() => setMode('login')}
+                        onSuccess={() => navigate('/super-distributor')}
+                    />
+                </motion.div>
+            ) : (
+                <>
+                    {loginError && (
+                        <div className={`p-4 rounded-2xl text-xs font-bold ${
+                            loginError.toLowerCase().includes('id charge payment')
+                                ? 'bg-amber-50 border-2 border-amber-300 text-amber-900 space-y-2.5 shadow-sm'
+                                : 'bg-red-50 border border-red-200 text-red-700 text-center'
+                        }`}>
+                            <div className="flex items-center justify-center gap-2">
+                                <AlertCircle className={`w-4 h-4 shrink-0 ${loginError.toLowerCase().includes('id charge payment') ? 'text-amber-600' : 'text-red-600'}`} />
+                                <span>{loginError}</span>
                             </div>
-                            <input type={showPassword ? 'text' : 'password'} placeholder="System Password"
-                                value={loginForm.password} onChange={e => setLoginForm({ ...loginForm, password: e.target.value })} required
-                                className="w-full pl-14 pr-12 py-4 bg-white border-2 border-slate-100 rounded-2xl focus:border-indigo-500 outline-none text-sm font-bold text-slate-900 transition-all" />
-                            <button type="button" onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-0 top-0 bottom-0 w-12 flex items-center justify-center text-slate-400 hover:text-indigo-600">
-                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                            </button>
+                            {loginError.toLowerCase().includes('id charge payment') && (
+                                <button
+                                    type="button"
+                                    onClick={() => navigate(`/id-payment?identifier=${encodeURIComponent(loginForm.username.trim())}&role=SUPER_DISTRIBUTOR`)}
+                                    className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                                >
+                                    <CreditCard size={15} /> Pay ID Activation Fee Now →
+                                </button>
+                            )}
                         </div>
+                    )}
 
-                        {/* Login PIN */}
+                    <form onSubmit={handleLogin} className="space-y-4">
                         <div className="relative group">
                             <div className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center text-slate-400 border-r border-slate-200 bg-slate-50/50 rounded-l-2xl group-focus-within:text-indigo-600 group-focus-within:bg-indigo-50 transition-colors">
-                                <KeyRound size={18} />
+                                <Smartphone size={18} />
                             </div>
                             <input
-                                type={showPin ? 'text' : 'password'}
-                                maxLength={6}
-                                placeholder="Login PIN (Default 4 Digits)"
-                                value={pin}
-                                onChange={e => setPin(e.target.value.replace(/\D/g, ''))}
-                                className="w-full pl-14 pr-12 py-4 bg-white border-2 border-slate-100 rounded-2xl focus:border-indigo-500 outline-none text-sm font-bold text-slate-900 transition-all font-mono tracking-widest"
+                                type="text"
+                                placeholder="Mobile / System ID"
+                                value={loginForm.username}
+                                onChange={e => setLoginForm({ ...loginForm, username: e.target.value })}
+                                required
+                                className="w-full pl-14 pr-4 py-4 bg-white border-2 border-slate-100 rounded-2xl focus:border-indigo-500 outline-none text-sm font-bold text-slate-900 transition-all"
                             />
+                        </div>
+
+                        {loginMethod === 'password' && (
+                            <>
+                                <div className="relative group">
+                                    <div className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center text-slate-400 border-r border-slate-200 bg-slate-50/50 rounded-l-2xl group-focus-within:text-indigo-600 group-focus-within:bg-indigo-50 transition-colors">
+                                        <Lock size={18} />
+                                    </div>
+                                    <input
+                                        type={showPassword ? 'text' : 'password'}
+                                        placeholder="System Password"
+                                        value={loginForm.password}
+                                        onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
+                                        required
+                                        className="w-full pl-14 pr-12 py-4 bg-white border-2 border-slate-100 rounded-2xl focus:border-indigo-500 outline-none text-sm font-bold text-slate-900 transition-all"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-0 top-0 bottom-0 w-12 flex items-center justify-center text-slate-400 hover:text-indigo-600 cursor-pointer"
+                                    >
+                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                </div>
+
+                                {/* Login PIN */}
+                                <div className="relative group">
+                                    <div className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center text-slate-400 border-r border-slate-200 bg-slate-50/50 rounded-l-2xl group-focus-within:text-indigo-600 group-focus-within:bg-indigo-50 transition-colors">
+                                        <KeyRound size={18} />
+                                    </div>
+                                    <input
+                                        type={showPin ? 'text' : 'password'}
+                                        maxLength={6}
+                                        placeholder="Login PIN (Default 4 Digits)"
+                                        value={pin}
+                                        onChange={e => setPin(e.target.value.replace(/\D/g, ''))}
+                                        className="w-full pl-14 pr-12 py-4 bg-white border-2 border-slate-100 rounded-2xl focus:border-indigo-500 outline-none text-sm font-bold text-slate-900 transition-all font-mono tracking-widest"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPin(!showPin)}
+                                        className="absolute right-0 top-0 bottom-0 w-12 flex items-center justify-center text-slate-400 hover:text-indigo-600 cursor-pointer"
+                                    >
+                                        {showPin ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                </div>
+                            </>
+                        )}
+
+                        {/* Full-width Login Button */}
+                        <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="w-full bg-gradient-to-r from-[#312e81] to-[#4338ca] hover:shadow-indigo-500/25 text-white font-black py-4 rounded-2xl text-[11px] sm:text-xs uppercase tracking-[0.18em] shadow-xl shadow-indigo-500/20 flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-60 cursor-pointer"
+                        >
+                            {isLoading ? (
+                                <>
+                                    <span className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full shrink-0" />
+                                    <span>Authenticating...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <span>Login to Dashboard</span>
+                                    <ArrowRight size={16} className="shrink-0" />
+                                </>
+                            )}
+                        </button>
+
+                        <div className="flex items-center gap-4 py-2">
+                            <div className="flex-1 h-px bg-slate-100" />
+                            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Master Enrollment</span>
+                            <div className="flex-1 h-px bg-slate-100" />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
                             <button
                                 type="button"
-                                onClick={() => setShowPin(!showPin)}
-                                className="absolute right-0 top-0 bottom-0 w-12 flex items-center justify-center text-slate-400 hover:text-indigo-600"
+                                onClick={() => navigate('/register?role=super_distributor')}
+                                className="border-2 border-indigo-100 hover:bg-indigo-50 text-indigo-600 font-black py-3 rounded-2xl text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 cursor-pointer"
                             >
-                                {showPin ? <EyeOff size={18} /> : <Eye size={18} />}
+                                <Users size={14} /> Register
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setMode('forgot')}
+                                className="bg-slate-50 text-slate-500 font-black py-3 rounded-2xl text-[10px] uppercase tracking-widest transition-all hover:bg-slate-100 cursor-pointer"
+                            >
+                                Forgot?
                             </button>
                         </div>
-                    </>
-                )}
-
-                <div className="grid grid-cols-2 gap-3 items-stretch">
-                    <button type="submit" disabled={isLoading}
-                        className="w-full h-full bg-gradient-to-r from-[#312e81] to-[#4338ca] hover:shadow-indigo-500/25 text-white font-black py-4 rounded-2xl text-[11px] sm:text-xs uppercase tracking-[0.12em] sm:tracking-[0.18em] shadow-xl shadow-indigo-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] disabled:opacity-60 cursor-pointer">
-                        {isLoading ? <><span className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full shrink-0" /> <span className="truncate">Authenticating...</span></> : <><span className="truncate">Login to Dashboard</span> <ArrowRight size={14} className="shrink-0" /></>}
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={() => { setLoginError(''); setMode('otp_login'); }}
-                        disabled={isLoading}
-                        className="w-full h-full bg-slate-100 hover:bg-slate-200 border-2 border-slate-200/90 text-slate-950 font-black py-4 rounded-2xl text-[11px] sm:text-xs uppercase tracking-[0.12em] sm:tracking-[0.18em] shadow-sm flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] disabled:opacity-60 cursor-pointer"
-                    >
-                        <Smartphone size={15} className="text-slate-900 shrink-0" />
-                        <span className="truncate">OTP Login</span>
-                    </button>
-                </div>
-
-                <div className="flex items-center gap-4 py-2">
-                    <div className="flex-1 h-px bg-slate-100" />
-                    <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Master Enrollment</span>
-                    <div className="flex-1 h-px bg-slate-100" />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                    <button type="button" onClick={() => navigate('/register?role=super_distributor')}
-                        className="border-2 border-indigo-100 hover:bg-indigo-50 text-indigo-600 font-black py-3 rounded-2xl text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2">
-                        <Users size={14} /> Register
-                    </button>
-                    <button type="button" onClick={() => setMode('forgot')}
-                        className="bg-slate-50 text-slate-500 font-black py-3 rounded-2xl text-[10px] uppercase tracking-widest transition-all hover:bg-slate-100">
-                        Forgot?
-                    </button>
-                </div>
-            </form>
+                    </form>
+                </>
+            )}
         </div>
     );
 };
