@@ -476,33 +476,38 @@ const SuperDistributorLogin = ({ onFormModeChange }) => {
                             )}
                         </button>
 
-                        {/* Account Action Helpers (3 Footer Actions matching Retailer) */}
-                        <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-y-2 text-xs font-bold">
+                        {/* Account Action Helpers (3 Footer Actions in a Single Line with Text Wrap) */}
+                        <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-1 text-[10.5px] sm:text-[11px] font-bold">
                             <button
                                 type="button"
                                 onClick={() => navigate('/register?role=super_distributor')}
-                                className="text-indigo-600 hover:text-indigo-700 uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+                                className="text-indigo-600 hover:text-indigo-700 uppercase tracking-wider flex items-center gap-1 cursor-pointer text-left leading-tight shrink"
                             >
-                                <Users size={14} /> New Partner? Register
+                                <Users size={13} className="shrink-0" />
+                                <span className="whitespace-normal">
+                                    New Partner? <span className="inline-block">Register</span>
+                                </span>
                             </button>
 
-                            <div className="flex items-center gap-3 text-slate-500">
-                                <button
-                                    type="button"
-                                    onClick={() => setMode('forgot_password')}
-                                    className="hover:text-indigo-600 uppercase tracking-wider cursor-pointer"
-                                >
-                                    Forgot Password?
-                                </button>
-                                <span>|</span>
-                                <button
-                                    type="button"
-                                    onClick={() => setMode('forgot_pin')}
-                                    className="hover:text-indigo-600 uppercase tracking-wider cursor-pointer"
-                                >
-                                    Forgot PIN?
-                                </button>
-                            </div>
+                            <span className="text-slate-300 font-normal shrink-0 select-none">|</span>
+
+                            <button
+                                type="button"
+                                onClick={() => setMode('forgot_password')}
+                                className="text-slate-500 hover:text-indigo-600 uppercase tracking-wider cursor-pointer text-center leading-tight shrink whitespace-normal"
+                            >
+                                Forgot <span className="inline-block">Password?</span>
+                            </button>
+
+                            <span className="text-slate-300 font-normal shrink-0 select-none">|</span>
+
+                            <button
+                                type="button"
+                                onClick={() => setMode('forgot_pin')}
+                                className="text-slate-500 hover:text-indigo-600 uppercase tracking-wider cursor-pointer text-right leading-tight shrink whitespace-normal"
+                            >
+                                Forgot <span className="inline-block">PIN?</span>
+                            </button>
                         </div>
                     </form>
                 </>
