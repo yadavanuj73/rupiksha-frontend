@@ -103,7 +103,7 @@ const MenuItem = ({ item, isActive, onClick, isExpanded, toggleExpand, activeTab
 
 const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, setIsLocked, isHovered = false, setIsHovered }) => {
     const { t } = useLanguage();
-    const [expandedItems, setExpandedItems] = useState({ travel: false, reports: false, all_services: true });
+    const [expandedItems, setExpandedItems] = useState({ travel: false, reports: true, all_services: true });
     const [appData, setAppData] = useState(dataService.getData());
 
     useEffect(() => {
@@ -272,25 +272,16 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
                         setActiveTab={setActiveTab}
                         isSidebarOpen={isExpanded}
                     />
-                    
-                    {serviceItems.map((item) => (
-                        <MenuItem
-                            key={item.id}
-                            item={item}
-                            isActive={activeTab === item.id || (item.subItems && item.subItems.some(sub => sub.id === activeTab))}
-                            onClick={() => setActiveTab(item.id)}
-                            isExpanded={expandedItems[item.id]}
-                            toggleExpand={toggleExpand}
-                            activeTab={activeTab}
-                            setActiveTab={setActiveTab}
-                            isSidebarOpen={isExpanded}
-                        />
-                    ))}
 
                     <MenuItem
-                        item={{ id: 'wallet_transfer', label: 'Wallet to Wallet', icon: Coins }}
-                        isActive={activeTab === 'wallet_transfer'}
-                        onClick={() => setActiveTab('wallet_transfer')}
+                        item={{
+                            id: 'bharat_connect',
+                            label: 'Bharat Connect',
+                            icon: Zap,
+                            iconColor: 'bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white shadow-sm'
+                        }}
+                        isActive={activeTab === 'bharat_connect' || activeTab === 'utility'}
+                        onClick={() => setActiveTab('bharat_connect')}
                         isExpanded={false}
                         toggleExpand={toggleExpand}
                         activeTab={activeTab}
@@ -298,33 +289,24 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
                         isSidebarOpen={isExpanded}
                     />
 
-                    {businessItems.map((item) => (
-                        <MenuItem
-                            key={item.id}
-                            item={item}
-                            isActive={activeTab === item.id || (item.subItems && item.subItems.some(sub => sub.id === activeTab))}
-                            onClick={item.onClick}
-                            isExpanded={expandedItems[item.id]}
-                            toggleExpand={toggleExpand}
-                            activeTab={activeTab}
-                            setActiveTab={setActiveTab}
-                            isSidebarOpen={isExpanded}
-                        />
-                    ))}
-
-                    {supportItems.map((item) => (
-                        <MenuItem
-                            key={item.id}
-                            item={item}
-                            isActive={activeTab === item.id}
-                            onClick={() => setActiveTab(item.id)}
-                            isExpanded={expandedItems[item.id]}
-                            toggleExpand={toggleExpand}
-                            activeTab={activeTab}
-                            setActiveTab={setActiveTab}
-                            isSidebarOpen={isExpanded}
-                        />
-                    ))}
+                    <MenuItem
+                        item={{
+                            id: 'reports',
+                            label: 'Transactions History',
+                            icon: History,
+                            hasSubmenu: true,
+                            subItems: [
+                                { id: 'bbps', label: 'BBPS' }
+                            ]
+                        }}
+                        isActive={activeTab === 'bbps' || activeTab === 'reports'}
+                        onClick={() => toggleExpand('reports')}
+                        isExpanded={expandedItems['reports'] !== false}
+                        toggleExpand={toggleExpand}
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                        isSidebarOpen={isExpanded}
+                    />
                 </div>
             </div>
 

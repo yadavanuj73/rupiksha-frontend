@@ -238,6 +238,9 @@ const RetailerDashboard = () => {
                 <AllServices embedded={true} />
 
                 {/* Main Content Grid: Restored full-width alignment */}
+                {/* Non-BBPS dashboard widgets temporarily hidden in BBPS-only mode */}
+                {false && (
+                <>
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
 
                     {/* LEFT PANEL: Trends & Recent Activity */}
@@ -417,6 +420,8 @@ const RetailerDashboard = () => {
                 >
                     <NewsCarousel banners={appData?.promotions?.banners} />
                 </motion.div>
+                </>
+                )}
             </div>
         </div>
     );

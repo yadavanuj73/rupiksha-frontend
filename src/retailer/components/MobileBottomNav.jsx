@@ -1,14 +1,12 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LayoutGrid, Zap, Smartphone, FileText, Landmark } from 'lucide-react';
+import { LayoutGrid, Zap, History } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const TABS = [
     { id: 'dashboard', label: 'Home', icon: LayoutGrid, path: '/dashboard' },
-    { id: 'aeps_services', label: 'Banking', icon: Landmark, path: '/aeps' },
-    { id: 'utility', label: 'Utility', icon: Zap, path: '/utility' },
-    { id: 'all_services', label: 'Services', icon: Smartphone, path: '/all-services' },
-    { id: 'reports', label: 'Reports', icon: FileText, path: '/reports' },
+    { id: 'bharat_connect', label: 'Bharat Connect', icon: Zap, path: '/bharat-connect' },
+    { id: 'bbps_history', label: 'BBPS History', icon: History, path: '/bbps-history' },
 ];
 
 export default function MobileBottomNav() {

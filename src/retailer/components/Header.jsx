@@ -23,16 +23,7 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
             setImgError(false);
 
             const systemNotifs = [];
-            if (data.currentUser?.aeps_kyc_status !== 'DONE') {
-                systemNotifs.push({
-                    id: 'kyc_alert',
-                    title: 'Verify Your Account',
-                    message: 'Complete AEPS KYC to unlock full service access.',
-                    type: 'alert',
-                    read: false,
-                    path: '/aeps-kyc'
-                });
-            }
+            // Non-BBPS / AEPS alerts temporarily hidden in BBPS-only mode
             setNotifications(systemNotifs);
         };
         updateData();
