@@ -10,21 +10,15 @@ import {
     Building2,
     CheckCircle2,
     AlertCircle,
-    ArrowRight,
     RefreshCw,
     X,
-    ChevronDown,
     ChevronLeft,
     ChevronRight,
     HelpCircle,
-    ExternalLink,
     MapPin,
     Phone,
     FileText,
-    History,
-    Sparkles,
-    UserX,
-    Filter
+    History
 } from 'lucide-react';
 import { userMappingService } from '../../services/apiService';
 
@@ -58,10 +52,9 @@ const UserMapping = () => {
     const [mappingError, setMappingError] = useState(null);
     const [mappingSuccess, setMappingSuccess] = useState(null);
 
-    // ── Section 2: Table State ──
-    const [activeTab, setActiveTab] = useState('current'); // 'current' | 'history'
+    // ── Section 2: Audit History Table State (Single Source of Truth) ──
     const [tableSearch, setTableSearch] = useState('');
-    const [tableRoleFilter, setTableRoleFilter] = useState('ALL');
+    const [debouncedTableSearch, setDebouncedTableSearch] = useState('');
     const [tablePage, setTablePage] = useState(0);
     const [tableSize, setTableSize] = useState(10);
     const [tableLoading, setTableLoading] = useState(false);
@@ -176,48 +169,36 @@ const UserMapping = () => {
         return () => clearTimeout(timer);
     }, [parentSearch, targetRole]);
 
-    // ─── Fetch Table Data (Current Mappings or History) ───
+    // ─── Debounce Table Search Input (300ms) ───
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedTableSearch(tableSearch.trim());
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [tableSearch]);
+
+    // ─── Fetch Audit History Data ───
     const fetchTableData = useCallback(() => {
         setTableLoading(true);
         setTableError(null);
 
-        if (activeTab === 'current') {
-            userMappingService.getCurrentMappings({
-                search: tableSearch.trim(),
-                role: tableRoleFilter,
-                page: tablePage,
-                size: tableSize
+        userMappingService.getMappingHistory({
+            search: debouncedTableSearch,
+            page: tablePage,
+            size: tableSize
+        })
+            .then(res => {
+                setTableData({
+                    content: res?.content || [],
+                    totalElements: res?.totalElements || 0,
+                    totalPages: res?.totalPages || 0
+                });
             })
-                .then(res => {
-                    setTableData({
-                        content: res?.content || [],
-                        totalElements: res?.totalElements || 0,
-                        totalPages: res?.totalPages || 0
-                    });
-                })
-                .catch(err => {
-                    setTableError(err?.message || 'Failed to load mappings list');
-                })
-                .finally(() => setTableLoading(false));
-        } else {
-            userMappingService.getMappingHistory({
-                search: tableSearch.trim(),
-                page: tablePage,
-                size: tableSize
+            .catch(err => {
+                setTableError(err?.message || 'Failed to load mapping history');
             })
-                .then(res => {
-                    setTableData({
-                        content: res?.content || [],
-                        totalElements: res?.totalElements || 0,
-                        totalPages: res?.totalPages || 0
-                    });
-                })
-                .catch(err => {
-                    setTableError(err?.message || 'Failed to load mapping history');
-                })
-                .finally(() => setTableLoading(false));
-        }
-    }, [activeTab, tableSearch, tableRoleFilter, tablePage, tableSize]);
+            .finally(() => setTableLoading(false));
+    }, [debouncedTableSearch, tablePage, tableSize]);
 
     useEffect(() => {
         fetchTableData();
@@ -252,6 +233,7 @@ const UserMapping = () => {
 
     // ─── Open Details Modal ───
     const handleViewDetails = (retailerId) => {
+        if (!retailerId) return;
         setDetailsModalUser(retailerId);
         setDetailsLoading(true);
         setDetailsData(null);
@@ -259,29 +241,6 @@ const UserMapping = () => {
             .then(data => setDetailsData(data))
             .catch(err => console.error(err))
             .finally(() => setDetailsLoading(false));
-    };
-
-    // ─── Quick Load Retailer for Remapping ───
-    const handleQuickRemap = (item) => {
-        setSelectedRetailer({
-            id: item.retailerId || item.id,
-            fullName: item.retailerName,
-            partyCode: item.partyCode,
-            mobile: item.mobile,
-            address: item.address,
-            currentOwnerName: item.parentName,
-            currentOwnerPartyCode: item.parentPartyCode,
-            currentOwnerRole: item.mappedUnder,
-            status: item.status
-        });
-        setTargetRole(item.mappedUnder === 'ADMIN' ? 'DISTRIBUTOR' : 'ADMIN');
-        setSelectedParent(null);
-        setMappingError(null);
-
-        // Smooth scroll to form
-        if (formRef.current) {
-            formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
     };
 
     // ─── Execute Mapping Submission ───
@@ -353,16 +312,17 @@ const UserMapping = () => {
     };
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-200" ref={formRef}>
+        <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-200" ref={formRef}>
             {/* ── Page Header ── */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-[0_4px_25px_rgb(0,0,0,0.02)]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-3xl border border-slate-100 shadow-[0_4px_25px_rgb(0,0,0,0.02)]">
                 <div className="flex items-center gap-4">
-                    <div className="w-13 h-13 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/20">
-                        <Network size={26} />
+                    <div className="w-12 h-12 sm:w-13 sm:h-13 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/20 shrink-0">
+                        <Network size={24} className="sm:hidden" />
+                        <Network size={26} className="hidden sm:block" />
                     </div>
                     <div>
-                        <div className="flex items-center gap-2">
-                            <h1 className="text-2xl font-black text-slate-900 tracking-tight">User Mapping</h1>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">User Mapping</h1>
                             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200">
                                 Hierarchy Engine
                             </span>
@@ -373,7 +333,7 @@ const UserMapping = () => {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 self-end sm:self-auto">
                     <button
                         onClick={fetchTableData}
                         className="px-4 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-2xl border border-slate-200 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
@@ -403,7 +363,7 @@ const UserMapping = () => {
                                 </p>
                             </div>
                         </div>
-                        <button onClick={() => setMappingSuccess(null)} className="text-emerald-600 hover:text-emerald-800 p-1">
+                        <button onClick={() => setMappingSuccess(null)} className="text-emerald-600 hover:text-emerald-800 p-1 cursor-pointer">
                             <X size={16} />
                         </button>
                     </motion.div>
@@ -423,7 +383,7 @@ const UserMapping = () => {
                             <AlertCircle size={20} className="text-rose-600 shrink-0" />
                             <p className="text-xs font-bold">{mappingError}</p>
                         </div>
-                        <button onClick={() => setMappingError(null)} className="text-rose-600 hover:text-rose-800 p-1">
+                        <button onClick={() => setMappingError(null)} className="text-rose-600 hover:text-rose-800 p-1 cursor-pointer">
                             <X size={16} />
                         </button>
                     </motion.div>
@@ -431,17 +391,12 @@ const UserMapping = () => {
             </AnimatePresence>
 
             {/* ── SECTION 1: MAPPING FORM ── */}
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_4px_25px_rgb(0,0,0,0.02)] p-6 md:p-8 space-y-8">
-                {/* Step 0: User Type Selection */}
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_4px_25px_rgb(0,0,0,0.02)] p-5 sm:p-6 md:p-8 space-y-6 sm:space-y-8">
+                {/* Step 0: User Type Selection (Initial Production Workflow label completely removed) */}
                 <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                        <label className="text-[11px] font-black uppercase tracking-wider text-slate-500">
-                            Select User Type to Map
-                        </label>
-                        <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">
-                            Initial Production Workflow: Retailer Mapping
-                        </span>
-                    </div>
+                    <label className="text-[11px] font-black uppercase tracking-wider text-slate-500 block">
+                        Select User Type to Map
+                    </label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         {[
                             { id: 'RETAILER', label: 'Retailer', desc: 'Map retail merchant under an upline', active: true },
@@ -474,12 +429,13 @@ const UserMapping = () => {
                     </div>
                 </div>
 
-                <div className="border-t border-slate-100 pt-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* ── LEFT COLUMN: Step 1 – Select Retailer ── */}
+                {/* ── VERTICAL STACK FOR STEP 1 AND STEP 2 (ONE BELOW THE OTHER) ── */}
+                <div className="border-t border-slate-100 pt-6 space-y-8">
+                    {/* ── STEP 1: Select Retailer (Full Width) ── */}
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <span className="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-black flex items-center justify-center">
+                                <span className="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-black flex items-center justify-center shrink-0">
                                     1
                                 </span>
                                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">
@@ -489,7 +445,7 @@ const UserMapping = () => {
                             {selectedRetailer && (
                                 <button
                                     onClick={() => setSelectedRetailer(null)}
-                                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
+                                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
                                 >
                                     Change Retailer
                                 </button>
@@ -516,7 +472,7 @@ const UserMapping = () => {
                                     {retailerSearch && !retailerSearching && (
                                         <button
                                             onClick={() => { setRetailerSearch(''); setRetailerSuggestions([]); }}
-                                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                                         >
                                             <X size={16} />
                                         </button>
@@ -560,7 +516,7 @@ const UserMapping = () => {
                                                                 Current Owner: <span className="font-bold text-slate-600">{item.currentOwnerName}</span> ({item.currentOwnerRole})
                                                             </div>
                                                         </div>
-                                                        <button className="px-2.5 py-1 bg-indigo-600 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-700">
+                                                        <button className="px-2.5 py-1 bg-indigo-600 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-700 shrink-0 cursor-pointer">
                                                             Select
                                                         </button>
                                                     </div>
@@ -579,15 +535,15 @@ const UserMapping = () => {
                             </div>
                         ) : (
                             /* Selected Retailer Card */
-                            <div className="bg-indigo-50/50 border-2 border-indigo-200/80 rounded-2xl p-5 space-y-3 shadow-sm">
-                                <div className="flex items-start justify-between">
+                            <div className="bg-indigo-50/50 border-2 border-indigo-200/80 rounded-2xl p-4 sm:p-5 space-y-3 shadow-sm">
+                                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white font-black text-sm flex items-center justify-center shadow-md">
+                                        <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white font-black text-sm flex items-center justify-center shadow-md shrink-0">
                                             {selectedRetailer.fullName?.charAt(0) || 'R'}
                                         </div>
                                         <div>
                                             <h4 className="text-sm font-black text-slate-900">{selectedRetailer.fullName}</h4>
-                                            <div className="flex items-center gap-2 mt-0.5">
+                                            <div className="flex flex-wrap items-center gap-2 mt-0.5">
                                                 <span className="text-[11px] font-mono font-bold text-indigo-700 bg-white px-1.5 py-0.2 rounded border border-indigo-200">
                                                     {selectedRetailer.partyCode || '—'}
                                                 </span>
@@ -595,7 +551,7 @@ const UserMapping = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded-full uppercase">
+                                    <span className="self-start px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded-full uppercase">
                                         Selected
                                     </span>
                                 </div>
@@ -617,10 +573,10 @@ const UserMapping = () => {
                         )}
                     </div>
 
-                    {/* ── RIGHT COLUMN: Step 2 – Map To ── */}
-                    <div className="space-y-4">
+                    {/* ── STEP 2: Map To (Target Parent) (Full Width Directly Below Step 1) ── */}
+                    <div className="space-y-4 pt-6 border-t border-slate-100">
                         <div className="flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-black flex items-center justify-center">
+                            <span className="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-black flex items-center justify-center shrink-0">
                                 2
                             </span>
                             <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">
@@ -628,12 +584,12 @@ const UserMapping = () => {
                             </h3>
                         </div>
 
-                        {/* 3 Map To Options */}
-                        <div className="grid grid-cols-3 gap-2.5">
+                        {/* 3 Map To Options - Responsive Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             {[
                                 { id: 'ADMIN', label: 'Admin', icon: Shield, desc: 'Direct mapping' },
                                 { id: 'DISTRIBUTOR', label: 'Distributor', icon: Building2, desc: 'Assign upline' },
-                                { id: 'SUPER_DISTRIBUTOR', label: 'Super Dist.', icon: Users, desc: 'Master upline' },
+                                { id: 'SUPER_DISTRIBUTOR', label: 'Super Distributor', icon: Users, desc: 'Master upline' },
                             ].map((opt) => (
                                 <button
                                     key={opt.id}
@@ -644,15 +600,15 @@ const UserMapping = () => {
                                         setParentSearch('');
                                         setMappingError(null);
                                     }}
-                                    className={`p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                                    className={`p-3.5 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
                                         targetRole === opt.id
-                                            ? 'border-indigo-600 bg-indigo-600 text-white shadow-md'
-                                            : 'border-slate-200 bg-slate-50/60 text-slate-700 hover:bg-slate-100'
+                                            ? 'border-indigo-600 bg-indigo-600 text-white shadow-md ring-2 ring-indigo-600/20'
+                                            : 'border-slate-200 bg-slate-50/60 text-slate-700 hover:bg-slate-100 hover:border-slate-300'
                                     }`}
                                 >
-                                    <opt.icon size={18} className={targetRole === opt.id ? 'text-white' : 'text-slate-500'} />
+                                    <opt.icon size={20} className={targetRole === opt.id ? 'text-white' : 'text-slate-500'} />
                                     <span className="text-xs font-black">{opt.label}</span>
-                                    <span className={`text-[9px] font-medium ${targetRole === opt.id ? 'text-indigo-100' : 'text-slate-400'}`}>
+                                    <span className={`text-[10px] font-medium ${targetRole === opt.id ? 'text-indigo-100' : 'text-slate-400'}`}>
                                         {opt.desc}
                                     </span>
                                 </button>
@@ -735,7 +691,7 @@ const UserMapping = () => {
                                                                         </span>
                                                                     </div>
                                                                 </div>
-                                                                <button className="px-2.5 py-1 bg-indigo-600 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-700">
+                                                                <button className="px-2.5 py-1 bg-indigo-600 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-700 shrink-0 cursor-pointer">
                                                                     Select
                                                                 </button>
                                                             </div>
@@ -757,7 +713,7 @@ const UserMapping = () => {
                                     <div className="bg-slate-50 border-2 border-indigo-200 rounded-2xl p-4 space-y-2">
                                         <div className="flex items-start justify-between">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white font-black text-sm flex items-center justify-center">
+                                                <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white font-black text-sm flex items-center justify-center shrink-0">
                                                     {selectedParent.fullName?.charAt(0) || 'P'}
                                                 </div>
                                                 <div>
@@ -772,7 +728,7 @@ const UserMapping = () => {
                                             </div>
                                             <button
                                                 onClick={() => setSelectedParent(null)}
-                                                className="text-xs font-bold text-indigo-600 hover:text-indigo-800"
+                                                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer"
                                             >
                                                 Change
                                             </button>
@@ -801,7 +757,7 @@ const UserMapping = () => {
                         </div>
 
                         {/* Submit Actions */}
-                        <div className="pt-2 flex items-center gap-3">
+                        <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                             <button
                                 type="button"
                                 onClick={() => setShowConfirmModal(true)}
@@ -833,7 +789,7 @@ const UserMapping = () => {
                                 <button
                                     type="button"
                                     onClick={handleResetForm}
-                                    className="py-3.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-bold transition-all"
+                                    className="py-3.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-bold transition-all cursor-pointer"
                                 >
                                     Reset
                                 </button>
@@ -843,68 +799,48 @@ const UserMapping = () => {
                 </div>
             </div>
 
-            {/* ── SECTION 2: CURRENT MAPPINGS & AUDIT HISTORY TABLE ── */}
+            {/* ── SECTION 2: AUDIT HISTORY TABLE (ONLY HISTORY SECTION DISPLAYED) ── */}
             <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_4px_25px_rgb(0,0,0,0.02)] overflow-hidden space-y-4">
-                {/* Table Header & Controls */}
-                <div className="p-6 border-b border-slate-100 space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                {/* Header & Controls */}
+                <div className="p-4 sm:p-6 border-b border-slate-100 space-y-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
-                            <div className="flex p-1 bg-slate-100 rounded-2xl">
-                                <button
-                                    onClick={() => { setActiveTab('current'); setTablePage(0); }}
-                                    className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                                        activeTab === 'current'
-                                            ? 'bg-white text-slate-900 shadow-sm'
-                                            : 'text-slate-500 hover:text-slate-800'
-                                    }`}
-                                >
-                                    Current Mappings
-                                </button>
-                                <button
-                                    onClick={() => { setActiveTab('history'); setTablePage(0); }}
-                                    className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-                                        activeTab === 'history'
-                                            ? 'bg-white text-slate-900 shadow-sm'
-                                            : 'text-slate-500 hover:text-slate-800'
-                                    }`}
-                                >
-                                    <History size={13} />
-                                    <span>Audit History</span>
-                                </button>
+                            <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                                <History size={20} />
                             </div>
-                            <span className="text-xs text-slate-400 font-bold">
-                                ({tableData.totalElements} records)
-                            </span>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h2 className="text-base font-black text-slate-900 tracking-tight">Audit History</h2>
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-600">
+                                        {tableData.totalElements} records
+                                    </span>
+                                </div>
+                                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                                    Immutable historical log of all Retailer hierarchy mapping actions.
+                                </p>
+                            </div>
                         </div>
 
-                        {/* Search & Role Filter */}
+                        {/* Search & Page Size */}
                         <div className="flex flex-wrap items-center gap-3">
-                            <div className="relative min-w-[220px]">
+                            <div className="relative min-w-[220px] flex-1 sm:flex-initial">
                                 <input
                                     type="text"
                                     value={tableSearch}
                                     onChange={(e) => { setTableSearch(e.target.value); setTablePage(0); }}
-                                    placeholder="Filter by name, party code, mobile..."
-                                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:border-indigo-600 focus:bg-white"
+                                    placeholder="Filter by name, party code..."
+                                    className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:border-indigo-600 focus:bg-white"
                                 />
                                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                            </div>
-
-                            {activeTab === 'current' && (
-                                <div className="flex items-center gap-2">
-                                    <Filter size={14} className="text-slate-400" />
-                                    <select
-                                        value={tableRoleFilter}
-                                        onChange={(e) => { setTableRoleFilter(e.target.value); setTablePage(0); }}
-                                        className="bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 py-2 px-3 rounded-xl outline-none focus:border-indigo-600 cursor-pointer"
+                                {tableSearch && (
+                                    <button
+                                        onClick={() => { setTableSearch(''); setTablePage(0); }}
+                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                                     >
-                                        <option value="ALL">All Roles</option>
-                                        <option value="ADMIN">Admin (Direct)</option>
-                                        <option value="DISTRIBUTOR">Distributor</option>
-                                        <option value="SUPER_DISTRIBUTOR">Super Distributor</option>
-                                    </select>
-                                </div>
-                            )}
+                                        <X size={14} />
+                                    </button>
+                                )}
+                            </div>
 
                             <select
                                 value={tableSize}
@@ -919,209 +855,122 @@ const UserMapping = () => {
                     </div>
                 </div>
 
-                {/* Table Content */}
+                {/* Audit History Table */}
                 <div className="overflow-x-auto">
-                    {activeTab === 'current' ? (
-                        /* Current Mappings Table */
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-wider border-y border-slate-200">
-                                    <th className="px-4 py-3 text-center">#</th>
-                                    <th className="px-4 py-3">Retailer Name</th>
-                                    <th className="px-4 py-3">Party Code</th>
-                                    <th className="px-4 py-3">Mobile</th>
-                                    <th className="px-4 py-3">Address</th>
-                                    <th className="px-4 py-3">Mapped Under</th>
-                                    <th className="px-4 py-3">Parent Name</th>
-                                    <th className="px-4 py-3">Parent Code</th>
-                                    <th className="px-4 py-3">Mapping Date</th>
-                                    <th className="px-4 py-3 text-center">Status</th>
-                                    <th className="px-4 py-3 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 text-xs">
-                                {tableLoading ? (
-                                    [...Array(5)].map((_, i) => (
-                                        <tr key={i} className="animate-pulse">
-                                            <td colSpan={11} className="px-4 py-4 text-center text-slate-300">
-                                                Loading mappings...
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : tableData.content.length > 0 ? (
-                                    tableData.content.map((row, index) => (
-                                        <tr key={row.retailerId || row.id || index} className="hover:bg-slate-50/70 transition-colors">
-                                            <td className="px-4 py-3.5 text-center font-mono font-bold text-slate-400">
-                                                {tablePage * tableSize + index + 1}
-                                            </td>
-                                            <td className="px-4 py-3.5 font-bold text-slate-900">
-                                                {row.retailerName}
-                                            </td>
-                                            <td className="px-4 py-3.5 font-mono font-bold text-indigo-600">
-                                                {row.partyCode || '—'}
-                                            </td>
-                                            <td className="px-4 py-3.5 text-slate-600 font-medium">
-                                                {row.mobile}
-                                            </td>
-                                            <td className="px-4 py-3.5 text-slate-500 truncate max-w-[180px]" title={row.address}>
-                                                {row.address || '—'}
-                                            </td>
-                                            <td className="px-4 py-3.5">
-                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase border ${getRoleBadgeStyle(row.mappedUnder)}`}>
-                                                    {row.mappedUnder || 'ADMIN'}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3.5 font-bold text-slate-800">
-                                                {row.parentName || 'System Admin'}
-                                            </td>
-                                            <td className="px-4 py-3.5 font-mono text-[11px] text-slate-500 font-semibold">
-                                                {row.parentPartyCode || '—'}
-                                            </td>
-                                            <td className="px-4 py-3.5 text-slate-500 text-[11px]">
-                                                {row.mappingDate ? new Date(row.mappingDate).toLocaleDateString('en-IN', {
-                                                    day: '2-digit', month: 'short', year: 'numeric',
-                                                    hour: '2-digit', minute: '2-digit'
-                                                }) : '—'}
-                                            </td>
-                                            <td className="px-4 py-3.5 text-center">
-                                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
-                                                    row.active || row.status === 'ACTIVE'
-                                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                                        : 'bg-rose-50 text-rose-700 border border-rose-200'
-                                                }`}>
-                                                    {row.status || 'ACTIVE'}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3.5 text-right">
-                                                <div className="flex items-center justify-end gap-1.5">
-                                                    <button
-                                                        onClick={() => handleViewDetails(row.retailerId || row.id)}
-                                                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-bold transition-all cursor-pointer"
-                                                        title="View Details"
-                                                    >
-                                                        Details
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleQuickRemap(row)}
-                                                        className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-bold transition-all cursor-pointer shadow-sm"
-                                                        title="Change Mapping"
-                                                    >
-                                                        Change
-                                                    </button>
+                    <table className="w-full text-left border-collapse min-w-[780px]">
+                        <thead>
+                            <tr className="bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-wider border-y border-slate-200">
+                                <th className="px-4 py-3 text-center">#</th>
+                                <th className="px-4 py-3">Date & Time</th>
+                                <th className="px-4 py-3">Retailer</th>
+                                <th className="px-4 py-3">Party Code</th>
+                                <th className="px-4 py-3">Mobile</th>
+                                <th className="px-4 py-3">Previous Parent</th>
+                                <th className="px-4 py-3">New Parent</th>
+                                <th className="px-4 py-3">Action Type</th>
+                                <th className="px-4 py-3">Admin</th>
+                                <th className="px-4 py-3">Reason</th>
+                                <th className="px-4 py-3 text-center">Audit Status</th>
+                                <th className="px-4 py-3 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 text-xs">
+                            {tableLoading ? (
+                                [...Array(5)].map((_, i) => (
+                                    <tr key={i} className="animate-pulse">
+                                        <td colSpan={12} className="px-4 py-4 text-center text-slate-300">
+                                            Loading audit history...
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : tableData.content.length > 0 ? (
+                                tableData.content.map((item, index) => (
+                                    <tr key={item.mappingId || index} className="hover:bg-slate-50/70 transition-colors">
+                                        <td className="px-4 py-3.5 text-center font-mono font-bold text-slate-400">
+                                            {tablePage * tableSize + index + 1}
+                                        </td>
+                                        <td className="px-4 py-3.5 text-slate-600 font-mono text-[11px]">
+                                            {item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-IN', {
+                                                day: '2-digit', month: 'short', year: 'numeric',
+                                                hour: '2-digit', minute: '2-digit'
+                                            }) : '—'}
+                                        </td>
+                                        <td className="px-4 py-3.5 font-bold text-slate-900">
+                                            {item.retailerName}
+                                        </td>
+                                        <td className="px-4 py-3.5 font-mono text-indigo-600 font-bold">
+                                            {item.retailerPartyCode || '—'}
+                                        </td>
+                                        <td className="px-4 py-3.5 text-slate-600 font-medium">
+                                            {item.retailerMobile || '—'}
+                                        </td>
+                                        <td className="px-4 py-3.5 text-slate-600">
+                                            {item.previousParentName ? (
+                                                <div>
+                                                    <span className="font-semibold text-slate-800">{item.previousParentName}</span>
+                                                    <span className="block text-[10px] text-slate-400 font-mono">
+                                                        {item.previousParentRole || ''}
+                                                    </span>
                                                 </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan={11} className="p-12 text-center text-slate-400">
-                                            <UserX size={36} className="mx-auto text-slate-300 mb-2" />
-                                            <p className="font-bold text-sm text-slate-600">No Retailer mappings found</p>
-                                            <p className="text-xs text-slate-400 mt-1">Try adjusting your search or role filter.</p>
+                                            ) : (
+                                                <span className="text-slate-400 italic">None / Initial</span>
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-3.5">
+                                            <div className="font-bold text-slate-900">{item.newParentName}</div>
+                                            <span className={`px-2 py-0.2 rounded text-[9px] font-black uppercase border ${getRoleBadgeStyle(item.newParentRole)}`}>
+                                                {item.newParentRole}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3.5 font-semibold text-slate-700">
+                                            {item.actionType}
+                                        </td>
+                                        <td className="px-4 py-3.5 font-mono font-bold text-slate-600">
+                                            {item.mappedByAdminUsername || 'admin'}
+                                        </td>
+                                        <td className="px-4 py-3.5 text-slate-500 italic max-w-[150px] truncate" title={item.reason}>
+                                            {item.reason || '—'}
+                                        </td>
+                                        <td className="px-4 py-3.5 text-center">
+                                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                                                item.status === 'ACTIVE'
+                                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                                    : 'bg-slate-100 text-slate-500'
+                                            }`}>
+                                                {item.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3.5 text-right">
+                                            {item.retailerId ? (
+                                                <button
+                                                    onClick={() => handleViewDetails(item.retailerId)}
+                                                    className="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-700 rounded-lg text-[11px] font-bold transition-all cursor-pointer"
+                                                    title="View Details"
+                                                >
+                                                    Details
+                                                </button>
+                                            ) : (
+                                                <span className="text-slate-400 text-xs">—</span>
+                                            )}
                                         </td>
                                     </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    ) : (
-                        /* Audit History Table */
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-wider border-y border-slate-200">
-                                    <th className="px-4 py-3 text-center">#</th>
-                                    <th className="px-4 py-3">Date & Time</th>
-                                    <th className="px-4 py-3">Retailer</th>
-                                    <th className="px-4 py-3">Party Code</th>
-                                    <th className="px-4 py-3">Previous Parent</th>
-                                    <th className="px-4 py-3">New Parent</th>
-                                    <th className="px-4 py-3">Action Type</th>
-                                    <th className="px-4 py-3">Admin</th>
-                                    <th className="px-4 py-3">Reason</th>
-                                    <th className="px-4 py-3 text-center">Audit Status</th>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={12} className="p-12 text-center text-slate-400">
+                                        <History size={36} className="mx-auto text-slate-300 mb-2" />
+                                        <p className="font-bold text-sm text-slate-600">No mapping audit history found</p>
+                                        <p className="text-xs text-slate-400 mt-1">Changes made to Retailer hierarchies will appear here.</p>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 text-xs">
-                                {tableLoading ? (
-                                    [...Array(5)].map((_, i) => (
-                                        <tr key={i} className="animate-pulse">
-                                            <td colSpan={10} className="px-4 py-4 text-center text-slate-300">
-                                                Loading audit history...
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : tableData.content.length > 0 ? (
-                                    tableData.content.map((item, index) => (
-                                        <tr key={item.mappingId || index} className="hover:bg-slate-50/70 transition-colors">
-                                            <td className="px-4 py-3.5 text-center font-mono font-bold text-slate-400">
-                                                {tablePage * tableSize + index + 1}
-                                            </td>
-                                            <td className="px-4 py-3.5 text-slate-600 font-mono text-[11px]">
-                                                {item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-IN', {
-                                                    day: '2-digit', month: 'short', year: 'numeric',
-                                                    hour: '2-digit', minute: '2-digit'
-                                                }) : '—'}
-                                            </td>
-                                            <td className="px-4 py-3.5 font-bold text-slate-900">
-                                                {item.retailerName}
-                                            </td>
-                                            <td className="px-4 py-3.5 font-mono text-indigo-600 font-bold">
-                                                {item.retailerPartyCode || '—'}
-                                            </td>
-                                            <td className="px-4 py-3.5 text-slate-600">
-                                                {item.previousParentName ? (
-                                                    <div>
-                                                        <span className="font-semibold text-slate-800">{item.previousParentName}</span>
-                                                        <span className="block text-[10px] text-slate-400 font-mono">
-                                                            {item.previousParentRole || ''}
-                                                        </span>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-slate-400 italic">None / Initial</span>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3.5">
-                                                <div className="font-bold text-slate-900">{item.newParentName}</div>
-                                                <span className={`px-2 py-0.2 rounded text-[9px] font-black uppercase border ${getRoleBadgeStyle(item.newParentRole)}`}>
-                                                    {item.newParentRole}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3.5 font-semibold text-slate-700">
-                                                {item.actionType}
-                                            </td>
-                                            <td className="px-4 py-3.5 font-mono font-bold text-slate-600">
-                                                {item.mappedByAdminUsername || 'admin'}
-                                            </td>
-                                            <td className="px-4 py-3.5 text-slate-500 italic max-w-[150px] truncate" title={item.reason}>
-                                                {item.reason || '—'}
-                                            </td>
-                                            <td className="px-4 py-3.5 text-center">
-                                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
-                                                    item.status === 'ACTIVE'
-                                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                                        : 'bg-slate-100 text-slate-500'
-                                                }`}>
-                                                    {item.status}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan={10} className="p-12 text-center text-slate-400">
-                                            <History size={36} className="mx-auto text-slate-300 mb-2" />
-                                            <p className="font-bold text-sm text-slate-600">No mapping audit history found</p>
-                                            <p className="text-xs text-slate-400 mt-1">Changes made to Retailer hierarchies will appear here.</p>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    )}
+                            )}
+                        </tbody>
+                    </table>
                 </div>
 
                 {/* Pagination */}
                 {tableData.totalPages > 1 && (
-                    <div className="p-4 border-t border-slate-100 flex items-center justify-between">
+                    <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
                         <span className="text-xs text-slate-500 font-medium">
                             Showing page <strong>{tablePage + 1}</strong> of <strong>{tableData.totalPages}</strong> ({tableData.totalElements} items)
                         </span>
@@ -1130,7 +979,7 @@ const UserMapping = () => {
                             <button
                                 onClick={() => setTablePage(p => Math.max(0, p - 1))}
                                 disabled={tablePage === 0}
-                                className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                                className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                             >
                                 <ChevronLeft size={16} />
                             </button>
@@ -1140,7 +989,7 @@ const UserMapping = () => {
                             <button
                                 onClick={() => setTablePage(p => Math.min(tableData.totalPages - 1, p + 1))}
                                 disabled={tablePage >= tableData.totalPages - 1}
-                                className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                                className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                             >
                                 <ChevronRight size={16} />
                             </button>
@@ -1157,10 +1006,10 @@ const UserMapping = () => {
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-6 shadow-2xl border border-slate-100"
+                            className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto"
                         >
                             <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center">
+                                <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0">
                                     <HelpCircle size={24} />
                                 </div>
                                 <div>
@@ -1196,17 +1045,17 @@ const UserMapping = () => {
                                 <strong>Financial Notice:</strong> Future eligible transactions by this Retailer will distribute commissions to the new upline. Past historical transactions and commissions are strictly preserved.
                             </div>
 
-                            <div className="flex items-center gap-3 pt-2">
+                            <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
                                 <button
                                     onClick={() => setShowConfirmModal(false)}
-                                    className="flex-1 py-3 px-4 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 transition-all cursor-pointer"
+                                    className="w-full sm:flex-1 py-3 px-4 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 transition-all cursor-pointer"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleConfirmMapping}
                                     disabled={mappingSubmitting}
-                                    className="flex-1 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-indigo-600/20"
+                                    className="w-full sm:flex-1 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-indigo-600/20"
                                 >
                                     {mappingSubmitting ? (
                                         <>
@@ -1231,7 +1080,7 @@ const UserMapping = () => {
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl border border-slate-100"
+                            className="bg-white rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto"
                         >
                             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                                 <div className="flex items-center gap-2">
@@ -1240,7 +1089,7 @@ const UserMapping = () => {
                                 </div>
                                 <button
                                     onClick={() => setDetailsModalUser(null)}
-                                    className="text-slate-400 hover:text-slate-600 p-1"
+                                    className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
                                 >
                                     <X size={18} />
                                 </button>

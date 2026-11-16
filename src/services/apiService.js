@@ -580,8 +580,6 @@ export const userMappingService = {
     }),
   getMappingDetails: (retailerId) =>
     apiFetch(`/admin/user-mapping/details/${encodeURIComponent(retailerId)}`),
-  getCurrentMappings: ({ search = '', role = 'ALL', page = 0, size = 10 } = {}) =>
-    apiFetch(`/admin/user-mapping/list?search=${encodeURIComponent(search)}&role=${encodeURIComponent(role)}&page=${page}&size=${size}`),
   getMappingHistory: ({ search = '', retailerId = '', page = 0, size = 10 } = {}) =>
     apiFetch(`/admin/user-mapping/history?search=${encodeURIComponent(search)}${retailerId ? `&retailerId=${encodeURIComponent(retailerId)}` : ''}&page=${page}&size=${size}`),
 };
