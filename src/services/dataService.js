@@ -1829,18 +1829,6 @@ export const dataService = {
         } catch (e) { return []; }
     },
 
-    getTrashUsers: async function () {
-        try {
-            const token = getEffectiveToken();
-            const res = await fetch(`${BACKEND_URL}/admin/trash-users`, {
-                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-            });
-            const data = await safeJson(res, null);
-            if (res.ok && data?.success && Array.isArray(data.users)) return data.users;
-            return [];
-        } catch (e) { return []; }
-    },
-
     getLoans: async function () {
         if (useLocalOnly) {
             return this.getData().loans || [];
@@ -1997,20 +1985,6 @@ export const dataService = {
         } catch (e) {
             return { success: false };
         }
-    },
-
-
-
-    restoreUser: async function (username) {
-        if (useLocalOnly) return { success: true };
-        try {
-            const res = await fetch(`${BACKEND_URL}/restore-user`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username })
-            });
-            return await res.json();
-        } catch (e) { return { success: false }; }
     },
 
     resendCredentials: async function (user) {

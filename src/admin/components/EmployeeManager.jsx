@@ -33,7 +33,7 @@ const icons = {
 
 const PERMISSIONS_MATRIX = [
     { category: "DASHBOARD", color: '#6366f1', icon: '📊', items: ["View Live Dashboard", "View Revenue Metrics", "Network Map Access"] },
-    { category: "USER MANAGEMENT", color: '#f59e0b', icon: '👥', items: ["Manage Retailers", "Manage Distributors", "Manage Super/Master Distributors", "View Security Logs", "Access Trash / Restore"] },
+    { category: "USER MANAGEMENT", color: '#f59e0b', icon: '👥', items: ["Manage Retailers", "Manage Distributors", "Manage Super/Master Distributors", "View Security Logs"] },
     { category: "EMPLOYEE MANAGEMENT", color: '#8b5cf6', icon: '🏢', items: ["View Header Employees", "Provision Header Employees", "Promote/Demote Roles"] },
     { category: "SETTINGS & SERVICES", color: '#ef4444', icon: '⚙️', items: ["Manage System Services (On/Off)", "Configure Commissions"] },
     { category: "APP CONTENT", color: '#06b6d4', icon: '🎨', items: ["Manage Landing Pages", "Manage Plans & Pricing", "Manage Branding & Carousel"] }

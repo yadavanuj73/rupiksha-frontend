@@ -2,7 +2,6 @@ package com.rupiksha.backend.api;
 
 import com.rupiksha.backend.api.dto.UserMappingDtos.*;
 import com.rupiksha.backend.security.JwtPrincipal;
-import com.rupiksha.backend.service.TestUserCleanupService;
 import com.rupiksha.backend.service.UserMappingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +15,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -27,7 +25,6 @@ import java.util.UUID;
 public class AdminUserMappingController {
 
     private final UserMappingService userMappingService;
-    private final TestUserCleanupService testUserCleanupService;
 
     @GetMapping("/search-retailers")
     public ResponseEntity<Page<UserMappingSearchDto>> searchRetailers(
@@ -93,14 +90,5 @@ public class AdminUserMappingController {
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, Math.min(size, 100));
         return ResponseEntity.ok(userMappingService.getMappingHistory(search, retailerId, pageable));
-    }
-
-    @PostMapping("/cleanup-test-users")
-    public ResponseEntity<Map<String, Object>> cleanupTestUsers(
-            @AuthenticationPrincipal JwtPrincipal principal) {
-        log.info("Admin {} requested manual execution of QA test user cleanup",
-                principal != null ? principal.username() : "admin");
-        Map<String, Object> result = testUserCleanupService.cleanupTestUsers();
-        return ResponseEntity.ok(result);
     }
 }

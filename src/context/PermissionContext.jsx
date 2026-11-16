@@ -76,8 +76,6 @@ export const PERMISSIONS = {
       PACKAGE: "Package",
       COMMISSION_AND_CHARGES: "Commission and Charges",
       REGISTRATION_FEES: "Registration Fees",
-      USER_LOGIN_LOGS: "User Login Logs",
-      ADMIN_LOGIN_LOGS: "Admin Login Logs",
     },
   },
   OTHER_SERVICES: {

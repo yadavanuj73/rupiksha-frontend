@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Search, Zap, Trash2, Edit3, Eye, X, CheckCircle2,
+    Search, Zap, Edit3, Eye, X, CheckCircle2,
     AlertTriangle, Lock, User, UserCheck, Loader2, Save, ToggleRight, ToggleLeft, Package, Image as ImageIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -529,20 +529,6 @@ const EnhancedMembersTable = () => {
         finally { setEditSaving(false); }
     };
 
-    const handleDelete = async (member) => {
-        if (!window.confirm(`Permanently delete ${member.fullName || member.username}? This cannot be undone.`)) return;
-        try {
-            const targetId = member.id || member._id || member.username;
-            const res = await dataService.deleteUser(targetId);
-            if (res && (res.success || res.status === 200)) {
-                showToast(`${member.fullName || member.username} deleted successfully`);
-                fetchMembers();
-                return;
-            }
-            showToast(res?.error || res?.message || 'Delete failed', 'error');
-        } catch (e) { showToast(e.message, 'error'); }
-    };
-
     /* ── derived data ── */
     const filteredMembers = members.filter(m => {
         const roleMatch = roleFilter === 'ALL' || (m.roles || []).some(r => r === roleFilter);
@@ -572,10 +558,6 @@ const EnhancedMembersTable = () => {
             <button onClick={() => handleEditMember(member)}
                 className="w-full flex items-center justify-center gap-1 px-2.5 py-1.5 text-[11px] font-extrabold bg-amber-500 text-white rounded-lg hover:bg-amber-600 active:scale-[0.98] shadow-sm transition-all duration-150 cursor-pointer">
                 <Edit3 size={11} /> Edit
-            </button>
-            <button onClick={() => handleDelete(member)}
-                className="w-full flex items-center justify-center gap-1 px-2.5 py-1.5 text-[11px] font-extrabold bg-rose-500 text-white rounded-lg hover:bg-rose-600 active:scale-[0.98] shadow-sm transition-all duration-150 cursor-pointer">
-                <Trash2 size={11} /> Delete
             </button>
         </div>
     );
@@ -877,12 +859,8 @@ const EnhancedMembersTable = () => {
                                         <Eye size={12} /> View Details
                                     </button>
                                     <button onClick={() => handleEditMember(member)}
-                                        className="flex items-center justify-center gap-1.5 py-2 text-[11px] font-bold bg-amber-50 hover:bg-amber-600 text-amber-700 hover:text-white border border-amber-200 hover:border-amber-600 rounded-xl transition-all">
+                                        className="col-span-2 flex items-center justify-center gap-1.5 py-2 text-[11px] font-bold bg-amber-50 hover:bg-amber-600 text-amber-700 hover:text-white border border-amber-200 hover:border-amber-600 rounded-xl transition-all">
                                         <Edit3 size={12} /> Edit
-                                    </button>
-                                    <button onClick={() => handleDelete(member)}
-                                        className="flex items-center justify-center gap-1.5 py-2 text-[11px] font-bold bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 hover:border-rose-600 rounded-xl transition-all">
-                                        <Trash2 size={12} /> Delete
                                     </button>
                                 </div>
                             </div>

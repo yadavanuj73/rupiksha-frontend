@@ -80,10 +80,10 @@ const Admin = () => {
     const [data, setData] = useState(dataService.getData());
     const [distributors, setDistributors] = useState([]);
     const [SuperDistributors, setSuperDistributors] = useState([]);
-    const [trashUsers, setTrashUsers] = useState([]);
 
     // Default to Dashboard (Live telemetry) for Admin users
-    const initialSection = sessionStorage.getItem('admin_active_section') || 'Dashboard';
+    const storedSection = sessionStorage.getItem('admin_active_section') || 'Dashboard';
+    const initialSection = ['Trash', 'Logins'].includes(storedSection) ? 'Dashboard' : storedSection;
     const [activeSection, setActiveSection] = useState(initialSection);
 
     const setActiveSectionPersisted = (section) => {
@@ -424,9 +424,6 @@ const Admin = () => {
             // Sync with sharedDataService for other components
             sharedDataService.saveDistributors(dists, true);
             sharedDataService.saveSuperDistributors(sas, true);
-
-            const trash = await dataService.getTrashUsers();
-            setTrashUsers(trash);
         } catch (e) {
             console.error("Failed to refresh live data", e);
         } finally {
@@ -503,37 +500,6 @@ const Admin = () => {
         markApprovalResolved(key);
     };
 
-    const movePendingToTrashLocal = (identifier) => {
-        let removed = null;
-        setData(prev => {
-            const list = Array.isArray(prev.users) ? prev.users : [];
-            const hit = list.find((u) => matchesIdentifier(u, identifier));
-            if (hit) removed = hit;
-            return { ...prev, users: list.filter((u) => !matchesIdentifier(u, identifier)) };
-        });
-        setDistributors(prev => {
-            const list = Array.isArray(prev) ? prev : [];
-            const hit = list.find((u) => matchesIdentifier(u, identifier));
-            if (hit) removed = hit;
-            const next = list.filter((u) => !matchesIdentifier(u, identifier));
-            sharedDataService.saveDistributors(next, true);
-            return next;
-        });
-        setSuperDistributors(prev => {
-            const list = Array.isArray(prev) ? prev : [];
-            const hit = list.find((u) => matchesIdentifier(u, identifier));
-            if (hit) removed = hit;
-            const next = list.filter((u) => !matchesIdentifier(u, identifier));
-            sharedDataService.saveSuperDistributors(next, true);
-            return next;
-        });
-
-        if (removed) {
-            setTrashUsers(prev => ([{ ...removed, updated_at: new Date().toISOString() }, ...(prev || [])]));
-        }
-        markApprovalResolved(identifier);
-    };
-
     const handleResendCredentials = async (user) => {
         if (!user.email) {
             alert(`Error: No email address found for user ${user.username}. Please update their profile with an email first.`);
@@ -544,16 +510,6 @@ const Admin = () => {
             alert(`Credentials resent successfully to ${user.email}`);
         } else {
             alert(`Failed to resend credentials: ${res.message}`);
-        }
-    };
-
-    const handleRestoreUser = async (username) => {
-        const res = await dataService.restoreUser(username);
-        if (res.success) {
-            setStatus({ type: 'success', message: 'User restored from trash' });
-            refreshData();
-        } else {
-            alert('Failed to restore');
         }
     };
 
@@ -1044,45 +1000,6 @@ const Admin = () => {
         </div>
     );
 
-    const LoginsTable = () => (
-        <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4">
-            <div className="px-8 py-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
-                <div className="flex items-center gap-4">
-                    <div className="w-11 h-11 rounded-2xl bg-indigo-500 flex items-center justify-center text-white shadow-lg shadow-indigo-100">
-                        <History size={20} />
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight leading-none">Access Logs</h3>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Real-time system login history</p>
-                    </div>
-                </div>
-                <span className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-2xl text-[11px] font-black tracking-widest uppercase">{data.loginLogs?.length || 0} Records</span>
-            </div>
-            <div className="overflow-x-auto">
-                <table className="w-full text-left font-bold text-slate-600">
-                    <thead>
-                        <tr className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                            <th className="px-8 py-5">Identity</th>
-                            <th className="px-8 py-5">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                        {data.loginLogs?.map((log, i) => (
-                            <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                                <td className="px-8 py-4 font-black">{log.username}</td>
-                                <td className="px-8 py-4">
-                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${log.status === 'success' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                                        {log.status === 'success' ? 'VALID' : 'INVALID'}
-                                    </span>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    );
-
     // Snapshot of already-used party codes used by unique generator.
     const collectExistingPartyCodes = () => [
         ...(data.users || []).map(u => u.partyCode),
@@ -1270,42 +1187,6 @@ const Admin = () => {
                 return next;
             });
             setApprovalLoading(false);
-        }
-    };
-
-
-    const handleReject = async (userOrIdentifier) => {
-        const identifier =
-            (typeof userOrIdentifier === 'string' ? userOrIdentifier : null) ||
-            userOrIdentifier?._id ||
-            userOrIdentifier?.id ||
-            userOrIdentifier?.username ||
-            userOrIdentifier?.mobile ||
-            userOrIdentifier?.loginId;
-        const displayName =
-            (typeof userOrIdentifier === 'string' ? userOrIdentifier : null) ||
-            userOrIdentifier?.username ||
-            userOrIdentifier?.name ||
-            userOrIdentifier?.mobile ||
-            identifier;
-
-        if (!identifier) {
-            setStatus({ type: 'error', message: 'Unable to delete: missing user id.' });
-            setTimeout(() => setStatus(null), 3000);
-            return;
-        }
-
-        if (window.confirm(`Are you sure you want to move user ${displayName} to trash?`)) {
-            movePendingToTrashLocal(identifier);
-            const res = await dataService.deleteUser(identifier);
-            if (res?.success) {
-                refreshData();
-                setStatus({ type: 'error', message: `User ${displayName} moved to trash.` });
-                setTimeout(() => setStatus(null), 3000);
-            } else {
-                setStatus({ type: 'error', message: res?.message || 'Failed to move user to trash.' });
-                setTimeout(() => setStatus(null), 3000);
-            }
         }
     };
 
@@ -1617,7 +1498,6 @@ const Admin = () => {
                                         <button onClick={() => handleResendCredentials(user)} className="p-2 bg-slate-50 text-slate-500 rounded-lg hover:bg-slate-900 hover:text-white transition-all shadow-sm" title="Resend Credentials"><Mail size={15} /></button>
                                         <button onClick={() => handleRoleChangeClick(user)} className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-all shadow-sm" title="Edit Role"><TrendingUp size={15} /></button>
                                         <button onClick={() => handleLoginAsRetailer(user)} className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-600 hover:text-white transition-all shadow-sm" title="Impersonate"><ArrowRight size={15} /></button>
-                                        <button onClick={() => handleReject(user.username)} className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-600 hover:text-white transition-all shadow-sm" title="Deactivate"><Trash2 size={15} /></button>
                                     </div>
                                 </td>
                             </tr>
@@ -1687,70 +1567,6 @@ const Admin = () => {
                     </p>
                 </div>
             </motion.div>
-        </div>
-    );
-
-    const TrashTable = () => (
-        <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4">
-            <div className="px-8 py-6 border-b border-slate-50 flex justify-between items-center bg-rose-50/20">
-                <div className="flex items-center gap-4">
-                    <div className="w-11 h-11 rounded-2xl bg-rose-500 flex items-center justify-center text-white shadow-lg shadow-rose-500/20">
-                        <Trash2 size={20} />
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight leading-none">Archived Records</h3>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Data retention & restoration vault</p>
-                    </div>
-                </div>
-                <span className="px-4 py-2 bg-rose-50 text-rose-600 rounded-2xl text-[11px] font-black tracking-widest uppercase">{(trashUsers || []).length} ARCHIVED</span>
-            </div>
-            <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                    <thead>
-                        <tr className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                            <th className="px-8 py-5">Subject Identity</th>
-                            <th className="px-8 py-5">System Role</th>
-                            <th className="px-8 py-5">Archive Date</th>
-                            <th className="px-8 py-5 text-center">Protocol Control</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                        {trashUsers.map((t, idx) => (
-                            <tr key={idx} className="hover:bg-rose-50/10 transition-colors">
-                                <td className="px-8 py-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-black text-[10px] uppercase font-mono">{t.name?.charAt(0) || 'T'}</div>
-                                        <div>
-                                            <p className="text-sm font-black text-slate-800 tracking-tight leading-none">{t.name || t.username}</p>
-                                            <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">{t.mobile}</p>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="px-8 py-4">
-                                    <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-lg text-[9px] font-black uppercase tracking-widest">{t.role || 'GUEST'}</span>
-                                </td>
-                                <td className="px-8 py-4 text-xs font-bold text-slate-400 tabular-nums">{new Date(t.updated_at || t.created_at).toLocaleDateString()}</td>
-                                <td className="px-8 py-4">
-                                    <div className="flex justify-center gap-3">
-                                        <button onClick={() => handleRestoreUser(t.username)} className="flex items-center gap-2 px-6 py-2.5 bg-emerald-50 text-emerald-600 rounded-2xl hover:bg-emerald-600 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest shadow-sm">
-                                            <RefreshCcw size={14} /> Restore Unit
-                                        </button>
-                                        <button onClick={() => { if (window.confirm('PERMANENTLY DELETE?')) { dataService.deleteUser(t.username); refreshData(); } }} className="flex items-center gap-2 px-6 py-2.5 bg-rose-50 text-rose-600 rounded-2xl hover:bg-rose-600 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest shadow-sm">
-                                            <Trash2 size={14} /> Wipe Data
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                        {(!trashUsers || trashUsers.length === 0) && (
-                            <tr><td colSpan={4} className="py-24 text-center">
-                                <div className="w-16 h-16 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto mb-4 border border-slate-100 text-slate-200"><Trash2 size={24} /></div>
-                                <p className="font-black text-slate-200 text-[11px] uppercase tracking-[0.5em] italic">Archive vault is empty</p>
-                            </td></tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
         </div>
     );
 
@@ -2670,12 +2486,6 @@ const Admin = () => {
                                                     className="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
                                                     title="Diagnostic Data"
                                                 ><Eye size={18} /></button>
-
-                                                <button
-                                                    onClick={() => handleReject(d.username)}
-                                                    className="p-3 bg-rose-50 text-rose-400 rounded-xl border border-rose-100 hover:bg-rose-600 hover:text-white transition-all shadow-sm"
-                                                    title="Terminate"
-                                                ><Trash2 size={18} /></button>
                                             </div>
                                         </td>
                                     </tr>
@@ -3108,8 +2918,6 @@ const Admin = () => {
     ];
 
     const SYSTEM_NAV = [
-        { id: 'Logins', icon: RefreshCcw, label: 'Login Logs' },
-        { id: 'Trash', icon: Trash2, label: 'Trash Bin' },
         { id: 'Settings', icon: Settings, label: 'Settings' },
     ];
 
@@ -3742,11 +3550,9 @@ const Admin = () => {
                                 {activeSection === 'Dashboard' && <LiveDashboard data={data} distributors={distributors} SuperDistributors={SuperDistributors} />}
                                 {activeSection === 'EmployeeManager' && <EmployeeManager currentUserForEmployee={isEmployee ? currentUser : null} />}
                                 {activeSection === 'Landing Content' && <LandingCMS />}
-                                {activeSection === 'Trash' && <TrashTable />}
                                 {activeSection === 'Services' && ServicesEditor()}
                                 {activeSection === 'Promotions' && PromotionsEditor()}
                                 {activeSection === 'ReportsAnalyst' && <ReportsAnalyst />}
-                                {activeSection === 'Logins' && LoginsTable()}
                                 {activeSection === 'OurMap' && <OurMap />}
                                 {activeSection === 'Plans' && <AdminPlanManager defaultType="retailer" />}
                                 {activeSection === 'Plans-retailer' && <AdminPlanManager defaultType="retailer" restrictType={true} />}
@@ -4045,23 +3851,6 @@ const AllMembersTable = ({
         window.open(url, '_blank');
     };
 
-    const handleDelete = async (m) => {
-        const identifier = m?._id || m?.id || m?.username || m?.mobile;
-        if (window.confirm(`Are you sure you want to delete ${m.name || m.username}? This action is irreversible.`)) {
-            try {
-                const res = await dataService.deleteUser(identifier);
-                if (res.success) {
-                    alert("User deleted successfully!");
-                    refreshData();
-                } else {
-                    alert(res.message || "Failed to delete user.");
-                }
-            } catch (err) {
-                alert("Error: " + err.message);
-            }
-        }
-    };
-
     return (
         <div className="py-4 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ fontFamily: "'Outfit', sans-serif" }}>
             
@@ -4216,9 +4005,6 @@ const AllMembersTable = ({
                                     title="Login as Member"
                                 >
                                     <Zap size={18} />
-                                </button>
-                                <button onClick={() => handleDelete(m)} className="w-10 h-10 flex items-center justify-center bg-slate-50 hover:bg-rose-500 text-slate-400 hover:text-white rounded-xl transition-all" title="Delete">
-                                    <Trash2 size={18} />
                                 </button>
                             </div>
                         </motion.div>
