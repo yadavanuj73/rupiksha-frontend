@@ -18,7 +18,8 @@ import {
     MapPin,
     Phone,
     FileText,
-    History
+    History,
+    Trash2
 } from 'lucide-react';
 import { userMappingService } from '../../services/apiService';
 
@@ -65,6 +66,10 @@ const UserMapping = () => {
     const [detailsModalUser, setDetailsModalUser] = useState(null);
     const [detailsLoading, setDetailsLoading] = useState(false);
     const [detailsData, setDetailsData] = useState(null);
+
+    // Cleanup Test Users State
+    const [cleaningTestUsers, setCleaningTestUsers] = useState(false);
+    const [showCleanupModal, setShowCleanupModal] = useState(false);
 
     const formRef = useRef(null);
     const retailerInputRef = useRef(null);
@@ -298,6 +303,39 @@ const UserMapping = () => {
         }
     };
 
+    // ─── Execute Safe QA Test Users Cleanup ───
+    const handleCleanupTestUsers = async () => {
+        setCleaningTestUsers(true);
+        setMappingError(null);
+        try {
+            const res = await userMappingService.cleanupTestUsers();
+            if (res && res.success) {
+                const count = res.deletedCount || 0;
+                setMappingSuccess({
+                    message: res.message || `Successfully cleaned up ${count} QA test accounts!`,
+                    retailer: `${count} QA accounts removed`,
+                    parent: 'Database Purged (Backed up safely)'
+                });
+                setTimeout(() => setMappingSuccess(null), 8000);
+                // Clear active retailer suggestions and refresh table
+                setRetailerSuggestions([]);
+                setParentSuggestions([]);
+                setSelectedRetailer(null);
+                setSelectedParent(null);
+                window.dispatchEvent(new Event('membersUpdated'));
+                fetchTableData();
+            } else {
+                setMappingError(res?.error || 'Failed to clean test users.');
+            }
+        } catch (err) {
+            console.error('Error cleaning test users:', err);
+            setMappingError(err?.message || 'Error occurred while cleaning QA test accounts.');
+        } finally {
+            setCleaningTestUsers(false);
+            setShowCleanupModal(false);
+        }
+    };
+
     // ─── Helper for role badge colors ───
     const getRoleBadgeStyle = (role) => {
         const r = (role || '').toUpperCase();
@@ -334,6 +372,14 @@ const UserMapping = () => {
                 </div>
 
                 <div className="flex items-center gap-3 self-end sm:self-auto">
+                    <button
+                        onClick={() => setShowCleanupModal(true)}
+                        className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-2xl border border-rose-200 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm hover:shadow"
+                        title="Safely remove QA test accounts from database"
+                    >
+                        <Trash2 size={14} className={cleaningTestUsers ? 'animate-spin' : ''} />
+                        <span>Clean QA Users</span>
+                    </button>
                     <button
                         onClick={fetchTableData}
                         className="px-4 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-2xl border border-slate-200 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
@@ -1065,6 +1111,60 @@ const UserMapping = () => {
                                     ) : (
                                         <span>Confirm & Map</span>
                                     )}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* ── CLEANUP QA TEST USERS MODAL ── */}
+            <AnimatePresence>
+                {showCleanupModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl space-y-5 border border-slate-100"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                                    <Trash2 size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="text-base font-black text-slate-900">Clean QA Test Accounts</h3>
+                                    <p className="text-xs text-slate-500 font-medium">Safe database cleanup with automated backup</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-900 space-y-2">
+                                <p className="font-bold flex items-center gap-1.5 text-amber-800">
+                                    <Shield size={14} className="shrink-0" />
+                                    Zero Risk & Automated Backup
+                                </p>
+                                <ul className="list-disc pl-4 space-y-1 text-slate-600 text-[11px]">
+                                    <li>All test accounts are backed up into <code>backup_test_users_20261116</code> before deletion.</li>
+                                    <li>Accounts with real financial transactions or active balances are protected and skipped.</li>
+                                    <li>All foreign keys and dependencies are cleaned safely.</li>
+                                </ul>
+                            </div>
+
+                            <div className="flex items-center justify-end gap-3 pt-2">
+                                <button
+                                    onClick={() => setShowCleanupModal(false)}
+                                    disabled={cleaningTestUsers}
+                                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleCleanupTestUsers}
+                                    disabled={cleaningTestUsers}
+                                    className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-lg shadow-rose-600/20 disabled:opacity-50"
+                                >
+                                    {cleaningTestUsers && <RefreshCw size={14} className="animate-spin" />}
+                                    <span>{cleaningTestUsers ? 'Cleaning...' : 'Confirm Cleanup'}</span>
                                 </button>
                             </div>
                         </motion.div>

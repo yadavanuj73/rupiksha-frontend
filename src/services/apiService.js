@@ -582,6 +582,10 @@ export const userMappingService = {
     apiFetch(`/admin/user-mapping/details/${encodeURIComponent(retailerId)}`),
   getMappingHistory: ({ search = '', retailerId = '', page = 0, size = 10 } = {}) =>
     apiFetch(`/admin/user-mapping/history?search=${encodeURIComponent(search)}${retailerId ? `&retailerId=${encodeURIComponent(retailerId)}` : ''}&page=${page}&size=${size}`),
+  cleanupTestUsers: () =>
+    apiFetch('/admin/user-mapping/cleanup-test-users', {
+      method: 'POST',
+    }),
 };
 
 // ─── PAYMENT GATEWAY (Java backend compatibility) ─────────────────────────────

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.rupiksha.backend.api.dto.UserMappingDtos.*;
 import com.rupiksha.backend.security.JwtPrincipal;
+import com.rupiksha.backend.service.TestUserCleanupService;
 import com.rupiksha.backend.service.UserMappingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -24,6 +25,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -41,6 +43,9 @@ class AdminUserMappingControllerTest {
 
     @Mock
     private UserMappingService userMappingService;
+
+    @Mock
+    private TestUserCleanupService testUserCleanupService;
 
     @InjectMocks
     private AdminUserMappingController controller;
@@ -173,5 +178,18 @@ class AdminUserMappingControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].actionType").value("REMAPPING"))
                 .andExpect(jsonPath("$.content[0].newParentRole").value("DISTRIBUTOR"));
+    }
+
+    @Test
+    @DisplayName("POST /cleanup-test-users - should trigger cleanup and return result")
+    void testCleanupTestUsersEndpoint() throws Exception {
+        when(testUserCleanupService.cleanupTestUsers())
+                .thenReturn(Map.of("success", true, "foundCount", 27, "deletedCount", 27, "message", "Successfully cleaned up 27 QA test accounts."));
+
+        mockMvc.perform(post("/api/v1/admin/user-mapping/cleanup-test-users"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.deletedCount").value(27))
+                .andExpect(jsonPath("$.message").value("Successfully cleaned up 27 QA test accounts."));
     }
 }
