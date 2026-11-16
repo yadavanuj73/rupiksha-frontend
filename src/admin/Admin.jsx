@@ -8,7 +8,7 @@ import {
     Camera, Eye, IndianRupee, ChevronRight, Wallet, TrendingUp, History, ArrowRight,
     Building2, UserPlus, UserMinus, ShieldCheck, Link2, Crown, ChevronDown, Mail, MapPin, Search, Smartphone, Clock, LayoutGrid, User, Activity, Lock, Unlock, LogOut, Terminal, SendHorizontal,
     ArrowDownCircle, ArrowUpCircle, Snowflake, RotateCcw, BookOpen, FileSpreadsheet,
-    ArrowLeftRight, Landmark, Fingerprint, Layers
+    ArrowLeftRight, Landmark, Fingerprint, Layers, Network
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { dataService, BACKEND_URL } from '../services/dataService';
@@ -26,6 +26,7 @@ import WalletManager from './components/WalletManager';
 import Overview from './components/Overview';
 import rupikshaNewLogo from '../assets/logo rupiksha transprent.png';
 import EnhancedMembersTable from './components/EnhancedMembersTable';
+import UserMapping from './components/UserMapping';
 import CommissionManagement from './components/CommissionManagement';
 import PayoutChargeManagement from './components/PayoutChargeManagement';
 import IdChargeManagement from './components/IdChargeManagement';
@@ -3098,6 +3099,7 @@ const Admin = () => {
 
     const MANAGEMENT_NAV = [
         { id: 'AllMembers', icon: Users, label: 'Members' },
+        { id: 'UserMapping', icon: Network, label: 'User Mapping' },
         { id: 'EmployeeManager', icon: ShieldCheck, label: 'Employee Mgr' },
         { id: 'Landing Content', icon: FileText, label: 'Landing CMS' },
         { id: 'Services', icon: Package, label: 'Services' },
@@ -3729,7 +3731,7 @@ const Admin = () => {
                         )}
                     </AnimatePresence>
 
-                    <div className={['Overview', 'ReportsAnalyst', 'AllMembers'].includes(activeSection) ? 'w-full space-y-5 px-4 md:px-8' : 'max-w-full lg:max-w-[1800px] mx-auto space-y-5 px-4 md:px-6'}>
+                    <div className={['Overview', 'ReportsAnalyst', 'AllMembers', 'UserMapping'].includes(activeSection) ? 'w-full space-y-5 px-4 md:px-8' : 'max-w-full lg:max-w-[1800px] mx-auto space-y-5 px-4 md:px-6'}>
 
                         {/* ── Permission gate for employee users ── */}
                         {isEmployee && !EMPLOYEE_ALLOWED_SECTIONS.includes(activeSection) ? (
@@ -3805,6 +3807,11 @@ const Admin = () => {
                                 {/* All Members — merged Retailers + Distributors + SuperDistributors */}
                                 {activeSection === 'AllMembers' && (
                                     <EnhancedMembersTable />
+                                )}
+
+                                {/* User Mapping — Hierarchy Management */}
+                                {activeSection === 'UserMapping' && (
+                                    <UserMapping />
                                 )}
 
                                 {/* KYC Management */}

@@ -565,6 +565,27 @@ export const adminService = {
   getCandidateParents: (role) => apiFetch(`/admin/parents${role ? `?role=${role}` : ''}`),
 };
 
+// ─── USER MAPPING SERVICE ──────────────────────────────────────────────────
+export const userMappingService = {
+  searchRetailers: (query = '', page = 0, size = 10, signal) =>
+    apiFetch(`/admin/user-mapping/search-retailers?query=${encodeURIComponent(query)}&page=${page}&size=${size}`, { signal }),
+  searchDistributors: (query = '', page = 0, size = 10, signal) =>
+    apiFetch(`/admin/user-mapping/search-distributors?query=${encodeURIComponent(query)}&page=${page}&size=${size}`, { signal }),
+  searchSuperDistributors: (query = '', page = 0, size = 10, signal) =>
+    apiFetch(`/admin/user-mapping/search-super-distributors?query=${encodeURIComponent(query)}&page=${page}&size=${size}`, { signal }),
+  mapUser: ({ retailerId, targetRole, targetParentId, reason }) =>
+    apiFetch('/admin/user-mapping/map', {
+      method: 'POST',
+      body: JSON.stringify({ retailerId, targetRole, targetParentId, reason }),
+    }),
+  getMappingDetails: (retailerId) =>
+    apiFetch(`/admin/user-mapping/details/${encodeURIComponent(retailerId)}`),
+  getCurrentMappings: ({ search = '', role = 'ALL', page = 0, size = 10 } = {}) =>
+    apiFetch(`/admin/user-mapping/list?search=${encodeURIComponent(search)}&role=${encodeURIComponent(role)}&page=${page}&size=${size}`),
+  getMappingHistory: ({ search = '', retailerId = '', page = 0, size = 10 } = {}) =>
+    apiFetch(`/admin/user-mapping/history?search=${encodeURIComponent(search)}${retailerId ? `&retailerId=${encodeURIComponent(retailerId)}` : ''}&page=${page}&size=${size}`),
+};
+
 // ─── PAYMENT GATEWAY (Java backend compatibility) ─────────────────────────────
 export const paymentGatewayService = {
   createOrder: ({ amount, customer_id, purpose = "WALLET_TOPUP" }) =>

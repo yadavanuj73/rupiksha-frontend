@@ -159,21 +159,13 @@ public class MemberManagementService {
         String addedByUserRef = user.getAddedByUserRef();
 
         if (user.getParentUser() != null) {
-            if (addedByName == null || addedByName.isBlank()) {
-                addedByName = user.getParentUser().getFullName();
-            }
-            if (addedByPartyCode == null || addedByPartyCode.isBlank()) {
-                addedByPartyCode = user.getParentUser().getPartyCode();
-            }
-            if (addedByUserRef == null || addedByUserRef.isBlank()) {
-                addedByUserRef = user.getParentUser().getId().toString();
-            }
-            if (addedByRole == null || addedByRole.isBlank()) {
-                addedByRole = user.getParentUser().getRoles().stream()
-                        .map(r -> r.getName().name())
-                        .findFirst()
-                        .orElse("DISTRIBUTOR");
-            }
+            addedByName = user.getParentUser().getFullName();
+            addedByPartyCode = user.getParentUser().getPartyCode();
+            addedByUserRef = user.getParentUser().getId().toString();
+            addedByRole = user.getParentUser().getRoles().stream()
+                    .map(r -> r.getName().name())
+                    .findFirst()
+                    .orElse("DISTRIBUTOR");
         }
 
         MemberDetailResponse.MemberDetailResponseBuilder builder = MemberDetailResponse.builder()

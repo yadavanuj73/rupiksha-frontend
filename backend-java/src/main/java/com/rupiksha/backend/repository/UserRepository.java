@@ -62,5 +62,21 @@ public interface UserRepository extends JpaRepository<User, UUID> {
            "LOWER(u.mobile) LIKE CONCAT('%', LOWER(:search), '%') OR " +
            "(u.partyCode IS NOT NULL AND LOWER(u.partyCode) LIKE CONCAT('%', LOWER(:search), '%'))")
     List<UUID> findUserIdsBySearchTerm(@Param("search") String search);
+
+    @Query("SELECT u FROM User u JOIN u.roles r WHERE r.name = :role AND (" +
+           ":search IS NULL OR :search = '' OR " +
+           "LOWER(u.mobile) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "(u.partyCode IS NOT NULL AND LOWER(u.partyCode) LIKE LOWER(CONCAT('%', :search, '%'))) OR " +
+           "LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<User> findByRoleAndSearch(@Param("role") RoleName role, @Param("search") String search, Pageable pageable);
+
+    @Query("SELECT u FROM User u JOIN u.roles r WHERE r.name = :role AND u.status IN ('ACTIVE', 'APPROVED') AND (" +
+           ":search IS NULL OR :search = '' OR " +
+           "LOWER(u.mobile) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "(u.partyCode IS NOT NULL AND LOWER(u.partyCode) LIKE LOWER(CONCAT('%', :search, '%'))) OR " +
+           "LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<User> findEligibleParentsByRoleAndSearch(@Param("role") RoleName role, @Param("search") String search, Pageable pageable);
 }
 
