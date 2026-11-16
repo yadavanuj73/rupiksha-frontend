@@ -167,6 +167,8 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
                                         className="absolute right-0 mt-3 w-64 bg-white rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-200 z-50 overflow-hidden"
                                     >
                                         <div className="p-2">
+                                            {/* User details and profile cards temporarily hidden */}
+                                            {false && (
                                             <div className="px-5 py-5 bg-slate-50 rounded-t-[20px] mb-2 border-b border-slate-100 flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 p-0.5 shadow-sm shrink-0">
                                                     <div className="w-full h-full rounded-full bg-white overflow-hidden flex items-center justify-center">
@@ -183,14 +185,15 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
                                                     <p className="text-[11px] font-bold text-slate-400 mt-0.5 truncate">{currentUser?.username}</p>
                                                 </div>
                                             </div>
+                                            )}
                                             <div className="space-y-0.5 px-1">
                                                 {[
                                                     { id: 'profile', icon: <User size={16} />, label: 'My Profile', color: 'text-blue-600 bg-blue-50' },
                                                     { id: 'visiting_card', icon: <CreditCard size={16} />, label: 'Visiting Card', color: 'text-indigo-600 bg-indigo-50' },
                                                     { id: 'settings', icon: <Settings size={16} />, label: 'Settings', color: 'text-slate-600 bg-slate-50' },
                                                     { id: 'logout', icon: <MoreVertical size={16} />, label: 'Sign Out', color: 'text-rose-600 bg-rose-50' },
-                                                ].map((item) => (
-                                                    <button key={item.id} onClick={() => { onProfileClick(item.id); setShowProfileMenu(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-50 transition-colors group ${item.id === 'logout' ? 'mt-4 border-t border-slate-100 pt-4' : ''}`}>
+                                                ].filter(item => !['profile', 'visiting_card', 'settings'].includes(item.id)).map((item) => (
+                                                    <button key={item.id} onClick={() => { onProfileClick(item.id); setShowProfileMenu(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-50 transition-colors group">
                                                         <div className={`p-2 rounded-lg ${item.color} group-hover:scale-110 transition-transform`}>{item.icon}</div>
                                                         <span className="text-[11px] font-bold text-slate-700 uppercase tracking-tight">{item.label}</span>
                                                     </button>
