@@ -39,22 +39,6 @@ public class AuthServiceImpl implements AuthService {
     private final RegistrationRateLimiter registrationRateLimiter;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public AuthServiceImpl(
-            UserRepository userRepository,
-            RoleRepository roleRepository,
-            RefreshTokenRepository refreshTokenRepository,
-            WalletRepository walletRepository,
-            UserServiceRepository userServiceRepository,
-            PasswordEncoder passwordEncoder,
-            JwtService jwtService,
-            OtpService otpService,
-            AppProperties appProperties
-    ) {
-        this(userRepository, roleRepository, refreshTokenRepository, walletRepository,
-                userServiceRepository, passwordEncoder, jwtService, otpService, appProperties,
-                new RegistrationRateLimiter(null));
-    }
-
     @Override
     @Transactional
     public AuthDtos.AuthResponse login(AuthDtos.LoginRequest request) {

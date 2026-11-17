@@ -51,6 +51,8 @@ class AuthServiceImplTest {
     private OtpService otpService;
     @Mock
     private AppProperties appProperties;
+    @Mock
+    private RegistrationRateLimiter registrationRateLimiter;
 
     private AuthServiceImpl authService;
 
@@ -65,7 +67,8 @@ class AuthServiceImplTest {
                 passwordEncoder,
                 jwtService,
                 otpService,
-                appProperties
+                appProperties,
+                registrationRateLimiter
         );
     }
 
