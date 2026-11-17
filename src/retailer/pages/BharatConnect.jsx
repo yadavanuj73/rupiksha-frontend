@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X } from 'lucide-react';
@@ -16,14 +16,20 @@ const BharatConnect = () => {
     // Determine active category from route param or query param
     const activeCategoryId = paramCategoryId || searchParams.get('category');
     const selectedCategory = useMemo(() => {
-        if (!activeCategoryId) return null;
+        if (!activeCategoryId || activeCategoryId === 'b2b') return null;
         return getCategoryById(activeCategoryId);
     }, [activeCategoryId]);
 
-    // Filter categories locally by search query as user types
+    // Filter categories locally by search query as user types (hide B2B card)
     const filteredCategories = useMemo(() => {
-        return searchCategories(searchQuery);
+        return searchCategories(searchQuery).filter((cat) => cat.id !== 'b2b');
     }, [searchQuery]);
+
+    useEffect(() => {
+        if (activeCategoryId === 'b2b') {
+            navigate('/bharat-connect', { replace: true });
+        }
+    }, [activeCategoryId, navigate]);
 
     const handleSelectCategory = (category) => {
         navigate(`/bharat-connect/${category.id}`);
