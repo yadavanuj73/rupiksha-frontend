@@ -376,7 +376,16 @@ const PayoutHub = () => {
         setIsSubmitting(true);
 
         try {
+            const idempotencyKey = (typeof crypto !== 'undefined' && crypto.randomUUID)
+                ? crypto.randomUUID()
+                : ('po_idem_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9));
+
+            const nowStr = new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14);
+            const randSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+            const clientOrderId = `PO_${nowStr}_${randSuffix}`;
+
             const payload = {
+                orderId: clientOrderId,
                 amount: Number(form.amount),
                 beneficiaryName: form.beneficiaryName.trim(),
                 accountNumber: form.accountNumber.trim(),
@@ -388,9 +397,9 @@ const PayoutHub = () => {
                 saveBeneficiary: !selectedBeneficiaryId && saveToBeneficiaries
             };
 
-            const res = await payoutService.initiatePayout(payload);
+            const res = await payoutService.initiatePayout(payload, idempotencyKey);
 
-            if (res && (res.success || res.status === 'SUCCESS' || res.status === 'INITIATED')) {
+            if (res && (res.success || res.status === 'SUCCESS' || res.status === 'PENDING' || res.status === 'INITIATED')) {
                 let respData = {};
                 try {
                     if (res.responseData) {
@@ -398,11 +407,11 @@ const PayoutHub = () => {
                     }
                 } catch(e) {}
                 const bbTxn = respData?.TransactionData?.bbTransactionId || res.transactionId || res.orderId;
-                const utrVal = res.utr || respData?.TransactionData?.bbUtrNumber || bbTxn || 'Pending / In Progress';
+                const utrVal = res.utr || respData?.TransactionData?.bbUtrNumber || (res.status === 'PENDING' ? 'Processing / Verification in progress' : 'Pending / In Progress');
 
                 setReceiptData({
-                    status: res.status || 'SUCCESS',
-                    message: res.message || res.responseMessage || 'Payout transferred successfully',
+                    status: res.status || (res.success ? 'PENDING' : 'FAILED'),
+                    message: res.message || res.responseMessage || (res.status === 'PENDING' ? 'Transfer initiated and in-progress' : 'Payout processed'),
                     orderId: res.orderId || payload.orderId,
                     externalOrderId: res.orderId || payload.orderId,
                     transactionId: bbTxn,

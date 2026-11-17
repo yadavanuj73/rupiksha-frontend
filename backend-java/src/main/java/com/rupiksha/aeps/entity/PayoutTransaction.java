@@ -74,6 +74,25 @@ public class PayoutTransaction {
 
     private String utr; // Unique Transaction Reference
 
+    @Column(name = "idempotency_key", length = 100, unique = true)
+    private String idempotencyKey;
+
+    @Column(name = "request_payload_hash", length = 64)
+    private String requestPayloadHash;
+
+    @Column(name = "provider_txn_id", length = 100)
+    private String providerTxnId;
+
+    @Column(name = "refund_status", length = 20)
+    @Builder.Default
+    private String refundStatus = "NONE"; // NONE, REFUNDED
+
+    @Column(name = "refund_reference", length = 100)
+    private String refundReference;
+
+    @Column(name = "reconciled_at")
+    private LocalDateTime reconciledAt;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 

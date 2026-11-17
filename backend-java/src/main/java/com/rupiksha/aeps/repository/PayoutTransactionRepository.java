@@ -5,9 +5,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import jakarta.persistence.LockModeType;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,6 +19,23 @@ import java.util.Optional;
 public interface PayoutTransactionRepository extends JpaRepository<PayoutTransaction, Long> {
     
     Optional<PayoutTransaction> findByOrderId(String orderId);
+    
+    Optional<PayoutTransaction> findByIdempotencyKey(String idempotencyKey);
+
+    boolean existsByIdempotencyKey(String idempotencyKey);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT t FROM PayoutTransaction t WHERE t.orderId = :orderId")
+    Optional<PayoutTransaction> findWithLockByOrderId(@Param("orderId") String orderId);
+
+    @Query("SELECT t FROM PayoutTransaction t WHERE t.status IN :statuses " +
+           "AND t.createdAt >= :afterDate AND t.createdAt <= :beforeDate " +
+           "ORDER BY t.createdAt ASC")
+    List<PayoutTransaction> findPendingForReconciliation(
+            @Param("statuses") List<String> statuses,
+            @Param("afterDate") LocalDateTime afterDate,
+            @Param("beforeDate") LocalDateTime beforeDate
+    );
     
     List<PayoutTransaction> findByUserId(String userId);
     

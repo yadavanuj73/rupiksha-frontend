@@ -6,13 +6,18 @@ import com.rupiksha.aeps.dto.PayoutBeneficiaryDto;
 import com.rupiksha.aeps.dto.PayoutChargeSlabDto;
 import com.rupiksha.aeps.dto.PayoutRequest;
 import com.rupiksha.aeps.dto.PayoutResponse;
+import com.rupiksha.aeps.entity.PayoutStatusHistory;
 import com.rupiksha.aeps.entity.PayoutTransaction;
+import com.rupiksha.aeps.repository.PayoutStatusHistoryRepository;
+import com.rupiksha.aeps.service.PayoutReconciliationService;
 import com.rupiksha.aeps.service.PayoutService;
 import com.rupiksha.backend.security.JwtPrincipal;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +33,8 @@ import java.util.Map;
 public class PayoutController {
 
     private final PayoutService payoutService;
+    private final PayoutReconciliationService payoutReconciliationService;
+    private final PayoutStatusHistoryRepository payoutStatusHistoryRepository;
 
     private String resolveUserId(JwtPrincipal principal, Authentication authentication) {
         if (principal != null && principal.userId() != null && !principal.userId().isBlank()) {
@@ -51,18 +58,39 @@ public class PayoutController {
         throw new IllegalArgumentException("Unauthorized: User context missing");
     }
 
+    private String extractClientIp(HttpServletRequest request) {
+        if (request == null) return "127.0.0.1";
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip != null && !ip.isBlank()) {
+            if (ip.contains(",")) {
+                ip = ip.split(",")[0].trim();
+            }
+            return ip;
+        }
+        String realIp = request.getHeader("X-Real-IP");
+        if (realIp != null && !realIp.isBlank()) {
+            return realIp.trim();
+        }
+        return request.getRemoteAddr() != null ? request.getRemoteAddr() : "127.0.0.1";
+    }
+
     /**
-     * Initiate instant payout transaction
+     * Initiate instant payout transaction with strict rate limiting, idempotency, and status safeguards.
      */
+    @PreAuthorize("hasAnyRole('RETAILER', 'DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'ADMIN')")
     @PostMapping("/initiate")
     public ResponseEntity<PayoutResponse> initiatePayout(
             @Valid @RequestBody PayoutRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            HttpServletRequest httpRequest,
             @AuthenticationPrincipal JwtPrincipal principal,
             Authentication authentication
     ) {
         String userId = resolveUserId(principal, authentication);
-        log.info("Initiating payout for user: {}, amount: ₹{}, beneficiary: {}", userId, request.getAmount(), request.getBeneficiaryName());
-        PayoutResponse response = payoutService.initiatePayout(request, userId);
+        String clientIp = extractClientIp(httpRequest);
+        log.info("Initiating payout for user: {}, amount: ₹{}, beneficiary: {}, idempotencyKey: {}, ip: {}",
+                userId, request.getAmount(), request.getBeneficiaryName(), idempotencyKey, clientIp);
+        PayoutResponse response = payoutService.initiatePayout(request, userId, idempotencyKey, clientIp);
         return ResponseEntity.ok(response);
     }
 
@@ -186,11 +214,66 @@ public class PayoutController {
         return ResponseEntity.ok(response);
     }
 
-    // ─── ADMIN APPROVAL ENDPOINTS ─────────────────────────────────────────────
+    // ─── ADMIN APPROVAL & RECONCILIATION ENDPOINTS ────────────────────────────
+
+    /**
+     * Admin: Trigger manual reconciliation for a specific payout order
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/admin/reconcile/{orderId}")
+    public ResponseEntity<PayoutResponse> adminReconcileTransaction(
+            @PathVariable String orderId,
+            @AuthenticationPrincipal JwtPrincipal principal,
+            Authentication authentication
+    ) {
+        String adminId = resolveUserId(principal, authentication);
+        log.info("[ADMIN_ACTION] Admin {} triggered manual reconciliation for payout order {}", adminId, orderId);
+        PayoutResponse response = payoutReconciliationService.reconcileTransaction(orderId, adminId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Admin: Trigger batch reconciliation for pending/in-flight payouts
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/admin/reconcile-batch")
+    public ResponseEntity<Map<String, Object>> adminReconcileBatch(
+            @RequestParam(defaultValue = "20") int maxRecords,
+            @AuthenticationPrincipal JwtPrincipal principal,
+            Authentication authentication
+    ) {
+        String adminId = resolveUserId(principal, authentication);
+        log.info("[ADMIN_ACTION] Admin {} triggered batch payout reconciliation (limit: {})", adminId, maxRecords);
+        Map<String, Object> summary = payoutReconciliationService.reconcileAllPending(maxRecords, adminId);
+        return ResponseEntity.ok(summary);
+    }
+
+    /**
+     * Get lifecycle status history / audit trail for a payout order
+     */
+    @GetMapping("/status-history/{orderId}")
+    public ResponseEntity<List<PayoutStatusHistory>> getStatusHistory(
+            @PathVariable String orderId,
+            @AuthenticationPrincipal JwtPrincipal principal,
+            Authentication authentication
+    ) {
+        String userId = resolveUserId(principal, authentication);
+        PayoutTransaction txn = payoutService.getTransactionByOrderId(orderId);
+
+        boolean isAdmin = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin && !txn.getUserId().equals(userId)) {
+            return ResponseEntity.status(403).build();
+        }
+
+        List<PayoutStatusHistory> history = payoutStatusHistoryRepository.findByOrderIdOrderByCreatedAtAsc(orderId);
+        return ResponseEntity.ok(history);
+    }
 
     /**
      * Admin: Get all beneficiaries across all users with user metadata
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/admin/beneficiaries")
     public ResponseEntity<List<PayoutBeneficiaryDto>> getAllBeneficiariesForAdmin(
             @AuthenticationPrincipal JwtPrincipal principal,
@@ -205,6 +288,7 @@ public class PayoutController {
     /**
      * Admin: Get summary statistics for beneficiaries (approved, pending, rejected)
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/admin/beneficiaries/stats")
     public ResponseEntity<Map<String, Long>> getBeneficiaryStatsForAdmin(
             @AuthenticationPrincipal JwtPrincipal principal,
@@ -217,6 +301,7 @@ public class PayoutController {
     /**
      * Admin: Approve a beneficiary
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/admin/beneficiaries/{id}/approve")
     public ResponseEntity<PayoutBeneficiaryDto> approveBeneficiary(
             @PathVariable Long id,
@@ -232,6 +317,7 @@ public class PayoutController {
     /**
      * Admin: Reject a beneficiary
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/admin/beneficiaries/{id}/reject")
     public ResponseEntity<PayoutBeneficiaryDto> rejectBeneficiary(
             @PathVariable Long id,
@@ -257,6 +343,7 @@ public class PayoutController {
     /**
      * Admin: Update payout charge slabs (Auto-computes 18% GST)
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/admin/charges")
     public ResponseEntity<List<PayoutChargeSlabDto>> updatePayoutCharges(
             @RequestBody List<PayoutChargeSlabDto> slabs,

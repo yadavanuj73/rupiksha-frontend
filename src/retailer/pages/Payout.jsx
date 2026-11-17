@@ -115,10 +115,14 @@ const Payout = () => {
         AccountType: formData.accountType
       };
 
-      const result = await payoutService.initiatePayout(payoutData);
+      const idempotencyKey = (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : (`po_idem_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+
+      const result = await payoutService.initiatePayout(payoutData, idempotencyKey);
       setResponse(result);
 
-      if (result.statusCode === '200' || result.status === 'SUCCESS') {
+      if (result.statusCode === '200' || result.status === 'SUCCESS' || result.status === 'PENDING') {
         // Reset form and generate new order ID
         setFormData({
           payoutPipe: 'QUICKZAPS',

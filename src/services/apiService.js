@@ -627,12 +627,18 @@ export const providerTxnService = {
 
 // ─── PAYOUT SERVICE ────────────────────────────────────────────────────────────
 export const payoutService = {
-  // Initiate a payout transaction
-  initiatePayout: (payoutData) =>
-    apiFetch("/payout/initiate", {
+  // Initiate a payout transaction with server-side Idempotency-Key support
+  initiatePayout: (payoutData, idempotencyKey) => {
+    const headers = {};
+    if (idempotencyKey) {
+      headers["Idempotency-Key"] = idempotencyKey;
+    }
+    return apiFetch("/payout/initiate", {
       method: "POST",
+      headers,
       body: JSON.stringify(payoutData),
-    }),
+    });
+  },
 
   // Verify bank account (Penny-less / Penny-drop)
   verifyAccount: (verifyData) =>
@@ -641,13 +647,29 @@ export const payoutService = {
       body: JSON.stringify(verifyData),
     }),
 
-  // Check status of a payout transaction
+  // Check real-time status of a payout transaction
   checkStatus: (orderId) =>
     apiFetch(`/payout/status/${encodeURIComponent(orderId)}`),
 
   // Get transaction by orderId
   getTransaction: (orderId) =>
     apiFetch(`/payout/transaction/${encodeURIComponent(orderId)}`),
+
+  // Get lifecycle status audit history for a payout
+  getStatusHistory: (orderId) =>
+    apiFetch(`/payout/status-history/${encodeURIComponent(orderId)}`),
+
+  // Admin: Reconcile specific transaction
+  adminReconcile: (orderId) =>
+    apiFetch(`/payout/admin/reconcile/${encodeURIComponent(orderId)}`, {
+      method: "POST",
+    }),
+
+  // Admin: Reconcile batch of pending transactions
+  adminReconcileBatch: (maxRecords = 20) =>
+    apiFetch(`/payout/admin/reconcile-batch?maxRecords=${encodeURIComponent(maxRecords)}`, {
+      method: "POST",
+    }),
 
   // Get all transactions for logged-in user
   getTransactions: () =>
