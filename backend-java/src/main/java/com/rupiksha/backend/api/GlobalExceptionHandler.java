@@ -36,6 +36,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(base(HttpStatus.FORBIDDEN, "Access denied"));
     }
 
+    @ExceptionHandler(com.rupiksha.backend.service.RateLimitExceededException.class)
+    public ResponseEntity<?> handleRateLimitExceeded(com.rupiksha.backend.service.RateLimitExceededException ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(base(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage()));
+    }
+
     @ExceptionHandler(com.rupiksha.backend.service.IdPaymentRequiredException.class)
     public ResponseEntity<?> handleIdPaymentRequired(com.rupiksha.backend.service.IdPaymentRequiredException ex) {
         Map<String, Object> body = new HashMap<>();

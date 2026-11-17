@@ -7,6 +7,7 @@ public interface AuthService {
     AuthDtos.AuthResponse login(AuthDtos.LoginRequest request);
     AuthDtos.AuthResponse refresh(AuthDtos.RefreshRequest request);
     AuthDtos.UserView register(AuthDtos.RegisterRequest request);
+    AuthDtos.UserView register(AuthDtos.RegisterRequest request, String clientIp);
     void logout(String refreshToken);
 
     OtpDtos.OtpResponse forgotPasswordSendOtp(AuthDtos.ForgotPasswordRequest request);

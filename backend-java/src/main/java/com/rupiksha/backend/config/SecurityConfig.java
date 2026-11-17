@@ -76,7 +76,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/aeps/rd/test").hasAnyRole("SUPER_ADMIN", "SYSTEM_ADMIN", "DEVELOPER")
                         .requestMatchers(
                                 "/api/v1/admin/approvals/**",
-                                "/api/v1/admin/kyc/**"
+                                "/api/v1/admin/kyc/**",
+                                "/api/v1/admin/add-user",
+                                "/api/admin/add-user",
+                                "/admin/add-user"
                         ).hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
