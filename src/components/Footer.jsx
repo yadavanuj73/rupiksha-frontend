@@ -82,9 +82,11 @@ export default function Footer() {
                         <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight mb-2 font-serif">
                             Rupiksha
                         </h3>
+                        {false && (
                         <p className="text-xs sm:text-sm leading-relaxed text-slate-400 mb-3 text-justify">
                             Transforming digital payments across India with innovative financial solutions for businesses and individuals.
                         </p>
+                        )}
                         <div className="flex items-center gap-2.5 flex-wrap">
                             {SOCIAL_LINKS.map((s, i) => (
                                 <a 
@@ -135,7 +137,7 @@ export default function Footer() {
                             Our Services
                         </h5>
                         <nav className="flex flex-col gap-1.5 w-full text-xs sm:text-sm">
-                            {FOOTER_SERVICES.filter(s => !['money-transfer', 'aadhaar-enabled-payment'].includes(s.slug)).map((s) => (
+                            {FOOTER_SERVICES.filter(s => !['money-transfer', 'aadhaar-enabled-payment', 'banking-services'].includes(s.slug)).map((s) => (
                                 <button
                                     key={s.slug}
                                     onMouseEnter={() => preloadServiceImages()}
