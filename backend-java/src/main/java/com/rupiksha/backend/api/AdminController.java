@@ -39,15 +39,15 @@ import java.util.stream.Collectors;
  * Admin / network management endpoints.
  *
  * Accessible to:
- *  - ADMIN (platform administrator)
- *  - SUPER_DISTRIBUTOR (manages distributors + retailers in their region)
- *  - DISTRIBUTOR (manages their own retailers)
+ * - ADMIN (platform administrator)
+ * - SUPER_DISTRIBUTOR (manages distributors + retailers in their region)
+ * - DISTRIBUTOR (manages their own retailers)
  *
  * Retailers are explicitly denied.
  */
 @Slf4j
 @RestController
-@RequestMapping({"/api/v1/admin", "/api/admin", "/admin"})
+@RequestMapping({ "/api/v1/admin", "/api/admin", "/admin" })
 @PreAuthorize("hasAnyRole('ADMIN','SUPER_DISTRIBUTOR','DISTRIBUTOR')")
 public class AdminController {
     private final UserRepository userRepository;
@@ -61,6 +61,7 @@ public class AdminController {
     @jakarta.persistence.PersistenceContext
     private final jakarta.persistence.EntityManager entityManager;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public AdminController(
             UserRepository userRepository,
             RoleRepository roleRepository,
@@ -80,17 +81,6 @@ public class AdminController {
         this.entityManager = entityManager;
     }
 
-    public AdminController(
-            UserRepository userRepository,
-            RoleRepository roleRepository,
-            PasswordEncoder passwordEncoder,
-            JwtService jwtService,
-            WalletRepository walletRepository,
-            com.rupiksha.backend.repository.UserServiceRepository userServiceRepository,
-            jakarta.persistence.EntityManager entityManager) {
-        this(userRepository, roleRepository, passwordEncoder, jwtService, walletRepository, userServiceRepository, null, entityManager);
-    }
-
     @GetMapping("/approvals")
     public Map<String, Object> approvals(@AuthenticationPrincipal JwtPrincipal principal) {
         List<User> userList;
@@ -108,8 +98,7 @@ public class AdminController {
                 .toList();
         return Map.of(
                 "success", true,
-                "users", users
-        );
+                "users", users);
     }
 
     /**
@@ -117,7 +106,7 @@ public class AdminController {
      * primary `role` string field the legacy frontend expects.
      * Wallet balances are batch-loaded in ONE query to avoid N+1.
      */
-    @GetMapping({"/users", "/members"})
+    @GetMapping({ "/users", "/members" })
     public Map<String, Object> listUsers(@AuthenticationPrincipal JwtPrincipal principal) {
         List<User> users;
         if (!hierarchyService.isAdmin(principal) && principal != null && principal.userId() != null) {
@@ -137,7 +126,7 @@ public class AdminController {
                 .collect(Collectors.toMap(
                         w -> w.getUser().getId(),
                         w -> w.getBalance() != null ? w.getBalance() : BigDecimal.ZERO,
-                        (a, b) -> a  // keep first on duplicate (edge case)
+                        (a, b) -> a // keep first on duplicate (edge case)
                 ));
 
         List<Map<String, Object>> dtos = users.stream()
@@ -145,19 +134,19 @@ public class AdminController {
                 .toList();
         return Map.of(
                 "success", true,
-                "users", dtos
-        );
+                "users", dtos);
     }
 
     /**
      * Single user detail endpoint with full KYC documents loaded on-demand.
      */
-    @GetMapping({"/users/{identifier}", "/members/{identifier}"})
+    @GetMapping({ "/users/{identifier}", "/members/{identifier}" })
     public Map<String, Object> getUserDetails(
             @PathVariable String identifier,
             @AuthenticationPrincipal JwtPrincipal principal) {
         User u = resolveUser(identifier);
-        if (u == null) return Map.of("success", false, "error", "User not found");
+        if (u == null)
+            return Map.of("success", false, "error", "User not found");
         if (!hierarchyService.isAdmin(principal) && principal != null && principal.userId() != null) {
             if (!hierarchyService.isUserInHierarchy(UUID.fromString(principal.userId()), u.getId())) {
                 return Map.of("success", false, "error", "Access denied: User is not within your hierarchy");
@@ -169,12 +158,13 @@ public class AdminController {
     /**
      * User document images for lightbox / inspector modals.
      */
-    @GetMapping({"/users/{identifier}/documents", "/members/{identifier}/documents"})
+    @GetMapping({ "/users/{identifier}/documents", "/members/{identifier}/documents" })
     public Map<String, Object> getUserDocuments(
             @PathVariable String identifier,
             @AuthenticationPrincipal JwtPrincipal principal) {
         User u = resolveUser(identifier);
-        if (u == null) return Map.of("success", false, "error", "User not found");
+        if (u == null)
+            return Map.of("success", false, "error", "User not found");
         if (!hierarchyService.isAdmin(principal) && principal != null && principal.userId() != null) {
             if (!hierarchyService.isUserInHierarchy(UUID.fromString(principal.userId()), u.getId())) {
                 return Map.of("success", false, "error", "Access denied: User is not within your hierarchy");
@@ -197,31 +187,41 @@ public class AdminController {
 
     /**
      * Member deletion disabled: Rupiksha is a financial product with transactional
-     * history, ledger records, wallets, and audit trails. Direct deletion is prohibited.
+     * history, ledger records, wallets, and audit trails. Direct deletion is
+     * prohibited.
      */
-    @DeleteMapping({"/users/{identifier}", "/members/{identifier}"})
+    @DeleteMapping({ "/users/{identifier}", "/members/{identifier}" })
     @PreAuthorize("hasRole('ADMIN')")
     public Map<String, Object> deleteUser(@PathVariable String identifier) {
         return Map.of(
                 "success", false,
-                "error", "Member deletion is disabled because this is a financial product."
-        );
+                "error", "Member deletion is disabled because this is a financial product.");
     }
 
     @PatchMapping("/users/{identifier}")
     @PreAuthorize("hasRole('ADMIN')")
     public Map<String, Object> updateUser(@PathVariable String identifier, @RequestBody Map<String, String> body) {
         User u = resolveUser(identifier);
-        if (u == null) return Map.of("success", false, "error", "User not found");
-        if (body == null) return Map.of("success", false, "error", "Request body required");
-        if (body.containsKey("fullName") && body.get("fullName") != null) u.setFullName(body.get("fullName").trim());
-        if (body.containsKey("email") && body.get("email") != null) u.setEmail(body.get("email").trim());
-        if (body.containsKey("mobile") && body.get("mobile") != null) u.setMobile(body.get("mobile").trim());
-        if (body.containsKey("businessName") && body.get("businessName") != null) u.setBusinessName(body.get("businessName").trim());
-        if (body.containsKey("addressLine1") && body.get("addressLine1") != null) u.setAddressLine1(body.get("addressLine1").trim());
-        if (body.containsKey("city") && body.get("city") != null) u.setCity(body.get("city").trim());
-        if (body.containsKey("stateName") && body.get("stateName") != null) u.setStateName(body.get("stateName").trim());
-        if (body.containsKey("pincode") && body.get("pincode") != null) u.setPincode(body.get("pincode").trim());
+        if (u == null)
+            return Map.of("success", false, "error", "User not found");
+        if (body == null)
+            return Map.of("success", false, "error", "Request body required");
+        if (body.containsKey("fullName") && body.get("fullName") != null)
+            u.setFullName(body.get("fullName").trim());
+        if (body.containsKey("email") && body.get("email") != null)
+            u.setEmail(body.get("email").trim());
+        if (body.containsKey("mobile") && body.get("mobile") != null)
+            u.setMobile(body.get("mobile").trim());
+        if (body.containsKey("businessName") && body.get("businessName") != null)
+            u.setBusinessName(body.get("businessName").trim());
+        if (body.containsKey("addressLine1") && body.get("addressLine1") != null)
+            u.setAddressLine1(body.get("addressLine1").trim());
+        if (body.containsKey("city") && body.get("city") != null)
+            u.setCity(body.get("city").trim());
+        if (body.containsKey("stateName") && body.get("stateName") != null)
+            u.setStateName(body.get("stateName").trim());
+        if (body.containsKey("pincode") && body.get("pincode") != null)
+            u.setPincode(body.get("pincode").trim());
         User saved = userRepository.save(u);
         return toAdminDto(saved);
     }
@@ -229,7 +229,8 @@ public class AdminController {
     @GetMapping("/users/{identifier}/services")
     public List<Map<String, Object>> getUserServicesAdmin(@PathVariable String identifier) {
         User u = resolveUser(identifier);
-        if (u == null) return List.of();
+        if (u == null)
+            return List.of();
         List<com.rupiksha.backend.domain.UserService> services = userServiceRepository.findByUserId(u.getId());
         if (services.isEmpty()) {
             for (com.rupiksha.backend.domain.ServiceType type : com.rupiksha.backend.domain.ServiceType.values()) {
@@ -265,13 +266,15 @@ public class AdminController {
             @RequestBody Map<String, Object> body,
             @AuthenticationPrincipal JwtPrincipal admin) {
         User u = resolveUser(identifier);
-        if (u == null) return Map.of("success", false, "error", "User not found");
+        if (u == null)
+            return Map.of("success", false, "error", "User not found");
         String serviceTypeStr = (String) body.get("serviceType");
         Boolean enable = (Boolean) body.get("enable");
         if (serviceTypeStr == null || enable == null) {
             return Map.of("success", false, "error", "serviceType and enable boolean required");
         }
-        com.rupiksha.backend.domain.ServiceType type = com.rupiksha.backend.domain.ServiceType.valueOf(serviceTypeStr.trim().toUpperCase());
+        com.rupiksha.backend.domain.ServiceType type = com.rupiksha.backend.domain.ServiceType
+                .valueOf(serviceTypeStr.trim().toUpperCase());
         var opt = userServiceRepository.findByUserIdAndServiceType(u.getId(), type);
         com.rupiksha.backend.domain.UserService service = opt.orElseGet(() -> {
             com.rupiksha.backend.domain.UserService ns = new com.rupiksha.backend.domain.UserService();
@@ -291,8 +294,7 @@ public class AdminController {
                 "id", saved.getId().toString(),
                 "serviceType", saved.getServiceType().name(),
                 "isEnabled", saved.getIsEnabled(),
-                "enabledBy", saved.getEnabledBy()
-        );
+                "enabledBy", saved.getEnabledBy());
     }
 
     @PostMapping("/approvals/{id}")
@@ -312,15 +314,20 @@ public class AdminController {
             // Persist party code and upline ownership info supplied by the admin UI
             if (body != null) {
                 String pc = body.get("partyCode");
-                if (pc != null && !pc.isBlank()) user.setPartyCode(pc.trim().toUpperCase());
+                if (pc != null && !pc.isBlank())
+                    user.setPartyCode(pc.trim().toUpperCase());
                 String abn = body.get("addedByName");
-                if (abn != null && !abn.isBlank()) user.setAddedByName(abn.trim());
+                if (abn != null && !abn.isBlank())
+                    user.setAddedByName(abn.trim());
                 String abr = body.get("addedByRole");
-                if (abr != null && !abr.isBlank()) user.setAddedByRole(abr.trim());
+                if (abr != null && !abr.isBlank())
+                    user.setAddedByRole(abr.trim());
                 String abpc = body.get("addedByPartyCode");
-                if (abpc != null && !abpc.isBlank()) user.setAddedByPartyCode(abpc.trim());
+                if (abpc != null && !abpc.isBlank())
+                    user.setAddedByPartyCode(abpc.trim());
                 String abur = body.get("addedByUserRef");
-                if (abur != null && !abur.isBlank()) user.setAddedByUserRef(abur.trim());
+                if (abur != null && !abur.isBlank())
+                    user.setAddedByUserRef(abur.trim());
             }
         } else if ("reject".equals(normalized)) {
             user.setStatus(UserStatus.REJECTED);
@@ -347,19 +354,19 @@ public class AdminController {
                 "username", saved.getUsername(),
                 "temporaryPassword", tempPassword,
                 "status", saved.getStatus().name(),
-                "message", "Share temporary password securely. User should change password after first login."
-        );
+                "message", "Share temporary password securely. User should change password after first login.");
     }
 
     /**
      * Admin-driven user creation (used by "Add Member" modal in the admin UI).
      * Creates an already-approved user with a known password, so credentials can
-     * be shared immediately with the new retailer / distributor / super distributor.
+     * be shared immediately with the new retailer / distributor / super
+     * distributor.
      */
     @PostMapping("/add-user")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> addUser(@RequestBody Map<String, Object> body,
-                                                       @AuthenticationPrincipal JwtPrincipal principal) {
+            @AuthenticationPrincipal JwtPrincipal principal) {
         Map<String, Object> resp = new HashMap<>();
         try {
             String username = asString(body.get("username"));
@@ -371,7 +378,8 @@ public class AdminController {
             String roleRaw = asString(body.get("role"));
             String shopName = asString(body.get("shopName"));
 
-            if (username == null || username.isBlank()) username = phone;
+            if (username == null || username.isBlank())
+                username = phone;
             if (email == null || email.isBlank()) {
                 if (phone != null && !phone.isBlank()) {
                     email = phone + "@rupiksha.local";
@@ -417,8 +425,10 @@ public class AdminController {
                 u.setAddedByUserRef(principal.userId().toString());
             }
 
-            if (address != null && !address.isBlank()) u.setAddressLine1(address);
-            if (shopName != null && !shopName.isBlank() && (u.getAddressLine1() == null || u.getAddressLine1().isBlank())) {
+            if (address != null && !address.isBlank())
+                u.setAddressLine1(address);
+            if (shopName != null && !shopName.isBlank()
+                    && (u.getAddressLine1() == null || u.getAddressLine1().isBlank())) {
                 u.setAddressLine1(shopName);
             }
             Set<Role> roles = new HashSet<>();
@@ -462,7 +472,7 @@ public class AdminController {
     @PostMapping("/impersonate/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
     public Map<String, Object> impersonate(@PathVariable String userId,
-                                           @AuthenticationPrincipal JwtPrincipal principal) {
+            @AuthenticationPrincipal JwtPrincipal principal) {
         User target = userRepository.findById(UUID.fromString(userId))
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
@@ -486,8 +496,7 @@ public class AdminController {
                 "roles", roles,
                 "status", target.getStatus() == null ? "APPROVED" : target.getStatus().name(),
                 "kycStatus", target.getKycStatus() == null ? "NOT_SUBMITTED" : target.getKycStatus().name(),
-                "impersonated", true
-        );
+                "impersonated", true);
     }
 
     @GetMapping("/kyc/pending")
@@ -517,8 +526,7 @@ public class AdminController {
     @PreAuthorize("hasRole('ADMIN')")
     public KycDtos.KycStatusResponse decideKyc(
             @PathVariable String id,
-            @Valid @RequestBody KycDtos.KycDecisionRequest request
-    ) {
+            @Valid @RequestBody KycDtos.KycDecisionRequest request) {
         User user = userRepository.findById(UUID.fromString(id))
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
         String action = request.action().trim().toLowerCase();
@@ -543,16 +551,14 @@ public class AdminController {
                 saved.getKycStatus().name(),
                 saved.getKycRejectionReason(),
                 saved.getKycSubmittedAt(),
-                saved.getKycApprovedAt()
-        );
+                saved.getKycApprovedAt());
     }
 
     private void enableKycServices(User user) {
         List<com.rupiksha.backend.domain.ServiceType> kycServices = List.of(
                 com.rupiksha.backend.domain.ServiceType.AEPS,
                 com.rupiksha.backend.domain.ServiceType.DMT,
-                com.rupiksha.backend.domain.ServiceType.PAYOUT
-        );
+                com.rupiksha.backend.domain.ServiceType.PAYOUT);
         for (com.rupiksha.backend.domain.ServiceType type : kycServices) {
             var opt = userServiceRepository.findByUserIdAndServiceType(user.getId(), type);
             com.rupiksha.backend.domain.UserService s = opt.orElseGet(() -> {
@@ -570,16 +576,20 @@ public class AdminController {
 
     @PostMapping("/users/{identifier}/status")
     @PreAuthorize("hasRole('ADMIN')")
-    public Map<String, Object> updateUserStatus(@PathVariable String identifier, @RequestBody Map<String, String> body) {
+    public Map<String, Object> updateUserStatus(@PathVariable String identifier,
+            @RequestBody Map<String, String> body) {
         User u = resolveUser(identifier);
-        if (u == null) return Map.of("success", false, "error", "User not found");
+        if (u == null)
+            return Map.of("success", false, "error", "User not found");
         String statusStr = body.get("status");
-        if (statusStr == null || statusStr.isBlank()) return Map.of("success", false, "error", "Status required");
+        if (statusStr == null || statusStr.isBlank())
+            return Map.of("success", false, "error", "Status required");
         try {
             UserStatus newStatus = UserStatus.valueOf(statusStr.trim().toUpperCase());
             u.setStatus(newStatus);
             User saved = userRepository.save(u);
-            return Map.of("success", true, "message", "User status updated to " + newStatus.name(), "user", toAdminDto(saved));
+            return Map.of("success", true, "message", "User status updated to " + newStatus.name(), "user",
+                    toAdminDto(saved));
         } catch (Exception e) {
             return Map.of("success", false, "error", "Invalid status value: " + statusStr);
         }
@@ -587,9 +597,11 @@ public class AdminController {
 
     @PostMapping("/users/{identifier}/reset-password")
     @PreAuthorize("hasRole('ADMIN')")
-    public Map<String, Object> adminResetPassword(@PathVariable String identifier, @RequestBody Map<String, String> body) {
+    public Map<String, Object> adminResetPassword(@PathVariable String identifier,
+            @RequestBody Map<String, String> body) {
         User u = resolveUser(identifier);
-        if (u == null) return Map.of("success", false, "error", "User not found");
+        if (u == null)
+            return Map.of("success", false, "error", "User not found");
         String newPassword = body.get("newPassword");
         if (newPassword == null || newPassword.length() < 6) {
             return Map.of("success", false, "error", "New password must be at least 6 characters");
@@ -604,7 +616,8 @@ public class AdminController {
     @PreAuthorize("hasRole('ADMIN')")
     public Map<String, Object> adminResetPin(@PathVariable String identifier, @RequestBody Map<String, String> body) {
         User u = resolveUser(identifier);
-        if (u == null) return Map.of("success", false, "error", "User not found");
+        if (u == null)
+            return Map.of("success", false, "error", "User not found");
         String newPin = body.get("newPin");
         if (newPin == null || newPin.isBlank()) {
             return Map.of("success", false, "error", "New PIN is required");
@@ -619,7 +632,8 @@ public class AdminController {
     @PreAuthorize("hasRole('ADMIN')")
     public Map<String, Object> changeParent(@PathVariable String identifier, @RequestBody Map<String, String> body) {
         User u = resolveUser(identifier);
-        if (u == null) return Map.of("success", false, "error", "User not found");
+        if (u == null)
+            return Map.of("success", false, "error", "User not found");
         String parentIdentifier = body.get("parentIdentifier");
         if (parentIdentifier == null || parentIdentifier.isBlank()) {
             u.setParentUser(null);
@@ -629,7 +643,8 @@ public class AdminController {
             u.setAddedByRole(null);
         } else {
             User parent = resolveUser(parentIdentifier);
-            if (parent == null) return Map.of("success", false, "error", "Parent user not found");
+            if (parent == null)
+                return Map.of("success", false, "error", "Parent user not found");
             u.setParentUser(parent);
             u.setAddedByUserRef(parent.getId().toString());
             u.setAddedByName(parent.getFullName());
@@ -651,17 +666,16 @@ public class AdminController {
                         "username", u.getUsername(),
                         "mobile", u.getMobile(),
                         "partyCode", u.getPartyCode() == null ? "" : u.getPartyCode(),
-                        "role", u.getRoles().stream().map(r -> r.getName().name()).findFirst().orElse("RETAILER")
-                ))
+                        "role", u.getRoles().stream().map(r -> r.getName().name()).findFirst().orElse("RETAILER")))
                 .toList();
         return Map.of("success", true, "parents", parents);
     }
 
-
     @GetMapping("/reports/users")
     public Map<String, Object> userReport() {
         long total = userRepository.count();
-        long approved = userRepository.findAll().stream().filter(u -> u.getStatus() == UserStatus.APPROVED || u.getStatus() == UserStatus.ACTIVE).count();
+        long approved = userRepository.findAll().stream()
+                .filter(u -> u.getStatus() == UserStatus.APPROVED || u.getStatus() == UserStatus.ACTIVE).count();
         long pending = userRepository.findAll().stream().filter(u -> u.getStatus() == UserStatus.PENDING).count();
         long kycPending = userRepository.findByKycStatus(KycStatus.PENDING).size();
         long kycApproved = userRepository.findByKycStatus(KycStatus.APPROVED).size();
@@ -670,8 +684,7 @@ public class AdminController {
                 "approvedUsers", approved,
                 "pendingUsers", pending,
                 "kycPendingUsers", kycPending,
-                "kycApprovedUsers", kycApproved
-        );
+                "kycApprovedUsers", kycApproved);
     }
 
     @GetMapping("/reports/top-merchants")
@@ -683,7 +696,7 @@ public class AdminController {
             String targetState = state.trim().toLowerCase();
             users = users.stream()
                     .filter(u -> (u.getStateName() != null && u.getStateName().toLowerCase().contains(targetState)) ||
-                                 (u.getShopState() != null && u.getShopState().toLowerCase().contains(targetState)))
+                            (u.getShopState() != null && u.getShopState().toLowerCase().contains(targetState)))
                     .toList();
         }
 
@@ -693,8 +706,7 @@ public class AdminController {
                 .collect(Collectors.toMap(
                         w -> w.getUser().getId(),
                         Wallet::getBalance,
-                        (a, b) -> a
-                ));
+                        (a, b) -> a));
 
         List<Map<String, Object>> merchants = users.stream().map(u -> {
             Map<String, Object> m = new HashMap<>();
@@ -702,7 +714,8 @@ public class AdminController {
             m.put("name", u.getFullName() != null ? u.getFullName() : u.getUsername());
             m.put("business_name", u.getBusinessName() != null ? u.getBusinessName() : "N/A");
             m.put("mobile", u.getMobile());
-            m.put("state", u.getStateName() != null ? u.getStateName() : (u.getShopState() != null ? u.getShopState() : "N/A"));
+            m.put("state", u.getStateName() != null ? u.getStateName()
+                    : (u.getShopState() != null ? u.getShopState() : "N/A"));
             BigDecimal bal = walletMap.getOrDefault(u.getId(), BigDecimal.ZERO);
             m.put("wallet_balance", bal);
             m.put("total_volume", bal);
@@ -719,20 +732,25 @@ public class AdminController {
 
     /** Resolve a user by UUID, username, or mobile. */
     private User resolveUser(String identifier) {
-        if (identifier == null || identifier.isBlank()) return null;
+        if (identifier == null || identifier.isBlank())
+            return null;
         try {
             UUID id = UUID.fromString(identifier);
             return userRepository.findById(id).orElse(null);
-        } catch (IllegalArgumentException ignored) { /* not a uuid */ }
+        } catch (IllegalArgumentException ignored) {
+            /* not a uuid */ }
         return userRepository.findByUsername(identifier)
                 .or(() -> userRepository.findByMobile(identifier))
                 .or(() -> userRepository.findByEmail(identifier))
                 .orElse(null);
     }
 
-    /** Light DTO for the admin members list. Excludes password hash and base64 KYC blobs by default.
-     *  Accepts a pre-built wallet balance map for batch-load callers; falls back to
-     *  a direct single-user lookup when the map is empty (detail / approval views). */
+    /**
+     * Light DTO for the admin members list. Excludes password hash and base64 KYC
+     * blobs by default.
+     * Accepts a pre-built wallet balance map for batch-load callers; falls back to
+     * a direct single-user lookup when the map is empty (detail / approval views).
+     */
     private Map<String, Object> toAdminDto(User u, Map<UUID, BigDecimal> walletMap, boolean includeDocuments) {
         String primaryRole = u.getRoles().stream()
                 .map(r -> r.getName().name())
@@ -762,7 +780,8 @@ public class AdminController {
         dto.put("shopAddress", u.getShopAddress());
         dto.put("permanentAddress", u.getPermanentAddress());
 
-        // Avatar / Photo: keep if short URL or small; omit if massive base64 in list view
+        // Avatar / Photo: keep if short URL or small; omit if massive base64 in list
+        // view
         String photo = u.getPhotoUrl();
         if (!includeDocuments && photo != null && photo.length() > 50000) {
             photo = null;
@@ -782,7 +801,8 @@ public class AdminController {
         } else {
             // Lightweight flags so UI knows document availability without 40MB download
             dto.put("hasAadhaar", u.getAadhaarPhotoUrl() != null && !u.getAadhaarPhotoUrl().isBlank());
-            dto.put("hasPan", (u.getPanNumber() != null && !u.getPanNumber().isBlank()) || (u.getPanPhotoUrl() != null && !u.getPanPhotoUrl().isBlank()));
+            dto.put("hasPan", (u.getPanNumber() != null && !u.getPanNumber().isBlank())
+                    || (u.getPanPhotoUrl() != null && !u.getPanPhotoUrl().isBlank()));
             dto.put("hasShopPhoto", u.getShopPhotoUrl() != null && !u.getShopPhotoUrl().isBlank());
             dto.put("hasBankPassbook", u.getBankPassbookUrl() != null && !u.getBankPassbookUrl().isBlank());
             dto.put("hasAadhaarBack", u.getAadhaarBackPhotoUrl() != null && !u.getAadhaarBackPhotoUrl().isBlank());
@@ -798,7 +818,8 @@ public class AdminController {
         dto.put("businessName", u.getBusinessName());
         dto.put("partyCode", u.getPartyCode());
         dto.put("state", u.getStateName());
-        dto.put("registrationStatus", u.getRegistrationStatus() == null ? "APPROVED" : u.getRegistrationStatus().name());
+        dto.put("registrationStatus",
+                u.getRegistrationStatus() == null ? "APPROVED" : u.getRegistrationStatus().name());
         dto.put("pinConfigured", u.getPinHash() != null && !u.getPinHash().isBlank());
         dto.put("otpVerified", u.getOtpVerified() != null && u.getOtpVerified());
         dto.put("passwordLastChanged", u.getPasswordLastChanged());
@@ -848,7 +869,6 @@ public class AdminController {
         dto.put("createdAt", u.getCreatedAt());
         dto.put("updatedAt", u.getUpdatedAt());
 
-
         // ─── Authoritative wallet balance ──────────────────────────────────────
         // Use the pre-built map (batch-load) when available; otherwise do a
         // single direct lookup (for detail / approval endpoints with 1 user).
@@ -860,7 +880,7 @@ public class AdminController {
                     .map(Wallet::getBalance)
                     .orElse(BigDecimal.ZERO);
         }
-        dto.put("walletBalance", balance);          // canonical field read by Members table
+        dto.put("walletBalance", balance); // canonical field read by Members table
         dto.put("wallet", Map.of("balance", balance)); // legacy compat
         return dto;
     }
@@ -870,13 +890,16 @@ public class AdminController {
         return toAdminDto(u, walletMap, false);
     }
 
-    /** Convenience overload for single-user endpoints (approvals, kyc detail, etc.) */
+    /**
+     * Convenience overload for single-user endpoints (approvals, kyc detail, etc.)
+     */
     private Map<String, Object> toAdminDto(User u) {
         return toAdminDto(u, Collections.emptyMap(), true);
     }
 
     private RoleName mapRole(String raw) {
-        if (raw == null) return RoleName.RETAILER;
+        if (raw == null)
+            return RoleName.RETAILER;
         String normalized = raw.replace('-', '_').replace(' ', '_').toUpperCase(Locale.ROOT);
         return switch (normalized) {
             case "ADMIN" -> RoleName.ADMIN;

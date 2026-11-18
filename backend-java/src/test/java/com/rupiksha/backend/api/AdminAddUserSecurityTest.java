@@ -40,6 +40,8 @@ class AdminAddUserSecurityTest {
     private WalletRepository walletRepository;
     @Mock
     private UserServiceRepository userServiceRepository;
+    @Mock
+    private com.rupiksha.backend.service.HierarchyService hierarchyService;
 
     private AdminController adminController;
 
@@ -52,6 +54,7 @@ class AdminAddUserSecurityTest {
                 jwtService,
                 walletRepository,
                 userServiceRepository,
+                hierarchyService,
                 null
         );
     }
