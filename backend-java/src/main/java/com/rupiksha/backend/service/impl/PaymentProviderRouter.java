@@ -11,15 +11,15 @@ import java.util.List;
 public class PaymentProviderRouter {
     private final List<PaymentGatewayProvider> providers;
     private final PaymentGatewayProvider selected;
+    private final boolean productionProfile;
 
     public PaymentProviderRouter(List<PaymentGatewayProvider> providers, AppProperties appProperties, Environment environment) {
         this.providers = providers;
         String configured = appProperties.providers().payment().name() == null
                 ? "mock"
                 : appProperties.providers().payment().name().trim().toLowerCase();
-        boolean productionProfile = List.of(environment.getActiveProfiles()).contains("prod");
-        if (productionProfile && "mock".equals(configured)
-                && !appProperties.environment().allowMockProvidersInProduction()) {
+        this.productionProfile = List.of(environment.getActiveProfiles()).contains("prod");
+        if (productionProfile && ("mock".equals(configured) || configured.isBlank())) {
             throw new IllegalStateException(
                     "Mock payment provider is blocked in production profile. Set PAYMENT_PROVIDER to a real provider.");
         }
@@ -38,6 +38,9 @@ public class PaymentProviderRouter {
 
     public PaymentGatewayProvider byNameOrDefault(String provider) {
         if (provider == null || provider.isBlank()) return selected;
+        if (productionProfile && "mock".equalsIgnoreCase(provider)) {
+            throw new IllegalStateException("Mock payment provider is blocked in production profile");
+        }
         return providers.stream()
                 .filter(p -> p.providerName().equalsIgnoreCase(provider))
                 .findFirst()

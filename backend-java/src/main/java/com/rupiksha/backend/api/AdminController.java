@@ -21,6 +21,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import com.rupiksha.backend.service.HierarchyService;
 import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.time.Instant;
@@ -47,7 +48,6 @@ import java.util.stream.Collectors;
 @Slf4j
 @RestController
 @RequestMapping({"/api/v1/admin", "/api/admin", "/admin"})
-@RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('ADMIN','SUPER_DISTRIBUTOR','DISTRIBUTOR')")
 public class AdminController {
     private final UserRepository userRepository;
@@ -56,13 +56,53 @@ public class AdminController {
     private final JwtService jwtService;
     private final WalletRepository walletRepository;
     private final com.rupiksha.backend.repository.UserServiceRepository userServiceRepository;
+    private final HierarchyService hierarchyService;
 
     @jakarta.persistence.PersistenceContext
     private final jakarta.persistence.EntityManager entityManager;
 
+    public AdminController(
+            UserRepository userRepository,
+            RoleRepository roleRepository,
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService,
+            WalletRepository walletRepository,
+            com.rupiksha.backend.repository.UserServiceRepository userServiceRepository,
+            HierarchyService hierarchyService,
+            jakarta.persistence.EntityManager entityManager) {
+        this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
+        this.walletRepository = walletRepository;
+        this.userServiceRepository = userServiceRepository;
+        this.hierarchyService = hierarchyService;
+        this.entityManager = entityManager;
+    }
+
+    public AdminController(
+            UserRepository userRepository,
+            RoleRepository roleRepository,
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService,
+            WalletRepository walletRepository,
+            com.rupiksha.backend.repository.UserServiceRepository userServiceRepository,
+            jakarta.persistence.EntityManager entityManager) {
+        this(userRepository, roleRepository, passwordEncoder, jwtService, walletRepository, userServiceRepository, null, entityManager);
+    }
+
     @GetMapping("/approvals")
-    public Map<String, Object> approvals() {
-        List<Map<String, Object>> users = userRepository.findAll().stream()
+    public Map<String, Object> approvals(@AuthenticationPrincipal JwtPrincipal principal) {
+        List<User> userList;
+        if (!hierarchyService.isAdmin(principal) && principal != null && principal.userId() != null) {
+            Set<UUID> downlineIds = hierarchyService.getDownlineUserIds(UUID.fromString(principal.userId()));
+            userList = userRepository.findAll().stream()
+                    .filter(u -> downlineIds.contains(u.getId()))
+                    .toList();
+        } else {
+            userList = userRepository.findAll();
+        }
+        List<Map<String, Object>> users = userList.stream()
                 .filter(u -> u.getStatus() == UserStatus.PENDING)
                 .map(this::toAdminDto)
                 .toList();
@@ -78,10 +118,18 @@ public class AdminController {
      * Wallet balances are batch-loaded in ONE query to avoid N+1.
      */
     @GetMapping({"/users", "/members"})
-    public Map<String, Object> listUsers() {
-        List<User> users = userRepository.findAll();
+    public Map<String, Object> listUsers(@AuthenticationPrincipal JwtPrincipal principal) {
+        List<User> users;
+        if (!hierarchyService.isAdmin(principal) && principal != null && principal.userId() != null) {
+            Set<UUID> downlineIds = hierarchyService.getDownlineUserIds(UUID.fromString(principal.userId()));
+            users = userRepository.findAll().stream()
+                    .filter(u -> downlineIds.contains(u.getId()))
+                    .toList();
+        } else {
+            users = userRepository.findAll();
+        }
 
-        // Batch-load wallets for ALL users in one query
+        // Batch-load wallets for users in one query
         List<UUID> userIds = users.stream().map(User::getId).collect(Collectors.toList());
         Map<UUID, BigDecimal> walletMap = walletRepository.findByUserIdIn(userIds)
                 .stream()
@@ -105,9 +153,16 @@ public class AdminController {
      * Single user detail endpoint with full KYC documents loaded on-demand.
      */
     @GetMapping({"/users/{identifier}", "/members/{identifier}"})
-    public Map<String, Object> getUserDetails(@PathVariable String identifier) {
+    public Map<String, Object> getUserDetails(
+            @PathVariable String identifier,
+            @AuthenticationPrincipal JwtPrincipal principal) {
         User u = resolveUser(identifier);
         if (u == null) return Map.of("success", false, "error", "User not found");
+        if (!hierarchyService.isAdmin(principal) && principal != null && principal.userId() != null) {
+            if (!hierarchyService.isUserInHierarchy(UUID.fromString(principal.userId()), u.getId())) {
+                return Map.of("success", false, "error", "Access denied: User is not within your hierarchy");
+            }
+        }
         return Map.of("success", true, "user", toAdminDto(u, Collections.emptyMap(), true));
     }
 
@@ -115,9 +170,16 @@ public class AdminController {
      * User document images for lightbox / inspector modals.
      */
     @GetMapping({"/users/{identifier}/documents", "/members/{identifier}/documents"})
-    public Map<String, Object> getUserDocuments(@PathVariable String identifier) {
+    public Map<String, Object> getUserDocuments(
+            @PathVariable String identifier,
+            @AuthenticationPrincipal JwtPrincipal principal) {
         User u = resolveUser(identifier);
         if (u == null) return Map.of("success", false, "error", "User not found");
+        if (!hierarchyService.isAdmin(principal) && principal != null && principal.userId() != null) {
+            if (!hierarchyService.isUserInHierarchy(UUID.fromString(principal.userId()), u.getId())) {
+                return Map.of("success", false, "error", "Access denied: User is not within your hierarchy");
+            }
+        }
         Map<String, Object> docs = new HashMap<>();
         docs.put("userId", u.getId().toString());
         docs.put("photoUrl", u.getPhotoUrl());

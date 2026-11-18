@@ -70,13 +70,8 @@ public class AdminAuthController {
     }
 
     @GetMapping("/dovesoft-diagnostics")
-    public org.springframework.http.ResponseEntity<?> getDoveSoftDiagnostics(
-            @RequestHeader(value = "X-Admin-Key", required = false) String adminKey
-    ) {
-        if (!"Admin@Rupiksha2025".equals(adminKey)) {
-            return org.springframework.http.ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(java.util.Map.of("error", "Access denied"));
-        }
+    @PreAuthorize("hasRole('ADMIN')")
+    public org.springframework.http.ResponseEntity<?> getDoveSoftDiagnostics() {
         return org.springframework.http.ResponseEntity.ok(adminAuthService.getDoveSoftDiagnostics());
     }
 

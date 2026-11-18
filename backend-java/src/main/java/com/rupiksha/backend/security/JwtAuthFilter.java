@@ -103,6 +103,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         return;
                     }
                 }
+            } else {
+                // For non-admin accounts: reject requests if account is inactive or rejected in database
+                UUID nonAdminId = tryParseUuid(subject);
+                if (nonAdminId != null) {
+                    userRepository.findById(nonAdminId).ifPresent(user -> {
+                        if (user.getStatus() == com.rupiksha.backend.domain.UserStatus.INACTIVE
+                                || user.getStatus() == com.rupiksha.backend.domain.UserStatus.REJECTED) {
+                            log.warn("Blocked request from deactivated or rejected user {}", subject);
+                            throw new org.springframework.security.access.AccessDeniedException("Account is inactive or rejected");
+                        }
+                    });
+                }
             }
 
             var authorities = roles == null ? List.<SimpleGrantedAuthority>of() :

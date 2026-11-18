@@ -82,10 +82,8 @@ export function AuthProvider({ children }) {
           console.log('[AuthContext] Attempt', attempts, 'Raw localStorage data:', raw ? 'found' : 'null');
           if (raw) {
             const parsed = JSON.parse(raw);
-            console.log('[AuthContext] Parsed data:', parsed);
             const impToken = parsed.token;
             const impUserObj = parsed.user;
-            console.log('[AuthContext] impToken exists:', !!impToken, 'impUserObj exists:', !!impUserObj);
             if (impToken && impUserObj) {
               localStorage.removeItem(impKey); // clean up handoff key immediately
               // Use a separate key so we do NOT overwrite the admin's rupiksha_token
@@ -93,11 +91,9 @@ export function AuthProvider({ children }) {
               localStorage.setItem('rupiksha_imp_user', JSON.stringify(impUserObj));
               // Immediately set user state so UI reflects impersonated user
               const normalizedUser = normalizeUserSession(impUserObj);
-              console.log('[AuthContext] Normalized user:', normalizedUser);
               if (normalizedUser) {
                 setUser(normalizedUser);
                 setPermissions(normalizedUser.permissions || []);
-                console.log('[AuthContext] Impersonation success, user set');
               }
               // Clean ?_imp= from URL without reload
               params.delete('_imp');

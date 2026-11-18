@@ -27,6 +27,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +37,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping({"/api/v1/dashboard", "/dashboard", "/api/v1/admin/dashboard", "/admin/dashboard"})
 @RequiredArgsConstructor
+@org.springframework.security.access.prepost.PreAuthorize("isAuthenticated()")
 public class DashboardController {
 
     private final PayoutTransactionRepository payoutTransactionRepository;
@@ -44,13 +46,28 @@ public class DashboardController {
     private final BbpsTransactionRepository bbpsTransactionRepository;
     private final CommissionTransactionRepository commissionTransactionRepository;
     private final TxnRepository txnRepository;
+    private final com.rupiksha.backend.service.HierarchyService hierarchyService;
 
     @GetMapping("/live")
-    public ResponseEntity<Map<String, Object>> getLiveDashboard() {
+    public ResponseEntity<Map<String, Object>> getLiveDashboard(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal com.rupiksha.backend.security.JwtPrincipal principal) {
         LocalDateTime todayStart = LocalDate.now().atStartOfDay();
         LocalDateTime todayEnd = LocalDate.now().atTime(LocalTime.MAX);
         LocalDateTime monthStart = LocalDate.now().withDayOfMonth(1).atStartOfDay();
         LocalDateTime monthEnd = LocalDate.now().atTime(LocalTime.MAX);
+
+        boolean isAdmin = hierarchyService.isAdmin(principal);
+        java.util.Set<UUID> inScopeUserIds = null;
+        if (!isAdmin && principal != null && principal.userId() != null) {
+            UUID callerId = UUID.fromString(principal.userId());
+            boolean isDistributorOrSuper = principal.roles() != null && principal.roles().stream()
+                    .anyMatch(r -> "DISTRIBUTOR".equalsIgnoreCase(r) || "SUPER_DISTRIBUTOR".equalsIgnoreCase(r));
+            if (isDistributorOrSuper) {
+                inScopeUserIds = hierarchyService.getDownlineUserIds(callerId);
+            } else {
+                inScopeUserIds = java.util.Set.of(callerId);
+            }
+        }
 
         ZoneId istZone = ZoneId.of("Asia/Kolkata");
         ZonedDateTime nowIst = ZonedDateTime.now(istZone);
@@ -155,12 +172,18 @@ public class DashboardController {
         bharatConnectMap.put("monthlyComm", monthlyBbpsComm.doubleValue());
 
         // 3. User Stats & Real Profile KYC Stats
-        long totalUsers = userRepository.count();
-        List<User> allUsers = userRepository.findAll();
-        long activeUsers = allUsers.stream()
+        List<User> scopedUsers;
+        if (inScopeUserIds != null) {
+            final java.util.Set<UUID> filterIds = inScopeUserIds;
+            scopedUsers = filterIds.isEmpty() ? Collections.emptyList() : userRepository.findAllById(filterIds);
+        } else {
+            scopedUsers = userRepository.findAll();
+        }
+        long totalUsers = scopedUsers.size();
+        long activeUsers = scopedUsers.stream()
                 .filter(u -> u.getStatus() == UserStatus.APPROVED || u.getStatus() == UserStatus.ACTIVE)
                 .count();
-        long pendingUsers = allUsers.stream()
+        long pendingUsers = scopedUsers.stream()
                 .filter(u -> u.getStatus() == UserStatus.PENDING)
                 .count();
         long inactiveUsers = Math.max(0, totalUsers - activeUsers - pendingUsers);
@@ -172,10 +195,10 @@ public class DashboardController {
                 "inactive", inactiveUsers
         );
 
-        long kycDone = allUsers.stream()
+        long kycDone = scopedUsers.stream()
                 .filter(u -> u.getKycStatus() == KycStatus.APPROVED)
                 .count();
-        long kycPending = allUsers.stream()
+        long kycPending = scopedUsers.stream()
                 .filter(u -> u.getKycStatus() == KycStatus.PENDING)
                 .count();
         long kycNotDone = Math.max(0, totalUsers - kycDone - kycPending);
@@ -187,9 +210,16 @@ public class DashboardController {
         );
 
         // 4. Wallet Total Float
-        BigDecimal totalFloat = walletRepository.findAll().stream()
-                .map(w -> w.getBalance() != null ? w.getBalance() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalFloat;
+        if (inScopeUserIds != null) {
+            totalFloat = walletRepository.findByUserIdIn(new ArrayList<>(inScopeUserIds)).stream()
+                    .map(w -> w.getBalance() != null ? w.getBalance() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        } else {
+            totalFloat = walletRepository.findAll().stream()
+                    .map(w -> w.getBalance() != null ? w.getBalance() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
 
         // 5. Recent Activity Feed (Include real BBPS transactions)
         List<Map<String, Object>> recentTransactions = new ArrayList<>();
@@ -198,6 +228,9 @@ public class DashboardController {
                     PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "createdAt"))
             ).getContent();
             for (BbpsTransaction b : recentBbps) {
+                if (inScopeUserIds != null && (b.getUser() == null || !inScopeUserIds.contains(b.getUser().getId()))) {
+                    continue;
+                }
                 Map<String, Object> m = new HashMap<>();
                 m.put("id", b.getId() != null ? b.getId().toString() : UUID.randomUUID().toString());
                 m.put("type", "BBPS " + (b.getCategory() != null ? b.getCategory() : "Bill Payment"));

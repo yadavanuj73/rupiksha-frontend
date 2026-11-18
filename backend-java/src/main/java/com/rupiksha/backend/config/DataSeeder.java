@@ -43,9 +43,13 @@ public class DataSeeder implements CommandLineRunner {
 
         boolean prod = List.of(environment.getActiveProfiles()).contains("prod");
         // In prod, require ADMIN_SEED_PASSWORD to be explicitly provided via env.
-        // In dev, fall back to the well-known dev password so local smoke tests keep working.
+        // In dev, fall back to dev password so local smoke tests keep working.
         String seedPassword = environment.getProperty("ADMIN_SEED_PASSWORD");
         if (seedPassword == null || seedPassword.isBlank()) {
+            if (prod) {
+                log.error("CRITICAL: ADMIN_SEED_PASSWORD environment variable is NOT set in production profile. Skipping admin creation.");
+                return;
+            }
             seedPassword = "Admin@Rupiksha2025";
             log.info("Seeding admin user with default fallback password Admin@Rupiksha2025.");
         }

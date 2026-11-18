@@ -24,13 +24,31 @@ public class MemberManagementService {
     private final UserServiceRepository userServiceRepository;
     private final WalletRepository walletRepository;
     private final TxnRepository txnRepository;
+    private final HierarchyService hierarchyService;
 
     public Page<MemberDetailResponse> getAllMembers(Pageable pageable, String search) {
+        return getAllMembers(pageable, search, null);
+    }
+
+    public Page<MemberDetailResponse> getAllMembers(Pageable pageable, String search, JwtPrincipal principal) {
         Page<User> users;
-        if (search != null && !search.isEmpty()) {
-            users = userRepository.findBySearch(search, pageable);
+        boolean isAdmin = hierarchyService.isAdmin(principal);
+        if (isAdmin || principal == null) {
+            if (search != null && !search.isEmpty()) {
+                users = userRepository.findBySearch(search, pageable);
+            } else {
+                users = userRepository.findAll(pageable);
+            }
         } else {
-            users = userRepository.findAll(pageable);
+            Set<UUID> downlineIds = hierarchyService.getDownlineUserIds(UUID.fromString(principal.userId()));
+            if (downlineIds.isEmpty()) {
+                return Page.empty(pageable);
+            }
+            if (search != null && !search.isEmpty()) {
+                users = userRepository.findByIdInAndSearch(downlineIds, search, pageable);
+            } else {
+                users = userRepository.findByIdIn(downlineIds, pageable);
+            }
         }
 
         // Batch-load wallets for all users on this page in ONE query (eliminates N+1).
@@ -47,9 +65,16 @@ public class MemberManagementService {
     }
 
     public MemberDetailResponse getMemberDetail(UUID userId, boolean includePassword) {
+        return getMemberDetail(userId, includePassword, null);
+    }
+
+    public MemberDetailResponse getMemberDetail(UUID userId, boolean includePassword, JwtPrincipal principal) {
+        if (principal != null && !hierarchyService.isAdmin(principal)) {
+            hierarchyService.validateHierarchyAccess(principal, userId);
+        }
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        return mapToMemberDetail(user, Collections.emptyMap(), includePassword);
+        return mapToMemberDetail(user, Collections.emptyMap(), false);
     }
 
     @Transactional
@@ -89,6 +114,13 @@ public class MemberManagementService {
     }
 
     public List<UserServiceDTO> getUserServices(UUID userId) {
+        return getUserServices(userId, null);
+    }
+
+    public List<UserServiceDTO> getUserServices(UUID userId, JwtPrincipal principal) {
+        if (principal != null && !hierarchyService.isAdmin(principal)) {
+            hierarchyService.validateHierarchyAccess(principal, userId);
+        }
         List<UserService> services = userServiceRepository.findByUserId(userId);
         if (services.isEmpty()) {
             // Initialize default services for user
@@ -205,9 +237,8 @@ public class MemberManagementService {
             builder.lastAepsTxnDate(lastAepsTxn.get().getCreatedAt().toString());
         }
 
-        if (includePassword) {
-            builder.password(user.getPasswordHash()); // Note: This should be handled securely
-        }
+        // Security fix: Never expose password hashes under any condition
+        builder.password(null);
 
         return builder.build();
     }

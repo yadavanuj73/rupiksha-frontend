@@ -23,5 +23,5 @@ jobs:
           java-version: "21"
           cache: maven
 
-      - name: Build jar (skip tests)
-        run: mvn -B -DskipTests package
+      - name: Build and test
+        run: mvn -B test package

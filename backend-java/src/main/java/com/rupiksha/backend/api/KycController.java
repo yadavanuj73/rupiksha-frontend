@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import com.rupiksha.backend.service.HierarchyService;
 import java.time.Instant;
 import com.rupiksha.backend.repository.UserServiceRepository;
 import java.util.HashMap;
@@ -25,6 +26,7 @@ public class KycController {
     private final UserServiceRepository userServiceRepository;
     private final com.rupiksha.backend.repository.WalletRepository walletRepository;
     private final com.rupiksha.backend.repository.WalletEntryRepository walletEntryRepository;
+    private final HierarchyService hierarchyService;
 
     private Map<String, Object> toProfileMap(User user) {
         return toProfileMap(user, false);
@@ -146,39 +148,53 @@ public class KycController {
             @RequestParam(required = false) String mobile,
             @RequestParam(required = false, defaultValue = "false") boolean includeDocs
     ) {
+        if (principal == null || principal.userId() == null) {
+            throw new org.springframework.security.access.AccessDeniedException("Authentication required to access profile");
+        }
+
+        UUID callerId = UUID.fromString(principal.userId());
+        boolean isAdmin = hierarchyService.isAdmin(principal);
         User user = null;
-        if (principal != null && principal.userId() != null) {
-            try { user = userRepository.findById(UUID.fromString(principal.userId())).orElse(null); } catch (Exception ignored) {}
-        }
-        if (user == null && userId != null && !userId.isBlank()) {
-            try { user = userRepository.findById(UUID.fromString(userId.trim())).orElse(null); } catch (Exception ignored) {}
-        }
-        if (user == null && username != null && !username.isBlank()) {
+
+        // If specific target user requested by id/username/mobile
+        if (userId != null && !userId.isBlank()) {
+            UUID requestedId = null;
+            try {
+                requestedId = UUID.fromString(userId.trim());
+            } catch (Exception ignored) {}
+            if (requestedId != null) {
+                if (!requestedId.equals(callerId)) {
+                    hierarchyService.validateHierarchyAccess(principal, requestedId);
+                }
+                user = userRepository.findById(requestedId).orElse(null);
+            }
+        } else if (username != null && !username.isBlank()) {
             String u = username.trim();
-            user = userRepository.findByUsername(u)
-                    .or(() -> userRepository.findByMobile(u))
-                    .orElse(null);
-            if (user == null && u.contains("_")) {
-                String base = u.split("_")[0];
-                user = userRepository.findByUsername(base)
-                        .or(() -> userRepository.findByMobile(base))
-                        .orElse(null);
+            User found = userRepository.findByUsername(u).or(() -> userRepository.findByMobile(u)).orElse(null);
+            if (found != null) {
+                if (!found.getId().equals(callerId)) {
+                    hierarchyService.validateHierarchyAccess(principal, found.getId());
+                }
+                user = found;
+            }
+        } else if (mobile != null && !mobile.isBlank()) {
+            String m = mobile.trim();
+            User found = userRepository.findByMobile(m).or(() -> userRepository.findByUsername(m)).orElse(null);
+            if (found != null) {
+                if (!found.getId().equals(callerId)) {
+                    hierarchyService.validateHierarchyAccess(principal, found.getId());
+                }
+                user = found;
             }
         }
-        if (user == null && mobile != null && !mobile.isBlank()) {
-            String m = mobile.trim();
-            user = userRepository.findByMobile(m)
-                    .or(() -> userRepository.findByUsername(m))
-                    .orElse(null);
-        }
-        if (user == null && principal != null && principal.username() != null) {
-            user = userRepository.findByUsername(principal.username())
-                    .or(() -> userRepository.findByMobile(principal.username()))
-                    .orElse(null);
-        }
+
+        // Default to authenticated caller
         if (user == null) {
-            throw new IllegalArgumentException("User not found or unauthorized");
+            user = userRepository.findById(callerId)
+                    .or(() -> userRepository.findByUsername(principal.username()))
+                    .orElseThrow(() -> new IllegalArgumentException("User not found or unauthorized"));
         }
+
         return Map.of("success", true, "user", toProfileMap(user, includeDocs));
     }
 
@@ -187,16 +203,31 @@ public class KycController {
             @AuthenticationPrincipal JwtPrincipal principal,
             @RequestParam(required = false) String userId
     ) {
+        if (principal == null || principal.userId() == null) {
+            throw new org.springframework.security.access.AccessDeniedException("Authentication required to access documents");
+        }
+
+        UUID callerId = UUID.fromString(principal.userId());
         User user = null;
-        if (principal != null && principal.userId() != null) {
-            try { user = userRepository.findById(UUID.fromString(principal.userId())).orElse(null); } catch (Exception ignored) {}
+
+        if (userId != null && !userId.isBlank()) {
+            UUID requestedId = null;
+            try {
+                requestedId = UUID.fromString(userId.trim());
+            } catch (Exception ignored) {}
+            if (requestedId != null) {
+                if (!requestedId.equals(callerId)) {
+                    hierarchyService.validateHierarchyAccess(principal, requestedId);
+                }
+                user = userRepository.findById(requestedId).orElse(null);
+            }
         }
-        if (user == null && userId != null && !userId.isBlank()) {
-            try { user = userRepository.findById(UUID.fromString(userId.trim())).orElse(null); } catch (Exception ignored) {}
-        }
+
         if (user == null) {
-            throw new IllegalArgumentException("User not found or unauthorized");
+            user = userRepository.findById(callerId)
+                    .orElseThrow(() -> new IllegalArgumentException("User not found or unauthorized"));
         }
+
         Map<String, Object> docs = new HashMap<>();
         docs.put("userId", user.getId().toString());
         docs.put("photoUrl", user.getPhotoUrl());
@@ -218,36 +249,30 @@ public class KycController {
             @AuthenticationPrincipal JwtPrincipal principal,
             @RequestBody Map<String, Object> request
     ) {
-        User user = null;
-        if (principal != null && principal.userId() != null) {
-            try { user = userRepository.findById(UUID.fromString(principal.userId())).orElse(null); } catch (Exception ignored) {}
+        if (principal == null || principal.userId() == null) {
+            throw new org.springframework.security.access.AccessDeniedException("Authentication required to update profile");
         }
-        if (user == null && request != null) {
+
+        UUID callerId = UUID.fromString(principal.userId());
+        boolean isAdmin = hierarchyService.isAdmin(principal);
+        User user = null;
+
+        // Only Admin can update a different user via userId
+        if (isAdmin && request != null) {
             Object reqId = request.get("userId");
             if (reqId == null) reqId = request.get("id");
             if (reqId != null) {
-                try { user = userRepository.findById(UUID.fromString(reqId.toString().trim())).orElse(null); } catch (Exception ignored) {}
-            }
-            if (user == null && request.containsKey("username") && isPresent(request.get("username"))) {
-                String uName = request.get("username").toString().trim();
-                user = userRepository.findByUsername(uName)
-                        .or(() -> userRepository.findByMobile(uName))
-                        .orElse(null);
-            }
-            if (user == null && request.containsKey("mobile") && isPresent(request.get("mobile"))) {
-                String uMob = request.get("mobile").toString().trim();
-                user = userRepository.findByMobile(uMob).orElse(null);
+                try {
+                    user = userRepository.findById(UUID.fromString(reqId.toString().trim())).orElse(null);
+                } catch (Exception ignored) {}
             }
         }
 
-        if (user == null && principal != null && principal.username() != null) {
-            user = userRepository.findByUsername(principal.username())
-                    .or(() -> userRepository.findByMobile(principal.username()))
-                    .orElse(null);
-        }
-
+        // Non-admin can only update their own profile
         if (user == null) {
-            throw new IllegalArgumentException("Unauthorized: missing or invalid user identifier");
+            user = userRepository.findById(callerId)
+                    .or(() -> userRepository.findByUsername(principal.username()))
+                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
         }
 
         if (request.containsKey("fullName") && isPresent(request.get("fullName"))) {
@@ -260,7 +285,8 @@ public class KycController {
             user.setEmail(request.get("email").toString().trim());
         }
 
-        if (request.containsKey("mobile") && isPresent(request.get("mobile"))) {
+        // Only Admin can update mobile directly without separate verification flow
+        if (isAdmin && request.containsKey("mobile") && isPresent(request.get("mobile"))) {
             user.setMobile(request.get("mobile").toString().trim());
         }
 
@@ -385,6 +411,7 @@ public class KycController {
     }
 
     @GetMapping("/debug-wallet/{userId}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public Map<String, Object> debugWallet(@PathVariable String userId) {
         UUID uuid = UUID.fromString(userId);
         var userOpt = userRepository.findById(uuid);

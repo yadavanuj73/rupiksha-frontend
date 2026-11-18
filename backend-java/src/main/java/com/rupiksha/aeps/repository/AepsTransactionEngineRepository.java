@@ -19,6 +19,10 @@ public interface AepsTransactionEngineRepository extends JpaRepository<AepsTrans
     Optional<AepsTransactionEngine> findByTransactionId(String transactionId);
     boolean existsByTransactionId(String transactionId);
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT t FROM AepsTransactionEngine t WHERE t.transactionId = :transactionId")
+    Optional<AepsTransactionEngine> findByTransactionIdWithLock(@Param("transactionId") String transactionId);
+
     @Query("SELECT t FROM AepsTransactionEngine t WHERE t.userId = :userId " +
            "AND (cast(:serviceType as string) IS NULL OR UPPER(t.serviceType) = UPPER(cast(:serviceType as string))) " +
            "AND (cast(:status as string) IS NULL OR UPPER(t.status) = UPPER(cast(:status as string))) " +

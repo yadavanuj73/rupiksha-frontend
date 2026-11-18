@@ -43,9 +43,6 @@ public class SecurityConfig {
                 "/api/auth/**",
                 "/auth/**",
                 "/api/v1/otp/**",
-                "/api/v1/user/profile",
-                "/api/v1/user/update-profile",
-                "/api/v1/user/profile/**",
                 "/api/v1/payment/webhook/**",
                 "/api/v1/aeps/status",
                 "/api/v1/recharge/callback",
@@ -61,8 +58,7 @@ public class SecurityConfig {
                 "/api/v1/admin/auth/send-otp",
                 "/api/v1/admin/auth/resend-otp",
                 "/api/v1/admin/auth/verify-otp",
-                "/api/v1/admin/auth/logout",
-                "/api/v1/admin/auth/dovesoft-diagnostics"
+                "/api/v1/admin/auth/logout"
         ));
 
         // Swagger and API docs are only public outside production.
@@ -127,10 +123,24 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
+        configuration.setAllowedOriginPatterns(List.of(
+                "https://rupiksha.in",
+                "https://www.rupiksha.in",
+                "https://*.rupiksha.in",
+                "https://rupiksha-frontend.vercel.app",
+                "http://localhost:5173",
+                "http://localhost:3000",
+                "http://localhost:4173",
+                "http://127.0.0.1:5173",
+                "http://127.0.0.1:3000"
+        ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
-        configuration.setExposedHeaders(Arrays.asList("*"));
+        configuration.setAllowedHeaders(Arrays.asList(
+                "Authorization", "Content-Type", "Accept", "X-Requested-With",
+                "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers",
+                "X-Correlation-ID", "X-Admin-Key", "X-Callback-Key"
+        ));
+        configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Disposition"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

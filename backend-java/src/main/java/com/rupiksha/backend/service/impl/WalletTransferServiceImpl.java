@@ -85,7 +85,7 @@ public class WalletTransferServiceImpl implements WalletTransferService {
                 getPrimaryRole(recipient),
                 recipient.getCity() != null ? recipient.getCity() : "",
                 recipient.getStateName() != null ? recipient.getStateName() : "",
-                recipient.getAddressLine1() != null ? recipient.getAddressLine1() : "",
+                "",
                 recipient.getStatus() != null ? recipient.getStatus().name() : "ACTIVE",
                 isEligible,
                 message
@@ -108,25 +108,18 @@ public class WalletTransferServiceImpl implements WalletTransferService {
     @Transactional(readOnly = true)
     public List<WalletTransferDtos.RecipientLookupResponse> searchRecipients(String mobile, UUID currentUserId) {
         String cleanedMobile = cleanMobile(mobile);
-        if (cleanedMobile.length() < 3) {
+        if (cleanedMobile.length() < 10) {
             return Collections.emptyList();
         }
 
-        List<User> users;
-        if (cleanedMobile.length() == 10) {
-            users = userRepository.findAllByMobile(cleanedMobile);
-            if (users == null || users.isEmpty()) {
-                users = userRepository.findByMobile(cleanedMobile).map(List::of).orElse(Collections.emptyList());
-            }
-        } else {
-            users = userRepository.findByMobilePrefix(cleanedMobile);
-            if (users == null) {
-                users = Collections.emptyList();
-            }
+        List<User> users = userRepository.findAllByMobile(cleanedMobile);
+        if (users == null || users.isEmpty()) {
+            users = userRepository.findByMobile(cleanedMobile).map(List::of).orElse(Collections.emptyList());
         }
 
         return users.stream()
                 .filter(u -> !u.getId().equals(currentUserId))
+                .limit(5)
                 .map(this::mapToRecipientResponse)
                 .toList();
     }

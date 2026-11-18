@@ -27,6 +27,7 @@ public class AdminMemberController {
 
     @GetMapping
     public ResponseEntity<Page<MemberDetailResponse>> getAllMembers(
+            @AuthenticationPrincipal JwtPrincipal principal,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String search,
@@ -36,22 +37,25 @@ public class AdminMemberController {
         Sort sort = Sort.by(Sort.Direction.fromString(sortDirection), sortBy);
         Pageable pageable = PageRequest.of(page, size, sort);
         
-        Page<MemberDetailResponse> members = memberManagementService.getAllMembers(pageable, search);
+        Page<MemberDetailResponse> members = memberManagementService.getAllMembers(pageable, search, principal);
         return ResponseEntity.ok(members);
     }
 
     @GetMapping("/{userId}")
     public ResponseEntity<MemberDetailResponse> getMemberDetail(
             @PathVariable UUID userId,
-            @RequestParam(defaultValue = "false") boolean includePassword) {
+            @RequestParam(defaultValue = "false") boolean includePassword,
+            @AuthenticationPrincipal JwtPrincipal principal) {
         
-        MemberDetailResponse member = memberManagementService.getMemberDetail(userId, includePassword);
+        MemberDetailResponse member = memberManagementService.getMemberDetail(userId, false, principal);
         return ResponseEntity.ok(member);
     }
 
     @GetMapping("/{userId}/services")
-    public ResponseEntity<List<UserServiceDTO>> getUserServices(@PathVariable UUID userId) {
-        List<UserServiceDTO> services = memberManagementService.getUserServices(userId);
+    public ResponseEntity<List<UserServiceDTO>> getUserServices(
+            @PathVariable UUID userId,
+            @AuthenticationPrincipal JwtPrincipal principal) {
+        List<UserServiceDTO> services = memberManagementService.getUserServices(userId, principal);
         return ResponseEntity.ok(services);
     }
 

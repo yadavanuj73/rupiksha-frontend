@@ -10,6 +10,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import com.rupiksha.backend.security.JwtPrincipal;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,6 +29,7 @@ public class AdminTransactionController {
 
     @GetMapping("/history")
     public ResponseEntity<TransactionHistoryPageResponse> getTransactions(
+            @AuthenticationPrincipal JwtPrincipal principal,
             @RequestParam(defaultValue = "AEPS_FINGPAY") String reportType,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -44,13 +47,14 @@ public class AdminTransactionController {
         Pageable pageable = PageRequest.of(page, size, sort);
 
         TransactionHistoryPageResponse response = adminTransactionService.getTransactions(
-                reportType, search, status, provider, fromDate, toDate, pageable);
+                reportType, search, status, provider, fromDate, toDate, pageable, principal);
 
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/history/export")
     public ResponseEntity<List<TransactionHistoryResponseDto>> exportTransactions(
+            @AuthenticationPrincipal JwtPrincipal principal,
             @RequestParam(defaultValue = "AEPS_FINGPAY") String reportType,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String status,
@@ -65,17 +69,18 @@ public class AdminTransactionController {
         Sort sort = Sort.by(direction, sortField);
 
         List<TransactionHistoryResponseDto> list = adminTransactionService.getAllTransactionsForExport(
-                reportType, search, status, provider, fromDate, toDate, sort);
+                reportType, search, status, provider, fromDate, toDate, sort, principal);
 
         return ResponseEntity.ok(list);
     }
 
     @GetMapping("/history/{transactionId}")
     public ResponseEntity<Map<String, Object>> getTransactionDetail(
+            @AuthenticationPrincipal JwtPrincipal principal,
             @RequestParam(defaultValue = "AEPS_FINGPAY") String reportType,
             @PathVariable String transactionId
     ) {
-        TransactionHistoryResponseDto dto = adminTransactionService.getTransactionDetail(reportType, transactionId);
+        TransactionHistoryResponseDto dto = adminTransactionService.getTransactionDetail(reportType, transactionId, principal);
         if (dto == null) {
             return ResponseEntity.notFound().build();
         }

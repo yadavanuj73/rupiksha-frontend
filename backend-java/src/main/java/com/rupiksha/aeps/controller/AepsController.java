@@ -458,12 +458,28 @@ public class AepsController {
     }
 
     @PostMapping("/transaction-status")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getTransactionStatus(@RequestBody Map<String, String> reqBody) {
-        String transactionId = reqBody.get("transactionId");
+    @org.springframework.transaction.annotation.Transactional
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getTransactionStatus(
+            @RequestBody Map<String, String> reqBody,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal com.rupiksha.backend.security.JwtPrincipal principal) {
+        if (principal == null || principal.userId() == null) {
+            return ResponseEntity.status(401).body(ApiResponse.error("Authentication required to check transaction status."));
+        }
+
+        String transactionId = reqBody != null ? reqBody.get("transactionId") : null;
+        if (transactionId == null || transactionId.isBlank()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Transaction ID is required."));
+        }
         log.info("REST request to reconcile transaction status for: {}", transactionId);
         
-        AepsTransactionEngine engineTxn = engineTxnRepo.findByTransactionId(transactionId)
+        AepsTransactionEngine engineTxn = engineTxnRepo.findByTransactionIdWithLock(transactionId)
                 .orElseThrow(() -> new RuntimeException("Transaction not found for ID: " + transactionId));
+        
+        boolean isAdmin = principal.roles() != null && principal.roles().stream()
+                .anyMatch(r -> "ADMIN".equalsIgnoreCase(r) || "SUPER_ADMIN".equalsIgnoreCase(r));
+        if (!isAdmin && engineTxn.getUserId() != null && !engineTxn.getUserId().toString().equals(principal.userId())) {
+            return ResponseEntity.status(403).body(ApiResponse.error("Access denied: You do not own this transaction."));
+        }
         
         String provider = engineTxn.getProvider() != null ? engineTxn.getProvider().toLowerCase() : "levin";
         String serviceType = engineTxn.getServiceType() != null ? engineTxn.getServiceType().toUpperCase() : "";

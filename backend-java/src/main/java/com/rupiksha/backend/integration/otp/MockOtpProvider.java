@@ -24,7 +24,7 @@ public class MockOtpProvider implements OtpProvider {
     public String sendOtp(String mobile) {
         String code = String.valueOf(100000 + random.nextInt(900000));
         store.put(mobile, code);
-        log.info("[MOCK OTP] mobile={} code={}", mobile, code);
+        log.info("[MOCK OTP] mobile={} code={}", mobile, code.charAt(0) + "****" + code.charAt(code.length() - 1));
         return mobile;
     }
 

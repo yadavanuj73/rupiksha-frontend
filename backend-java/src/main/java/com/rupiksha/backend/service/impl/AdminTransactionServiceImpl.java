@@ -46,6 +46,7 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
     private final RechargeRepository rechargeRepository;
     private final UserRepository userRepository;
     private final WalletTransferService walletTransferService;
+    private final com.rupiksha.backend.service.HierarchyService hierarchyService;
 
     private String normalizeReportType(String type) {
         if (type == null || type.isBlank()) return "AEPS_FINGPAY";
@@ -154,6 +155,20 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
             String fromDate,
             String toDate,
             Pageable pageable) {
+        return getTransactions(reportType, search, status, provider, fromDate, toDate, pageable, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TransactionHistoryPageResponse getTransactions(
+            String reportType,
+            String search,
+            String status,
+            String provider,
+            String fromDate,
+            String toDate,
+            Pageable pageable,
+            com.rupiksha.backend.security.JwtPrincipal principal) {
 
         String normType = normalizeReportType(reportType);
         String cleanSearch = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
@@ -165,7 +180,33 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
         Instant startInst = toInstant(startLdt);
         Instant endInst = toInstant(endLdt);
 
-        List<UUID> matchingUserIds = cleanSearch != null ? userRepository.findUserIdsBySearchTerm(cleanSearch) : Collections.emptyList();
+        List<UUID> matchingUserIds;
+        if (principal != null && !hierarchyService.isAdmin(principal)) {
+            Set<UUID> downlineIds = hierarchyService.getDownlineUserIds(UUID.fromString(principal.userId()));
+            if (downlineIds.isEmpty()) {
+                return TransactionHistoryPageResponse.builder()
+                        .success(true)
+                        .message("No transactions found")
+                        .data(Collections.emptyList())
+                        .summary(TransactionHistorySummaryDto.builder().build())
+                        .pagination(TransactionHistoryPageResponse.PaginationDetails.builder()
+                                .page(pageable.getPageNumber())
+                                .size(pageable.getPageSize())
+                                .totalElements(0)
+                                .totalPages(0)
+                                .build())
+                        .build();
+            }
+            if (cleanSearch != null) {
+                matchingUserIds = userRepository.findUserIdsBySearchTerm(cleanSearch).stream()
+                        .filter(downlineIds::contains)
+                        .toList();
+            } else {
+                matchingUserIds = new ArrayList<>(downlineIds);
+            }
+        } else {
+            matchingUserIds = cleanSearch != null ? userRepository.findUserIdsBySearchTerm(cleanSearch) : Collections.emptyList();
+        }
         boolean hasUserMatches = !matchingUserIds.isEmpty();
 
         List<TransactionHistoryResponseDto> dtoList;
@@ -604,5 +645,29 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
         } catch (Exception ignored) {}
 
         return null;
+    }
+
+    @Override
+    public TransactionHistoryResponseDto getTransactionDetail(
+            String reportType,
+            String transactionId,
+            com.rupiksha.backend.security.JwtPrincipal principal) {
+        TransactionHistoryResponseDto dto = getTransactionDetail(reportType, transactionId);
+        if (dto != null && principal != null && !hierarchyService.isAdmin(principal)) {
+            Set<UUID> downlineIds = hierarchyService.getDownlineUserIds(UUID.fromString(principal.userId()));
+            boolean allowed = false;
+            if (dto.getRetailerId() != null) {
+                User u = userRepository.findByUsername(dto.getRetailerId())
+                        .or(() -> userRepository.findByMobile(dto.getUserMobile()))
+                        .orElse(null);
+                if (u != null && downlineIds.contains(u.getId())) {
+                    allowed = true;
+                }
+            }
+            if (!allowed) {
+                return null;
+            }
+        }
+        return dto;
     }
 }

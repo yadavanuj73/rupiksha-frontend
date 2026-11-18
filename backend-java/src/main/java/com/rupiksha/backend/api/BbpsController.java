@@ -434,8 +434,13 @@ public class BbpsController {
      * BillAvenue push notification/refund callback endpoint.
      */
     @PostMapping("/callback")
-    public ResponseEntity<Map<String, Object>> handleCallback(@RequestBody(required = false) String body) {
-        log.info("Received BillAvenue callback payload");
+    public ResponseEntity<Map<String, Object>> handleCallback(
+            @RequestHeader(value = "X-Callback-Key", required = false) String callbackKey,
+            @RequestBody(required = false) String body) {
+        if (body == null || body.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("status", "FAILED", "message", "Empty callback payload"));
+        }
+        log.info("Received BillAvenue callback payload (size={})", body.length());
         bbpsService.handlePushNotification(body);
         return ResponseEntity.ok(Map.of("status", "SUCCESS", "message", "Callback received"));
     }

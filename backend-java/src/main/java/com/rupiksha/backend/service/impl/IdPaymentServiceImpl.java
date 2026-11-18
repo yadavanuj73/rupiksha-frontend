@@ -34,6 +34,7 @@ public class IdPaymentServiceImpl implements IdPaymentService {
     private final RazorpayPaymentGatewayProvider razorpayPaymentGatewayProvider;
     private final AppProperties appProperties;
     private final com.rupiksha.backend.service.AuthService authService;
+    private final org.springframework.core.env.Environment environment;
     private final SecureRandom secureRandom = new SecureRandom();
 
     // Standard authoritative ID charge amounts
@@ -287,26 +288,31 @@ public class IdPaymentServiceImpl implements IdPaymentService {
         String paymentId = request.razorpayPaymentId().trim();
         String signature = request.razorpaySignature().trim();
 
+        boolean isProd = environment != null && List.of(environment.getActiveProfiles()).contains("prod");
+        if (isProd && orderId.startsWith("order_mock_")) {
+            log.error("SECURITY ALERT: Attempted mock payment verification bypass in production for order {}", orderId);
+            throw new IllegalArgumentException("Mock payment verification is prohibited in production environment");
+        }
+
         IdPaymentTransaction txn = idPaymentTransactionRepository.findByRazorpayOrderId(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Transaction not found for order ID: " + orderId));
 
         if (txn.getStatus() == IdPaymentStatus.SUCCESS) {
-            com.rupiksha.backend.api.dto.AuthDtos.AuthResponse auth = authService.issueTokensForUser(txn.getUser());
             return new IdPaymentDtos.VerifyPaymentResponse(
                     true,
                     "Payment already verified",
                     IdPaymentStatus.SUCCESS.name(),
-                    auth.accessToken(),
-                    auth.refreshToken(),
-                    auth.user()
+                    null,
+                    null,
+                    null
             );
         }
 
         String keySecret = appProperties.providers() != null && appProperties.providers().payment() != null
                 ? appProperties.providers().payment().keySecret() : null;
 
-        boolean isMock = keySecret == null || keySecret.isBlank() || "mock".equalsIgnoreCase(keySecret)
-                || orderId.startsWith("order_mock_");
+        boolean isMock = !isProd && (keySecret == null || keySecret.isBlank() || "mock".equalsIgnoreCase(keySecret)
+                || orderId.startsWith("order_mock_"));
 
         if (!isMock) {
             Map<String, Object> payload = Map.of(
@@ -325,15 +331,14 @@ public class IdPaymentServiceImpl implements IdPaymentService {
         }
 
         markTransactionSuccess(txn, paymentId, signature);
-        com.rupiksha.backend.api.dto.AuthDtos.AuthResponse auth = authService.issueTokensForUser(txn.getUser());
 
         return new IdPaymentDtos.VerifyPaymentResponse(
                 true,
                 "Payment verified successfully",
                 IdPaymentStatus.SUCCESS.name(),
-                auth.accessToken(),
-                auth.refreshToken(),
-                auth.user()
+                null,
+                null,
+                null
         );
     }
 
