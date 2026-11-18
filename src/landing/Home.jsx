@@ -832,16 +832,10 @@ export default function Home() {
                 <Navbar />
                 <Hero />
                 <StatsCounter />
-                {false && (
                 <Services />
-                )}
                 <Advantage />
-                {false && (
                 <HowItWorksPinned />
-                )}
-                {false && (
                 <Partners />
-                )}
                 <Footer />
             </div>
         </>

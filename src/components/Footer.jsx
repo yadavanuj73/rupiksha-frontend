@@ -135,7 +135,7 @@ export default function Footer() {
                             Our Services
                         </h5>
                         <nav className="flex flex-col gap-1.5 w-full text-xs sm:text-sm">
-                            {FOOTER_SERVICES.filter(s => !['money-transfer', 'aadhaar-enabled-payment'].includes(s.slug)).map((s) => (
+                            {FOOTER_SERVICES.map((s) => (
                                 <button
                                     key={s.slug}
                                     onMouseEnter={() => preloadServiceImages()}

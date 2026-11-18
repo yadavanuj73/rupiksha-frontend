@@ -113,7 +113,6 @@ const Leadership = () => {
             </section>
 
             {/* Core Team Section */}
-            {false && (
             <section className="core-team-section">
                 <div className="leadership-container">
                     <div className="section-center-head">
@@ -136,7 +135,6 @@ const Leadership = () => {
                     </div>
                 </div>
             </section>
-            )}
 
             <Footer />
         </div>

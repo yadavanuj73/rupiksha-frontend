@@ -201,7 +201,6 @@ const Contact = () => {
                                                         className="field-input"
                                                     />
                                                 </div>
-                                                {false && (
                                                 <div className="form-field">
                                                     <label className="field-label">
                                                         <MessageSquare size={14} />
@@ -222,7 +221,6 @@ const Contact = () => {
                                                         <option value="Other">Other</option>
                                                     </select>
                                                 </div>
-                                                )}
                                             </div>
 
                                             {/* Message Field */}
@@ -276,7 +274,6 @@ const Contact = () => {
             </section>
 
             {/* FAQ Section */}
-            {false && (
             <section className="faq-section">
                 <div className="contact-container">
                     <div className="section-center-head">
@@ -300,7 +297,6 @@ const Contact = () => {
                     </div>
                 </div>
             </section>
-            )}
 
             {/* Map Section Upgrade */}
             <section className="map-section">
