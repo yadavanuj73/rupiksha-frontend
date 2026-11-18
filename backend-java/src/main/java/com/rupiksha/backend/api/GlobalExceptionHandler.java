@@ -38,7 +38,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(com.rupiksha.backend.service.RateLimitExceededException.class)
     public ResponseEntity<?> handleRateLimitExceeded(com.rupiksha.backend.service.RateLimitExceededException ex) {
-        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(base(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage()));
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(base(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage()));
     }
 
     @ExceptionHandler(com.rupiksha.backend.service.IdPaymentRequiredException.class)
@@ -53,47 +54,5 @@ public class GlobalExceptionHandler {
         body.put("mobile", ex.getMobile());
         body.put("fullName", ex.getFullName());
         body.put("role", ex.getRole());
-        body.put("timestamp", Instant.now().toString());
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
-    }
 
-    @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
-    public ResponseEntity<?> handleIllegalArgument(RuntimeException ex) {
-        return ResponseEntity.badRequest().body(base(HttpStatus.BAD_REQUEST, ex.getMessage()));
-    }
-
-    @ExceptionHandler(com.rupiksha.aeps.exception.ValidationException.class)
-    public ResponseEntity<?> handleAepsValidation(com.rupiksha.aeps.exception.ValidationException ex) {
-        return ResponseEntity.badRequest().body(base(HttpStatus.BAD_REQUEST, ex.getMessage()));
-    }
-
-    @ExceptionHandler(com.rupiksha.aeps.exception.AepsException.class)
-    public ResponseEntity<?> handleAepsException(com.rupiksha.aeps.exception.AepsException ex) {
-        return ResponseEntity.badRequest().body(base(HttpStatus.BAD_REQUEST, ex.getMessage()));
-    }
-
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<?> handleGeneric(Exception ex) {
-        // Log full stack trace so Render logs show the real cause
-        log.error("Unhandled exception: {}", ex.getMessage(), ex);
-        // Surface root cause message to client (helps during dev/staging)
-        String cause = ex.getMessage();
-        Throwable root = ex;
-        while (root.getCause() != null) root = root.getCause();
-        if (root != ex && root.getMessage() != null) cause = root.getMessage();
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(base(HttpStatus.INTERNAL_SERVER_ERROR,
-                        "Internal server error: " + (cause != null ? cause : ex.getClass().getSimpleName())));
-    }
-
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> base(HttpStatus status, String message) {
-        Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", Instant.now().toString());
-        body.put("status", status.value());
-        body.put("message", message);
-        body.put("errors", new HashMap<String, String>());
-        return body;
-    }
-}
-
+        

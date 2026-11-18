@@ -293,12 +293,9 @@ public class AdminController {
      * Admin-driven user creation (used by "Add Member" modal in the admin UI).
      * Creates an already-approved user with a known password, so credentials can
      * be shared immediately with the new retailer / distributor / super distributor.
-     * STRICTLY restricted to authenticated ADMIN users.
      */
     @PostMapping("/add-user")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Map<String, Object>> addUser(@RequestBody Map<String, Object> body,
-                                                       @AuthenticationPrincipal JwtPrincipal principal) {
+    public ResponseEntity<Map<String, Object>> addUser(@RequestBody Map<String, Object> body) {
         Map<String, Object> resp = new HashMap<>();
         try {
             String username = asString(body.get("username"));
@@ -349,13 +346,6 @@ public class AdminController {
             u.setPasswordHash(passwordEncoder.encode(password));
             u.setStatus(UserStatus.ACTIVE);
             u.setKycStatus(KycStatus.NOT_SUBMITTED);
-            u.setOtpVerified(true);
-            u.setAddedByName(principal != null ? principal.username() : "ADMIN");
-            u.setAddedByRole("ADMIN");
-            if (principal != null) {
-                u.setAddedByUserRef(principal.userId().toString());
-            }
-
             if (address != null && !address.isBlank()) u.setAddressLine1(address);
             if (shopName != null && !shopName.isBlank() && (u.getAddressLine1() == null || u.getAddressLine1().isBlank())) {
                 u.setAddressLine1(shopName);
@@ -365,22 +355,6 @@ public class AdminController {
             u.setRoles(roles);
 
             User saved = userRepository.save(u);
-
-            // Ensure wallet exists for newly created member
-            if (walletRepository.findByUserId(saved.getId()).isEmpty()) {
-                Wallet wallet = new Wallet();
-                wallet.setUser(saved);
-                wallet.setBalance(BigDecimal.ZERO);
-                wallet.setLockedBalance(BigDecimal.ZERO);
-                walletRepository.save(wallet);
-            }
-
-            log.info("Admin {} successfully created user {} ({}) with role {}",
-                    principal != null ? principal.username() : "system",
-                    saved.getUsername(),
-                    saved.getMobile(),
-                    roleName.name());
-
             resp.put("success", true);
             resp.put("userId", saved.getId().toString());
             resp.put("username", saved.getUsername());

@@ -19,10 +19,8 @@ public class AuthController {
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public AuthDtos.UserView register(@Valid @RequestBody AuthDtos.RegisterRequest request,
-                                      HttpServletRequest httpRequest) {
-        String clientIp = resolveClientIp(httpRequest);
-        return authService.register(request, clientIp);
+    public AuthDtos.UserView register(@Valid @RequestBody AuthDtos.RegisterRequest request) {
+        return authService.register(request);
     }
 
     @PostMapping("/login")

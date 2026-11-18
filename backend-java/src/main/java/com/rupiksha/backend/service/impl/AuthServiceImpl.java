@@ -36,7 +36,6 @@ public class AuthServiceImpl implements AuthService {
     private final JwtService jwtService;
     private final OtpService otpService;
     private final AppProperties appProperties;
-    private final RegistrationRateLimiter registrationRateLimiter;
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Override
@@ -46,7 +45,7 @@ public class AuthServiceImpl implements AuthService {
 
         User user;
         if (request.role() != null && !request.role().isBlank()) {
-            RoleName roleName = resolveRoleForLogin(request.role());
+            RoleName roleName = resolveSelfRegistrationRole(request.role());
             user = userRepository.findByUsernameAndRole(identifier, roleName)
                     .or(() -> userRepository.findByMobileAndRole(identifier, roleName))
                     .or(() -> userRepository.findByEmailAndRole(identifier, roleName))
@@ -120,22 +119,6 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthDtos.UserView register(AuthDtos.RegisterRequest request) {
-        return register(request, "unknown");
-    }
-
-    @Override
-    @Transactional
-    public AuthDtos.UserView register(AuthDtos.RegisterRequest request, String clientIp) {
-        // Enforce registration rate limiting
-        if (registrationRateLimiter != null) {
-            registrationRateLimiter.checkAndIncrement(clientIp, request.mobile());
-        }
-
-        // Enforce server-side mobile OTP verification
-        if (!otpService.verifyAndConsumeRegistration(request.mobile(), request.otp())) {
-            throw new IllegalArgumentException("Valid mobile OTP verification is required to complete registration. Please verify your mobile number.");
-        }
-
         RoleName roleName = resolveSelfRegistrationRole(request.role());
         Role role = roleRepository.findByName(roleName)
                 .orElseThrow(() -> new IllegalArgumentException("Role seed missing: " + roleName));
@@ -241,7 +224,7 @@ public class AuthServiceImpl implements AuthService {
         if (isPresent(request.deviceInfo())) user.setDeviceInfo(request.deviceInfo().trim());
 
         // Resolve Parent Hierarchy
-        resolveAndSetParent(user, request, roleName);
+        resolveAndSetParent(user, request);
 
         User saved = userRepository.save(user);
 
@@ -268,7 +251,7 @@ public class AuthServiceImpl implements AuthService {
             return null;
         }
         if (roleStr != null && !roleStr.isBlank()) {
-            RoleName roleName = resolveRoleForLogin(roleStr);
+            RoleName roleName = resolveSelfRegistrationRole(roleStr);
             List<User> matches = userRepository.findAllByMobileAndRole(cleanMobile, roleName);
             if (matches.size() == 1) {
                 return matches.get(0);
@@ -351,49 +334,59 @@ public class AuthServiceImpl implements AuthService {
         });
     }
 
-    private void resolveAndSetParent(User user, AuthDtos.RegisterRequest request, RoleName childRole) {
-        String parentRef = null;
+    private void resolveAndSetParent(User user, AuthDtos.RegisterRequest request) {
         if (isPresent(request.parentUserId())) {
-            parentRef = request.parentUserId().trim();
+            try {
+                UUID parentId = UUID.fromString(request.parentUserId().trim());
+                userRepository.findById(parentId).ifPresent(parent -> {
+                    user.setParentUser(parent);
+                    user.setAddedByUserRef(parent.getId().toString());
+                    user.setAddedByName(parent.getFullName());
+                    user.setAddedByPartyCode(parent.getPartyCode());
+                    String pRole = parent.getRoles().stream().map(r -> r.getName().name()).findFirst().orElse("DISTRIBUTOR");
+                    user.setAddedByRole(pRole);
+                });
+            } catch (Exception ignored) {
+                userRepository.findByMobile(request.parentUserId().trim()).ifPresent(parent -> {
+                    user.setParentUser(parent);
+                    user.setAddedByUserRef(parent.getId().toString());
+                    user.setAddedByName(parent.getFullName());
+                    user.setAddedByPartyCode(parent.getPartyCode());
+                    String pRole = parent.getRoles().stream().map(r -> r.getName().name()).findFirst().orElse("DISTRIBUTOR");
+                    user.setAddedByRole(pRole);
+                });
+            }
         } else if (isPresent(request.addedByUserRef())) {
-            parentRef = request.addedByUserRef().trim();
+            try {
+                UUID parentId = UUID.fromString(request.addedByUserRef().trim());
+                userRepository.findById(parentId).ifPresent(parent -> {
+                    user.setParentUser(parent);
+                    user.setAddedByUserRef(parent.getId().toString());
+                    user.setAddedByName(parent.getFullName());
+                    user.setAddedByPartyCode(parent.getPartyCode());
+                    String pRole = parent.getRoles().stream().map(r -> r.getName().name()).findFirst().orElse("DISTRIBUTOR");
+                    user.setAddedByRole(pRole);
+                });
+            } catch (Exception ignored) {
+                userRepository.findByMobile(request.addedByUserRef().trim()).ifPresent(parent -> {
+                    user.setParentUser(parent);
+                    user.setAddedByUserRef(parent.getId().toString());
+                    user.setAddedByName(parent.getFullName());
+                    user.setAddedByPartyCode(parent.getPartyCode());
+                    String pRole = parent.getRoles().stream().map(r -> r.getName().name()).findFirst().orElse("DISTRIBUTOR");
+                    user.setAddedByRole(pRole);
+                });
+            }
         } else if (isPresent(request.addedByPartyCode())) {
-            parentRef = request.addedByPartyCode().trim();
+            userRepository.findByPartyCode(request.addedByPartyCode().trim()).ifPresent(parent -> {
+                user.setParentUser(parent);
+                user.setAddedByUserRef(parent.getId().toString());
+                user.setAddedByName(parent.getFullName());
+                user.setAddedByPartyCode(parent.getPartyCode());
+                String pRole = parent.getRoles().stream().map(r -> r.getName().name()).findFirst().orElse("DISTRIBUTOR");
+                user.setAddedByRole(pRole);
+            });
         }
-
-        if (parentRef != null && !parentRef.isBlank()) {
-            User parent = findParentByRef(parentRef);
-            if (parent == null) {
-                throw new IllegalArgumentException("Specified parent user does not exist: " + parentRef);
-            }
-
-            // Prevent self / circular mapping
-            if ((user.getMobile() != null && user.getMobile().equalsIgnoreCase(parent.getMobile()))
-                    || (user.getEmail() != null && user.getEmail().equalsIgnoreCase(parent.getEmail()))
-                    || (user.getUsername() != null && user.getUsername().equalsIgnoreCase(parent.getUsername()))) {
-                throw new IllegalArgumentException("User cannot be their own parent in the hierarchy.");
-            }
-
-            // Ensure parent is active or approved
-            if (parent.getStatus() != UserStatus.ACTIVE && parent.getStatus() != UserStatus.APPROVED) {
-                throw new IllegalArgumentException("Specified parent user is not active or approved.");
-            }
-
-            // Validate role compatibility
-            RoleName parentRole = parent.getRoles().stream()
-                    .map(Role::getName)
-                    .findFirst()
-                    .orElse(RoleName.RETAILER);
-
-            validateHierarchyCompatibility(childRole, parentRole);
-
-            user.setParentUser(parent);
-            user.setAddedByUserRef(parent.getId().toString());
-            user.setAddedByName(parent.getFullName());
-            user.setAddedByPartyCode(parent.getPartyCode());
-            user.setAddedByRole(parentRole.name());
-        }
-
         if (isPresent(request.addedByName()) && user.getAddedByName() == null) {
             user.setAddedByName(request.addedByName().trim());
         }
@@ -402,36 +395,6 @@ public class AuthServiceImpl implements AuthService {
         }
         if (isPresent(request.addedByPartyCode()) && user.getAddedByPartyCode() == null) {
             user.setAddedByPartyCode(request.addedByPartyCode().trim());
-        }
-    }
-
-    private User findParentByRef(String ref) {
-        try {
-            UUID id = UUID.fromString(ref);
-            java.util.Optional<User> byId = userRepository.findById(id);
-            if (byId.isPresent()) return byId.get();
-        } catch (Exception ignored) {
-            // Not a UUID, try lookup by partyCode, mobile, or username
-        }
-        return userRepository.findByPartyCode(ref)
-                .or(() -> userRepository.findByMobile(ref))
-                .or(() -> userRepository.findByUsername(ref))
-                .orElse(null);
-    }
-
-    private void validateHierarchyCompatibility(RoleName childRole, RoleName parentRole) {
-        boolean valid = switch (childRole) {
-            case RETAILER -> parentRole == RoleName.DISTRIBUTOR
-                    || parentRole == RoleName.SUPER_DISTRIBUTOR
-                    || parentRole == RoleName.ADMIN;
-            case DISTRIBUTOR -> parentRole == RoleName.SUPER_DISTRIBUTOR
-                    || parentRole == RoleName.ADMIN;
-            case SUPER_DISTRIBUTOR -> parentRole == RoleName.ADMIN;
-            default -> false;
-        };
-
-        if (!valid) {
-            throw new IllegalArgumentException("Parent with role " + parentRole + " cannot sponsor a " + childRole + " account.");
         }
     }
 
@@ -583,22 +546,7 @@ public class AuthServiceImpl implements AuthService {
 
     private RoleName resolveSelfRegistrationRole(String raw) {
         if (raw == null || raw.isBlank()) return RoleName.RETAILER;
-        String normalized = raw.trim().replace('-', '_').replace(' ', '_').toUpperCase(java.util.Locale.ROOT);
-        if ("ADMIN".equals(normalized) || "SUPER_ADMIN".equals(normalized) || "SYSTEM_ADMIN".equals(normalized) || "DEVELOPER".equals(normalized)) {
-            log.warn("Security Alert: Blocked attempt to self-register privileged role: {}", normalized);
-            throw new IllegalArgumentException("Admin accounts cannot be self-registered.");
-        }
-        return switch (normalized) {
-            case "DISTRIBUTOR" -> RoleName.DISTRIBUTOR;
-            case "SUPER_DISTRIBUTOR", "SUPERDISTRIBUTOR" -> RoleName.SUPER_DISTRIBUTOR;
-            case "RETAILER" -> RoleName.RETAILER;
-            default -> throw new IllegalArgumentException("Invalid registration role: " + raw);
-        };
-    }
-
-    private RoleName resolveRoleForLogin(String raw) {
-        if (raw == null || raw.isBlank()) return RoleName.RETAILER;
-        String normalized = raw.trim().replace('-', '_').replace(' ', '_').toUpperCase(java.util.Locale.ROOT);
+        String normalized = raw.trim().replace('-', '_').replace(' ', '_').toUpperCase();
         return switch (normalized) {
             case "ADMIN" -> RoleName.ADMIN;
             case "DISTRIBUTOR" -> RoleName.DISTRIBUTOR;
