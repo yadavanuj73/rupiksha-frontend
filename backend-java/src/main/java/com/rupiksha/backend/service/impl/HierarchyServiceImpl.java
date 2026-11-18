@@ -17,7 +17,6 @@ import java.util.*;
 public class HierarchyServiceImpl implements HierarchyService {
 
     private final UserRepository userRepository;
-    private final com.rupiksha.backend.repository.UserMappingRepository userMappingRepository;
 
     @Override
     public boolean isAdmin(User user) {
@@ -32,89 +31,6 @@ public class HierarchyServiceImpl implements HierarchyService {
     public boolean isAdmin(UUID userId) {
         if (userId == null) return false;
         return userRepository.findById(userId).map(this::isAdmin).orElse(false);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public User getEffectiveParent(User user) {
-        if (user == null) return null;
-
-        // 1. Check user_mappings for active mapping
-        if (userMappingRepository != null && user.getId() != null) {
-            try {
-                Optional<com.rupiksha.backend.domain.UserMapping> activeMapping =
-                        userMappingRepository.findTopByUserIdAndStatusOrderByCreatedAtDesc(user.getId(), "ACTIVE");
-                if (activeMapping.isPresent() && activeMapping.get().getNewParent() != null) {
-                    return activeMapping.get().getNewParent();
-                }
-            } catch (Exception e) {
-                log.warn("Failed to check active user_mapping for user {}: {}", user.getId(), e.getMessage());
-            }
-        }
-
-        // 2. Check parentUser direct relationship
-        if (user.getParentUser() != null) {
-            return user.getParentUser();
-        }
-
-        // 3. Check addedByUserRef (can be UUID, partyCode, mobile, or username)
-        String ref = user.getAddedByUserRef();
-        if (ref != null && !ref.isBlank()) {
-            User p = findUserByIdentifier(ref);
-            if (p != null) return p;
-        }
-
-        // 4. Check addedByPartyCode
-        String pc = user.getAddedByPartyCode();
-        if (pc != null && !pc.isBlank()) {
-            return userRepository.findByPartyCode(pc.trim()).orElse(null);
-        }
-
-        return null;
-    }
-
-    private User findUserByIdentifier(String identifier) {
-        if (identifier == null || identifier.isBlank()) return null;
-        String clean = identifier.trim();
-        try {
-            UUID id = UUID.fromString(clean);
-            Optional<User> byId = userRepository.findById(id);
-            if (byId.isPresent()) return byId.get();
-        } catch (IllegalArgumentException ignored) {
-        }
-        return userRepository.findByPartyCode(clean)
-                .or(() -> userRepository.findByMobile(clean))
-                .or(() -> userRepository.findByUsername(clean))
-                .orElse(null);
-    }
-
-    private boolean isImmediateChild(User operator, User target) {
-        if (target.getParentUser() != null && target.getParentUser().getId().equals(operator.getId())) {
-            return true;
-        }
-        String ref = target.getAddedByUserRef();
-        if (ref != null && !ref.isBlank()) {
-            String clean = ref.trim();
-            if (clean.equalsIgnoreCase(operator.getId().toString())) return true;
-            if (operator.getUsername() != null && clean.equalsIgnoreCase(operator.getUsername())) return true;
-            if (operator.getMobile() != null && clean.equalsIgnoreCase(operator.getMobile())) return true;
-            if (operator.getPartyCode() != null && clean.equalsIgnoreCase(operator.getPartyCode())) return true;
-        }
-        String pc = target.getAddedByPartyCode();
-        if (pc != null && !pc.isBlank() && operator.getPartyCode() != null && pc.trim().equalsIgnoreCase(operator.getPartyCode())) {
-            return true;
-        }
-        if (userMappingRepository != null && target.getId() != null) {
-            try {
-                Optional<com.rupiksha.backend.domain.UserMapping> activeMap =
-                        userMappingRepository.findTopByUserIdAndStatusOrderByCreatedAtDesc(target.getId(), "ACTIVE");
-                if (activeMap.isPresent() && activeMap.get().getNewParent() != null
-                        && activeMap.get().getNewParent().getId().equals(operator.getId())) {
-                    return true;
-                }
-            } catch (Exception ignored) {}
-        }
-        return false;
     }
 
     @Override
@@ -134,30 +50,49 @@ public class HierarchyServiceImpl implements HierarchyService {
             return true;
         }
 
-        // Immediate child check
-        if (isImmediateChild(operator, target)) {
-            return true;
-        }
-
-        UUID operatorId = operator.getId();
+        String operatorIdStr = operator.getId().toString();
+        String currentParentRef = target.getAddedByUserRef();
+        User currentParentUser = target.getParentUser();
 
         // Traverse upwards from target to see if operator is an ancestor
-        int maxDepth = 10;
+        int maxDepth = 10; // Guard against potential circular references in data
         int depth = 0;
         Set<UUID> visited = new HashSet<>();
         visited.add(target.getId());
 
-        User current = target;
         while (depth++ < maxDepth) {
-            User parent = getEffectiveParent(current);
-            if (parent == null || visited.contains(parent.getId())) {
+            UUID nextParentId = null;
+
+            if (currentParentUser != null) {
+                if (currentParentUser.getId().equals(operator.getId())) {
+                    return true;
+                }
+                nextParentId = currentParentUser.getId();
+            } else if (currentParentRef != null && !currentParentRef.isBlank()) {
+                if (currentParentRef.equalsIgnoreCase(operatorIdStr)) {
+                    return true;
+                }
+                try {
+                    nextParentId = UUID.fromString(currentParentRef.trim());
+                } catch (Exception ignored) {
+                    break;
+                }
+            } else {
                 break;
             }
-            if (parent.getId().equals(operatorId)) {
-                return true;
+
+            if (nextParentId == null || visited.contains(nextParentId)) {
+                break;
             }
-            visited.add(parent.getId());
-            current = parent;
+            visited.add(nextParentId);
+
+            User nextParent = userRepository.findById(nextParentId).orElse(null);
+            if (nextParent == null) {
+                break;
+            }
+
+            currentParentUser = nextParent.getParentUser();
+            currentParentRef = nextParent.getAddedByUserRef();
         }
 
         return false;

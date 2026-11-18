@@ -232,7 +232,7 @@ export const UserSelector = ({ users = [], value, onChange, placeholder, disable
                                             key={u.id || u.username || i}
                                             type="button"
                                             onClick={() => {
-                                                onChange(u.id || u.userId || u.username);
+                                                onChange(u.username || u.id);
                                                 setOpen(false);
                                                 setSearch('');
                                             }}

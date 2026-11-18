@@ -184,7 +184,6 @@ public class UserMappingServiceImpl implements UserMappingService {
 
         // 5. Save updated retailer hierarchy atomically
         userRepository.save(retailer);
-        try { userRepository.flush(); } catch (Exception ignored) {}
 
         // 6. Mark previous active mappings as SUPERSEDED
         List<UserMapping> activeMappings = userMappingRepository.findAllByUserIdAndStatus(retailer.getId(), "ACTIVE");
@@ -215,7 +214,6 @@ public class UserMappingServiceImpl implements UserMappingService {
                 .build();
 
         UserMapping savedMapping = userMappingRepository.save(mapping);
-        try { userMappingRepository.flush(); } catch (Exception ignored) {}
         log.info("User mapping successful: Retailer {} mapped under {} ({}) by admin {}",
                 retailer.getUsername(), targetRole, newParent != null ? newParent.getUsername() : "ADMIN",
                 adminUser != null ? adminUser.getUsername() : "admin");

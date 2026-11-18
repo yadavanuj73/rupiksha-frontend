@@ -58,7 +58,6 @@ const WalletManager = ({ initialTab, activeSection, onNavigate }) => {
 
     const initialResolved = mapSectionToTabId(activeSection || initialTab || 'overview');
     const [activeTab, setActiveTab] = useState(initialResolved);
-    const [preSelectedUserId, setPreSelectedUserId] = useState('');
 
     const [wallets, setWallets] = useState(() => {
         try {
@@ -275,11 +274,7 @@ const WalletManager = ({ initialTab, activeSection, onNavigate }) => {
                                     wallets={wallets}
                                     loading={loading}
                                     onRefresh={loadWallets}
-                                    onToast={setToast}
-                                    onNavigate={(sec, targetUserId) => {
-                                        if (targetUserId) setPreSelectedUserId(targetUserId);
-                                        if (onNavigate) onNavigate(sec);
-                                    }}
+                                    onNavigate={(sec) => onNavigate && onNavigate(sec)}
                                 />
                             )}
                             {activeTab === 'credit' && (
@@ -288,7 +283,6 @@ const WalletManager = ({ initialTab, activeSection, onNavigate }) => {
                                     loading={loading}
                                     onToast={setToast}
                                     onRefresh={loadWallets}
-                                    initialUserId={preSelectedUserId}
                                 />
                             )}
                             {activeTab === 'debit' && (
@@ -297,7 +291,6 @@ const WalletManager = ({ initialTab, activeSection, onNavigate }) => {
                                     loading={loading}
                                     onToast={setToast}
                                     onRefresh={loadWallets}
-                                    initialUserId={preSelectedUserId}
                                 />
                             )}
                             {activeTab === 'pending-requests' && (
@@ -320,7 +313,6 @@ const WalletManager = ({ initialTab, activeSection, onNavigate }) => {
                                     onToast={setToast}
                                     onRefresh={loadWallets}
                                     onNavigate={(sec) => onNavigate && onNavigate(sec)}
-                                    initialUserId={preSelectedUserId}
                                 />
                             )}
                             {activeTab === 'release' && (

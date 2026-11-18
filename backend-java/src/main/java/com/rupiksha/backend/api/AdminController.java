@@ -856,21 +856,14 @@ public class AdminController {
         dto.put("deviceInfo", u.getDeviceInfo());
 
         // Hierarchy Parent
-        User parent = hierarchyService != null ? hierarchyService.getEffectiveParent(u) : u.getParentUser();
-        if (parent != null) {
-            dto.put("parentUserId", parent.getId().toString());
-            dto.put("parentName", parent.getFullName());
-            dto.put("parentPartyCode", parent.getPartyCode());
-            dto.put("ownerId", parent.getId().toString());
-            dto.put("ownerName", parent.getFullName());
-            dto.put("ownerPartyCode", parent.getPartyCode());
+        if (u.getParentUser() != null) {
+            dto.put("parentUserId", u.getParentUser().getId().toString());
+            dto.put("parentName", u.getParentUser().getFullName());
+            dto.put("parentPartyCode", u.getParentUser().getPartyCode());
         } else {
             dto.put("parentUserId", u.getAddedByUserRef());
             dto.put("parentName", u.getAddedByName());
             dto.put("parentPartyCode", u.getAddedByPartyCode());
-            dto.put("ownerId", u.getAddedByUserRef());
-            dto.put("ownerName", u.getAddedByName());
-            dto.put("ownerPartyCode", u.getAddedByPartyCode());
         }
 
         dto.put("createdAt", u.getCreatedAt());
