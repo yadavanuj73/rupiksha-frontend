@@ -40,10 +40,10 @@ public class DoveSoftOtpProvider implements OtpProvider {
     @Value("${dovesoft.base-url:${DOVESOFT_BASE_URL:${OTP_BASE_URL:https://api.dovesoft.io}}}")
     private String envBaseUrl;
 
-    @Value("${dovesoft.entity-id:${DOVESOFT_ENTITY_ID:${OTP_ENTITY_ID:${TWOFACTOR_PEID:${OTP_PEID:1701176347102771967}}}}}")
+    @Value("${dovesoft.entity-id:${DOVESOFT_ENTITY_ID:${OTP_ENTITY_ID:${TWOFACTOR_PEID:${OTP_PEID:}}}}}")
     private String envEntityId;
 
-    @Value("${dovesoft.temp-id:${DOVESOFT_TEMP_ID:${OTP_TEMP_ID:${TWOFACTOR_CTID:${OTP_CTID:1777178411720176303}}}}}")
+    @Value("${dovesoft.temp-id:${DOVESOFT_TEMP_ID:${OTP_TEMP_ID:${TWOFACTOR_CTID:${OTP_CTID:}}}}}")
     private String envTempId;
 
     @Value("${dovesoft.sender-id:${DOVESOFT_SENDER_ID:${OTP_SENDER_ID:${TWOFACTOR_SENDER_ID:RUPIKS}}}}")
@@ -54,9 +54,6 @@ public class DoveSoftOtpProvider implements OtpProvider {
 
     public static final String DEFAULT_MESSAGE_TEMPLATE =
             "Dear Partner, Your OTP for login is {#num#}. Do not share with anyone. visit us at https://rupiksha.com\n -Rupiksha Services";
-    public static final String DEFAULT_ENTITY_ID = "1701176347102771967";
-    public static final String DEFAULT_TEMP_ID = "1777178411720176303";
-    public static final String DEFAULT_SENDER_ID = "RUPIKS";
     public static final int DEFAULT_TTL = 200;
 
     @Value("${dovesoft.message:${DOVESOFT_OTP_MESSAGE:${OTP_MESSAGE:}}}")
@@ -126,21 +123,21 @@ public class DoveSoftOtpProvider implements OtpProvider {
     }
 
     public String getEntityId() {
-        if (envEntityId != null) {
+        if (envEntityId != null && !envEntityId.isBlank()) {
             return envEntityId.trim();
         }
-        return DEFAULT_ENTITY_ID;
+        return "";
     }
 
     public String getTempId() {
-        if (envTempId != null) {
+        if (envTempId != null && !envTempId.isBlank()) {
             return envTempId.trim();
         }
-        return DEFAULT_TEMP_ID;
+        return "";
     }
 
     public String getSenderId() {
-        if (envSenderId != null) {
+        if (envSenderId != null && !envSenderId.isBlank()) {
             return envSenderId.trim();
         }
         if (appProperties != null && appProperties.providers() != null && appProperties.providers().otp() != null) {
@@ -149,7 +146,7 @@ public class DoveSoftOtpProvider implements OtpProvider {
                 return senderId.trim();
             }
         }
-        return DEFAULT_SENDER_ID;
+        return "RUPIKS";
     }
 
     public String resolveMessageTemplate() {

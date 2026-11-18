@@ -162,16 +162,16 @@ billavenue:
 dovesoft:
   base-url: ${DOVESOFT_BASE_URL:https://api.dovesoft.io}
   api-key: ${DOVESOFT_API_KEY:${OTP_API_KEY:}}
-  entity-id: ${DOVESOFT_ENTITY_ID:${OTP_ENTITY_ID:${TWOFACTOR_PEID:${OTP_PEID:1701176347102771967}}}}
-  temp-id: ${DOVESOFT_TEMP_ID:${OTP_TEMP_ID:${TWOFACTOR_CTID:${OTP_CTID:1777178411720176303}}}}
-  sender-id: ${DOVESOFT_SENDER_ID:${OTP_SENDER_ID:${TWOFACTOR_SENDER_ID:RUPIKS}}}
+  entity-id: ${DOVESOFT_ENTITY_ID:${OTP_ENTITY_ID:${TWOFACTOR_PEID:${OTP_PEID:}}}}
+  temp-id: ${DOVESOFT_TEMP_ID:${OTP_TEMP_ID:${TWOFACTOR_CTID:${OTP_CTID:}}}}
+  sender-id: ${DOVESOFT_SENDER_ID:${OTP_SENDER_ID:${TWOFACTOR_SENDER_ID:}}}
   timetoalive: ${DOVESOFT_TTL:${OTP_TTL_SECONDS:200}}
   message: ${DOVESOFT_OTP_MESSAGE:Dear Partner, Your OTP for login is {#num#}. Do not share with anyone. visit us at https://rupiksha.com\n -Rupiksha Services}
   use-json-api: ${DOVESOFT_USE_JSON_API:false}
   callback-token: ${DOVESOFT_CALLBACK_TOKEN:}
 
 twofactor:
-  api-key: ${TWOFACTOR_API_KEY:${OTP_API_KEY:2f056347-ce8a-11f0-a6b2-0200cd936042}}
+  api-key: ${TWOFACTOR_API_KEY:${OTP_API_KEY:}}
 
 # Bustto / BuckBox Payout Configuration
 bustto:

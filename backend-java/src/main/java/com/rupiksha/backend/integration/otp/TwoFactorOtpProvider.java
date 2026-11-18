@@ -53,7 +53,7 @@ public class TwoFactorOtpProvider implements OtpProvider {
                 return propKey.trim();
             }
         }
-        return "2f056347-ce8a-11f0-a6b2-0200cd936042";
+        return "";
     }
 
     @Override
