@@ -60,7 +60,7 @@ export const fireCelebration = () => {
             scalar: 0.9,
             zIndex: 9999
         });
-    } catch (_) {}
+    } catch (_) { }
 };
 
 /** Helper: format Instant string to Indian date+time */
@@ -103,9 +103,8 @@ export const Toast = ({ toast, onClose }) => {
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className={`fixed top-5 right-5 z-[300] flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl border ${
-                toast.type === 'success' ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-rose-600 border-rose-500 text-white'
-            }`}
+            className={`fixed top-5 right-5 z-[300] flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl border ${toast.type === 'success' ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-rose-600 border-rose-500 text-white'
+                }`}
         >
             {toast.type === 'success' ? <CheckCircle2 size={20} className="shrink-0" /> : <XCircle size={20} className="shrink-0" />}
             <span className="text-sm font-bold tracking-wide">{toast.message}</span>
@@ -135,8 +134,14 @@ export const UserSelector = ({ users = [], value, onChange, placeholder, disable
     }
 
     const selected = pool.find(u =>
-        u.username === value || u.userId == value || u.id == value || u.mobile === value
-    ) || (users || []).find(u => u.username === value || u.userId == value || u.id == value || u.mobile === value);
+        (u.id && String(u.id) === String(value)) ||
+        (u.userId && String(u.userId) === String(value)) ||
+        u.username === value || u.mobile === value
+    ) || (users || []).find(u =>
+        (u.id && String(u.id) === String(value)) ||
+        (u.userId && String(u.userId) === String(value)) ||
+        u.username === value || u.mobile === value
+    );
 
     const getCleanPartyCode = (u) => {
         if (!u) return '';
@@ -169,9 +174,8 @@ export const UserSelector = ({ users = [], value, onChange, placeholder, disable
                 type="button"
                 onClick={() => !disabled && setOpen(!open)}
                 disabled={disabled}
-                className={`w-full flex items-center justify-between px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-semibold text-slate-700 transition-all outline-none ${
-                    disabled ? 'opacity-60 cursor-not-allowed' : 'hover:border-indigo-400 focus:border-indigo-500'
-                }`}
+                className={`w-full flex items-center justify-between px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-semibold text-slate-700 transition-all outline-none ${disabled ? 'opacity-60 cursor-not-allowed' : 'hover:border-indigo-400 focus:border-indigo-500'
+                    }`}
             >
                 {selected ? (
                     <div className="flex items-center gap-2.5 truncate">
@@ -232,7 +236,7 @@ export const UserSelector = ({ users = [], value, onChange, placeholder, disable
                                             key={u.id || u.username || i}
                                             type="button"
                                             onClick={() => {
-                                                onChange(u.username || u.id);
+                                                onChange(u.id || u.userId || u.username);
                                                 setOpen(false);
                                                 setSearch('');
                                             }}

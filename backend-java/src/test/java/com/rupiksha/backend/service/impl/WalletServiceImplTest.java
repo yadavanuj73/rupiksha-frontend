@@ -295,4 +295,38 @@ public class WalletServiceImplTest {
         assertEquals(0, new BigDecimal("950.00").compareTo(retailerWallet.getBalance())); // 100.00 + 850.00
         verify(walletRepository, times(1)).save(retailerWallet);
     }
+
+    @Test
+    void testCreditWithUsernameOrMobileOrPartyCode() {
+        retailer.setPartyCode("RPRMH62955");
+        retailer.setMobile("7292987918");
+
+        lenient().when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        lenient().when(userRepository.findByUsername("retailer")).thenReturn(Optional.of(retailer));
+        lenient().when(userRepository.findByPartyCode("RPRMH62955")).thenReturn(Optional.of(retailer));
+        lenient().when(userRepository.findAllByMobile("7292987918")).thenReturn(List.of(retailer));
+        lenient().when(walletRepository.findByUserIdWithLock(retailer.getId())).thenReturn(Optional.of(retailerWallet));
+        lenient().when(walletEntryRepository.findByIdempotencyKey(anyString())).thenReturn(Optional.empty());
+
+        // Test with party code
+        WalletDtos.WalletEntryRequest reqPartyCode = new WalletDtos.WalletEntryRequest(
+                "RPRMH62955", BigDecimal.valueOf(10.00), "Party code credit test"
+        );
+        WalletDtos.WalletBalanceResponse res1 = walletService.credit(reqPartyCode, admin.getId(), "127.0.0.1", "idem-party");
+        assertNotNull(res1);
+
+        // Test with mobile
+        WalletDtos.WalletEntryRequest reqMobile = new WalletDtos.WalletEntryRequest(
+                "7292987918", BigDecimal.valueOf(10.00), "Mobile credit test"
+        );
+        WalletDtos.WalletBalanceResponse res2 = walletService.credit(reqMobile, admin.getId(), "127.0.0.1", "idem-mobile");
+        assertNotNull(res2);
+
+        // Test with username
+        WalletDtos.WalletEntryRequest reqUsername = new WalletDtos.WalletEntryRequest(
+                "retailer", BigDecimal.valueOf(10.00), "Username credit test"
+        );
+        WalletDtos.WalletBalanceResponse res3 = walletService.credit(reqUsername, admin.getId(), "127.0.0.1", "idem-uname");
+        assertNotNull(res3);
+    }
 }

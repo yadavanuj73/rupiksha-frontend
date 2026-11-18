@@ -27,7 +27,7 @@ const CreditFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
     const [idempotencyKey, setIdempotencyKey] = useState(() => uuid());
     const submittingRef = useRef(false);
 
-    const selectedUser = users.find(u => u.username === userId || u.id == userId || u.userId == userId);
+    const selectedUser = users.find(u => (u.id && String(u.id) === String(userId)) || (u.userId && String(u.userId) === String(userId)) || u.username === userId);
     const presetAmounts = [500, 1000, 2000, 5000, 10000, 25000, 50000];
 
     const handleSubmit = async (e) => {
@@ -37,7 +37,7 @@ const CreditFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
         const numAmount = parseFloat(amount);
         if (!numAmount || numAmount <= 0) return onToast({ type: 'error', message: 'Please enter a valid credit amount (greater than 0)' });
 
-        const targetId = selectedUser ? (selectedUser.id || selectedUser.username) : userId;
+        const targetId = selectedUser ? (selectedUser.id || selectedUser.userId || selectedUser.username) : userId;
         submittingRef.current = true;
         setSubmitting(true);
 
@@ -56,16 +56,20 @@ const CreditFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
                 })
             }, idempotencyKey);
         } catch (err) {
-            console.warn('[CreditFund] API call warning:', err);
+            console.error('[CreditFund] API call error:', err);
+            submittingRef.current = false;
+            setSubmitting(false);
+            return onToast({ type: 'error', message: err?.message || 'Failed to credit funds on server' });
         }
 
-        // Always guarantee update via dataService for reliable live state sync
-        const adjusted = dataService.adjustUserWalletBalance(targetId, numAmount, 'CREDIT', creditRemark);
+        if (res && res.success) {
+            try {
+                dataService.adjustUserWalletBalance(targetId, numAmount, 'CREDIT', creditRemark);
+            } catch (_) {}
 
-        if ((res && res.success) || adjusted) {
             onToast({
                 type: 'success',
-                message: res?.message || `Successfully credited ${fmtINR(numAmount)} to ${(selectedUser?.name || targetId)}!`
+                message: res?.message || `Successfully credited ${fmtINR(numAmount)} to ${(selectedUser?.name || selectedUser?.fullName || targetId)}!`
             });
             fireCelebration();
 
@@ -76,7 +80,7 @@ const CreditFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
             if (onRefresh) onRefresh();
             window.dispatchEvent(new CustomEvent('walletUpdated'));
         } else {
-            onToast({ type: 'error', message: res?.message || 'Failed to credit funds. Please try again.' });
+            onToast({ type: 'error', message: res?.message || res?.error || 'Failed to credit funds. Please try again.' });
         }
 
         submittingRef.current = false;

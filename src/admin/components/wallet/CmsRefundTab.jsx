@@ -52,7 +52,7 @@ const CmsRefundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
         }
     });
 
-    const selectedUser = users.find(u => u.username === userId || u.id == userId || u.userId == userId);
+    const selectedUser = users.find(u => (u.id && String(u.id) === String(userId)) || (u.userId && String(u.userId) === String(userId)) || u.username === userId);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -62,27 +62,15 @@ const CmsRefundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
         if (!originalRef.trim()) return onToast({ type: 'error', message: 'Please enter the Original CMS / Transaction Reference ID' });
 
         setSubmitting(true);
-        const targetId = selectedUser ? (selectedUser.id || selectedUser.username) : userId;
+        const targetId = selectedUser ? (selectedUser.id || selectedUser.userId || selectedUser.username) : userId;
         const targetName = selectedUser?.name || selectedUser?.fullName || targetId;
 
         const categoryLabel = category.replace(/_/g, ' ');
         const finalNarration = `CMS Refund: ${categoryLabel} - Ref: ${originalRef.trim()}${remark ? ` (${remark.trim()})` : ''}`;
 
-        // Credit to wallet with explicit CMS_REFUND context so it displays as CMS Refund
-        dataService.adjustUserWalletBalance(targetId, numAmt, 'CREDIT', finalNarration);
-
-        // Ensure transaction in dataService explicitly has service: 'CMS_REFUND'
-        const appData = dataService.getData();
-        if (appData.transactions && appData.transactions.length > 0) {
-            appData.transactions[0].service = 'CMS_REFUND';
-            appData.transactions[0].transactionContext = 'CMS_REFUND';
-            appData.transactions[0].isCmsRefund = true;
-            dataService.saveData(appData);
-        }
-
-        // Sync with backend API
+        let res = null;
         try {
-            await fetchAPI('/wallet/cms-refund', {
+            res = await fetchAPI('/wallet/cms-refund', {
                 method: 'POST',
                 body: JSON.stringify({
                     userId: String(targetId),
@@ -92,41 +80,62 @@ const CmsRefundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
                 })
             });
         } catch (err) {
-            console.warn('[CmsRefund] Backend sync note:', err);
+            console.error('[CmsRefund] Backend sync error:', err);
+            setSubmitting(false);
+            return onToast({ type: 'error', message: err?.message || 'Failed to process CMS refund on server' });
         }
 
-        // Save into CMS refund history
-        const newRecord = {
-            id: `CMS-REF-${Date.now().toString().slice(-5)}`,
-            userId: targetId,
-            username: selectedUser?.username || targetId,
-            name: targetName,
-            role: selectedUser?.role || 'RETAILER',
-            mobile: selectedUser?.mobile || '',
-            amount: numAmt,
-            category: categoryLabel,
-            originalRef: originalRef.trim(),
-            consumerNo: consumerNo.trim() || '—',
-            narration: finalNarration,
-            refundedAt: new Date().toISOString(),
-            status: 'REFUNDED'
-        };
+        if (res && res.success) {
+            try {
+                dataService.adjustUserWalletBalance(targetId, numAmt, 'CREDIT', finalNarration);
+                const appData = dataService.getData();
+                if (appData.transactions && appData.transactions.length > 0) {
+                    appData.transactions[0].service = 'CMS_REFUND';
+                    appData.transactions[0].transactionContext = 'CMS_REFUND';
+                    appData.transactions[0].isCmsRefund = true;
+                    dataService.saveData(appData);
+                }
+            } catch (_) {}
 
-        setRefunds(prev => [newRecord, ...prev]);
+            // Save into CMS refund history
+            const newRecord = {
+                id: `CMS-REF-${Date.now().toString().slice(-5)}`,
+                userId: targetId,
+                username: selectedUser?.username || targetId,
+                name: targetName,
+                role: selectedUser?.role || 'RETAILER',
+                mobile: selectedUser?.mobile || '',
+                amount: numAmt,
+                category: categoryLabel,
+                originalRef: originalRef.trim(),
+                consumerNo: consumerNo.trim() || '—',
+                narration: finalNarration,
+                refundedAt: new Date().toISOString(),
+                status: 'REFUNDED'
+            };
 
-        fireCelebration();
-        onToast({
-            type: 'success',
-            message: `CMS Refund of ${fmtINR(numAmt)} credited to ${targetName}'s wallet successfully!`
-        });
+            setRefunds(prev => [newRecord, ...prev]);
 
-        setAmount('');
-        setOriginalRef('');
-        setConsumerNo('');
-        setRemark('');
-        setSubmitting(false);
-        if (onRefresh) onRefresh();
-        window.dispatchEvent(new CustomEvent('walletUpdated'));
+            fireCelebration();
+            onToast({
+                type: 'success',
+                message: res?.message || `CMS Refund of ${fmtINR(numAmt)} credited to ${targetName}'s wallet successfully!`
+            });
+
+            setAmount('');
+            setOriginalRef('');
+            setConsumerNo('');
+            setRemark('');
+            setSubmitting(false);
+            if (onRefresh) onRefresh();
+            window.dispatchEvent(new CustomEvent('walletUpdated'));
+        } else {
+            setSubmitting(false);
+            onToast({
+                type: 'error',
+                message: res?.message || res?.error || 'Failed to process CMS refund. Please try again.'
+            });
+        }
     };
 
     const filteredRefunds = refunds.filter(r => {

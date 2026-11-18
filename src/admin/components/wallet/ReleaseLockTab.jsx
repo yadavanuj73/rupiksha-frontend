@@ -69,11 +69,12 @@ const ReleaseLockTab = ({ users = [], loading = false, onToast, onRefresh }) => 
         }
 
         setSubmitting(true);
-        const targetId = selectedUserToRelease.id || selectedUserToRelease.username;
+        const targetId = selectedUserToRelease.id || selectedUserToRelease.userId || selectedUserToRelease.username;
         const finalRemark = releaseRemark.trim() || 'Admin released locked funds';
 
+        let res = null;
         try {
-            await fetchAPI('/wallet/release', {
+            res = await fetchAPI('/wallet/release', {
                 method: 'POST',
                 body: JSON.stringify({
                     userId: targetId,
@@ -82,37 +83,49 @@ const ReleaseLockTab = ({ users = [], loading = false, onToast, onRefresh }) => 
                 })
             });
         } catch (e) {
-            console.warn('Backend release API call fallback:', e);
+            console.error('Backend release API call error:', e);
+            setSubmitting(false);
+            return onToast({ type: 'error', message: e?.message || 'Failed to release lock on server' });
         }
 
-        // Update dataService users
-        const appData = dataService.getData();
-        if (!appData.users) appData.users = [];
-        let uIdx = appData.users.findIndex(u =>
-            u.id == targetId || u._id == targetId || u.username === targetId || u.mobile === targetId
-        );
-        if (uIdx !== -1) {
-            const currentU = appData.users[uIdx];
-            const currentLocked = parseFloat(String(currentU.lockedAmount || 0).replace(/,/g, '')) || 0;
-            const newLocked = Math.max(0, currentLocked - numToRelease).toFixed(2);
-            appData.users[uIdx] = {
-                ...currentU,
-                lockedAmount: parseFloat(newLocked)
-            };
-            dataService.saveData(appData);
+        if (res && res.success) {
+            // Update dataService users
+            try {
+                const appData = dataService.getData();
+                if (!appData.users) appData.users = [];
+                let uIdx = appData.users.findIndex(u =>
+                    u.id == targetId || u._id == targetId || u.username === targetId || u.mobile === targetId
+                );
+                if (uIdx !== -1) {
+                    const currentU = appData.users[uIdx];
+                    const currentLocked = parseFloat(String(currentU.lockedAmount || 0).replace(/,/g, '')) || 0;
+                    const newLocked = Math.max(0, currentLocked - numToRelease).toFixed(2);
+                    appData.users[uIdx] = {
+                        ...currentU,
+                        lockedAmount: parseFloat(newLocked)
+                    };
+                    dataService.saveData(appData);
+                }
+            } catch (_) {}
+
+            fireCelebration();
+            onToast({
+                type: 'success',
+                message: res?.message || `Successfully released ${fmtINR(numToRelease)} back to available balance for ${(selectedUserToRelease.name || selectedUserToRelease.fullName || targetId)}!`
+            });
+
+            setSelectedUserToRelease(null);
+            setReleaseAmount('');
+            setSubmitting(false);
+            if (onRefresh) onRefresh();
+            window.dispatchEvent(new CustomEvent('walletUpdated'));
+        } else {
+            setSubmitting(false);
+            onToast({
+                type: 'error',
+                message: res?.message || res?.error || 'Failed to release lock amount. Please try again.'
+            });
         }
-
-        fireCelebration();
-        onToast({
-            type: 'success',
-            message: `Successfully released ${fmtINR(numToRelease)} back to available balance for ${selectedUserToRelease.name}!`
-        });
-
-        setSelectedUserToRelease(null);
-        setReleaseAmount('');
-        setSubmitting(false);
-        if (onRefresh) onRefresh();
-        window.dispatchEvent(new CustomEvent('walletUpdated'));
     };
 
     const getRoleBadge = (role) => {

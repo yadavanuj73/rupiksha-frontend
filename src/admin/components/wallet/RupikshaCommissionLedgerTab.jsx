@@ -68,16 +68,17 @@ const RupikshaCommissionLedgerTab = ({ users = [], loading = false, onToast, onR
         if (!gross || gross <= 0) return onToast({ type: 'error', message: 'Please enter a valid gross commission amount' });
 
         setDistributing(true);
-        const selectedUser = users.find(u => u.username === distForm.userId || u.id == distForm.userId);
-        const targetId = selectedUser ? (selectedUser.id || selectedUser.username) : distForm.userId;
+        const selectedUser = users.find(u => (u.id && String(u.id) === String(distForm.userId)) || (u.userId && String(u.userId) === String(distForm.userId)) || u.username === distForm.userId);
+        const targetId = selectedUser ? (selectedUser.id || selectedUser.userId || selectedUser.username) : distForm.userId;
         const targetName = selectedUser?.name || selectedUser?.fullName || targetId;
 
         const tds = (gross * 2) / 100;
         const gst = (gross * parseFloat(distForm.gstRate || 0)) / 100;
         const net = gross - tds - gst;
 
+        let res = null;
         try {
-            await fetchAPI('/wallet/give-commission', {
+            res = await fetchAPI('/wallet/give-commission', {
                 method: 'POST',
                 body: JSON.stringify({
                     userId: targetId,
@@ -86,43 +87,58 @@ const RupikshaCommissionLedgerTab = ({ users = [], loading = false, onToast, onR
                     remark: distForm.remark || 'Commission credit'
                 })
             });
-        } catch (_) {}
+        } catch (err) {
+            console.error('[Commission] API call error:', err);
+            setDistributing(false);
+            return onToast({ type: 'error', message: err?.message || 'Failed to distribute commission on server' });
+        }
 
-        // Credit net payable to user's wallet
-        const note = `Commission Payout (${distForm.service.replace(/_/g, ' ')}) - Gross: ₹${gross}, TDS: ₹${tds}, Net: ₹${net}`;
-        dataService.adjustUserWalletBalance(targetId, net, 'CREDIT', note);
+        if (res && res.success) {
+            // Credit net payable to user's wallet cache
+            try {
+                const note = `Commission Payout (${distForm.service.replace(/_/g, ' ')}) - Gross: ₹${gross}, TDS: ₹${tds}, Net: ₹${net}`;
+                dataService.adjustUserWalletBalance(targetId, net, 'CREDIT', note);
+            } catch (_) {}
 
-        const newRec = {
-            id: `COMM-${Date.now().toString().slice(-5)}`,
-            userId: targetId,
-            username: selectedUser?.username || targetId,
-            name: targetName,
-            role: selectedUser?.role || 'RETAILER',
-            mobile: selectedUser?.mobile || '',
-            service: distForm.service,
-            grossAmount: gross,
-            tdsRate: 2,
-            tdsAmount: tds,
-            gstRate: parseFloat(distForm.gstRate || 0),
-            gstAmount: gst,
-            netAmount: net,
-            date: new Date().toISOString(),
-            status: 'CREDITED',
-            remark: distForm.remark || 'Manual commission disbursement by Admin'
-        };
+            const newRec = {
+                id: `COMM-${Date.now().toString().slice(-5)}`,
+                userId: targetId,
+                username: selectedUser?.username || targetId,
+                name: targetName,
+                role: selectedUser?.role || 'RETAILER',
+                mobile: selectedUser?.mobile || '',
+                service: distForm.service,
+                grossAmount: gross,
+                tdsRate: 2,
+                tdsAmount: tds,
+                gstRate: parseFloat(distForm.gstRate || 0),
+                gstAmount: gst,
+                netAmount: net,
+                date: new Date().toISOString(),
+                status: 'CREDITED',
+                remark: distForm.remark || 'Manual commission disbursement by Admin'
+            };
 
-        setRecords(prev => [newRec, ...prev]);
+            setRecords(prev => [newRec, ...prev]);
 
-        fireCelebration();
-        onToast({
-            type: 'success',
-            message: `Commission of ${fmtINR(net)} (Net) successfully credited to ${targetName}!`
-        });
+            fireCelebration();
+            onToast({
+                type: 'success',
+                message: res?.message || `Commission of ${fmtINR(net)} (Net) successfully credited to ${targetName}!`
+            });
 
-        setShowDistributeModal(false);
-        setDistForm({ userId: '', grossAmount: '', gstRate: '0', service: 'AEPS_COMMISSION', remark: '' });
-        setDistributing(false);
-        if (onRefresh) onRefresh();
+            setShowDistributeModal(false);
+            setDistForm({ userId: '', grossAmount: '', gstRate: '0', service: 'AEPS_COMMISSION', remark: '' });
+            setDistributing(false);
+            if (onRefresh) onRefresh();
+            window.dispatchEvent(new CustomEvent('walletUpdated'));
+        } else {
+            setDistributing(false);
+            onToast({
+                type: 'error',
+                message: res?.message || res?.error || 'Failed to distribute commission. Please try again.'
+            });
+        }
         window.dispatchEvent(new CustomEvent('walletUpdated'));
     };
 
