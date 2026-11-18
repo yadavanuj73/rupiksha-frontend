@@ -50,11 +50,8 @@ export default function Navbar() {
                     <button className="rp-nav__link" onClick={() => scroll('services')}>Services</button>
                     <button className={`rp-nav__link ${location.pathname === '/leadership' ? 'active' : ''}`} onClick={() => navigate('/leadership')}>Our Leadership</button>
                     <button className={`rp-nav__link ${location.pathname === '/contact' ? 'active' : ''}`} onClick={() => navigate('/contact')}>Contact</button>
-                    <button 
-                        className="rp-btn rp-btn--sm rp-btn--primary" 
-                        onClick={() => window.open('/portal/retailer', '_blank')}
-                    >
-                        Login
+                    <button className="rp-btn rp-btn--sm rp-btn--primary" onClick={() => window.open('/portal', '_blank')}>
+                        Portal Login
                     </button>
                 </div>
 
@@ -75,12 +72,8 @@ export default function Navbar() {
                     <button className="rp-nav__mobile-link" onClick={() => { navigate('/leadership'); setMenu(false); }}>Our Leadership</button>
                     <button className="rp-nav__mobile-link" onClick={() => { navigate('/contact'); setMenu(false); }}>Contact</button>
                     <div style={{ padding: '20px 0' }}>
-                        <button 
-                            className="rp-btn rp-btn--primary" 
-                            style={{ width: '100%' }} 
-                            onClick={() => navigate('/portal/retailer')}
-                        >
-                            Login
+                        <button className="rp-btn rp-btn--primary" style={{ width: '100%' }} onClick={() => navigate('/portal')}>
+                            Login / Register
                         </button>
                     </div>
                 </div>

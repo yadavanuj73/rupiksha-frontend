@@ -743,7 +743,7 @@ const FastagFlow = ({ onBack, category }) => {
                                         <Wallet className="w-4 h-4" />
                                     </div>
                                     <div>
-                                        <div className="text-[11px] font-black uppercase text-slate-500">Main Wallet</div>
+                                        <div className="text-[11px] font-black uppercase text-slate-500">Retailer Wallet</div>
                                         <div className="text-base font-black text-black">
                                             ₹{numBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                         </div>

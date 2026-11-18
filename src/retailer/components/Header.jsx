@@ -47,7 +47,7 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
     const currentUser = authUser || appData.currentUser || dataService.getCurrentUser();
     const userUid = currentUser?.id || currentUser?.userId || currentUser?.username;
     const userPhoto = currentUser?.profilePhoto || currentUser?.photoUrl || (userUid ? localStorage.getItem(`rupiksha_photo_${userUid}`) : null);
-    const retailerName = currentUser?.fullName || currentUser?.name || currentUser?.businessName || currentUser?.username || 'User';
+    const retailerName = currentUser?.fullName || currentUser?.name || currentUser?.businessName || currentUser?.username || 'Retailer';
 
     const getInitials = () => {
         const displayName = currentUser?.fullName || currentUser?.name || currentUser?.username || 'Anujkumar Yadav';
@@ -79,7 +79,7 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
                 <div className="hidden md:flex flex-1 justify-center px-4">
                     <div className="w-full max-w-[560px] bg-blue-50 border border-blue-100 rounded-2xl px-5 py-2.5 text-center">
                         <p className="text-[13px] font-black text-slate-700 truncate">
-                            Welcome <span className="text-blue-700">{retailerName}</span> to Rupiksha Family
+                            Welcome <span className="text-blue-700">{retailerName}</span> to Rupiksha Retailer Family
                         </p>
                     </div>
                 </div>
@@ -169,6 +169,7 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
                             </div>
                             <div className="hidden md:block text-left">
                                 <span className="text-sm font-black text-slate-800 tracking-tight block">{retailerName.split(' ')[0]}</span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Retailer</span>
                             </div>
                             <ChevronDown size={14} className={`text-slate-400 transition-transform duration-300 ${showProfileMenu ? 'rotate-180 text-blue-600' : ''}`} />
                         </motion.button>

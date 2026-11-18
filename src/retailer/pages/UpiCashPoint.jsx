@@ -1325,8 +1325,8 @@ const UpiCashPoint = () => {
                                         <span className="font-mono text-slate-700">{activeTxn.payerVpa || 'N/A'}</span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span className="text-slate-400">Partner ID:</span>
-                                        <span className="font-semibold text-slate-800">{currentUser?.username || currentUser?.mobile || 'Partner'}</span>
+                                        <span className="text-slate-400">Retailer ID:</span>
+                                        <span className="font-semibold text-slate-800">{currentUser?.username || currentUser?.mobile || 'Retailer'}</span>
                                     </div>
                                 </div>
 

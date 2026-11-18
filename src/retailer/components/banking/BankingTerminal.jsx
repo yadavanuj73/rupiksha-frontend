@@ -1294,7 +1294,7 @@ export default function BankingTerminal({ provider, status, setStatus }) {
                                                                 <Wallet size={14} />
                                                             </div>
                                                             <div>
-                                                                <p className="text-[10px] font-black uppercase tracking-wider">Wallet Balance</p>
+                                                                <p className="text-[10px] font-black uppercase tracking-wider">Retailer Wallet Balance</p>
                                                                 <p className="text-xs font-black">₹{currentWalletBal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                                                             </div>
                                                         </div>

@@ -205,7 +205,7 @@ const Plans = () => {
                                             <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-slate-200" />
                                         ))}
                                     </div>
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Trusted by 5,000+ Partners</p>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Trusted by 5,000+ Retailers</p>
                                 </div>
                                 <button className="flex items-center gap-2 text-[10px] font-black uppercase text-[#4a148c] tracking-widest hover:gap-3 transition-all">
                                     Download Full Rate Chart <ArrowRight size={14} />

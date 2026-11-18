@@ -959,7 +959,7 @@ const CreditCardFlow = ({ onBack, category }) => {
                                 </div>
                                 <div className="pt-2 flex flex-wrap items-center justify-center gap-2 text-[10px] font-bold text-slate-600">
                                     <span className="px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200">Instant Credit</span>
-                                    <span className="px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200">Zero Surcharge</span>
+                                    <span className="px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200">Zero Retailer Surcharge</span>
                                     <span className="px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200">Direct Bank Settlement</span>
                                 </div>
                             </div>

@@ -328,6 +328,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
                         {isExpanded && (
                             <div className="flex flex-col min-w-0">
                                 <span className="text-xs font-black text-black truncate">{currentUser?.businessName || 'Merchant'}</span>
+                                <span className="text-[9.5px] text-slate-500 font-bold">Retailer</span>
                             </div>
                         )}
                     </div>
