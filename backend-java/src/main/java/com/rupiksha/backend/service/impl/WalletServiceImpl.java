@@ -862,10 +862,6 @@ public class WalletServiceImpl implements WalletService {
         auditLogRepository.save(audit);
 
         return mapBalanceResponse(wallet);
-                .build();
-        auditLogRepository.save(audit);
-
-        return mapBalanceResponse(wallet);
     }
 
     @Override
