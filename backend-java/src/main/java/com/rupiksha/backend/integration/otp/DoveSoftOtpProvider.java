@@ -64,6 +64,7 @@ public class DoveSoftOtpProvider implements OtpProvider {
     @Value("${dovesoft.callback-token:${DOVESOFT_CALLBACK_TOKEN:}}")
     private String envCallbackToken;
 
+    @Autowired
     public DoveSoftOtpProvider(
             AppProperties appProperties,
             RestTemplateBuilder restTemplateBuilder,
