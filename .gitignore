@@ -24,10 +24,8 @@ public/**/application.yml
 # Env
 .env
 .env.*
-!.env.example
 backend-java/.env
 backend-java/.env.*
-!backend-java/.env.example
 
 # Maven build
 backend-java/target/
