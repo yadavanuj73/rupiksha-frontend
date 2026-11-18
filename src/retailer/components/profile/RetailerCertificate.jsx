@@ -190,19 +190,19 @@ const RetailerCertificate = ({ formData = {}, currentUser = {} }) => {
                     setCertData({
                         certificateNumber: fallbackCertNumber,
                         partyCode: fallbackPartyCode,
-                        certificateRole: 'USER',
-                        roleDisplayName: 'User',
-                        certificateTitle: 'USER CERTIFICATE',
-                        certificateType: 'USER CERTIFICATE',
-                        idLabel: 'USER ID',
+                        certificateRole: 'RETAILER',
+                        roleDisplayName: 'Retailer',
+                        certificateTitle: 'RETAILER CERTIFICATE',
+                        certificateType: 'RETAILER CERTIFICATE',
+                        idLabel: 'RETAILER ID',
                         recipientName: fallbackName,
                         issuedOn: fallbackIssuedOn,
                         validTill: fallbackValidTill,
                         fullAddress: fallbackFullAddress,
                         downloadDate: fallbackDownloadDate,
-                        certificationStatement: 'has been onboarded as a User of Rupiksha Services Private Limited',
-                        authorizationClause: 'w.e.f. the User ID creation date. The user is authorized to provide and distribute the banking and financial technology services offered by Rupiksha Services Private Limited through its Web Portal and Mobile Application, subject to the terms & conditions accepted by the user and the applicable company policies.',
-                        bottomRole: 'USER',
+                        certificationStatement: 'has been onboarded as a Retailer of Rupiksha Services Private Limited',
+                        authorizationClause: 'w.e.f. the Retailer ID creation date. The retailer is authorized to provide and distribute the banking and financial technology services offered by Rupiksha Services Private Limited through its Web Portal and Mobile Application, subject to the terms & conditions accepted by the retailer and the applicable company policies.',
+                        bottomRole: 'RETAILER',
                         status: 'VALID',
                         verificationUrl: `https://rupiksha.in/certificate/verify/${fallbackCertNumber}`
                     });
@@ -213,19 +213,19 @@ const RetailerCertificate = ({ formData = {}, currentUser = {} }) => {
                 setCertData({
                     certificateNumber: fallbackCertNumber,
                     partyCode: fallbackPartyCode,
-                    certificateRole: 'USER',
-                    roleDisplayName: 'User',
-                    certificateTitle: 'USER CERTIFICATE',
-                    certificateType: 'USER CERTIFICATE',
-                    idLabel: 'USER ID',
+                    certificateRole: 'RETAILER',
+                    roleDisplayName: 'Retailer',
+                    certificateTitle: 'RETAILER CERTIFICATE',
+                    certificateType: 'RETAILER CERTIFICATE',
+                    idLabel: 'RETAILER ID',
                     recipientName: fallbackName,
                     issuedOn: fallbackIssuedOn,
                     validTill: fallbackValidTill,
                     fullAddress: fallbackFullAddress,
                     downloadDate: fallbackDownloadDate,
-                    certificationStatement: 'has been onboarded as a User of Rupiksha Services Private Limited',
-                    authorizationClause: 'w.e.f. the User ID creation date. The user is authorized to provide and distribute the banking and financial technology services offered by Rupiksha Services Private Limited through its Web Portal and Mobile Application, subject to the terms & conditions accepted by the user and the applicable company policies.',
-                    bottomRole: 'USER',
+                    certificationStatement: 'has been onboarded as a Retailer of Rupiksha Services Private Limited',
+                    authorizationClause: 'w.e.f. the Retailer ID creation date. The retailer is authorized to provide and distribute the banking and financial technology services offered by Rupiksha Services Private Limited through its Web Portal and Mobile Application, subject to the terms & conditions accepted by the retailer and the applicable company policies.',
+                    bottomRole: 'RETAILER',
                     status: 'VALID',
                     verificationUrl: `https://rupiksha.in/certificate/verify/${fallbackCertNumber}`
                 });
@@ -262,9 +262,9 @@ const RetailerCertificate = ({ formData = {}, currentUser = {} }) => {
             });
 
             pdf.addImage(imgData, 'PNG', 0, 0, 297, 210, undefined, 'FAST');
-            const safeName = (certData?.recipientName || 'Rupiksha_User').replace(/[^a-zA-Z0-9_-]/g, '_');
+            const safeName = (certData?.recipientName || 'Rupiksha_Retailer').replace(/[^a-zA-Z0-9_-]/g, '_');
             const certCode = (certData?.partyCode || 'RT').replace(/[^a-zA-Z0-9_-]/g, '_');
-            pdf.save(`Rupiksha_User_Certificate_${certCode}_${safeName}.pdf`);
+            pdf.save(`Rupiksha_Retailer_Certificate_${certCode}_${safeName}.pdf`);
         } catch (err) {
             console.error('[RetailerCertificate] PDF Export Error:', err);
             alert('Could not export PDF. Please try again.');
@@ -289,7 +289,7 @@ const RetailerCertificate = ({ formData = {}, currentUser = {} }) => {
         return (
             <div className="w-full bg-white rounded-[22px] p-12 border border-[#DCE6F2] shadow-sm flex flex-col items-center justify-center space-y-4 min-h-[400px]">
                 <RefreshCw className="w-8 h-8 text-[#2563EB] animate-spin" />
-                <p className="text-slate-600 font-semibold text-sm">Generating User Certificate...</p>
+                <p className="text-slate-600 font-semibold text-sm">Generating Retailer Certificate...</p>
             </div>
         );
     }
@@ -304,12 +304,12 @@ const RetailerCertificate = ({ formData = {}, currentUser = {} }) => {
                     </div>
                     <div>
                         <h2 className="text-base font-bold text-[#071A3A] flex items-center gap-2">
-                            USER CERTIFICATE
+                            RETAILER CERTIFICATE
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-300">
                                 {d.status || 'VALID'}
                             </span>
                         </h2>
-                        <p className="text-xs text-slate-500 font-medium">Official Digital Authorization &bull; User ID: <strong className="text-slate-700 font-mono">{partyCodeText}</strong></p>
+                        <p className="text-xs text-slate-500 font-medium">Official Digital Authorization &bull; Retailer ID: <strong className="text-slate-700 font-mono">{partyCodeText}</strong></p>
                     </div>
                 </div>
 
@@ -458,7 +458,7 @@ const RetailerCertificate = ({ formData = {}, currentUser = {} }) => {
                                 letterSpacing="1"
                                 style={{ fontFamily: 'Playfair Display, Cormorant Garamond, "Times New Roman", serif' }}
                             >
-                                User Certificate
+                                Retailer Certificate
                             </text>
 
                             {/* 3 Gold Stars with Horizontal Accent Lines */}
@@ -490,21 +490,21 @@ const RetailerCertificate = ({ formData = {}, currentUser = {} }) => {
                             <line x1="1550" y1="670" x2="1870" y2="670" stroke="url(#goldGradRetailer)" strokeWidth="3.5" />
                         </g>
 
-                        {/* 8. TOP INFORMATION LINE: User ID & User ID Creation Date */}
+                        {/* 8. TOP INFORMATION LINE: Retailer ID & Retailer ID Creation Date */}
                         <g>
-                            {/* Left: User ID */}
+                            {/* Left: Retailer ID */}
                             <text x="210" y="775" fill="#0B2145" fontSize="38" fontWeight="800" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
-                                User ID:
+                                Retailer ID:
                             </text>
                             <text ref={partyCodeRef} x="460" y="775" fill="#173B7A" fontSize="46" fontWeight="800" style={{ fontFamily: 'Playfair Display, Montserrat, serif' }}>
                                 {partyCodeText}
                             </text>
-                            {/* Underline below User ID */}
+                            {/* Underline below Retailer ID */}
                             <line x1="450" y1="795" x2={460 + measuredPartyCode + 15} y2="795" stroke="#254B8C" strokeWidth="2.5" />
 
-                            {/* Right: User ID Creation Date */}
+                            {/* Right: Retailer ID Creation Date */}
                             <text x="1600" y="775" fill="#0B2145" fontSize="38" fontWeight="800" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
-                                User ID Creation Date:
+                                Retailer ID Creation Date:
                             </text>
                             <text ref={issuedOnRef} x="2200" y="775" fill="#173B7A" fontSize="46" fontWeight="800" style={{ fontFamily: 'Playfair Display, Montserrat, serif' }}>
                                 {issuedOnText}
@@ -549,20 +549,20 @@ const RetailerCertificate = ({ formData = {}, currentUser = {} }) => {
                             <line x1="390" y1="1230" x2={400 + measuredPartyCode + 15} y2="1230" stroke="#254B8C" strokeWidth="2.5" />
                             
                             <text x={400 + measuredPartyCode + 25} y="1210" fill="#0B2145" fontSize="42" fontWeight="500" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
-                                has been onboarded as a <tspan fontWeight="800" fill="#071A3A">User</tspan> of <tspan fontWeight="800" fill="#071A3A">Rupiksha Services Private Limited</tspan>
+                                has been onboarded as a <tspan fontWeight="800" fill="#071A3A">Retailer</tspan> of <tspan fontWeight="800" fill="#071A3A">Rupiksha Services Private Limited</tspan>
                             </text>
                         </g>
 
                         {/* 12. AUTHORIZATION CLAUSE */}
                         <g>
                             <text x="210" y="1325" fill="#0B2145" fontSize="36" fontWeight="450" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
-                                w.e.f. the User ID creation date. The user is authorized to provide and distribute the banking and financial technology services
+                                w.e.f. the Retailer ID creation date. The retailer is authorized to provide and distribute the banking and financial technology services
                             </text>
                             <text x="210" y="1390" fill="#0B2145" fontSize="36" fontWeight="450" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
                                 offered by <tspan fontWeight="800" fill="#071A3A">Rupiksha Services Private Limited</tspan> through its Web Portal and Mobile Application, subject to the terms &amp; conditions
                             </text>
                             <text x="210" y="1455" fill="#0B2145" fontSize="36" fontWeight="450" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
-                                accepted by the user and the applicable company policies.
+                                accepted by the retailer and the applicable company policies.
                             </text>
                         </g>
 
@@ -594,7 +594,7 @@ const RetailerCertificate = ({ formData = {}, currentUser = {} }) => {
 
                             {/* Bullet 1 */}
                             <text x="220" y="1636" fill="#071A3A" fontSize="30" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
-                                •  This certificate confirms the user's authorization to distribute services offered by
+                                •  This certificate confirms the retailer's authorization to distribute services offered by
                             </text>
                             <text x="252" y="1678" fill="#071A3A" fontSize="30" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
                                 <tspan fontWeight="800" fill="#071A3A">Rupiksha Services Private Limited</tspan> in accordance with company policies &amp; regulatory guidelines.
@@ -613,7 +613,7 @@ const RetailerCertificate = ({ formData = {}, currentUser = {} }) => {
                                 •  This is an official digitally authorized certificate and carries legal validity.
                             </text>
                             <text x="252" y="1878" fill="#071A3A" fontSize="28" fontWeight="600" style={{ fontFamily: 'Montserrat, Inter, sans-serif' }}>
-                                Verification can be confirmed at <tspan fontWeight="700" fill="#173B7A">rupiksha.in</tspan> using the User ID.
+                                Verification can be confirmed at <tspan fontWeight="700" fill="#173B7A">rupiksha.in</tspan> using the Retailer ID.
                             </text>
                         </g>
 

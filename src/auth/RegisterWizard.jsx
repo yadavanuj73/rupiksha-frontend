@@ -510,7 +510,7 @@ export default function RegisterWizard() {
             onClick={() => {
               if (formData.role === 'SUPER_DISTRIBUTOR') navigate('/portal/super-distributor');
               else if (formData.role === 'DISTRIBUTOR') navigate('/portal/distributor');
-              else navigate('/portal/userlogin');
+              else navigate('/portal/retailer');
             }}
             className="bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-blue-100 flex items-center gap-1 hover:bg-blue-100/70 transition-all shadow-sm"
           >
@@ -784,7 +784,7 @@ export default function RegisterWizard() {
 
                     <div className="pt-1.5 flex items-center justify-center gap-4 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-t border-slate-100 mt-2">
                       <Link 
-                        to={formData.role === 'SUPER_DISTRIBUTOR' ? '/portal/super-distributor' : formData.role === 'DISTRIBUTOR' ? '/portal/distributor' : '/portal/userlogin'} 
+                        to={formData.role === 'SUPER_DISTRIBUTOR' ? '/portal/super-distributor' : formData.role === 'DISTRIBUTOR' ? '/portal/distributor' : '/portal/retailer'} 
                         className="text-blue-600 hover:underline flex items-center gap-1"
                       >
                         <User size={13} /> Already Registered? Login

@@ -217,8 +217,6 @@ function App() {
               <Route path="/refund-policy" element={<RefundPolicy />} />
               <Route path="/refund" element={<RefundPolicy />} />
               <Route path="/portal" element={<Login />} />
-              <Route path="/portal/userlogin" element={<Login />} />
-              <Route path="/userlogin" element={<Login />} />
               <Route path="/portal/retailer" element={<Login />} />
               <Route path="/portal/distributor" element={<Login />} />
               <Route path="/portal/super-distributor" element={<Login />} />

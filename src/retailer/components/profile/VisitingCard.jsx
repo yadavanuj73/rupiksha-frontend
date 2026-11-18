@@ -53,7 +53,7 @@ const VisitingCard = ({ formData, currentUser, profilePhoto }) => {
         if (rawRole.includes('SUPER')) return 'Super Distributor';
         if (rawRole.includes('DISTRIBUTOR')) return 'Distributor';
         if (rawRole.includes('ADMIN')) return 'Admin Partner';
-        return 'User';
+        return 'Retailer';
     };
 
     const partnerRole = getPartnerRoleTitle();
