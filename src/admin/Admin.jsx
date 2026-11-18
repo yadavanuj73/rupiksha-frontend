@@ -3504,8 +3504,9 @@ const Admin = () => {
                                                 <p className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mt-0.5">Administrator</p>
                                             </div>
                                             <button
-                                                onClick={() => {
+                                                onClick={async () => {
                                                     setShowAdminMenu(false);
+                                                    try { await dataService.adminLogout(); } catch (_) {}
                                                     sessionStorage.removeItem('admin_auth');
                                                     sessionStorage.removeItem('admin_otp_verified');
                                                     sessionStorage.removeItem('pending_admin_user');

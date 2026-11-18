@@ -258,6 +258,9 @@ public class User {
     @Column(name = "otp_verified")
     private Boolean otpVerified = false;
 
+    @Column(name = "admin_session_version", nullable = false)
+    private int adminSessionVersion = 1;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "registration_status", length = 40)
     private RegistrationStatus registrationStatus = RegistrationStatus.APPROVED;

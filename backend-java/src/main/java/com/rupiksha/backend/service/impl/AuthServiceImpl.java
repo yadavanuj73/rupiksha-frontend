@@ -93,6 +93,13 @@ public class AuthServiceImpl implements AuthService {
             );
         }
 
+        boolean isAdmin = user.getRoles().stream()
+                .anyMatch(r -> r.getName() == RoleName.ADMIN);
+        if (isAdmin) {
+            log.warn("Blocked direct login attempt for ADMIN user: {}", user.getUsername());
+            throw new IllegalArgumentException("Admin accounts require multi-factor OTP authentication via the admin portal.");
+        }
+
         return issueTokens(user);
     }
 
@@ -522,7 +529,13 @@ public class AuthServiceImpl implements AuthService {
 
     private AuthDtos.AuthResponse issueTokens(User user) {
         List<String> roles = user.getRoles().stream().map(r -> r.getName().name()).toList();
-        String access = jwtService.createAccessToken(user.getId(), user.getUsername(), roles);
+        boolean isAdmin = user.getRoles().stream().anyMatch(r -> r.getName() == RoleName.ADMIN);
+        String access;
+        if (isAdmin) {
+            access = jwtService.createAccessToken(user.getId(), user.getUsername(), roles, user.getAdminSessionVersion());
+        } else {
+            access = jwtService.createAccessToken(user.getId(), user.getUsername(), roles);
+        }
         String refreshRaw = UUID.randomUUID().toString() + "." + UUID.randomUUID();
         String refreshHash = sha256(refreshRaw);
 

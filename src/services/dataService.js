@@ -572,6 +572,164 @@ export const dataService = {
         }
     },
 
+    adminInitiateLogin: async function (username, password) {
+        try {
+            const res = await fetch(`${BACKEND_URL}/admin/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await safeJson(res, null);
+            if (!res.ok || !data) {
+                const message = data?.message || data?.error || 'Invalid admin credentials.';
+                return { success: false, message };
+            }
+            return {
+                success: true,
+                challengeId: data.challengeId,
+                message: data.message,
+                destinations: data.destinations || [],
+                expiresInSeconds: data.expiresInSeconds || 300,
+                resendCooldownSeconds: data.resendCooldownSeconds || 60
+            };
+        } catch (e) {
+            return { success: false, message: 'Server connection failed: ' + (e?.message || 'network error') };
+        }
+    },
+
+    adminSendOtp: async function (challengeId, destination) {
+        try {
+            const res = await fetch(`${BACKEND_URL}/admin/auth/send-otp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ challengeId, destination })
+            });
+            const data = await safeJson(res, null);
+            if (!res.ok || !data) {
+                const message = data?.message || data?.error || 'Unable to deliver verification code.';
+                return { success: false, message };
+            }
+            return {
+                success: true,
+                challengeId: data.challengeId,
+                maskedDestination: data.maskedDestination,
+                message: data.message,
+                expiresInSeconds: data.expiresInSeconds || 300,
+                resendCooldownSeconds: data.resendCooldownSeconds || 60
+            };
+        } catch (e) {
+            return { success: false, message: 'Server connection failed: ' + (e?.message || 'network error') };
+        }
+    },
+
+    adminResendOtp: async function (challengeId) {
+        try {
+            const res = await fetch(`${BACKEND_URL}/admin/auth/resend-otp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ challengeId })
+            });
+            const data = await safeJson(res, null);
+            if (!res.ok || !data) {
+                const message = data?.message || data?.error || 'Unable to resend verification code.';
+                return { success: false, message };
+            }
+            return {
+                success: true,
+                challengeId: data.challengeId,
+                maskedDestination: data.maskedDestination,
+                message: data.message,
+                expiresInSeconds: data.expiresInSeconds || 300,
+                resendCooldownSeconds: data.resendCooldownSeconds || 60
+            };
+        } catch (e) {
+            return { success: false, message: 'Server connection failed: ' + (e?.message || 'network error') };
+        }
+    },
+
+    adminVerifyOtp: async function (challengeId, otp) {
+        try {
+            const res = await fetch(`${BACKEND_URL}/admin/auth/verify-otp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ challengeId, otp })
+            });
+            const data = await safeJson(res, null);
+            if (!res.ok || !data) {
+                const message = data?.message || data?.error || 'Invalid verification code.';
+                return { success: false, message };
+            }
+
+            const backendUser = data.user || {};
+            const rolesArrRaw = Array.isArray(backendUser.roles) ? backendUser.roles.map((r) => normalizeRoleForClient(r)) : [];
+            const fallbackRole = normalizeRoleForClient(backendUser.role);
+            const rolesArr = Array.from(new Set([...(rolesArrRaw || []), ...(fallbackRole ? [fallbackRole] : [])]));
+            const primaryRole = pickDeterministicRole(rolesArr, 'ADMIN');
+            const userPhoto = backendUser.photoUrl || backendUser.profilePhoto || null;
+            const normalizedUser = {
+                id: backendUser.id,
+                username: backendUser.username,
+                mobile: backendUser.mobile,
+                email: backendUser.email,
+                name: backendUser.fullName,
+                fullName: backendUser.fullName,
+                photoUrl: userPhoto,
+                profilePhoto: userPhoto,
+                status: backendUser.status,
+                kycStatus: backendUser.kycStatus,
+                roles: rolesArr,
+                role: primaryRole,
+                createdAt: backendUser.createdAt,
+            };
+
+            sessionStorage.setItem('admin_otp_verified', 'true');
+            sessionStorage.setItem('admin_auth', 'true');
+            localStorage.setItem('rupiksha_admin_user', JSON.stringify(normalizedUser));
+            localStorage.setItem('rupiksha_admin_token', data.accessToken);
+            if (data.refreshToken) {
+                localStorage.setItem('rupiksha_admin_refresh_token', data.refreshToken);
+            }
+
+            setTimeout(() => {
+                try { this.fetchUserProfile().catch(() => {}); } catch (_) {}
+            }, 50);
+
+            return { success: true, user: normalizedUser, token: data.accessToken, refreshToken: data.refreshToken };
+        } catch (e) {
+            return { success: false, message: 'Server connection failed: ' + (e?.message || 'network error') };
+        }
+    },
+
+    adminLogout: async function () {
+        try {
+            const refreshToken = localStorage.getItem('rupiksha_admin_refresh_token');
+            await fetch(`${BACKEND_URL}/admin/auth/logout`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('rupiksha_admin_token') || ''}`
+                },
+                body: JSON.stringify({ refreshToken })
+            }).catch(() => {});
+        } finally {
+            localStorage.removeItem('rupiksha_admin_token');
+            localStorage.removeItem('rupiksha_admin_user');
+            localStorage.removeItem('rupiksha_admin_refresh_token');
+            sessionStorage.removeItem('admin_auth');
+            sessionStorage.removeItem('admin_otp_verified');
+            sessionStorage.removeItem('pending_admin_challenge_id');
+        }
+    },
+
+    adminGetAuditLogs: async function (page = 0, size = 20) {
+        try {
+            const res = await authFetch(`${BACKEND_URL}/admin/auth/audit-logs?page=${page}&size=${size}`);
+            return await safeJson(res, { content: [], totalElements: 0, totalPages: 0 });
+        } catch (e) {
+            return { content: [], totalElements: 0, totalPages: 0 };
+        }
+    },
+
     getCurrentUser: function () {
         const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
         if (isAdminPath) {

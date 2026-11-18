@@ -25,17 +25,23 @@ public class JwtService {
     }
 
     public String createAccessToken(UUID userId, String username, List<String> roles) {
+        return createAccessToken(userId, username, roles, null);
+    }
+
+    public String createAccessToken(UUID userId, String username, List<String> roles, Integer adminSessionVersion) {
         Instant now = Instant.now();
         Instant exp = now.plusSeconds(appProperties.jwt().accessTokenMinutes() * 60);
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .issuer(appProperties.jwt().issuer())
                 .subject(userId.toString())
                 .claim("username", username)
                 .claim("roles", roles)
                 .issuedAt(Date.from(now))
-                .expiration(Date.from(exp))
-                .signWith(secretKey)
-                .compact();
+                .expiration(Date.from(exp));
+        if (adminSessionVersion != null) {
+            builder.claim("admin_session_version", adminSessionVersion);
+        }
+        return builder.signWith(secretKey).compact();
     }
 
     public Claims parse(String token) {

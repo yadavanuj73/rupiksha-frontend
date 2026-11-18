@@ -71,6 +71,14 @@ const ProtectedRoute = ({ children, role, allowKycPending = false }) => {
         return <Navigate to={targetLogin} state={{ from: location }} replace />;
     }
 
+    const currentRoles = getUserRoles(user);
+    if (location.pathname.startsWith('/admin') && currentRoles.includes('ADMIN')) {
+        const isOtpVerified = sessionStorage.getItem('admin_otp_verified') === 'true';
+        if (!isOtpVerified) {
+            return <Navigate to="/admin-login" state={{ from: location }} replace />;
+        }
+    }
+
     if (
         !allowKycPending &&
         shouldRequireKyc(user) &&

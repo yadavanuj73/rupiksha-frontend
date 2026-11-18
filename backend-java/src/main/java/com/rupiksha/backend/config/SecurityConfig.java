@@ -56,7 +56,12 @@ public class SecurityConfig {
                 "/api/v1/cms/**",
                 "/api/upicw/callback/**",
                 "/api/upicw/v1/callback/**",
-                "/api/v1/upicw/callback/**"
+                "/api/v1/upicw/callback/**",
+                "/api/v1/admin/auth/login",
+                "/api/v1/admin/auth/send-otp",
+                "/api/v1/admin/auth/resend-otp",
+                "/api/v1/admin/auth/verify-otp",
+                "/api/v1/admin/auth/logout"
         ));
 
         // Swagger and API docs are only public outside production.
