@@ -110,24 +110,6 @@ const RetailerLayout = () => {
         setShowMobileSidebar(false);
     }, [location.pathname]);
 
-    // Graceful redirection for hidden Retailer routes during temporary BBPS-only mode
-    useEffect(() => {
-        const hiddenPrefixes = [
-            '/aeps', '/matm', '/cms', '/travel', '/payout',
-            '/wallet', '/transactions/wallet', '/upi-cash',
-            '/commission', '/plans', '/support', '/loans',
-            '/personal_loan', '/home_loan', '/gold_loan', '/instant_loan', '/loan_status',
-            '/add-money', '/all-services'
-        ];
-        const isHiddenPath = hiddenPrefixes.some(prefix => location.pathname.startsWith(prefix));
-        const isHiddenReport = location.pathname.startsWith('/reports') && !location.pathname.startsWith('/reports/bbps');
-        const isGstReport = location.pathname.startsWith('/gst-invoice');
-
-        if (isHiddenPath || isHiddenReport || isGstReport) {
-            navigate('/bharat-connect', { replace: true });
-        }
-    }, [location.pathname, navigate]);
-
     const handleTabChange = (tab) => {
         const reportTabs = [
             'sale_report', 'consolidated_ledger', 'daily_ledger', 

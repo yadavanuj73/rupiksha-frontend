@@ -220,20 +220,13 @@ const AllServices = ({ readOnly = false, embedded = false }) => {
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
 
-    const visibleSections = useMemo(() => {
-        // Distributor / Super Distributor view (readOnly) remains completely untouched
-        if (readOnly) return SERVICE_SECTIONS;
-        // Temporary Retailer visibility restriction: Bharat Connect (BBPS) only
-        return SERVICE_SECTIONS.filter((section) => section.key === 'bbps');
-    }, [readOnly]);
-
     const filteredSections = useMemo(() => {
         const query = searchQuery.trim().toLowerCase();
-        return visibleSections.map((section) => ({
+        return SERVICE_SECTIONS.map((section) => ({
             ...section,
             services: section.services.filter((service) => service.title.toLowerCase().includes(query)),
         })).filter((section) => section.services.length > 0);
-    }, [searchQuery, visibleSections]);
+    }, [searchQuery]);
 
     const totalServices = useMemo(
         () => filteredSections.reduce((total, section) => total + section.services.length, 0),
