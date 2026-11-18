@@ -61,16 +61,16 @@ class DoveSoftOtpProviderTest {
     @Test
     void resolveMessageTemplate_DefaultTemplateMatchesUserDltTemplate() {
         String template = provider.resolveMessageTemplate();
-        assertTrue(template.contains("Dear Partner, Your OTP is {otp}"));
-        assertTrue(template.contains("visit us at www.rupiksha.com"));
-        assertTrue(template.contains("<RUPIKSHA>"));
+        assertTrue(template.contains("Dear Partner, Your OTP for login is {otp}"));
+        assertTrue(template.contains("visit us at https://rupiksha.com"));
+        assertTrue(template.contains("-Rupiksha Services"));
     }
 
     @Test
     void resolveMessageTemplate_SafeguardsMissingOtpPlaceholder() {
-        ReflectionTestUtils.setField(provider, "envMessage", "Dear Partner, Your OTP is \nDo not share with anyone.\nvisit us at www.rupiksha.com\n<RUPIKSHA>");
+        ReflectionTestUtils.setField(provider, "envMessage", "Dear Partner, Your OTP for login is {#num#}. Do not share with anyone. visit us at https://rupiksha.com\n -Rupiksha Services");
         String template = provider.resolveMessageTemplate();
-        assertTrue(template.contains("Dear Partner, Your OTP is {otp}"));
+        assertTrue(template.contains("Dear Partner, Your OTP for login is {otp}"));
     }
 
     @Test
