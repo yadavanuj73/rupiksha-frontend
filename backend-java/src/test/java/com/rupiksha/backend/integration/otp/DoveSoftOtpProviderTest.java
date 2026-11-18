@@ -45,7 +45,7 @@ class DoveSoftOtpProviderTest {
         ReflectionTestUtils.setField(provider, "envApiKey", "test-dovesoft-api-key");
         ReflectionTestUtils.setField(provider, "envBaseUrl", "https://api.dovesoft.io");
         ReflectionTestUtils.setField(provider, "envEntityId", "12325654434");
-        ReflectionTestUtils.setField(provider, "envTempId", "1707176432251139080");
+        ReflectionTestUtils.setField(provider, "envTempId", "1777178411720176303");
         ReflectionTestUtils.setField(provider, "envSenderId", "RUPIKS");
         ReflectionTestUtils.setField(provider, "envTimeToAlive", 200);
         ReflectionTestUtils.setField(provider, "envMessage", "");
@@ -68,16 +68,19 @@ class DoveSoftOtpProviderTest {
     @Test
     void resolveMessageTemplate_DefaultTemplateMatchesUserDltTemplate() {
         String template = provider.resolveMessageTemplate();
-        assertTrue(template.contains("Dear Partner, Your OTP is {otp}"));
-        assertTrue(template.contains("visit us at www.rupiksha.com"));
-        assertTrue(template.contains("<RUPIKSHA>"));
+        assertTrue(template.contains("Dear Partner, Your OTP for login is {otp}"));
+        assertTrue(template.contains("visit us at https://rupiksha.com"));
+        assertTrue(template.contains("-Rupiksha Services"));
     }
 
     @Test
     void resolveMessageTemplate_SafeguardsMissingOtpPlaceholder() {
-        ReflectionTestUtils.setField(provider, "envMessage", "Dear Partner, Your OTP is \nDo not share with anyone.\nvisit us at www.rupiksha.com\n<RUPIKSHA>");
+        ReflectionTestUtils.setField(provider, "envMessage",
+                "Dear Partner, Your OTP is \nDo not share with anyone.\nvisit us at www.rupiksha.com\n<RUPIKSHA>");
         String template = provider.resolveMessageTemplate();
-        assertTrue(template.contains("Dear Partner, Your OTP is {otp}"));
+        assertTrue(template.contains("Dear Partner, Your OTP for login is {otp}"));
+        assertTrue(template.contains("visit us at https://rupiksha.com"));
+        assertTrue(template.contains("-Rupiksha Services"));
     }
 
     @Test
@@ -85,29 +88,27 @@ class DoveSoftOtpProviderTest {
         when(restTemplateBuilder.build()).thenReturn(restTemplate);
         Map<String, Object> responseBody = Map.of(
                 "result", "success",
-                "otpId", "987654321"
-        );
-        when(restTemplate.exchange(anyString(), eq(HttpMethod.POST), any(HttpEntity.class), eq(Map.class)))
+                "otpId", "987654321");
+        when(restTemplate.exchange(any(java.net.URI.class), eq(HttpMethod.POST), any(HttpEntity.class), eq(Map.class)))
                 .thenReturn(new ResponseEntity<>(responseBody, HttpStatus.OK));
 
         String ref = provider.sendOtp("9876543210");
 
         assertEquals("987654321", ref);
         verify(restTemplate).exchange(
-                argThat((String url) -> url.contains("mobileno=9876543210") && url.contains("timetoalive=200")),
+                argThat((java.net.URI uri) -> uri.toString().contains("mobileno=9876543210")
+                        && uri.toString().contains("timetoalive=200")),
                 eq(HttpMethod.POST),
                 argThat((HttpEntity<?> entity) -> "test-dovesoft-api-key".equals(entity.getHeaders().getFirst("key"))),
-                eq(Map.class)
-        );
+                eq(Map.class));
     }
 
     @Test
     void sendOtp_Success_WithoutOtpId_ReturnsSuccessString() {
         when(restTemplateBuilder.build()).thenReturn(restTemplate);
         Map<String, Object> responseBody = Map.of(
-                "result", "success"
-        );
-        when(restTemplate.exchange(anyString(), eq(HttpMethod.POST), any(HttpEntity.class), eq(Map.class)))
+                "result", "success");
+        when(restTemplate.exchange(any(java.net.URI.class), eq(HttpMethod.POST), any(HttpEntity.class), eq(Map.class)))
                 .thenReturn(new ResponseEntity<>(responseBody, HttpStatus.OK));
 
         String ref = provider.sendOtp("+91 98765 43210");
@@ -120,9 +121,8 @@ class DoveSoftOtpProviderTest {
         when(restTemplateBuilder.build()).thenReturn(restTemplate);
         Map<String, Object> responseBody = Map.of(
                 "result", "fail",
-                "reason", "Insufficient balance"
-        );
-        when(restTemplate.exchange(anyString(), eq(HttpMethod.POST), any(HttpEntity.class), eq(Map.class)))
+                "reason", "Insufficient balance");
+        when(restTemplate.exchange(any(java.net.URI.class), eq(HttpMethod.POST), any(HttpEntity.class), eq(Map.class)))
                 .thenReturn(new ResponseEntity<>(responseBody, HttpStatus.OK));
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
@@ -151,18 +151,18 @@ class DoveSoftOtpProviderTest {
     void verifyOtp_Success_WithDirectResponse() {
         when(restTemplateBuilder.build()).thenReturn(restTemplate);
         Map<String, Object> responseBody = Map.of("result", "success");
-        when(restTemplate.exchange(anyString(), eq(HttpMethod.POST), any(HttpEntity.class), eq(Map.class)))
+        when(restTemplate.exchange(any(java.net.URI.class), eq(HttpMethod.POST), any(HttpEntity.class), eq(Map.class)))
                 .thenReturn(new ResponseEntity<>(responseBody, HttpStatus.OK));
 
         boolean verified = provider.verifyOtp("9876543210", "414067", "987654321");
 
         assertTrue(verified);
         verify(restTemplate).exchange(
-                argThat((String url) -> url.contains("mobileno=9876543210") && url.contains("otp=414067") && url.contains("otpid=987654321")),
+                argThat((java.net.URI uri) -> uri.toString().contains("mobileno=9876543210")
+                        && uri.toString().contains("otp=414067") && uri.toString().contains("otpid=987654321")),
                 eq(HttpMethod.POST),
                 argThat((HttpEntity<?> entity) -> "test-dovesoft-api-key".equals(entity.getHeaders().getFirst("key"))),
-                eq(Map.class)
-        );
+                eq(Map.class));
     }
 
     @Test
@@ -171,9 +171,11 @@ class DoveSoftOtpProviderTest {
         Map<String, Object> failBody = Map.of("result", "fail", "message", "otpid expired");
         Map<String, Object> successBody = Map.of("result", "success");
 
-        when(restTemplate.exchange(contains("otpid="), eq(HttpMethod.POST), any(HttpEntity.class), eq(Map.class)))
+        when(restTemplate.exchange(argThat((java.net.URI uri) -> uri != null && uri.toString().contains("otpid=")),
+                eq(HttpMethod.POST), any(HttpEntity.class), eq(Map.class)))
                 .thenReturn(new ResponseEntity<>(failBody, HttpStatus.OK));
-        when(restTemplate.exchange(AdditionalMatchers.not(contains("otpid=")), eq(HttpMethod.POST), any(HttpEntity.class), eq(Map.class)))
+        when(restTemplate.exchange(argThat((java.net.URI uri) -> uri != null && !uri.toString().contains("otpid=")),
+                eq(HttpMethod.POST), any(HttpEntity.class), eq(Map.class)))
                 .thenReturn(new ResponseEntity<>(successBody, HttpStatus.OK));
 
         boolean verified = provider.verifyOtp("9876543210", "414067", "old_otpid_123");
@@ -185,7 +187,7 @@ class DoveSoftOtpProviderTest {
     void verifyOtp_Failure_ReturnsFalse() {
         when(restTemplateBuilder.build()).thenReturn(restTemplate);
         Map<String, Object> failBody = Map.of("result", "fail", "message", "Invalid OTP");
-        when(restTemplate.exchange(anyString(), eq(HttpMethod.POST), any(HttpEntity.class), eq(Map.class)))
+        when(restTemplate.exchange(any(java.net.URI.class), eq(HttpMethod.POST), any(HttpEntity.class), eq(Map.class)))
                 .thenReturn(new ResponseEntity<>(failBody, HttpStatus.OK));
 
         boolean verified = provider.verifyOtp("9876543210", "000000", "success");
@@ -233,9 +235,9 @@ class DoveSoftOtpProviderTest {
                     assertEquals("+919876543210", item.get("mobiles"));
                     assertEquals("RUPIKS", item.get("senderid"));
                     assertEquals("12325654434", item.get("entityid"));
-                    assertEquals("1707176432251139080", item.get("tempid"));
+                    assertEquals("1777178411720176303", item.get("tempid"));
                     assertTrue(String.valueOf(item.get("sms")).contains("123456"));
-                    assertTrue(String.valueOf(item.get("sms")).contains("www.rupiksha.com"));
+                    assertTrue(String.valueOf(item.get("sms")).contains("https://rupiksha.com"));
                     return true;
                 }),
                 eq(Map.class)

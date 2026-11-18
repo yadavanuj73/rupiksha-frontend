@@ -43,7 +43,7 @@ public class DoveSoftOtpProvider implements OtpProvider {
     @Value("${dovesoft.entity-id:${DOVESOFT_ENTITY_ID:${OTP_ENTITY_ID:${TWOFACTOR_PEID:${OTP_PEID:1701176347102771967}}}}}")
     private String envEntityId;
 
-    @Value("${dovesoft.temp-id:${DOVESOFT_TEMP_ID:${OTP_TEMP_ID:${TWOFACTOR_CTID:${OTP_CTID:1707176432251139080}}}}}")
+    @Value("${dovesoft.temp-id:${DOVESOFT_TEMP_ID:${OTP_TEMP_ID:${TWOFACTOR_CTID:${OTP_CTID:1777178411720176303}}}}}")
     private String envTempId;
 
     @Value("${dovesoft.sender-id:${DOVESOFT_SENDER_ID:${OTP_SENDER_ID:${TWOFACTOR_SENDER_ID:RUPIKS}}}}")
@@ -53,13 +53,17 @@ public class DoveSoftOtpProvider implements OtpProvider {
     private int envTimeToAlive;
 
     public static final String DEFAULT_MESSAGE_TEMPLATE =
-            "Dear Partner, Your OTP is {otp}.\nDo not share with anyone.\nvisit us at www.rupiksha.com\n<RUPIKSHA>";
+            "Dear Partner, Your OTP for login is {#num#}. Do not share with anyone. visit us at https://rupiksha.com\n -Rupiksha Services";
+    public static final String DEFAULT_ENTITY_ID = "1701176347102771967";
+    public static final String DEFAULT_TEMP_ID = "1777178411720176303";
+    public static final String DEFAULT_SENDER_ID = "RUPIKS";
+    public static final int DEFAULT_TTL = 200;
 
     @Value("${dovesoft.message:${DOVESOFT_OTP_MESSAGE:${OTP_MESSAGE:}}}")
     private String envMessage;
 
-    @Value("${dovesoft.use-json-api:${DOVESOFT_USE_JSON_API:true}}")
-    private boolean envUseJsonApi = true;
+    @Value("${dovesoft.use-json-api:${DOVESOFT_USE_JSON_API:false}}")
+    private boolean envUseJsonApi = false;
 
     @Value("${dovesoft.callback-token:${DOVESOFT_CALLBACK_TOKEN:}}")
     private String envCallbackToken;
@@ -122,21 +126,21 @@ public class DoveSoftOtpProvider implements OtpProvider {
     }
 
     public String getEntityId() {
-        if (envEntityId != null && !envEntityId.isBlank()) {
+        if (envEntityId != null) {
             return envEntityId.trim();
         }
-        return "";
+        return DEFAULT_ENTITY_ID;
     }
 
     public String getTempId() {
-        if (envTempId != null && !envTempId.isBlank()) {
+        if (envTempId != null) {
             return envTempId.trim();
         }
-        return "";
+        return DEFAULT_TEMP_ID;
     }
 
     public String getSenderId() {
-        if (envSenderId != null && !envSenderId.isBlank()) {
+        if (envSenderId != null) {
             return envSenderId.trim();
         }
         if (appProperties != null && appProperties.providers() != null && appProperties.providers().otp() != null) {
@@ -145,7 +149,7 @@ public class DoveSoftOtpProvider implements OtpProvider {
                 return senderId.trim();
             }
         }
-        return "";
+        return DEFAULT_SENDER_ID;
     }
 
     public String resolveMessageTemplate() {
@@ -158,6 +162,22 @@ public class DoveSoftOtpProvider implements OtpProvider {
             template = template.replace("\\r\\n", "\n").replace("\\n", "\n").replace("\\r", "\n");
         }
 
+        // Replace any www.rupiksha.com or http variants with https://rupiksha.com to ensure exact URL CTA match
+        template = template.replace("visit us at www.rupiksha.com", "visit us at https://rupiksha.com")
+                .replace("https://www.rupiksha.com", "https://rupiksha.com")
+                .replace("http://www.rupiksha.com", "https://rupiksha.com")
+                .replace("http://rupiksha.com", "https://rupiksha.com")
+                .replace("www.rupiksha.com", "https://rupiksha.com");
+
+        // Normalize closing tag to approved DLT suffix
+        template = template.replace("<RUPIKSHA>", " -Rupiksha Services")
+                .replace("<rupiksha>", " -Rupiksha Services");
+
+        // Align OTP intro phrasing with approved DLT template
+        if (template.contains("Your OTP is") && !template.contains("Your OTP for login is")) {
+            template = template.replace("Your OTP is", "Your OTP for login is");
+        }
+
         // Convert DLT placeholder {#var#} or {#num#} to DoveSoft placeholder {otp}
         template = template.replace("{#var#}", "{otp}")
                 .replace("{#Var#}", "{otp}")
@@ -165,7 +185,9 @@ public class DoveSoftOtpProvider implements OtpProvider {
 
         // If placeholder {otp} was omitted in the configured string, insert {otp} safely
         if (!template.contains("{otp}")) {
-            if (template.toLowerCase().contains("otp is")) {
+            if (template.toLowerCase().contains("login is")) {
+                template = template.replaceFirst("(?i)login\\s+is\\s*", "login is {otp} ");
+            } else if (template.toLowerCase().contains("otp is")) {
                 template = template.replaceFirst("(?i)otp\\s+is\\s*", "OTP is {otp} ");
             } else if (template.toLowerCase().contains("password is")) {
                 template = template.replaceFirst("(?i)password\\s+is\\s*", "Password is {otp} ");
@@ -382,10 +404,14 @@ public class DoveSoftOtpProvider implements OtpProvider {
             String otpCode = String.valueOf(code);
             return sendOtpWithCode(mobile, otpCode);
         }
-        return sendOtpViaLegacyGenerateOtp(mobile);
+        return sendOtpViaGenerateOtp(mobile);
     }
 
     public String sendOtpViaLegacyGenerateOtp(String mobile) {
+        return sendOtpViaGenerateOtp(mobile);
+    }
+
+    public String sendOtpViaGenerateOtp(String mobile) {
         String apiKey = getApiKey();
         if (apiKey.isBlank()) {
             log.error("DoveSoft API Key is missing or unconfigured.");
@@ -404,7 +430,7 @@ public class DoveSoftOtpProvider implements OtpProvider {
             throw new IllegalArgumentException("DoveSoft requires a valid numeric DLT Entity ID. Please configure DOVESOFT_ENTITY_ID in environment variables.");
         }
 
-        int ttl = envTimeToAlive > 0 ? envTimeToAlive : 200;
+        int ttl = envTimeToAlive > 0 ? envTimeToAlive : DEFAULT_TTL;
         String messageTemplate = resolveMessageTemplate();
 
         String baseUrl = getBaseUrl();
@@ -439,7 +465,8 @@ public class DoveSoftOtpProvider implements OtpProvider {
 
         RestTemplate rt = restTemplateBuilder.build();
         try {
-            ResponseEntity<Map> response = rt.exchange(url, HttpMethod.POST, entity, Map.class);
+            URI requestUri = URI.create(url);
+            ResponseEntity<Map> response = rt.exchange(requestUri, HttpMethod.POST, entity, Map.class);
             Map body = response.getBody();
             log.info("DoveSoft generateOtp response for {}: {}", cleanMobile, body);
 
@@ -454,6 +481,9 @@ public class DoveSoftOtpProvider implements OtpProvider {
             if (!isSuccess) {
                 String reason = extractErrorMessage(body);
                 log.error("DoveSoft OTP generate failed for mobile {}: reason={}, fullBody={}", cleanMobile, reason, body);
+                if (smsDeliveryService != null) {
+                    smsDeliveryService.recordOutboundSms("RUP-" + System.currentTimeMillis(), null, cleanMobile, senderId, "FAILED", String.valueOf(body));
+                }
                 throw new IllegalArgumentException("DoveSoft OTP send failed: " + reason);
             }
 
@@ -464,6 +494,11 @@ public class DoveSoftOtpProvider implements OtpProvider {
             }
 
             log.info("DoveSoft OTP session created successfully for mobile {}, session ref: {}", cleanMobile, ref);
+
+            if (smsDeliveryService != null) {
+                smsDeliveryService.recordOutboundSms("RUP-" + System.currentTimeMillis(), ref, cleanMobile, senderId, "ACCEPTED", String.valueOf(body));
+            }
+
             return ref;
         } catch (HttpStatusCodeException e) {
             String responseBody = e.getResponseBodyAsString();
@@ -473,6 +508,9 @@ public class DoveSoftOtpProvider implements OtpProvider {
                 Map<?, ?> errMap = objectMapper.readValue(responseBody, Map.class);
                 errDetail = extractErrorMessage(errMap);
             } catch (Exception ignored) {
+            }
+            if (smsDeliveryService != null) {
+                smsDeliveryService.recordOutboundSms("RUP-" + System.currentTimeMillis(), null, cleanMobile, senderId, "FAILED", responseBody);
             }
             throw new IllegalArgumentException("DoveSoft OTP send failed: " + errDetail);
         } catch (IllegalArgumentException e) {
@@ -533,7 +571,8 @@ public class DoveSoftOtpProvider implements OtpProvider {
 
         try {
             log.info("Validating OTP via DoveSoft validateOtpApi for mobile {} (hasOtpid: {})", cleanMobile, hasOtpid);
-            ResponseEntity<Map> response = rt.exchange(validateUrl, HttpMethod.POST, entity, Map.class);
+            URI validateUri = URI.create(validateUrl);
+            ResponseEntity<Map> response = rt.exchange(validateUri, HttpMethod.POST, entity, Map.class);
             Map body = response.getBody();
             log.info("DoveSoft validateOtpApi response for {}: {}", cleanMobile, body);
 
@@ -550,7 +589,8 @@ public class DoveSoftOtpProvider implements OtpProvider {
             try {
                 String fallbackUrl = String.format("%s/rest/validateOtpApi?mobileno=%s&otp=%s", baseUrl, cleanMobile, encodedOtp);
                 log.info("Retrying DoveSoft OTP validation without otpid for mobile {}", cleanMobile);
-                ResponseEntity<Map> fbResponse = rt.exchange(fallbackUrl, HttpMethod.POST, entity, Map.class);
+                URI fallbackUri = URI.create(fallbackUrl);
+                ResponseEntity<Map> fbResponse = rt.exchange(fallbackUri, HttpMethod.POST, entity, Map.class);
                 Map fbBody = fbResponse.getBody();
                 log.info("DoveSoft validateOtpApi fallback response for {}: {}", cleanMobile, fbBody);
 

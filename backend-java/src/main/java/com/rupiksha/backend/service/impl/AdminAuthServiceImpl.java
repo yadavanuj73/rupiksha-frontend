@@ -246,22 +246,13 @@ public class AdminAuthServiceImpl implements AdminAuthService {
                                 maskedDestination, challenge.getChallengeId(), cleanIp, userAgent, correlationId,
                                 "SUCCESS", null, null, null, null);
 
-                // 2. Generate Cryptographically Secure 6-Digit OTP
-                int secureNumber = secureRandom.nextInt(1000000);
-                String generatedOtp = String.format("%06d", secureNumber);
-                String saltedOtpHash = passwordEncoder.encode(generatedOtp);
-
-                // 3. Deliver Real OTP via Configured SMS Provider
+                // 2. Deliver Real OTP via Configured SMS Provider (DoveSoft official generateOtp)
                 var provider = otpProviderRouter.current();
                 String providerReference;
                 try {
                         log.info("Sending Admin 2FA OTP to destination identifier {} (masked={}) using provider {}",
                                         destinationId, maskedDestination, provider.providerName());
-                        if (provider instanceof com.rupiksha.backend.integration.otp.DoveSoftOtpProvider dsProvider) {
-                                providerReference = dsProvider.sendOtpWithCode(resolvedPhoneNumber, generatedOtp);
-                        } else {
-                                providerReference = provider.sendOtp(resolvedPhoneNumber);
-                        }
+                        providerReference = provider.sendOtp(resolvedPhoneNumber);
                         if (providerReference == null || providerReference.isBlank()) {
                                 throw new IllegalStateException("SMS provider returned an empty delivery reference.");
                         }
@@ -287,7 +278,9 @@ public class AdminAuthServiceImpl implements AdminAuthService {
                 // 4. Update Challenge State
                 challenge.setDestinationIdentifier(destinationId.toUpperCase());
                 challenge.setMaskedDestination(maskedDestination);
-                challenge.setOtpHash(saltedOtpHash);
+                challenge.setOtpHash(providerReference != null && !providerReference.isBlank() && !providerReference.equalsIgnoreCase("success")
+                                ? passwordEncoder.encode(providerReference)
+                                : "PROVIDER_MANAGED");
                 challenge.setProviderReference(providerReference);
                 challenge.setExpiryAt(Instant.now().plusSeconds(OTP_TTL_SECONDS));
                 challenge.setResendAvailableAt(Instant.now().plusSeconds(RESEND_COOLDOWN_SECONDS));
