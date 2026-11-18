@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Lock, AlertTriangle, Loader2, History, IndianRupee, Unlock, CheckCircle2
