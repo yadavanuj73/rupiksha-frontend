@@ -113,7 +113,6 @@ const RetailerLayout = () => {
     // Graceful redirection for hidden Retailer routes during temporary BBPS-only mode
     useEffect(() => {
         const hiddenPrefixes = [
-            '/profile',
             '/aeps', '/matm', '/cms', '/travel', '/payout',
             '/wallet', '/transactions/wallet', '/upi-cash',
             '/commission', '/plans', '/support', '/loans',

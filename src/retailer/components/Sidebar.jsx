@@ -310,8 +310,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
                 </div>
             </div>
 
-            {/* Footer Merchant Profile temporarily hidden */}
-            {false && (
+            {/* Footer Merchant Profile */}
             <div className="p-2 border-t border-slate-200">
                 <div className={`flex items-center ${isExpanded ? 'justify-between' : 'justify-center'} px-1 py-1`}>
                     <div className="flex items-center gap-2">
@@ -334,7 +333,6 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileSidebar, isLocked = true, 
                     </div>
                 </div>
             </div>
-            )}
         </motion.aside>
     );
 };
