@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -223,9 +224,10 @@ public class DoveSoftOtpProvider implements OtpProvider {
         }
 
         String url = urlBuilder.toString();
+        URI uri = URI.create(url);
 
-        log.info("Sending OTP via DoveSoft for mobile {} (endpoint: {}/rest/generateOtp, entityid: {}, tempid: {}, senderid: {})",
-                cleanMobile, baseUrl, entityId, tempId, senderId);
+        log.info("Sending OTP via DoveSoft for mobile {} (endpoint: {}/rest/generateOtp, entityid: {}, tempid: {}, senderid: {}, message: {})",
+                cleanMobile, baseUrl, entityId, tempId, senderId, messageTemplate);
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("key", apiKey);
@@ -234,7 +236,7 @@ public class DoveSoftOtpProvider implements OtpProvider {
 
         RestTemplate rt = restTemplateBuilder.build();
         try {
-            ResponseEntity<Map> response = rt.exchange(url, HttpMethod.POST, entity, Map.class);
+            ResponseEntity<Map> response = rt.exchange(uri, HttpMethod.POST, entity, Map.class);
             Map body = response.getBody();
             log.info("DoveSoft generateOtp response for {}: {}", cleanMobile, body);
 
@@ -318,7 +320,7 @@ public class DoveSoftOtpProvider implements OtpProvider {
         // 1. Primary validation attempt (including otpid if available)
         try {
             log.info("Validating OTP via DoveSoft for mobile {} (hasOtpid: {})", cleanMobile, hasOtpid);
-            ResponseEntity<Map> response = rt.exchange(validateUrl, HttpMethod.POST, entity, Map.class);
+            ResponseEntity<Map> response = rt.exchange(URI.create(validateUrl), HttpMethod.POST, entity, Map.class);
             Map body = response.getBody();
             log.info("DoveSoft validateOtpApi response for {}: {}", cleanMobile, body);
 
@@ -335,7 +337,7 @@ public class DoveSoftOtpProvider implements OtpProvider {
             try {
                 String fallbackUrl = String.format("%s/rest/validateOtpApi?mobileno=%s&otp=%s", baseUrl, cleanMobile, encodedOtp);
                 log.info("Retrying DoveSoft OTP validation without otpid for mobile {}", cleanMobile);
-                ResponseEntity<Map> fbResponse = rt.exchange(fallbackUrl, HttpMethod.POST, entity, Map.class);
+                ResponseEntity<Map> fbResponse = rt.exchange(URI.create(fallbackUrl), HttpMethod.POST, entity, Map.class);
                 Map fbBody = fbResponse.getBody();
                 log.info("DoveSoft validateOtpApi fallback response for {}: {}", cleanMobile, fbBody);
 
