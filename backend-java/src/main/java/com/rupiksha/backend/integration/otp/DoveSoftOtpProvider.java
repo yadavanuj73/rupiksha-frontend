@@ -259,8 +259,47 @@ public class DoveSoftOtpProvider implements OtpProvider {
                     || "ok".equalsIgnoreCase(status)
                     || "accepted".equalsIgnoreCase(status);
 
-            // Check if listsms data items indicate success
             String providerMessageId = null;
+
+            // Check DoveSoft official response structure: body.get("smslist")
+            Object smslistObj = body.get("smslist");
+            if (smslistObj instanceof Map<?, ?> smslistMap) {
+                Object smsObj = smslistMap.get("sms");
+                if (smsObj instanceof Map<?, ?> itemMap) {
+                    Object itemStatus = itemMap.get("status");
+                    Object itemReason = itemMap.get("reason");
+                    Object itemCode = itemMap.get("code");
+                    if ("success".equalsIgnoreCase(String.valueOf(itemStatus))
+                            || "success".equalsIgnoreCase(String.valueOf(itemReason))
+                            || "000".equals(String.valueOf(itemCode))) {
+                        isSuccess = true;
+                    }
+                    Object msgIdObj = itemMap.get("messageid");
+                    if (msgIdObj == null) msgIdObj = itemMap.get("msgid");
+                    if (msgIdObj != null) {
+                        providerMessageId = String.valueOf(msgIdObj).trim();
+                    }
+                } else if (smsObj instanceof List<?> itemList && !itemList.isEmpty()) {
+                    Object first = itemList.get(0);
+                    if (first instanceof Map<?, ?> itemMap) {
+                        Object itemStatus = itemMap.get("status");
+                        Object itemReason = itemMap.get("reason");
+                        Object itemCode = itemMap.get("code");
+                        if ("success".equalsIgnoreCase(String.valueOf(itemStatus))
+                                || "success".equalsIgnoreCase(String.valueOf(itemReason))
+                                || "000".equals(String.valueOf(itemCode))) {
+                            isSuccess = true;
+                        }
+                        Object msgIdObj = itemMap.get("messageid");
+                        if (msgIdObj == null) msgIdObj = itemMap.get("msgid");
+                        if (msgIdObj != null) {
+                            providerMessageId = String.valueOf(msgIdObj).trim();
+                        }
+                    }
+                }
+            }
+
+            // Check if listsms data items indicate success
             Object dataObj = body.get("data");
             if (dataObj instanceof List<?> dataList && !dataList.isEmpty()) {
                 Object firstItem = dataList.get(0);
@@ -575,6 +614,19 @@ public class DoveSoftOtpProvider implements OtpProvider {
     public String extractErrorMessage(Map<?, ?> body) {
         if (body == null || body.isEmpty()) {
             return "Empty response from DoveSoft";
+        }
+
+        Object smslistObj = body.get("smslist");
+        if (smslistObj instanceof Map<?, ?> smslistMap) {
+            Object smsObj = smslistMap.get("sms");
+            if (smsObj instanceof Map<?, ?> itemMap) {
+                for (String field : List.of("reason", "msg", "message", "error", "description")) {
+                    Object val = itemMap.get(field);
+                    if (val != null && !String.valueOf(val).isBlank() && !"null".equalsIgnoreCase(String.valueOf(val)) && !"success".equalsIgnoreCase(String.valueOf(val))) {
+                        return String.valueOf(val).trim();
+                    }
+                }
+            }
         }
 
         for (String field : List.of("response", "msg", "reason", "message", "error", "description", "desc", "details", "Details", "data", "res")) {
