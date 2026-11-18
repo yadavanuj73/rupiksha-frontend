@@ -70,6 +70,8 @@ management:
           - GET
           - HEAD
           - OPTIONS
+        allowed-headers:
+          - "*"
   endpoint:
     health:
       probes:

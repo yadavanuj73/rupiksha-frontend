@@ -135,12 +135,10 @@ public class SecurityConfig {
                 "http://127.0.0.1:3000"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList(
-                "Authorization", "Content-Type", "Accept", "X-Requested-With",
-                "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers",
-                "X-Correlation-ID", "X-Admin-Key", "X-Callback-Key"
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setExposedHeaders(Arrays.asList(
+                "Authorization", "Content-Disposition", "X-Idempotency-Key", "Idempotency-Key"
         ));
-        configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Disposition"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
