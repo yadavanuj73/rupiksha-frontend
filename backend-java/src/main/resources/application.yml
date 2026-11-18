@@ -162,11 +162,13 @@ billavenue:
 dovesoft:
   base-url: ${DOVESOFT_BASE_URL:https://api.dovesoft.io}
   api-key: ${DOVESOFT_API_KEY:${OTP_API_KEY:}}
-  entity-id: ${DOVESOFT_ENTITY_ID:${OTP_ENTITY_ID:${TWOFACTOR_PEID:${OTP_PEID:}}}}
+  entity-id: ${DOVESOFT_ENTITY_ID:${OTP_ENTITY_ID:${TWOFACTOR_PEID:${OTP_PEID:1701176347102771967}}}}
   temp-id: ${DOVESOFT_TEMP_ID:${OTP_TEMP_ID:${TWOFACTOR_CTID:${OTP_CTID:1707176432251139080}}}}
   sender-id: ${DOVESOFT_SENDER_ID:${OTP_SENDER_ID:${TWOFACTOR_SENDER_ID:RUPIKS}}}
   timetoalive: ${DOVESOFT_TTL:${OTP_TTL_SECONDS:200}}
-  message: ${DOVESOFT_OTP_MESSAGE:}
+  message: ${DOVESOFT_OTP_MESSAGE:Dear Partner, Your OTP is {otp}.\nDo not share with anyone.\nvisit us at www.rupiksha.com\n<RUPIKSHA>}
+  use-json-api: ${DOVESOFT_USE_JSON_API:true}
+  callback-token: ${DOVESOFT_CALLBACK_TOKEN:}
 
 twofactor:
   api-key: ${TWOFACTOR_API_KEY:${OTP_API_KEY:2f056347-ce8a-11f0-a6b2-0200cd936042}}

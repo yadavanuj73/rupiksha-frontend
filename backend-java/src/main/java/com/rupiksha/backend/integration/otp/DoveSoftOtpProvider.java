@@ -2,8 +2,9 @@ package com.rupiksha.backend.integration.otp;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rupiksha.backend.config.AppProperties;
-import lombok.RequiredArgsConstructor;
+import com.rupiksha.backend.service.SmsDeliveryService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
@@ -15,18 +16,23 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class DoveSoftOtpProvider implements OtpProvider {
     private final AppProperties appProperties;
     private final RestTemplateBuilder restTemplateBuilder;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final SmsDeliveryService smsDeliveryService;
+    private final ObjectMapper objectMapper;
+    private final SecureRandom secureRandom = new SecureRandom();
 
     @Value("${dovesoft.api-key:${DOVESOFT_API_KEY:${OTP_API_KEY:}}}")
     private String envApiKey;
@@ -34,7 +40,7 @@ public class DoveSoftOtpProvider implements OtpProvider {
     @Value("${dovesoft.base-url:${DOVESOFT_BASE_URL:${OTP_BASE_URL:https://api.dovesoft.io}}}")
     private String envBaseUrl;
 
-    @Value("${dovesoft.entity-id:${DOVESOFT_ENTITY_ID:${OTP_ENTITY_ID:${TWOFACTOR_PEID:${OTP_PEID:}}}}}")
+    @Value("${dovesoft.entity-id:${DOVESOFT_ENTITY_ID:${OTP_ENTITY_ID:${TWOFACTOR_PEID:${OTP_PEID:1701176347102771967}}}}}")
     private String envEntityId;
 
     @Value("${dovesoft.temp-id:${DOVESOFT_TEMP_ID:${OTP_TEMP_ID:${TWOFACTOR_CTID:${OTP_CTID:1707176432251139080}}}}}")
@@ -52,41 +58,31 @@ public class DoveSoftOtpProvider implements OtpProvider {
     @Value("${dovesoft.message:${DOVESOFT_OTP_MESSAGE:${OTP_MESSAGE:}}}")
     private String envMessage;
 
-    public Map<String, Object> fetchTemplates() {
-        String apiKey = getApiKey();
-        if (apiKey.isBlank()) {
-            return Map.of("status", "error", "message", "DoveSoft API key not configured");
-        }
-        String baseUrl = getBaseUrl();
-        String url = baseUrl + "/api/getSmsTemplates?key=" + URLEncoder.encode(apiKey, StandardCharsets.UTF_8);
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("key", apiKey);
-        headers.set(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE);
-        headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
-        HttpEntity<Void> entity = new HttpEntity<>(headers);
-        RestTemplate rt = restTemplateBuilder.build();
-        try {
-            ResponseEntity<Map> response = rt.exchange(java.net.URI.create(url), HttpMethod.GET, entity, Map.class);
-            return response.getBody() != null ? response.getBody() : Map.of("status", "empty");
-        } catch (Exception e) {
-            log.warn("DoveSoft getSmsTemplates call failed: {}", e.getMessage());
-            return Map.of("status", "error", "message", String.valueOf(e.getMessage()));
-        }
+    @Value("${dovesoft.use-json-api:${DOVESOFT_USE_JSON_API:true}}")
+    private boolean envUseJsonApi = true;
+
+    @Value("${dovesoft.callback-token:${DOVESOFT_CALLBACK_TOKEN:}}")
+    private String envCallbackToken;
+
+    public DoveSoftOtpProvider(
+            AppProperties appProperties,
+            RestTemplateBuilder restTemplateBuilder,
+            @Autowired(required = false) SmsDeliveryService smsDeliveryService,
+            @Autowired(required = false) ObjectMapper objectMapper
+    ) {
+        this.appProperties = appProperties;
+        this.restTemplateBuilder = restTemplateBuilder;
+        this.smsDeliveryService = smsDeliveryService;
+        this.objectMapper = objectMapper != null ? objectMapper : new ObjectMapper();
     }
 
-    public Map<String, Object> getDiagnostics() {
-        String key = getApiKey();
-        String maskedKey = key.isBlank() ? "NOT_CONFIGURED" : (key.length() > 6 ? key.substring(0, 4) + "..." + key.substring(key.length() - 2) : "***");
-        return Map.of(
-                "apiKeyConfigured", !key.isBlank(),
-                "apiKeyMasked", maskedKey,
-                "baseUrl", getBaseUrl(),
-                "resolvedMessageTemplate", resolveMessageTemplate(),
-                "entityId", getEntityId(),
-                "tempId", getTempId(),
-                "senderId", getSenderId(),
-                "templatesFromDoveSoft", fetchTemplates()
-        );
+    // Convenience constructor for unit testing
+    public DoveSoftOtpProvider(AppProperties appProperties, RestTemplateBuilder restTemplateBuilder) {
+        this(appProperties, restTemplateBuilder, null, null);
+    }
+
+    public boolean isUseJsonApi() {
+        return envUseJsonApi;
     }
 
     @Override
@@ -94,7 +90,7 @@ public class DoveSoftOtpProvider implements OtpProvider {
         return "dovesoft";
     }
 
-    private String getApiKey() {
+    public String getApiKey() {
         if (envApiKey != null && !envApiKey.isBlank()) {
             return envApiKey.trim();
         }
@@ -107,7 +103,7 @@ public class DoveSoftOtpProvider implements OtpProvider {
         return "";
     }
 
-    private String getBaseUrl() {
+    public String getBaseUrl() {
         String url = envBaseUrl;
         if (url == null || url.isBlank()) {
             if (appProperties != null && appProperties.providers() != null && appProperties.providers().otp() != null) {
@@ -156,13 +152,15 @@ public class DoveSoftOtpProvider implements OtpProvider {
                 ? envMessage.trim()
                 : DEFAULT_MESSAGE_TEMPLATE;
 
-        // Convert literal \r\n and \n sequences (often passed via env variables / text boxes) to actual line breaks
+        // Convert literal \r\n and \n sequences to actual line breaks
         if (template.contains("\\n") || template.contains("\\r")) {
             template = template.replace("\\r\\n", "\n").replace("\\n", "\n").replace("\\r", "\n");
         }
 
-        // Convert DLT placeholder {#var#} to DoveSoft generateOtp placeholder {otp}
-        template = template.replace("{#var#}", "{otp}").replace("{#Var#}", "{otp}");
+        // Convert DLT placeholder {#var#} or {#num#} to DoveSoft placeholder {otp}
+        template = template.replace("{#var#}", "{otp}")
+                .replace("{#Var#}", "{otp}")
+                .replace("{#num#}", "{otp}");
 
         // If placeholder {otp} was omitted in the configured string, insert {otp} safely
         if (!template.contains("{otp}")) {
@@ -179,7 +177,12 @@ public class DoveSoftOtpProvider implements OtpProvider {
         return template;
     }
 
-    private String cleanMobileNumber(String mobile) {
+    public String formatMessageWithOtp(String otpCode) {
+        String rawTemplate = resolveMessageTemplate();
+        return rawTemplate.replace("{otp}", otpCode);
+    }
+
+    public String cleanMobileNumber(String mobile) {
         String cleaned = mobile != null ? mobile.replaceAll("[^0-9]", "") : "";
         if (cleaned.length() > 10) {
             cleaned = cleaned.substring(cleaned.length() - 10);
@@ -187,33 +190,162 @@ public class DoveSoftOtpProvider implements OtpProvider {
         return cleaned;
     }
 
-    public String extractErrorMessage(Map<?, ?> body) {
-        if (body == null || body.isEmpty()) {
-            return "Empty response from DoveSoft";
+    /**
+     * Sends OTP SMS using DoveSoft official JSON Send SMS API (POST /api/json/sendsms/).
+     * This avoids RestTemplate double-encoding and guarantees exact DLT CTA URL and template matching.
+     */
+    public String sendJsonSms(String mobile, String otpCode, String clientSmsId) {
+        String apiKey = getApiKey();
+        if (apiKey.isBlank()) {
+            log.error("DoveSoft API Key is missing or unconfigured.");
+            throw new IllegalArgumentException("DoveSoft OTP API key not configured");
         }
 
-        // Check response, msg, reason, message, etc.
-        for (String field : List.of("response", "msg", "reason", "message", "error", "description", "desc", "details", "Details", "data", "res")) {
-            Object val = body.get(field);
-            if (val != null && !String.valueOf(val).isBlank() && !"null".equalsIgnoreCase(String.valueOf(val))) {
-                return String.valueOf(val).trim();
+        String cleanMobile = cleanMobileNumber(mobile);
+        if (cleanMobile.length() != 10) {
+            log.error("Invalid mobile number provided for DoveSoft OTP send: {}", mobile);
+            throw new IllegalArgumentException("Invalid mobile number. Exactly 10 digits required.");
+        }
+
+        String entityId = getEntityId();
+        if (entityId.isBlank()) {
+            log.error("DoveSoft DLT Entity ID (PEID) is missing.");
+            throw new IllegalArgumentException("DoveSoft requires a valid numeric DLT Entity ID.");
+        }
+
+        String tempId = getTempId();
+        String senderId = getSenderId();
+        String message = formatMessageWithOtp(otpCode);
+        String formattedMobile = "+91" + cleanMobile;
+
+        // Construct JSON Send SMS request payload
+        Map<String, Object> smsItem = new HashMap<>();
+        smsItem.put("sms", message);
+        smsItem.put("mobiles", formattedMobile);
+        smsItem.put("senderid", senderId);
+        smsItem.put("entityid", entityId);
+        smsItem.put("tempid", tempId);
+
+        Map<String, Object> requestPayload = Map.of("listsms", List.of(smsItem));
+
+        String baseUrl = getBaseUrl();
+        String endpoint = baseUrl + "/api/json/sendsms/";
+
+        log.info("Dispatching SMS via DoveSoft JSON API to mobile: {} (senderId: {}, entityId: {}, tempId: {})",
+                cleanMobile, senderId, entityId, tempId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("key", apiKey);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestPayload, headers);
+
+        RestTemplate rt = restTemplateBuilder.build();
+        try {
+            ResponseEntity<Map> response = rt.exchange(endpoint, HttpMethod.POST, entity, Map.class);
+            Map body = response.getBody();
+            log.info("DoveSoft JSON sendsms response for {}: {}", cleanMobile, body);
+
+            if (body == null) {
+                throw new IllegalArgumentException("No response received from DoveSoft JSON Send SMS service");
             }
-        }
 
-        // If result field contains a descriptive failure reason instead of generic "fail"
-        Object result = body.get("result");
-        if (result != null) {
-            String resStr = String.valueOf(result).trim();
-            if (!resStr.isBlank() && !"fail".equalsIgnoreCase(resStr) && !"false".equalsIgnoreCase(resStr)) {
-                return resStr;
+            // Inspect response for success
+            String status = body.get("status") != null ? String.valueOf(body.get("status")).trim() : "";
+            String result = body.get("result") != null ? String.valueOf(body.get("result")).trim() : "";
+            boolean isSuccess = "success".equalsIgnoreCase(status)
+                    || "success".equalsIgnoreCase(result)
+                    || "ok".equalsIgnoreCase(status)
+                    || "accepted".equalsIgnoreCase(status);
+
+            // Check if listsms data items indicate success
+            String providerMessageId = null;
+            Object dataObj = body.get("data");
+            if (dataObj instanceof List<?> dataList && !dataList.isEmpty()) {
+                Object firstItem = dataList.get(0);
+                if (firstItem instanceof Map<?, ?> itemMap) {
+                    Object itemStatus = itemMap.get("status");
+                    if (itemStatus != null && "success".equalsIgnoreCase(String.valueOf(itemStatus).trim())) {
+                        isSuccess = true;
+                    }
+                    Object msgIdObj = itemMap.get("messageid");
+                    if (msgIdObj == null) msgIdObj = itemMap.get("msgid");
+                    if (msgIdObj != null) {
+                        providerMessageId = String.valueOf(msgIdObj).trim();
+                    }
+                }
             }
-        }
 
-        return body.toString();
+            if (providerMessageId == null) {
+                Object msgIdObj = body.get("messageid") != null ? body.get("messageid") : body.get("msgid");
+                if (msgIdObj != null) {
+                    providerMessageId = String.valueOf(msgIdObj).trim();
+                } else {
+                    providerMessageId = clientSmsId;
+                }
+            }
+
+            if (!isSuccess) {
+                String reason = extractErrorMessage(body);
+                log.error("DoveSoft JSON Send SMS failed for mobile {}: reason={}, body={}", cleanMobile, reason, body);
+                if (smsDeliveryService != null) {
+                    smsDeliveryService.recordOutboundSms(clientSmsId, providerMessageId, cleanMobile, senderId, "FAILED", String.valueOf(body));
+                }
+                throw new IllegalArgumentException("DoveSoft SMS send failed: " + reason);
+            }
+
+            log.info("DoveSoft JSON SMS delivered to provider for mobile {}, messageId: {}", cleanMobile, providerMessageId);
+
+            if (smsDeliveryService != null) {
+                smsDeliveryService.recordOutboundSms(clientSmsId, providerMessageId, cleanMobile, senderId, "ACCEPTED", String.valueOf(body));
+            }
+
+            return providerMessageId;
+        } catch (HttpStatusCodeException e) {
+            String responseBody = e.getResponseBodyAsString();
+            log.error("DoveSoft JSON SMS HTTP error for mobile {}: status={}, body={}", cleanMobile, e.getStatusCode(), responseBody);
+            String errDetail = responseBody;
+            try {
+                Map<?, ?> errMap = objectMapper.readValue(responseBody, Map.class);
+                errDetail = extractErrorMessage(errMap);
+            } catch (Exception ignored) {
+            }
+            if (smsDeliveryService != null) {
+                smsDeliveryService.recordOutboundSms(clientSmsId, null, cleanMobile, senderId, "FAILED", responseBody);
+            }
+            throw new IllegalArgumentException("DoveSoft SMS send failed: " + errDetail);
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("DoveSoft JSON SMS dispatch exception for mobile {}: {}", cleanMobile, e.getMessage(), e);
+            throw new IllegalArgumentException("Failed to send SMS via DoveSoft: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Explicitly send an OTP code using the approved DLT template.
+     * Returns a composite provider reference "otpCode:providerMessageId".
+     */
+    public String sendOtpWithCode(String mobile, String otpCode) {
+        if (otpCode == null || !otpCode.matches("^\\d{6}$")) {
+            throw new IllegalArgumentException("OTP code must be a valid 6-digit number.");
+        }
+        String clientSmsId = "RUP-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 8);
+        String providerMsgId = sendJsonSms(mobile, otpCode, clientSmsId);
+        return otpCode + ":" + providerMsgId;
     }
 
     @Override
     public String sendOtp(String mobile) {
+        if (isUseJsonApi()) {
+            int code = 100000 + secureRandom.nextInt(900000);
+            String otpCode = String.valueOf(code);
+            return sendOtpWithCode(mobile, otpCode);
+        }
+        return sendOtpViaLegacyGenerateOtp(mobile);
+    }
+
+    public String sendOtpViaLegacyGenerateOtp(String mobile) {
         String apiKey = getApiKey();
         if (apiKey.isBlank()) {
             log.error("DoveSoft API Key is missing or unconfigured.");
@@ -236,7 +368,6 @@ public class DoveSoftOtpProvider implements OtpProvider {
         String messageTemplate = resolveMessageTemplate();
 
         String baseUrl = getBaseUrl();
-        // Standard percent-encoding (replace '+' with '%20' so spaces are never misinterpreted)
         String encodedMessage = URLEncoder.encode(messageTemplate, StandardCharsets.UTF_8).replace("+", "%20");
 
         StringBuilder urlBuilder = new StringBuilder(baseUrl)
@@ -318,12 +449,6 @@ public class DoveSoftOtpProvider implements OtpProvider {
             return false;
         }
 
-        String apiKey = getApiKey();
-        if (apiKey.isBlank()) {
-            log.error("DoveSoft API Key not configured during OTP verification");
-            throw new IllegalArgumentException("DoveSoft OTP API key not configured");
-        }
-
         String cleanMobile = cleanMobileNumber(mobile);
         if (cleanMobile.length() != 10) {
             log.warn("Invalid mobile length for DoveSoft verifyOtp: {}", mobile);
@@ -331,11 +456,28 @@ public class DoveSoftOtpProvider implements OtpProvider {
         }
 
         String trimmedOtp = otp.trim();
+
+        // 1. Check composite backend reference format "otpCode:providerMessageId"
+        if (reference != null && !reference.isBlank()) {
+            if (reference.startsWith(trimmedOtp + ":") || reference.equals(trimmedOtp)) {
+                log.info("Backend composite OTP reference verified for mobile {}", cleanMobile);
+                return true;
+            }
+        }
+
+        // 2. Fallback to DoveSoft validateOtpApi if reference is an external otpId
+        String apiKey = getApiKey();
+        if (apiKey.isBlank()) {
+            log.error("DoveSoft API Key not configured during OTP verification");
+            return false;
+        }
+
         String baseUrl = getBaseUrl();
         String encodedOtp = URLEncoder.encode(trimmedOtp, StandardCharsets.UTF_8);
 
         boolean hasOtpid = reference != null && !reference.isBlank()
-                && !"success".equalsIgnoreCase(reference) && !"-1".equals(reference);
+                && !"success".equalsIgnoreCase(reference) && !"-1".equals(reference)
+                && !reference.contains(":");
 
         String validateUrl = String.format("%s/rest/validateOtpApi?mobileno=%s&otp=%s", baseUrl, cleanMobile, encodedOtp);
         if (hasOtpid) {
@@ -349,9 +491,8 @@ public class DoveSoftOtpProvider implements OtpProvider {
 
         RestTemplate rt = restTemplateBuilder.build();
 
-        // 1. Primary validation attempt (including otpid if available)
         try {
-            log.info("Validating OTP via DoveSoft for mobile {} (hasOtpid: {})", cleanMobile, hasOtpid);
+            log.info("Validating OTP via DoveSoft validateOtpApi for mobile {} (hasOtpid: {})", cleanMobile, hasOtpid);
             ResponseEntity<Map> response = rt.exchange(validateUrl, HttpMethod.POST, entity, Map.class);
             Map body = response.getBody();
             log.info("DoveSoft validateOtpApi response for {}: {}", cleanMobile, body);
@@ -364,7 +505,7 @@ public class DoveSoftOtpProvider implements OtpProvider {
             log.warn("DoveSoft validateOtpApi call failed for mobile {}: {}", cleanMobile, e.getMessage());
         }
 
-        // 2. Resilient fallback: If validation with otpid failed, retry without otpid parameter
+        // Resilient fallback: Retry without otpid parameter if validate with otpid failed
         if (hasOtpid) {
             try {
                 String fallbackUrl = String.format("%s/rest/validateOtpApi?mobileno=%s&otp=%s", baseUrl, cleanMobile, encodedOtp);
@@ -391,5 +532,65 @@ public class DoveSoftOtpProvider implements OtpProvider {
         String result = body.get("result") != null ? String.valueOf(body.get("result")).trim() : "";
         String status = body.get("status") != null ? String.valueOf(body.get("status")).trim() : "";
         return "success".equalsIgnoreCase(result) || "success".equalsIgnoreCase(status);
+    }
+
+    public Map<String, Object> fetchTemplates() {
+        String apiKey = getApiKey();
+        if (apiKey.isBlank()) {
+            return Map.of("status", "error", "message", "DoveSoft API key not configured");
+        }
+        String baseUrl = getBaseUrl();
+        String url = baseUrl + "/api/getSmsTemplates?key=" + URLEncoder.encode(apiKey, StandardCharsets.UTF_8);
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("key", apiKey);
+        headers.set(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+        RestTemplate rt = restTemplateBuilder.build();
+        try {
+            ResponseEntity<Map> response = rt.exchange(URI.create(url), HttpMethod.GET, entity, Map.class);
+            return response.getBody() != null ? response.getBody() : Map.of("status", "empty");
+        } catch (Exception e) {
+            log.warn("DoveSoft getSmsTemplates call failed: {}", e.getMessage());
+            return Map.of("status", "error", "message", String.valueOf(e.getMessage()));
+        }
+    }
+
+    public Map<String, Object> getDiagnostics() {
+        String key = getApiKey();
+        String maskedKey = key.isBlank() ? "NOT_CONFIGURED" : (key.length() > 6 ? key.substring(0, 4) + "..." + key.substring(key.length() - 2) : "***");
+        return Map.of(
+                "apiKeyConfigured", !key.isBlank(),
+                "apiKeyMasked", maskedKey,
+                "baseUrl", getBaseUrl(),
+                "useJsonApi", isUseJsonApi(),
+                "resolvedMessageTemplate", resolveMessageTemplate(),
+                "entityId", getEntityId(),
+                "tempId", getTempId(),
+                "senderId", getSenderId(),
+                "templatesFromDoveSoft", fetchTemplates()
+        );
+    }
+
+    public String extractErrorMessage(Map<?, ?> body) {
+        if (body == null || body.isEmpty()) {
+            return "Empty response from DoveSoft";
+        }
+
+        for (String field : List.of("response", "msg", "reason", "message", "error", "description", "desc", "details", "Details", "data", "res")) {
+            Object val = body.get(field);
+            if (val != null && !String.valueOf(val).isBlank() && !"null".equalsIgnoreCase(String.valueOf(val))) {
+                return String.valueOf(val).trim();
+            }
+        }
+
+        Object result = body.get("result");
+        if (result != null) {
+            String resStr = String.valueOf(result).trim();
+            if (!resStr.isBlank() && !"fail".equalsIgnoreCase(resStr) && !"false".equalsIgnoreCase(resStr)) {
+                return resStr;
+            }
+        }
+
+        return body.toString();
     }
 }

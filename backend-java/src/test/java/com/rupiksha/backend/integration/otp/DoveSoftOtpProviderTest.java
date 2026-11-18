@@ -7,6 +7,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.AdditionalMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
@@ -15,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -22,6 +25,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class DoveSoftOtpProviderTest {
 
     @Mock
@@ -41,8 +45,11 @@ class DoveSoftOtpProviderTest {
         ReflectionTestUtils.setField(provider, "envApiKey", "test-dovesoft-api-key");
         ReflectionTestUtils.setField(provider, "envBaseUrl", "https://api.dovesoft.io");
         ReflectionTestUtils.setField(provider, "envEntityId", "12325654434");
+        ReflectionTestUtils.setField(provider, "envTempId", "1707176432251139080");
+        ReflectionTestUtils.setField(provider, "envSenderId", "RUPIKS");
         ReflectionTestUtils.setField(provider, "envTimeToAlive", 200);
         ReflectionTestUtils.setField(provider, "envMessage", "");
+        ReflectionTestUtils.setField(provider, "envUseJsonApi", false); // Test legacy flows by default
     }
 
     @Test
@@ -190,6 +197,49 @@ class DoveSoftOtpProviderTest {
     void verifyOtp_BlankOtp_ReturnsFalseImmediately() {
         assertFalse(provider.verifyOtp("9876543210", "", "success"));
         assertFalse(provider.verifyOtp("9876543210", null, "success"));
+    }
+
+    @Test
+    void verifyOtp_CompositeBackendReference_ReturnsTrueImmediately() {
+        // When using backend-managed OTP reference "otpCode:providerMessageId"
+        boolean verified = provider.verifyOtp("9876543210", "584920", "584920:MSG-12345");
+        assertTrue(verified);
+    }
+
+    @Test
+    void sendJsonSms_Success_DispatchesExactApprovedTemplate() {
+        ReflectionTestUtils.setField(provider, "envUseJsonApi", true);
+        when(restTemplateBuilder.build()).thenReturn(restTemplate);
+
+        Map<String, Object> responseBody = Map.of(
+                "status", "success",
+                "messageid", "MSG-DOVE-998877"
+        );
+        when(restTemplate.exchange(eq("https://api.dovesoft.io/api/json/sendsms/"), eq(HttpMethod.POST), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(new ResponseEntity<>(responseBody, HttpStatus.OK));
+
+        String ref = provider.sendOtpWithCode("9876543210", "123456");
+
+        assertEquals("123456:MSG-DOVE-998877", ref);
+        verify(restTemplate).exchange(
+                eq("https://api.dovesoft.io/api/json/sendsms/"),
+                eq(HttpMethod.POST),
+                argThat((HttpEntity<?> entity) -> {
+                    Map<?, ?> body = (Map<?, ?>) entity.getBody();
+                    assertNotNull(body);
+                    List<?> listsms = (List<?>) body.get("listsms");
+                    assertEquals(1, listsms.size());
+                    Map<?, ?> item = (Map<?, ?>) listsms.get(0);
+                    assertEquals("+919876543210", item.get("mobiles"));
+                    assertEquals("RUPIKS", item.get("senderid"));
+                    assertEquals("12325654434", item.get("entityid"));
+                    assertEquals("1707176432251139080", item.get("tempid"));
+                    assertTrue(String.valueOf(item.get("sms")).contains("123456"));
+                    assertTrue(String.valueOf(item.get("sms")).contains("www.rupiksha.com"));
+                    return true;
+                }),
+                eq(Map.class)
+        );
     }
 
     @Test

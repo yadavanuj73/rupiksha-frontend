@@ -257,7 +257,11 @@ public class AdminAuthServiceImpl implements AdminAuthService {
                 try {
                         log.info("Sending Admin 2FA OTP to destination identifier {} (masked={}) using provider {}",
                                         destinationId, maskedDestination, provider.providerName());
-                        providerReference = provider.sendOtp(resolvedPhoneNumber);
+                        if (provider instanceof com.rupiksha.backend.integration.otp.DoveSoftOtpProvider dsProvider) {
+                                providerReference = dsProvider.sendOtpWithCode(resolvedPhoneNumber, generatedOtp);
+                        } else {
+                                providerReference = provider.sendOtp(resolvedPhoneNumber);
+                        }
                         if (providerReference == null || providerReference.isBlank()) {
                                 throw new IllegalStateException("SMS provider returned an empty delivery reference.");
                         }
