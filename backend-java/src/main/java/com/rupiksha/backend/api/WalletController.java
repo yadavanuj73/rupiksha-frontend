@@ -72,10 +72,9 @@ public class WalletController {
     public WalletDtos.WalletBalanceResponse balance(@PathVariable String userId, Authentication auth) {
         JwtPrincipal principal = getPrincipal(auth);
         boolean isSelf = principal.userId().toString().equalsIgnoreCase(userId);
-        boolean isPrivileged = auth.getAuthorities().stream().anyMatch(a ->
-                "ROLE_ADMIN".equals(a.getAuthority())
-                        || "ROLE_SUPER_DISTRIBUTOR".equals(a.getAuthority())
-                        || "ROLE_DISTRIBUTOR".equals(a.getAuthority()));
+        boolean isPrivileged = auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority())
+                || "ROLE_SUPER_DISTRIBUTOR".equals(a.getAuthority())
+                || "ROLE_DISTRIBUTOR".equals(a.getAuthority()));
         if (!isSelf && !isPrivileged) {
             throw new AccessDeniedException("Not allowed to view this wallet balance");
         }
@@ -163,7 +162,8 @@ public class WalletController {
         String ip = getClientIp(servletRequest);
         String idempotency = getIdempotencyKey(servletRequest);
 
-        WalletDtos.WalletBalanceResponse res = walletService.giveCommission(request, getPrincipalId(auth), ip, idempotency);
+        WalletDtos.WalletBalanceResponse res = walletService.giveCommission(request, getPrincipalId(auth), ip,
+                idempotency);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);

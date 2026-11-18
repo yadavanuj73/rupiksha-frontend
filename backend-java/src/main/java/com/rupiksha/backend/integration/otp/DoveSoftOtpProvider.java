@@ -66,7 +66,7 @@ public class DoveSoftOtpProvider implements OtpProvider {
         HttpEntity<Void> entity = new HttpEntity<>(headers);
         RestTemplate rt = restTemplateBuilder.build();
         try {
-            ResponseEntity<Map> response = rt.exchange(java.net.URI.create(url), HttpMethod.POST, entity, Map.class);
+            ResponseEntity<Map> response = rt.exchange(java.net.URI.create(url), HttpMethod.GET, entity, Map.class);
             return response.getBody() != null ? response.getBody() : Map.of("status", "empty");
         } catch (Exception e) {
             log.warn("DoveSoft getSmsTemplates call failed: {}", e.getMessage());
