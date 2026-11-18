@@ -223,11 +223,8 @@ const AllServices = ({ readOnly = false, embedded = false }) => {
     const visibleSections = useMemo(() => {
         // Distributor / Super Distributor view (readOnly) remains completely untouched
         if (readOnly) return SERVICE_SECTIONS;
-        // Temporary Retailer visibility restriction: Bharat Connect (BBPS) only (hide B2B card)
-        return SERVICE_SECTIONS.filter((section) => section.key === 'bbps').map((section) => ({
-            ...section,
-            services: section.services.filter((s) => s.categoryId !== 'b2b' && s.id !== 'bbps_b2b'),
-        }));
+        // Temporary Retailer visibility restriction: Bharat Connect (BBPS) only
+        return SERVICE_SECTIONS.filter((section) => section.key === 'bbps');
     }, [readOnly]);
 
     const filteredSections = useMemo(() => {
