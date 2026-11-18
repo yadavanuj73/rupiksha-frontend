@@ -52,6 +52,43 @@ public class DoveSoftOtpProvider implements OtpProvider {
     @Value("${dovesoft.message:${DOVESOFT_OTP_MESSAGE:${OTP_MESSAGE:}}}")
     private String envMessage;
 
+    public Map<String, Object> fetchTemplates() {
+        String apiKey = getApiKey();
+        if (apiKey.isBlank()) {
+            return Map.of("status", "error", "message", "DoveSoft API key not configured");
+        }
+        String baseUrl = getBaseUrl();
+        String url = baseUrl + "/api/getSmsTemplates?key=" + URLEncoder.encode(apiKey, StandardCharsets.UTF_8);
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("key", apiKey);
+        headers.set(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE);
+        headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+        RestTemplate rt = restTemplateBuilder.build();
+        try {
+            ResponseEntity<Map> response = rt.exchange(java.net.URI.create(url), HttpMethod.POST, entity, Map.class);
+            return response.getBody() != null ? response.getBody() : Map.of("status", "empty");
+        } catch (Exception e) {
+            log.warn("DoveSoft getSmsTemplates call failed: {}", e.getMessage());
+            return Map.of("status", "error", "message", String.valueOf(e.getMessage()));
+        }
+    }
+
+    public Map<String, Object> getDiagnostics() {
+        String key = getApiKey();
+        String maskedKey = key.isBlank() ? "NOT_CONFIGURED" : (key.length() > 6 ? key.substring(0, 4) + "..." + key.substring(key.length() - 2) : "***");
+        return Map.of(
+                "apiKeyConfigured", !key.isBlank(),
+                "apiKeyMasked", maskedKey,
+                "baseUrl", getBaseUrl(),
+                "resolvedMessageTemplate", resolveMessageTemplate(),
+                "entityId", getEntityId(),
+                "tempId", getTempId(),
+                "senderId", getSenderId(),
+                "templatesFromDoveSoft", fetchTemplates()
+        );
+    }
+
     @Override
     public String providerName() {
         return "dovesoft";

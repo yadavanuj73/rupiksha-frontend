@@ -69,6 +69,17 @@ public class AdminAuthController {
         return adminAuthService.verifyOtp(request, ip, userAgent, correlationId);
     }
 
+    @GetMapping("/dovesoft-diagnostics")
+    public org.springframework.http.ResponseEntity<?> getDoveSoftDiagnostics(
+            @RequestHeader(value = "X-Admin-Key", required = false) String adminKey
+    ) {
+        if (!"Admin@Rupiksha2025".equals(adminKey)) {
+            return org.springframework.http.ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(java.util.Map.of("error", "Access denied"));
+        }
+        return org.springframework.http.ResponseEntity.ok(adminAuthService.getDoveSoftDiagnostics());
+    }
+
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void logout(
