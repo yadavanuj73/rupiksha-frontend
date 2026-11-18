@@ -49,6 +49,4 @@ public interface AdminAuthService {
             String userAgent,
             String correlationId
     );
-
-    java.util.Map<String, Object> getDoveSoftDiagnostics();
 }

@@ -48,17 +48,10 @@ public class DoveSoftOtpProvider implements OtpProvider {
     private int envTimeToAlive;
 
     public static final String DEFAULT_MESSAGE_TEMPLATE =
-            "Dear Partner, Your OTP for login is {otp}. Do not share with anyone. visit us at https://rupiksha.com\n -Rupiksha Services";
+            "Dear Partner, Your OTP is {otp}.\nDo not share with anyone.\nvisit us at www.rupiksha.com\n<RUPIKSHA>";
 
     @Value("${dovesoft.message:${DOVESOFT_OTP_MESSAGE:${OTP_MESSAGE:}}}")
     private String envMessage;
-
-    private volatile String cachedDiscoveredTemplate = null;
-    private volatile String cachedDiscoveredTempId = null;
-    private volatile String cachedDiscoveredSenderId = null;
-    private volatile String cachedDiscoveredEntityId = null;
-    private volatile long cacheExpiryTimeMs = 0L;
-    private static final long CACHE_DURATION_MS = 10 * 60 * 1000L; // 10 minutes
 
     @Override
     public String providerName() {
@@ -99,9 +92,6 @@ public class DoveSoftOtpProvider implements OtpProvider {
         if (envEntityId != null && !envEntityId.isBlank()) {
             return envEntityId.trim();
         }
-        if (cachedDiscoveredEntityId != null && !cachedDiscoveredEntityId.isBlank()) {
-            return cachedDiscoveredEntityId.trim();
-        }
         return "";
     }
 
@@ -109,18 +99,12 @@ public class DoveSoftOtpProvider implements OtpProvider {
         if (envTempId != null && !envTempId.isBlank()) {
             return envTempId.trim();
         }
-        if (cachedDiscoveredTempId != null && !cachedDiscoveredTempId.isBlank()) {
-            return cachedDiscoveredTempId.trim();
-        }
         return "";
     }
 
     public String getSenderId() {
         if (envSenderId != null && !envSenderId.isBlank()) {
             return envSenderId.trim();
-        }
-        if (cachedDiscoveredSenderId != null && !cachedDiscoveredSenderId.isBlank()) {
-            return cachedDiscoveredSenderId.trim();
         }
         if (appProperties != null && appProperties.providers() != null && appProperties.providers().otp() != null) {
             String senderId = appProperties.providers().otp().senderId();
@@ -131,99 +115,11 @@ public class DoveSoftOtpProvider implements OtpProvider {
         return "";
     }
 
-    public Map<String, Object> fetchTemplates() {
-        String apiKey = getApiKey();
-        if (apiKey.isBlank()) {
-            return Map.of("status", "error", "message", "DoveSoft API key not configured");
-        }
-        String baseUrl = getBaseUrl();
-        String url = baseUrl + "/api/getSmsTemplates?key=" + URLEncoder.encode(apiKey, StandardCharsets.UTF_8);
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("key", apiKey);
-        headers.set(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE);
-        headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
-        HttpEntity<Void> entity = new HttpEntity<>(headers);
-        RestTemplate rt = restTemplateBuilder.build();
-        try {
-            ResponseEntity<Map> response = rt.exchange(URI.create(url), HttpMethod.POST, entity, Map.class);
-            return response.getBody() != null ? response.getBody() : Map.of("status", "empty");
-        } catch (Exception e) {
-            log.warn("DoveSoft getSmsTemplates call failed: {}", e.getMessage());
-            return Map.of("status", "error", "message", e.getMessage());
-        }
-    }
+    public String resolveMessageTemplate() {
+        String template = (envMessage != null && !envMessage.isBlank())
+                ? envMessage.trim()
+                : DEFAULT_MESSAGE_TEMPLATE;
 
-    public Map<String, Object> getWalletBalance() {
-        String apiKey = getApiKey();
-        if (apiKey.isBlank()) {
-            return Map.of("status", "error", "message", "DoveSoft API key not configured");
-        }
-        String baseUrl = getBaseUrl();
-        String url = baseUrl + "/api/getWallet";
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("key", apiKey);
-        headers.set(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE);
-        HttpEntity<Void> entity = new HttpEntity<>(headers);
-        RestTemplate rt = restTemplateBuilder.build();
-        try {
-            ResponseEntity<Map> response = rt.exchange(URI.create(url), HttpMethod.GET, entity, Map.class);
-            return response.getBody() != null ? response.getBody() : Map.of("status", "empty");
-        } catch (Exception e) {
-            log.warn("DoveSoft getWallet call failed: {}", e.getMessage());
-            return Map.of("status", "error", "message", e.getMessage());
-        }
-    }
-
-    public synchronized void autoDiscoverTemplate() {
-        long now = System.currentTimeMillis();
-        if (cachedDiscoveredTemplate != null && now < cacheExpiryTimeMs) {
-            return;
-        }
-
-        try {
-            Map<String, Object> resp = fetchTemplates();
-            if (resp != null && "success".equalsIgnoreCase(String.valueOf(resp.get("status")))) {
-                Object listObj = resp.get("templateList");
-                if (listObj instanceof List<?> list && !list.isEmpty()) {
-                    for (Object item : list) {
-                        if (item instanceof Map<?, ?> tpl) {
-                            String content = tpl.get("templateContent") != null ? String.valueOf(tpl.get("templateContent")).trim() : "";
-                            String name = tpl.get("templateName") != null ? String.valueOf(tpl.get("templateName")).trim() : "";
-                            String lower = content.toLowerCase();
-                            String nameLower = name.toLowerCase();
-
-                            // Prioritize template containing otp or login
-                            if (lower.contains("otp") || lower.contains("login") || lower.contains("password")
-                                    || nameLower.contains("otp") || nameLower.contains("login")) {
-                                cachedDiscoveredTemplate = normalizeTemplate(content);
-                                if (tpl.get("templateId") != null && !String.valueOf(tpl.get("templateId")).isBlank()) {
-                                    cachedDiscoveredTempId = String.valueOf(tpl.get("templateId")).trim();
-                                }
-                                if (tpl.get("senderId") != null && !String.valueOf(tpl.get("senderId")).isBlank()) {
-                                    cachedDiscoveredSenderId = String.valueOf(tpl.get("senderId")).trim();
-                                }
-                                if (tpl.get("entityId") != null && !String.valueOf(tpl.get("entityId")).isBlank()) {
-                                    cachedDiscoveredEntityId = String.valueOf(tpl.get("entityId")).trim();
-                                }
-                                cacheExpiryTimeMs = now + CACHE_DURATION_MS;
-                                log.info("Auto-discovered active DoveSoft template: name='{}', id='{}', sender='{}', content='{}'",
-                                        name, cachedDiscoveredTempId, cachedDiscoveredSenderId, cachedDiscoveredTemplate);
-                                return;
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.warn("Auto-discovery of DoveSoft template failed, continuing with configured defaults: {}", e.getMessage());
-        }
-        cacheExpiryTimeMs = now + 60_000L;
-    }
-
-    public String normalizeTemplate(String template) {
-        if (template == null || template.isBlank()) {
-            template = DEFAULT_MESSAGE_TEMPLATE;
-        }
         // Convert literal \r\n and \n sequences (often passed via env variables / text boxes) to actual line breaks
         if (template.contains("\\n") || template.contains("\\r")) {
             template = template.replace("\\r\\n", "\n").replace("\\n", "\n").replace("\\r", "\n");
@@ -248,39 +144,6 @@ public class DoveSoftOtpProvider implements OtpProvider {
             }
         }
         return template;
-    }
-
-    public String resolveMessageTemplate() {
-        // 1. If explicit env variable is provided and non-blank, check if it's set
-        if (envMessage != null && !envMessage.isBlank()) {
-            return normalizeTemplate(envMessage.trim());
-        }
-
-        // 2. Try auto-discovery from DoveSoft's registered template list
-        autoDiscoverTemplate();
-        if (cachedDiscoveredTemplate != null && !cachedDiscoveredTemplate.isBlank()) {
-            return cachedDiscoveredTemplate;
-        }
-
-        // 3. Fallback to default approved template matching DLT portal and CTA URL
-        return normalizeTemplate(DEFAULT_MESSAGE_TEMPLATE);
-    }
-
-    public Map<String, Object> getDiagnostics() {
-        String key = getApiKey();
-        String maskedKey = key.isBlank() ? "NOT_CONFIGURED" : (key.length() > 6 ? key.substring(0, 4) + "..." + key.substring(key.length() - 2) : "***");
-        return Map.of(
-                "apiKeyConfigured", !key.isBlank(),
-                "apiKeyMasked", maskedKey,
-                "baseUrl", getBaseUrl(),
-                "resolvedMessageTemplate", resolveMessageTemplate(),
-                "entityId", getEntityId(),
-                "tempId", getTempId(),
-                "senderId", getSenderId(),
-                "discoveredTemplate", cachedDiscoveredTemplate != null ? cachedDiscoveredTemplate : "NONE",
-                "templatesFromDoveSoft", fetchTemplates(),
-                "wallet", getWalletBalance()
-        );
     }
 
     private String cleanMobileNumber(String mobile) {
@@ -353,7 +216,6 @@ public class DoveSoftOtpProvider implements OtpProvider {
         String tempId = getTempId();
         if (!tempId.isBlank()) {
             urlBuilder.append("&tempid=").append(URLEncoder.encode(tempId, StandardCharsets.UTF_8));
-            urlBuilder.append("&templateid=").append(URLEncoder.encode(tempId, StandardCharsets.UTF_8));
         }
 
         String senderId = getSenderId();
