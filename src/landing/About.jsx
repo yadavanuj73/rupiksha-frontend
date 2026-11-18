@@ -976,9 +976,7 @@ const About = () => {
                 </div>
             </section>
 
-            {false && (
             <PartnershipBenefitsSection />
-            )}
 
             <Footer />
         </div >
