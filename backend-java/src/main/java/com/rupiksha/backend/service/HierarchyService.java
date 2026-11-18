@@ -35,6 +35,12 @@ public interface HierarchyService {
     Set<UUID> getDownlineUserIds(UUID operatorId);
 
     /**
+     * Resolves the effective parent user of the target user, checking user mappings,
+     * parentUser foreign key, addedByUserRef, and addedByPartyCode.
+     */
+    User getEffectiveParent(User user);
+
+    /**
      * Returns true if user has the ADMIN role.
      */
     boolean isAdmin(User user);

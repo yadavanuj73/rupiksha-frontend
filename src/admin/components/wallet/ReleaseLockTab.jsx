@@ -69,50 +69,60 @@ const ReleaseLockTab = ({ users = [], loading = false, onToast, onRefresh }) => 
         }
 
         setSubmitting(true);
-        const targetId = selectedUserToRelease.id || selectedUserToRelease.username;
+        const targetId = selectedUserToRelease.id || selectedUserToRelease.userId || selectedUserToRelease.username;
         const finalRemark = releaseRemark.trim() || 'Admin released locked funds';
 
+        let res = null;
         try {
-            await fetchAPI('/wallet/release', {
+            res = await fetchAPI('/wallet/release', {
                 method: 'POST',
                 body: JSON.stringify({
                     userId: targetId,
                     amount: numToRelease,
-                    remark: finalRemark
+                    remark: finalRemark,
+                    narration: finalRemark
                 })
             });
         } catch (e) {
             console.warn('Backend release API call fallback:', e);
         }
 
-        // Update dataService users
-        const appData = dataService.getData();
-        if (!appData.users) appData.users = [];
-        let uIdx = appData.users.findIndex(u =>
-            u.id == targetId || u._id == targetId || u.username === targetId || u.mobile === targetId
-        );
-        if (uIdx !== -1) {
-            const currentU = appData.users[uIdx];
-            const currentLocked = parseFloat(String(currentU.lockedAmount || 0).replace(/,/g, '')) || 0;
-            const newLocked = Math.max(0, currentLocked - numToRelease).toFixed(2);
-            appData.users[uIdx] = {
-                ...currentU,
-                lockedAmount: parseFloat(newLocked)
-            };
-            dataService.saveData(appData);
+        if (res && res.success) {
+            // Update dataService users
+            const appData = dataService.getData();
+            if (!appData.users) appData.users = [];
+            let uIdx = appData.users.findIndex(u =>
+                u.id == targetId || u._id == targetId || u.username === targetId || u.mobile === targetId || u.userId == targetId
+            );
+            if (uIdx !== -1) {
+                const currentU = appData.users[uIdx];
+                const currentLocked = parseFloat(String(currentU.lockedAmount || 0).replace(/,/g, '')) || 0;
+                const newLocked = Math.max(0, currentLocked - numToRelease).toFixed(2);
+                appData.users[uIdx] = {
+                    ...currentU,
+                    lockedAmount: parseFloat(newLocked)
+                };
+                dataService.saveData(appData);
+            }
+
+            fireCelebration();
+            onToast({
+                type: 'success',
+                message: res.message || `Successfully released ${fmtINR(numToRelease)} back to available balance for ${selectedUserToRelease.name}!`
+            });
+
+            setSelectedUserToRelease(null);
+            setReleaseAmount('');
+            if (onRefresh) onRefresh();
+            window.dispatchEvent(new CustomEvent('walletUpdated'));
+        } else {
+            onToast({
+                type: 'error',
+                message: res?.message || res?.error || 'Failed to release locked funds. Please try again.'
+            });
         }
 
-        fireCelebration();
-        onToast({
-            type: 'success',
-            message: `Successfully released ${fmtINR(numToRelease)} back to available balance for ${selectedUserToRelease.name}!`
-        });
-
-        setSelectedUserToRelease(null);
-        setReleaseAmount('');
         setSubmitting(false);
-        if (onRefresh) onRefresh();
-        window.dispatchEvent(new CustomEvent('walletUpdated'));
     };
 
     const getRoleBadge = (role) => {

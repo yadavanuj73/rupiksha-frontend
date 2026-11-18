@@ -27,6 +27,8 @@ class HierarchyServiceImplTest {
 
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private com.rupiksha.backend.repository.UserMappingRepository userMappingRepository;
 
     @InjectMocks
     private HierarchyServiceImpl hierarchyService;

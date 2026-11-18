@@ -6,6 +6,7 @@ import {
     FileText, ArrowDownRight, ArrowUpRight, Filter, Calendar
 } from 'lucide-react';
 import { fetchAPI, fmtINR, fmtDateTime, sanitizeCsvCell, WalletTabSkeleton } from './walletShared';
+import { dataService } from '../../../services/dataService';
 
 // Helper: build history API params
 const buildHistoryParams = ({ type, context, status, search, startDate, endDate, page, size }) => {

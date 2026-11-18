@@ -234,6 +234,24 @@ public class WalletServiceImpl implements WalletService {
         return generated;
     }
 
+    private User resolveUser(String identifier) {
+        if (identifier == null || identifier.isBlank()) {
+            throw new IllegalArgumentException("User identifier is required");
+        }
+        String clean = identifier.trim();
+        try {
+            UUID id = UUID.fromString(clean);
+            Optional<User> byId = userRepository.findById(id);
+            if (byId.isPresent()) return byId.get();
+        } catch (IllegalArgumentException ignored) {
+            // Not a UUID, fallback to lookup by partyCode, mobile, or username
+        }
+        return userRepository.findByPartyCode(clean)
+                .or(() -> userRepository.findByMobile(clean))
+                .or(() -> userRepository.findByUsername(clean))
+                .orElseThrow(() -> new IllegalArgumentException("Target user not found for identifier: " + identifier));
+    }
+
     private WalletDtos.WalletBalanceResponse mapBalanceResponse(Wallet w) {
         User u = w.getUser();
         String roleStr = u.getRoles().isEmpty() ? "RETAILER" : u.getRoles().iterator().next().getName().name();
@@ -256,7 +274,8 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional(readOnly = true)
     public WalletDtos.WalletBalanceResponse getBalance(String userId) {
-        Wallet wallet = getOrCreateWallet(UUID.fromString(userId));
+        User user = resolveUser(userId);
+        Wallet wallet = getOrCreateWallet(user.getId());
         return mapBalanceResponse(wallet);
     }
 
@@ -297,8 +316,7 @@ public class WalletServiceImpl implements WalletService {
 
         User operator = userRepository.findById(operatorId)
                 .orElseThrow(() -> new IllegalArgumentException("Operator not found"));
-        User targetUser = userRepository.findById(UUID.fromString(request.userId()))
-                .orElseThrow(() -> new IllegalArgumentException("Target user not found"));
+        User targetUser = resolveUser(request.userId());
         User target = targetUser;
 
         Wallet tgtWallet = getOrCreateWalletWithLock(target.getId());
@@ -318,6 +336,7 @@ public class WalletServiceImpl implements WalletService {
         BigDecimal newTgtBal = oldTgtBal.add(amount);
         tgtWallet.setBalance(newTgtBal);
         walletRepository.save(tgtWallet);
+        try { walletRepository.flush(); } catch (Exception ignored) {}
 
         WalletEntry tgtEntry = new WalletEntry();
         tgtEntry.setWallet(tgtWallet);
@@ -376,8 +395,7 @@ public class WalletServiceImpl implements WalletService {
 
         User operator = userRepository.findById(operatorId)
                 .orElseThrow(() -> new IllegalArgumentException("Operator not found"));
-        User targetUser = userRepository.findById(UUID.fromString(request.userId()))
-                .orElseThrow(() -> new IllegalArgumentException("Target user not found"));
+        User targetUser = resolveUser(request.userId());
         User target = targetUser;
 
         Wallet tgtWallet = getOrCreateWalletWithLock(target.getId());
@@ -397,6 +415,7 @@ public class WalletServiceImpl implements WalletService {
         BigDecimal newTgtBal = oldTgtBal.subtract(amount);
         tgtWallet.setBalance(newTgtBal);
         walletRepository.save(tgtWallet);
+        try { walletRepository.flush(); } catch (Exception ignored) {}
 
         String refNum = generateReferenceNumber();
 
@@ -457,8 +476,7 @@ public class WalletServiceImpl implements WalletService {
 
         User operator = userRepository.findById(operatorId)
                 .orElseThrow(() -> new IllegalArgumentException("Operator not found"));
-        User targetUser = userRepository.findById(UUID.fromString(request.userId()))
-                .orElseThrow(() -> new IllegalArgumentException("Target user not found"));
+        User targetUser = resolveUser(request.userId());
         User target = targetUser;
 
         Wallet wallet = getOrCreateWalletWithLock(target.getId());
@@ -476,6 +494,7 @@ public class WalletServiceImpl implements WalletService {
 
         wallet.setLockedBalance(wallet.getLockedBalance().add(amount));
         walletRepository.save(wallet);
+        try { walletRepository.flush(); } catch (Exception ignored) {}
 
         String refNum = generateReferenceNumber();
 
@@ -536,8 +555,7 @@ public class WalletServiceImpl implements WalletService {
 
         User operator = userRepository.findById(operatorId)
                 .orElseThrow(() -> new IllegalArgumentException("Operator not found"));
-        User targetUser = userRepository.findById(UUID.fromString(request.userId()))
-                .orElseThrow(() -> new IllegalArgumentException("Target user not found"));
+        User targetUser = resolveUser(request.userId());
         User target = targetUser;
 
         Wallet wallet = getOrCreateWalletWithLock(target.getId());
@@ -554,6 +572,7 @@ public class WalletServiceImpl implements WalletService {
 
         wallet.setLockedBalance(wallet.getLockedBalance().subtract(amount));
         walletRepository.save(wallet);
+        try { walletRepository.flush(); } catch (Exception ignored) {}
 
         String refNum = generateReferenceNumber();
 
@@ -614,8 +633,7 @@ public class WalletServiceImpl implements WalletService {
 
         User operator = userRepository.findById(operatorId)
                 .orElseThrow(() -> new IllegalArgumentException("Operator not found"));
-        User targetUser = userRepository.findById(UUID.fromString(request.userId()))
-                .orElseThrow(() -> new IllegalArgumentException("Target user not found"));
+        User targetUser = resolveUser(request.userId());
         User target = targetUser;
 
         Wallet tgtWallet = getOrCreateWalletWithLock(target.getId());
@@ -654,6 +672,7 @@ public class WalletServiceImpl implements WalletService {
         BigDecimal newTgtBal = oldTgtBal.add(netCredited);
         tgtWallet.setBalance(newTgtBal);
         walletRepository.save(tgtWallet);
+        try { walletRepository.flush(); } catch (Exception ignored) {}
 
         String refNum = generateReferenceNumber();
 
@@ -716,8 +735,7 @@ public class WalletServiceImpl implements WalletService {
 
         User operator = userRepository.findById(operatorId)
                 .orElseThrow(() -> new IllegalArgumentException("Operator not found"));
-        User targetUser = userRepository.findById(UUID.fromString(request.userId()))
-                .orElseThrow(() -> new IllegalArgumentException("Target user not found"));
+        User targetUser = resolveUser(request.userId());
         User target = targetUser;
 
         Wallet tgtWallet = getOrCreateWalletWithLock(target.getId());
@@ -737,6 +755,7 @@ public class WalletServiceImpl implements WalletService {
         BigDecimal newTgtBal = oldTgtBal.add(amount);
         tgtWallet.setBalance(newTgtBal);
         walletRepository.save(tgtWallet);
+        try { walletRepository.flush(); } catch (Exception ignored) {}
 
         WalletEntry tgtEntry = new WalletEntry();
         tgtEntry.setWallet(tgtWallet);
@@ -787,18 +806,7 @@ public class WalletServiceImpl implements WalletService {
         User admin = userRepository.findById(adminId)
                 .orElseThrow(() -> new IllegalArgumentException("Admin not found"));
 
-        UUID targetUuid;
-        try {
-            targetUuid = UUID.fromString(request.userId());
-        } catch (Exception e) {
-            targetUuid = userRepository.findByUsername(request.userId())
-                    .or(() -> userRepository.findByMobile(request.userId()))
-                    .map(User::getId)
-                    .orElseThrow(() -> new IllegalArgumentException("Target user not found: " + request.userId()));
-        }
-
-        User target = userRepository.findById(targetUuid)
-                .orElseThrow(() -> new IllegalArgumentException("Target user not found"));
+        User target = resolveUser(request.userId());
 
         Wallet wallet = getOrCreateWallet(target.getId());
 
@@ -820,6 +828,7 @@ public class WalletServiceImpl implements WalletService {
         // Update with JPA version tracking
         wallet.setStatus(newStatus);
         walletRepository.save(wallet);
+        try { walletRepository.flush(); } catch (Exception ignored) {}
 
         String refNum = generateReferenceNumber();
 
@@ -1026,6 +1035,7 @@ public class WalletServiceImpl implements WalletService {
         BigDecimal newTgtBal = oldTgtBal.add(amount);
         tgtWallet.setBalance(newTgtBal);
         walletRepository.save(tgtWallet);
+        try { walletRepository.flush(); } catch (Exception ignored) {}
 
         fr.setStatus("APPROVED");
         fr.setApprovedBy(admin);

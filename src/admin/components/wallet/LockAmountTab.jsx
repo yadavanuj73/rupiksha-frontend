@@ -6,7 +6,7 @@ import {
 import { fetchAPI, UserSelector, fmtINR, fmtDateTime, WalletTabSkeleton } from './walletShared';
 import { dataService } from '../../../services/dataService';
 
-const LockAmountTab = ({ users = [], loading = false, onToast, onRefresh, onNavigate }) => {
+const LockAmountTab = ({ users = [], loading = false, onToast, onRefresh, onNavigate, initialUserId = '' }) => {
     if (loading && users.length === 0) {
         return (
             <WalletTabSkeleton
@@ -16,7 +16,11 @@ const LockAmountTab = ({ users = [], loading = false, onToast, onRefresh, onNavi
         );
     }
 
-    const [userId, setUserId] = useState('');
+    const [userId, setUserId] = useState(initialUserId || '');
+
+    React.useEffect(() => {
+        if (initialUserId) setUserId(initialUserId);
+    }, [initialUserId]);
     const [amount, setAmount] = useState('');
     const [reason, setReason] = useState('SECURITY_HOLD');
     const [remark, setRemark] = useState('');
@@ -49,16 +53,18 @@ const LockAmountTab = ({ users = [], loading = false, onToast, onRefresh, onNavi
         }
 
         setSubmitting(true);
-        const targetId = selectedUser ? (selectedUser.id || selectedUser.username) : userId;
+        const targetId = selectedUser ? (selectedUser.id || selectedUser.userId || selectedUser.username) : userId;
         const lockNote = remark.trim() || `Wallet Amount Locked (${reason.replace(/_/g, ' ')})`;
 
+        let res = null;
         try {
-            await fetchAPI('/wallet/lock', {
+            res = await fetchAPI('/wallet/lock', {
                 method: 'POST',
                 body: JSON.stringify({
                     userId: targetId,
                     amount: numAmt,
                     remark: lockNote,
+                    narration: lockNote,
                     reason
                 })
             });
@@ -66,48 +72,57 @@ const LockAmountTab = ({ users = [], loading = false, onToast, onRefresh, onNavi
             console.warn('Backend lock API call fallback:', e);
         }
 
-        // Update user locked amount in dataService users
-        const appData = dataService.getData();
-        if (!appData.users) appData.users = [];
-        let uIdx = appData.users.findIndex(u =>
-            u.id == targetId || u._id == targetId || u.username === targetId || u.mobile === targetId
-        );
-        if (uIdx !== -1) {
-            const currentU = appData.users[uIdx];
-            const oldLock = parseFloat(String(currentU.lockedAmount || 0).replace(/,/g, '')) || 0;
-            const newLock = (oldLock + numAmt).toFixed(2);
-            appData.users[uIdx] = {
-                ...currentU,
-                lockedAmount: parseFloat(newLock)
+        if (res && res.success) {
+            // Update user locked amount in dataService users
+            const appData = dataService.getData();
+            if (!appData.users) appData.users = [];
+            let uIdx = appData.users.findIndex(u =>
+                u.id == targetId || u._id == targetId || u.username === targetId || u.mobile === targetId || u.userId == targetId
+            );
+            if (uIdx !== -1) {
+                const currentU = appData.users[uIdx];
+                const oldLock = parseFloat(String(currentU.lockedAmount || 0).replace(/,/g, '')) || 0;
+                const newLock = (oldLock + numAmt).toFixed(2);
+                appData.users[uIdx] = {
+                    ...currentU,
+                    lockedAmount: parseFloat(newLock)
+                };
+                dataService.saveData(appData);
+            }
+
+            // Save into locked records
+            const newRecord = {
+                id: `LOCK-${Date.now()}`,
+                userId: targetId,
+                username: selectedUser?.username || targetId,
+                name: selectedUser?.name || selectedUser?.fullName || 'User',
+                role: selectedUser?.role || 'RETAILER',
+                mobile: selectedUser?.mobile || '',
+                amount: numAmt,
+                reason: reason.replace(/_/g, ' '),
+                remark: lockNote,
+                lockedAt: new Date().toISOString(),
+                status: 'LOCKED'
             };
-            dataService.saveData(appData);
+            setRecentLocks(prev => [newRecord, ...prev].slice(0, 5));
+
+            onToast({
+                type: 'success',
+                message: res.message || `Successfully locked ${fmtINR(numAmt)} for ${(selectedUser?.name || targetId)}!`
+            });
+
+            setAmount('');
+            setRemark('');
+            if (onRefresh) onRefresh();
+            window.dispatchEvent(new CustomEvent('walletUpdated'));
+        } else {
+            onToast({
+                type: 'error',
+                message: res?.message || res?.error || 'Failed to lock amount. Please check available balance and try again.'
+            });
         }
 
-        // Save into locked records
-        const newRecord = {
-            id: `LOCK-${Date.now()}`,
-            userId: targetId,
-            username: selectedUser?.username || targetId,
-            name: selectedUser?.name || selectedUser?.fullName || 'User',
-            role: selectedUser?.role || 'RETAILER',
-            mobile: selectedUser?.mobile || '',
-            amount: numAmt,
-            reason: reason.replace(/_/g, ' '),
-            remark: lockNote,
-            lockedAt: new Date().toISOString(),
-            status: 'LOCKED'
-        };
-        setRecentLocks(prev => [newRecord, ...prev].slice(0, 5));
-
-        onToast({
-            type: 'success',
-            message: `Successfully locked ${fmtINR(numAmt)} for ${(selectedUser?.name || targetId)}!`
-        });
-
-        setAmount('');
-        setRemark('');
         setSubmitting(false);
-        if (onRefresh) onRefresh();
         window.dispatchEvent(new CustomEvent('walletUpdated'));
     };
 

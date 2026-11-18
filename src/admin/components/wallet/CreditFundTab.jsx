@@ -7,7 +7,7 @@ import {
 import { fetchAPI, uuid, fireCelebration, UserSelector, fmtINR, fmtDateTime, WalletTabSkeleton } from './walletShared';
 import { dataService } from '../../../services/dataService';
 
-const CreditFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
+const CreditFundTab = ({ users = [], loading = false, onToast, onRefresh, initialUserId = '' }) => {
     if (loading && users.length === 0) {
         return (
             <WalletTabSkeleton
@@ -17,7 +17,11 @@ const CreditFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
         );
     }
 
-    const [userId, setUserId] = useState('');
+    const [userId, setUserId] = useState(initialUserId || '');
+
+    useEffect(() => {
+        if (initialUserId) setUserId(initialUserId);
+    }, [initialUserId]);
     const [amount, setAmount] = useState('');
     const [channel, setChannel] = useState('BANK_TRANSFER');
     const [referenceNo, setReferenceNo] = useState('');
@@ -37,7 +41,7 @@ const CreditFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
         const numAmount = parseFloat(amount);
         if (!numAmount || numAmount <= 0) return onToast({ type: 'error', message: 'Please enter a valid credit amount (greater than 0)' });
 
-        const targetId = selectedUser ? (selectedUser.id || selectedUser.username) : userId;
+        const targetId = selectedUser ? (selectedUser.id || selectedUser.userId || selectedUser.username) : userId;
         submittingRef.current = true;
         setSubmitting(true);
 
@@ -56,13 +60,14 @@ const CreditFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
                 })
             }, idempotencyKey);
         } catch (err) {
-            console.warn('[CreditFund] API call warning:', err);
+            console.error('[CreditFund] API call error:', err);
+            submittingRef.current = false;
+            setSubmitting(false);
+            return onToast({ type: 'error', message: err?.message || 'Failed to credit funds on server' });
         }
 
-        // Always guarantee update via dataService for reliable live state sync
-        const adjusted = dataService.adjustUserWalletBalance(targetId, numAmount, 'CREDIT', creditRemark);
-
-        if ((res && res.success) || adjusted) {
+        if (res && res.success) {
+            dataService.adjustUserWalletBalance(targetId, numAmount, 'CREDIT', creditRemark);
             onToast({
                 type: 'success',
                 message: res?.message || `Successfully credited ${fmtINR(numAmount)} to ${(selectedUser?.name || targetId)}!`
@@ -76,7 +81,7 @@ const CreditFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
             if (onRefresh) onRefresh();
             window.dispatchEvent(new CustomEvent('walletUpdated'));
         } else {
-            onToast({ type: 'error', message: res?.message || 'Failed to credit funds. Please try again.' });
+            onToast({ type: 'error', message: res?.message || res?.error || 'Failed to credit funds. Please try again.' });
         }
 
         submittingRef.current = false;

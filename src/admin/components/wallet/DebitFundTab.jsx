@@ -6,7 +6,7 @@ import {
 import { fetchAPI, uuid, UserSelector, fmtINR, fmtDateTime, WalletTabSkeleton } from './walletShared';
 import { dataService } from '../../../services/dataService';
 
-const DebitFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
+const DebitFundTab = ({ users = [], loading = false, onToast, onRefresh, initialUserId = '' }) => {
     if (loading && users.length === 0) {
         return (
             <WalletTabSkeleton
@@ -16,7 +16,11 @@ const DebitFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
         );
     }
 
-    const [userId, setUserId] = useState('');
+    const [userId, setUserId] = useState(initialUserId || '');
+
+    React.useEffect(() => {
+        if (initialUserId) setUserId(initialUserId);
+    }, [initialUserId]);
     const [amount, setAmount] = useState('');
     const [category, setCategory] = useState('ADMIN_ADJUSTMENT');
     const [referenceNo, setReferenceNo] = useState('');
@@ -37,7 +41,7 @@ const DebitFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
         if (!userId) return onToast({ type: 'error', message: 'Please select a user to debit funds from' });
         if (!numAmount || numAmount <= 0) return onToast({ type: 'error', message: 'Please enter a valid debit amount (greater than 0)' });
 
-        const targetId = selectedUser ? (selectedUser.id || selectedUser.username) : userId;
+        const targetId = selectedUser ? (selectedUser.id || selectedUser.userId || selectedUser.username) : userId;
         submittingRef.current = true;
         setSubmitting(true);
 
@@ -51,6 +55,7 @@ const DebitFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
                     userId: targetId,
                     amount: numAmount,
                     remark: debitRemark,
+                    narration: debitRemark,
                     category,
                     referenceNo: referenceNo.trim()
                 })
@@ -59,10 +64,10 @@ const DebitFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
             console.warn('[DebitFund] API call warning:', err);
         }
 
-        // Always guarantee update via dataService for reliable live state sync
-        const adjusted = dataService.adjustUserWalletBalance(targetId, numAmount, 'DEBIT', debitRemark);
+        if (res && res.success) {
+            // Also adjust local dataService for instant local cache update
+            dataService.adjustUserWalletBalance(targetId, numAmount, 'DEBIT', debitRemark);
 
-        if ((res && res.success) || adjusted) {
             onToast({
                 type: 'success',
                 message: res?.message || `Successfully debited ${fmtINR(numAmount)} from ${(selectedUser?.name || targetId)}!`
@@ -75,7 +80,7 @@ const DebitFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
             if (onRefresh) onRefresh();
             window.dispatchEvent(new CustomEvent('walletUpdated'));
         } else {
-            onToast({ type: 'error', message: res?.message || 'Failed to debit funds. Please verify user balance and try again.' });
+            onToast({ type: 'error', message: res?.message || res?.error || 'Failed to debit funds. Please verify user balance and try again.' });
         }
 
         submittingRef.current = false;

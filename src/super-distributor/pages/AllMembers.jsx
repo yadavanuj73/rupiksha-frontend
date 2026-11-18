@@ -206,6 +206,23 @@ const AllMembers = () => {
 
             const combinedList = Array.from(userMap.values());
 
+            // Build lookup of all Distributors directly belonging to this Super Distributor
+            const myDistributorKeys = new Set();
+            combinedList.forEach(m => {
+                const roleStr = String(m.role || (m.roles && m.roles[0]) || '').toUpperCase();
+                if (roleStr === 'DISTRIBUTOR') {
+                    const mParentId = String(m.parentUserId || m.ownerId || m.addedByUserRef || '').toLowerCase();
+                    const mParentPc = String(m.parentPartyCode || m.addedByPartyCode || m.ownerPartyCode || '').toUpperCase();
+                    if ((sdId && (mParentId === sdId || mParentId.includes(sdId))) || (sdPartyCode && mParentPc === sdPartyCode) || assignedSet.has(String(m.username).toLowerCase()) || (m.id && assignedSet.has(String(m.id).toLowerCase()))) {
+                        if (m.id) myDistributorKeys.add(String(m.id).toLowerCase());
+                        if (m.userId) myDistributorKeys.add(String(m.userId).toLowerCase());
+                        if (m.username) myDistributorKeys.add(String(m.username).toLowerCase());
+                        if (m.mobile) myDistributorKeys.add(String(m.mobile));
+                        if (m.partyCode) myDistributorKeys.add(String(m.partyCode).toUpperCase());
+                    }
+                }
+            });
+
             const assigned = combinedList
                 .filter((u) => {
                     let rRole = 'RETAILER';
@@ -241,6 +258,7 @@ const AllMembers = () => {
                     if (sdId && (uParentId === sdId || uParentId.includes(sdId))) return true;
                     if (sdPartyCode && uParentPartyCode && (uParentPartyCode === sdPartyCode || uParentPartyCode.includes(sdPartyCode))) return true;
                     if (sdUsername && uParentId === sdUsername) return true;
+                    if (myDistributorKeys.has(uParentId) || (uParentPartyCode && myDistributorKeys.has(uParentPartyCode))) return true;
 
                     return false;
                 })
