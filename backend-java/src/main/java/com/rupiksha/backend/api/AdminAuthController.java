@@ -69,6 +69,11 @@ public class AdminAuthController {
         return adminAuthService.verifyOtp(request, ip, userAgent, correlationId);
     }
 
+    @GetMapping("/dovesoft-diagnostics")
+    public org.springframework.http.ResponseEntity<?> getDoveSoftDiagnostics() {
+        return org.springframework.http.ResponseEntity.ok(adminAuthService.getDoveSoftDiagnostics());
+    }
+
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void logout(

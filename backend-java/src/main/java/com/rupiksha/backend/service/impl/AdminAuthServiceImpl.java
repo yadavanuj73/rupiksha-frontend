@@ -49,6 +49,23 @@ public class AdminAuthServiceImpl implements AdminAuthService {
 
     private final SecureRandom secureRandom = new SecureRandom();
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.rupiksha.backend.integration.otp.DoveSoftOtpProvider doveSoftOtpProvider;
+
+    @Override
+    public Map<String, Object> getDoveSoftDiagnostics() {
+        if (doveSoftOtpProvider != null) {
+            return doveSoftOtpProvider.getDiagnostics();
+        }
+        if (otpProviderRouter != null && otpProviderRouter.current() instanceof com.rupiksha.backend.integration.otp.DoveSoftOtpProvider ds) {
+            return ds.getDiagnostics();
+        }
+        return Map.of(
+                "activeProvider", otpProviderRouter != null ? otpProviderRouter.current().providerName() : "UNKNOWN",
+                "message", "DoveSoft is not currently the active OTP provider"
+        );
+    }
+
     @Override
     @Transactional
     public AdminAuthDtos.AdminLoginInitResponse initiateLogin(
