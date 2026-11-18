@@ -47,7 +47,7 @@ public class DoveSoftOtpProvider implements OtpProvider {
     private int envTimeToAlive;
 
     public static final String DEFAULT_MESSAGE_TEMPLATE =
-            "Dear Partner, Your OTP for login is {otp}. Do not share with anyone. visit us at https://rupiksha.com\n -Rupiksha Services";
+            "Dear Partner, Your OTP is {otp}.\nDo not share with anyone.\nvisit us at www.rupiksha.com\n<RUPIKSHA>";
 
     @Value("${dovesoft.message:${DOVESOFT_OTP_MESSAGE:${OTP_MESSAGE:}}}")
     private String envMessage;
