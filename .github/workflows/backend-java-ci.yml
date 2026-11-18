@@ -24,4 +24,6 @@ jobs:
           cache: maven
 
       - name: Build and test
-        run: mvn -B test package
+        env:
+          MAVEN_OPTS: "-Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.count=5 -Daether.connector.http.retryHandler.count=5 -Daether.connector.requestTimeout=180000"
+        run: mvn -B -Dhttp.retryHandler.count=5 -Daether.connector.http.retryHandler.count=5 -Dmaven.wagon.http.retryHandler.count=5 package

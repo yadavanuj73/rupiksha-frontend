@@ -23,7 +23,23 @@ export const uuid = () => {
  * fetchAPI — wraps fetch with auth + idempotency headers.
  */
 export const fetchAPI = async (endpoint, opts = {}, explicitKey = undefined) => {
-    const token = localStorage.getItem('rupiksha_admin_token') || localStorage.getItem('rupiksha_token');
+    const isAdminTab = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+    let token = localStorage.getItem('rupiksha_admin_token');
+    if (!token && isAdminTab) {
+        const savedUserStr = localStorage.getItem('rupiksha_user');
+        if (savedUserStr) {
+            try {
+                const u = JSON.parse(savedUserStr);
+                const roles = Array.isArray(u.roles) ? u.roles : [u.role];
+                const isAdmin = roles.some(r => ['ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(String(r).toUpperCase()));
+                if (isAdmin) token = localStorage.getItem('rupiksha_token');
+            } catch {}
+        }
+    }
+    if (!token && !isAdminTab) {
+        token = localStorage.getItem('rupiksha_imp_token') || localStorage.getItem('rupiksha_token');
+    }
+
     const isMutation = opts.method === 'POST' || opts.method === 'PUT';
     const idempotencyKey = explicitKey ?? (isMutation ? uuid() : undefined);
 
@@ -38,10 +54,32 @@ export const fetchAPI = async (endpoint, opts = {}, explicitKey = undefined) => 
             ...opts,
             headers,
         });
-        return await res.json();
+
+        let data = {};
+        const text = await res.text();
+        if (text && text.trim()) {
+            try {
+                data = JSON.parse(text);
+            } catch {
+                data = { message: text };
+            }
+        }
+
+        if (!res.ok) {
+            if (res.status === 401 || (isAdminTab && res.status === 403)) {
+                console.warn(`[fetchAPI] Unauthorized/Forbidden (${res.status}) on ${endpoint}`);
+            }
+            return {
+                success: false,
+                status: res.status,
+                error: data.message || data.error || `HTTP ${res.status}: ${res.statusText || 'Operation failed'}`
+            };
+        }
+
+        return data;
     } catch (e) {
         console.warn(`[fetchAPI] Request to ${endpoint} failed:`, e);
-        return { success: false, error: e.message };
+        return { success: false, error: e.message || 'Network request failed' };
     }
 };
 

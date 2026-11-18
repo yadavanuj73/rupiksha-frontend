@@ -1,5 +1,6 @@
 package com.rupiksha.backend.api.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -8,6 +9,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 public class WalletDtos {
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record WalletBalanceResponse(
             String id, // User ID
             String name,
@@ -30,23 +32,34 @@ public class WalletDtos {
         }
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record WalletEntryRequest(
             @NotBlank String userId,
             @NotNull @DecimalMin("0.01") BigDecimal amount,
             String narration,
-            String remark
+            String remark,
+            String reason,
+            String channel,
+            String referenceNo,
+            String category
     ) {
         public WalletEntryRequest(String userId, BigDecimal amount, String narration) {
-            this(userId, amount, narration, null);
+            this(userId, amount, narration, null, null, null, null, null);
+        }
+
+        public WalletEntryRequest(String userId, BigDecimal amount, String narration, String remark) {
+            this(userId, amount, narration, remark, null, null, null, null);
         }
 
         public String getNarrationOrRemark() {
             if (narration != null && !narration.isBlank()) return narration;
             if (remark != null && !remark.isBlank()) return remark;
+            if (reason != null && !reason.isBlank()) return reason;
             return "No remark";
         }
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record CommissionRequest(
             @NotBlank String userId,
             @NotNull @DecimalMin("0.01") BigDecimal amount,
@@ -61,12 +74,14 @@ public class WalletDtos {
         }
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record WalletStatusUpdateRequest(
             @NotBlank String userId,
             @NotBlank String status,
             @NotBlank String remark
     ) {}
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record FundRequestCreateRequest(
             @NotBlank String userId,
             @NotNull @DecimalMin("0.01") BigDecimal amount,
@@ -75,11 +90,13 @@ public class WalletDtos {
             String remark
     ) {}
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record FundRequestProcessRequest(
             @NotBlank String requestId,
             String remark
     ) {}
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record FundRequestResponse(
             String id,
             String userId,

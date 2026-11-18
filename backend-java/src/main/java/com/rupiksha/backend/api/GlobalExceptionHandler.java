@@ -27,6 +27,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(body);
     }
 
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<?> handleHttpMessageNotReadable(org.springframework.http.converter.HttpMessageNotReadableException ex) {
+        log.warn("Malformed or unreadable request body: {}", ex.getMessage());
+        return ResponseEntity.badRequest().body(base(HttpStatus.BAD_REQUEST, "Malformed request body or unknown field"));
+    }
+
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<?> handleConstraint(ConstraintViolationException ex) {
         return ResponseEntity.badRequest().body(base(HttpStatus.BAD_REQUEST, ex.getMessage()));
@@ -90,6 +96,7 @@ public class GlobalExceptionHandler {
     @SuppressWarnings("unchecked")
     private Map<String, Object> base(HttpStatus status, String message) {
         Map<String, Object> body = new HashMap<>();
+        body.put("success", false);
         body.put("timestamp", Instant.now().toString());
         body.put("status", status.value());
         body.put("message", message);

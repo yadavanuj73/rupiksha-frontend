@@ -13,6 +13,9 @@ server:
       request-timeout: 60000
 
 spring:
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: false
   application:
     name: rupiksha-backend-java
   profiles:
@@ -55,6 +58,18 @@ management:
     web:
       exposure:
         include: health,info
+      cors:
+        allowed-origin-patterns:
+          - "https://*.rupiksha.in"
+          - "https://rupiksha.in"
+          - "https://www.rupiksha.in"
+          - "https://rupiksha-frontend.vercel.app"
+          - "http://localhost:5173"
+          - "http://localhost:3000"
+        allowed-methods:
+          - GET
+          - HEAD
+          - OPTIONS
   endpoint:
     health:
       probes:

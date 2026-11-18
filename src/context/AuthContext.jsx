@@ -250,12 +250,12 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  // Keep-alive ping: hits backend every 5 minutes only when active
+  // Keep-alive ping: hits backend health endpoint every 5 minutes only when active
   useEffect(() => {
-    const PING_URL = 'https://rupiksha-backend-java-932708563219.asia-south1.run.app/actuator/health';
+    const PING_URL = `${BACKEND_URL}/health`;
     const ping = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
-      fetch(PING_URL, { method: 'GET', mode: 'no-cors' }).catch(() => {});
+      fetch(PING_URL).catch(() => {});
     };
     ping();
     const interval = setInterval(ping, 300000); // 5 minutes
