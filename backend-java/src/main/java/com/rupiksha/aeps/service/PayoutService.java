@@ -62,6 +62,7 @@ public class PayoutService {
     private final PayoutRateLimiter payoutRateLimiter;
     private final PayoutAuditService payoutAuditService;
     private final PayoutStatusHistoryRepository payoutStatusHistoryRepository;
+    private final PayoutOtpService payoutOtpService;
 
     @Autowired
     public PayoutService(
@@ -75,7 +76,8 @@ public class PayoutService {
             UserServiceRepository userServiceRepository,
             PayoutRateLimiter payoutRateLimiter,
             PayoutAuditService payoutAuditService,
-            PayoutStatusHistoryRepository payoutStatusHistoryRepository
+            PayoutStatusHistoryRepository payoutStatusHistoryRepository,
+            PayoutOtpService payoutOtpService
     ) {
         this.objectMapper = objectMapper;
         this.payoutProperties = payoutProperties;
@@ -88,6 +90,7 @@ public class PayoutService {
         this.payoutRateLimiter = payoutRateLimiter;
         this.payoutAuditService = payoutAuditService;
         this.payoutStatusHistoryRepository = payoutStatusHistoryRepository;
+        this.payoutOtpService = payoutOtpService;
 
         // Dedicated RestTemplate for Payout with standard HTTP error propagation and timeouts
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
@@ -361,6 +364,13 @@ public class PayoutService {
                         effectiveIdempotencyKey, existing.getOrderId());
                 return mapToResponse(existing, "Existing transaction returned for idempotency key: " + effectiveIdempotencyKey);
             }
+        }
+
+        // 3b. Mandatory Single-Use OTP Authorization Enforcement
+        if (payoutOtpService != null) {
+            payoutOtpService.validateAndConsumeAuthorization(request.getAuthorizationReference(), request, cleanUserId, clientIp);
+        } else {
+            throw new AccessDeniedException("Mandatory payout OTP authorization service is unavailable.");
         }
 
         // Order ID resolution

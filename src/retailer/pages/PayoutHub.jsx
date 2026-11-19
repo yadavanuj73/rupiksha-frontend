@@ -12,6 +12,7 @@ import { dataService } from '../../services/dataService';
 import { payoutChargeService } from '../../services/payoutChargeService';
 import { useWallet } from '../../context/WalletContext';
 import DisabledServiceBanner from '../../components/shared/DisabledServiceBanner';
+import PayoutOtpModal from '../../components/payout/PayoutOtpModal';
 
 const PayoutHub = () => {
     const user = useMemo(() => dataService.getCurrentUser(), []);
@@ -74,6 +75,12 @@ const PayoutHub = () => {
     const [submitError, setSubmitError] = useState('');
     const [receiptData, setReceiptData] = useState(null);
     const [showReceiptModal, setShowReceiptModal] = useState(false);
+
+    // Mandatory Payout OTP Authorization State
+    const [showOtpModal, setShowOtpModal] = useState(false);
+    const [otpChallengeData, setOtpChallengeData] = useState(null);
+    const [pendingPayoutPayload, setPendingPayoutPayload] = useState(null);
+    const [pendingIdempotencyKey, setPendingIdempotencyKey] = useState(null);
 
     const [copiedField, setCopiedField] = useState('');
     const [serviceDisabled, setServiceDisabled] = useState(false);
@@ -355,7 +362,7 @@ const PayoutHub = () => {
         }
     };
 
-    // Submit Payout
+    // Step 1: Submit Form -> Validates & Requests Mandatory OTP Challenge
     const handlePayoutSubmit = async (e) => {
         e.preventDefault();
         setSubmitError('');
@@ -384,7 +391,7 @@ const PayoutHub = () => {
             const randSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
             const clientOrderId = `PO_${nowStr}_${randSuffix}`;
 
-            const payload = {
+            const payoutPayload = {
                 orderId: clientOrderId,
                 amount: Number(form.amount),
                 beneficiaryName: form.beneficiaryName.trim(),
@@ -397,7 +404,77 @@ const PayoutHub = () => {
                 saveBeneficiary: !selectedBeneficiaryId && saveToBeneficiaries
             };
 
-            const res = await payoutService.initiatePayout(payload, idempotencyKey);
+            const sendPayload = {
+                amount: Number(form.amount),
+                beneficiaryName: form.beneficiaryName.trim(),
+                accountNumber: form.accountNumber.trim(),
+                ifsc: form.ifsc.trim().toUpperCase(),
+                bankName: form.bankName.trim() || 'Bank Transfer',
+                branchName: form.branchName.trim() || 'Main Branch',
+                transferMode: form.transferMode,
+                remarks: form.remarks.trim() || 'Instant payout transfer'
+            };
+
+            // Call Stage A: Send OTP through DoveSoft
+            const otpRes = await payoutService.sendOtp(sendPayload);
+
+            if (otpRes && otpRes.success) {
+                setOtpChallengeData({
+                    ...otpRes,
+                    beneficiaryName: form.beneficiaryName.trim(),
+                    accountNumber: form.accountNumber.trim(),
+                    ifsc: form.ifsc.trim().toUpperCase(),
+                    transferMode: form.transferMode
+                });
+                setPendingPayoutPayload(payoutPayload);
+                setPendingIdempotencyKey(idempotencyKey);
+                setShowOtpModal(true);
+            } else {
+                setSubmitError(otpRes?.message || 'Failed to dispatch verification OTP. Please try again.');
+            }
+        } catch (err) {
+            setSubmitError(err?.message || 'Failed to dispatch verification OTP. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    // Step 2: User Verifies OTP in Modal -> Validates Backend OTP & Then Calls Existing Payout API
+    const handleVerifyAndConfirmPayout = async (otpCode) => {
+        if (!otpChallengeData || !pendingPayoutPayload) {
+            throw new Error('Verification session expired or details missing.');
+        }
+
+        // 1. Submit OTP to Backend Verification Endpoint
+        const verifyPayload = {
+            challengeId: otpChallengeData.challengeId,
+            payoutIntentId: otpChallengeData.payoutIntentId,
+            otp: otpCode,
+            amount: pendingPayoutPayload.amount,
+            accountNumber: pendingPayoutPayload.accountNumber,
+            ifsc: pendingPayoutPayload.ifsc,
+            transferMode: pendingPayoutPayload.transferMode
+        };
+
+        const verifyRes = await payoutService.verifyOtp(verifyPayload);
+
+        if (!verifyRes || !verifyRes.success || !verifyRes.authorizationReference) {
+            throw new Error(verifyRes?.message || 'OTP verification failed. Please try again.');
+        }
+
+        const authRef = verifyRes.authorizationReference;
+
+        // 2. Only after successful backend OTP verification, call the existing payout initiation API
+        try {
+            const finalPayload = {
+                ...pendingPayoutPayload,
+                authorizationReference: authRef,
+                payoutIntentId: otpChallengeData.payoutIntentId
+            };
+
+            const res = await payoutService.initiatePayout(finalPayload, pendingIdempotencyKey);
+
+            setShowOtpModal(false);
 
             if (res && (res.success || res.status === 'SUCCESS' || res.status === 'PENDING' || res.status === 'INITIATED')) {
                 let respData = {};
@@ -412,8 +489,8 @@ const PayoutHub = () => {
                 setReceiptData({
                     status: res.status || (res.success ? 'PENDING' : 'FAILED'),
                     message: res.message || res.responseMessage || (res.status === 'PENDING' ? 'Transfer initiated and in-progress' : 'Payout processed'),
-                    orderId: res.orderId || payload.orderId,
-                    externalOrderId: res.orderId || payload.orderId,
+                    orderId: res.orderId || pendingPayoutPayload.orderId,
+                    externalOrderId: res.orderId || pendingPayoutPayload.orderId,
                     transactionId: bbTxn,
                     utr: utrVal,
                     amount: form.amount,
@@ -442,6 +519,8 @@ const PayoutHub = () => {
                 setSelectedBeneficiaryId(null);
                 setSaveToBeneficiaries(false);
                 setVerificationResult(null);
+                setOtpChallengeData(null);
+                setPendingPayoutPayload(null);
 
                 // Refresh balance and beneficiaries
                 fetchBalance();
@@ -451,10 +530,38 @@ const PayoutHub = () => {
                 fetchBalance();
             }
         } catch (err) {
+            setShowOtpModal(false);
             setSubmitError(err?.message || 'Transfer request failed. Please check your transaction history.');
             fetchBalance();
-        } finally {
-            setIsSubmitting(false);
+        }
+    };
+
+    // Step 3: Resend OTP Handler
+    const handleResendPayoutOtp = async () => {
+        if (!pendingPayoutPayload) throw new Error('Payout session expired.');
+        const sendPayload = {
+            amount: pendingPayoutPayload.amount,
+            beneficiaryName: pendingPayoutPayload.beneficiaryName,
+            accountNumber: pendingPayoutPayload.accountNumber,
+            ifsc: pendingPayoutPayload.ifsc,
+            bankName: pendingPayoutPayload.bankName,
+            branchName: pendingPayoutPayload.branchName,
+            transferMode: pendingPayoutPayload.transferMode,
+            remarks: pendingPayoutPayload.remarks
+        };
+        const res = await payoutService.sendOtp(sendPayload);
+        if (res && res.success) {
+            setOtpChallengeData(prev => ({
+                ...prev,
+                ...res,
+                beneficiaryName: pendingPayoutPayload.beneficiaryName,
+                accountNumber: pendingPayoutPayload.accountNumber,
+                ifsc: pendingPayoutPayload.ifsc,
+                transferMode: pendingPayoutPayload.transferMode
+            }));
+            return res;
+        } else {
+            throw new Error(res?.message || 'Failed to resend OTP.');
         }
     };
 
@@ -2055,6 +2162,15 @@ const PayoutHub = () => {
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* ─── Mandatory Payout OTP Authorization Modal ─────────────────── */}
+            <PayoutOtpModal
+                isOpen={showOtpModal}
+                onClose={() => setShowOtpModal(false)}
+                challengeData={otpChallengeData}
+                onVerifyAndConfirm={handleVerifyAndConfirmPayout}
+                onResendOtp={handleResendPayoutOtp}
+            />
 
             {/* ─── Add New Beneficiary Modal ────────────────────────────────────── */}
             <AnimatePresence>

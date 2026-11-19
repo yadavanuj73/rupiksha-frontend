@@ -63,6 +63,8 @@ class PayoutServiceTest {
     @Mock
     private PayoutStatusHistoryRepository payoutStatusHistoryRepository;
     @Mock
+    private PayoutOtpService payoutOtpService;
+    @Mock
     private RestTemplate mockRestTemplate;
 
     private ObjectMapper objectMapper;
@@ -87,9 +89,13 @@ class PayoutServiceTest {
                 userServiceRepository,
                 payoutRateLimiter,
                 payoutAuditService,
-                payoutStatusHistoryRepository
+                payoutStatusHistoryRepository,
+                payoutOtpService
         );
         ReflectionTestUtils.setField(payoutService, "restTemplate", mockRestTemplate);
+
+        lenient().when(payoutOtpService.validateAndConsumeAuthorization(any(), any(), any(), any()))
+                .thenReturn(mock(com.rupiksha.aeps.entity.PayoutOtpChallenge.class));
 
         lenient().when(payoutProperties.getFullPayoutUrl()).thenReturn("https://api.provider.com/payout");
         lenient().when(payoutProperties.isEncryptionEnabled()).thenReturn(false);
@@ -128,6 +134,7 @@ class PayoutServiceTest {
                 .bankName("State Bank of India")
                 .transferMode("IMPS")
                 .remarks("Vendor payment")
+                .authorizationReference("AUTH_TEST_VALID_REF")
                 .build();
     }
 
@@ -461,5 +468,66 @@ class PayoutServiceTest {
         assertNotNull(res);
         assertEquals("SUCCESS", res.getStatus());
         assertEquals("UTR100MIN", res.getUtr());
+    }
+
+    @Test
+    @DisplayName("SECURITY ENFORCEMENT: Payout initiation without OTP authorization reference is strictly rejected")
+    void testInitiatePayoutWithoutOtpAuthorization_ThrowsAccessDeniedException() {
+        mockUserAndPermissions(true);
+        when(payoutBeneficiaryRepository.findFirstByUserIdAndAccountNumberAndIfsc(eq(testUserId), anyString(), anyString()))
+                .thenReturn(Optional.of(approvedBeneficiary));
+
+        doThrow(new AccessDeniedException("Mandatory payout OTP authorization required. Please verify OTP before initiating payout."))
+                .when(payoutOtpService).validateAndConsumeAuthorization(isNull(), any(), any(), any());
+
+        PayoutRequest req = createValidPayoutRequest();
+        req.setAuthorizationReference(null);
+
+        AccessDeniedException ex = assertThrows(AccessDeniedException.class, () ->
+                payoutService.initiatePayout(req, testUserId, "test-idem-no-otp", "127.0.0.1"));
+
+        assertTrue(ex.getMessage().contains("Mandatory payout OTP authorization required"));
+        verify(walletService, never()).debitForService(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("SECURITY ENFORCEMENT: Payout initiation with tampered details after OTP verification is strictly rejected")
+    void testInitiatePayoutWithTamperedDetails_ThrowsAccessDeniedException() {
+        mockUserAndPermissions(true);
+        when(payoutBeneficiaryRepository.findFirstByUserIdAndAccountNumberAndIfsc(eq(testUserId), anyString(), anyString()))
+                .thenReturn(Optional.of(approvedBeneficiary));
+
+        doThrow(new AccessDeniedException("Payout parameters do not match the OTP-authorized transaction. Transaction rejected."))
+                .when(payoutOtpService).validateAndConsumeAuthorization(eq("AUTH_TAMPERED"), any(), any(), any());
+
+        PayoutRequest req = createValidPayoutRequest();
+        req.setAuthorizationReference("AUTH_TAMPERED");
+        req.setAmount(new BigDecimal("5000.00")); // Amount tampered
+
+        AccessDeniedException ex = assertThrows(AccessDeniedException.class, () ->
+                payoutService.initiatePayout(req, testUserId, "test-idem-tampered", "127.0.0.1"));
+
+        assertTrue(ex.getMessage().contains("Payout parameters do not match"));
+        verify(walletService, never()).debitForService(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("SECURITY ENFORCEMENT: Payout initiation with already consumed authorization reference is strictly rejected")
+    void testInitiatePayoutWithConsumedAuthorization_ThrowsAccessDeniedException() {
+        mockUserAndPermissions(true);
+        when(payoutBeneficiaryRepository.findFirstByUserIdAndAccountNumberAndIfsc(eq(testUserId), anyString(), anyString()))
+                .thenReturn(Optional.of(approvedBeneficiary));
+
+        doThrow(new AccessDeniedException("This payout authorization has already been consumed. Replay is strictly blocked."))
+                .when(payoutOtpService).validateAndConsumeAuthorization(eq("AUTH_ALREADY_USED"), any(), any(), any());
+
+        PayoutRequest req = createValidPayoutRequest();
+        req.setAuthorizationReference("AUTH_ALREADY_USED");
+
+        AccessDeniedException ex = assertThrows(AccessDeniedException.class, () ->
+                payoutService.initiatePayout(req, testUserId, "test-idem-replay", "127.0.0.1"));
+
+        assertTrue(ex.getMessage().contains("already been consumed"));
+        verify(walletService, never()).debitForService(any(), any(), any(), any(), any(), any(), any());
     }
 }

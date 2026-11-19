@@ -297,6 +297,8 @@ function App() {
                 <Route index element={<DistributorDashboard />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="all-services" element={<AllServices readOnly />} />
+                <Route path="payout" element={<PayoutHub />} />
+                <Route path="payout-hub" element={<PayoutHub />} />
                 <Route path="wallet-to-wallet" element={<WalletTransfer />} />
                 <Route path="distributors" element={<SuperDistributorDistributors />} />
                 <Route path="retailers" element={<Retailers />} />
@@ -344,6 +346,8 @@ function App() {
                 <Route index element={<SuperDistributorDashboard />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="all-services" element={<AllServices readOnly />} />
+                <Route path="payout" element={<PayoutHub />} />
+                <Route path="payout-hub" element={<PayoutHub />} />
                 <Route path="wallet-to-wallet" element={<WalletTransfer />} />
                 <Route path="members" element={<SuperDistributorMembers />} />
                 <Route path="distributors" element={<SuperDistributorDistributors />} />

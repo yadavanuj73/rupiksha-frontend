@@ -50,4 +50,7 @@ public class PayoutRequest {
     private String mobileNumber;
 
     private Boolean saveBeneficiary;
+
+    private String authorizationReference;
+    private String payoutIntentId;
 }

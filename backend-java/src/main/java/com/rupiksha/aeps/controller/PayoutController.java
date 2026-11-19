@@ -35,6 +35,7 @@ public class PayoutController {
     private final PayoutService payoutService;
     private final PayoutReconciliationService payoutReconciliationService;
     private final PayoutStatusHistoryRepository payoutStatusHistoryRepository;
+    private final com.rupiksha.aeps.service.PayoutOtpService payoutOtpService;
 
     private String resolveUserId(JwtPrincipal principal, Authentication authentication) {
         if (principal != null && principal.userId() != null && !principal.userId().isBlank()) {
@@ -72,6 +73,44 @@ public class PayoutController {
             return realIp.trim();
         }
         return request.getRemoteAddr() != null ? request.getRemoteAddr() : "127.0.0.1";
+    }
+
+    /**
+     * Stage A: Request mandatory Payout OTP challenge bound to exact transaction details.
+     */
+    @PreAuthorize("hasAnyRole('RETAILER', 'DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'ADMIN')")
+    @PostMapping("/otp/send")
+    public ResponseEntity<com.rupiksha.aeps.dto.PayoutOtpSendResponse> sendOtp(
+            @Valid @RequestBody com.rupiksha.aeps.dto.PayoutOtpSendRequest request,
+            HttpServletRequest httpRequest,
+            @AuthenticationPrincipal JwtPrincipal principal,
+            Authentication authentication
+    ) {
+        String userId = resolveUserId(principal, authentication);
+        String clientIp = extractClientIp(httpRequest);
+        String userAgent = httpRequest != null ? httpRequest.getHeader("User-Agent") : "";
+        log.info("Requesting payout OTP for user: {}, amount: ₹{}, ip: {}", userId, request.getAmount(), clientIp);
+        com.rupiksha.aeps.dto.PayoutOtpSendResponse response = payoutOtpService.sendOtp(request, userId, clientIp, userAgent);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Stage B: Verify Payout OTP, revalidate payout details, and issue single-use authorization reference.
+     */
+    @PreAuthorize("hasAnyRole('RETAILER', 'DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'ADMIN')")
+    @PostMapping("/otp/verify")
+    public ResponseEntity<com.rupiksha.aeps.dto.PayoutOtpVerifyResponse> verifyOtp(
+            @Valid @RequestBody com.rupiksha.aeps.dto.PayoutOtpVerifyRequest request,
+            HttpServletRequest httpRequest,
+            @AuthenticationPrincipal JwtPrincipal principal,
+            Authentication authentication
+    ) {
+        String userId = resolveUserId(principal, authentication);
+        String clientIp = extractClientIp(httpRequest);
+        String userAgent = httpRequest != null ? httpRequest.getHeader("User-Agent") : "";
+        log.info("Verifying payout OTP for user: {}, challenge: {}, ip: {}", userId, request.getChallengeId(), clientIp);
+        com.rupiksha.aeps.dto.PayoutOtpVerifyResponse response = payoutOtpService.verifyOtp(request, userId, clientIp, userAgent);
+        return ResponseEntity.ok(response);
     }
 
     /**

@@ -1,10 +1,11 @@
 import {
     Users, Repeat, FileBarChart, FileText, Wallet, Percent,
-    LifeBuoy, History, Monitor, MapPin, Youtube, User, Smartphone, Coins
+    LifeBuoy, History, Monitor, MapPin, Youtube, User, Smartphone, Coins, Zap
 } from 'lucide-react';
 
 export const menuItems = [
     { title: "All Services", icon: Smartphone, path: "/super-distributor/all-services" },
+    { title: "Payout Hub", icon: Zap, path: "/super-distributor/payout-hub" },
     { title: "Wallet to Wallet", icon: Coins, path: "/super-distributor/wallet-to-wallet" },
     { title: "Retailers", icon: Users, path: "/super-distributor/retailers" },
     { title: "Distributors", icon: Users, path: "/super-distributor/distributors" },

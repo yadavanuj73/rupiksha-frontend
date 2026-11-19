@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
     ArrowRight, Banknote, Bus, Building2, Cable, Car, CreditCard, Droplets,
@@ -218,6 +218,7 @@ const ServiceCard = ({ service, readOnly, onClick, index }) => {
 
 const AllServices = ({ readOnly = false, embedded = false }) => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [searchQuery, setSearchQuery] = useState('');
 
     const filteredSections = useMemo(() => {
@@ -234,6 +235,18 @@ const AllServices = ({ readOnly = false, embedded = false }) => {
     );
 
     const openService = (service) => {
+        if (service.id === 'payout_hub') {
+            if (location.pathname.startsWith('/super-distributor')) {
+                navigate('/super-distributor/payout-hub');
+                return;
+            }
+            if (location.pathname.startsWith('/distributor')) {
+                navigate('/distributor/payout-hub');
+                return;
+            }
+            navigate('/payout-hub');
+            return;
+        }
         if (readOnly) return;
         if (service.isBbpsHub) {
             navigate('/bharat-connect');

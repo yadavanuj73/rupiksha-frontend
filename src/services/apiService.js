@@ -627,6 +627,20 @@ export const providerTxnService = {
 
 // ─── PAYOUT SERVICE ────────────────────────────────────────────────────────────
 export const payoutService = {
+  // Stage A: Request mandatory Payout OTP challenge bound to exact details
+  sendOtp: (sendData) =>
+    apiFetch("/payout/otp/send", {
+      method: "POST",
+      body: JSON.stringify(sendData),
+    }),
+
+  // Stage B: Verify Payout OTP and obtain single-use authorization reference
+  verifyOtp: (verifyData) =>
+    apiFetch("/payout/otp/verify", {
+      method: "POST",
+      body: JSON.stringify(verifyData),
+    }),
+
   // Initiate a payout transaction with server-side Idempotency-Key support
   initiatePayout: (payoutData, idempotencyKey) => {
     const headers = {};

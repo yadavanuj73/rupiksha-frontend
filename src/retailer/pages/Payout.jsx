@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { payoutService, userService } from '../../services/apiService';
 import DisabledServiceBanner from '../../components/shared/DisabledServiceBanner';
+import PayoutOtpModal from '../../components/payout/PayoutOtpModal';
 
 const Payout = () => {
   const [formData, setFormData] = useState({
@@ -23,6 +24,12 @@ const Payout = () => {
   const [error, setError] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [showTransactions, setShowTransactions] = useState(false);
+
+  // Mandatory Payout OTP State
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpChallengeData, setOtpChallengeData] = useState(null);
+  const [pendingPayoutData, setPendingPayoutData] = useState(null);
+  const [pendingIdempotencyKey, setPendingIdempotencyKey] = useState(null);
 
   useEffect(() => {
     const checkService = async () => {
@@ -119,30 +126,106 @@ const Payout = () => {
         ? crypto.randomUUID()
         : (`po_idem_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
 
-      const result = await payoutService.initiatePayout(payoutData, idempotencyKey);
-      setResponse(result);
+      const sendPayload = {
+        amount: parseFloat(formData.amount),
+        beneficiaryName: formData.beneficiaryName.trim(),
+        accountNumber: formData.accountNumber.trim(),
+        ifsc: formData.ifsc.toUpperCase().trim(),
+        bankName: formData.bankName || '',
+        transferMode: formData.transferMode,
+        remarks: formData.remarks || ''
+      };
 
-      if (result.statusCode === '200' || result.status === 'SUCCESS' || result.status === 'PENDING') {
-        // Reset form and generate new order ID
-        setFormData({
-          payoutPipe: 'QUICKZAPS',
-          amount: '',
-          beneficiaryName: '',
-          accountNumber: '',
-          ifsc: '',
-          bankName: '',
-          transferMode: 'IMPS',
-          remarks: '',
-          mobileNumber: '',
-          accountType: 'Savings'
+      // Stage A: Call Send OTP
+      const otpRes = await payoutService.sendOtp(sendPayload);
+
+      if (otpRes && otpRes.success) {
+        setOtpChallengeData({
+          ...otpRes,
+          beneficiaryName: formData.beneficiaryName.trim(),
+          accountNumber: formData.accountNumber.trim(),
+          ifsc: formData.ifsc.toUpperCase().trim(),
+          transferMode: formData.transferMode
         });
-        generateOrderId();
+        setPendingPayoutData(payoutData);
+        setPendingIdempotencyKey(idempotencyKey);
+        setShowOtpModal(true);
+      } else {
+        setError(otpRes?.message || 'Failed to dispatch verification OTP. Please try again.');
       }
     } catch (err) {
-      setError(err.message || 'Payout failed. Please try again.');
+      setError(err.message || 'Failed to dispatch verification OTP. Please try again.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleVerifyAndConfirmPayout = async (otpCode) => {
+    if (!otpChallengeData || !pendingPayoutData) {
+      throw new Error('Payout session expired. Please retry.');
+    }
+
+    const verifyPayload = {
+      challengeId: otpChallengeData.challengeId,
+      payoutIntentId: otpChallengeData.payoutIntentId,
+      otp: otpCode,
+      amount: pendingPayoutData.Amount,
+      accountNumber: pendingPayoutData.AccountNumber,
+      ifsc: pendingPayoutData.Ifsc,
+      transferMode: pendingPayoutData.TransferMode
+    };
+
+    const verifyRes = await payoutService.verifyOtp(verifyPayload);
+
+    if (!verifyRes || !verifyRes.success || !verifyRes.authorizationReference) {
+      throw new Error(verifyRes?.message || 'OTP verification failed.');
+    }
+
+    // Call existing payout API only after OTP verification
+    const finalPayload = {
+      ...pendingPayoutData,
+      authorizationReference: verifyRes.authorizationReference,
+      payoutIntentId: otpChallengeData.payoutIntentId
+    };
+
+    const result = await payoutService.initiatePayout(finalPayload, pendingIdempotencyKey);
+    setShowOtpModal(false);
+    setResponse(result);
+
+    if (result.statusCode === '200' || result.status === 'SUCCESS' || result.status === 'PENDING') {
+      setFormData({
+        payoutPipe: 'QUICKZAPS',
+        amount: '',
+        beneficiaryName: '',
+        accountNumber: '',
+        ifsc: '',
+        bankName: '',
+        transferMode: 'IMPS',
+        remarks: '',
+        mobileNumber: '',
+        accountType: 'Savings'
+      });
+      generateOrderId();
+    }
+  };
+
+  const handleResendPayoutOtp = async () => {
+    if (!pendingPayoutData) throw new Error('Session expired');
+    const sendPayload = {
+      amount: pendingPayoutData.Amount,
+      beneficiaryName: pendingPayoutData.BeneficiaryName,
+      accountNumber: pendingPayoutData.AccountNumber,
+      ifsc: pendingPayoutData.Ifsc,
+      bankName: pendingPayoutData.BankName,
+      transferMode: pendingPayoutData.TransferMode,
+      remarks: pendingPayoutData.Remarks
+    };
+    const res = await payoutService.sendOtp(sendPayload);
+    if (res && res.success) {
+      setOtpChallengeData(prev => ({ ...prev, ...res }));
+      return res;
+    }
+    throw new Error(res?.message || 'Failed to resend OTP');
   };
 
   const fetchTransactions = async () => {
@@ -427,6 +510,14 @@ const Payout = () => {
           </div>
         )}
       </div>
+
+      <PayoutOtpModal
+        isOpen={showOtpModal}
+        onClose={() => setShowOtpModal(false)}
+        challengeData={otpChallengeData}
+        onVerifyAndConfirm={handleVerifyAndConfirmPayout}
+        onResendOtp={handleResendPayoutOtp}
+      />
     </div>
   );
 };
