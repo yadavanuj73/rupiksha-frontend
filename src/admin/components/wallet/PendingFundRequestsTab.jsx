@@ -449,7 +449,7 @@ const PendingFundRequestsTab = ({ users = [], onToast, onRefresh }) => {
 
             {/* ── Approve Confirmation Modal ── */}
             <AnimatePresence>
-                {approveModalItem && (
+                {approveModalItem && !pinModalConfig && (
                     <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
@@ -537,7 +537,7 @@ const PendingFundRequestsTab = ({ users = [], onToast, onRefresh }) => {
 
             {/* ── Decline Confirmation Modal ── */}
             <AnimatePresence>
-                {declineModalItem && (
+                {declineModalItem && !pinModalConfig && (
                     <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}

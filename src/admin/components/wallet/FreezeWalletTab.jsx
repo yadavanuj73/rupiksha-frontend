@@ -586,7 +586,7 @@ const FreezeWalletTab = ({ users = [], loading = false, onToast, onRefresh }) =>
 
             {/* ── Unfreeze Modal ── */}
             <AnimatePresence>
-                {unfreezeModalUser && (
+                {unfreezeModalUser && !pinModalOpen && (
                     <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
@@ -668,10 +668,15 @@ const FreezeWalletTab = ({ users = [], loading = false, onToast, onRefresh }) =>
                 isOpen={pinModalOpen}
                 onClose={() => setPinModalOpen(false)}
                 onConfirm={pinModalConfig.onConfirm}
-                actionTitle={pinModalConfig.actionTitle}
-                actionType={pinModalConfig.actionType}
-                targetUser={pinModalConfig.targetUser}
-                loading={submitting || unfreezing}
+                title={pinModalConfig.actionTitle || 'Confirm Unfreeze Wallet'}
+                actionType={pinModalConfig.actionType || 'UNFREEZE'}
+                details={{
+                    userName: pinModalConfig.targetUser?.name,
+                    userCode: pinModalConfig.targetUser?.username || pinModalConfig.targetUser?.mobile,
+                    amount: unfreezeModalUser ? parseFloat(unfreezeModalUser.balance) || 0 : null,
+                    customNote: unfreezeRemark
+                }}
+                submitting={submitting || unfreezing}
             />
         </div>
     );

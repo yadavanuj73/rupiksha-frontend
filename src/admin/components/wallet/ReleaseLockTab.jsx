@@ -279,7 +279,7 @@ const ReleaseLockTab = ({ users = [], loading = false, onToast, onRefresh }) => 
 
             {/* ── Release Lock Modal ── */}
             <AnimatePresence>
-                {selectedUserToRelease && (
+                {selectedUserToRelease && !showPinModal && (
                     <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
@@ -388,16 +388,15 @@ const ReleaseLockTab = ({ users = [], loading = false, onToast, onRefresh }) => 
                 isOpen={showPinModal}
                 onClose={() => setShowPinModal(false)}
                 onConfirm={handleConfirmWithPin}
-                actionTitle="Confirm Release Lock Amount"
+                title="Confirm Release Lock Amount"
                 actionType="RELEASE"
-                amount={selectedUserToRelease ? parseFloat(releaseAmount) || 0 : 0}
-                targetUser={selectedUserToRelease ? {
-                    name: selectedUserToRelease.name || selectedUserToRelease.fullName || selectedUserToRelease.username,
-                    username: selectedUserToRelease.username,
-                    mobile: selectedUserToRelease.mobile,
-                    role: selectedUserToRelease.role
-                } : null}
-                loading={submitting}
+                details={{
+                    userName: selectedUserToRelease?.name || selectedUserToRelease?.fullName || selectedUserToRelease?.username,
+                    userCode: selectedUserToRelease?.username || selectedUserToRelease?.mobile,
+                    amount: selectedUserToRelease ? parseFloat(releaseAmount) || 0 : 0,
+                    customNote: releaseRemark.trim() || 'Admin released locked funds'
+                }}
+                submitting={submitting}
             />
         </div>
     );
