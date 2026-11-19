@@ -16,20 +16,25 @@ public interface WalletService {
     
     // Core balance operations
     WalletDtos.WalletBalanceResponse credit(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey);
+    WalletDtos.WalletBalanceResponse credit(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey, String pin);
     WalletDtos.WalletBalanceResponse debit(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey);
+    WalletDtos.WalletBalanceResponse debit(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey, String pin);
     
     default WalletDtos.WalletBalanceResponse credit(WalletDtos.WalletEntryRequest request) {
-        return credit(request, UUID.fromString(request.userId()), "127.0.0.1", UUID.randomUUID().toString());
+        return credit(request, UUID.fromString(request.userId()), "127.0.0.1", UUID.randomUUID().toString(), request.pin());
     }
     default WalletDtos.WalletBalanceResponse debit(WalletDtos.WalletEntryRequest request) {
-        return debit(request, UUID.fromString(request.userId()), "127.0.0.1", UUID.randomUUID().toString());
+        return debit(request, UUID.fromString(request.userId()), "127.0.0.1", UUID.randomUUID().toString(), request.pin());
     }
 
     WalletDtos.WalletBalanceResponse lock(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey);
+    WalletDtos.WalletBalanceResponse lock(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey, String pin);
     WalletDtos.WalletBalanceResponse release(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey);
+    WalletDtos.WalletBalanceResponse release(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey, String pin);
     WalletDtos.WalletBalanceResponse giveCommission(WalletDtos.CommissionRequest request, UUID operatorId, String ipAddress, String idempotencyKey);
     WalletDtos.WalletBalanceResponse cmsRefund(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey);
     WalletDtos.WalletBalanceResponse updateWalletStatus(WalletDtos.WalletStatusUpdateRequest request, UUID adminId, String ipAddress);
+    WalletDtos.WalletBalanceResponse updateWalletStatus(WalletDtos.WalletStatusUpdateRequest request, UUID adminId, String ipAddress, String pin);
 
     // Dynamic tax aggregate summary
     WalletDtos.TaxSummaryResponse getTaxSummary(UUID currentUserId);
@@ -39,8 +44,10 @@ public interface WalletService {
     List<WalletDtos.FundRequestResponse> getFundRequests(UUID currentUserId);
     WalletDtos.FundRequestResponse approveFundRequest(UUID requestId, UUID adminId, String ipAddress);
     WalletDtos.FundRequestResponse approveFundRequest(UUID requestId, String remark, UUID adminId, String ipAddress);
+    WalletDtos.FundRequestResponse approveFundRequest(UUID requestId, String remark, UUID adminId, String ipAddress, String pin);
     WalletDtos.FundRequestResponse rejectFundRequest(UUID requestId, UUID adminId, String ipAddress);
     WalletDtos.FundRequestResponse rejectFundRequest(UUID requestId, String remark, UUID adminId, String ipAddress);
+    WalletDtos.FundRequestResponse rejectFundRequest(UUID requestId, String remark, UUID adminId, String ipAddress, String pin);
 
     // History and reporting
     Page<WalletDtos.WalletHistoryEntryResponse> getLedgerHistory(

@@ -58,6 +58,17 @@ public class WalletController {
         return key;
     }
 
+    private String resolveActionPin(HttpServletRequest request, String bodyPin) {
+        String pin = request.getHeader("X-Admin-PIN");
+        if (pin == null || pin.isBlank()) {
+            pin = request.getHeader("X-Admin-Wallet-Pin");
+        }
+        if (pin == null || pin.isBlank()) {
+            pin = bodyPin;
+        }
+        return pin != null ? pin.trim() : null;
+    }
+
     @GetMapping("/wallet")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> getWalletsList(Authentication auth) {
@@ -89,8 +100,9 @@ public class WalletController {
             HttpServletRequest servletRequest) {
         String ip = getClientIp(servletRequest);
         String idempotency = getIdempotencyKey(servletRequest);
+        String pin = resolveActionPin(servletRequest, request.pin());
 
-        WalletDtos.WalletBalanceResponse res = walletService.credit(request, getPrincipalId(auth), ip, idempotency);
+        WalletDtos.WalletBalanceResponse res = walletService.credit(request, getPrincipalId(auth), ip, idempotency, pin);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
@@ -107,8 +119,9 @@ public class WalletController {
             HttpServletRequest servletRequest) {
         String ip = getClientIp(servletRequest);
         String idempotency = getIdempotencyKey(servletRequest);
+        String pin = resolveActionPin(servletRequest, request.pin());
 
-        WalletDtos.WalletBalanceResponse res = walletService.debit(request, getPrincipalId(auth), ip, idempotency);
+        WalletDtos.WalletBalanceResponse res = walletService.debit(request, getPrincipalId(auth), ip, idempotency, pin);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
@@ -125,8 +138,9 @@ public class WalletController {
             HttpServletRequest servletRequest) {
         String ip = getClientIp(servletRequest);
         String idempotency = getIdempotencyKey(servletRequest);
+        String pin = resolveActionPin(servletRequest, request.pin());
 
-        WalletDtos.WalletBalanceResponse res = walletService.lock(request, getPrincipalId(auth), ip, idempotency);
+        WalletDtos.WalletBalanceResponse res = walletService.lock(request, getPrincipalId(auth), ip, idempotency, pin);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
@@ -143,8 +157,9 @@ public class WalletController {
             HttpServletRequest servletRequest) {
         String ip = getClientIp(servletRequest);
         String idempotency = getIdempotencyKey(servletRequest);
+        String pin = resolveActionPin(servletRequest, request.pin());
 
-        WalletDtos.WalletBalanceResponse res = walletService.release(request, getPrincipalId(auth), ip, idempotency);
+        WalletDtos.WalletBalanceResponse res = walletService.release(request, getPrincipalId(auth), ip, idempotency, pin);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
@@ -197,8 +212,9 @@ public class WalletController {
             Authentication auth,
             HttpServletRequest servletRequest) {
         String ip = getClientIp(servletRequest);
+        String pin = resolveActionPin(servletRequest, request.pin());
 
-        WalletDtos.WalletBalanceResponse res = walletService.updateWalletStatus(request, getPrincipalId(auth), ip);
+        WalletDtos.WalletBalanceResponse res = walletService.updateWalletStatus(request, getPrincipalId(auth), ip, pin);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
@@ -247,9 +263,10 @@ public class WalletController {
             Authentication auth,
             HttpServletRequest servletRequest) {
         String ip = getClientIp(servletRequest);
+        String pin = resolveActionPin(servletRequest, request.pin());
 
         WalletDtos.FundRequestResponse res = walletService.approveFundRequest(
-                UUID.fromString(request.requestId()), request.remark(), getPrincipalId(auth), ip);
+                UUID.fromString(request.requestId()), request.remark(), getPrincipalId(auth), ip, pin);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
@@ -265,9 +282,10 @@ public class WalletController {
             Authentication auth,
             HttpServletRequest servletRequest) {
         String ip = getClientIp(servletRequest);
+        String pin = resolveActionPin(servletRequest, request.pin());
 
         WalletDtos.FundRequestResponse res = walletService.rejectFundRequest(
-                UUID.fromString(request.requestId()), request.remark(), getPrincipalId(auth), ip);
+                UUID.fromString(request.requestId()), request.remark(), getPrincipalId(auth), ip, pin);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);

@@ -48,6 +48,27 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(base(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage()));
     }
 
+    @ExceptionHandler(com.rupiksha.backend.exception.AdminWalletPinValidationException.class)
+    public ResponseEntity<?> handleAdminWalletPinValidation(com.rupiksha.backend.exception.AdminWalletPinValidationException ex) {
+        Map<String, Object> body = base(HttpStatus.BAD_REQUEST, ex.getMessage());
+        body.put("code", "INVALID_ADMIN_WALLET_PIN");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    @ExceptionHandler(com.rupiksha.backend.exception.AdminWalletPinLockedException.class)
+    public ResponseEntity<?> handleAdminWalletPinLocked(com.rupiksha.backend.exception.AdminWalletPinLockedException ex) {
+        Map<String, Object> body = base(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
+        body.put("code", "ADMIN_WALLET_PIN_LOCKED");
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(body);
+    }
+
+    @ExceptionHandler(com.rupiksha.backend.exception.AdminWalletPinSecretUnavailableException.class)
+    public ResponseEntity<?> handleAdminWalletPinSecretUnavailable(com.rupiksha.backend.exception.AdminWalletPinSecretUnavailableException ex) {
+        Map<String, Object> body = base(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+        body.put("code", "PIN_SECRET_UNAVAILABLE");
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
+    }
+
     @ExceptionHandler(com.rupiksha.backend.service.IdPaymentRequiredException.class)
     public ResponseEntity<?> handleIdPaymentRequired(com.rupiksha.backend.service.IdPaymentRequiredException ex) {
         Map<String, Object> body = new HashMap<>();

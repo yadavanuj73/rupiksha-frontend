@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { UserSelector, fmtINR, fmtDateTime, fireCelebration, fetchAPI, WalletTabSkeleton } from './walletShared';
 import { dataService } from '../../../services/dataService';
+import AdminWalletPinModal from './AdminWalletPinModal';
 
 const FreezeWalletTab = ({ users = [], loading = false, onToast, onRefresh }) => {
     const [subTab, setSubTab] = useState('FREEZE'); // 'FREEZE' | 'UNFREEZE'
@@ -17,6 +18,15 @@ const FreezeWalletTab = ({ users = [], loading = false, onToast, onRefresh }) =>
     const [unfreezeModalUser, setUnfreezeModalUser] = useState(null);
     const [unfreezeRemark, setUnfreezeRemark] = useState('Compliance review cleared - wallet restored');
     const [unfreezing, setUnfreezing] = useState(false);
+
+    // 6-Digit Admin PIN Modal State
+    const [pinModalOpen, setPinModalOpen] = useState(false);
+    const [pinModalConfig, setPinModalConfig] = useState({
+        actionTitle: '',
+        actionType: '',
+        targetUser: null,
+        onConfirm: null
+    });
 
     const [search, setSearch] = useState('');
 
@@ -61,30 +71,49 @@ const FreezeWalletTab = ({ users = [], loading = false, onToast, onRefresh }) =>
     const totalFrozenBalance = frozenList.reduce((s, f) => s + (parseFloat(f.balance) || 0), 0);
 
     // Handle Freeze Submission
-    const handleFreezeSubmit = async (e) => {
+    const handleFreezeSubmit = (e) => {
         e.preventDefault();
         if (!userId) return onToast({ type: 'error', message: 'Please select a user to freeze wallet' });
 
+        const targetId = selectedUser ? (selectedUser.id || selectedUser.userId || selectedUser.username) : userId;
+        const targetName = selectedUser?.name || selectedUser?.fullName || targetId;
+
+        setPinModalConfig({
+            actionTitle: 'Confirm Freeze Wallet',
+            actionType: 'FREEZE',
+            targetUser: {
+                name: targetName,
+                username: selectedUser?.username || targetId,
+                mobile: selectedUser?.mobile,
+                role: selectedUser?.role
+            },
+            onConfirm: handleFreezeWithPin
+        });
+        setPinModalOpen(true);
+    };
+
+    const handleFreezeWithPin = async (pin) => {
         setSubmitting(true);
         const targetId = selectedUser ? (selectedUser.id || selectedUser.userId || selectedUser.username) : userId;
         const targetName = selectedUser?.name || selectedUser?.fullName || targetId;
-        const targetBal = parseFloat(String(selectedUser?.balance ?? selectedUser?.walletBalance ?? 0).replace(/,/g, '')) || 0;
         const finalRemark = remark.trim() || `Wallet frozen: ${reason.replace(/_/g, ' ')}`;
 
         let res = null;
         try {
             res = await fetchAPI('/wallet/status', {
                 method: 'POST',
+                headers: { 'X-Admin-PIN': pin },
                 body: JSON.stringify({
                     userId: String(targetId),
                     status: 'FROZEN',
-                    remark: finalRemark
+                    remark: finalRemark,
+                    pin
                 })
             });
         } catch (err) {
             console.error('[Freeze] Backend API call error:', err);
             setSubmitting(false);
-            return onToast({ type: 'error', message: err?.message || 'Failed to freeze wallet on server' });
+            return { success: false, error: err?.message || 'Failed to freeze wallet on server' };
         }
 
         if (res && res.success) {
@@ -144,24 +173,47 @@ const FreezeWalletTab = ({ users = [], loading = false, onToast, onRefresh }) =>
             setUserId('');
             setRemark('');
             setSubmitting(false);
+            setPinModalOpen(false);
             setSubTab('UNFREEZE'); // Switch to view frozen list
             if (onRefresh) onRefresh();
             window.dispatchEvent(new CustomEvent('walletUpdated'));
             window.dispatchEvent(new CustomEvent('walletFrozenAlert', {
                 detail: { userId: targetId, message: 'Your wallet is frozen. Please contact admin.' }
             }));
+            return { success: true };
         } else {
             setSubmitting(false);
-            onToast({
-                type: 'error',
-                message: res?.message || res?.error || 'Failed to freeze wallet on server'
-            });
+            return {
+                success: false,
+                status: res?.status,
+                isLockedOut: res?.status === 429,
+                error: res?.error || res?.message || 'Failed to freeze wallet on server'
+            };
         }
     };
 
-    // Handle Unfreeze
-    const handleConfirmUnfreeze = async () => {
+    // Handle Unfreeze Trigger
+    const handleConfirmUnfreeze = () => {
         if (!unfreezeModalUser) return;
+        const targetId = unfreezeModalUser.id || unfreezeModalUser.userId || unfreezeModalUser.username;
+        const targetName = unfreezeModalUser.name || targetId;
+
+        setPinModalConfig({
+            actionTitle: 'Confirm Unfreeze Wallet',
+            actionType: 'UNFREEZE',
+            targetUser: {
+                name: targetName,
+                username: unfreezeModalUser?.username || targetId,
+                mobile: unfreezeModalUser?.mobile,
+                role: unfreezeModalUser?.role
+            },
+            onConfirm: handleUnfreezeWithPin
+        });
+        setPinModalOpen(true);
+    };
+
+    const handleUnfreezeWithPin = async (pin) => {
+        if (!unfreezeModalUser) return { success: false, error: 'No user selected' };
         setUnfreezing(true);
         const targetId = unfreezeModalUser.id || unfreezeModalUser.userId || unfreezeModalUser.username;
         const targetName = unfreezeModalUser.name || targetId;
@@ -170,16 +222,18 @@ const FreezeWalletTab = ({ users = [], loading = false, onToast, onRefresh }) =>
         try {
             res = await fetchAPI('/wallet/status', {
                 method: 'POST',
+                headers: { 'X-Admin-PIN': pin },
                 body: JSON.stringify({
                     userId: String(targetId),
                     status: 'ACTIVE',
-                    remark: unfreezeRemark
+                    remark: unfreezeRemark,
+                    pin
                 })
             });
         } catch (err) {
             console.error('[Unfreeze] Backend API sync error:', err);
             setUnfreezing(false);
-            return onToast({ type: 'error', message: err?.message || 'Failed to unfreeze wallet on server' });
+            return { success: false, error: err?.message || 'Failed to unfreeze wallet on server' };
         }
 
         if (res && res.success) {
@@ -237,16 +291,20 @@ const FreezeWalletTab = ({ users = [], loading = false, onToast, onRefresh }) =>
                 message: res?.message || `Wallet for ${targetName} has been successfully unfrozen and restored to Active status!`
             });
 
+            setPinModalOpen(false);
             setUnfreezeModalUser(null);
             setUnfreezing(false);
             if (onRefresh) onRefresh();
             window.dispatchEvent(new CustomEvent('walletUpdated'));
+            return { success: true };
         } else {
             setUnfreezing(false);
-            onToast({
-                type: 'error',
-                message: res?.message || res?.error || 'Failed to unfreeze wallet on server'
-            });
+            return {
+                success: false,
+                status: res?.status,
+                isLockedOut: res?.status === 429,
+                error: res?.error || res?.message || 'Failed to unfreeze wallet on server'
+            };
         }
     };
 
@@ -604,6 +662,17 @@ const FreezeWalletTab = ({ users = [], loading = false, onToast, onRefresh }) =>
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* 6-Digit Admin Transaction PIN Modal */}
+            <AdminWalletPinModal
+                isOpen={pinModalOpen}
+                onClose={() => setPinModalOpen(false)}
+                onConfirm={pinModalConfig.onConfirm}
+                actionTitle={pinModalConfig.actionTitle}
+                actionType={pinModalConfig.actionType}
+                targetUser={pinModalConfig.targetUser}
+                loading={submitting || unfreezing}
+            />
         </div>
     );
 };

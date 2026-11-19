@@ -412,4 +412,54 @@ class PayoutServiceTest {
 
         assertTrue(ex.getMessage().contains("Admin-Approved bank beneficiary"));
     }
+
+    @Test
+    @DisplayName("MINIMUM PAYOUT LIMIT: Amount below ₹100.00 throws IllegalArgumentException")
+    void testAmountBelow100ThrowsException() {
+        mockUserAndPermissions(true);
+
+        PayoutRequest req = createValidPayoutRequest();
+        req.setAmount(new BigDecimal("99.99"));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                payoutService.initiatePayout(req, testUserId, "test-idem-min-fail", "127.0.0.1"));
+
+        assertTrue(ex.getMessage().contains("Payout amount must be at least ₹100.00"));
+    }
+
+    @Test
+    @DisplayName("MINIMUM PAYOUT LIMIT: Amount of ₹100.00 is allowed and proceeds to provider")
+    void testAmount100IsAllowed() throws Exception {
+        mockUserAndPermissions(true);
+        when(payoutBeneficiaryRepository.findFirstByUserIdAndAccountNumberAndIfsc(eq(testUserId), anyString(), anyString()))
+                .thenReturn(Optional.of(approvedBeneficiary));
+
+        when(payoutTransactionRepository.save(any(PayoutTransaction.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        String providerResponse = """
+            {
+                "bbStatusCode": 0,
+                "bbStatusMsg": "SUCCESS",
+                "TransactionData": {
+                    "bbTransactionId": "BBTXN100_MIN",
+                    "bbTransactionStatus": "SUCCESS",
+                    "bbUtrNumber": "UTR100MIN",
+                    "bbReason": "Transfer completed"
+                }
+            }
+            """;
+        ResponseEntity<String> entity = new ResponseEntity<>(providerResponse, HttpStatus.OK);
+        when(mockRestTemplate.exchange(anyString(), eq(HttpMethod.POST), any(HttpEntity.class), eq(String.class)))
+                .thenReturn(entity);
+
+        PayoutRequest req = createValidPayoutRequest();
+        req.setAmount(new BigDecimal("100.00"));
+
+        PayoutResponse res = payoutService.initiatePayout(req, testUserId, "test-idem-min-100", "127.0.0.1");
+
+        assertNotNull(res);
+        assertEquals("SUCCESS", res.getStatus());
+        assertEquals("UTR100MIN", res.getUtr());
+    }
 }

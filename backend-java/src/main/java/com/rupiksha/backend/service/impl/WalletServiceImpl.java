@@ -39,6 +39,7 @@ public class WalletServiceImpl implements WalletService {
     private final AuditLogRepository auditLogRepository;
     private final AppProperties appProperties;
     private final PlatformTransactionManager transactionManager;
+    private final com.rupiksha.backend.service.AdminWalletActionPinService adminWalletActionPinService;
     @org.springframework.context.annotation.Lazy
     private final com.rupiksha.backend.service.Aeps2faSettlementService aeps2faSettlementService;
 
@@ -302,6 +303,12 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletDtos.WalletBalanceResponse credit(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey) {
+        return credit(request, operatorId, ipAddress, idempotencyKey, request.pin());
+    }
+
+    @Override
+    @Transactional
+    public WalletDtos.WalletBalanceResponse credit(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey, String pin) {
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             throw new IllegalArgumentException("Idempotency key is required");
         }
@@ -319,69 +326,120 @@ public class WalletServiceImpl implements WalletService {
         User targetUser = resolveUser(request.userId());
         User target = targetUser;
 
-        Wallet tgtWallet = getOrCreateWalletWithLock(target.getId());
-        validateWalletStatus(tgtWallet, "CREDIT");
-
         BigDecimal amount = request.amount();
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Amount must be positive");
         }
 
+        // 1. Mandatory Centralized PIN verification before any balance modification
+        adminWalletActionPinService.verifyActionPin(
+                operator.getId(),
+                operator.getUsername(),
+                AdminWalletOperationType.CREDIT_FUND,
+                target.getId(),
+                target.getUsername(),
+                amount,
+                null,
+                pin,
+                ipAddress,
+                null,
+                idempotencyKey
+        );
+
+        Wallet tgtWallet = getOrCreateWalletWithLock(target.getId());
+        validateWalletStatus(tgtWallet, "CREDIT");
+
         String refNum = generateReferenceNumber();
-        if (aeps2faSettlementService != null) {
-            aeps2faSettlementService.settleOutstandingCharges(targetUser.getId(), amount, refNum);
-        }
-
-        BigDecimal oldTgtBal = tgtWallet.getBalance();
-        BigDecimal newTgtBal = oldTgtBal.add(amount);
-        tgtWallet.setBalance(newTgtBal);
-        walletRepository.save(tgtWallet);
-        try { walletRepository.flush(); } catch (Exception ignored) {}
-
-        WalletEntry tgtEntry = new WalletEntry();
-        tgtEntry.setWallet(tgtWallet);
-        tgtEntry.setAmount(amount);
-        tgtEntry.setEntryType("CREDIT");
-        tgtEntry.setReferenceId(refNum);
-        tgtEntry.setNarration(sanitizeNarration("Credit from " + operator.getUsername() + ": " + request.getNarrationOrRemark()));
-        tgtEntry.setOpeningBalance(oldTgtBal);
-        tgtEntry.setClosingBalance(newTgtBal);
-        tgtEntry.setOperator(operator);
-        tgtEntry.setIpAddress(ipAddress);
-        tgtEntry.setIdempotencyKey(idempotencyKey);
-        tgtEntry.setTransactionContext(WalletTransactionContext.ADMIN_CREDIT);
-        tgtEntry.setStatus(WalletTransactionStatus.SUCCESS);
-
         try {
-            walletEntryRepository.saveAndFlush(tgtEntry);
-        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
-            Optional<WalletEntry> dup = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
-            if (dup.isPresent()) {
-                return mapBalanceResponse(dup.get().getWallet());
+            if (aeps2faSettlementService != null) {
+                aeps2faSettlementService.settleOutstandingCharges(targetUser.getId(), amount, refNum);
             }
+
+            BigDecimal oldTgtBal = tgtWallet.getBalance();
+            BigDecimal newTgtBal = oldTgtBal.add(amount);
+            tgtWallet.setBalance(newTgtBal);
+            walletRepository.save(tgtWallet);
+            try { walletRepository.flush(); } catch (Exception ignored) {}
+
+            WalletEntry tgtEntry = new WalletEntry();
+            tgtEntry.setWallet(tgtWallet);
+            tgtEntry.setAmount(amount);
+            tgtEntry.setEntryType("CREDIT");
+            tgtEntry.setReferenceId(refNum);
+            tgtEntry.setNarration(sanitizeNarration("Credit from " + operator.getUsername() + ": " + request.getNarrationOrRemark()));
+            tgtEntry.setOpeningBalance(oldTgtBal);
+            tgtEntry.setClosingBalance(newTgtBal);
+            tgtEntry.setOperator(operator);
+            tgtEntry.setIpAddress(ipAddress);
+            tgtEntry.setIdempotencyKey(idempotencyKey);
+            tgtEntry.setTransactionContext(WalletTransactionContext.ADMIN_CREDIT);
+            tgtEntry.setStatus(WalletTransactionStatus.SUCCESS);
+
+            try {
+                walletEntryRepository.saveAndFlush(tgtEntry);
+            } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+                Optional<WalletEntry> dup = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
+                if (dup.isPresent()) {
+                    return mapBalanceResponse(dup.get().getWallet());
+                }
+                throw ex;
+            }
+
+            AuditLog auditTgt = AuditLog.builder()
+                    .operator(operator)
+                    .targetUser(target)
+                    .oldBalance(oldTgtBal)
+                    .newBalance(newTgtBal)
+                    .amount(amount)
+                    .walletType("MAIN")
+                    .ledgerType("CREDIT")
+                    .referenceNumber(refNum)
+                    .ipAddress(ipAddress)
+                    .remark(sanitizeRemark("Credited target user from operator " + operator.getUsername()))
+                    .build();
+            auditLogRepository.save(auditTgt);
+
+            adminWalletActionPinService.recordOperationSuccess(
+                    operator.getId(),
+                    operator.getUsername(),
+                    AdminWalletOperationType.CREDIT_FUND,
+                    target.getId(),
+                    target.getUsername(),
+                    amount,
+                    null,
+                    refNum,
+                    ipAddress,
+                    idempotencyKey,
+                    "Credit committed"
+            );
+
+            return mapBalanceResponse(tgtWallet);
+        } catch (Exception ex) {
+            adminWalletActionPinService.recordOperationFailure(
+                    operator.getId(),
+                    operator.getUsername(),
+                    AdminWalletOperationType.CREDIT_FUND,
+                    target.getId(),
+                    target.getUsername(),
+                    amount,
+                    null,
+                    ex.getMessage(),
+                    ipAddress,
+                    idempotencyKey
+            );
             throw ex;
         }
-
-        AuditLog auditTgt = AuditLog.builder()
-                .operator(operator)
-                .targetUser(target)
-                .oldBalance(oldTgtBal)
-                .newBalance(newTgtBal)
-                .amount(amount)
-                .walletType("MAIN")
-                .ledgerType("CREDIT")
-                .referenceNumber(refNum)
-                .ipAddress(ipAddress)
-                .remark(sanitizeRemark("Credited target user from operator " + operator.getUsername()))
-                .build();
-        auditLogRepository.save(auditTgt);
-
-        return mapBalanceResponse(tgtWallet);
     }
 
     @Override
     @Transactional
     public WalletDtos.WalletBalanceResponse debit(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey) {
+        return debit(request, operatorId, ipAddress, idempotencyKey, request.pin());
+    }
+
+    @Override
+    @Transactional
+    public WalletDtos.WalletBalanceResponse debit(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey, String pin) {
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             throw new IllegalArgumentException("Idempotency key is required");
         }
@@ -398,71 +456,133 @@ public class WalletServiceImpl implements WalletService {
         User targetUser = resolveUser(request.userId());
         User target = targetUser;
 
-        Wallet tgtWallet = getOrCreateWalletWithLock(target.getId());
-        validateWalletStatus(tgtWallet, "DEBIT");
-
         BigDecimal amount = request.amount();
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Amount must be positive");
         }
 
+        // 1. Mandatory Centralized PIN verification before any balance modification
+        adminWalletActionPinService.verifyActionPin(
+                operator.getId(),
+                operator.getUsername(),
+                AdminWalletOperationType.DEBIT_FUND,
+                target.getId(),
+                target.getUsername(),
+                amount,
+                null,
+                pin,
+                ipAddress,
+                null,
+                idempotencyKey
+        );
+
+        Wallet tgtWallet = getOrCreateWalletWithLock(target.getId());
+        validateWalletStatus(tgtWallet, "DEBIT");
+
         BigDecimal availableBalance = tgtWallet.getBalance().subtract(tgtWallet.getLockedBalance());
         if (amount.compareTo(availableBalance) > 0) {
+            adminWalletActionPinService.recordOperationFailure(
+                    operator.getId(),
+                    operator.getUsername(),
+                    AdminWalletOperationType.DEBIT_FUND,
+                    target.getId(),
+                    target.getUsername(),
+                    amount,
+                    null,
+                    "Insufficient wallet balance of target user",
+                    ipAddress,
+                    idempotencyKey
+            );
             throw new IllegalArgumentException("Insufficient wallet balance of target user");
         }
 
-        BigDecimal oldTgtBal = tgtWallet.getBalance();
-        BigDecimal newTgtBal = oldTgtBal.subtract(amount);
-        tgtWallet.setBalance(newTgtBal);
-        walletRepository.save(tgtWallet);
-        try { walletRepository.flush(); } catch (Exception ignored) {}
-
         String refNum = generateReferenceNumber();
-
-        WalletEntry tgtEntry = new WalletEntry();
-        tgtEntry.setWallet(tgtWallet);
-        tgtEntry.setAmount(amount);
-        tgtEntry.setEntryType("DEBIT");
-        tgtEntry.setReferenceId(refNum);
-        tgtEntry.setNarration(sanitizeNarration("Debit by operator " + operator.getUsername() + ": " + request.getNarrationOrRemark()));
-        tgtEntry.setOpeningBalance(oldTgtBal);
-        tgtEntry.setClosingBalance(newTgtBal);
-        tgtEntry.setOperator(operator);
-        tgtEntry.setIpAddress(ipAddress);
-        tgtEntry.setIdempotencyKey(idempotencyKey);
-        tgtEntry.setTransactionContext(WalletTransactionContext.ADMIN_DEBIT);
-        tgtEntry.setStatus(WalletTransactionStatus.SUCCESS);
-
         try {
-            walletEntryRepository.saveAndFlush(tgtEntry);
-        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
-            Optional<WalletEntry> dup = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
-            if (dup.isPresent()) {
-                return mapBalanceResponse(dup.get().getWallet());
+            BigDecimal oldTgtBal = tgtWallet.getBalance();
+            BigDecimal newTgtBal = oldTgtBal.subtract(amount);
+            tgtWallet.setBalance(newTgtBal);
+            walletRepository.save(tgtWallet);
+            try { walletRepository.flush(); } catch (Exception ignored) {}
+
+            WalletEntry tgtEntry = new WalletEntry();
+            tgtEntry.setWallet(tgtWallet);
+            tgtEntry.setAmount(amount);
+            tgtEntry.setEntryType("DEBIT");
+            tgtEntry.setReferenceId(refNum);
+            tgtEntry.setNarration(sanitizeNarration("Debit by operator " + operator.getUsername() + ": " + request.getNarrationOrRemark()));
+            tgtEntry.setOpeningBalance(oldTgtBal);
+            tgtEntry.setClosingBalance(newTgtBal);
+            tgtEntry.setOperator(operator);
+            tgtEntry.setIpAddress(ipAddress);
+            tgtEntry.setIdempotencyKey(idempotencyKey);
+            tgtEntry.setTransactionContext(WalletTransactionContext.ADMIN_DEBIT);
+            tgtEntry.setStatus(WalletTransactionStatus.SUCCESS);
+
+            try {
+                walletEntryRepository.saveAndFlush(tgtEntry);
+            } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+                Optional<WalletEntry> dup = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
+                if (dup.isPresent()) {
+                    return mapBalanceResponse(dup.get().getWallet());
+                }
+                throw ex;
             }
+
+            AuditLog auditTgt = AuditLog.builder()
+                    .operator(operator)
+                    .targetUser(target)
+                    .oldBalance(oldTgtBal)
+                    .newBalance(newTgtBal)
+                    .amount(amount)
+                    .walletType("MAIN")
+                    .ledgerType("DEBIT")
+                    .referenceNumber(refNum)
+                    .ipAddress(ipAddress)
+                    .remark(sanitizeRemark("Debited target user by operator " + operator.getUsername()))
+                    .build();
+            auditLogRepository.save(auditTgt);
+
+            adminWalletActionPinService.recordOperationSuccess(
+                    operator.getId(),
+                    operator.getUsername(),
+                    AdminWalletOperationType.DEBIT_FUND,
+                    target.getId(),
+                    target.getUsername(),
+                    amount,
+                    null,
+                    refNum,
+                    ipAddress,
+                    idempotencyKey,
+                    "Debit committed"
+            );
+
+            return mapBalanceResponse(tgtWallet);
+        } catch (Exception ex) {
+            adminWalletActionPinService.recordOperationFailure(
+                    operator.getId(),
+                    operator.getUsername(),
+                    AdminWalletOperationType.DEBIT_FUND,
+                    target.getId(),
+                    target.getUsername(),
+                    amount,
+                    null,
+                    ex.getMessage(),
+                    ipAddress,
+                    idempotencyKey
+            );
             throw ex;
         }
-
-        AuditLog auditTgt = AuditLog.builder()
-                .operator(operator)
-                .targetUser(target)
-                .oldBalance(oldTgtBal)
-                .newBalance(newTgtBal)
-                .amount(amount)
-                .walletType("MAIN")
-                .ledgerType("DEBIT")
-                .referenceNumber(refNum)
-                .ipAddress(ipAddress)
-                .remark(sanitizeRemark("Debited target user by operator " + operator.getUsername()))
-                .build();
-        auditLogRepository.save(auditTgt);
-
-        return mapBalanceResponse(tgtWallet);
     }
 
     @Override
     @Transactional
     public WalletDtos.WalletBalanceResponse lock(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey) {
+        return lock(request, operatorId, ipAddress, idempotencyKey, request.pin());
+    }
+
+    @Override
+    @Transactional
+    public WalletDtos.WalletBalanceResponse lock(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey, String pin) {
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             throw new IllegalArgumentException("Idempotency key is required");
         }
@@ -479,69 +599,131 @@ public class WalletServiceImpl implements WalletService {
         User targetUser = resolveUser(request.userId());
         User target = targetUser;
 
-        Wallet wallet = getOrCreateWalletWithLock(target.getId());
-        validateWalletStatus(wallet, "DEBIT");
-
         BigDecimal amount = request.amount();
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Amount must be positive");
         }
 
+        // 1. Mandatory Centralized PIN verification before locking funds
+        adminWalletActionPinService.verifyActionPin(
+                operator.getId(),
+                operator.getUsername(),
+                AdminWalletOperationType.LOCK_AMOUNT,
+                target.getId(),
+                target.getUsername(),
+                amount,
+                null,
+                pin,
+                ipAddress,
+                null,
+                idempotencyKey
+        );
+
+        Wallet wallet = getOrCreateWalletWithLock(target.getId());
+        validateWalletStatus(wallet, "DEBIT");
+
         BigDecimal available = wallet.getBalance().subtract(wallet.getLockedBalance());
         if (available.compareTo(amount) < 0) {
+            adminWalletActionPinService.recordOperationFailure(
+                    operator.getId(),
+                    operator.getUsername(),
+                    AdminWalletOperationType.LOCK_AMOUNT,
+                    target.getId(),
+                    target.getUsername(),
+                    amount,
+                    null,
+                    "Insufficient available wallet balance to lock",
+                    ipAddress,
+                    idempotencyKey
+            );
             throw new IllegalArgumentException("Insufficient available wallet balance to lock");
         }
 
-        wallet.setLockedBalance(wallet.getLockedBalance().add(amount));
-        walletRepository.save(wallet);
-        try { walletRepository.flush(); } catch (Exception ignored) {}
-
         String refNum = generateReferenceNumber();
-
-        WalletEntry entry = new WalletEntry();
-        entry.setWallet(wallet);
-        entry.setAmount(amount);
-        entry.setEntryType("LOCK");
-        entry.setReferenceId(refNum);
-        entry.setNarration(sanitizeNarration("Balance locked: " + request.getNarrationOrRemark()));
-        entry.setOpeningBalance(wallet.getBalance());
-        entry.setClosingBalance(wallet.getBalance());
-        entry.setOperator(operator);
-        entry.setIpAddress(ipAddress);
-        entry.setIdempotencyKey(idempotencyKey);
-        entry.setTransactionContext(WalletTransactionContext.LOCK_BALANCE);
-        entry.setStatus(WalletTransactionStatus.SUCCESS);
-
         try {
-            walletEntryRepository.saveAndFlush(entry);
-        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
-            Optional<WalletEntry> dup = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
-            if (dup.isPresent()) {
-                return mapBalanceResponse(dup.get().getWallet());
+            wallet.setLockedBalance(wallet.getLockedBalance().add(amount));
+            walletRepository.save(wallet);
+            try { walletRepository.flush(); } catch (Exception ignored) {}
+
+            WalletEntry entry = new WalletEntry();
+            entry.setWallet(wallet);
+            entry.setAmount(amount);
+            entry.setEntryType("LOCK");
+            entry.setReferenceId(refNum);
+            entry.setNarration(sanitizeNarration("Balance locked: " + request.getNarrationOrRemark()));
+            entry.setOpeningBalance(wallet.getBalance());
+            entry.setClosingBalance(wallet.getBalance());
+            entry.setOperator(operator);
+            entry.setIpAddress(ipAddress);
+            entry.setIdempotencyKey(idempotencyKey);
+            entry.setTransactionContext(WalletTransactionContext.LOCK_BALANCE);
+            entry.setStatus(WalletTransactionStatus.SUCCESS);
+
+            try {
+                walletEntryRepository.saveAndFlush(entry);
+            } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+                Optional<WalletEntry> dup = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
+                if (dup.isPresent()) {
+                    return mapBalanceResponse(dup.get().getWallet());
+                }
+                throw ex;
             }
+
+            AuditLog audit = AuditLog.builder()
+                    .operator(operator)
+                    .targetUser(target)
+                    .oldBalance(wallet.getBalance())
+                    .newBalance(wallet.getBalance())
+                    .amount(amount)
+                    .walletType("MAIN")
+                    .ledgerType("LOCK")
+                    .referenceNumber(refNum)
+                    .ipAddress(ipAddress)
+                    .remark(sanitizeRemark("Locked balance amount: " + amount))
+                    .build();
+            auditLogRepository.save(audit);
+
+            adminWalletActionPinService.recordOperationSuccess(
+                    operator.getId(),
+                    operator.getUsername(),
+                    AdminWalletOperationType.LOCK_AMOUNT,
+                    target.getId(),
+                    target.getUsername(),
+                    amount,
+                    null,
+                    refNum,
+                    ipAddress,
+                    idempotencyKey,
+                    "Lock committed"
+            );
+
+            return mapBalanceResponse(wallet);
+        } catch (Exception ex) {
+            adminWalletActionPinService.recordOperationFailure(
+                    operator.getId(),
+                    operator.getUsername(),
+                    AdminWalletOperationType.LOCK_AMOUNT,
+                    target.getId(),
+                    target.getUsername(),
+                    amount,
+                    null,
+                    ex.getMessage(),
+                    ipAddress,
+                    idempotencyKey
+            );
             throw ex;
         }
-
-        AuditLog audit = AuditLog.builder()
-                .operator(operator)
-                .targetUser(target)
-                .oldBalance(wallet.getBalance())
-                .newBalance(wallet.getBalance())
-                .amount(amount)
-                .walletType("MAIN")
-                .ledgerType("LOCK")
-                .referenceNumber(refNum)
-                .ipAddress(ipAddress)
-                .remark(sanitizeRemark("Locked balance amount: " + amount))
-                .build();
-        auditLogRepository.save(audit);
-
-        return mapBalanceResponse(wallet);
     }
 
     @Override
     @Transactional
     public WalletDtos.WalletBalanceResponse release(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey) {
+        return release(request, operatorId, ipAddress, idempotencyKey, request.pin());
+    }
+
+    @Override
+    @Transactional
+    public WalletDtos.WalletBalanceResponse release(WalletDtos.WalletEntryRequest request, UUID operatorId, String ipAddress, String idempotencyKey, String pin) {
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             throw new IllegalArgumentException("Idempotency key is required");
         }
@@ -558,63 +740,119 @@ public class WalletServiceImpl implements WalletService {
         User targetUser = resolveUser(request.userId());
         User target = targetUser;
 
-        Wallet wallet = getOrCreateWalletWithLock(target.getId());
-        validateWalletStatus(wallet, "CREDIT");
-
         BigDecimal amount = request.amount();
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Amount must be positive");
         }
 
+        // 1. Mandatory Centralized PIN verification before releasing locked funds
+        adminWalletActionPinService.verifyActionPin(
+                operator.getId(),
+                operator.getUsername(),
+                AdminWalletOperationType.RELEASE_LOCK_AMOUNT,
+                target.getId(),
+                target.getUsername(),
+                amount,
+                null,
+                pin,
+                ipAddress,
+                null,
+                idempotencyKey
+        );
+
+        Wallet wallet = getOrCreateWalletWithLock(target.getId());
+        validateWalletStatus(wallet, "CREDIT");
+
         if (wallet.getLockedBalance().compareTo(amount) < 0) {
+            adminWalletActionPinService.recordOperationFailure(
+                    operator.getId(),
+                    operator.getUsername(),
+                    AdminWalletOperationType.RELEASE_LOCK_AMOUNT,
+                    target.getId(),
+                    target.getUsername(),
+                    amount,
+                    null,
+                    "Release amount exceeds current locked balance",
+                    ipAddress,
+                    idempotencyKey
+            );
             throw new IllegalArgumentException("Release amount exceeds current locked balance");
         }
 
-        wallet.setLockedBalance(wallet.getLockedBalance().subtract(amount));
-        walletRepository.save(wallet);
-        try { walletRepository.flush(); } catch (Exception ignored) {}
-
         String refNum = generateReferenceNumber();
-
-        WalletEntry entry = new WalletEntry();
-        entry.setWallet(wallet);
-        entry.setAmount(amount);
-        entry.setEntryType("UNLOCK");
-        entry.setReferenceId(refNum);
-        entry.setNarration(sanitizeNarration("Balance released: " + request.getNarrationOrRemark()));
-        entry.setOpeningBalance(wallet.getBalance());
-        entry.setClosingBalance(wallet.getBalance());
-        entry.setOperator(operator);
-        entry.setIpAddress(ipAddress);
-        entry.setIdempotencyKey(idempotencyKey);
-        entry.setTransactionContext(WalletTransactionContext.RELEASE_LOCK);
-        entry.setStatus(WalletTransactionStatus.SUCCESS);
-
         try {
-            walletEntryRepository.saveAndFlush(entry);
-        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
-            Optional<WalletEntry> dup = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
-            if (dup.isPresent()) {
-                return mapBalanceResponse(dup.get().getWallet());
+            wallet.setLockedBalance(wallet.getLockedBalance().subtract(amount));
+            walletRepository.save(wallet);
+            try { walletRepository.flush(); } catch (Exception ignored) {}
+
+            WalletEntry entry = new WalletEntry();
+            entry.setWallet(wallet);
+            entry.setAmount(amount);
+            entry.setEntryType("UNLOCK");
+            entry.setReferenceId(refNum);
+            entry.setNarration(sanitizeNarration("Balance released: " + request.getNarrationOrRemark()));
+            entry.setOpeningBalance(wallet.getBalance());
+            entry.setClosingBalance(wallet.getBalance());
+            entry.setOperator(operator);
+            entry.setIpAddress(ipAddress);
+            entry.setIdempotencyKey(idempotencyKey);
+            entry.setTransactionContext(WalletTransactionContext.RELEASE_LOCK);
+            entry.setStatus(WalletTransactionStatus.SUCCESS);
+
+            try {
+                walletEntryRepository.saveAndFlush(entry);
+            } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+                Optional<WalletEntry> dup = walletEntryRepository.findByIdempotencyKey(idempotencyKey);
+                if (dup.isPresent()) {
+                    return mapBalanceResponse(dup.get().getWallet());
+                }
+                throw ex;
             }
+
+            AuditLog audit = AuditLog.builder()
+                    .operator(operator)
+                    .targetUser(target)
+                    .oldBalance(wallet.getBalance())
+                    .newBalance(wallet.getBalance())
+                    .amount(amount)
+                    .walletType("MAIN")
+                    .ledgerType("UNLOCK")
+                    .referenceNumber(refNum)
+                    .ipAddress(ipAddress)
+                    .remark(sanitizeRemark("Released locked balance amount: " + amount))
+                    .build();
+            auditLogRepository.save(audit);
+
+            adminWalletActionPinService.recordOperationSuccess(
+                    operator.getId(),
+                    operator.getUsername(),
+                    AdminWalletOperationType.RELEASE_LOCK_AMOUNT,
+                    target.getId(),
+                    target.getUsername(),
+                    amount,
+                    null,
+                    refNum,
+                    ipAddress,
+                    idempotencyKey,
+                    "Release committed"
+            );
+
+            return mapBalanceResponse(wallet);
+        } catch (Exception ex) {
+            adminWalletActionPinService.recordOperationFailure(
+                    operator.getId(),
+                    operator.getUsername(),
+                    AdminWalletOperationType.RELEASE_LOCK_AMOUNT,
+                    target.getId(),
+                    target.getUsername(),
+                    amount,
+                    null,
+                    ex.getMessage(),
+                    ipAddress,
+                    idempotencyKey
+            );
             throw ex;
         }
-
-        AuditLog audit = AuditLog.builder()
-                .operator(operator)
-                .targetUser(target)
-                .oldBalance(wallet.getBalance())
-                .newBalance(wallet.getBalance())
-                .amount(amount)
-                .walletType("MAIN")
-                .ledgerType("UNLOCK")
-                .referenceNumber(refNum)
-                .ipAddress(ipAddress)
-                .remark(sanitizeRemark("Released locked balance amount: " + amount))
-                .build();
-        auditLogRepository.save(audit);
-
-        return mapBalanceResponse(wallet);
     }
 
     @Override
@@ -801,6 +1039,12 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletDtos.WalletBalanceResponse updateWalletStatus(WalletDtos.WalletStatusUpdateRequest request, UUID adminId, String ipAddress) {
+        return updateWalletStatus(request, adminId, ipAddress, request.pin());
+    }
+
+    @Override
+    @Transactional
+    public WalletDtos.WalletBalanceResponse updateWalletStatus(WalletDtos.WalletStatusUpdateRequest request, UUID adminId, String ipAddress, String pin) {
         enforceAdmin(adminId);
 
         User admin = userRepository.findById(adminId)
@@ -808,11 +1052,8 @@ public class WalletServiceImpl implements WalletService {
 
         User target = resolveUser(request.userId());
 
-        Wallet wallet = getOrCreateWallet(target.getId());
-
-        WalletStatus oldStatus = wallet.getStatus();
-        WalletStatus newStatus;
         String rawStatus = request.status() != null ? request.status().trim().toUpperCase() : "ACTIVE";
+        WalletStatus newStatus;
         if ("FREEZE".equals(rawStatus) || "FROZEN".equals(rawStatus)) {
             newStatus = WalletStatus.FROZEN;
         } else if ("UNFREEZE".equals(rawStatus)) {
@@ -825,43 +1066,93 @@ public class WalletServiceImpl implements WalletService {
             }
         }
 
-        // Update with JPA version tracking
-        wallet.setStatus(newStatus);
-        walletRepository.save(wallet);
-        try { walletRepository.flush(); } catch (Exception ignored) {}
+        AdminWalletOperationType opType = (newStatus == WalletStatus.FROZEN) ?
+                AdminWalletOperationType.FREEZE_WALLET : AdminWalletOperationType.UNFREEZE_WALLET;
+
+        // 1. Mandatory Centralized PIN verification before freeze/unfreeze
+        adminWalletActionPinService.verifyActionPin(
+                admin.getId(),
+                admin.getUsername(),
+                opType,
+                target.getId(),
+                target.getUsername(),
+                BigDecimal.ZERO,
+                null,
+                pin,
+                ipAddress,
+                null,
+                null
+        );
+
+        Wallet wallet = getOrCreateWallet(target.getId());
+        WalletStatus oldStatus = wallet.getStatus();
 
         String refNum = generateReferenceNumber();
+        try {
+            // Update with JPA version tracking
+            wallet.setStatus(newStatus);
+            walletRepository.save(wallet);
+            try { walletRepository.flush(); } catch (Exception ignored) {}
 
-        // Write log to audit ledger
-        WalletEntry entry = new WalletEntry();
-        entry.setWallet(wallet);
-        entry.setAmount(BigDecimal.ZERO);
-        entry.setEntryType("STATUS_CHANGE");
-        entry.setReferenceId(refNum);
-        entry.setNarration(sanitizeNarration("Wallet status changed from " + oldStatus + " to " + newStatus + ": " + request.remark()));
-        entry.setOpeningBalance(wallet.getBalance());
-        entry.setClosingBalance(wallet.getBalance());
-        entry.setOperator(admin);
-        entry.setIpAddress(ipAddress);
-        entry.setTransactionContext(WalletTransactionContext.STATUS_CHANGE);
-        entry.setStatus(WalletTransactionStatus.SUCCESS);
-        walletEntryRepository.save(entry);
+            // Write log to audit ledger
+            WalletEntry entry = new WalletEntry();
+            entry.setWallet(wallet);
+            entry.setAmount(BigDecimal.ZERO);
+            entry.setEntryType("STATUS_CHANGE");
+            entry.setReferenceId(refNum);
+            entry.setNarration(sanitizeNarration("Wallet status changed from " + oldStatus + " to " + newStatus + ": " + request.remark()));
+            entry.setOpeningBalance(wallet.getBalance());
+            entry.setClosingBalance(wallet.getBalance());
+            entry.setOperator(admin);
+            entry.setIpAddress(ipAddress);
+            entry.setTransactionContext(WalletTransactionContext.STATUS_CHANGE);
+            entry.setStatus(WalletTransactionStatus.SUCCESS);
+            walletEntryRepository.save(entry);
 
-        AuditLog audit = AuditLog.builder()
-                .operator(admin)
-                .targetUser(target)
-                .oldBalance(wallet.getBalance())
-                .newBalance(wallet.getBalance())
-                .amount(BigDecimal.ZERO)
-                .walletType("MAIN")
-                .ledgerType("STATUS_CHANGE")
-                .referenceNumber(refNum)
-                .ipAddress(ipAddress)
-                .remark(sanitizeRemark("Status override: " + oldStatus + " -> " + newStatus + ". Details: " + request.remark()))
-                .build();
-        auditLogRepository.save(audit);
+            AuditLog audit = AuditLog.builder()
+                    .operator(admin)
+                    .targetUser(target)
+                    .oldBalance(wallet.getBalance())
+                    .newBalance(wallet.getBalance())
+                    .amount(BigDecimal.ZERO)
+                    .walletType("MAIN")
+                    .ledgerType("STATUS_CHANGE")
+                    .referenceNumber(refNum)
+                    .ipAddress(ipAddress)
+                    .remark(sanitizeRemark("Status override: " + oldStatus + " -> " + newStatus + ". Details: " + request.remark()))
+                    .build();
+            auditLogRepository.save(audit);
 
-        return mapBalanceResponse(wallet);
+            adminWalletActionPinService.recordOperationSuccess(
+                    admin.getId(),
+                    admin.getUsername(),
+                    opType,
+                    target.getId(),
+                    target.getUsername(),
+                    BigDecimal.ZERO,
+                    null,
+                    refNum,
+                    ipAddress,
+                    null,
+                    "Status changed from " + oldStatus + " to " + newStatus
+            );
+
+            return mapBalanceResponse(wallet);
+        } catch (Exception ex) {
+            adminWalletActionPinService.recordOperationFailure(
+                    admin.getId(),
+                    admin.getUsername(),
+                    opType,
+                    target.getId(),
+                    target.getUsername(),
+                    BigDecimal.ZERO,
+                    null,
+                    ex.getMessage(),
+                    ipAddress,
+                    null
+            );
+            throw ex;
+        }
     }
 
     @Override
@@ -1006,7 +1297,19 @@ public class WalletServiceImpl implements WalletService {
 
     @Override
     @Transactional
+    public WalletDtos.FundRequestResponse approveFundRequest(UUID requestId, UUID adminId, String ipAddress) {
+        return approveFundRequest(requestId, null, adminId, ipAddress, null);
+    }
+
+    @Override
+    @Transactional
     public WalletDtos.FundRequestResponse approveFundRequest(UUID requestId, String remark, UUID adminId, String ipAddress) {
+        return approveFundRequest(requestId, remark, adminId, ipAddress, null);
+    }
+
+    @Override
+    @Transactional
+    public WalletDtos.FundRequestResponse approveFundRequest(UUID requestId, String remark, UUID adminId, String ipAddress, String pin) {
         enforceAdmin(adminId);
 
         FundRequest fr = fundRequestRepository.findByIdForUpdate(requestId)
@@ -1021,82 +1324,133 @@ public class WalletServiceImpl implements WalletService {
 
         User targetUser = fr.getUser();
 
+        // 1. Mandatory Centralized PIN verification before fund request approval
+        adminWalletActionPinService.verifyActionPin(
+                admin.getId(),
+                admin.getUsername(),
+                AdminWalletOperationType.APPROVE_FUND_REQUEST,
+                targetUser.getId(),
+                targetUser.getUsername(),
+                fr.getAmount(),
+                fr.getId().toString(),
+                pin,
+                ipAddress,
+                null,
+                requestId.toString()
+        );
+
         Wallet tgtWallet = getOrCreateWalletWithLock(targetUser.getId());
         validateWalletStatus(tgtWallet, "CREDIT");
 
         BigDecimal amount = fr.getAmount();
-
         String refNum = generateReferenceNumber();
-        if (aeps2faSettlementService != null) {
-            aeps2faSettlementService.settleOutstandingCharges(targetUser.getId(), amount, refNum);
+
+        try {
+            if (aeps2faSettlementService != null) {
+                aeps2faSettlementService.settleOutstandingCharges(targetUser.getId(), amount, refNum);
+            }
+
+            BigDecimal oldTgtBal = tgtWallet.getBalance();
+            BigDecimal newTgtBal = oldTgtBal.add(amount);
+            tgtWallet.setBalance(newTgtBal);
+            walletRepository.save(tgtWallet);
+            try { walletRepository.flush(); } catch (Exception ignored) {}
+
+            fr.setStatus("APPROVED");
+            fr.setApprovedBy(admin);
+            fr.setApprovedAt(Instant.now());
+            fr.setAdminRemark(remark != null && !remark.isBlank() ? remark : ("Approved by " + admin.getUsername() + " - Ref: " + refNum));
+            fundRequestRepository.save(fr);
+
+            WalletEntry tgtEntry = new WalletEntry();
+            tgtEntry.setWallet(tgtWallet);
+            tgtEntry.setAmount(amount);
+            tgtEntry.setEntryType("CREDIT");
+            tgtEntry.setReferenceId(refNum);
+            tgtEntry.setNarration(sanitizeNarration("Request approved, UTR: " + fr.getUtrNumber()));
+            tgtEntry.setOpeningBalance(oldTgtBal);
+            tgtEntry.setClosingBalance(newTgtBal);
+            tgtEntry.setOperator(admin);
+            tgtEntry.setIpAddress(ipAddress);
+            tgtEntry.setTransactionContext(WalletTransactionContext.FUND_REQUEST_APPROVED);
+            tgtEntry.setStatus(WalletTransactionStatus.SUCCESS);
+            walletEntryRepository.save(tgtEntry);
+
+            AuditLog auditTgt = AuditLog.builder()
+                    .operator(admin)
+                    .targetUser(targetUser)
+                    .oldBalance(oldTgtBal)
+                    .newBalance(newTgtBal)
+                    .amount(amount)
+                    .walletType("MAIN")
+                    .ledgerType("CREDIT")
+                    .referenceNumber(refNum)
+                    .ipAddress(ipAddress)
+                    .remark("Credited user for request approval from Admin: " + admin.getUsername())
+                    .build();
+            auditLogRepository.save(auditTgt);
+
+            adminWalletActionPinService.recordOperationSuccess(
+                    admin.getId(),
+                    admin.getUsername(),
+                    AdminWalletOperationType.APPROVE_FUND_REQUEST,
+                    targetUser.getId(),
+                    targetUser.getUsername(),
+                    amount,
+                    fr.getId().toString(),
+                    refNum,
+                    ipAddress,
+                    requestId.toString(),
+                    "Fund request approved"
+            );
+
+            return new WalletDtos.FundRequestResponse(
+                    fr.getId().toString(),
+                    targetUser.getId().toString(),
+                    targetUser.getUsername(),
+                    targetUser.getFullName(),
+                    fr.getAmount(),
+                    fr.getStatus(),
+                    fr.getUtrNumber(),
+                    fr.getMethod(),
+                    fr.getRemark(),
+                    fr.getAdminRemark(),
+                    admin.getUsername(),
+                    fr.getApprovedAt(),
+                    fr.getCreatedAt()
+            );
+        } catch (Exception ex) {
+            adminWalletActionPinService.recordOperationFailure(
+                    admin.getId(),
+                    admin.getUsername(),
+                    AdminWalletOperationType.APPROVE_FUND_REQUEST,
+                    targetUser.getId(),
+                    targetUser.getUsername(),
+                    amount,
+                    fr.getId().toString(),
+                    ex.getMessage(),
+                    ipAddress,
+                    requestId.toString()
+            );
+            throw ex;
         }
-
-        BigDecimal oldTgtBal = tgtWallet.getBalance();
-        BigDecimal newTgtBal = oldTgtBal.add(amount);
-        tgtWallet.setBalance(newTgtBal);
-        walletRepository.save(tgtWallet);
-        try { walletRepository.flush(); } catch (Exception ignored) {}
-
-        fr.setStatus("APPROVED");
-        fr.setApprovedBy(admin);
-        fr.setApprovedAt(Instant.now());
-        fr.setAdminRemark(remark != null && !remark.isBlank() ? remark : ("Approved by " + admin.getUsername() + " - Ref: " + refNum));
-        fundRequestRepository.save(fr);
-
-        WalletEntry tgtEntry = new WalletEntry();
-        tgtEntry.setWallet(tgtWallet);
-        tgtEntry.setAmount(amount);
-        tgtEntry.setEntryType("CREDIT");
-        tgtEntry.setReferenceId(refNum);
-        tgtEntry.setNarration(sanitizeNarration("Request approved, UTR: " + fr.getUtrNumber()));
-        tgtEntry.setOpeningBalance(oldTgtBal);
-        tgtEntry.setClosingBalance(newTgtBal);
-        tgtEntry.setOperator(admin);
-        tgtEntry.setIpAddress(ipAddress);
-        tgtEntry.setTransactionContext(WalletTransactionContext.FUND_REQUEST_APPROVED);
-        tgtEntry.setStatus(WalletTransactionStatus.SUCCESS);
-        walletEntryRepository.save(tgtEntry);
-
-        AuditLog auditTgt = AuditLog.builder()
-                .operator(admin)
-                .targetUser(targetUser)
-                .oldBalance(oldTgtBal)
-                .newBalance(newTgtBal)
-                .amount(amount)
-                .walletType("MAIN")
-                .ledgerType("CREDIT")
-                .referenceNumber(refNum)
-                .ipAddress(ipAddress)
-                .remark("Credited user for request approval from Admin: " + admin.getUsername())
-                .build();
-        auditLogRepository.save(auditTgt);
-
-        return new WalletDtos.FundRequestResponse(
-                fr.getId().toString(),
-                targetUser.getId().toString(),
-                targetUser.getUsername(),
-                targetUser.getFullName(),
-                fr.getAmount(),
-                fr.getStatus(),
-                fr.getUtrNumber(),
-                fr.getMethod(),
-                fr.getRemark(),
-                fr.getAdminRemark(),
-                admin.getUsername(),
-                fr.getApprovedAt(),
-                fr.getCreatedAt()
-        );
     }
 
     @Override
     @Transactional
-    public WalletDtos.FundRequestResponse approveFundRequest(UUID requestId, UUID adminId, String ipAddress) {
-        return approveFundRequest(requestId, null, adminId, ipAddress);
+    public WalletDtos.FundRequestResponse rejectFundRequest(UUID requestId, UUID adminId, String ipAddress) {
+        return rejectFundRequest(requestId, null, adminId, ipAddress, null);
     }
 
     @Override
     @Transactional
     public WalletDtos.FundRequestResponse rejectFundRequest(UUID requestId, String remark, UUID adminId, String ipAddress) {
+        return rejectFundRequest(requestId, remark, adminId, ipAddress, null);
+    }
+
+    @Override
+    @Transactional
+    public WalletDtos.FundRequestResponse rejectFundRequest(UUID requestId, String remark, UUID adminId, String ipAddress, String pin) {
         enforceAdmin(adminId);
 
         FundRequest fr = fundRequestRepository.findByIdForUpdate(requestId)
@@ -1109,50 +1463,91 @@ public class WalletServiceImpl implements WalletService {
         User admin = userRepository.findById(adminId)
                 .orElseThrow(() -> new IllegalArgumentException("Admin operator not found"));
 
-        fr.setStatus("REJECTED");
-        fr.setApprovedBy(admin);
-        fr.setApprovedAt(Instant.now());
-        fr.setAdminRemark(remark != null && !remark.isBlank() ? remark : ("Rejected by " + admin.getUsername()));
-        fundRequestRepository.save(fr);
+        User targetUser = fr.getUser();
+
+        // 1. Mandatory Centralized PIN verification before fund request rejection
+        adminWalletActionPinService.verifyActionPin(
+                admin.getId(),
+                admin.getUsername(),
+                AdminWalletOperationType.REJECT_FUND_REQUEST,
+                targetUser.getId(),
+                targetUser.getUsername(),
+                fr.getAmount(),
+                fr.getId().toString(),
+                pin,
+                ipAddress,
+                null,
+                requestId.toString()
+        );
 
         String refNum = generateReferenceNumber();
-        Wallet w = getOrCreateWallet(fr.getUser().getId());
+        try {
+            fr.setStatus("REJECTED");
+            fr.setApprovedBy(admin);
+            fr.setApprovedAt(Instant.now());
+            fr.setAdminRemark(remark != null && !remark.isBlank() ? remark : ("Rejected by " + admin.getUsername()));
+            fundRequestRepository.save(fr);
 
-        WalletEntry entry = new WalletEntry();
-        entry.setWallet(w);
-        entry.setAmount(fr.getAmount());
-        entry.setEntryType("FUND_REQUEST");
-        entry.setReferenceId(refNum);
-        entry.setNarration("Fund request rejected, UTR: " + fr.getUtrNumber() + (remark != null && !remark.isBlank() ? (" - Reason: " + remark) : ""));
-        entry.setOpeningBalance(w.getBalance());
-        entry.setClosingBalance(w.getBalance());
-        entry.setOperator(admin);
-        entry.setIpAddress(ipAddress);
-        entry.setTransactionContext(WalletTransactionContext.FUND_REQUEST_REJECTED);
-        entry.setStatus(WalletTransactionStatus.CANCELLED);
-        walletEntryRepository.save(entry);
+            Wallet w = getOrCreateWallet(fr.getUser().getId());
 
-        return new WalletDtos.FundRequestResponse(
-                fr.getId().toString(),
-                fr.getUser().getId().toString(),
-                fr.getUser().getUsername(),
-                fr.getUser().getFullName(),
-                fr.getAmount(),
-                fr.getStatus(),
-                fr.getUtrNumber(),
-                fr.getMethod(),
-                fr.getRemark(),
-                fr.getAdminRemark(),
-                admin.getUsername(),
-                fr.getApprovedAt(),
-                fr.getCreatedAt()
-        );
-    }
+            WalletEntry entry = new WalletEntry();
+            entry.setWallet(w);
+            entry.setAmount(fr.getAmount());
+            entry.setEntryType("FUND_REQUEST");
+            entry.setReferenceId(refNum);
+            entry.setNarration("Fund request rejected, UTR: " + fr.getUtrNumber() + (remark != null && !remark.isBlank() ? (" - Reason: " + remark) : ""));
+            entry.setOpeningBalance(w.getBalance());
+            entry.setClosingBalance(w.getBalance());
+            entry.setOperator(admin);
+            entry.setIpAddress(ipAddress);
+            entry.setTransactionContext(WalletTransactionContext.FUND_REQUEST_REJECTED);
+            entry.setStatus(WalletTransactionStatus.CANCELLED);
+            walletEntryRepository.save(entry);
 
-    @Override
-    @Transactional
-    public WalletDtos.FundRequestResponse rejectFundRequest(UUID requestId, UUID adminId, String ipAddress) {
-        return rejectFundRequest(requestId, null, adminId, ipAddress);
+            adminWalletActionPinService.recordOperationSuccess(
+                    admin.getId(),
+                    admin.getUsername(),
+                    AdminWalletOperationType.REJECT_FUND_REQUEST,
+                    targetUser.getId(),
+                    targetUser.getUsername(),
+                    fr.getAmount(),
+                    fr.getId().toString(),
+                    refNum,
+                    ipAddress,
+                    requestId.toString(),
+                    "Fund request rejected"
+            );
+
+            return new WalletDtos.FundRequestResponse(
+                    fr.getId().toString(),
+                    fr.getUser().getId().toString(),
+                    fr.getUser().getUsername(),
+                    fr.getUser().getFullName(),
+                    fr.getAmount(),
+                    fr.getStatus(),
+                    fr.getUtrNumber(),
+                    fr.getMethod(),
+                    fr.getRemark(),
+                    fr.getAdminRemark(),
+                    admin.getUsername(),
+                    fr.getApprovedAt(),
+                    fr.getCreatedAt()
+            );
+        } catch (Exception ex) {
+            adminWalletActionPinService.recordOperationFailure(
+                    admin.getId(),
+                    admin.getUsername(),
+                    AdminWalletOperationType.REJECT_FUND_REQUEST,
+                    targetUser.getId(),
+                    targetUser.getUsername(),
+                    fr.getAmount(),
+                    fr.getId().toString(),
+                    ex.getMessage(),
+                    ipAddress,
+                    requestId.toString()
+            );
+            throw ex;
+        }
     }
 
 

@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { fetchAPI, uuid, UserSelector, fmtINR, fmtDateTime, WalletTabSkeleton } from './walletShared';
 import { dataService } from '../../../services/dataService';
+import AdminWalletPinModal from './AdminWalletPinModal';
 
 const DebitFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
     if (loading && users.length === 0) {
@@ -23,6 +24,7 @@ const DebitFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
     const [remark, setRemark] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
+    const [showPinModal, setShowPinModal] = useState(false);
     const [idempotencyKey, setIdempotencyKey] = useState(() => uuid());
     const submittingRef = useRef(false);
 
@@ -31,12 +33,16 @@ const DebitFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
     const numAmount = parseFloat(amount) || 0;
     const isExceeding = numAmount > currentBalance && currentBalance > 0;
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = (e) => {
         e.preventDefault();
         if (submittingRef.current) return;
         if (!userId) return onToast({ type: 'error', message: 'Please select a user to debit funds from' });
         if (!numAmount || numAmount <= 0) return onToast({ type: 'error', message: 'Please enter a valid debit amount (greater than 0)' });
 
+        setShowPinModal(true);
+    };
+
+    const handleConfirmWithPin = async (pin) => {
         const targetId = selectedUser ? (selectedUser.id || selectedUser.userId || selectedUser.username) : userId;
         submittingRef.current = true;
         setSubmitting(true);
@@ -47,19 +53,21 @@ const DebitFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
         try {
             res = await fetchAPI('/wallet/debit', {
                 method: 'POST',
+                headers: { 'X-Admin-PIN': pin },
                 body: JSON.stringify({
                     userId: targetId,
                     amount: numAmount,
                     remark: debitRemark,
                     category,
-                    referenceNo: referenceNo.trim()
+                    referenceNo: referenceNo.trim(),
+                    pin
                 })
             }, idempotencyKey);
         } catch (err) {
             console.error('[DebitFund] API call error:', err);
             submittingRef.current = false;
             setSubmitting(false);
-            return onToast({ type: 'error', message: err?.message || 'Failed to debit funds on server' });
+            return { success: false, error: err?.message || 'Failed to debit funds on server' };
         }
 
         if (res && res.success) {
@@ -76,14 +84,22 @@ const DebitFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
             setRemark('');
             setReferenceNo('');
             setIdempotencyKey(uuid());
+            setShowPinModal(false);
             if (onRefresh) onRefresh();
             window.dispatchEvent(new CustomEvent('walletUpdated'));
+            submittingRef.current = false;
+            setSubmitting(false);
+            return { success: true };
         } else {
-            onToast({ type: 'error', message: res?.message || res?.error || 'Failed to debit funds. Please verify user balance and try again.' });
+            submittingRef.current = false;
+            setSubmitting(false);
+            return {
+                success: false,
+                status: res?.status,
+                isLockedOut: res?.status === 429,
+                error: res?.error || res?.message || 'Failed to debit funds. Please verify user balance and try again.'
+            };
         }
-
-        submittingRef.current = false;
-        setSubmitting(false);
     };
 
     // Recent debit transactions
@@ -335,6 +351,22 @@ const DebitFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Secure Admin 6-Digit PIN Verification Modal */}
+            <AdminWalletPinModal
+                isOpen={showPinModal}
+                title="Confirm Debit Fund"
+                actionType="DEBIT"
+                details={{
+                    userName: selectedUser?.name || selectedUser?.fullName || selectedUser?.username || userId,
+                    userCode: selectedUser?.partyCode || selectedUser?.username,
+                    amount: numAmount,
+                    customNote: remark.trim() || `Category: ${category.replace(/_/g, ' ')}`
+                }}
+                onConfirm={handleConfirmWithPin}
+                onClose={() => setShowPinModal(false)}
+                submitting={submitting}
+            />
         </div>
     );
 };

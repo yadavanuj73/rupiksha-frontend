@@ -3,7 +3,7 @@ import { apiFetch } from './apiService';
 const DEFAULT_SLABS = [
     {
         id: 1,
-        minAmount: 500,
+        minAmount: 100,
         maxAmount: 24999,
         baseCharge: 5.50,
         gstRate: 18.00,

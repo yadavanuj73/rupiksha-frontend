@@ -41,14 +41,19 @@ public class WalletDtos {
             String reason,
             String channel,
             String referenceNo,
-            String category
+            String category,
+            String pin
     ) {
         public WalletEntryRequest(String userId, BigDecimal amount, String narration) {
-            this(userId, amount, narration, null, null, null, null, null);
+            this(userId, amount, narration, null, null, null, null, null, null);
         }
 
         public WalletEntryRequest(String userId, BigDecimal amount, String narration, String remark) {
-            this(userId, amount, narration, remark, null, null, null, null);
+            this(userId, amount, narration, remark, null, null, null, null, null);
+        }
+
+        public WalletEntryRequest(String userId, BigDecimal amount, String narration, String remark, String reason, String channel, String referenceNo, String category) {
+            this(userId, amount, narration, remark, reason, channel, referenceNo, category, null);
         }
 
         public String getNarrationOrRemark() {
@@ -78,8 +83,13 @@ public class WalletDtos {
     public record WalletStatusUpdateRequest(
             @NotBlank String userId,
             @NotBlank String status,
-            @NotBlank String remark
-    ) {}
+            @NotBlank String remark,
+            String pin
+    ) {
+        public WalletStatusUpdateRequest(String userId, String status, String remark) {
+            this(userId, status, remark, null);
+        }
+    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record FundRequestCreateRequest(
@@ -93,8 +103,13 @@ public class WalletDtos {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record FundRequestProcessRequest(
             @NotBlank String requestId,
-            String remark
-    ) {}
+            String remark,
+            String pin
+    ) {
+        public FundRequestProcessRequest(String requestId, String remark) {
+            this(requestId, remark, null);
+        }
+    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record FundRequestResponse(

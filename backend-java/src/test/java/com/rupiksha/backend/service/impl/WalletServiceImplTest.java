@@ -38,6 +38,8 @@ public class WalletServiceImplTest {
     private AppProperties appProperties;
     @Mock
     private PlatformTransactionManager transactionManager;
+    @Mock
+    private com.rupiksha.backend.service.AdminWalletActionPinService adminWalletActionPinService;
 
     @InjectMocks
     private WalletServiceImpl walletService;

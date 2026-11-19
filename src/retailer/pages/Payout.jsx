@@ -62,8 +62,8 @@ const Payout = () => {
   };
 
   const validateForm = () => {
-    if (!formData.amount || parseFloat(formData.amount) < 1) {
-      setError('Amount must be at least ₹1');
+    if (!formData.amount || parseFloat(formData.amount) < 100) {
+      setError('Amount must be at least ₹100');
       return false;
     }
     if (parseFloat(formData.amount) > 200000) {
@@ -219,12 +219,12 @@ const Payout = () => {
                   name="amount"
                   value={formData.amount}
                   onChange={handleInputChange}
-                  min="1"
+                  min="100"
                   max="200000"
                   step="0.01"
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter amount"
+                  placeholder="Enter amount (min ₹100)"
                 />
               </div>
 

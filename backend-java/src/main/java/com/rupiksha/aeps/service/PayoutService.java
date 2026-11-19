@@ -123,7 +123,7 @@ public class PayoutService {
             return List.of(
                     PayoutChargeSlabDto.builder()
                             .id(1L)
-                            .minAmount(new BigDecimal("500.00"))
+                            .minAmount(new BigDecimal("100.00"))
                             .maxAmount(new BigDecimal("24999.00"))
                             .baseCharge(new BigDecimal("5.50"))
                             .gstRate(new BigDecimal("18.00"))
@@ -322,8 +322,8 @@ public class PayoutService {
         }
 
         BigDecimal amount = request.getAmount();
-        if (amount == null || amount.compareTo(BigDecimal.valueOf(500)) < 0) {
-            throw new IllegalArgumentException("Payout amount must be at least ₹500.00");
+        if (amount == null || amount.compareTo(BigDecimal.valueOf(100)) < 0) {
+            throw new IllegalArgumentException("Payout amount must be at least ₹100.00");
         }
         if (amount.compareTo(BigDecimal.valueOf(500000)) > 0) {
             throw new IllegalArgumentException("Payout amount cannot exceed ₹5,00,000.00");

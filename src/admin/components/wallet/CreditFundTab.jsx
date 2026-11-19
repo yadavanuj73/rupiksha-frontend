@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { fetchAPI, uuid, fireCelebration, UserSelector, fmtINR, fmtDateTime, WalletTabSkeleton } from './walletShared';
 import { dataService } from '../../../services/dataService';
+import AdminWalletPinModal from './AdminWalletPinModal';
 
 const CreditFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
     if (loading && users.length === 0) {
@@ -24,19 +25,25 @@ const CreditFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
     const [remark, setRemark] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
+    const [showPinModal, setShowPinModal] = useState(false);
     const [idempotencyKey, setIdempotencyKey] = useState(() => uuid());
     const submittingRef = useRef(false);
 
     const selectedUser = users.find(u => (u.id && String(u.id) === String(userId)) || (u.userId && String(u.userId) === String(userId)) || u.username === userId);
     const presetAmounts = [500, 1000, 2000, 5000, 10000, 25000, 50000];
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = (e) => {
         e.preventDefault();
         if (submittingRef.current) return;
         if (!userId) return onToast({ type: 'error', message: 'Please select a user to credit funds' });
         const numAmount = parseFloat(amount);
         if (!numAmount || numAmount <= 0) return onToast({ type: 'error', message: 'Please enter a valid credit amount (greater than 0)' });
 
+        setShowPinModal(true);
+    };
+
+    const handleConfirmWithPin = async (pin) => {
+        const numAmount = parseFloat(amount);
         const targetId = selectedUser ? (selectedUser.id || selectedUser.userId || selectedUser.username) : userId;
         submittingRef.current = true;
         setSubmitting(true);
@@ -47,19 +54,21 @@ const CreditFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
         try {
             res = await fetchAPI('/wallet/credit', {
                 method: 'POST',
+                headers: { 'X-Admin-PIN': pin },
                 body: JSON.stringify({
                     userId: targetId,
                     amount: numAmount,
                     remark: creditRemark,
                     channel,
-                    referenceNo: referenceNo.trim()
+                    referenceNo: referenceNo.trim(),
+                    pin
                 })
             }, idempotencyKey);
         } catch (err) {
             console.error('[CreditFund] API call error:', err);
             submittingRef.current = false;
             setSubmitting(false);
-            return onToast({ type: 'error', message: err?.message || 'Failed to credit funds on server' });
+            return { success: false, error: err?.message || 'Failed to credit funds on server' };
         }
 
         if (res && res.success) {
@@ -77,14 +86,22 @@ const CreditFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
             setRemark('');
             setReferenceNo('');
             setIdempotencyKey(uuid());
+            setShowPinModal(false);
             if (onRefresh) onRefresh();
             window.dispatchEvent(new CustomEvent('walletUpdated'));
+            submittingRef.current = false;
+            setSubmitting(false);
+            return { success: true };
         } else {
-            onToast({ type: 'error', message: res?.message || res?.error || 'Failed to credit funds. Please try again.' });
+            submittingRef.current = false;
+            setSubmitting(false);
+            return {
+                success: false,
+                status: res?.status,
+                isLockedOut: res?.status === 429,
+                error: res?.error || res?.message || 'Failed to credit funds. Please try again.'
+            };
         }
-
-        submittingRef.current = false;
-        setSubmitting(false);
     };
 
     // Recent credit transactions from dataService
@@ -331,6 +348,22 @@ const CreditFundTab = ({ users = [], loading = false, onToast, onRefresh }) => {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Secure Admin 6-Digit PIN Verification Modal */}
+            <AdminWalletPinModal
+                isOpen={showPinModal}
+                title="Confirm Credit Fund"
+                actionType="CREDIT"
+                details={{
+                    userName: selectedUser?.name || selectedUser?.fullName || selectedUser?.username || userId,
+                    userCode: selectedUser?.partyCode || selectedUser?.username,
+                    amount: parseFloat(amount) || 0,
+                    customNote: remark.trim() || `Channel: ${channel.replace(/_/g, ' ')}`
+                }}
+                onConfirm={handleConfirmWithPin}
+                onClose={() => setShowPinModal(false)}
+                submitting={submitting}
+            />
         </div>
     );
 };

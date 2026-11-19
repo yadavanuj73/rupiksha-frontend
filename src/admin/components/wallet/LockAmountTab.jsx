@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { fetchAPI, UserSelector, fmtINR, fmtDateTime, WalletTabSkeleton } from './walletShared';
 import { dataService } from '../../../services/dataService';
+import AdminWalletPinModal from './AdminWalletPinModal';
 
 const LockAmountTab = ({ users = [], loading = false, onToast, onRefresh, onNavigate }) => {
     if (loading && users.length === 0) {
@@ -22,6 +23,7 @@ const LockAmountTab = ({ users = [], loading = false, onToast, onRefresh, onNavi
     const [remark, setRemark] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [recentLocks, setRecentLocks] = useState([]);
+    const [showPinModal, setShowPinModal] = useState(false);
 
     const selectedUser = users.find(u => (u.id && String(u.id) === String(userId)) || (u.userId && String(u.userId) === String(userId)) || u.username === userId);
 
@@ -35,8 +37,9 @@ const LockAmountTab = ({ users = [], loading = false, onToast, onRefresh, onNavi
         setAmount(String(calc));
     };
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = (e) => {
         e.preventDefault();
+        if (submitting) return;
         if (!userId) return onToast({ type: 'error', message: 'Please select a user to lock amount' });
         const numAmt = parseFloat(amount);
         if (!numAmt || numAmt <= 0) return onToast({ type: 'error', message: 'Please enter a valid amount to lock' });
@@ -48,6 +51,11 @@ const LockAmountTab = ({ users = [], loading = false, onToast, onRefresh, onNavi
             });
         }
 
+        setShowPinModal(true);
+    };
+
+    const handleConfirmWithPin = async (pin) => {
+        const numAmt = parseFloat(amount);
         setSubmitting(true);
         const targetId = selectedUser ? (selectedUser.id || selectedUser.userId || selectedUser.username) : userId;
         const lockNote = remark.trim() || `Wallet Amount Locked (${reason.replace(/_/g, ' ')})`;
@@ -56,17 +64,19 @@ const LockAmountTab = ({ users = [], loading = false, onToast, onRefresh, onNavi
         try {
             res = await fetchAPI('/wallet/lock', {
                 method: 'POST',
+                headers: { 'X-Admin-PIN': pin },
                 body: JSON.stringify({
                     userId: targetId,
                     amount: numAmt,
                     remark: lockNote,
-                    reason
+                    reason,
+                    pin
                 })
             });
         } catch (e) {
             console.error('Backend lock API call error:', e);
             setSubmitting(false);
-            return onToast({ type: 'error', message: e?.message || 'Failed to lock amount on server' });
+            return { success: false, error: e?.message || 'Failed to lock amount on server' };
         }
 
         if (res && res.success) {
@@ -112,15 +122,19 @@ const LockAmountTab = ({ users = [], loading = false, onToast, onRefresh, onNavi
 
             setAmount('');
             setRemark('');
+            setShowPinModal(false);
             setSubmitting(false);
             if (onRefresh) onRefresh();
             window.dispatchEvent(new CustomEvent('walletUpdated'));
+            return { success: true };
         } else {
             setSubmitting(false);
-            onToast({
-                type: 'error',
-                message: res?.message || res?.error || 'Failed to lock amount. Please try again.'
-            });
+            return {
+                success: false,
+                status: res?.status,
+                isLockedOut: res?.status === 429,
+                error: res?.error || res?.message || 'Failed to lock amount. Please try again.'
+            };
         }
     };
 
@@ -364,6 +378,22 @@ const LockAmountTab = ({ users = [], loading = false, onToast, onRefresh, onNavi
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Secure Admin 6-Digit PIN Verification Modal */}
+            <AdminWalletPinModal
+                isOpen={showPinModal}
+                title="Lock Amount"
+                actionType="LOCK"
+                details={{
+                    userName: selectedUser?.name || selectedUser?.fullName || selectedUser?.username || userId,
+                    userCode: selectedUser?.partyCode || selectedUser?.username,
+                    amount: parseFloat(amount) || 0,
+                    customNote: remark.trim() || `Reason: ${reason.replace(/_/g, ' ')}`
+                }}
+                onConfirm={handleConfirmWithPin}
+                onClose={() => setShowPinModal(false)}
+                submitting={submitting}
+            />
         </div>
     );
 };

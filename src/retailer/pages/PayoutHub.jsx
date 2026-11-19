@@ -303,8 +303,8 @@ const PayoutHub = () => {
     const isAccountMatching = form.accountNumber.trim() && form.accountNumber.trim() === form.confirmAccountNumber.trim();
     const isIfscValid = /^[A-Z]{4}0[A-Z0-9]{6}$/.test(form.ifsc.trim().toUpperCase());
     const numAmount = Number(form.amount) || 0;
-    const isAmountEntered = numAmount >= 500;
-    const isAmountBelowMin = form.amount !== '' && numAmount < 500;
+    const isAmountEntered = numAmount >= 100;
+    const isAmountBelowMin = form.amount !== '' && numAmount < 100;
     const isAmountWithinBalance = isAmountEntered && payoutChargeInfo.totalDeduction <= walletBalance;
     const isNameValid = form.beneficiaryName.trim().length >= 2;
 
@@ -362,7 +362,7 @@ const PayoutHub = () => {
 
         if (!canSubmit) {
             if (isAmountBelowMin) {
-                setSubmitError('Minimum transfer amount is ₹500.00.');
+                setSubmitError('Minimum transfer amount is ₹100.00.');
             } else if (!isAmountWithinBalance) {
                 setSubmitError(`Insufficient wallet balance. Total required: ₹${payoutChargeInfo.totalDeduction.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (Transfer ₹${Number(form.amount).toLocaleString('en-IN')} + Base Charge ₹${payoutChargeInfo.baseCharge.toFixed(2)} + GST (${payoutChargeInfo.gstRate || 18}%) ₹${payoutChargeInfo.gstAmount.toFixed(2)} = Total Charges ₹${payoutChargeInfo.totalCharge.toFixed(2)}). Available: ₹${walletBalance.toLocaleString('en-IN')}.`);
             } else if (!isAccountMatching) {
@@ -1343,7 +1343,7 @@ const PayoutHub = () => {
                                                     ? 'border-rose-300 bg-rose-50/50 focus:border-rose-500 focus:ring-2 focus:ring-rose-100'
                                                     : 'border-slate-300 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
                                             }`}
-                                            placeholder="Min ₹500.00"
+                                            placeholder="Min ₹100.00"
                                             value={form.amount}
                                             onChange={(e) => setForm(p => ({ ...p, amount: e.target.value.replace(/[^\d.]/g, '') }))}
                                         />
@@ -1353,13 +1353,13 @@ const PayoutHub = () => {
                                     {isAmountBelowMin && (
                                         <p className="text-[11px] font-bold text-rose-600 mt-1.5 flex items-center gap-1 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg">
                                             <AlertTriangle size={13} className="shrink-0 text-rose-600" />
-                                            Minimum payout transfer amount is ₹500.00
+                                            Minimum payout transfer amount is ₹100.00
                                         </p>
                                     )}
 
                                     {/* Quick Amount Chips */}
                                     <div className="flex items-center gap-1.5 mt-2 overflow-x-auto pb-0.5">
-                                        {[500, 1000, 2000, 5000, 10000].map((amt) => (
+                                        {[100, 500, 1000, 2000, 5000, 10000].map((amt) => (
                                             <button
                                                 key={amt}
                                                 type="button"

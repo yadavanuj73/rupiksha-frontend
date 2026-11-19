@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { fetchAPI, fireCelebration, fmtINR, fmtDateTime, WalletTabSkeleton } from './walletShared';
 import { dataService } from '../../../services/dataService';
+import AdminWalletPinModal from './AdminWalletPinModal';
 
 const ReleaseLockTab = ({ users = [], loading = false, onToast, onRefresh }) => {
     if (loading && users.length === 0) {
@@ -24,6 +25,7 @@ const ReleaseLockTab = ({ users = [], loading = false, onToast, onRefresh }) => 
     const [releaseAmount, setReleaseAmount] = useState('');
     const [releaseRemark, setReleaseRemark] = useState('Dispute resolved - funds released to available balance');
     const [submitting, setSubmitting] = useState(false);
+    const [showPinModal, setShowPinModal] = useState(false);
 
     // Filter all users who have locked funds > 0
     const usersWithLocked = (users || []).map(u => {
@@ -68,6 +70,12 @@ const ReleaseLockTab = ({ users = [], loading = false, onToast, onRefresh }) => 
             });
         }
 
+        setShowPinModal(true);
+    };
+
+    const handleConfirmWithPin = async (pin) => {
+        if (!selectedUserToRelease) return { success: false, error: 'No user selected' };
+        const numToRelease = parseFloat(releaseAmount);
         setSubmitting(true);
         const targetId = selectedUserToRelease.id || selectedUserToRelease.userId || selectedUserToRelease.username;
         const finalRemark = releaseRemark.trim() || 'Admin released locked funds';
@@ -76,16 +84,18 @@ const ReleaseLockTab = ({ users = [], loading = false, onToast, onRefresh }) => 
         try {
             res = await fetchAPI('/wallet/release', {
                 method: 'POST',
+                headers: { 'X-Admin-PIN': pin },
                 body: JSON.stringify({
                     userId: targetId,
                     amount: numToRelease,
-                    remark: finalRemark
+                    remark: finalRemark,
+                    pin
                 })
             });
         } catch (e) {
             console.error('Backend release API call error:', e);
             setSubmitting(false);
-            return onToast({ type: 'error', message: e?.message || 'Failed to release lock on server' });
+            return { success: false, error: e?.message || 'Failed to release lock on server' };
         }
 
         if (res && res.success) {
@@ -114,17 +124,21 @@ const ReleaseLockTab = ({ users = [], loading = false, onToast, onRefresh }) => 
                 message: res?.message || `Successfully released ${fmtINR(numToRelease)} back to available balance for ${(selectedUserToRelease.name || selectedUserToRelease.fullName || targetId)}!`
             });
 
+            setShowPinModal(false);
             setSelectedUserToRelease(null);
             setReleaseAmount('');
             setSubmitting(false);
             if (onRefresh) onRefresh();
             window.dispatchEvent(new CustomEvent('walletUpdated'));
+            return { success: true };
         } else {
             setSubmitting(false);
-            onToast({
-                type: 'error',
-                message: res?.message || res?.error || 'Failed to release lock amount. Please try again.'
-            });
+            return {
+                success: false,
+                status: res?.status,
+                isLockedOut: res?.status === 429,
+                error: res?.error || res?.message || 'Failed to release lock amount. Please try again.'
+            };
         }
     };
 
@@ -368,6 +382,23 @@ const ReleaseLockTab = ({ users = [], loading = false, onToast, onRefresh }) => 
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* 6-Digit Admin Transaction PIN Modal */}
+            <AdminWalletPinModal
+                isOpen={showPinModal}
+                onClose={() => setShowPinModal(false)}
+                onConfirm={handleConfirmWithPin}
+                actionTitle="Confirm Release Lock Amount"
+                actionType="RELEASE"
+                amount={selectedUserToRelease ? parseFloat(releaseAmount) || 0 : 0}
+                targetUser={selectedUserToRelease ? {
+                    name: selectedUserToRelease.name || selectedUserToRelease.fullName || selectedUserToRelease.username,
+                    username: selectedUserToRelease.username,
+                    mobile: selectedUserToRelease.mobile,
+                    role: selectedUserToRelease.role
+                } : null}
+                loading={submitting}
+            />
         </div>
     );
 };

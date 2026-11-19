@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { fetchAPI, fireCelebration, fmtINR, fmtDateTime, UserSelector, WalletTabSkeleton } from './walletShared';
 import { dataService } from '../../../services/dataService';
+import AdminWalletPinModal from './AdminWalletPinModal';
 
 const PendingFundRequestsTab = ({ users = [], onToast, onRefresh }) => {
     const [requests, setRequests] = useState([]);
@@ -23,6 +24,7 @@ const PendingFundRequestsTab = ({ users = [], onToast, onRefresh }) => {
     const [declineReason, setDeclineReason] = useState('Payment not received in company bank account');
     const [declineRemark, setDeclineRemark] = useState('');
     const [declining, setDeclining] = useState(false);
+    const [pinModalConfig, setPinModalConfig] = useState(null);
 
     // Create request modal
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -66,86 +68,124 @@ const PendingFundRequestsTab = ({ users = [], onToast, onRefresh }) => {
         setTimeout(() => setCopiedUtr(null), 2000);
     };
 
-    // ── Approve Action (Direct DB & Backend) ──
-    const handleConfirmApprove = async () => {
+    // ── Approve Action (With Mandatory 6-Digit PIN) ──
+    const handleConfirmApprove = () => {
         if (!approveModalItem) return;
-        setApproving(true);
         const req = approveModalItem;
         const numAmount = parseFloat(req.amount) || 0;
         const targetUserId = req.userId || req.username;
 
-        try {
-            const res = await fetchAPI('/admin/wallet/approve-request', {
-                method: 'POST',
-                body: JSON.stringify({
-                    requestId: req.id,
-                    remark: approveRemark || 'Approved and credited by Admin',
-                    adminRemark: approveRemark || 'Approved and credited by Admin'
-                })
-            });
+        setPinModalConfig({
+            isOpen: true,
+            title: 'Approve Fund Request',
+            actionType: 'APPROVE',
+            details: {
+                userName: req.fullName || req.name || targetUserId,
+                userCode: req.username || req.userId,
+                amount: numAmount,
+                customNote: approveRemark || 'Approved and credited by Admin'
+            },
+            onConfirm: async (pin) => {
+                setApproving(true);
+                try {
+                    const res = await fetchAPI('/admin/wallet/approve-request', {
+                        method: 'POST',
+                        headers: { 'X-Admin-PIN': pin },
+                        body: JSON.stringify({
+                            requestId: req.id,
+                            remark: approveRemark || 'Approved and credited by Admin',
+                            adminRemark: approveRemark || 'Approved and credited by Admin',
+                            pin
+                        })
+                    });
 
-            if (res && res.success) {
-                fireCelebration();
-                onToast({
-                    type: 'success',
-                    message: `Fund Request approved! ${fmtINR(numAmount)} has been credited to ${req.fullName || req.name || targetUserId}'s wallet.`
-                });
-                setApproveModalItem(null);
-                setApproveRemark('');
-                loadRequests();
-                if (onRefresh) onRefresh();
-            } else {
-                onToast({
-                    type: 'error',
-                    message: res?.message || res?.error || 'Failed to approve fund request'
-                });
+                    if (res && res.success) {
+                        fireCelebration();
+                        onToast({
+                            type: 'success',
+                            message: `Fund Request approved! ${fmtINR(numAmount)} has been credited to ${req.fullName || req.name || targetUserId}'s wallet.`
+                        });
+                        setApproveModalItem(null);
+                        setApproveRemark('');
+                        setPinModalConfig(null);
+                        loadRequests();
+                        if (onRefresh) onRefresh();
+                        return { success: true };
+                    } else {
+                        return {
+                            success: false,
+                            status: res?.status,
+                            isLockedOut: res?.status === 429,
+                            error: res?.error || res?.message || 'Failed to approve fund request'
+                        };
+                    }
+                } catch (e) {
+                    return { success: false, error: 'Network error approving fund request' };
+                } finally {
+                    setApproving(false);
+                }
             }
-        } catch (e) {
-            onToast({ type: 'error', message: 'Network error approving fund request' });
-        } finally {
-            setApproving(false);
-        }
+        });
     };
 
-    // ── Decline Action (Direct DB & Backend) ──
-    const handleConfirmDecline = async () => {
+    // ── Decline Action (With Mandatory 6-Digit PIN) ──
+    const handleConfirmDecline = () => {
         if (!declineModalItem) return;
-        setDeclining(true);
         const req = declineModalItem;
         const fullDeclineNote = `${declineReason}${declineRemark ? ` - ${declineRemark}` : ''}`;
 
-        try {
-            const res = await fetchAPI('/admin/wallet/reject-request', {
-                method: 'POST',
-                body: JSON.stringify({
-                    requestId: req.id,
-                    remark: fullDeclineNote,
-                    reason: fullDeclineNote,
-                    adminRemark: fullDeclineNote
-                })
-            });
+        setPinModalConfig({
+            isOpen: true,
+            title: 'Reject Fund Request',
+            actionType: 'REJECT',
+            details: {
+                userName: req.fullName || req.name || req.username,
+                userCode: req.username,
+                amount: parseFloat(req.amount) || 0,
+                customNote: fullDeclineNote
+            },
+            onConfirm: async (pin) => {
+                setDeclining(true);
+                try {
+                    const res = await fetchAPI('/admin/wallet/reject-request', {
+                        method: 'POST',
+                        headers: { 'X-Admin-PIN': pin },
+                        body: JSON.stringify({
+                            requestId: req.id,
+                            remark: fullDeclineNote,
+                            reason: fullDeclineNote,
+                            adminRemark: fullDeclineNote,
+                            pin
+                        })
+                    });
 
-            if (res && res.success) {
-                onToast({
-                    type: 'error',
-                    message: `Fund Request for ${fmtINR(req.amount)} was declined. Amount was NOT credited.`
-                });
-                setDeclineModalItem(null);
-                setDeclineReason('Payment not received in company bank account');
-                setDeclineRemark('');
-                loadRequests();
-                if (onRefresh) onRefresh();
-            } else {
-                onToast({
-                    type: 'error',
-                    message: res?.message || res?.error || 'Failed to decline fund request'
-                });
+                    if (res && res.success) {
+                        onToast({
+                            type: 'error',
+                            message: `Fund Request for ${fmtINR(req.amount)} was declined. Amount was NOT credited.`
+                        });
+                        setDeclineModalItem(null);
+                        setDeclineReason('Payment not received in company bank account');
+                        setDeclineRemark('');
+                        setPinModalConfig(null);
+                        loadRequests();
+                        if (onRefresh) onRefresh();
+                        return { success: true };
+                    } else {
+                        return {
+                            success: false,
+                            status: res?.status,
+                            isLockedOut: res?.status === 429,
+                            error: res?.error || res?.message || 'Failed to decline fund request'
+                        };
+                    }
+                } catch (e) {
+                    return { success: false, error: 'Network error declining fund request' };
+                } finally {
+                    setDeclining(false);
+                }
             }
-        } catch (e) {
-            onToast({ type: 'error', message: 'Network error declining fund request' });
-        } finally {
-            setDeclining(false);
-        }
+        });
     };
 
     // ── Create New Request on behalf of user (Direct DB & Backend) ──
@@ -679,6 +719,19 @@ const PendingFundRequestsTab = ({ users = [], onToast, onRefresh }) => {
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* Secure Admin 6-Digit PIN Verification Modal */}
+            {pinModalConfig && (
+                <AdminWalletPinModal
+                    isOpen={pinModalConfig.isOpen}
+                    title={pinModalConfig.title}
+                    actionType={pinModalConfig.actionType}
+                    details={pinModalConfig.details}
+                    onConfirm={pinModalConfig.onConfirm}
+                    onClose={() => setPinModalConfig(null)}
+                    submitting={approving || declining}
+                />
+            )}
         </div>
     );
 };
