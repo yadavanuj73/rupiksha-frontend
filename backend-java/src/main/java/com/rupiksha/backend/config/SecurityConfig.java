@@ -81,7 +81,10 @@ public class SecurityConfig {
                                 "/api/v1/admin/kyc/**",
                                 "/api/v1/admin/add-user",
                                 "/api/admin/add-user",
-                                "/admin/add-user"
+                                "/admin/add-user",
+                                "/api/v1/admin/payout-settings/**",
+                                "/api/admin/payout-settings/**",
+                                "/admin/payout-settings/**"
                         ).hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )

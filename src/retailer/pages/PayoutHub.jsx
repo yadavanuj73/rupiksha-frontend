@@ -22,6 +22,9 @@ const PayoutHub = () => {
     // Active View Tab: 'transfer' | 'beneficiaries' | 'history'
     const [activeTab, setActiveTab] = useState('transfer');
 
+    // Dynamic Payout Limit Settings (per individual transaction)
+    const [payoutLimits, setPayoutLimits] = useState({ minimumPayoutAmount: 100, maximumPayoutAmount: 100000 });
+
     // Charge slabs state
     const [chargeSlabs, setChargeSlabs] = useState([]);
 
@@ -126,6 +129,13 @@ const PayoutHub = () => {
         payoutChargeService.getCharges().then(res => {
             if (Array.isArray(res) && res.length > 0) setChargeSlabs(res);
         }).catch(() => {});
+        payoutChargeService.getLimits().then(res => {
+            if (res && res.minimumPayoutAmount != null && res.maximumPayoutAmount != null) {
+                setPayoutLimits(res);
+            }
+        }).catch(err => {
+            console.warn('Could not load authoritative payout limits:', err);
+        });
     }, [fetchBalance, fetchBeneficiaries]);
 
     // Beneficiary Quick Selection
@@ -309,14 +319,17 @@ const PayoutHub = () => {
     const isAccountValid = /^\d{9,18}$/.test(form.accountNumber.trim());
     const isAccountMatching = form.accountNumber.trim() && form.accountNumber.trim() === form.confirmAccountNumber.trim();
     const isIfscValid = /^[A-Z]{4}0[A-Z0-9]{6}$/.test(form.ifsc.trim().toUpperCase());
+    const minLimit = Number(payoutLimits.minimumPayoutAmount) || 100;
+    const maxLimit = Number(payoutLimits.maximumPayoutAmount) || 100000;
     const numAmount = Number(form.amount) || 0;
-    const isAmountEntered = numAmount >= 100;
-    const isAmountBelowMin = form.amount !== '' && numAmount < 100;
+    const isAmountBelowMin = form.amount !== '' && numAmount < minLimit;
+    const isAmountAboveMax = form.amount !== '' && numAmount > maxLimit;
+    const isAmountEntered = numAmount >= minLimit && numAmount <= maxLimit;
     const isAmountWithinBalance = isAmountEntered && payoutChargeInfo.totalDeduction <= walletBalance;
     const isNameValid = form.beneficiaryName.trim().length >= 2;
 
     const canVerify = isAccountValid && isIfscValid && !verifying;
-    const canSubmit = isAccountValid && isAccountMatching && isIfscValid && isNameValid && isAmountEntered && isAmountWithinBalance && !isSubmitting;
+    const canSubmit = isAccountValid && isAccountMatching && isIfscValid && isNameValid && isAmountEntered && isAmountWithinBalance && !isAmountBelowMin && !isAmountAboveMax && !isSubmitting;
 
     // Filtered Beneficiaries List for search
     const filteredBeneficiaries = useMemo(() => {
@@ -369,7 +382,9 @@ const PayoutHub = () => {
 
         if (!canSubmit) {
             if (isAmountBelowMin) {
-                setSubmitError('Minimum transfer amount is ₹100.00.');
+                setSubmitError(`Minimum payout amount is ₹${minLimit.toLocaleString('en-IN')}.`);
+            } else if (isAmountAboveMax) {
+                setSubmitError(`Maximum payout amount per transaction is ₹${maxLimit.toLocaleString('en-IN')}. Please initiate a separate payout for any additional amount.`);
             } else if (!isAmountWithinBalance) {
                 setSubmitError(`Insufficient wallet balance. Total required: ₹${payoutChargeInfo.totalDeduction.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (Transfer ₹${Number(form.amount).toLocaleString('en-IN')} + Base Charge ₹${payoutChargeInfo.baseCharge.toFixed(2)} + GST (${payoutChargeInfo.gstRate || 18}%) ₹${payoutChargeInfo.gstAmount.toFixed(2)} = Total Charges ₹${payoutChargeInfo.totalCharge.toFixed(2)}). Available: ₹${walletBalance.toLocaleString('en-IN')}.`);
             } else if (!isAccountMatching) {
@@ -1432,13 +1447,21 @@ const PayoutHub = () => {
 
                                 {/* Amount Input & Quick Chips */}
                                 <div>
-                                    <div className="flex items-center justify-between mb-1.5">
-                                        <label className="text-[11px] font-black uppercase tracking-wider text-slate-700">
+                                    <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1.5">
+                                        <label className="text-[11px] font-black uppercase tracking-wider text-slate-900">
                                             Transfer Amount (₹) *
                                         </label>
-                                        <span className={`text-[11px] font-bold ${isAmountWithinBalance || !form.amount ? 'text-slate-500' : 'text-rose-600 font-black'}`}>
-                                            Wallet Balance: <strong className="font-mono text-slate-900">₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
-                                        </span>
+                                        <div className="flex items-center gap-1.5 text-[10.5px]">
+                                            <span className="font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
+                                                Min: <strong className="font-mono text-slate-950 font-black">₹{minLimit.toLocaleString('en-IN')}</strong>
+                                            </span>
+                                            <span className="font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
+                                                Max Per Txn: <strong className="font-mono text-slate-950 font-black">₹{maxLimit.toLocaleString('en-IN')}</strong>
+                                            </span>
+                                            <span className={`font-bold ml-1 ${isAmountWithinBalance || !form.amount ? 'text-slate-600' : 'text-rose-600 font-black'}`}>
+                                                Wallet: <strong className="font-mono text-slate-900">₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+                                            </span>
+                                        </div>
                                     </div>
                                     <div className="relative">
                                         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-lg font-black text-slate-400">₹</span>
@@ -1446,11 +1469,11 @@ const PayoutHub = () => {
                                             type="text"
                                             required
                                             className={`w-full rounded-xl border pl-9 pr-3.5 py-2.5 text-lg font-black text-slate-950 placeholder:text-slate-400 outline-none font-mono transition ${
-                                                isAmountBelowMin || (form.amount && !isAmountWithinBalance)
+                                                isAmountBelowMin || isAmountAboveMax || (form.amount && !isAmountWithinBalance)
                                                     ? 'border-rose-300 bg-rose-50/50 focus:border-rose-500 focus:ring-2 focus:ring-rose-100'
                                                     : 'border-slate-300 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
                                             }`}
-                                            placeholder="Min ₹100.00"
+                                            placeholder={`Min ₹${minLimit.toLocaleString('en-IN')}`}
                                             value={form.amount}
                                             onChange={(e) => setForm(p => ({ ...p, amount: e.target.value.replace(/[^\d.]/g, '') }))}
                                         />
@@ -1460,26 +1483,36 @@ const PayoutHub = () => {
                                     {isAmountBelowMin && (
                                         <p className="text-[11px] font-bold text-rose-600 mt-1.5 flex items-center gap-1 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg">
                                             <AlertTriangle size={13} className="shrink-0 text-rose-600" />
-                                            Minimum payout transfer amount is ₹100.00
+                                            Minimum payout amount is ₹{minLimit.toLocaleString('en-IN')}.
+                                        </p>
+                                    )}
+
+                                    {/* Above Maximum Amount Warning */}
+                                    {isAmountAboveMax && (
+                                        <p className="text-[11px] font-bold text-rose-600 mt-1.5 flex items-center gap-1 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg">
+                                            <AlertTriangle size={13} className="shrink-0 text-rose-600" />
+                                            Maximum payout amount per transaction is ₹{maxLimit.toLocaleString('en-IN')}. Please initiate a separate payout for any additional amount.
                                         </p>
                                     )}
 
                                     {/* Quick Amount Chips */}
                                     <div className="flex items-center gap-1.5 mt-2 overflow-x-auto pb-0.5">
-                                        {[100, 500, 1000, 2000, 5000, 10000].map((amt) => (
-                                            <button
-                                                key={amt}
-                                                type="button"
-                                                onClick={() => setForm(p => ({ ...p, amount: amt.toString() }))}
-                                                className={`px-2.5 py-1 rounded-lg border text-[11px] font-black font-mono transition cursor-pointer shadow-2xs ${
-                                                    form.amount === amt.toString()
-                                                        ? 'bg-blue-600 text-white border-blue-600'
-                                                        : 'bg-white hover:bg-blue-50 hover:border-blue-300 text-slate-700 border-slate-200'
-                                                }`}
-                                            >
-                                                ₹{amt.toLocaleString('en-IN')}
-                                            </button>
-                                        ))}
+                                        {[100, 500, 1000, 2000, 5000, 10000, 25000, 50000, 100000]
+                                            .filter(amt => amt >= minLimit && amt <= maxLimit)
+                                            .map((amt) => (
+                                                <button
+                                                    key={amt}
+                                                    type="button"
+                                                    onClick={() => setForm(p => ({ ...p, amount: amt.toString() }))}
+                                                    className={`px-2.5 py-1 rounded-lg border text-[11px] font-black font-mono transition cursor-pointer shadow-2xs ${
+                                                        form.amount === amt.toString()
+                                                            ? 'bg-blue-600 text-white border-blue-600'
+                                                            : 'bg-white hover:bg-blue-50 hover:border-blue-300 text-slate-700 border-slate-200'
+                                                    }`}
+                                                >
+                                                    ₹{amt.toLocaleString('en-IN')}
+                                                </button>
+                                            ))}
                                     </div>
                                 </div>
 

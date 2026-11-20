@@ -63,6 +63,7 @@ public class PayoutOtpServiceImpl implements PayoutOtpService {
     private final WalletService walletService;
     private final OtpProviderRouter otpProviderRouter;
     private final AppProperties appProperties;
+    private final com.rupiksha.aeps.service.PayoutLimitConfigurationService payoutLimitConfigurationService;
 
     @Autowired(required = false)
     private StringRedisTemplate redisTemplate;
@@ -350,11 +351,15 @@ public class PayoutOtpServiceImpl implements PayoutOtpService {
 
         // 5. Validate Amount and Transfer Mode
         BigDecimal amount = request.getAmount();
-        if (amount == null || amount.compareTo(new BigDecimal("100.00")) < 0) {
-            throw new IllegalArgumentException("Payout amount must be at least ₹100.00");
-        }
-        if (amount.compareTo(new BigDecimal("500000.00")) > 0) {
-            throw new IllegalArgumentException("Payout amount cannot exceed ₹5,00,000.00");
+        if (payoutLimitConfigurationService != null) {
+            payoutLimitConfigurationService.validatePayoutAmount(amount);
+        } else {
+            if (amount == null || amount.compareTo(new BigDecimal("100.00")) < 0) {
+                throw new IllegalArgumentException("Payout amount must be at least ₹100.00");
+            }
+            if (amount.compareTo(new BigDecimal("500000.00")) > 0) {
+                throw new IllegalArgumentException("Payout amount cannot exceed ₹5,00,000.00");
+            }
         }
 
         String transferMode = request.getTransferMode() != null && !request.getTransferMode().isBlank()
@@ -603,6 +608,11 @@ public class PayoutOtpServiceImpl implements PayoutOtpService {
             throw new IllegalArgumentException("Incorrect OTP. " + remaining + " attempts remaining.");
         }
 
+        // 7b. Revalidate current authoritative limits in case Admin changed settings after OTP send
+        if (payoutLimitConfigurationService != null) {
+            payoutLimitConfigurationService.validatePayoutAmount(request.getAmount());
+        }
+
         // 8. Verification Succeeded: Atomically mark VERIFIED and Issue Single-Use Authorization Reference
         challenge.setStatus(PayoutOtpStatus.VERIFIED);
         challenge.setVerifiedAt(Instant.now());
@@ -705,6 +715,11 @@ public class PayoutOtpServiceImpl implements PayoutOtpService {
                     challenge.getPayoutIntentId(), authorizationReference, challenge.getMaskedMobile(), clientIp, null,
                     "FAILED", "Request details do not match OTP authorization", null);
             throw new AccessDeniedException("Payout parameters do not match the OTP-authorized transaction. Transaction rejected.");
+        }
+
+        // 4b. Revalidate current authoritative limits in case Admin changed settings after OTP verification
+        if (payoutLimitConfigurationService != null) {
+            payoutLimitConfigurationService.validatePayoutAmount(request.getAmount());
         }
 
         // 5. Atomically Consume Authorization Reference

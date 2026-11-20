@@ -63,6 +63,7 @@ public class PayoutService {
     private final PayoutAuditService payoutAuditService;
     private final PayoutStatusHistoryRepository payoutStatusHistoryRepository;
     private final PayoutOtpService payoutOtpService;
+    private final PayoutLimitConfigurationService payoutLimitConfigurationService;
 
     @Autowired
     public PayoutService(
@@ -77,7 +78,8 @@ public class PayoutService {
             PayoutRateLimiter payoutRateLimiter,
             PayoutAuditService payoutAuditService,
             PayoutStatusHistoryRepository payoutStatusHistoryRepository,
-            PayoutOtpService payoutOtpService
+            PayoutOtpService payoutOtpService,
+            PayoutLimitConfigurationService payoutLimitConfigurationService
     ) {
         this.objectMapper = objectMapper;
         this.payoutProperties = payoutProperties;
@@ -91,6 +93,7 @@ public class PayoutService {
         this.payoutAuditService = payoutAuditService;
         this.payoutStatusHistoryRepository = payoutStatusHistoryRepository;
         this.payoutOtpService = payoutOtpService;
+        this.payoutLimitConfigurationService = payoutLimitConfigurationService;
 
         // Dedicated RestTemplate for Payout with standard HTTP error propagation and timeouts
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
@@ -325,11 +328,15 @@ public class PayoutService {
         }
 
         BigDecimal amount = request.getAmount();
-        if (amount == null || amount.compareTo(BigDecimal.valueOf(100)) < 0) {
-            throw new IllegalArgumentException("Payout amount must be at least ₹100.00");
-        }
-        if (amount.compareTo(BigDecimal.valueOf(500000)) > 0) {
-            throw new IllegalArgumentException("Payout amount cannot exceed ₹5,00,000.00");
+        if (payoutLimitConfigurationService != null) {
+            payoutLimitConfigurationService.validatePayoutAmount(amount);
+        } else {
+            if (amount == null || amount.compareTo(BigDecimal.valueOf(100)) < 0) {
+                throw new IllegalArgumentException("Payout amount must be at least ₹100.00");
+            }
+            if (amount.compareTo(BigDecimal.valueOf(500000)) > 0) {
+                throw new IllegalArgumentException("Payout amount cannot exceed ₹5,00,000.00");
+            }
         }
 
         String rawAcc = request.getAccountNumber() != null ? request.getAccountNumber().trim() : "";

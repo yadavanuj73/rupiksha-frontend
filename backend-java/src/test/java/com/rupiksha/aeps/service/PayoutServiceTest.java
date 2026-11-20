@@ -65,6 +65,8 @@ class PayoutServiceTest {
     @Mock
     private PayoutOtpService payoutOtpService;
     @Mock
+    private PayoutLimitConfigurationService payoutLimitConfigurationService;
+    @Mock
     private RestTemplate mockRestTemplate;
 
     private ObjectMapper objectMapper;
@@ -90,12 +92,24 @@ class PayoutServiceTest {
                 payoutRateLimiter,
                 payoutAuditService,
                 payoutStatusHistoryRepository,
-                payoutOtpService
+                payoutOtpService,
+                payoutLimitConfigurationService
         );
         ReflectionTestUtils.setField(payoutService, "restTemplate", mockRestTemplate);
 
         lenient().when(payoutOtpService.validateAndConsumeAuthorization(any(), any(), any(), any()))
                 .thenReturn(mock(com.rupiksha.aeps.entity.PayoutOtpChallenge.class));
+
+        lenient().doAnswer(inv -> {
+            BigDecimal amt = inv.getArgument(0);
+            if (amt == null || amt.compareTo(new BigDecimal("100.00")) < 0) {
+                throw new IllegalArgumentException("Payout amount must be at least ₹100.00. Minimum payout amount is ₹100.");
+            }
+            if (amt.compareTo(new BigDecimal("100000.00")) > 0) {
+                throw new IllegalArgumentException("Maximum payout amount per transaction is ₹1,00,000. Please initiate a separate payout for any additional amount.");
+            }
+            return null;
+        }).when(payoutLimitConfigurationService).validatePayoutAmount(any());
 
         lenient().when(payoutProperties.getFullPayoutUrl()).thenReturn("https://api.provider.com/payout");
         lenient().when(payoutProperties.isEncryptionEnabled()).thenReturn(false);

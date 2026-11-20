@@ -55,6 +55,8 @@ class PayoutOtpServiceImplTest {
     private OtpProvider mockOtpProvider;
     @Mock
     private AppProperties appProperties;
+    @Mock
+    private com.rupiksha.aeps.service.PayoutLimitConfigurationService payoutLimitConfigurationService;
 
     private PayoutOtpServiceImpl payoutOtpService;
 
@@ -74,7 +76,8 @@ class PayoutOtpServiceImplTest {
                 userServiceRepository,
                 walletService,
                 otpProviderRouter,
-                appProperties
+                appProperties,
+                payoutLimitConfigurationService
         );
 
         Role retailerRole = new Role();

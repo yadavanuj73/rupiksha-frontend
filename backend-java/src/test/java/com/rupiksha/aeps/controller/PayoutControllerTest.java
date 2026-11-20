@@ -48,6 +48,8 @@ class PayoutControllerTest {
     private PayoutStatusHistoryRepository payoutStatusHistoryRepository;
     @Mock
     private PayoutOtpService payoutOtpService;
+    @Mock
+    private com.rupiksha.aeps.service.PayoutLimitConfigurationService payoutLimitConfigurationService;
 
     @InjectMocks
     private PayoutController payoutController;
@@ -150,5 +152,25 @@ class PayoutControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.authorizationReference").value("AUTH_PO_SECURE_TOKEN_XYZ"));
+    }
+
+    @Test
+    @DisplayName("Controller: GET /api/v1/payout/settings returns active payout limits")
+    void testGetPayoutSettings_Success() throws Exception {
+        com.rupiksha.aeps.dto.PayoutLimitSettingsDto limits = com.rupiksha.aeps.dto.PayoutLimitSettingsDto.builder()
+                .minimumPayoutAmount(new BigDecimal("100.00"))
+                .maximumPayoutAmount(new BigDecimal("100000.00"))
+                .updatedBy("ADMIN")
+                .updatedAt("2026-11-20T11:00:00")
+                .version(1L)
+                .build();
+
+        when(payoutLimitConfigurationService.getActiveLimits()).thenReturn(limits);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/payout/settings"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.minimumPayoutAmount").value(100.00))
+                .andExpect(jsonPath("$.maximumPayoutAmount").value(100000.00))
+                .andExpect(jsonPath("$.version").value(1));
     }
 }

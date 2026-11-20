@@ -36,6 +36,7 @@ public class PayoutController {
     private final PayoutReconciliationService payoutReconciliationService;
     private final PayoutStatusHistoryRepository payoutStatusHistoryRepository;
     private final com.rupiksha.aeps.service.PayoutOtpService payoutOtpService;
+    private final com.rupiksha.aeps.service.PayoutLimitConfigurationService payoutLimitConfigurationService;
 
     private String resolveUserId(JwtPrincipal principal, Authentication authentication) {
         if (principal != null && principal.userId() != null && !principal.userId().isBlank()) {
@@ -377,6 +378,15 @@ public class PayoutController {
     @GetMapping("/charges")
     public ResponseEntity<List<PayoutChargeSlabDto>> getPayoutCharges() {
         return ResponseEntity.ok(payoutService.getPayoutChargeSlabs());
+    }
+
+    /**
+     * Get active minimum and maximum payout limits (for Retailer, Distributor, Super Distributor, Admin)
+     */
+    @PreAuthorize("hasAnyRole('RETAILER', 'DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'ADMIN')")
+    @GetMapping({"/settings", "/limits"})
+    public ResponseEntity<com.rupiksha.aeps.dto.PayoutLimitSettingsDto> getPayoutSettings() {
+        return ResponseEntity.ok(payoutLimitConfigurationService.getActiveLimits());
     }
 
     /**

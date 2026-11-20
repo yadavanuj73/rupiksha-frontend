@@ -43,6 +43,35 @@ export const payoutChargeService = {
         });
     },
 
+    async getLimits() {
+        try {
+            const res = await apiFetch('/payout/settings');
+            if (res && res.minimumPayoutAmount != null && res.maximumPayoutAmount != null) {
+                return {
+                    minimumPayoutAmount: Number(res.minimumPayoutAmount),
+                    maximumPayoutAmount: Number(res.maximumPayoutAmount),
+                    updatedBy: res.updatedBy,
+                    updatedAt: res.updatedAt,
+                    version: res.version
+                };
+            }
+        } catch (err) {
+            console.warn('Failed to load payout limits from API, using fallback:', err);
+        }
+        return { minimumPayoutAmount: 100, maximumPayoutAmount: 100000 };
+    },
+
+    async getAdminLimits() {
+        return apiFetch('/admin/payout-settings');
+    },
+
+    async updateAdminLimits(limits) {
+        return apiFetch('/admin/payout-settings', {
+            method: 'PUT',
+            body: JSON.stringify(limits),
+        });
+    },
+
     calculateChargeForAmount(amount, slabs = DEFAULT_SLABS) {
         const numAmt = parseFloat(amount) || 0;
         const slabList = Array.isArray(slabs) && slabs.length > 0 ? slabs : DEFAULT_SLABS;

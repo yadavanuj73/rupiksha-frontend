@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { payoutService, userService } from '../../services/apiService';
+import { payoutChargeService } from '../../services/payoutChargeService';
 import DisabledServiceBanner from '../../components/shared/DisabledServiceBanner';
 import PayoutOtpModal from '../../components/payout/PayoutOtpModal';
 
@@ -25,6 +26,9 @@ const Payout = () => {
   const [transactions, setTransactions] = useState([]);
   const [showTransactions, setShowTransactions] = useState(false);
 
+  // Dynamic Payout Limit Settings (per transaction)
+  const [payoutLimits, setPayoutLimits] = useState({ minimumPayoutAmount: 100, maximumPayoutAmount: 100000 });
+
   // Mandatory Payout OTP State
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpChallengeData, setOtpChallengeData] = useState(null);
@@ -44,6 +48,13 @@ const Payout = () => {
     };
     checkService();
     generateOrderId();
+    payoutChargeService.getLimits().then(res => {
+      if (res && res.minimumPayoutAmount != null && res.maximumPayoutAmount != null) {
+        setPayoutLimits(res);
+      }
+    }).catch(err => {
+      console.warn("Could not fetch payout limits:", err);
+    });
   }, []);
 
   if (serviceDisabled) {
@@ -69,12 +80,14 @@ const Payout = () => {
   };
 
   const validateForm = () => {
-    if (!formData.amount || parseFloat(formData.amount) < 100) {
-      setError('Amount must be at least ₹100');
+    const minLimit = Number(payoutLimits.minimumPayoutAmount) || 100;
+    const maxLimit = Number(payoutLimits.maximumPayoutAmount) || 100000;
+    if (!formData.amount || parseFloat(formData.amount) < minLimit) {
+      setError(`Minimum payout amount is ₹${minLimit.toLocaleString('en-IN')}.`);
       return false;
     }
-    if (parseFloat(formData.amount) > 200000) {
-      setError('Amount cannot exceed ₹2,00,000');
+    if (parseFloat(formData.amount) > maxLimit) {
+      setError(`Maximum payout amount per transaction is ₹${maxLimit.toLocaleString('en-IN')}. Please initiate a separate payout for any additional amount.`);
       return false;
     }
     if (!formData.beneficiaryName || formData.beneficiaryName.length < 3) {
@@ -294,20 +307,25 @@ const Payout = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Amount (₹) *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Amount (₹) *
+                  </label>
+                  <span className="text-xs text-gray-500 font-medium">
+                    Min: ₹{(Number(payoutLimits.minimumPayoutAmount) || 100).toLocaleString('en-IN')} | Max Per Txn: ₹{(Number(payoutLimits.maximumPayoutAmount) || 100000).toLocaleString('en-IN')}
+                  </span>
+                </div>
                 <input
                   type="number"
                   name="amount"
                   value={formData.amount}
                   onChange={handleInputChange}
-                  min="100"
-                  max="200000"
+                  min={Number(payoutLimits.minimumPayoutAmount) || 100}
+                  max={Number(payoutLimits.maximumPayoutAmount) || 100000}
                   step="0.01"
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter amount (min ₹100)"
+                  placeholder={`Enter amount (Min ₹${(Number(payoutLimits.minimumPayoutAmount) || 100).toLocaleString('en-IN')})`}
                 />
               </div>
 
