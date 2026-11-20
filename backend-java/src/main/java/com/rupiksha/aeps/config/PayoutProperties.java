@@ -21,6 +21,7 @@ public class PayoutProperties {
     private String pennyDropUrl = "/api/merchant/external/v1/bank-verification/penny-drop/";
     private String verificationStatusUrl = "/api/merchant/external/v1/bank-verification/";
     private String walletBalanceUrl = "/api/merchant/external/merchant-wallet-balance/";
+    private String webhookSecret;
     private boolean enabled = true;
     // BuckBox mandates AES encryption. Set BUSTTO_ENCRYPTION_ENABLED=false ONLY for debugging.
     private boolean encryptionEnabled = true;

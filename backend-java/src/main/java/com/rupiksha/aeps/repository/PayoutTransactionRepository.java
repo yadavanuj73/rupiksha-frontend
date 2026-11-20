@@ -20,6 +20,8 @@ public interface PayoutTransactionRepository extends JpaRepository<PayoutTransac
     
     Optional<PayoutTransaction> findByOrderId(String orderId);
     
+    Optional<PayoutTransaction> findByProviderTxnId(String providerTxnId);
+
     Optional<PayoutTransaction> findByIdempotencyKey(String idempotencyKey);
 
     boolean existsByIdempotencyKey(String idempotencyKey);
@@ -27,6 +29,10 @@ public interface PayoutTransactionRepository extends JpaRepository<PayoutTransac
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT t FROM PayoutTransaction t WHERE t.orderId = :orderId")
     Optional<PayoutTransaction> findWithLockByOrderId(@Param("orderId") String orderId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT t FROM PayoutTransaction t WHERE t.providerTxnId = :providerTxnId")
+    Optional<PayoutTransaction> findWithLockByProviderTxnId(@Param("providerTxnId") String providerTxnId);
 
     @Query("SELECT t FROM PayoutTransaction t WHERE t.status IN :statuses " +
            "AND t.createdAt >= :afterDate AND t.createdAt <= :beforeDate " +
