@@ -19,8 +19,8 @@ public class PayoutOtpSendRequest {
     private String payoutIntentId;
 
     @NotNull(message = "Amount is required")
-    @DecimalMin(value = "100.0", message = "Minimum payout amount is ₹100")
-    @DecimalMax(value = "500000.0", message = "Maximum payout amount is ₹5,00,000")
+    @DecimalMin(value = "1.00", message = "Amount must be at least ₹1.00")
+    @DecimalMax(value = "10000000.00", message = "Amount exceeds allowable limit")
     private BigDecimal amount;
 
     @NotBlank(message = "Beneficiary name is required")

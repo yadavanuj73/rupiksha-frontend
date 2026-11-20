@@ -124,6 +124,59 @@ class PayoutControllerTest {
     }
 
     @Test
+    @DisplayName("Controller: POST /api/v1/payout/otp/send allows small amount like ₹10 when dynamic limits allow it")
+    void testSendOtpEndpoint_SmallAmountAllowed() throws Exception {
+        PayoutOtpSendRequest req = PayoutOtpSendRequest.builder()
+                .amount(new BigDecimal("10.00"))
+                .accountNumber("123456789012")
+                .ifsc("SBIN0001234")
+                .beneficiaryName("Test Beneficiary")
+                .transferMode("IMPS")
+                .build();
+
+        PayoutOtpSendResponse res = PayoutOtpSendResponse.builder()
+                .success(true)
+                .message("OTP has been sent to your registered mobile number.")
+                .challengeId("POC_CHAL_10_TEST")
+                .payoutIntentId("POI_INT_10_TEST")
+                .maskedMobile("******3210")
+                .resendCooldownSeconds(60)
+                .expiresInSeconds(300)
+                .amount(new BigDecimal("10.00"))
+                .totalCharges(new BigDecimal("6.49"))
+                .totalDeduction(new BigDecimal("16.49"))
+                .build();
+
+        when(payoutOtpService.sendOtp(any(PayoutOtpSendRequest.class), anyString(), anyString(), any()))
+                .thenReturn(res);
+
+        mockMvc.perform(post("/api/v1/payout/otp/send")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.challengeId").value("POC_CHAL_10_TEST"))
+                .andExpect(jsonPath("$.totalDeduction").value(16.49));
+    }
+
+    @Test
+    @DisplayName("Security: POST /api/v1/payout/otp/send rejects zero or negative amount")
+    void testSendOtpEndpoint_ZeroAmountRejected() throws Exception {
+        PayoutOtpSendRequest req = PayoutOtpSendRequest.builder()
+                .amount(BigDecimal.ZERO)
+                .accountNumber("123456789012")
+                .ifsc("SBIN0001234")
+                .beneficiaryName("Test Beneficiary")
+                .transferMode("IMPS")
+                .build();
+
+        mockMvc.perform(post("/api/v1/payout/otp/send")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("Controller: POST /api/v1/payout/otp/verify returns single-use authorizationReference")
     void testVerifyOtpEndpoint_Success() throws Exception {
         PayoutOtpVerifyRequest req = PayoutOtpVerifyRequest.builder()

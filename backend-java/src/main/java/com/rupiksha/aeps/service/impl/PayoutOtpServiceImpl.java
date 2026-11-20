@@ -354,11 +354,11 @@ public class PayoutOtpServiceImpl implements PayoutOtpService {
         if (payoutLimitConfigurationService != null) {
             payoutLimitConfigurationService.validatePayoutAmount(amount);
         } else {
-            if (amount == null || amount.compareTo(new BigDecimal("100.00")) < 0) {
-                throw new IllegalArgumentException("Payout amount must be at least ₹100.00");
+            if (amount == null || amount.compareTo(new BigDecimal("1.00")) < 0) {
+                throw new IllegalArgumentException("Payout amount must be at least ₹1.00");
             }
-            if (amount.compareTo(new BigDecimal("500000.00")) > 0) {
-                throw new IllegalArgumentException("Payout amount cannot exceed ₹5,00,000.00");
+            if (amount.compareTo(new BigDecimal("10000000.00")) > 0) {
+                throw new IllegalArgumentException("Payout amount cannot exceed ₹1,00,00,000.00");
             }
         }
 

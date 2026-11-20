@@ -331,11 +331,11 @@ public class PayoutService {
         if (payoutLimitConfigurationService != null) {
             payoutLimitConfigurationService.validatePayoutAmount(amount);
         } else {
-            if (amount == null || amount.compareTo(BigDecimal.valueOf(100)) < 0) {
-                throw new IllegalArgumentException("Payout amount must be at least ₹100.00");
+            if (amount == null || amount.compareTo(BigDecimal.valueOf(1)) < 0) {
+                throw new IllegalArgumentException("Payout amount must be at least ₹1.00");
             }
-            if (amount.compareTo(BigDecimal.valueOf(500000)) > 0) {
-                throw new IllegalArgumentException("Payout amount cannot exceed ₹5,00,000.00");
+            if (amount.compareTo(BigDecimal.valueOf(10000000)) > 0) {
+                throw new IllegalArgumentException("Payout amount cannot exceed ₹1,00,00,000.00");
             }
         }
 

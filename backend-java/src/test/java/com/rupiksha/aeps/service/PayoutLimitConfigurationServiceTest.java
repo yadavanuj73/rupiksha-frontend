@@ -267,4 +267,37 @@ class PayoutLimitConfigurationServiceTest {
 
         // Proves NO cumulative, daily, weekly, or monthly total tracking occurs!
     }
+
+    @Test
+    @DisplayName("Transaction: Dynamic custom limits (min ₹10, max ₹1,001) are strictly enforced")
+    void testValidatePayoutAmount_CustomLimitsEnforced() {
+        PayoutLimitSettings customSettings = PayoutLimitSettings.builder()
+                .id(1L)
+                .minimumPayoutAmount(new BigDecimal("10.00"))
+                .maximumPayoutAmount(new BigDecimal("1001.00"))
+                .updatedBy("ADMIN")
+                .version(2L)
+                .build();
+
+        when(settingsRepository.findById(1L)).thenReturn(Optional.of(customSettings));
+
+        // ₹5 is rejected (< 10)
+        IllegalArgumentException belowMinEx = assertThrows(IllegalArgumentException.class, () ->
+                service.validatePayoutAmount(new BigDecimal("5.00")));
+        assertTrue(belowMinEx.getMessage().contains("Minimum payout amount is ₹10"));
+
+        // ₹10 is allowed (exact min)
+        assertDoesNotThrow(() -> service.validatePayoutAmount(new BigDecimal("10.00")));
+
+        // ₹500 is allowed (in range)
+        assertDoesNotThrow(() -> service.validatePayoutAmount(new BigDecimal("500.00")));
+
+        // ₹1001 is allowed (exact max)
+        assertDoesNotThrow(() -> service.validatePayoutAmount(new BigDecimal("1001.00")));
+
+        // ₹1002 is rejected (> 1001)
+        IllegalArgumentException aboveMaxEx = assertThrows(IllegalArgumentException.class, () ->
+                service.validatePayoutAmount(new BigDecimal("1002.00")));
+        assertTrue(aboveMaxEx.getMessage().contains("Maximum payout amount per transaction is ₹1,001"));
+    }
 }

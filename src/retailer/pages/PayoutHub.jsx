@@ -319,8 +319,8 @@ const PayoutHub = () => {
     const isAccountValid = /^\d{9,18}$/.test(form.accountNumber.trim());
     const isAccountMatching = form.accountNumber.trim() && form.accountNumber.trim() === form.confirmAccountNumber.trim();
     const isIfscValid = /^[A-Z]{4}0[A-Z0-9]{6}$/.test(form.ifsc.trim().toUpperCase());
-    const minLimit = Number(payoutLimits.minimumPayoutAmount) || 100;
-    const maxLimit = Number(payoutLimits.maximumPayoutAmount) || 100000;
+    const minLimit = payoutLimits.minimumPayoutAmount != null ? Number(payoutLimits.minimumPayoutAmount) : 100;
+    const maxLimit = payoutLimits.maximumPayoutAmount != null ? Number(payoutLimits.maximumPayoutAmount) : 100000;
     const numAmount = Number(form.amount) || 0;
     const isAmountBelowMin = form.amount !== '' && numAmount < minLimit;
     const isAmountAboveMax = form.amount !== '' && numAmount > maxLimit;

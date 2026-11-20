@@ -80,8 +80,8 @@ const Payout = () => {
   };
 
   const validateForm = () => {
-    const minLimit = Number(payoutLimits.minimumPayoutAmount) || 100;
-    const maxLimit = Number(payoutLimits.maximumPayoutAmount) || 100000;
+    const minLimit = payoutLimits.minimumPayoutAmount != null ? Number(payoutLimits.minimumPayoutAmount) : 100;
+    const maxLimit = payoutLimits.maximumPayoutAmount != null ? Number(payoutLimits.maximumPayoutAmount) : 100000;
     if (!formData.amount || parseFloat(formData.amount) < minLimit) {
       setError(`Minimum payout amount is ₹${minLimit.toLocaleString('en-IN')}.`);
       return false;
