@@ -2,10 +2,8 @@ package com.rupiksha.backend.api;
 
 import com.rupiksha.backend.api.dto.WalletDtos;
 import com.rupiksha.backend.security.JwtPrincipal;
-import com.rupiksha.backend.service.WalletRealtimeService;
 import com.rupiksha.backend.service.WalletService;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -22,7 +20,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.HashMap;
 import java.util.List;
@@ -35,7 +32,6 @@ import java.util.UUID;
 public class WalletController {
 
     private final WalletService walletService;
-    private final WalletRealtimeService walletRealtimeService;
 
     private JwtPrincipal getPrincipal(Authentication auth) {
         if (auth == null || !(auth.getPrincipal() instanceof JwtPrincipal)) {
@@ -96,21 +92,6 @@ public class WalletController {
             throw new AccessDeniedException("Not allowed to view this wallet balance");
         }
         return walletService.getBalance(userId);
-    }
-
-    @GetMapping("/wallet/my-balance")
-    public WalletDtos.WalletBalanceResponse myBalance(Authentication auth) {
-        JwtPrincipal principal = getPrincipal(auth);
-        return walletService.getBalance(principal.userId());
-    }
-
-    @GetMapping(value = "/wallet/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter streamWalletEvents(Authentication auth, HttpServletResponse response) {
-        JwtPrincipal principal = getPrincipal(auth);
-        UUID userId = UUID.fromString(principal.userId());
-        response.setHeader("Cache-Control", "no-cache, no-transform");
-        response.setHeader("X-Accel-Buffering", "no");
-        return walletRealtimeService.createConnection(userId);
     }
 
     @PostMapping("/wallet/credit")

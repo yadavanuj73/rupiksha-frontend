@@ -9,7 +9,6 @@ const WalletContext = createContext({
   availableBalance: "0.00",
   status: "ACTIVE",
   isWalletLoading: true,
-  isRefreshing: false,
   walletError: null,
   refreshWallet: async () => { }
 });
@@ -77,15 +76,11 @@ export function WalletProvider({ children }) {
   const [availableBalance, setAvailableBalance] = useState("0.00");
   const [status, setStatus] = useState("ACTIVE");
   const [isWalletLoading, setIsWalletLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [walletError, setWalletError] = useState(null);
 
   // Ref so event handlers always see the current user without stale closures
   const userRef = useRef(user);
   useEffect(() => { userRef.current = user; }, [user]);
-
-  // Request counter to prevent stale out-of-order network responses from overwriting newer balances
-  const fetchSeqRef = useRef(0);
 
   const applyBalance = useCallback((bal, locked, available, s) => {
     setBalance(parseFloat(bal || 0).toFixed(2));
@@ -94,104 +89,77 @@ export function WalletProvider({ children }) {
     setStatus(s || "ACTIVE");
   }, []);
 
-  const fetchWallet = useCallback(async (userId, isManualRefresh = false) => {
+  const fetchWallet = useCallback(async (userId) => {
     if (!userId) return;
-    const currentSeq = ++fetchSeqRef.current;
-    if (!isManualRefresh) {
-      setIsWalletLoading(true);
-    }
+    setIsWalletLoading(true);
     setWalletError(null);
 
-    // 1. Authoritative Backend Wallet Balance endpoint
-    try {
-      let data = null;
-      try {
-        data = await walletService.getMyBalance();
-      } catch (_) {
-        data = await walletService.getBalance(userId);
-      }
-
-      if (currentSeq !== fetchSeqRef.current) {
-        // Discard stale response
-        return;
-      }
-
-      if (data && (data.balance !== undefined || data.availableBalance !== undefined)) {
-        const backendBal = parseFloat(String(data.balance ?? data.availableBalance ?? 0));
-        if (!isNaN(backendBal)) {
-          setWallet(data);
-          const locked = data.lockedAmount ?? data.lockedBalance ?? 0;
-          const avail = data.availableBalance ?? (backendBal - parseFloat(locked || 0));
-          applyBalance(backendBal, locked, avail, data.status || "ACTIVE");
-
-          try {
-            localStorage.setItem(`rupiksha_wallet_${userId}`, backendBal.toFixed(2));
-            const sessionRaw = localStorage.getItem('rupiksha_user');
-            if (sessionRaw) {
-              const sessionUser = JSON.parse(sessionRaw);
-              sessionUser.balance = backendBal.toFixed(2);
-              sessionUser.walletBalance = backendBal.toFixed(2);
-              localStorage.setItem('rupiksha_user', JSON.stringify(sessionUser));
-            }
-          } catch (_) { }
-
-          // Dispatch synchronization events so all listeners update immediately
-          window.dispatchEvent(new CustomEvent('walletUpdated', { detail: { balance: backendBal.toFixed(2) } }));
-          window.dispatchEvent(new CustomEvent('distributorDataUpdated'));
-
-          setIsWalletLoading(false);
-          return { success: true, balance: backendBal.toFixed(2) };
-        }
-      }
-    } catch (err) {
-      console.warn('[WalletContext] Direct wallet balance fetch failed, trying profile fallback:', err?.message || err);
-    }
-
-    if (currentSeq !== fetchSeqRef.current) return;
-
-    // 2. Fallback to userService.getProfile()
+    // 1. Try to fetch the live user profile from the backend to get their database balance
     try {
       const profile = await userService.getProfile();
-      if (currentSeq !== fetchSeqRef.current) return;
-
       if (profile && (profile.balance !== undefined || profile.walletBalance !== undefined || profile.availableBalance !== undefined)) {
         const liveBal = parseFloat(String(profile.balance ?? profile.walletBalance ?? profile.availableBalance ?? 0).replace(/,/g, '')) || 0;
+
         applyBalance(
           liveBal,
           profile.lockedBalance ?? profile.lockedAmount ?? 0,
           profile.availableBalance ?? liveBal,
           profile.status ?? "ACTIVE"
         );
+
+        // Synchronize local session storage cache so Header / other parts see the live balance
         try {
           localStorage.setItem(`rupiksha_wallet_${userId}`, liveBal.toFixed(2));
+          if (profile.username) localStorage.setItem(`rupiksha_wallet_${profile.username}`, liveBal.toFixed(2));
+          if (profile.mobile) localStorage.setItem(`rupiksha_wallet_${profile.mobile}`, liveBal.toFixed(2));
+
+          const sessionRaw = localStorage.getItem('rupiksha_user');
+          if (sessionRaw) {
+            const sessionUser = JSON.parse(sessionRaw);
+            if (sessionUser.id == userId || sessionUser.username === profile.username) {
+              const mergedSession = {
+                ...sessionUser,
+                ...profile,
+                balance: liveBal.toFixed(2),
+                walletBalance: liveBal.toFixed(2)
+              };
+              localStorage.setItem('rupiksha_user', JSON.stringify(mergedSession));
+            }
+          }
         } catch (_) { }
+
         setIsWalletLoading(false);
-        return { success: true, balance: liveBal.toFixed(2) };
+        return;
       }
-    } catch (_) { }
+    } catch (err) {
+      console.warn('[WalletContext] Live profile fetch failed, trying backend balance endpoint:', err?.message || err);
+    }
 
-    if (currentSeq !== fetchSeqRef.current) return;
+    // 2. Try backend wallet balance endpoint
+    try {
+      const data = await walletService.getBalance(userId);
+      if (data && (data.balance !== undefined || data.availableBalance !== undefined)) {
+        const backendBal = parseFloat(String(data.balance ?? data.availableBalance ?? 0));
+        if (!isNaN(backendBal)) {
+          setWallet(data);
+          applyBalance(backendBal, data.lockedBalance, data.availableBalance, data.status);
+          try { localStorage.setItem(`rupiksha_wallet_${userId}`, backendBal.toFixed(2)); } catch (_) { }
+          setIsWalletLoading(false);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('[WalletContext] Backend wallet fetch failed, using local fallback:', err?.message || err);
+    }
 
-    // 3. Local fallback
+    // 3. Local fallback — reads all possible identifier keys
     const localBal = readLocalBalance(userRef.current);
     applyBalance(localBal ?? 0);
     setIsWalletLoading(false);
-    return { success: true, balance: parseFloat(localBal ?? 0).toFixed(2) };
   }, [applyBalance]);
 
   const refreshWallet = useCallback(async () => {
-    const uid = userRef.current?.id || userRef.current?.userId;
-    if (!uid) return { success: false, error: "No authenticated user" };
-    setIsRefreshing(true);
-    try {
-      const result = await fetchWallet(uid, true);
-      return result || { success: true };
-    } catch (err) {
-      setWalletError(err?.message || "Failed to refresh wallet balance");
-      throw err;
-    } finally {
-      setIsRefreshing(false);
-    }
+    if (userRef.current?.id) await fetchWallet(userRef.current.id);
   }, [fetchWallet]);
 
   // Initial wallet load after auth
@@ -206,63 +174,6 @@ export function WalletProvider({ children }) {
       setWalletError(null);
     }
   }, [user?.id, authLoading, fetchWallet, applyBalance]);
-
-  // ── REAL-TIME SSE SYNC ───────────────────────────────────────────────
-  useEffect(() => {
-    if (authLoading || !user?.id) return;
-    const uid = String(user.id);
-    let isMounted = true;
-    let retryAttempt = 0;
-    let reconnectTimeout = null;
-    let unsubscribe = null;
-
-    const connectSSE = () => {
-      if (!isMounted) return;
-      try {
-        unsubscribe = walletService.subscribeWalletEvents({
-          onConnect: () => {
-            retryAttempt = 0;
-          },
-          onEvent: (eventName, data) => {
-            if (eventName === 'WALLET_BALANCE_CHANGED') {
-              if (data?.userId && String(data.userId).toLowerCase() !== uid.toLowerCase()) {
-                return;
-              }
-              fetchWallet(uid);
-            }
-          },
-          onError: () => {
-            if (!isMounted) return;
-            const delay = Math.min(30000, 1000 * Math.pow(2, retryAttempt)) + Math.random() * 500;
-            retryAttempt++;
-            clearTimeout(reconnectTimeout);
-            reconnectTimeout = setTimeout(connectSSE, delay);
-          }
-        });
-      } catch (_) {
-        const delay = Math.min(30000, 1000 * Math.pow(2, retryAttempt)) + Math.random() * 500;
-        retryAttempt++;
-        clearTimeout(reconnectTimeout);
-        reconnectTimeout = setTimeout(connectSSE, delay);
-      }
-    };
-
-    connectSSE();
-
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible' && isMounted) {
-        fetchWallet(uid);
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-
-    return () => {
-      isMounted = false;
-      clearTimeout(reconnectTimeout);
-      if (typeof unsubscribe === 'function') unsubscribe();
-      document.removeEventListener('visibilitychange', handleVisibility);
-    };
-  }, [user?.id, authLoading, fetchWallet]);
 
   // ── CROSS-TAB SYNC via native browser storage event ──────────────────
   // The browser fires 'storage' in ALL OTHER TABS when localStorage changes.
@@ -334,7 +245,7 @@ export function WalletProvider({ children }) {
   return (
     <WalletContext.Provider value={{
       wallet, balance, lockedBalance, availableBalance,
-      status, isFrozen, isWalletLoading, isRefreshing, walletError, refreshWallet,
+      status, isFrozen, isWalletLoading, walletError, refreshWallet,
       triggerFrozenModal
     }}>
       {children}
