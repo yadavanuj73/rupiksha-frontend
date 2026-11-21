@@ -40,6 +40,12 @@ public class WalletServiceImplTest {
     private PlatformTransactionManager transactionManager;
     @Mock
     private com.rupiksha.backend.service.AdminWalletActionPinService adminWalletActionPinService;
+    @Mock
+    private FundRequestAuditLogRepository fundRequestAuditLogRepository;
+    @Mock
+    private AdminBankAccountRepository adminBankAccountRepository;
+    @Mock
+    private com.rupiksha.backend.service.ProofStorageService proofStorageService;
 
     @InjectMocks
     private WalletServiceImpl walletService;

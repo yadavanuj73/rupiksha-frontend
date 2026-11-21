@@ -2,11 +2,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Clock, CheckCircle2, XCircle, AlertTriangle, Search, RefreshCcw,
-    IndianRupee, Copy, Check, FileText, User, ArrowDownCircle, Plus, X, Loader2
+    IndianRupee, Copy, Check, FileText, User, ArrowDownCircle, Plus, X, Loader2,
+    Image as ImageIcon, Landmark
 } from 'lucide-react';
 import { fetchAPI, fireCelebration, fmtINR, fmtDateTime, UserSelector, WalletTabSkeleton } from './walletShared';
 import { dataService } from '../../../services/dataService';
+import { walletFundRequestService } from '../../../services/apiService';
 import AdminWalletPinModal from './AdminWalletPinModal';
+import ProofPreviewModal from '../../../components/shared/ProofPreviewModal';
 
 const PendingFundRequestsTab = ({ users = [], onToast, onRefresh }) => {
     const [requests, setRequests] = useState([]);
@@ -14,6 +17,8 @@ const PendingFundRequestsTab = ({ users = [], onToast, onRefresh }) => {
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('ALL');
     const [copiedUtr, setCopiedUtr] = useState(null);
+    const [copiedId, setCopiedId] = useState(null);
+    const [previewProofItem, setPreviewProofItem] = useState(null);
 
     // Modal states
     const [approveModalItem, setApproveModalItem] = useState(null);
@@ -332,8 +337,19 @@ const PendingFundRequestsTab = ({ users = [], onToast, onRefresh }) => {
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="bg-slate-50 border-b border-slate-100 text-left">
-                                {['User / Requester', 'Requested Amount', 'UTR / Ref No.', 'Payment Mode & Bank', 'Date & Time', 'User Note', 'Admin Actions'].map(h => (
-                                    <th key={h} className="px-5 py-3.5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">
+                                {[
+                                    'Request ID & Date',
+                                    'Requester User',
+                                    'Requested Amount',
+                                    'Receiving Bank Account',
+                                    'UTR / Ref No.',
+                                    'Payment Mode & Bank',
+                                    'Payment Time',
+                                    'User Note',
+                                    'Proof Slip',
+                                    'Admin Actions'
+                                ].map(h => (
+                                    <th key={h} className="px-4 py-3.5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">
                                         {h}
                                     </th>
                                 ))}
@@ -342,36 +358,65 @@ const PendingFundRequestsTab = ({ users = [], onToast, onRefresh }) => {
                         <tbody className="divide-y divide-slate-50">
                             {filtered.map(req => (
                                 <tr key={req.id} className="hover:bg-amber-50/30 transition-colors">
+                                    {/* Request ID & Submission Date */}
+                                    <td className="px-4 py-4 whitespace-nowrap">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="font-mono text-xs font-bold text-slate-900">
+                                                #{req.id?.slice(0, 8)}
+                                            </span>
+                                            <button
+                                                onClick={() => {
+                                                    navigator.clipboard?.writeText(req.id);
+                                                    setCopiedId(req.id);
+                                                    setTimeout(() => setCopiedId(null), 2000);
+                                                }}
+                                                title="Copy full Request ID"
+                                                className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700 transition-colors"
+                                            >
+                                                {copiedId === req.id ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                                            </button>
+                                        </div>
+                                        <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                                            {fmtDateTime(req.createdAt || req.created_at)}
+                                        </p>
+                                    </td>
+
                                     {/* User */}
-                                    <td className="px-5 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-black text-xs shrink-0">
-                                                {(req.name || 'U').charAt(0).toUpperCase()}
+                                    <td className="px-4 py-4">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-black text-xs shrink-0">
+                                                {(req.fullName || req.name || req.username || 'U').charAt(0).toUpperCase()}
                                             </div>
-                                            <div className="truncate">
-                                                <p className="text-xs font-black text-slate-900 truncate">{req.name}</p>
+                                            <div className="truncate max-w-[140px]">
+                                                <p className="text-xs font-black text-slate-900 truncate">{req.fullName || req.name || req.username}</p>
                                                 <p className="text-[10px] text-slate-400 truncate">
                                                     {req.mobile || req.username}
                                                 </p>
-                                                <span className={`inline-block mt-0.5 px-2 py-0.5 text-[8px] font-black rounded uppercase border ${getRoleBadge(req.role)}`}>
-                                                    {req.role}
+                                                <span className={`inline-block mt-0.5 px-2 py-0.5 text-[8px] font-black rounded uppercase border ${getRoleBadge(req.userRole || req.role)}`}>
+                                                    {req.userRole || req.role}
                                                 </span>
                                             </div>
                                         </div>
                                     </td>
 
                                     {/* Amount */}
-                                    <td className="px-5 py-4 whitespace-nowrap">
+                                    <td className="px-4 py-4 whitespace-nowrap">
                                         <p className="text-base font-black text-emerald-600">
                                             {fmtINR(req.amount)}
                                         </p>
                                         <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Float Requested</p>
                                     </td>
 
+                                    {/* Selected Receiving Bank */}
+                                    <td className="px-4 py-4">
+                                        <p className="text-xs font-bold text-slate-800 truncate max-w-[140px]">{req.receivingBankName || req.bankName || 'Company Bank'}</p>
+                                        <p className="text-[10px] font-mono text-slate-400 truncate max-w-[140px]">{req.receivingAccountMasked || 'Receiving Account'}</p>
+                                    </td>
+
                                     {/* UTR */}
-                                    <td className="px-5 py-4 whitespace-nowrap">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+                                    <td className="px-4 py-4 whitespace-nowrap">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
                                                 {req.utrNumber || 'N/A'}
                                             </span>
                                             {req.utrNumber && (
@@ -380,32 +425,46 @@ const PendingFundRequestsTab = ({ users = [], onToast, onRefresh }) => {
                                                     title="Copy UTR"
                                                     className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700 transition-colors"
                                                 >
-                                                    {copiedUtr === req.utrNumber ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                                                    {copiedUtr === req.utrNumber ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
                                                 </button>
                                             )}
                                         </div>
                                     </td>
 
                                     {/* Payment Mode & Bank */}
-                                    <td className="px-5 py-4 whitespace-nowrap">
-                                        <p className="text-xs font-bold text-slate-700">{req.method || 'NEFT/IMPS'}</p>
-                                        <p className="text-[10px] text-slate-400">{req.bankName || 'Company Account'}</p>
+                                    <td className="px-4 py-4 whitespace-nowrap">
+                                        <p className="text-xs font-bold text-slate-700">{req.method || 'IMPS'}</p>
+                                        <p className="text-[10px] text-slate-400 truncate max-w-[120px]">{req.paymentBank || 'Remitting Bank'}</p>
                                     </td>
 
-                                    {/* Date */}
-                                    <td className="px-5 py-4 whitespace-nowrap text-xs text-slate-500">
-                                        {fmtDateTime(req.created_at)}
+                                    {/* Payment Date & Time */}
+                                    <td className="px-4 py-4 whitespace-nowrap text-xs text-slate-500">
+                                        {fmtDateTime(req.paymentDateTime || req.created_at)}
                                     </td>
 
                                     {/* User Note */}
-                                    <td className="px-5 py-4 max-w-[180px]">
-                                        <p className="text-xs text-slate-600 truncate" title={req.remark}>
-                                            {req.remark || '—'}
+                                    <td className="px-4 py-4 max-w-[150px]">
+                                        <p className="text-xs text-slate-600 truncate" title={req.userNote || req.remark}>
+                                            {req.userNote || req.remark || '—'}
                                         </p>
                                     </td>
 
+                                    {/* Transaction Proof Preview */}
+                                    <td className="px-4 py-4 whitespace-nowrap">
+                                        {req.hasProof || req.proofStoragePath ? (
+                                            <button
+                                                onClick={() => setPreviewProofItem(req)}
+                                                className="px-2.5 py-1 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-600 hover:text-white border border-blue-200 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                                            >
+                                                <ImageIcon size={13} /> View Slip
+                                            </button>
+                                        ) : (
+                                            <span className="text-[10px] text-slate-400 font-medium">No Slip</span>
+                                        )}
+                                    </td>
+
                                     {/* Actions */}
-                                    <td className="px-5 py-4 whitespace-nowrap">
+                                    <td className="px-4 py-4 whitespace-nowrap">
                                         <div className="flex items-center gap-2">
                                             <button
                                                 onClick={() => {
@@ -431,7 +490,7 @@ const PendingFundRequestsTab = ({ users = [], onToast, onRefresh }) => {
                             ))}
                             {filtered.length === 0 && (
                                 <tr>
-                                    <td colSpan={7} className="py-16 text-center text-xs text-slate-400 font-bold">
+                                    <td colSpan={10} className="py-16 text-center text-xs text-slate-400 font-bold">
                                         <div className="max-w-xs mx-auto space-y-2">
                                             <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center mx-auto text-slate-300">
                                                 <CheckCircle2 size={24} />
@@ -730,6 +789,17 @@ const PendingFundRequestsTab = ({ users = [], onToast, onRefresh }) => {
                     onConfirm={pinModalConfig.onConfirm}
                     onClose={() => setPinModalConfig(null)}
                     submitting={approving || declining}
+                />
+            )}
+
+            {/* Transaction Proof Preview Modal */}
+            {previewProofItem && (
+                <ProofPreviewModal
+                    isOpen={!!previewProofItem}
+                    onClose={() => setPreviewProofItem(null)}
+                    proofUrl={walletFundRequestService.getProofUrl(previewProofItem.id)}
+                    title={`Receipt Proof — Req #${String(previewProofItem.id).slice(0, 8)}`}
+                    originalFilename={previewProofItem.proofOriginalFilename || 'transaction_proof.jpg'}
                 />
             )}
         </div>

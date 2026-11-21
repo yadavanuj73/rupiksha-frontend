@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 
 public class WalletDtos {
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -101,6 +102,29 @@ public class WalletDtos {
     ) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    public record FundRequestSubmitRequest(
+            @NotNull(message = "Bank account ID is required")
+            UUID bankAccountId,
+
+            @NotNull(message = "Amount is required")
+            @DecimalMin(value = "1.00", message = "Minimum amount is ₹1.00")
+            BigDecimal amount,
+
+            @NotBlank(message = "UTR / Reference number is required")
+            String utrNumber,
+
+            @NotBlank(message = "Payment mode is required")
+            String method,
+
+            @NotBlank(message = "Payment bank is required")
+            String paymentBank,
+
+            Instant paymentDateTime,
+
+            String userNote
+    ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record FundRequestProcessRequest(
             @NotBlank String requestId,
             String remark,
@@ -117,16 +141,48 @@ public class WalletDtos {
             String userId,
             String username,
             String fullName,
+            String mobile,
+            String userRole,
             BigDecimal amount,
             String status,
             String utrNumber,
             String method,
+            String paymentBank,
+            Instant paymentDateTime,
+            String userNote,
             String remark,
             String adminRemark,
+            String rejectionReason,
+            String bankAccountId,
+            String receivingAccountHolder,
+            String receivingBankName,
+            String receivingAccountMasked,
+            String receivingIfsc,
+            String receivingBranch,
+            boolean hasProof,
+            String proofOriginalFilename,
             String approvedByUsername,
             Instant approvedAt,
             Instant createdAt
-    ) {}
+    ) {
+        public FundRequestResponse(
+                String id,
+                String userId,
+                String username,
+                String fullName,
+                BigDecimal amount,
+                String status,
+                String utrNumber,
+                String method,
+                String remark,
+                String adminRemark,
+                String approvedByUsername,
+                Instant approvedAt,
+                Instant createdAt
+        ) {
+            this(id, userId, username, fullName, null, null, amount, status, utrNumber, method, null, null, null, remark, adminRemark, null, null, null, null, null, null, null, false, null, approvedByUsername, approvedAt, createdAt);
+        }
+    }
 
     public record TaxSummaryResponse(
             BigDecimal total_tds,

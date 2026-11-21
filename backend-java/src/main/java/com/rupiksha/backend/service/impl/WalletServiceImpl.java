@@ -37,6 +37,9 @@ public class WalletServiceImpl implements WalletService {
     private final UserRepository userRepository;
     private final FundRequestRepository fundRequestRepository;
     private final AuditLogRepository auditLogRepository;
+    private final AdminBankAccountRepository adminBankAccountRepository;
+    private final FundRequestAuditLogRepository fundRequestAuditLogRepository;
+    private final com.rupiksha.backend.service.ProofStorageService proofStorageService;
     private final AppProperties appProperties;
     private final PlatformTransactionManager transactionManager;
     private final com.rupiksha.backend.service.AdminWalletActionPinService adminWalletActionPinService;
@@ -1217,21 +1220,185 @@ public class WalletServiceImpl implements WalletService {
         entry.setStatus(WalletTransactionStatus.PENDING);
         walletEntryRepository.save(entry);
 
+        return toFundRequestResponse(fr);
+    }
+
+    private WalletDtos.FundRequestResponse toFundRequestResponse(FundRequest fr) {
+        if (fr == null) return null;
+        User reqUser = fr.getUser();
+        String primaryRole = fr.getUserRole();
+        if (primaryRole == null && reqUser != null && reqUser.getRoles() != null) {
+            primaryRole = reqUser.getRoles().stream()
+                    .map(r -> r.getName().name())
+                    .findFirst()
+                    .orElse("RETAILER");
+        }
         return new WalletDtos.FundRequestResponse(
-                fr.getId().toString(),
-                target.getId().toString(),
-                target.getUsername(),
-                target.getFullName(),
+                fr.getId() != null ? fr.getId().toString() : null,
+                reqUser != null && reqUser.getId() != null ? reqUser.getId().toString() : null,
+                reqUser != null ? reqUser.getUsername() : null,
+                reqUser != null ? reqUser.getFullName() : null,
+                reqUser != null ? reqUser.getMobile() : null,
+                primaryRole,
                 fr.getAmount(),
                 fr.getStatus(),
                 fr.getUtrNumber(),
                 fr.getMethod(),
+                fr.getPaymentBank(),
+                fr.getPaymentDateTime(),
+                fr.getUserNote(),
                 fr.getRemark(),
-                null,
-                null,
-                null,
+                fr.getAdminRemark(),
+                fr.getRejectionReason(),
+                fr.getBankAccount() != null && fr.getBankAccount().getId() != null ? fr.getBankAccount().getId().toString() : null,
+                fr.getReceivingAccountHolder(),
+                fr.getReceivingBankName(),
+                fr.getReceivingAccountMasked(),
+                fr.getReceivingIfsc(),
+                fr.getReceivingBranch(),
+                fr.getProofStoragePath() != null && !fr.getProofStoragePath().isBlank(),
+                fr.getProofOriginalFilename(),
+                fr.getApprovedBy() != null ? fr.getApprovedBy().getUsername() : null,
+                fr.getApprovedAt(),
                 fr.getCreatedAt()
         );
+    }
+
+    @Override
+    @Transactional
+    public WalletDtos.FundRequestResponse createFundRequestWithProof(
+            WalletDtos.FundRequestSubmitRequest request,
+            org.springframework.web.multipart.MultipartFile proofFile,
+            UUID currentUserId,
+            String ipAddress) {
+
+        User currentUser = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new IllegalArgumentException("Authenticated user not found"));
+
+        if (request.amount() == null || request.amount().compareTo(BigDecimal.ONE) < 0) {
+            throw new IllegalArgumentException("Requested amount must be at least ₹1.00");
+        }
+
+        String primaryRole = currentUser.getRoles().stream()
+                .map(r -> r.getName().name())
+                .findFirst()
+                .orElse("RETAILER");
+
+        AdminBankAccount bankAccount = adminBankAccountRepository.findById(request.bankAccountId())
+                .orElseThrow(() -> new IllegalArgumentException("Selected bank account does not exist"));
+
+        if (!Boolean.TRUE.equals(bankAccount.getIsActive())) {
+            throw new IllegalArgumentException("The selected bank account is inactive. Please choose an active receiving bank account.");
+        }
+
+        String utr = request.utrNumber().trim();
+        if (fundRequestRepository.existsByUtrNumberIgnoreCaseAndStatusIn(utr, List.of("PENDING", "APPROVED"))) {
+            throw new IllegalArgumentException("A fund request with UTR '" + utr + "' has already been submitted and is pending or approved.");
+        }
+
+        ProofStorageService.StoredProof storedProof;
+        try {
+            storedProof = proofStorageService.storeProof(proofFile);
+        } catch (Exception e) {
+            log.error("Failed to store proof file for fund request by user {}", currentUser.getUsername(), e);
+            throw new IllegalArgumentException("Transaction proof upload failed: " + e.getMessage(), e);
+        }
+
+        Instant paymentTime = request.paymentDateTime() != null ? request.paymentDateTime() : Instant.now();
+
+        FundRequest fr = FundRequest.builder()
+                .user(currentUser)
+                .bankAccount(bankAccount)
+                .receivingAccountHolder(bankAccount.getAccountHolderName())
+                .receivingBankName(bankAccount.getBankName())
+                .receivingAccountMasked(bankAccount.getAccountNumberMasked())
+                .receivingIfsc(bankAccount.getIfscCode())
+                .receivingBranch(bankAccount.getBranch())
+                .userRole(primaryRole)
+                .amount(request.amount())
+                .status("PENDING")
+                .utrNumber(utr)
+                .method(request.method().trim())
+                .paymentBank(request.paymentBank() != null ? request.paymentBank().trim() : null)
+                .paymentDateTime(paymentTime)
+                .userNote(request.userNote() != null ? request.userNote().trim() : null)
+                .remark(request.userNote())
+                .proofStoragePath(storedProof.storagePath())
+                .proofOriginalFilename(storedProof.originalFilename())
+                .proofContentType(storedProof.contentType())
+                .proofFileSize(storedProof.fileSize())
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+
+        FundRequest saved = fundRequestRepository.save(fr);
+
+        FundRequestAuditLog audit = FundRequestAuditLog.builder()
+                .fundRequest(saved)
+                .previousStatus("NONE")
+                .newStatus("PENDING")
+                .actionType("SUBMITTED")
+                .actionReason("Fund request submitted by user " + currentUser.getUsername())
+                .ipAddress(ipAddress)
+                .createdAt(Instant.now())
+                .build();
+        fundRequestAuditLogRepository.save(audit);
+
+        // Add non-financial record to ledger trace for auditability
+        String refNum = generateReferenceNumber();
+        Wallet w = getOrCreateWallet(currentUser.getId());
+
+        WalletEntry entry = new WalletEntry();
+        entry.setWallet(w);
+        entry.setAmount(request.amount());
+        entry.setEntryType("FUND_REQUEST");
+        entry.setReferenceId(refNum);
+        entry.setNarration("Fund request submitted for UTR: " + utr);
+        entry.setOpeningBalance(w.getBalance());
+        entry.setClosingBalance(w.getBalance());
+        entry.setOperator(currentUser);
+        entry.setIpAddress(ipAddress);
+        entry.setTransactionContext(WalletTransactionContext.FUND_REQUEST_CREATED);
+        entry.setStatus(WalletTransactionStatus.PENDING);
+        walletEntryRepository.save(entry);
+
+        log.info("User {} ({}) submitted fund request {} for ₹{} (UTR: {})",
+                currentUser.getUsername(), primaryRole, saved.getId(), saved.getAmount(), utr);
+
+        return toFundRequestResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WalletDtos.FundRequestResponse> getMyFundRequests(UUID currentUserId) {
+        return fundRequestRepository.findByUserIdOrderByCreatedAtDesc(currentUserId).stream()
+                .map(this::toFundRequestResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProofData getFundRequestProof(UUID requestId, UUID currentUserId, boolean isAdmin) {
+        FundRequest fr = fundRequestRepository.findById(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Fund request not found"));
+
+        if (!isAdmin && !fr.getUser().getId().equals(currentUserId)) {
+            throw new AccessDeniedException("Access denied: You can only view proof for your own fund requests");
+        }
+
+        if (fr.getProofStoragePath() == null || fr.getProofStoragePath().isBlank()) {
+            throw new IllegalArgumentException("No proof document associated with this fund request");
+        }
+
+        try {
+            byte[] bytes = proofStorageService.loadProof(fr.getProofStoragePath());
+            String ct = fr.getProofContentType() != null ? fr.getProofContentType() : "image/jpeg";
+            String fn = fr.getProofOriginalFilename() != null ? fr.getProofOriginalFilename() : "proof.jpg";
+            return new ProofData(bytes, ct, fn);
+        } catch (Exception e) {
+            log.error("Failed to load proof image for request {}", requestId, e);
+            throw new IllegalStateException("Failed to load proof file", e);
+        }
     }
 
     @Override
@@ -1277,21 +1444,7 @@ public class WalletServiceImpl implements WalletService {
         }
 
         return reqs.stream()
-                .map(fr -> new WalletDtos.FundRequestResponse(
-                        fr.getId().toString(),
-                        fr.getUser().getId().toString(),
-                        fr.getUser().getUsername(),
-                        fr.getUser().getFullName(),
-                        fr.getAmount(),
-                        fr.getStatus(),
-                        fr.getUtrNumber(),
-                        fr.getMethod(),
-                        fr.getRemark(),
-                        fr.getAdminRemark(),
-                        fr.getApprovedBy() != null ? fr.getApprovedBy().getUsername() : null,
-                        fr.getApprovedAt(),
-                        fr.getCreatedAt()
-                ))
+                .map(this::toFundRequestResponse)
                 .collect(Collectors.toList());
     }
 
@@ -1367,6 +1520,7 @@ public class WalletServiceImpl implements WalletService {
             tgtEntry.setAmount(amount);
             tgtEntry.setEntryType("CREDIT");
             tgtEntry.setReferenceId(refNum);
+            tgtEntry.setIdempotencyKey("FUND_REQ_APPROVE_" + fr.getId());
             tgtEntry.setNarration(sanitizeNarration("Request approved, UTR: " + fr.getUtrNumber()));
             tgtEntry.setOpeningBalance(oldTgtBal);
             tgtEntry.setClosingBalance(newTgtBal);
@@ -1375,6 +1529,20 @@ public class WalletServiceImpl implements WalletService {
             tgtEntry.setTransactionContext(WalletTransactionContext.FUND_REQUEST_APPROVED);
             tgtEntry.setStatus(WalletTransactionStatus.SUCCESS);
             walletEntryRepository.save(tgtEntry);
+
+            if (fundRequestAuditLogRepository != null) {
+                FundRequestAuditLog frAudit = FundRequestAuditLog.builder()
+                        .fundRequest(fr)
+                        .previousStatus("PENDING")
+                        .newStatus("APPROVED")
+                        .admin(admin)
+                        .actionType("APPROVED")
+                        .actionReason(fr.getAdminRemark())
+                        .ipAddress(ipAddress)
+                        .createdAt(Instant.now())
+                        .build();
+                fundRequestAuditLogRepository.save(frAudit);
+            }
 
             AuditLog auditTgt = AuditLog.builder()
                     .operator(admin)
@@ -1404,21 +1572,7 @@ public class WalletServiceImpl implements WalletService {
                     "Fund request approved"
             );
 
-            return new WalletDtos.FundRequestResponse(
-                    fr.getId().toString(),
-                    targetUser.getId().toString(),
-                    targetUser.getUsername(),
-                    targetUser.getFullName(),
-                    fr.getAmount(),
-                    fr.getStatus(),
-                    fr.getUtrNumber(),
-                    fr.getMethod(),
-                    fr.getRemark(),
-                    fr.getAdminRemark(),
-                    admin.getUsername(),
-                    fr.getApprovedAt(),
-                    fr.getCreatedAt()
-            );
+            return toFundRequestResponse(fr);
         } catch (Exception ex) {
             adminWalletActionPinService.recordOperationFailure(
                     admin.getId(),
@@ -1485,8 +1639,24 @@ public class WalletServiceImpl implements WalletService {
             fr.setStatus("REJECTED");
             fr.setApprovedBy(admin);
             fr.setApprovedAt(Instant.now());
-            fr.setAdminRemark(remark != null && !remark.isBlank() ? remark : ("Rejected by " + admin.getUsername()));
+            String declineReason = remark != null && !remark.isBlank() ? remark : ("Rejected by " + admin.getUsername());
+            fr.setAdminRemark(declineReason);
+            fr.setRejectionReason(declineReason);
             fundRequestRepository.save(fr);
+
+            if (fundRequestAuditLogRepository != null) {
+                FundRequestAuditLog frAudit = FundRequestAuditLog.builder()
+                        .fundRequest(fr)
+                        .previousStatus("PENDING")
+                        .newStatus("REJECTED")
+                        .admin(admin)
+                        .actionType("REJECTED")
+                        .actionReason(declineReason)
+                        .ipAddress(ipAddress)
+                        .createdAt(Instant.now())
+                        .build();
+                fundRequestAuditLogRepository.save(frAudit);
+            }
 
             Wallet w = getOrCreateWallet(fr.getUser().getId());
 
@@ -1518,21 +1688,7 @@ public class WalletServiceImpl implements WalletService {
                     "Fund request rejected"
             );
 
-            return new WalletDtos.FundRequestResponse(
-                    fr.getId().toString(),
-                    fr.getUser().getId().toString(),
-                    fr.getUser().getUsername(),
-                    fr.getUser().getFullName(),
-                    fr.getAmount(),
-                    fr.getStatus(),
-                    fr.getUtrNumber(),
-                    fr.getMethod(),
-                    fr.getRemark(),
-                    fr.getAdminRemark(),
-                    admin.getUsername(),
-                    fr.getApprovedAt(),
-                    fr.getCreatedAt()
-            );
+            return toFundRequestResponse(fr);
         } catch (Exception ex) {
             adminWalletActionPinService.recordOperationFailure(
                     admin.getId(),

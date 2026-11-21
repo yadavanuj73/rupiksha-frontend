@@ -41,13 +41,23 @@ public interface WalletService {
 
     // Fund requests management
     WalletDtos.FundRequestResponse createFundRequest(WalletDtos.FundRequestCreateRequest request, UUID currentUserId);
+    WalletDtos.FundRequestResponse createFundRequestWithProof(
+            WalletDtos.FundRequestSubmitRequest request,
+            org.springframework.web.multipart.MultipartFile proofFile,
+            UUID currentUserId,
+            String ipAddress
+    );
     List<WalletDtos.FundRequestResponse> getFundRequests(UUID currentUserId);
+    List<WalletDtos.FundRequestResponse> getMyFundRequests(UUID currentUserId);
+    ProofData getFundRequestProof(UUID requestId, UUID currentUserId, boolean isAdmin);
     WalletDtos.FundRequestResponse approveFundRequest(UUID requestId, UUID adminId, String ipAddress);
     WalletDtos.FundRequestResponse approveFundRequest(UUID requestId, String remark, UUID adminId, String ipAddress);
     WalletDtos.FundRequestResponse approveFundRequest(UUID requestId, String remark, UUID adminId, String ipAddress, String pin);
     WalletDtos.FundRequestResponse rejectFundRequest(UUID requestId, UUID adminId, String ipAddress);
     WalletDtos.FundRequestResponse rejectFundRequest(UUID requestId, String remark, UUID adminId, String ipAddress);
     WalletDtos.FundRequestResponse rejectFundRequest(UUID requestId, String remark, UUID adminId, String ipAddress, String pin);
+
+    record ProofData(byte[] data, String contentType, String filename) {}
 
     // History and reporting
     Page<WalletDtos.WalletHistoryEntryResponse> getLedgerHistory(

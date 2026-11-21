@@ -975,6 +975,62 @@ export const upiCashPointService = {
     apiFetch('/upicw/merchant-info'),
 };
 
+// ─── ADMIN BANK ACCOUNTS & ACTIVE RECEIVING ACCOUNTS ────────────────────────
+export const bankAccountService = {
+  createAccount: (payload) =>
+    apiFetch('/admin/bank-accounts', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getAllAccounts: () =>
+    apiFetch('/admin/bank-accounts'),
+  getAccountById: (id) =>
+    apiFetch(`/admin/bank-accounts/${encodeURIComponent(id)}`),
+  updateAccount: (id, payload) =>
+    apiFetch(`/admin/bank-accounts/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  toggleStatus: (id, isActive) =>
+    apiFetch(`/admin/bank-accounts/${encodeURIComponent(id)}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isActive }),
+    }),
+  getActiveAccounts: () =>
+    apiFetch('/bank-accounts/active'),
+};
+
+// ─── MANUAL WALLET FUND REQUEST SERVICE ─────────────────────────────────────
+export const walletFundRequestService = {
+  submitFundRequest: async (formData) => {
+    const token = getToken();
+    const res = await fetch(`${BASE_URL}/wallet/fund-request`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    });
+    const text = await res.text();
+    let data = {};
+    if (text && text.trim()) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { message: text };
+      }
+    }
+    if (!res.ok) {
+      throw new Error(data.error || data.message || `Request failed with status ${res.status}`);
+    }
+    return data;
+  },
+  getMyFundRequests: () =>
+    apiFetch('/wallet/my-fund-requests'),
+  getProofUrl: (requestId) =>
+    `${BASE_URL}/wallet/fund-request/${encodeURIComponent(requestId)}/proof`,
+};
+
 
 
 

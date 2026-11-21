@@ -85,7 +85,8 @@ public class SecurityConfig {
                                 "/admin/add-user",
                                 "/api/v1/admin/payout-settings/**",
                                 "/api/admin/payout-settings/**",
-                                "/admin/payout-settings/**"
+                                "/admin/payout-settings/**",
+                                "/api/v1/admin/bank-accounts/**"
                         ).hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )

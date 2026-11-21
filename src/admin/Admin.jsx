@@ -30,6 +30,7 @@ import UserMapping from './components/UserMapping';
 import CommissionManagement from './components/CommissionManagement';
 import PayoutChargeManagement from './components/PayoutChargeManagement';
 import IdChargeManagement from './components/IdChargeManagement';
+import AdminBankAccountManagement from './components/AdminBankAccountManagement';
 import AdminTransactions from './components/AdminTransactions';
 import { useAuth } from '../context/AuthContext';
 import { generateUniquePartyCode, stateCodeMap } from '../database/partyCode';
@@ -2862,6 +2863,7 @@ const Admin = () => {
             { id: 'Commission-Manager', icon: IndianRupee, label: 'Commission Plan', isDropdown: true },
             { id: 'PayoutCharges', icon: SendHorizontal, label: 'Payout Charges' },
             { id: 'IdCharges', icon: CreditCard, label: 'Id Charges' },
+            { id: 'AdminBankAccounts', icon: Landmark, label: 'Add Bank Account' },
             { id: 'Transactions-Manager', icon: ArrowLeftRight, label: 'Transactions', isDropdown: true },
         ] : []),
     ];
@@ -3594,6 +3596,15 @@ const Admin = () => {
                                 {activeSection === 'IdCharges' && (
                                     (currentUser?.role === 'ADMIN' || isAdminUser) ? (
                                         <IdChargeManagement />
+                                    ) : (
+                                        <UnauthorizedAccess sectionName={activeLabel} />
+                                    )
+                                )}
+
+                                {/* Operations: Add Bank Account */}
+                                {activeSection === 'AdminBankAccounts' && (
+                                    (currentUser?.role === 'ADMIN' || isAdminUser) ? (
+                                        <AdminBankAccountManagement />
                                     ) : (
                                         <UnauthorizedAccess sectionName={activeLabel} />
                                     )

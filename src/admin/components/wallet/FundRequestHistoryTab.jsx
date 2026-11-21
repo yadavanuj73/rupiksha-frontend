@@ -3,9 +3,12 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import {
     CheckCircle2, Search, RefreshCcw, Download, FileSpreadsheet,
-    FileText, IndianRupee, ExternalLink, X, Printer, Calendar
+    FileText, IndianRupee, ExternalLink, X, Printer, Calendar,
+    Image as ImageIcon, Landmark
 } from 'lucide-react';
 import { fmtINR, fmtDateTime, fetchAPI, sanitizeCsvCell, WalletTabSkeleton } from './walletShared';
+import { walletFundRequestService } from '../../../services/apiService';
+import ProofPreviewModal from '../../../components/shared/ProofPreviewModal';
 
 const FundRequestHistoryTab = ({ onToast }) => {
     const [requests, setRequests] = useState([]);
@@ -13,6 +16,7 @@ const FundRequestHistoryTab = ({ onToast }) => {
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('ALL');
     const [selectedReceipt, setSelectedReceipt] = useState(null);
+    const [previewProofItem, setPreviewProofItem] = useState(null);
 
     const loadApprovedRequests = useCallback(async () => {
         setLoading(true);
@@ -39,7 +43,8 @@ const FundRequestHistoryTab = ({ onToast }) => {
             (r.name || '').toLowerCase().includes(search.toLowerCase()) ||
             (r.username || '').toLowerCase().includes(search.toLowerCase()) ||
             String(r.mobile || '').includes(search) ||
-            String(r.utrNumber || '').toLowerCase().includes(search.toLowerCase());
+            String(r.utrNumber || '').toLowerCase().includes(search.toLowerCase()) ||
+            String(r.receivingBankName || '').toLowerCase().includes(search.toLowerCase());
 
         const matchesRole = roleFilter === 'ALL' || (r.role || '').toUpperCase() === roleFilter;
         return matchesSearch && matchesRole;
@@ -58,7 +63,9 @@ const FundRequestHistoryTab = ({ onToast }) => {
                 'Credited Amount (INR)': parseFloat(r.amount) || 0,
                 'UTR / Ref Number': sanitizeCsvCell(r.utrNumber),
                 'Payment Mode': sanitizeCsvCell(r.method),
-                'Bank Account': sanitizeCsvCell(r.bankName),
+                'Receiving Bank': sanitizeCsvCell(r.receivingBankName || r.bankName || 'Company Account'),
+                'Receiving A/C': sanitizeCsvCell(r.receivingAccountMasked || '—'),
+                'Has Proof': (r.hasProof || r.proofStoredFilename) ? 'YES' : 'NO',
                 'Approved At': fmtDateTime(r.approvedAt || r.created_at),
                 'Approved By': sanitizeCsvCell(r.approvedBy || 'Admin'),
                 'Admin Remark': sanitizeCsvCell(r.admin_remark || 'Approved'),
@@ -106,11 +113,11 @@ const FundRequestHistoryTab = ({ onToast }) => {
 
             doc.text('REQ ID', 16, y + 5);
             doc.text('USER & ROLE', 45, y + 5);
-            doc.text('AMOUNT', 100, y + 5);
-            doc.text('UTR NUMBER', 130, y + 5);
-            doc.text('MODE', 180, y + 5);
-            doc.text('APPROVED AT', 210, y + 5);
-            doc.text('STATUS', 260, y + 5);
+            doc.text('AMOUNT', 95, y + 5);
+            doc.text('UTR NUMBER', 125, y + 5);
+            doc.text('MODE', 170, y + 5);
+            doc.text('RECEIVING BANK', 195, y + 5);
+            doc.text('APPROVED AT', 240, y + 5);
             y += 9;
 
             doc.setFont('helvetica', 'normal');
@@ -121,13 +128,13 @@ const FundRequestHistoryTab = ({ onToast }) => {
                     doc.addPage();
                     y = 20;
                 }
-                doc.text(String(r.id || '—'), 16, y);
-                doc.text(`${r.name || 'User'} (${r.role || 'Member'})`, 45, y);
-                doc.text(`INR ${(parseFloat(r.amount) || 0).toLocaleString('en-IN')}`, 100, y);
-                doc.text(String(r.utrNumber || '—').slice(0, 25), 130, y);
-                doc.text(String(r.method || 'NEFT'), 180, y);
-                doc.text(fmtDateTime(r.approvedAt || r.created_at).slice(0, 18), 210, y);
-                doc.text('CREDITED', 260, y);
+                doc.text(String(r.id || '—').slice(0, 10), 16, y);
+                doc.text(`${String(r.name || 'User').slice(0, 18)} (${r.role || 'Member'})`, 45, y);
+                doc.text(`INR ${(parseFloat(r.amount) || 0).toLocaleString('en-IN')}`, 95, y);
+                doc.text(String(r.utrNumber || '—').slice(0, 20), 125, y);
+                doc.text(String(r.method || 'NEFT').slice(0, 10), 170, y);
+                doc.text(String(r.receivingBankName || r.bankName || 'Company').slice(0, 18), 195, y);
+                doc.text(fmtDateTime(r.approvedAt || r.created_at).slice(0, 16), 240, y);
                 y += 6;
             });
 
@@ -201,7 +208,7 @@ const FundRequestHistoryTab = ({ onToast }) => {
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                             className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-400 font-medium"
-                            placeholder="Search by user, mobile, or UTR..."
+                            placeholder="Search by user, mobile, UTR, or bank..."
                         />
                     </div>
 
@@ -225,11 +232,11 @@ const FundRequestHistoryTab = ({ onToast }) => {
 
             {/* Table */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto max-h-[360px] overflow-y-auto">
+                <div className="overflow-x-auto max-h-[420px] overflow-y-auto">
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="bg-slate-50 border-b border-slate-100 text-left">
-                                {['Req ID', 'Beneficiary User', 'Role', 'Credited Amount', 'UTR / Ref No.', 'Method & Bank', 'Approved Date', 'Status & Receipt'].map(h => (
+                                {['Req ID', 'Beneficiary User', 'Role', 'Credited Amount', 'UTR / Ref No.', 'Payment Mode', 'Receiving Bank', 'Approved Date', 'Status & Proof'].map(h => (
                                     <th key={h} className="px-5 py-3.5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">
                                         {h}
                                     </th>
@@ -240,7 +247,7 @@ const FundRequestHistoryTab = ({ onToast }) => {
                             {filtered.map(req => (
                                 <tr key={req.id} className="hover:bg-slate-50/70 transition-colors">
                                     <td className="px-5 py-4 whitespace-nowrap font-mono text-xs font-bold text-slate-500">
-                                        {req.id}
+                                        #{String(req.id).slice(0, 8)}
                                     </td>
                                     <td className="px-5 py-4 whitespace-nowrap">
                                         <p className="text-xs font-black text-slate-900">{req.name}</p>
@@ -260,8 +267,18 @@ const FundRequestHistoryTab = ({ onToast }) => {
                                         {req.utrNumber || '—'}
                                     </td>
                                     <td className="px-5 py-4 whitespace-nowrap">
-                                        <p className="text-xs font-bold text-slate-800">{req.method || 'NEFT'}</p>
-                                        <p className="text-[10px] text-slate-400">{req.bankName || 'Company Float'}</p>
+                                        <span className="px-2 py-1 bg-slate-100 text-slate-700 rounded-md text-[10px] font-black uppercase">
+                                            {req.method || 'NEFT'}
+                                        </span>
+                                    </td>
+                                    <td className="px-5 py-4 whitespace-nowrap">
+                                        <div className="flex items-center gap-1.5">
+                                            <Landmark size={12} className="text-indigo-600 shrink-0" />
+                                            <span className="text-xs font-bold text-slate-800">{req.receivingBankName || req.bankName || 'Company Bank'}</span>
+                                        </div>
+                                        {req.receivingAccountMasked && (
+                                            <p className="text-[10px] font-mono text-slate-400 pl-4">{req.receivingAccountMasked}</p>
+                                        )}
                                     </td>
                                     <td className="px-5 py-4 whitespace-nowrap text-xs text-slate-500">
                                         {fmtDateTime(req.approvedAt || req.created_at)}
@@ -271,10 +288,19 @@ const FundRequestHistoryTab = ({ onToast }) => {
                                             <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-[9px] font-black uppercase flex items-center gap-1">
                                                 <CheckCircle2 size={11} className="text-emerald-500" /> Credited
                                             </span>
+                                            {(req.hasProof || req.proofStoredFilename) && (
+                                                <button
+                                                    onClick={() => setPreviewProofItem(req)}
+                                                    className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/60 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1 transition-colors cursor-pointer"
+                                                    title="View Proof Slip"
+                                                >
+                                                    <ImageIcon size={11} /> Proof
+                                                </button>
+                                            )}
                                             <button
                                                 onClick={() => setSelectedReceipt(req)}
-                                                className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-indigo-600 transition-colors"
-                                                title="View Receipt"
+                                                className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer"
+                                                title="View Receipt Voucher"
                                             >
                                                 <ExternalLink size={14} />
                                             </button>
@@ -284,7 +310,7 @@ const FundRequestHistoryTab = ({ onToast }) => {
                             ))}
                             {filtered.length === 0 && (
                                 <tr>
-                                    <td colSpan={8} className="py-14 text-center text-xs text-slate-400 font-bold">
+                                    <td colSpan={9} className="py-14 text-center text-xs text-slate-400 font-bold">
                                         No approved fund request records found
                                     </td>
                                 </tr>
@@ -326,6 +352,13 @@ const FundRequestHistoryTab = ({ onToast }) => {
                                 <span className="font-bold text-indigo-600">{selectedReceipt.role}</span>
                             </div>
                             <div className="flex justify-between">
+                                <span className="text-slate-400">Receiving Bank:</span>
+                                <span className="font-bold text-slate-800">
+                                    {selectedReceipt.receivingBankName || selectedReceipt.bankName || 'Company Bank'}
+                                    {selectedReceipt.receivingAccountMasked ? ` (${selectedReceipt.receivingAccountMasked})` : ''}
+                                </span>
+                            </div>
+                            <div className="flex justify-between">
                                 <span className="text-slate-400">Bank UTR / Ref:</span>
                                 <span className="font-mono font-bold text-slate-800">{selectedReceipt.utrNumber}</span>
                             </div>
@@ -341,24 +374,46 @@ const FundRequestHistoryTab = ({ onToast }) => {
                                 <span className="font-black text-slate-800 uppercase text-xs">Float Credited:</span>
                                 <span className="text-xl font-black text-emerald-600">{fmtINR(selectedReceipt.amount)}</span>
                             </div>
+                            {(selectedReceipt.hasProof || selectedReceipt.proofStoredFilename) && (
+                                <div className="pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setPreviewProofItem(selectedReceipt)}
+                                        className="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                                    >
+                                        <ImageIcon size={14} /> View Attached Payment Slip Proof
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex items-center gap-3">
                             <button
                                 onClick={() => window.print()}
-                                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2"
+                                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer"
                             >
                                 <Printer size={14} /> Print Voucher
                             </button>
                             <button
                                 onClick={() => setSelectedReceipt(null)}
-                                className="flex-1 py-3 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-black uppercase tracking-wider"
+                                className="flex-1 py-3 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer"
                             >
                                 Close
                             </button>
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Proof Preview Modal */}
+            {previewProofItem && (
+                <ProofPreviewModal
+                    isOpen={!!previewProofItem}
+                    onClose={() => setPreviewProofItem(null)}
+                    proofUrl={walletFundRequestService.getProofUrl(previewProofItem.id)}
+                    title={`Receipt Proof — Req #${String(previewProofItem.id).slice(0, 8)}`}
+                    originalFilename={previewProofItem.proofOriginalFilename || 'transaction_proof.jpg'}
+                />
             )}
         </div>
     );

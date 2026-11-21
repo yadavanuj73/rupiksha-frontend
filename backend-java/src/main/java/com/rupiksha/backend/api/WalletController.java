@@ -13,6 +13,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.CacheControl;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -234,13 +236,111 @@ public class WalletController {
     }
 
     @GetMapping("/admin/wallet/fund-requests")
-    public ResponseEntity<Map<String, Object>> getFundRequests(Authentication auth) {
+    public ResponseEntity<Map<String, Object>> getFundRequests(
+            @RequestParam(required = false) String status,
+            Authentication auth) {
         List<WalletDtos.FundRequestResponse> list = walletService.getFundRequests(getPrincipalId(auth));
+
+        if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status)) {
+            list = list.stream()
+                    .filter(r -> status.equalsIgnoreCase(r.status()))
+                    .toList();
+        }
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
         response.put("requests", list);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * User Panel: Submit Fund Request with Proof (Multipart)
+     */
+    @PostMapping(value = "/wallet/fund-request", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> submitFundRequest(
+            @RequestParam("bankAccountId") UUID bankAccountId,
+            @RequestParam("amount") java.math.BigDecimal amount,
+            @RequestParam("utrNumber") String utrNumber,
+            @RequestParam("method") String method,
+            @RequestParam("paymentBank") String paymentBank,
+            @RequestParam(value = "paymentDateTime", required = false) String paymentDateTime,
+            @RequestParam(value = "userNote", required = false) String userNote,
+            @RequestPart("proof") MultipartFile proof,
+            Authentication auth,
+            HttpServletRequest servletRequest) {
+
+        java.time.Instant paymentInstant = null;
+        if (paymentDateTime != null && !paymentDateTime.isBlank()) {
+            try {
+                paymentInstant = java.time.Instant.parse(paymentDateTime.trim());
+            } catch (Exception e) {
+                try {
+                    paymentInstant = java.time.LocalDateTime.parse(paymentDateTime.trim())
+                            .atZone(java.time.ZoneId.systemDefault()).toInstant();
+                } catch (Exception ignored) {
+                    paymentInstant = java.time.Instant.now();
+                }
+            }
+        }
+
+        WalletDtos.FundRequestSubmitRequest req = new WalletDtos.FundRequestSubmitRequest(
+                bankAccountId,
+                amount,
+                utrNumber,
+                method,
+                paymentBank,
+                paymentInstant,
+                userNote
+        );
+
+        String ip = getClientIp(servletRequest);
+        WalletDtos.FundRequestResponse res = walletService.createFundRequestWithProof(
+                req, proof, getPrincipalId(auth), ip);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "Fund request submitted successfully and is awaiting Admin verification.");
+        response.put("request", res);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * User Panel: View My Fund Requests
+     */
+    @GetMapping("/wallet/my-fund-requests")
+    public ResponseEntity<Map<String, Object>> getMyFundRequests(Authentication auth) {
+        List<WalletDtos.FundRequestResponse> list = walletService.getMyFundRequests(getPrincipalId(auth));
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("requests", list);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Preview / Download Proof Image (Secure & Authorized)
+     */
+    @GetMapping("/wallet/fund-request/{id}/proof")
+    public ResponseEntity<byte[]> getFundRequestProof(
+            @PathVariable UUID id,
+            Authentication auth) {
+
+        JwtPrincipal principal = getPrincipal(auth);
+        boolean isAdmin = principal.roles() != null && principal.roles().stream()
+                .anyMatch(r -> "ADMIN".equalsIgnoreCase(r) || "SUPER_ADMIN".equalsIgnoreCase(r));
+
+        WalletService.ProofData proof = walletService.getFundRequestProof(id, UUID.fromString(principal.userId()), isAdmin);
+
+        MediaType mediaType = MediaType.IMAGE_JPEG;
+        if (proof.contentType() != null && proof.contentType().toLowerCase().contains("png")) {
+            mediaType = MediaType.IMAGE_PNG;
+        }
+
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .cacheControl(CacheControl.noCache().noStore().mustRevalidate())
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + proof.filename() + "\"")
+                .header("X-Content-Type-Options", "nosniff")
+                .body(proof.data());
     }
 
     @PostMapping("/admin/wallet/fund-request")
