@@ -2074,6 +2074,10 @@ public class WalletServiceImpl implements WalletService {
                 .walletType("MAIN")
                 .ledgerType("SERVICE_CREDIT")
                 .referenceNumber(refNum)
+                .ipAddress(ipAddress)
+                .remark(sanitizeRemark("Service credit: " + serviceName + " Context: " + context))
+                .build();
+        auditLogRepository.save(audit);
 
         publishBalanceChanged(userId, refNum, "SERVICE_CREDIT");
 
