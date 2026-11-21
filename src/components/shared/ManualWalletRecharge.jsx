@@ -6,7 +6,6 @@ import {
     Calendar, FileText, Loader2, Sparkles, X, ShieldCheck
 } from 'lucide-react';
 import { bankAccountService, walletFundRequestService } from '../../services/apiService';
-import { announceGrandSuccess } from '../../services/speechService';
 
 const fmtINR = (val) => {
     const num = parseFloat(val);
@@ -177,10 +176,6 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
             if (res && res.success) {
                 const msg = `Fund request for ${fmtINR(amount)} submitted successfully! It is now pending Admin verification.`;
                 setSuccessMessage(msg);
-                announceGrandSuccess(
-                    `आपका ₹${Number(amount).toLocaleString('en-IN')} का फंड रिक्वेस्ट सफलतापूर्वक भेजा गया।`,
-                    `एडमिन द्वारा वेरिफिकेशन के बाद आपके वॉलेट में राशि क्रेडिट कर दी जाएगी।`
-                );
 
                 // Reset form fields
                 setAmount('');
@@ -204,23 +199,6 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
 
     return (
         <div className="w-full max-w-5xl mx-auto space-y-6">
-            {/* Header Banner */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 inline-block mb-1.5">
-                        {portalTitle} · Manual Bank Transfer
-                    </span>
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">Manual Wallet Fund Request</h2>
-                    <p className="text-xs text-slate-500 font-medium mt-1">
-                        Transfer funds to any of the official Rupiksha company bank accounts below, then submit your transaction details for instant Admin verification.
-                    </p>
-                </div>
-                <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-xs font-bold shrink-0">
-                    <ShieldCheck size={18} className="text-emerald-600" />
-                    <span>Authoritative Ledger Protected</span>
-                </div>
-            </div>
-
             {/* Success feedback alert */}
             {successMessage && (
                 <motion.div
