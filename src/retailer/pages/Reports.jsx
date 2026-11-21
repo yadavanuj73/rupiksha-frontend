@@ -62,6 +62,8 @@ const StatusBadge = ({ status }) => {
         FAILED: { bg: 'bg-rose-500/10 border-rose-500/20 text-rose-600', dot: 'bg-rose-500', label: 'FAILED' },
         FAILURE: { bg: 'bg-rose-500/10 border-rose-500/20 text-rose-600', dot: 'bg-rose-500', label: 'FAILED' },
         DECLINED: { bg: 'bg-rose-500/10 border-rose-500/20 text-rose-600', dot: 'bg-rose-500', label: 'DECLINED' },
+        REJECTED: { bg: 'bg-rose-500/10 border-rose-500/20 text-rose-600', dot: 'bg-rose-500', label: 'REJECTED' },
+        CANCELLED: { bg: 'bg-rose-500/10 border-rose-500/20 text-rose-600', dot: 'bg-rose-500', label: 'REJECTED' },
         REVERSED: { bg: 'bg-purple-500/10 border-purple-500/20 text-purple-600', dot: 'bg-purple-500', label: 'REVERSED' }
     };
     const s = config[sStr] || config.PENDING;
@@ -990,14 +992,14 @@ const Reports = () => {
             {/* ── Transaction Details Modal Popup ── */}
             <AnimatePresence>
                 {showModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 overflow-y-auto">
                         {/* Overlay backdrop */}
                         <motion.div 
                             initial={{ opacity: 0 }} 
                             animate={{ opacity: 1 }} 
                             exit={{ opacity: 0 }}
                             onClick={() => setShowModal(false)}
-                            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+                            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
                         ></motion.div>
 
                         {/* Modal Body */}
@@ -1005,34 +1007,35 @@ const Reports = () => {
                             initial={{ opacity: 0, scale: 0.95, y: 10 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                            className="bg-white w-full max-w-xl rounded-3xl overflow-hidden shadow-2xl relative border border-slate-200"
+                            className="bg-white w-full max-w-lg rounded-2xl sm:rounded-3xl shadow-2xl relative border border-slate-200 my-auto z-10 overflow-hidden"
                         >
                             {/* Close Trigger */}
                             <button 
                                 onClick={() => setShowModal(false)}
-                                className="absolute right-5 top-5 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 text-slate-500 transition-colors z-20"
+                                className="absolute right-3.5 top-3.5 sm:right-5 sm:top-5 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 text-slate-500 transition-colors z-20 cursor-pointer"
                             >
-                                <X size={16} />
+                                <X size={15} />
                             </button>
 
                             {modalLoading ? (
-                                <div className="p-16 flex flex-col items-center justify-center gap-4">
-                                    <div className="w-12 h-12 border-4 border-cyan-200 border-t-cyan-600 rounded-full animate-spin"></div>
+                                <div className="p-10 flex flex-col items-center justify-center gap-3">
+                                    <div className="w-10 h-10 border-4 border-cyan-200 border-t-cyan-600 rounded-full animate-spin"></div>
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Querying Cloud Audit Logs...</p>
                                 </div>
                             ) : selectedTxn ? (
-                                <div className="p-6 md:p-8 space-y-6">
+                                <div className="p-4 sm:p-5 md:p-6 space-y-3 sm:space-y-3.5">
                                     {/* Header Status Card */}
-                                    <div className="flex justify-between items-start pb-4 border-b border-slate-100">
+                                    <div className="flex justify-between items-start pb-2.5 sm:pb-3 border-b border-slate-100 pr-8">
                                         <div>
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Transaction Audit Ledger</p>
-                                            <h3 className="text-lg font-black text-slate-800 tracking-tight flex items-center gap-2 mt-1">
+                                            <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest">Transaction Audit Ledger</p>
+                                            <h3 className="text-sm sm:text-base font-black text-slate-800 tracking-tight flex items-center gap-1.5 mt-0.5">
                                                 {selectedTxn.transactionId}
                                                 <button 
                                                     onClick={() => copyToClipboard(selectedTxn.transactionId, 'txnId')}
-                                                    className="p-1 bg-slate-50 text-slate-400 rounded hover:text-slate-800 transition-colors"
+                                                    className="p-1 bg-slate-50 text-slate-400 rounded hover:text-slate-800 transition-colors cursor-pointer"
+                                                    title="Copy ID"
                                                 >
-                                                    <Copy size={12} />
+                                                    <Copy size={11} />
                                                 </button>
                                                 {copySuccess === 'txnId' && <span className="text-[8px] text-emerald-600 font-bold uppercase">Copied!</span>}
                                             </h3>
@@ -1041,31 +1044,32 @@ const Reports = () => {
                                     </div>
 
                                     {/* Parameter list */}
-                                    <div className="grid grid-cols-2 gap-4 text-xs font-bold text-slate-600">
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5 text-xs font-bold text-slate-600 bg-slate-50/70 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-slate-100">
                                         <div>
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Transaction Amount</p>
-                                            <p className="text-lg font-black text-slate-800 mt-1 tracking-tight">₹{(selectedTxn.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                                            <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest">Amount</p>
+                                            <p className="text-sm sm:text-base font-black text-slate-800 mt-0.5 tracking-tight">₹{(selectedTxn.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                                         </div>
                                         <div>
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Commission Distributed</p>
-                                            <p className="text-lg font-black text-emerald-600 mt-1 tracking-tight">+ ₹{(selectedTxn.commission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                                            <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest">Commission</p>
+                                            <p className="text-sm sm:text-base font-black text-emerald-600 mt-0.5 tracking-tight">+ ₹{(selectedTxn.commission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                                         </div>
-                                        <div className="border-t border-slate-50 pt-3">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Opening Wallet Balance</p>
-                                            <p className="text-slate-700 font-black mt-1">₹{(selectedTxn.openingBalance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                                        <div>
+                                            <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest">Opening Bal</p>
+                                            <p className="text-xs font-black text-slate-700 mt-0.5">₹{(selectedTxn.openingBalance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                                         </div>
-                                        <div className="border-t border-slate-50 pt-3">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Closing Wallet Balance</p>
-                                            <p className="text-slate-700 font-black mt-1">₹{(selectedTxn.closingBalance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                                        <div>
+                                            <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest">Closing Bal</p>
+                                            <p className="text-xs font-black text-slate-700 mt-0.5">₹{(selectedTxn.closingBalance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                                         </div>
-                                        <div className="border-t border-slate-50 pt-3 col-span-2">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">UTR / Bank RRN</p>
-                                            <p className="text-slate-700 font-black mt-1 flex items-center gap-1.5">
-                                                {selectedTxn.bankReference || 'N/A'}
+                                        <div className="col-span-2 pt-1.5 border-t border-slate-200/50">
+                                            <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest">UTR / Bank RRN</p>
+                                            <p className="text-xs font-mono font-bold text-slate-700 mt-0.5 flex items-center gap-1 truncate">
+                                                {selectedTxn.bankReference || selectedTxn.transactionId || 'N/A'}
                                                 {selectedTxn.bankReference && (
                                                     <button 
                                                         onClick={() => copyToClipboard(selectedTxn.bankReference, 'utr')}
-                                                        className="p-1 bg-slate-50 text-slate-400 rounded hover:text-slate-800 transition-colors"
+                                                        className="p-0.5 text-slate-400 hover:text-slate-800 transition-colors cursor-pointer"
+                                                        title="Copy UTR"
                                                     >
                                                         <Copy size={10} />
                                                     </button>
@@ -1073,90 +1077,79 @@ const Reports = () => {
                                                 {copySuccess === 'utr' && <span className="text-[8px] text-emerald-600 font-bold uppercase">Copied!</span>}
                                             </p>
                                         </div>
-                                        <div className="border-t border-slate-50 pt-3">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Operator / Partner</p>
-                                            <p className="text-slate-700 font-black mt-1">{selectedTxn.provider || 'INTERNAL'}</p>
+                                        <div className="pt-1.5 border-t border-slate-200/50">
+                                            <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest">Operator / Partner</p>
+                                            <p className="text-xs font-bold text-slate-700 mt-0.5 truncate">{selectedTxn.provider || 'INTERNAL'}</p>
                                         </div>
-                                        <div className="border-t border-slate-50 pt-3">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Service Domain</p>
-                                            <p className="text-slate-700 font-black mt-1">{selectedTxn.serviceType || 'Utility'}</p>
+                                        <div className="pt-1.5 border-t border-slate-200/50">
+                                            <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest">Service Domain</p>
+                                            <p className="text-xs font-bold text-slate-700 mt-0.5 truncate">{selectedTxn.serviceType || 'Utility'}</p>
                                         </div>
                                         {selectedTxn.remarks && (
-                                            <div className="border-t border-slate-50 pt-3 col-span-2">
-                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Remarks</p>
-                                                <p className="text-slate-700 mt-1 font-bold italic">{selectedTxn.remarks}</p>
+                                            <div className="col-span-2 sm:col-span-4 pt-1.5 border-t border-slate-200/50">
+                                                <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest">Remarks</p>
+                                                <p className="text-[11px] text-slate-700 mt-0.5 font-medium italic break-words">{selectedTxn.remarks}</p>
                                             </div>
                                         )}
                                     </div>
 
                                     {/* Timeline Flow */}
-                                    <div className="border-t border-slate-100 pt-5 space-y-4">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Transaction Timeline Progression</p>
-                                        
-                                        <div className="relative pl-6 space-y-4">
-                                            {/* Vertical line connecting nodes */}
-                                            <div className="absolute left-[7px] top-2 bottom-2 w-0.5 bg-slate-100"></div>
-
-                                            {/* Node 1 */}
-                                            <div className="relative flex gap-3 text-xs">
-                                                <span className="absolute -left-[23px] top-1.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-sm"></span>
-                                                <div>
-                                                    <p className="font-black text-slate-800">TRANSACTION CREATED</p>
-                                                    <p className="text-[10px] text-slate-400 font-bold mt-0.5">Retailer session initiated log in database</p>
+                                    <div className="border-t border-slate-100 pt-2 sm:pt-2.5 space-y-1.5">
+                                        <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest">Transaction Timeline Progression</p>
+                                        <div className="grid grid-cols-3 gap-2 text-center bg-slate-50/50 p-2 rounded-xl border border-slate-100">
+                                            <div className="flex flex-col items-center">
+                                                <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] font-bold shadow-sm mb-0.5">
+                                                    ✓
                                                 </div>
-                                                <span className="ml-auto text-[9px] text-slate-400 font-bold">{new Date(selectedTxn.createdAt).toLocaleTimeString()}</span>
+                                                <p className="text-[9px] sm:text-[10px] font-black text-slate-800 uppercase leading-tight">Created</p>
+                                                <p className="text-[8px] text-slate-400 font-medium">{new Date(selectedTxn.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
                                             </div>
-
-                                            {/* Node 2 */}
-                                            <div className="relative flex gap-3 text-xs">
-                                                <span className="absolute -left-[23px] top-1.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-sm"></span>
-                                                <div>
-                                                    <p className="font-black text-slate-800">PARTNER DISPATCHED</p>
-                                                    <p className="text-[10px] text-slate-400 font-bold mt-0.5">Payload sent to external banking interface</p>
+                                            <div className="flex flex-col items-center">
+                                                <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] font-bold shadow-sm mb-0.5">
+                                                    ✓
                                                 </div>
-                                                <span className="ml-auto text-[9px] text-slate-400 font-bold">{new Date(new Date(selectedTxn.createdAt).getTime() + 1000).toLocaleTimeString()}</span>
+                                                <p className="text-[9px] sm:text-[10px] font-black text-slate-800 uppercase leading-tight">Dispatched</p>
+                                                <p className="text-[8px] text-slate-400 font-medium">{new Date(new Date(selectedTxn.createdAt).getTime() + 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
                                             </div>
-
-                                            {/* Node 3 */}
-                                            <div className="relative flex gap-3 text-xs">
-                                                <span className={`absolute -left-[23px] top-1.5 w-3.5 h-3.5 rounded-full border-2 border-white shadow-sm ${
+                                            <div className="flex flex-col items-center">
+                                                <div className={`w-5 h-5 rounded-full text-white flex items-center justify-center text-[10px] font-bold shadow-sm mb-0.5 ${
                                                     selectedTxn.status === 'SUCCESS' || selectedTxn.status === 'APPROVED' ? 'bg-emerald-500' : 
-                                                    selectedTxn.status === 'FAILED' || selectedTxn.status === 'FAILURE' ? 'bg-rose-500' : 'bg-amber-500 animate-pulse'
-                                                }`}></span>
-                                                <div>
-                                                    <p className="font-black text-slate-800">FINAL RESPONSE RECEIVED</p>
-                                                    <p className="text-[10px] text-slate-400 font-bold mt-0.5">
-                                                        {selectedTxn.status === 'SUCCESS' || selectedTxn.status === 'APPROVED' ? 'Bank cleared transaction successfully' :
-                                                         selectedTxn.status === 'FAILED' || selectedTxn.status === 'FAILURE' ? 'Transaction declined by issuer bank' : 'Waiting for gateway response confirmation'}
-                                                    </p>
+                                                    selectedTxn.status === 'FAILED' || selectedTxn.status === 'FAILURE' || selectedTxn.status === 'CANCELLED' || selectedTxn.status === 'REJECTED' || selectedTxn.status === 'DECLINED' ? 'bg-rose-500' : 'bg-amber-500 animate-pulse'
+                                                }`}>
+                                                    {selectedTxn.status === 'SUCCESS' || selectedTxn.status === 'APPROVED' ? '✓' :
+                                                     selectedTxn.status === 'FAILED' || selectedTxn.status === 'FAILURE' || selectedTxn.status === 'CANCELLED' || selectedTxn.status === 'REJECTED' || selectedTxn.status === 'DECLINED' ? '✕' : '⏳'}
                                                 </div>
-                                                <span className="ml-auto text-[9px] text-slate-400 font-bold">
-                                                    {selectedTxn.updatedAt ? new Date(selectedTxn.updatedAt).toLocaleTimeString() : new Date(selectedTxn.createdAt).toLocaleTimeString()}
-                                                </span>
+                                                <p className="text-[9px] sm:text-[10px] font-black text-slate-800 uppercase leading-tight">
+                                                    {selectedTxn.status === 'SUCCESS' || selectedTxn.status === 'APPROVED' ? 'Cleared' :
+                                                     selectedTxn.status === 'FAILED' || selectedTxn.status === 'FAILURE' || selectedTxn.status === 'CANCELLED' || selectedTxn.status === 'REJECTED' || selectedTxn.status === 'DECLINED' ? 'Declined' : 'Processing'}
+                                                </p>
+                                                <p className="text-[8px] text-slate-400 font-medium">
+                                                    {selectedTxn.updatedAt ? new Date(selectedTxn.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : new Date(selectedTxn.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Action buttons */}
-                                    <div className="flex gap-4 border-t border-slate-100 pt-6">
+                                    <div className="flex gap-2.5 sm:gap-3 border-t border-slate-100 pt-2.5 sm:pt-3">
                                         <button 
                                             onClick={() => window.print()}
-                                            className="flex-1 bg-slate-900 text-white py-3.5 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-black transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                                            className="flex-1 bg-slate-900 text-white py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider hover:bg-black transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
                                         >
-                                            <Printer size={14} />
+                                            <Printer size={13} />
                                             Print Receipt
                                         </button>
                                         <button 
                                             onClick={() => setShowModal(false)}
-                                            className="flex-1 bg-slate-50 border border-slate-200 text-slate-700 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-slate-100 transition-all active:scale-[0.98]"
+                                            className="flex-1 bg-slate-100 border border-slate-200 text-slate-700 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider hover:bg-slate-200 transition-all active:scale-[0.98] cursor-pointer"
                                         >
                                             Close View
                                         </button>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="p-16 text-center text-rose-500 text-xs font-bold">
-                                    <AlertCircle size={32} className="mx-auto mb-4" />
+                                <div className="p-10 text-center text-rose-500 text-xs font-bold">
+                                    <AlertCircle size={28} className="mx-auto mb-2" />
                                     Failed to retrieve ledger detail information.
                                 </div>
                             )}

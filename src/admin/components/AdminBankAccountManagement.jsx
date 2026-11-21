@@ -156,7 +156,7 @@ const AdminBankAccountManagement = () => {
         setEditItem(acc);
         setEditForm({
             accountHolderName: acc.accountHolderName || '',
-            accountNumber: '', // Left blank unless admin wishes to replace it
+            accountNumber: acc.accountNumber || '',
             ifscCode: acc.ifscCode || '',
             bankName: acc.bankName || '',
             branch: acc.branch || '',
@@ -229,7 +229,7 @@ const AdminBankAccountManagement = () => {
     };
 
     return (
-        <div className="w-full max-w-7xl mx-auto space-y-6 pb-16">
+        <div className="w-full max-w-7xl mx-auto space-y-4 pb-2">
             {/* Feedback alert */}
             {feedback && (
                 <motion.div
@@ -420,8 +420,8 @@ const AdminBankAccountManagement = () => {
                         </div>
                     </div>
 
-                    {/* Cards Container with zero horizontal scroll */}
-                    <div className="space-y-3.5 max-h-[640px] overflow-y-auto overflow-x-hidden pr-1">
+                    {/* Cards Container with internal vertical scroll only in right div */}
+                    <div className="space-y-3.5 max-h-[calc(100vh-230px)] min-h-[360px] overflow-y-auto overflow-x-hidden pr-1.5 custom-scrollbar">
                         {loading && accounts.length === 0 ? (
                             <div className="py-12 flex flex-col items-center justify-center text-slate-400 gap-2">
                                 <Loader2 size={24} className="animate-spin text-blue-600" />
@@ -468,31 +468,31 @@ const AdminBankAccountManagement = () => {
                                         </div>
                                     </div>
 
-                                    {/* Stacked Details (Up and Down, Zero Horizontal Scroll) */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                                        {/* Account Holder */}
-                                        <div className="space-y-0.5">
-                                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                                    {/* Stacked Details (Centered Data, Zero Horizontal Scroll) */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs py-1">
+                                        {/* Account Holder Name */}
+                                        <div className="flex flex-col items-center justify-center text-center space-y-1">
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 text-center">
                                                 Account Holder Name
                                             </span>
-                                            <p className="font-bold text-slate-900 break-words">
+                                            <p className="font-bold text-slate-900 break-words text-center">
                                                 {acc.accountHolderName}
                                             </p>
                                         </div>
 
-                                        {/* Masked Account Number */}
-                                        <div className="space-y-0.5">
-                                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
-                                                Masked Account Number
+                                        {/* Account Number (Full in Admin) */}
+                                        <div className="flex flex-col items-center justify-center text-center space-y-1">
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 text-center">
+                                                Account Number
                                             </span>
-                                            <div className="flex items-center gap-1.5">
-                                                <span className="font-mono font-bold text-slate-900 bg-white px-2 py-0.5 rounded-md border border-slate-200 text-xs">
-                                                    {acc.accountNumberMasked}
+                                            <div className="flex items-center justify-center gap-1.5">
+                                                <span className="font-mono font-bold text-slate-900 bg-white px-2.5 py-0.5 rounded-md border border-slate-200 text-xs shadow-2xs">
+                                                    {acc.accountNumber || acc.accountNumberMasked}
                                                 </span>
                                                 <button
-                                                    onClick={() => copyText(acc.accountNumberMasked, `acc-${acc.id}`)}
+                                                    onClick={() => copyText(acc.accountNumber || acc.accountNumberMasked, `acc-${acc.id}`)}
                                                     className="p-1 hover:bg-slate-200/70 rounded text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
-                                                    title="Copy Masked Account"
+                                                    title="Copy Account Number"
                                                 >
                                                     {copiedId === `acc-${acc.id}` ? (
                                                         <Check size={12} className="text-emerald-600" />
@@ -504,12 +504,12 @@ const AdminBankAccountManagement = () => {
                                         </div>
 
                                         {/* IFSC Code */}
-                                        <div className="space-y-0.5">
-                                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                                        <div className="flex flex-col items-center justify-center text-center space-y-1">
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 text-center">
                                                 IFSC Code
                                             </span>
-                                            <div className="flex items-center gap-1.5">
-                                                <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 text-xs">
+                                            <div className="flex items-center justify-center gap-1.5">
+                                                <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-100 text-xs">
                                                     {acc.ifscCode}
                                                 </span>
                                                 <button
@@ -527,11 +527,11 @@ const AdminBankAccountManagement = () => {
                                         </div>
 
                                         {/* Created Date */}
-                                        <div className="space-y-0.5">
-                                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                                        <div className="flex flex-col items-center justify-center text-center space-y-1">
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 text-center">
                                                 Created Date
                                             </span>
-                                            <p className="font-medium text-slate-600 text-[11px] flex items-center gap-1 mt-0.5">
+                                            <p className="font-medium text-slate-600 text-[11px] flex items-center justify-center gap-1.5 mt-0.5 text-center">
                                                 <Calendar size={12} className="text-slate-400 shrink-0" />
                                                 <span>{fmtDateTime(acc.createdAt)}</span>
                                             </p>

@@ -141,6 +141,10 @@ public class WalletHistoryProvider extends BaseHistoryProvider {
 
     private TransactionHistoryResponseDto mapToDto(WalletEntry entry) {
         BigDecimal commission = entry.getTds() != null && entry.getGst() != null ? entry.getTds().add(entry.getGst()) : BigDecimal.ZERO;
+        String statusStr = entry.getStatus() != null ? entry.getStatus().name() : "PENDING";
+        if (entry.getTransactionContext() == WalletTransactionContext.FUND_REQUEST_REJECTED) {
+            statusStr = "REJECTED";
+        }
         return TransactionHistoryResponseDto.builder()
                 .transactionId(entry.getReferenceId())
                 .providerReference(entry.getReferenceId())
@@ -153,7 +157,7 @@ public class WalletHistoryProvider extends BaseHistoryProvider {
                 .commission(commission)
                 .openingBalance(entry.getOpeningBalance() != null ? entry.getOpeningBalance() : BigDecimal.ZERO)
                 .closingBalance(entry.getClosingBalance() != null ? entry.getClosingBalance() : BigDecimal.ZERO)
-                .status(entry.getStatus().name())
+                .status(statusStr)
                 .remarks(entry.getNarration())
                 .createdAt(LocalDateTime.ofInstant(entry.getCreatedAt(), ZoneId.systemDefault()))
                 .updatedAt(LocalDateTime.ofInstant(entry.getCreatedAt(), ZoneId.systemDefault()))

@@ -177,9 +177,21 @@ public class AdminBankAccountServiceImpl implements AdminBankAccountService {
     }
 
     private AdminBankAccountDtos.BankAccountResponse toResponse(AdminBankAccount a) {
+        String fullAccount = null;
+        try {
+            if (a.getAccountNumberEncrypted() != null && !a.getAccountNumberEncrypted().isBlank()) {
+                fullAccount = encryptionUtil.decrypt(a.getAccountNumberEncrypted());
+            }
+        } catch (Exception e) {
+            log.warn("Failed to decrypt account number for bank account {}: {}", a.getId(), e.getMessage());
+        }
+        if (fullAccount == null || fullAccount.isBlank()) {
+            fullAccount = a.getAccountNumberMasked();
+        }
         return new AdminBankAccountDtos.BankAccountResponse(
                 a.getId(),
                 a.getAccountHolderName(),
+                fullAccount,
                 a.getAccountNumberMasked(),
                 a.getIfscCode(),
                 a.getBankName(),

@@ -64,6 +64,7 @@ class AdminBankAccountServiceImplTest {
 
         when(userRepository.findById(adminId)).thenReturn(Optional.of(adminUser));
         when(encryptionUtil.encrypt("12345678901234")).thenReturn("ENC_12345678901234");
+        when(encryptionUtil.decrypt("ENC_12345678901234")).thenReturn("12345678901234");
         when(bankAccountRepository.save(any(AdminBankAccount.class))).thenAnswer(invocation -> {
             AdminBankAccount arg = invocation.getArgument(0);
             arg.setId(UUID.randomUUID());
@@ -74,6 +75,7 @@ class AdminBankAccountServiceImplTest {
 
         assertNotNull(response);
         assertEquals("Rupiksha Services Pvt Ltd", response.accountHolderName());
+        assertEquals("12345678901234", response.accountNumber());
         assertEquals("XXXXXXXXXX1234", response.accountNumberMasked());
         assertEquals("HDFC Bank", response.bankName());
         assertTrue(response.isActive());
@@ -98,10 +100,12 @@ class AdminBankAccountServiceImplTest {
         when(userRepository.findById(adminId)).thenReturn(Optional.of(adminUser));
         when(bankAccountRepository.findByIdForUpdate(accountId)).thenReturn(Optional.of(existing));
         when(bankAccountRepository.save(any(AdminBankAccount.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(encryptionUtil.decrypt("ENC")).thenReturn("1234567890");
 
         AdminBankAccountDtos.BankAccountResponse response = bankAccountService.toggleAccountStatus(accountId, false, adminId, "127.0.0.1");
 
         assertNotNull(response);
+        assertEquals("1234567890", response.accountNumber());
         assertFalse(response.isActive());
         verify(auditLogRepository, times(1)).save(any(AdminBankAccountAuditLog.class));
     }

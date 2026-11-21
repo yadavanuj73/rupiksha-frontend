@@ -58,6 +58,7 @@ public class AdminBankAccountDtos {
     public record BankAccountResponse(
             UUID id,
             String accountHolderName,
+            String accountNumber,
             String accountNumberMasked,
             String ifscCode,
             String bankName,
@@ -65,7 +66,21 @@ public class AdminBankAccountDtos {
             Boolean isActive,
             Instant createdAt,
             Instant updatedAt
-    ) {}
+    ) {
+        public BankAccountResponse(
+                UUID id,
+                String accountHolderName,
+                String accountNumberMasked,
+                String ifscCode,
+                String bankName,
+                String branch,
+                Boolean isActive,
+                Instant createdAt,
+                Instant updatedAt
+        ) {
+            this(id, accountHolderName, accountNumberMasked, accountNumberMasked, ifscCode, bankName, branch, isActive, createdAt, updatedAt);
+        }
+    }
 
     public record ActiveBankAccountResponse(
             UUID id,

@@ -54,6 +54,47 @@ public class WalletServiceImpl implements WalletService {
         return "WLT-" + dateStr + "-" + randStr;
     }
 
+    @jakarta.annotation.PostConstruct
+    public void cleanupSupersededFundRequestEntries() {
+        try {
+            List<WalletEntry> allEntries = walletEntryRepository.findAll();
+            if (allEntries == null || allEntries.isEmpty()) return;
+
+            List<WalletEntry> createdEntries = allEntries.stream()
+                    .filter(e -> e.getTransactionContext() == WalletTransactionContext.FUND_REQUEST_CREATED)
+                    .toList();
+
+            for (WalletEntry created : createdEntries) {
+                String narration = created.getNarration();
+                if (narration == null) continue;
+                int utrIdx = narration.indexOf("UTR: ");
+                if (utrIdx == -1) continue;
+                String utr = narration.substring(utrIdx + 5).trim();
+                if (utr.contains(" ")) {
+                    utr = utr.substring(0, utr.indexOf(" ")).trim();
+                }
+                if (utr.isBlank()) continue;
+
+                String finalUtr = utr;
+                boolean hasSuperseding = allEntries.stream().anyMatch(e ->
+                        e.getId() != null && !e.getId().equals(created.getId()) &&
+                        e.getWallet() != null && created.getWallet() != null &&
+                        e.getWallet().getId().equals(created.getWallet().getId()) &&
+                        (e.getTransactionContext() == WalletTransactionContext.FUND_REQUEST_APPROVED ||
+                         e.getTransactionContext() == WalletTransactionContext.FUND_REQUEST_REJECTED) &&
+                        e.getNarration() != null && e.getNarration().contains(finalUtr)
+                );
+
+                if (hasSuperseding) {
+                    log.info("Auto-cleaning superseded FUND_REQUEST_CREATED entry {} for UTR {}", created.getId(), finalUtr);
+                    walletEntryRepository.delete(created);
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("Auto-cleanup of superseded fund request entries skipped: {}", ex.getMessage());
+        }
+    }
+
     private void enforceAdmin(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
@@ -1219,6 +1260,7 @@ public class WalletServiceImpl implements WalletService {
         entry.setOperator(currentUser);
         entry.setTransactionContext(WalletTransactionContext.FUND_REQUEST_CREATED);
         entry.setStatus(WalletTransactionStatus.PENDING);
+        entry.setIdempotencyKey("FUND_REQ_" + fr.getId());
         walletEntryRepository.save(entry);
 
         return toFundRequestResponse(fr);
@@ -1361,6 +1403,7 @@ public class WalletServiceImpl implements WalletService {
         entry.setIpAddress(ipAddress);
         entry.setTransactionContext(WalletTransactionContext.FUND_REQUEST_CREATED);
         entry.setStatus(WalletTransactionStatus.PENDING);
+        entry.setIdempotencyKey("FUND_REQ_" + fr.getId());
         walletEntryRepository.save(entry);
 
         log.info("User {} ({}) submitted fund request {} for ₹{} (UTR: {})",
@@ -1516,11 +1559,32 @@ public class WalletServiceImpl implements WalletService {
             fr.setAdminRemark(remark != null && !remark.isBlank() ? remark : ("Approved by " + admin.getUsername() + " - Ref: " + refNum));
             fundRequestRepository.save(fr);
 
-            WalletEntry tgtEntry = new WalletEntry();
+            WalletEntry tgtEntry = null;
+            try {
+                Optional<WalletEntry> existingOpt = walletEntryRepository.findByIdempotencyKey("FUND_REQ_" + fr.getId());
+                if (existingOpt.isEmpty() && fr.getUtrNumber() != null && !fr.getUtrNumber().isBlank()) {
+                    List<WalletEntry> wEntries = walletEntryRepository.findByWalletId(tgtWallet.getId());
+                    if (wEntries != null) {
+                        existingOpt = wEntries.stream()
+                                .filter(e -> e.getTransactionContext() == WalletTransactionContext.FUND_REQUEST_CREATED
+                                        && e.getNarration() != null && e.getNarration().contains(fr.getUtrNumber()))
+                                .findFirst();
+                    }
+                }
+                if (existingOpt != null && existingOpt.isPresent()) {
+                    tgtEntry = existingOpt.get();
+                }
+            } catch (Exception ex) {
+                log.debug("No existing fund request entry found to update: {}", ex.getMessage());
+            }
+
+            if (tgtEntry == null) {
+                tgtEntry = new WalletEntry();
+                tgtEntry.setReferenceId(refNum);
+            }
             tgtEntry.setWallet(tgtWallet);
             tgtEntry.setAmount(amount);
             tgtEntry.setEntryType("CREDIT");
-            tgtEntry.setReferenceId(refNum);
             tgtEntry.setIdempotencyKey("FUND_REQ_APPROVE_" + fr.getId());
             tgtEntry.setNarration(sanitizeNarration("Request approved, UTR: " + fr.getUtrNumber()));
             tgtEntry.setOpeningBalance(oldTgtBal);
@@ -1530,6 +1594,21 @@ public class WalletServiceImpl implements WalletService {
             tgtEntry.setTransactionContext(WalletTransactionContext.FUND_REQUEST_APPROVED);
             tgtEntry.setStatus(WalletTransactionStatus.SUCCESS);
             walletEntryRepository.save(tgtEntry);
+
+            // Clean up any duplicate superseded pending entries for this same UTR
+            try {
+                if (fr.getUtrNumber() != null && !fr.getUtrNumber().isBlank()) {
+                    List<WalletEntry> wEntries = walletEntryRepository.findByWalletId(tgtWallet.getId());
+                    if (wEntries != null) {
+                        UUID activeEntryId = tgtEntry.getId();
+                        wEntries.stream()
+                                .filter(e -> e.getId() != null && !e.getId().equals(activeEntryId)
+                                        && e.getTransactionContext() == WalletTransactionContext.FUND_REQUEST_CREATED
+                                        && e.getNarration() != null && e.getNarration().contains(fr.getUtrNumber()))
+                                .forEach(walletEntryRepository::delete);
+                    }
+                }
+            } catch (Exception ignored) {}
 
             if (fundRequestAuditLogRepository != null) {
                 FundRequestAuditLog frAudit = FundRequestAuditLog.builder()
@@ -1661,11 +1740,33 @@ public class WalletServiceImpl implements WalletService {
 
             Wallet w = getOrCreateWallet(fr.getUser().getId());
 
-            WalletEntry entry = new WalletEntry();
+            WalletEntry entry = null;
+            try {
+                Optional<WalletEntry> existingOpt = walletEntryRepository.findByIdempotencyKey("FUND_REQ_" + fr.getId());
+                if (existingOpt.isEmpty() && fr.getUtrNumber() != null && !fr.getUtrNumber().isBlank()) {
+                    List<WalletEntry> wEntries = walletEntryRepository.findByWalletId(w.getId());
+                    if (wEntries != null) {
+                        existingOpt = wEntries.stream()
+                                .filter(e -> e.getTransactionContext() == WalletTransactionContext.FUND_REQUEST_CREATED
+                                        && e.getNarration() != null && e.getNarration().contains(fr.getUtrNumber()))
+                                .findFirst();
+                    }
+                }
+                if (existingOpt != null && existingOpt.isPresent()) {
+                    entry = existingOpt.get();
+                }
+            } catch (Exception ex) {
+                log.debug("No existing fund request entry found to update: {}", ex.getMessage());
+            }
+
+            if (entry == null) {
+                entry = new WalletEntry();
+                entry.setReferenceId(refNum);
+            }
             entry.setWallet(w);
             entry.setAmount(fr.getAmount());
             entry.setEntryType("FUND_REQUEST");
-            entry.setReferenceId(refNum);
+            entry.setIdempotencyKey("FUND_REQ_REJECT_" + fr.getId());
             entry.setNarration("Fund request rejected, UTR: " + fr.getUtrNumber() + (remark != null && !remark.isBlank() ? (" - Reason: " + remark) : ""));
             entry.setOpeningBalance(w.getBalance());
             entry.setClosingBalance(w.getBalance());
@@ -1674,6 +1775,21 @@ public class WalletServiceImpl implements WalletService {
             entry.setTransactionContext(WalletTransactionContext.FUND_REQUEST_REJECTED);
             entry.setStatus(WalletTransactionStatus.CANCELLED);
             walletEntryRepository.save(entry);
+
+            // Clean up any duplicate superseded pending entries for this same UTR
+            try {
+                if (fr.getUtrNumber() != null && !fr.getUtrNumber().isBlank()) {
+                    List<WalletEntry> wEntries = walletEntryRepository.findByWalletId(w.getId());
+                    if (wEntries != null) {
+                        UUID activeEntryId = entry.getId();
+                        wEntries.stream()
+                                .filter(e -> e.getId() != null && !e.getId().equals(activeEntryId)
+                                        && e.getTransactionContext() == WalletTransactionContext.FUND_REQUEST_CREATED
+                                        && e.getNarration() != null && e.getNarration().contains(fr.getUtrNumber()))
+                                .forEach(walletEntryRepository::delete);
+                    }
+                }
+            } catch (Exception ignored) {}
 
             adminWalletActionPinService.recordOperationSuccess(
                     admin.getId(),

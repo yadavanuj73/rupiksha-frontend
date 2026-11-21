@@ -331,8 +331,8 @@ const FundRequestHistoryTab = ({ onToast }) => {
 
             {/* Receipt Modal */}
             {selectedReceipt && (
-                <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-                    <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full p-6 space-y-5">
+                <div className="fixed inset-0 z-[250] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+                    <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full p-5 sm:p-6 space-y-4 sm:space-y-5 my-auto">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                             <div>
                                 <h3 className="text-base font-black text-slate-800 uppercase tracking-tight">Deposit Voucher</h3>
