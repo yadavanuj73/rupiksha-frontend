@@ -9,6 +9,7 @@ const WalletContext = createContext({
   availableBalance: "0.00",
   status: "ACTIVE",
   isWalletLoading: true,
+  isRefreshing: false,
   walletError: null,
   refreshWallet: async () => { }
 });
@@ -76,6 +77,7 @@ export function WalletProvider({ children }) {
   const [availableBalance, setAvailableBalance] = useState("0.00");
   const [status, setStatus] = useState("ACTIVE");
   const [isWalletLoading, setIsWalletLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [walletError, setWalletError] = useState(null);
 
   // Ref so event handlers always see the current user without stale closures
@@ -89,9 +91,8 @@ export function WalletProvider({ children }) {
     setStatus(s || "ACTIVE");
   }, []);
 
-  const fetchWallet = useCallback(async (userId) => {
-    if (!userId) return;
-    setIsWalletLoading(true);
+  const fetchWallet = useCallback(async (userId, isManual = false) => {
+    if (!isManual) setIsWalletLoading(true);
     setWalletError(null);
 
     // 1. Try to fetch the live user profile from the backend to get their database balance
@@ -99,6 +100,7 @@ export function WalletProvider({ children }) {
       const profile = await userService.getProfile();
       if (profile && (profile.balance !== undefined || profile.walletBalance !== undefined || profile.availableBalance !== undefined)) {
         const liveBal = parseFloat(String(profile.balance ?? profile.walletBalance ?? profile.availableBalance ?? 0).replace(/,/g, '')) || 0;
+        const targetId = userId || profile.id || profile.userId || userRef.current?.id;
 
         applyBalance(
           liveBal,
@@ -109,57 +111,73 @@ export function WalletProvider({ children }) {
 
         // Synchronize local session storage cache so Header / other parts see the live balance
         try {
-          localStorage.setItem(`rupiksha_wallet_${userId}`, liveBal.toFixed(2));
+          if (targetId) localStorage.setItem(`rupiksha_wallet_${targetId}`, liveBal.toFixed(2));
           if (profile.username) localStorage.setItem(`rupiksha_wallet_${profile.username}`, liveBal.toFixed(2));
           if (profile.mobile) localStorage.setItem(`rupiksha_wallet_${profile.mobile}`, liveBal.toFixed(2));
 
           const sessionRaw = localStorage.getItem('rupiksha_user');
           if (sessionRaw) {
             const sessionUser = JSON.parse(sessionRaw);
-            if (sessionUser.id == userId || sessionUser.username === profile.username) {
-              const mergedSession = {
-                ...sessionUser,
-                ...profile,
-                balance: liveBal.toFixed(2),
-                walletBalance: liveBal.toFixed(2)
-              };
-              localStorage.setItem('rupiksha_user', JSON.stringify(mergedSession));
-            }
+            const mergedSession = {
+              ...sessionUser,
+              ...profile,
+              balance: liveBal.toFixed(2),
+              walletBalance: liveBal.toFixed(2)
+            };
+            localStorage.setItem('rupiksha_user', JSON.stringify(mergedSession));
           }
         } catch (_) { }
 
+        window.dispatchEvent(new CustomEvent('walletUpdated', { detail: { balance: liveBal.toFixed(2) } }));
+        window.dispatchEvent(new CustomEvent('dataUpdated'));
+        window.dispatchEvent(new CustomEvent('distributorDataUpdated'));
+        window.dispatchEvent(new CustomEvent('SuperDistributorDataUpdated'));
+
         setIsWalletLoading(false);
-        return;
+        return liveBal;
       }
     } catch (err) {
       console.warn('[WalletContext] Live profile fetch failed, trying backend balance endpoint:', err?.message || err);
     }
 
     // 2. Try backend wallet balance endpoint
-    try {
-      const data = await walletService.getBalance(userId);
-      if (data && (data.balance !== undefined || data.availableBalance !== undefined)) {
-        const backendBal = parseFloat(String(data.balance ?? data.availableBalance ?? 0));
-        if (!isNaN(backendBal)) {
-          setWallet(data);
-          applyBalance(backendBal, data.lockedBalance, data.availableBalance, data.status);
-          try { localStorage.setItem(`rupiksha_wallet_${userId}`, backendBal.toFixed(2)); } catch (_) { }
-          setIsWalletLoading(false);
-          return;
+    if (userId) {
+      try {
+        const data = await walletService.getBalance(userId);
+        if (data && (data.balance !== undefined || data.availableBalance !== undefined)) {
+          const backendBal = parseFloat(String(data.balance ?? data.availableBalance ?? 0));
+          if (!isNaN(backendBal)) {
+            setWallet(data);
+            applyBalance(backendBal, data.lockedBalance, data.availableBalance, data.status);
+            try { localStorage.setItem(`rupiksha_wallet_${userId}`, backendBal.toFixed(2)); } catch (_) { }
+            window.dispatchEvent(new CustomEvent('walletUpdated', { detail: { balance: backendBal.toFixed(2) } }));
+            window.dispatchEvent(new CustomEvent('dataUpdated'));
+            window.dispatchEvent(new CustomEvent('distributorDataUpdated'));
+            window.dispatchEvent(new CustomEvent('SuperDistributorDataUpdated'));
+            setIsWalletLoading(false);
+            return backendBal;
+          }
         }
+      } catch (err) {
+        console.warn('[WalletContext] Backend wallet fetch failed, using local fallback:', err?.message || err);
       }
-    } catch (err) {
-      console.warn('[WalletContext] Backend wallet fetch failed, using local fallback:', err?.message || err);
     }
 
     // 3. Local fallback — reads all possible identifier keys
     const localBal = readLocalBalance(userRef.current);
     applyBalance(localBal ?? 0);
     setIsWalletLoading(false);
+    return localBal ?? 0;
   }, [applyBalance]);
 
   const refreshWallet = useCallback(async () => {
-    if (userRef.current?.id) await fetchWallet(userRef.current.id);
+    setIsRefreshing(true);
+    try {
+      const uid = userRef.current?.id || userRef.current?.userId || userRef.current?.username;
+      return await fetchWallet(uid, true);
+    } finally {
+      setIsRefreshing(false);
+    }
   }, [fetchWallet]);
 
   // Initial wallet load after auth
@@ -245,7 +263,7 @@ export function WalletProvider({ children }) {
   return (
     <WalletContext.Provider value={{
       wallet, balance, lockedBalance, availableBalance,
-      status, isFrozen, isWalletLoading, walletError, refreshWallet,
+      status, isFrozen, isWalletLoading, isRefreshing, walletError, refreshWallet,
       triggerFrozenModal
     }}>
       {children}

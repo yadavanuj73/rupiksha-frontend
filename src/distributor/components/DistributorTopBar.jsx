@@ -1,13 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Bell, Menu, LogOut, ChevronDown, Wallet, User, BadgeCheck, Clock3, OctagonAlert, Shield, Lock } from 'lucide-react';
+import { Plus, RotateCw, Bell, Menu, LogOut, ChevronDown, Wallet, User, BadgeCheck, Clock3, OctagonAlert, Shield, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { sharedDataService } from '../../services/sharedDataService';
 import { dataService } from '../../services/dataService';
 import { useAuth } from '../../context/AuthContext';
+import { useWallet } from '../../context/WalletContext';
 
 const DistributorTopBar = ({ onMenuClick }) => {
     const navigate = useNavigate();
     const { lockTimeLeft, logoutTimeLeft } = useAuth();
+    const { refreshWallet, isRefreshing: contextRefreshing } = useWallet();
+    const [localRefreshing, setLocalRefreshing] = useState(false);
+    const isRefreshing = localRefreshing || contextRefreshing;
     const [dist, setDist] = useState(null);
     const [imgError, setImgError] = useState(false);
     const [showProfile, setShowProfile] = useState(false);
@@ -74,6 +78,22 @@ const DistributorTopBar = ({ onMenuClick }) => {
             window.removeEventListener('profileUpdated', handleProfile);
         };
     }, []);
+
+    const handleManualRefresh = async () => {
+        if (isRefreshing) return;
+        setLocalRefreshing(true);
+        try {
+            await Promise.allSettled([
+                typeof refreshWallet === 'function' ? refreshWallet() : Promise.resolve(),
+                typeof dataService?.fetchUserProfile === 'function' ? dataService.fetchUserProfile(true) : Promise.resolve(),
+                loadDist(true, true)
+            ]);
+        } catch (err) {
+            console.warn('[DistributorTopBar] Refresh error:', err);
+        } finally {
+            setLocalRefreshing(false);
+        }
+    };
 
     // Close dropdowns on outside click
     useEffect(() => {
@@ -154,15 +174,34 @@ const DistributorTopBar = ({ onMenuClick }) => {
 
                 {/* Wallet Chip */}
                 <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
-                    <Wallet size={13} className="text-amber-500" />
-                    <div className="text-right hidden sm:block">
+                    <Wallet size={13} className="text-amber-500 shrink-0" />
+                    <div className="text-right hidden sm:block min-w-[64px]">
                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-tight leading-none">Wallet</p>
                         <p className="text-[11px] font-black text-amber-600 mt-0.5">₹ {walletBal}</p>
                     </div>
-                    <button onClick={() => navigate('/distributor/transactions/add-money')}
-                        className="bg-amber-500 hover:bg-amber-400 text-white rounded-lg p-1.5 transition-all shadow-sm shadow-amber-500/30">
-                        <Plus size={13} />
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                        <button
+                            type="button"
+                            onClick={() => navigate('/distributor/transactions/add-money')}
+                            title="Add Money"
+                            aria-label="Add Money"
+                            className="bg-amber-500 hover:bg-amber-400 active:scale-95 text-white rounded-lg p-1.5 transition-all shadow-sm shadow-amber-500/30 cursor-pointer"
+                        >
+                            <Plus size={13} />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleManualRefresh}
+                            disabled={isRefreshing}
+                            title={isRefreshing ? "Refreshing balance..." : "Refresh wallet balance"}
+                            aria-label="Refresh Balance"
+                            className={`p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-amber-50 text-slate-600 hover:text-amber-600 transition-all shadow-xs cursor-pointer ${
+                                isRefreshing ? 'opacity-70 cursor-not-allowed' : 'active:scale-95'
+                            }`}
+                        >
+                            <RotateCw size={13} className={isRefreshing ? "animate-spin text-amber-500" : "text-slate-600"} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Notifications */}
