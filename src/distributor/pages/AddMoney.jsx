@@ -10,7 +10,7 @@ const AddMoney = () => {
     const [activeTab, setActiveTab] = useState('recharge');
 
     return (
-        <div className="p-3 sm:p-5 lg:p-6 max-w-7xl mx-auto space-y-3.5 pb-2 font-['Inter',sans-serif]">
+        <div className="p-2 sm:p-3 max-w-7xl mx-auto space-y-2 pb-1 font-['Inter',sans-serif]">
             {/* Page Header - Height reduced by 70%, compact bar */}
             <motion.div
                 initial={{ opacity: 0, y: -8 }}

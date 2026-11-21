@@ -198,16 +198,16 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
     };
 
     return (
-        <div className="w-full max-w-7xl mx-auto space-y-4 pb-2">
+        <div className="w-full max-w-7xl mx-auto space-y-3 pb-1">
             {/* Success feedback alert */}
             {successMessage && (
                 <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-start justify-between gap-3 shadow-sm"
+                    className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-start justify-between gap-3 shadow-sm"
                 >
                     <div className="flex items-start gap-2.5">
-                        <CheckCircle2 size={20} className="text-emerald-600 shrink-0 mt-0.5" />
+                        <CheckCircle2 size={18} className="text-emerald-600 shrink-0 mt-0.5" />
                         <div>
                             <p className="font-black text-xs text-emerald-950 uppercase tracking-wider">Request Submitted Successfully</p>
                             <p className="text-xs font-medium text-emerald-800 mt-0.5">{successMessage}</p>
@@ -215,31 +215,31 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
                     </div>
                     <button
                         onClick={() => setSuccessMessage(null)}
-                        className="text-emerald-600 hover:text-emerald-900 p-1"
+                        className="text-emerald-600 hover:text-emerald-900 p-1 cursor-pointer"
                     >
-                        <X size={16} />
+                        <X size={15} />
                     </button>
                 </motion.div>
             )}
 
             {/* General Error alert */}
             {errors.general && (
-                <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 flex items-center gap-3 text-xs font-bold">
-                    <AlertCircle size={18} className="text-rose-600 shrink-0" />
+                <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 flex items-center gap-2.5 text-xs font-bold">
+                    <AlertCircle size={16} className="text-rose-600 shrink-0" />
                     <span>{errors.general}</span>
                 </div>
             )}
 
             {/* ── 35% (LEFT) / 65% (RIGHT) VERTICAL SPLIT LAYOUT ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-[35%_minmax(0,1fr)] gap-5 items-start">
-                {/* ── LEFT SIDE (35%): STEP 1: SELECT RECEIVING BANK ACCOUNT ── */}
-                <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="grid grid-cols-1 lg:grid-cols-[35%_minmax(0,1fr)] gap-4 items-start">
+                {/* ── LEFT SIDE (35%): STEP 1: SELECT RECEIVING BANK ACCOUNT (WITH INTERNAL VERTICAL SCROLL) ── */}
+                <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                         <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow-sm shadow-blue-500/20">
+                            <div className="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow-sm shadow-blue-500/20">
                                 1
                             </div>
-                            <h3 className="text-xs sm:text-sm font-black text-slate-900 tracking-wide uppercase">
+                            <h3 className="text-xs font-black text-slate-900 tracking-wide uppercase">
                                 Step 1: Select Bank
                             </h3>
                         </div>
@@ -249,36 +249,38 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
                     </div>
 
                     {loadingAccounts ? (
-                        <div className="py-12 flex flex-col items-center justify-center gap-2 text-slate-400">
-                            <Loader2 size={24} className="animate-spin text-blue-600" />
+                        <div className="py-10 flex flex-col items-center justify-center gap-2 text-slate-400">
+                            <Loader2 size={22} className="animate-spin text-blue-600" />
                             <p className="text-xs font-bold">Loading receiving banks...</p>
                         </div>
                     ) : accounts.length === 0 ? (
-                        <div className="py-10 text-center text-slate-400 space-y-2 bg-slate-50 rounded-2xl border border-dashed border-slate-200 p-5">
-                            <Building2 size={28} className="mx-auto text-slate-300" />
+                        <div className="py-8 text-center text-slate-400 space-y-2 bg-slate-50 rounded-2xl border border-dashed border-slate-200 p-4">
+                            <Building2 size={26} className="mx-auto text-slate-300" />
                             <p className="text-xs font-bold text-slate-700">No active receiving banks</p>
                             <p className="text-[11px] text-slate-500">Please contact administrators to configure receiving banks.</p>
                         </div>
                     ) : (
-                        /* Vertical scroll list for banks only */
-                        <div className="space-y-3 max-h-[560px] overflow-y-auto overflow-x-hidden pr-1.5 custom-scrollbar">
+                        /* Vertical scroll list isolated to bank cards only */
+                        <div className="space-y-2.5 max-h-[380px] overflow-y-auto overflow-x-hidden pr-1.5 custom-scrollbar">
                             {accounts.map(acc => {
                                 const isSelected = selectedAccount?.id === acc.id;
                                 return (
                                     <div
                                         key={acc.id}
                                         onClick={() => setSelectedAccount(acc)}
-                                        className={`relative p-3.5 rounded-2xl border-2 transition-all cursor-pointer ${isSelected
+                                        className={`relative p-3 rounded-xl border-2 transition-all cursor-pointer ${
+                                            isSelected
                                                 ? 'border-blue-600 bg-blue-50/40 shadow-sm shadow-blue-500/10'
                                                 : 'border-slate-200/90 hover:border-slate-300 bg-white hover:bg-slate-50/70'
-                                            }`}
+                                        }`}
                                     >
                                         {/* Card Header: Icon + Bank Name & Branch + Selection Badge */}
-                                        <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+                                        <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
                                             <div className="flex items-center gap-2 min-w-0">
-                                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'
-                                                    }`}>
-                                                    <Landmark size={15} />
+                                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                                                    isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'
+                                                }`}>
+                                                    <Landmark size={14} />
                                                 </div>
                                                 <div className="min-w-0">
                                                     <p className="text-xs font-black text-slate-900 uppercase truncate leading-tight">
@@ -289,9 +291,10 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
                                                     </p>
                                                 </div>
                                             </div>
-                                            <div className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition-all ${isSelected ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 bg-white'
-                                                }`}>
-                                                {isSelected && <Check size={11} strokeWidth={3} />}
+                                            <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-all ${
+                                                isSelected ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 bg-white'
+                                            }`}>
+                                                {isSelected && <Check size={10} strokeWidth={3} />}
                                             </div>
                                         </div>
 
@@ -350,85 +353,73 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
                     {errors.account && <p className="text-xs font-bold text-rose-600">{errors.account}</p>}
                 </div>
 
-                {/* ── RIGHT SIDE (65%): STEP 2: ENTER FUND REQUEST & TRANSFER DETAILS ── */}
-                <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-100 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                        <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow-sm shadow-blue-500/20">
+                {/* ── RIGHT SIDE (65%): STEP 2: ENTER FUND REQUEST & TRANSFER DETAILS (COMPACT, ZERO SCROLL) ── */}
+                <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-sm space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                        <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow-sm shadow-blue-500/20">
                                 2
                             </div>
-                            <h3 className="text-xs sm:text-sm font-black text-slate-900 tracking-wide uppercase">
-                                Step 2: Enter Fund Request & Transfer Details
+                            <h3 className="text-xs font-black text-slate-900 tracking-wide uppercase">
+                                Step 2: Enter Transfer Details
                             </h3>
                         </div>
-                        <span className="text-[11px] font-bold text-slate-400">All fields required</span>
+                        <span className="text-[10px] font-bold text-slate-400">All fields required</span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                        {/* Amount */}
+                    {/* Compact 3-Column Grid for All 6 Form Fields on Desktop */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                        {/* 1. Requested Amount (NO shortcut chips) */}
                         <div className="space-y-1">
-                            <label className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center justify-between">
-                                <span>Requested Amount (₹) *</span>
+                            <label className="text-[11px] font-black text-slate-900 uppercase tracking-wider flex items-center justify-between">
+                                <span>Amount (₹) *</span>
                                 {amount && !isNaN(parseFloat(amount)) && (
-                                    <span className="text-blue-600 font-bold lowercase text-[11px]">{fmtINR(amount)}</span>
+                                    <span className="text-blue-600 font-bold lowercase text-[10px]">{fmtINR(amount)}</span>
                                 )}
                             </label>
                             <div className="relative">
-                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">₹</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
                                 <input
                                     type="number"
                                     step="0.01"
                                     min="1"
                                     value={amount}
                                     onChange={e => setAmount(e.target.value)}
-                                    placeholder="Enter amount (e.g. 5000)"
-                                    className={`w-full pl-8 pr-3 py-2.5 bg-slate-50 border rounded-xl text-xs font-black text-slate-900 outline-none transition-all ${errors.amount ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-blue-600 focus:bg-white'
-                                        }`}
+                                    placeholder="e.g. 5000"
+                                    className={`w-full pl-7 pr-3 py-2 bg-slate-50 border rounded-xl text-xs font-black text-slate-900 outline-none transition-all ${
+                                        errors.amount ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-blue-600 focus:bg-white'
+                                    }`}
                                 />
                             </div>
-                            {/* Quick amount chips */}
-                            <div className="flex flex-wrap gap-1 pt-0.5">
-                                {QUICK_AMOUNTS.map(amt => (
-                                    <button
-                                        key={amt}
-                                        type="button"
-                                        onClick={() => setAmount(String(amt))}
-                                        className="px-2 py-0.5 text-[10px] font-bold rounded-md border border-slate-200 bg-slate-50 text-slate-700 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 transition-all cursor-pointer"
-                                    >
-                                        +₹{amt.toLocaleString('en-IN')}
-                                    </button>
-                                ))}
-                            </div>
-                            {errors.amount && <p className="text-[11px] font-bold text-rose-600">{errors.amount}</p>}
+                            {errors.amount && <p className="text-[10px] font-bold text-rose-600">{errors.amount}</p>}
                         </div>
 
-                        {/* UTR / Ref Number */}
+                        {/* 2. UTR / Ref Number */}
                         <div className="space-y-1">
-                            <label className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center justify-between">
+                            <label className="text-[11px] font-black text-slate-900 uppercase tracking-wider flex items-center justify-between">
                                 <span>UTR / Reference No. *</span>
-                                <span className="text-[10px] text-slate-400 font-medium">12-digit UTR</span>
                             </label>
                             <input
                                 type="text"
                                 value={utrNumber}
                                 onChange={e => setUtrNumber(e.target.value)}
-                                placeholder="e.g. UTR123456789012"
-                                className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-xl text-xs font-mono font-bold text-slate-900 outline-none transition-all ${errors.utrNumber ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-blue-600 focus:bg-white'
-                                    }`}
+                                placeholder="12-digit UTR or Ref ID"
+                                className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-mono font-bold text-slate-900 outline-none transition-all ${
+                                    errors.utrNumber ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-blue-600 focus:bg-white'
+                                }`}
                             />
-                            <p className="text-[10px] text-slate-400 font-medium pt-0.5">Reference ID from payment receipt</p>
-                            {errors.utrNumber && <p className="text-[11px] font-bold text-rose-600">{errors.utrNumber}</p>}
+                            {errors.utrNumber && <p className="text-[10px] font-bold text-rose-600">{errors.utrNumber}</p>}
                         </div>
 
-                        {/* Payment Mode */}
+                        {/* 3. Payment Mode */}
                         <div className="space-y-1">
-                            <label className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                            <label className="text-[11px] font-black text-slate-900 uppercase tracking-wider">
                                 Payment Mode *
                             </label>
                             <select
                                 value={method}
                                 onChange={e => setMethod(e.target.value)}
-                                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:border-blue-600 focus:bg-white transition-all cursor-pointer"
+                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:border-blue-600 focus:bg-white transition-all cursor-pointer"
                             >
                                 {PAYMENT_MODES.map(m => (
                                     <option key={m} value={m}>{m}</option>
@@ -436,9 +427,9 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
                             </select>
                         </div>
 
-                        {/* Transferring Bank Name */}
+                        {/* 4. Transferring Bank Name */}
                         <div className="space-y-1">
-                            <label className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                            <label className="text-[11px] font-black text-slate-900 uppercase tracking-wider">
                                 Your Remitting Bank *
                             </label>
                             <input
@@ -446,28 +437,29 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
                                 value={paymentBank}
                                 onChange={e => setPaymentBank(e.target.value)}
                                 placeholder="e.g. SBI, HDFC, Kotak"
-                                className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-xl text-xs font-bold text-slate-900 outline-none transition-all ${errors.paymentBank ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-blue-600 focus:bg-white'
-                                    }`}
+                                className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold text-slate-900 outline-none transition-all ${
+                                    errors.paymentBank ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-blue-600 focus:bg-white'
+                                }`}
                             />
-                            {errors.paymentBank && <p className="text-[11px] font-bold text-rose-600">{errors.paymentBank}</p>}
+                            {errors.paymentBank && <p className="text-[10px] font-bold text-rose-600">{errors.paymentBank}</p>}
                         </div>
 
-                        {/* Payment Date & Time */}
+                        {/* 5. Payment Date & Time */}
                         <div className="space-y-1">
-                            <label className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                            <label className="text-[11px] font-black text-slate-900 uppercase tracking-wider">
                                 Payment Date & Time *
                             </label>
                             <input
                                 type="datetime-local"
                                 value={paymentDateTime}
                                 onChange={e => setPaymentDateTime(e.target.value)}
-                                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:border-blue-600 focus:bg-white transition-all cursor-pointer"
+                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:border-blue-600 focus:bg-white transition-all cursor-pointer"
                             />
                         </div>
 
-                        {/* User Note */}
+                        {/* 6. User Note */}
                         <div className="space-y-1">
-                            <label className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                            <label className="text-[11px] font-black text-slate-900 uppercase tracking-wider">
                                 Remarks (Optional)
                             </label>
                             <input
@@ -475,18 +467,20 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
                                 maxLength={500}
                                 value={userNote}
                                 onChange={e => setUserNote(e.target.value)}
-                                placeholder="e.g. Wallet recharge for daily operations"
-                                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-600 focus:bg-white transition-all"
+                                placeholder="e.g. Daily wallet recharge"
+                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-600 focus:bg-white transition-all"
                             />
                         </div>
                     </div>
 
-                    {/* ── Transaction Proof Upload Area ── */}
-                    <div className="space-y-1 pt-2 border-t border-slate-100">
-                        <label className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center justify-between">
-                            <span>Upload Transaction Proof *</span>
+                    {/* ── Compact Proof Upload Row ── */}
+                    <div className="space-y-1 pt-1.5 border-t border-slate-100">
+                        <div className="flex items-center justify-between">
+                            <label className="text-[11px] font-black text-slate-900 uppercase tracking-wider">
+                                Upload Transaction Proof *
+                            </label>
                             <span className="text-[10px] text-slate-400 font-medium">JPEG, PNG, WebP · Max 5MB</span>
-                        </label>
+                        </div>
 
                         <input
                             type="file"
@@ -499,29 +493,34 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
                         {!proofPreviewUrl ? (
                             <div
                                 onClick={() => fileInputRef.current?.click()}
-                                className={`border-2 border-dashed rounded-2xl py-3 px-4 flex items-center justify-center gap-3 transition-all cursor-pointer text-center ${errors.proof
-                                        ? 'border-rose-300 bg-rose-50/20 hover:bg-rose-50/40'
-                                        : 'border-slate-200 hover:border-blue-400 bg-slate-50/50 hover:bg-blue-50/20'
-                                    }`}
+                                className={`border border-dashed rounded-xl py-2 px-3.5 flex items-center justify-between gap-3 transition-all cursor-pointer ${
+                                    errors.proof
+                                        ? 'border-rose-300 bg-rose-50/20'
+                                        : 'border-slate-200 hover:border-blue-400 bg-slate-50/60 hover:bg-blue-50/20'
+                                }`}
                             >
-                                <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
-                                    <Upload size={16} />
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                                        <Upload size={14} />
+                                    </div>
+                                    <p className="text-xs font-bold text-slate-800 truncate">
+                                        Click to upload transfer slip or receipt image
+                                    </p>
                                 </div>
-                                <div className="text-left">
-                                    <p className="text-xs font-black text-slate-900">Click to upload transaction proof image</p>
-                                    <p className="text-[10px] text-slate-400 font-medium">Clear transfer receipt, netbanking acknowledgement, or UPI slip</p>
-                                </div>
+                                <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg bg-white border border-slate-200 text-slate-700 shadow-2xs shrink-0">
+                                    Browse File
+                                </span>
                             </div>
                         ) : (
-                            <div className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
+                            <div className="py-1.5 px-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
                                 <div className="flex items-center gap-2.5 min-w-0">
                                     <img
                                         src={proofPreviewUrl}
                                         alt="Receipt Preview"
-                                        className="w-10 h-10 object-cover rounded-lg border border-slate-200 shrink-0"
+                                        className="w-8 h-8 object-cover rounded-lg border border-slate-200 shrink-0"
                                     />
                                     <div className="min-w-0">
-                                        <p className="text-xs font-black text-slate-900 truncate">{proofFile?.name}</p>
+                                        <p className="text-xs font-bold text-slate-900 truncate">{proofFile?.name}</p>
                                         <p className="text-[10px] text-slate-500 font-medium">
                                             {(proofFile?.size / 1024).toFixed(1)} KB · Validated Image
                                         </p>
@@ -530,39 +529,39 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
                                 <button
                                     type="button"
                                     onClick={handleRemoveProof}
-                                    className="px-2.5 py-1 text-[11px] font-bold text-rose-600 hover:text-white hover:bg-rose-600 rounded-lg border border-rose-200 transition-all cursor-pointer shrink-0"
+                                    className="px-2.5 py-1 text-[10px] font-bold text-rose-600 hover:text-white hover:bg-rose-600 rounded-lg border border-rose-200 transition-all cursor-pointer shrink-0"
                                 >
                                     Remove
                                 </button>
                             </div>
                         )}
-                        {errors.proof && <p className="text-[11px] font-bold text-rose-600">{errors.proof}</p>}
+                        {errors.proof && <p className="text-[10px] font-bold text-rose-600">{errors.proof}</p>}
                     </div>
 
                     {/* Submit Button Bar */}
-                    <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-                        <div className="text-xs text-slate-600 font-medium">
+                    <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+                        <div className="text-xs text-slate-600 font-medium truncate">
                             {selectedAccount && amount && !isNaN(parseFloat(amount)) ? (
                                 <span>Requesting <strong className="text-slate-900">{fmtINR(amount)}</strong> to <strong className="text-slate-900">{selectedAccount.bankName}</strong></span>
                             ) : (
-                                <span className="text-slate-400 text-[11px]">Select a receiving bank and enter transfer details</span>
+                                <span className="text-slate-400 text-[11px]">Select a bank and fill required fields</span>
                             )}
                         </div>
 
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-xl text-xs font-black tracking-wider uppercase shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
+                            className="w-full sm:w-auto px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-xl text-xs font-black tracking-wider uppercase shadow-sm shadow-blue-600/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed shrink-0"
                         >
                             {submitting ? (
                                 <>
-                                    <Loader2 size={15} className="animate-spin" />
+                                    <Loader2 size={14} className="animate-spin" />
                                     Submitting Request...
                                 </>
                             ) : (
                                 <>
                                     Submit Fund Request
-                                    <ArrowRight size={15} />
+                                    <ArrowRight size={14} />
                                 </>
                             )}
                         </button>

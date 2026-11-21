@@ -45,7 +45,7 @@ const AddMoney = ({ mode = 'add-money' }) => {
             </div>
 
             {/* Tab Body */}
-            <div className="flex-1 p-3 sm:p-6 lg:p-8">
+            <div className="flex-1 p-2 sm:p-3 lg:p-4">
                 {activeTab === 'recharge' ? (
                     <ManualWalletRecharge
                         portalTitle="Retailer Portal"
