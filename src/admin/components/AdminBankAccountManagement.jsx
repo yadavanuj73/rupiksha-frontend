@@ -229,7 +229,7 @@ const AdminBankAccountManagement = () => {
     };
 
     return (
-        <div className="w-full max-w-6xl mx-auto space-y-8 pb-16">
+        <div className="w-full max-w-7xl mx-auto space-y-6 pb-16">
             {/* Feedback alert */}
             {feedback && (
                 <motion.div
@@ -255,275 +255,313 @@ const AdminBankAccountManagement = () => {
                 </motion.div>
             )}
 
-            {/* ── AREA A: ADD NEW BANK ACCOUNT FORM ── */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-6">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow-sm shadow-blue-500/20">
-                            A
+            {/* ── 50% / 50% RESPONSIVE GRID LAYOUT ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                {/* ── LEFT (50%): AREA A: ADD NEW BANK ACCOUNT FORM ── */}
+                <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-5">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow-sm shadow-blue-500/20">
+                                A
+                            </div>
+                            <h2 className="text-sm font-black text-slate-900 tracking-wide uppercase">
+                                Add New Bank Account
+                            </h2>
                         </div>
-                        <h2 className="text-sm font-black text-slate-900 tracking-wide uppercase">
-                            Add New Bank Account
-                        </h2>
+                        <span className="text-[11px] font-bold text-slate-400">All fields mandatory</span>
                     </div>
-                    <span className="text-[11px] font-bold text-slate-400">All fields mandatory</span>
+
+                    <form onSubmit={handleSaveNewAccount} className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {/* Account Holder Name */}
+                            <div className="sm:col-span-2 space-y-1.5">
+                                <label className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                                    Account Holder Name *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.accountHolderName}
+                                    onChange={e => setFormData(p => ({ ...p, accountHolderName: e.target.value }))}
+                                    placeholder="e.g. Rupiksha Services Private Limited"
+                                    className={`w-full px-4 py-3 bg-slate-50 border rounded-2xl text-xs font-bold text-slate-900 outline-none transition-all ${
+                                        formErrors.accountHolderName ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-blue-600 focus:bg-white'
+                                    }`}
+                                />
+                                {formErrors.accountHolderName && (
+                                    <p className="text-[11px] font-bold text-rose-600">{formErrors.accountHolderName}</p>
+                                )}
+                            </div>
+
+                            {/* Account Number */}
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center justify-between">
+                                    <span>Account Number *</span>
+                                    <span className="text-[10px] text-slate-400 font-medium">Numbers only</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.accountNumber}
+                                    onChange={e => setFormData(p => ({ ...p, accountNumber: e.target.value.replace(/[^0-9]/g, '') }))}
+                                    placeholder="e.g. 002105112233"
+                                    className={`w-full px-4 py-3 bg-slate-50 border rounded-2xl text-xs font-mono font-bold text-slate-900 outline-none transition-all ${
+                                        formErrors.accountNumber ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-blue-600 focus:bg-white'
+                                    }`}
+                                />
+                                {formErrors.accountNumber && (
+                                    <p className="text-[11px] font-bold text-rose-600">{formErrors.accountNumber}</p>
+                                )}
+                            </div>
+
+                            {/* IFSC Code */}
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center justify-between">
+                                    <span>IFSC Code *</span>
+                                    <span className="text-[10px] text-slate-400 font-medium">11 Characters</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    maxLength={11}
+                                    value={formData.ifscCode}
+                                    onChange={e => setFormData(p => ({ ...p, ifscCode: e.target.value.toUpperCase() }))}
+                                    placeholder="e.g. ICIC0000021"
+                                    className={`w-full px-4 py-3 bg-slate-50 border rounded-2xl text-xs font-mono font-bold text-slate-900 outline-none transition-all ${
+                                        formErrors.ifscCode ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-blue-600 focus:bg-white'
+                                    }`}
+                                />
+                                {formErrors.ifscCode && (
+                                    <p className="text-[11px] font-bold text-rose-600">{formErrors.ifscCode}</p>
+                                )}
+                            </div>
+
+                            {/* Bank Name */}
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                                    Bank Name *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.bankName}
+                                    onChange={e => setFormData(p => ({ ...p, bankName: e.target.value }))}
+                                    placeholder="e.g. ICICI Bank, HDFC Bank, SBI"
+                                    className={`w-full px-4 py-3 bg-slate-50 border rounded-2xl text-xs font-bold text-slate-900 outline-none transition-all ${
+                                        formErrors.bankName ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-blue-600 focus:bg-white'
+                                    }`}
+                                />
+                                {formErrors.bankName && (
+                                    <p className="text-[11px] font-bold text-rose-600">{formErrors.bankName}</p>
+                                )}
+                            </div>
+
+                            {/* Branch */}
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                                    Branch Location *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.branch}
+                                    onChange={e => setFormData(p => ({ ...p, branch: e.target.value }))}
+                                    placeholder="e.g. Civil Lines, Lucknow"
+                                    className={`w-full px-4 py-3 bg-slate-50 border rounded-2xl text-xs font-bold text-slate-900 outline-none transition-all ${
+                                        formErrors.branch ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-blue-600 focus:bg-white'
+                                    }`}
+                                />
+                                {formErrors.branch && (
+                                    <p className="text-[11px] font-bold text-rose-600">{formErrors.branch}</p>
+                                )}
+                            </div>
+
+                            {/* Submit Button */}
+                            <div className="sm:col-span-2 pt-2">
+                                <button
+                                    type="submit"
+                                    disabled={saving}
+                                    className="w-full px-6 py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-2xl text-xs font-black uppercase tracking-wider shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
+                                >
+                                    {saving ? (
+                                        <>
+                                            <Loader2 size={16} className="animate-spin" />
+                                            Saving Account...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save size={16} />
+                                            Save Bank Account
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
 
-                <form onSubmit={handleSaveNewAccount} className="space-y-5">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {/* Account Holder Name */}
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                                Account Holder Name *
-                            </label>
-                            <input
-                                type="text"
-                                value={formData.accountHolderName}
-                                onChange={e => setFormData(p => ({ ...p, accountHolderName: e.target.value }))}
-                                placeholder="e.g. Rupiksha Services Private Limited"
-                                className={`w-full px-4 py-3 bg-slate-50 border rounded-2xl text-xs font-bold text-slate-900 outline-none transition-all ${
-                                    formErrors.accountHolderName ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-blue-600 focus:bg-white'
-                                }`}
-                            />
-                            {formErrors.accountHolderName && (
-                                <p className="text-[11px] font-bold text-rose-600">{formErrors.accountHolderName}</p>
-                            )}
+                {/* ── RIGHT (50%): AREA B: SAVED BANK ACCOUNTS (CARDS, NO HORIZONTAL SCROLL) ── */}
+                <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow-sm shadow-blue-500/20">
+                                B
+                            </div>
+                            <h2 className="text-sm font-black text-slate-900 tracking-wide uppercase">
+                                Saved Bank Accounts
+                            </h2>
                         </div>
-
-                        {/* Account Number */}
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center justify-between">
-                                <span>Account Number *</span>
-                                <span className="text-[10px] text-slate-400 font-medium">Numbers only</span>
-                            </label>
-                            <input
-                                type="text"
-                                value={formData.accountNumber}
-                                onChange={e => setFormData(p => ({ ...p, accountNumber: e.target.value.replace(/[^0-9]/g, '') }))}
-                                placeholder="e.g. 002105112233"
-                                className={`w-full px-4 py-3 bg-slate-50 border rounded-2xl text-xs font-mono font-bold text-slate-900 outline-none transition-all ${
-                                    formErrors.accountNumber ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-blue-600 focus:bg-white'
-                                }`}
-                            />
-                            {formErrors.accountNumber && (
-                                <p className="text-[11px] font-bold text-rose-600">{formErrors.accountNumber}</p>
-                            )}
-                        </div>
-
-                        {/* IFSC Code */}
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center justify-between">
-                                <span>IFSC Code *</span>
-                                <span className="text-[10px] text-slate-400 font-medium">11 Characters</span>
-                            </label>
-                            <input
-                                type="text"
-                                maxLength={11}
-                                value={formData.ifscCode}
-                                onChange={e => setFormData(p => ({ ...p, ifscCode: e.target.value.toUpperCase() }))}
-                                placeholder="e.g. ICIC0000021"
-                                className={`w-full px-4 py-3 bg-slate-50 border rounded-2xl text-xs font-mono font-bold text-slate-900 outline-none transition-all ${
-                                    formErrors.ifscCode ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-blue-600 focus:bg-white'
-                                }`}
-                            />
-                            {formErrors.ifscCode && (
-                                <p className="text-[11px] font-bold text-rose-600">{formErrors.ifscCode}</p>
-                            )}
-                        </div>
-
-                        {/* Bank Name */}
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                                Bank Name *
-                            </label>
-                            <input
-                                type="text"
-                                value={formData.bankName}
-                                onChange={e => setFormData(p => ({ ...p, bankName: e.target.value }))}
-                                placeholder="e.g. ICICI Bank, HDFC Bank, SBI"
-                                className={`w-full px-4 py-3 bg-slate-50 border rounded-2xl text-xs font-bold text-slate-900 outline-none transition-all ${
-                                    formErrors.bankName ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-blue-600 focus:bg-white'
-                                }`}
-                            />
-                            {formErrors.bankName && (
-                                <p className="text-[11px] font-bold text-rose-600">{formErrors.bankName}</p>
-                            )}
-                        </div>
-
-                        {/* Branch */}
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                                Branch Location *
-                            </label>
-                            <input
-                                type="text"
-                                value={formData.branch}
-                                onChange={e => setFormData(p => ({ ...p, branch: e.target.value }))}
-                                placeholder="e.g. Civil Lines, Lucknow"
-                                className={`w-full px-4 py-3 bg-slate-50 border rounded-2xl text-xs font-bold text-slate-900 outline-none transition-all ${
-                                    formErrors.branch ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-blue-600 focus:bg-white'
-                                }`}
-                            />
-                            {formErrors.branch && (
-                                <p className="text-[11px] font-bold text-rose-600">{formErrors.branch}</p>
-                            )}
-                        </div>
-
-                        {/* Submit Button Container */}
-                        <div className="flex items-end">
+                        <div className="flex items-center gap-3">
+                            <span className="text-[11px] font-bold text-slate-400">
+                                Total {accounts.length} {accounts.length === 1 ? 'Record' : 'Records'}
+                            </span>
                             <button
-                                type="submit"
-                                disabled={saving}
-                                className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-2xl text-xs font-black uppercase tracking-wider shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
+                                onClick={loadAccounts}
+                                className="p-1.5 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
+                                title="Refresh Accounts"
                             >
-                                {saving ? (
-                                    <>
-                                        <Loader2 size={16} className="animate-spin" />
-                                        Saving Account...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Save size={16} />
-                                        Save Bank Account
-                                    </>
-                                )}
+                                <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
                             </button>
                         </div>
                     </div>
-                </form>
-            </div>
 
-            {/* ── AREA B: SAVED BANK ACCOUNTS LIST ── */}
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden space-y-4 p-6">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow-sm shadow-blue-500/20">
-                            B
-                        </div>
-                        <h2 className="text-sm font-black text-slate-900 tracking-wide uppercase">
-                            Saved Bank Accounts
-                        </h2>
+                    {/* Cards Container with zero horizontal scroll */}
+                    <div className="space-y-3.5 max-h-[640px] overflow-y-auto overflow-x-hidden pr-1">
+                        {loading && accounts.length === 0 ? (
+                            <div className="py-12 flex flex-col items-center justify-center text-slate-400 gap-2">
+                                <Loader2 size={24} className="animate-spin text-blue-600" />
+                                <p className="text-xs font-bold">Loading bank accounts...</p>
+                            </div>
+                        ) : accounts.length === 0 ? (
+                            <div className="py-14 text-center text-slate-400 rounded-2xl border border-dashed border-slate-200 p-6 space-y-2">
+                                <Landmark size={32} className="mx-auto text-slate-300" />
+                                <p className="text-sm font-bold text-slate-700">No bank accounts saved yet</p>
+                                <p className="text-xs text-slate-400">Add your first receiving company bank account using the form on the left.</p>
+                            </div>
+                        ) : (
+                            accounts.map(acc => (
+                                <div
+                                    key={acc.id}
+                                    className="bg-slate-50/70 hover:bg-slate-50 rounded-2xl border border-slate-200/80 p-4 space-y-3 transition-all shadow-xs"
+                                >
+                                    {/* Card Header: Bank Icon + Name & Status Badge */}
+                                    <div className="flex items-center justify-between gap-3 pb-2.5 border-b border-slate-200/60">
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 shadow-xs">
+                                                <Landmark size={18} />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <h3 className="text-xs font-black text-slate-900 truncate uppercase tracking-wide">
+                                                    {acc.bankName}
+                                                </h3>
+                                                <p className="text-[11px] font-semibold text-slate-500 truncate">
+                                                    {acc.branch || 'Main Branch'}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="shrink-0">
+                                            {acc.isActive ? (
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                    <CheckCircle2 size={12} /> Active
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-200/80 text-slate-600 border border-slate-300">
+                                                    <Power size={12} /> Inactive
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Stacked Details (Up and Down, Zero Horizontal Scroll) */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                        {/* Account Holder */}
+                                        <div className="space-y-0.5">
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                                                Account Holder Name
+                                            </span>
+                                            <p className="font-bold text-slate-900 break-words">
+                                                {acc.accountHolderName}
+                                            </p>
+                                        </div>
+
+                                        {/* Masked Account Number */}
+                                        <div className="space-y-0.5">
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                                                Masked Account Number
+                                            </span>
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="font-mono font-bold text-slate-900 bg-white px-2 py-0.5 rounded-md border border-slate-200 text-xs">
+                                                    {acc.accountNumberMasked}
+                                                </span>
+                                                <button
+                                                    onClick={() => copyText(acc.accountNumberMasked, `acc-${acc.id}`)}
+                                                    className="p-1 hover:bg-slate-200/70 rounded text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                                                    title="Copy Masked Account"
+                                                >
+                                                    {copiedId === `acc-${acc.id}` ? (
+                                                        <Check size={12} className="text-emerald-600" />
+                                                    ) : (
+                                                        <Copy size={12} />
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* IFSC Code */}
+                                        <div className="space-y-0.5">
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                                                IFSC Code
+                                            </span>
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 text-xs">
+                                                    {acc.ifscCode}
+                                                </span>
+                                                <button
+                                                    onClick={() => copyText(acc.ifscCode, `ifsc-${acc.id}`)}
+                                                    className="p-1 hover:bg-blue-100 rounded text-blue-500 hover:text-blue-800 transition-colors cursor-pointer"
+                                                    title="Copy IFSC Code"
+                                                >
+                                                    {copiedId === `ifsc-${acc.id}` ? (
+                                                        <Check size={12} className="text-emerald-600" />
+                                                    ) : (
+                                                        <Copy size={12} />
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Created Date */}
+                                        <div className="space-y-0.5">
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                                                Created Date
+                                            </span>
+                                            <p className="font-medium text-slate-600 text-[11px] flex items-center gap-1 mt-0.5">
+                                                <Calendar size={12} className="text-slate-400 shrink-0" />
+                                                <span>{fmtDateTime(acc.createdAt)}</span>
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Actions Row */}
+                                    <div className="pt-2.5 border-t border-slate-200/60 flex items-center justify-end gap-2">
+                                        <button
+                                            onClick={() => handleOpenEdit(acc)}
+                                            className="px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                                        >
+                                            <Edit2 size={12} /> Edit
+                                        </button>
+                                        <button
+                                            onClick={() => handleToggleStatus(acc)}
+                                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs ${
+                                                acc.isActive
+                                                    ? 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
+                                                    : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                                            }`}
+                                        >
+                                            <Power size={12} />
+                                            {acc.isActive ? 'Deactivate' : 'Activate'}
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
-                    <div className="flex items-center gap-3">
-                        <span className="text-[11px] font-bold text-slate-400">
-                            Total {accounts.length} {accounts.length === 1 ? 'Record' : 'Records'}
-                        </span>
-                        <button
-                            onClick={loadAccounts}
-                            className="p-1.5 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
-                            title="Refresh Accounts"
-                        >
-                            <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
-                        </button>
-                    </div>
-                </div>
-
-                <div className="overflow-x-auto max-h-[500px] overflow-y-auto rounded-2xl border border-slate-100">
-                    <table className="w-full text-left text-xs">
-                        <thead>
-                            <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">
-                                <th className="px-5 py-4">Account Holder Name</th>
-                                <th className="px-5 py-4">Masked Account Number</th>
-                                <th className="px-5 py-4">Bank Name & Branch</th>
-                                <th className="px-5 py-4">IFSC Code</th>
-                                <th className="px-5 py-4">Status</th>
-                                <th className="px-5 py-4">Created Date</th>
-                                <th className="px-5 py-4 text-right">Available Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {accounts.map(acc => (
-                                <tr key={acc.id} className="hover:bg-slate-50/50 transition-colors">
-                                    {/* Account Holder */}
-                                    <td className="px-5 py-4">
-                                        <p className="font-black text-slate-900">{acc.accountHolderName}</p>
-                                    </td>
-
-                                    {/* Masked Account Number */}
-                                    <td className="px-5 py-4 whitespace-nowrap">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                                                {acc.accountNumberMasked}
-                                            </span>
-                                            <button
-                                                onClick={() => copyText(acc.accountNumberMasked, acc.id)}
-                                                className="p-1 hover:bg-slate-200/60 rounded text-slate-400 hover:text-slate-700 transition-colors"
-                                                title="Copy Masked Account"
-                                            >
-                                                {copiedId === acc.id ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
-                                            </button>
-                                        </div>
-                                    </td>
-
-                                    {/* Bank & Branch */}
-                                    <td className="px-5 py-4">
-                                        <p className="font-bold text-slate-900">{acc.bankName}</p>
-                                        <p className="text-[10px] text-slate-500 font-medium">{acc.branch}</p>
-                                    </td>
-
-                                    {/* IFSC */}
-                                    <td className="px-5 py-4 whitespace-nowrap">
-                                        <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-                                            {acc.ifscCode}
-                                        </span>
-                                    </td>
-
-                                    {/* Status */}
-                                    <td className="px-5 py-4 whitespace-nowrap">
-                                        {acc.isActive ? (
-                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                <CheckCircle2 size={12} /> Active
-                                            </span>
-                                        ) : (
-                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-500 border border-slate-200">
-                                                <Power size={12} /> Inactive
-                                            </span>
-                                        )}
-                                    </td>
-
-                                    {/* Created Date */}
-                                    <td className="px-5 py-4 whitespace-nowrap text-slate-500">
-                                        {fmtDateTime(acc.createdAt)}
-                                    </td>
-
-                                    {/* Actions */}
-                                    <td className="px-5 py-4 whitespace-nowrap text-right">
-                                        <div className="flex items-center justify-end gap-2">
-                                            <button
-                                                onClick={() => handleOpenEdit(acc)}
-                                                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
-                                            >
-                                                <Edit2 size={13} /> Edit
-                                            </button>
-                                            <button
-                                                onClick={() => handleToggleStatus(acc)}
-                                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                                                    acc.isActive
-                                                        ? 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
-                                                        : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
-                                                }`}
-                                            >
-                                                <Power size={13} />
-                                                {acc.isActive ? 'Deactivate' : 'Activate'}
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-
-                            {accounts.length === 0 && !loading && (
-                                <tr>
-                                    <td colSpan={7} className="py-16 text-center text-slate-400 font-medium">
-                                        <div className="max-w-xs mx-auto space-y-2">
-                                            <Landmark size={32} className="mx-auto text-slate-300" />
-                                            <p className="text-sm font-bold text-slate-700">No bank accounts saved yet</p>
-                                            <p className="text-xs text-slate-400">Add your first receiving company bank account using the form above.</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
                 </div>
             </div>
 

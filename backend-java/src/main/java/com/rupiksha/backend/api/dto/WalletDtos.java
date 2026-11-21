@@ -1,6 +1,7 @@
 package com.rupiksha.backend.api.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -180,7 +181,17 @@ public class WalletDtos {
                 Instant approvedAt,
                 Instant createdAt
         ) {
-            this(id, userId, username, fullName, null, null, amount, status, utrNumber, method, null, null, null, remark, adminRemark, null, null, null, null, null, null, null, false, null, approvedByUsername, approvedAt, createdAt);
+            this(id, userId, username, fullName, null, "RETAILER", amount, status, utrNumber, method, null, null, null, remark, adminRemark, null, null, null, null, null, null, null, false, null, approvedByUsername, approvedAt, createdAt);
+        }
+
+        @JsonProperty("role")
+        public String role() {
+            return userRole;
+        }
+
+        @JsonProperty("name")
+        public String name() {
+            return fullName;
         }
     }
 

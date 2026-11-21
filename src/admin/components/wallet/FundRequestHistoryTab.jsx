@@ -38,15 +38,24 @@ const FundRequestHistoryTab = ({ onToast }) => {
         loadApprovedRequests();
     }, [loadApprovedRequests]);
 
+    const normalizeRole = (role) => {
+        if (!role) return '';
+        const roleStr = typeof role === 'object' && role?.name ? role.name : String(role);
+        return roleStr.trim().replace(/^ROLE_/i, '').replace(/[\s-]+/g, '_').toUpperCase();
+    };
+
     const filtered = requests.filter(r => {
         const matchesSearch =
-            (r.name || '').toLowerCase().includes(search.toLowerCase()) ||
+            (r.fullName || r.name || '').toLowerCase().includes(search.toLowerCase()) ||
             (r.username || '').toLowerCase().includes(search.toLowerCase()) ||
             String(r.mobile || '').includes(search) ||
             String(r.utrNumber || '').toLowerCase().includes(search.toLowerCase()) ||
-            String(r.receivingBankName || '').toLowerCase().includes(search.toLowerCase());
+            String(r.receivingBankName || '').toLowerCase().includes(search.toLowerCase()) ||
+            String(r.id || '').toLowerCase().includes(search.toLowerCase().replace('#', ''));
 
-        const matchesRole = roleFilter === 'ALL' || (r.role || '').toUpperCase() === roleFilter;
+        const itemRole = normalizeRole(r.userRole || r.role) || 'RETAILER';
+        const normFilter = normalizeRole(roleFilter);
+        const matchesRole = normFilter === 'ALL' || itemRole === normFilter;
         return matchesSearch && matchesRole;
     });
 
@@ -57,9 +66,9 @@ const FundRequestHistoryTab = ({ onToast }) => {
         try {
             const dataToExport = filtered.map(r => ({
                 'Request ID': sanitizeCsvCell(r.id),
-                'User Name': sanitizeCsvCell(r.name),
+                'User Name': sanitizeCsvCell(r.fullName || r.name),
                 'Mobile / User ID': sanitizeCsvCell(r.mobile || r.username),
-                'Role': sanitizeCsvCell(r.role),
+                'Role': sanitizeCsvCell((normalizeRole(r.userRole || r.role) || 'RETAILER').replace(/_/g, ' ')),
                 'Credited Amount (INR)': parseFloat(r.amount) || 0,
                 'UTR / Ref Number': sanitizeCsvCell(r.utrNumber),
                 'Payment Mode': sanitizeCsvCell(r.method),
@@ -250,12 +259,12 @@ const FundRequestHistoryTab = ({ onToast }) => {
                                         #{String(req.id).slice(0, 8)}
                                     </td>
                                     <td className="px-5 py-4 whitespace-nowrap">
-                                        <p className="text-xs font-black text-slate-900">{req.name}</p>
+                                        <p className="text-xs font-black text-slate-900">{req.fullName || req.name}</p>
                                         <p className="text-[10px] text-slate-400">{req.mobile || req.username}</p>
                                     </td>
                                     <td className="px-5 py-4 whitespace-nowrap">
-                                        <span className={`px-2 py-0.5 text-[9px] font-black rounded uppercase border ${getRoleBadge(req.role)}`}>
-                                            {req.role}
+                                        <span className={`px-2 py-0.5 text-[9px] font-black rounded uppercase border ${getRoleBadge(req.userRole || req.role)}`}>
+                                            {(normalizeRole(req.userRole || req.role) || 'RETAILER').replace(/_/g, ' ')}
                                         </span>
                                     </td>
                                     <td className="px-5 py-4 whitespace-nowrap">
@@ -341,7 +350,7 @@ const FundRequestHistoryTab = ({ onToast }) => {
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-slate-400">Beneficiary:</span>
-                                <span className="font-bold text-slate-800">{selectedReceipt.name}</span>
+                                <span className="font-bold text-slate-800">{selectedReceipt.fullName || selectedReceipt.name}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-slate-400">Mobile / ID:</span>
@@ -349,7 +358,7 @@ const FundRequestHistoryTab = ({ onToast }) => {
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-slate-400">Role:</span>
-                                <span className="font-bold text-indigo-600">{selectedReceipt.role}</span>
+                                <span className="font-bold text-indigo-600">{(normalizeRole(selectedReceipt.userRole || selectedReceipt.role) || 'RETAILER').replace(/_/g, ' ')}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-slate-400">Receiving Bank:</span>

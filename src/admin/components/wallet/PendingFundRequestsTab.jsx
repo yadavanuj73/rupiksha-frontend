@@ -234,14 +234,37 @@ const PendingFundRequestsTab = ({ users = [], onToast, onRefresh }) => {
         }
     };
 
+    const normalizeRole = (role) => {
+        if (!role) return '';
+        const roleStr = typeof role === 'object' && role?.name ? role.name : String(role);
+        return roleStr.trim().replace(/^ROLE_/i, '').replace(/[\s-]+/g, '_').toUpperCase();
+    };
+
+    const getUserRole = (r) => {
+        let rawRole = r.userRole || r.role;
+        if (!rawRole && Array.isArray(users) && (r.userId || r.username)) {
+            const matchedUser = users.find(u =>
+                (r.userId && (String(u.id) === String(r.userId) || String(u.userId) === String(r.userId))) ||
+                (r.username && String(u.username).toLowerCase() === String(r.username).toLowerCase())
+            );
+            if (matchedUser) {
+                rawRole = matchedUser.role || (Array.isArray(matchedUser.roles) ? matchedUser.roles[0] : null);
+            }
+        }
+        return normalizeRole(rawRole) || 'RETAILER';
+    };
+
     const filtered = requests.filter(r => {
         const matchesSearch =
-            (r.name || '').toLowerCase().includes(search.toLowerCase()) ||
+            (r.fullName || r.name || '').toLowerCase().includes(search.toLowerCase()) ||
             (r.username || '').toLowerCase().includes(search.toLowerCase()) ||
             String(r.mobile || '').includes(search) ||
-            String(r.utrNumber || '').toLowerCase().includes(search.toLowerCase());
+            String(r.utrNumber || '').toLowerCase().includes(search.toLowerCase()) ||
+            String(r.id || '').toLowerCase().includes(search.toLowerCase().replace('#', ''));
 
-        const matchesRole = roleFilter === 'ALL' || (r.role || '').toUpperCase() === roleFilter;
+        const itemRole = getUserRole(r);
+        const normFilter = normalizeRole(roleFilter);
+        const matchesRole = normFilter === 'ALL' || itemRole === normFilter;
         return matchesSearch && matchesRole;
     });
 
@@ -392,8 +415,8 @@ const PendingFundRequestsTab = ({ users = [], onToast, onRefresh }) => {
                                                 <p className="text-[10px] text-slate-400 truncate">
                                                     {req.mobile || req.username}
                                                 </p>
-                                                <span className={`inline-block mt-0.5 px-2 py-0.5 text-[8px] font-black rounded uppercase border ${getRoleBadge(req.userRole || req.role)}`}>
-                                                    {req.userRole || req.role}
+                                                <span className={`inline-block mt-0.5 px-2 py-0.5 text-[8px] font-black rounded uppercase border ${getRoleBadge(getUserRole(req))}`}>
+                                                    {getUserRole(req).replace(/_/g, ' ')}
                                                 </span>
                                             </div>
                                         </div>
