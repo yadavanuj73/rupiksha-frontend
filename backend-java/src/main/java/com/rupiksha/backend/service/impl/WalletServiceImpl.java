@@ -46,6 +46,15 @@ public class WalletServiceImpl implements WalletService {
     private final com.rupiksha.backend.service.AdminWalletActionPinService adminWalletActionPinService;
     @org.springframework.context.annotation.Lazy
     private final com.rupiksha.backend.service.Aeps2faSettlementService aeps2faSettlementService;
+    private final org.springframework.context.ApplicationEventPublisher applicationEventPublisher;
+
+    private void publishBalanceChanged(UUID userId, String reference, String context) {
+        if (userId != null && applicationEventPublisher != null) {
+            applicationEventPublisher.publishEvent(
+                    new com.rupiksha.backend.event.WalletBalanceChangedInternalEvent(userId, reference, context, Instant.now())
+            );
+        }
+    }
 
     // Helper to generate reference number (WLT-YYYYMMDD-XXXXXX)
     private String generateReferenceNumber() {
@@ -458,6 +467,8 @@ public class WalletServiceImpl implements WalletService {
                     "Credit committed"
             );
 
+            publishBalanceChanged(target.getId(), refNum, "ADMIN_CREDIT");
+
             return mapBalanceResponse(tgtWallet);
         } catch (Exception ex) {
             adminWalletActionPinService.recordOperationFailure(
@@ -601,6 +612,8 @@ public class WalletServiceImpl implements WalletService {
                     "Debit committed"
             );
 
+            publishBalanceChanged(target.getId(), refNum, "ADMIN_DEBIT");
+
             return mapBalanceResponse(tgtWallet);
         } catch (Exception ex) {
             adminWalletActionPinService.recordOperationFailure(
@@ -742,6 +755,8 @@ public class WalletServiceImpl implements WalletService {
                     "Lock committed"
             );
 
+            publishBalanceChanged(target.getId(), refNum, "WALLET_LOCK");
+
             return mapBalanceResponse(wallet);
         } catch (Exception ex) {
             adminWalletActionPinService.recordOperationFailure(
@@ -882,6 +897,8 @@ public class WalletServiceImpl implements WalletService {
                     "Release committed"
             );
 
+            publishBalanceChanged(target.getId(), refNum, "WALLET_RELEASE");
+
             return mapBalanceResponse(wallet);
         } catch (Exception ex) {
             adminWalletActionPinService.recordOperationFailure(
@@ -999,6 +1016,8 @@ public class WalletServiceImpl implements WalletService {
                 .build();
         auditLogRepository.save(auditTgt);
 
+        publishBalanceChanged(target.getId(), refNum, "COMMISSION_CREDIT");
+
         return mapBalanceResponse(tgtWallet);
     }
 
@@ -1077,6 +1096,8 @@ public class WalletServiceImpl implements WalletService {
                 .remark(sanitizeRemark("CMS Refund processed for user " + target.getUsername() + " by " + operator.getUsername()))
                 .build();
         auditLogRepository.save(auditTgt);
+
+        publishBalanceChanged(target.getId(), refNum, "CMS_REFUND");
 
         return mapBalanceResponse(tgtWallet);
     }
@@ -1652,6 +1673,8 @@ public class WalletServiceImpl implements WalletService {
                     "Fund request approved"
             );
 
+            publishBalanceChanged(targetUser.getId(), refNum, "FUND_REQUEST_APPROVED");
+
             return toFundRequestResponse(fr);
         } catch (Exception ex) {
             adminWalletActionPinService.recordOperationFailure(
@@ -1993,6 +2016,8 @@ public class WalletServiceImpl implements WalletService {
                 .build();
         auditLogRepository.save(audit);
 
+        publishBalanceChanged(userId, refNum, "SERVICE_DEBIT");
+
         return mapBalanceResponse(wallet);
     }
 
@@ -2049,10 +2074,8 @@ public class WalletServiceImpl implements WalletService {
                 .walletType("MAIN")
                 .ledgerType("SERVICE_CREDIT")
                 .referenceNumber(refNum)
-                .ipAddress(ipAddress)
-                .remark(sanitizeRemark("Service credit: " + serviceName + " Context: " + context))
-                .build();
-        auditLogRepository.save(audit);
+
+        publishBalanceChanged(userId, refNum, "SERVICE_CREDIT");
 
         return mapBalanceResponse(wallet);
     }
@@ -2116,6 +2139,8 @@ public class WalletServiceImpl implements WalletService {
                 .build();
         auditLogRepository.save(audit);
 
+        publishBalanceChanged(userId, refNum, "SERVICE_REFUND");
+
         return mapBalanceResponse(wallet);
     }
 
@@ -2176,6 +2201,8 @@ public class WalletServiceImpl implements WalletService {
                 .remark(sanitizeRemark("2FA Charge debit: " + serviceName + " Context: AEPS_2FA_CHARGE"))
                 .build();
         auditLogRepository.save(audit);
+
+        publishBalanceChanged(userId, refNum, "2FA_CHARGE");
 
         return mapBalanceResponse(wallet);
     }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Wallet, Bell, ChevronDown, Menu, User, CreditCard, Settings, MoreVertical, Plus, BadgeCheck, Clock3, OctagonAlert } from 'lucide-react';
+import { Wallet, Bell, ChevronDown, Menu, User, CreditCard, Settings, MoreVertical, Plus, RotateCw, BadgeCheck, Clock3, OctagonAlert } from 'lucide-react';
 import { dataService } from '../../services/dataService';
 import { useWallet } from '../../context/WalletContext';
 import { useAuth } from '../../context/AuthContext';
@@ -14,8 +14,20 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
     const [showNotifications, setShowNotifications] = useState(false);
     const [notifications, setNotifications] = useState([]);
     const [imgError, setImgError] = useState(false);
+    const [refreshError, setRefreshError] = useState(null);
 
-    const { balance, isWalletLoading, walletError } = useWallet();
+    const { balance, isWalletLoading, isRefreshing, walletError, refreshWallet } = useWallet();
+
+    const handleManualRefresh = async () => {
+        if (isRefreshing || isWalletLoading) return;
+        setRefreshError(null);
+        try {
+            await refreshWallet();
+        } catch (err) {
+            setRefreshError("Failed to refresh balance");
+            setTimeout(() => setRefreshError(null), 3500);
+        }
+    };
 
     const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -98,19 +110,44 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
                         <KycIcon size={12} />
                         <span className="text-[9px] font-black uppercase tracking-[0.15em]">KYC {kycChip.label}</span>
                     </div>
-                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
-                        <Wallet size={13} className="text-amber-500" />
+                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 relative">
+                        <Wallet size={13} className="text-amber-500 shrink-0" />
                         <div className="text-right hidden sm:block min-w-[64px]">
                             <p className="text-[9px] font-black text-slate-500 uppercase leading-none">Main</p>
-                            {isWalletLoading ? (
+                            {isWalletLoading && !isRefreshing ? (
                                 <div className="h-3 w-16 bg-slate-200 rounded animate-pulse mt-1" />
                             ) : (
                                 <p className="text-[11px] font-black text-amber-600 mt-0.5">₹ {parseFloat(balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                             )}
                         </div>
-                        <button onClick={onAddMoney} className="bg-amber-500 hover:bg-amber-400 text-white rounded-lg p-1.5 transition-all shadow-sm shadow-amber-500/30">
-                            <Plus size={13} />
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                type="button"
+                                onClick={onAddMoney}
+                                title="Add Money to Wallet"
+                                aria-label="Add Money"
+                                className="bg-amber-500 hover:bg-amber-400 active:scale-95 text-white rounded-lg p-1.5 transition-all shadow-sm shadow-amber-500/30 cursor-pointer"
+                            >
+                                <Plus size={13} />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleManualRefresh}
+                                disabled={isRefreshing || isWalletLoading}
+                                title={isRefreshing ? "Refreshing balance..." : "Refresh wallet balance"}
+                                aria-label="Refresh Balance"
+                                className={`p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-amber-50 text-slate-600 hover:text-amber-600 transition-all shadow-xs cursor-pointer ${
+                                    isRefreshing ? 'opacity-70 cursor-not-allowed' : 'active:scale-95'
+                                }`}
+                            >
+                                <RotateCw size={13} className={isRefreshing ? "animate-spin text-amber-500" : "text-slate-600"} />
+                            </button>
+                        </div>
+                        {refreshError && (
+                            <div className="absolute -bottom-8 right-0 bg-rose-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-md whitespace-nowrap z-50">
+                                {refreshError}
+                            </div>
+                        )}
                     </div>
 
                     <div className="relative">

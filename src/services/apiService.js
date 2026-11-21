@@ -215,6 +215,7 @@ export const memberService = {
 export const walletService = {
   getAll: () => apiFetch("/wallet"),
   getBalance: (userId) => apiFetch(`/wallet/${userId}/balance`),
+  getMyBalance: () => apiFetch("/wallet/my-balance"),
   creditFund: (userId, amount) =>
     apiFetch("/wallet/credit", {
       method: "POST",
@@ -231,6 +232,69 @@ export const walletService = {
       method: "POST",
       body: JSON.stringify({ userId, amount }),
     }),
+  subscribeWalletEvents: ({ onEvent, onError, onConnect, signal }) => {
+    const token = getToken();
+    if (!token) return () => {};
+    const controller = new AbortController();
+    const abortSignal = signal || controller.signal;
+
+    (async () => {
+      try {
+        const res = await fetch(`${BASE_URL}/wallet/events`, {
+          headers: {
+            Accept: "text/event-stream",
+            Authorization: `Bearer ${token}`,
+          },
+          signal: abortSignal,
+        });
+
+        if (!res.ok) {
+          throw new Error(`SSE HTTP error ${res.status}`);
+        }
+
+        if (onConnect) onConnect();
+
+        const reader = res.body?.getReader();
+        if (!reader) return;
+
+        const decoder = new TextDecoder("utf-8");
+        let buffer = "";
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          let eventName = "message";
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith(":")) continue; // comment / keepalive ping
+
+            if (trimmed.startsWith("event:")) {
+              eventName = trimmed.substring(6).trim();
+            } else if (trimmed.startsWith("data:")) {
+              const rawData = trimmed.substring(5).trim();
+              try {
+                const parsed = JSON.parse(rawData);
+                if (onEvent) onEvent(eventName, parsed);
+              } catch (_) {
+                if (onEvent) onEvent(eventName, rawData);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        if (err.name !== "AbortError" && onError) {
+          onError(err);
+        }
+      }
+    })();
+
+    return () => controller.abort();
+  },
 };
 
 // ─── WALLET TRANSFER ──────────────────────────────────────────────────────────

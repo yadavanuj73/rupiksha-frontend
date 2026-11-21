@@ -1,19 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Bell, Menu, LogOut, ChevronDown, Wallet, User, BadgeCheck, Clock3, OctagonAlert, Shield, Lock } from 'lucide-react';
+import { Plus, RotateCw, Bell, Menu, LogOut, ChevronDown, Wallet, User, BadgeCheck, Clock3, OctagonAlert, Shield, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { sharedDataService } from '../../services/sharedDataService';
 import { dataService } from '../../services/dataService';
 import { useAuth } from '../../context/AuthContext';
+import { useWallet } from '../../context/WalletContext';
 
 const SuperDistributorTopBar = ({ onMenuClick }) => {
     const navigate = useNavigate();
     const { lockTimeLeft, logoutTimeLeft } = useAuth();
+    const { balance: contextBalance, isWalletLoading, isRefreshing: contextRefreshing, refreshWallet } = useWallet();
     const [dist, setDist] = useState(null);
     const [imgError, setImgError] = useState(false);
     const [showProfile, setShowProfile] = useState(false);
     const [showNotif, setShowNotif] = useState(false);
+    const [localRefreshing, setLocalRefreshing] = useState(false);
+    const [refreshError, setRefreshError] = useState(null);
     const profileRef = useRef(null);
     const notifRef = useRef(null);
+
+    const isRefreshing = localRefreshing || contextRefreshing;
 
     const formatTime = (ms) => {
         const totalSecs = Math.floor(ms / 1000);
@@ -90,10 +96,30 @@ const SuperDistributorTopBar = ({ onMenuClick }) => {
         navigate('/');
     };
 
+    const handleManualRefresh = async () => {
+        if (isRefreshing || isWalletLoading) return;
+        setLocalRefreshing(true);
+        setRefreshError(null);
+        try {
+            if (typeof refreshWallet === 'function') {
+                await refreshWallet();
+            }
+            await loadDist(true, true);
+        } catch (err) {
+            setRefreshError("Failed to refresh balance");
+            setTimeout(() => setRefreshError(null), 3500);
+        } finally {
+            setLocalRefreshing(false);
+        }
+    };
+
     const sdCurrentUid = dist?.id || dist?.userId || dist?.username;
     const userPhoto = dist?.profilePhoto || dist?.photoUrl || (sdCurrentUid ? localStorage.getItem(`rupiksha_photo_${sdCurrentUid}`) : null);
     const initials = (dist?.name || 'SD').charAt(0).toUpperCase();
     const walletBal = dist?.wallet?.balance ?? dist?.balance ?? '0.00';
+    const displayBalance = contextBalance !== undefined && contextBalance !== null && !isNaN(parseFloat(contextBalance))
+        ? parseFloat(contextBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })
+        : (walletBal !== undefined && walletBal !== null && !isNaN(parseFloat(walletBal)) ? parseFloat(walletBal).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '0.00');
     const distName = dist?.name || 'Super Distributor';
     const rawKyc = String(dist?.kycStatus || dist?.profile_kyc_status || '').toUpperCase();
     const kycChip = rawKyc === 'APPROVED' || rawKyc === 'DONE'
@@ -151,16 +177,44 @@ const SuperDistributorTopBar = ({ onMenuClick }) => {
                 </div>
 
                 {/* Wallet Chip */}
-                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
-                    <Wallet size={13} className="text-amber-500" />
-                    <div className="text-right hidden sm:block">
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 relative">
+                    <Wallet size={13} className="text-amber-500 shrink-0" />
+                    <div className="text-right hidden sm:block min-w-[64px]">
                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-tight leading-none">Wallet</p>
-                        <p className="text-[11px] font-black text-amber-600 mt-0.5">₹ {walletBal}</p>
+                        {isWalletLoading && !isRefreshing ? (
+                            <div className="h-3 w-16 bg-slate-200 rounded animate-pulse mt-1" />
+                        ) : (
+                            <p className="text-[11px] font-black text-amber-600 mt-0.5">₹ {displayBalance}</p>
+                        )}
                     </div>
-                    <button onClick={() => navigate('/super-distributor/transactions/add-money')}
-                        className="bg-amber-500 hover:bg-amber-400 text-white rounded-lg p-1.5 transition-all shadow-sm shadow-amber-500/30">
-                        <Plus size={13} />
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                        <button
+                            type="button"
+                            onClick={() => navigate('/super-distributor/transactions/add-money')}
+                            title="Add Money"
+                            aria-label="Add Money"
+                            className="bg-amber-500 hover:bg-amber-400 active:scale-95 text-white rounded-lg p-1.5 transition-all shadow-sm shadow-amber-500/30 cursor-pointer"
+                        >
+                            <Plus size={13} />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleManualRefresh}
+                            disabled={isRefreshing || isWalletLoading}
+                            title={isRefreshing ? "Refreshing balance..." : "Refresh wallet balance"}
+                            aria-label="Refresh Balance"
+                            className={`p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-amber-50 text-slate-600 hover:text-amber-600 transition-all shadow-xs cursor-pointer ${
+                                isRefreshing ? 'opacity-70 cursor-not-allowed' : 'active:scale-95'
+                            }`}
+                        >
+                            <RotateCw size={13} className={isRefreshing ? "animate-spin text-amber-500" : "text-slate-600"} />
+                        </button>
+                    </div>
+                    {refreshError && (
+                        <div className="absolute -bottom-8 right-0 bg-rose-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-md whitespace-nowrap z-50">
+                            {refreshError}
+                        </div>
+                    )}
                 </div>
 
                 {/* Notifications */}
